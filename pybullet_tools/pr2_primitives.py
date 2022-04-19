@@ -19,12 +19,14 @@ from .utils import invert, multiply, get_name, set_pose, get_link_pose, is_place
     pairwise_collision, set_joint_positions, get_joint_positions, sample_placement, get_pose, waypoints_from_path, \
     unit_quat, plan_base_motion, plan_joint_motion, base_values_from_pose, pose_from_base_values, \
     uniform_pose_generator, sub_inverse_kinematics, add_fixed_constraint, remove_debug, remove_fixed_constraint, \
-    disable_real_time, enable_gravity, joint_controller_hold, get_distance, \
+    disable_real_time, enable_gravity, joint_controller_hold, get_distance, get_links, get_link_name, \
     get_min_limit, user_input, step_simulation, get_body_name, get_bodies, BASE_LINK, \
     add_segments, get_max_limit, link_from_name, BodySaver, get_aabb, Attachment, interpolate_poses, \
     plan_direct_joint_motion, has_gui, create_attachment, wait_for_duration, get_extend_fn, set_renderer, \
-    get_custom_limits, all_between, get_unit_vector, wait_if_gui, joint_from_name, \
+    get_custom_limits, all_between, get_unit_vector, wait_if_gui, joint_from_name, create_box, set_point, \
     set_base_values, euler_from_quat, INF, elapsed_time, get_moving_links, flatten_links, get_relative_pose
+
+from .bullet_utils import nice
 
 BASE_EXTENT = 3.5 # 2.5
 BASE_LIMITS = (-BASE_EXTENT*np.ones(2), BASE_EXTENT*np.ones(2))
@@ -57,7 +59,8 @@ class Pose(object):
         self.support = support
         self.init = init
         if index == None:
-            self.index = next(self.num)
+            index = next(self.num)
+        self.index = index
     @property
     def bodies(self):
         return flatten_links(self.body)
@@ -413,21 +416,42 @@ def iterate_approach_path(robot, arm, gripper, pose, grasp, body=None):
             set_pose(body, multiply(tool_pose, grasp.value))
         yield
 
-def get_ir_sampler(problem, custom_limits={}, max_attempts=25, collisions=True, learned=True):
+def get_ir_sampler(problem, custom_limits={}, max_attempts=25, collisions=True, learned=True, verbose=False):
     robot = problem.robot
     obstacles = problem.fixed if collisions else []
     gripper = problem.get_gripper()
 
     def gen_fn(arm, obj, pose, grasp):
         pose.assign()
+        link = None
+        if isinstance(obj, tuple):  ## YANG: (body, link)
+            obj, link = obj
         approach_obstacles = {obst for obst in obstacles if not is_placement(obj, obst)}
+                              # and not is_containment(obj, obst, link)}
+        iter = 0
         for _ in iterate_approach_path(robot, arm, gripper, pose, grasp, body=obj):
-            if any(pairwise_collision(gripper, b) or pairwise_collision(obj, b) for b in approach_obstacles):
-                return
+            if verbose:
+                for b in approach_obstacles:
+                    if pairwise_collision(gripper, b):
+                        print(f'       get_ir_sampler  |  iterate_approach_path {iter}  |  collision between {gripper} and {b}')
+                        for l in get_links(b):
+                            if pairwise_collision((gripper, None), (b, [l])):
+                                print('                colliding with', (b, l), get_link_name(b, l), get_aabb(b, l))
+                        return
+                    elif pairwise_collision(obj, b):
+                        print(f'       get_ir_sampler  |  iterate_approach_path {iter} |  collision between {obj} and {b}')
+                        return
+            else:
+                if any(pairwise_collision(gripper, b) or pairwise_collision(obj, b) for b in approach_obstacles):
+                    return
+            iter += 1
         gripper_pose = multiply(pose.value, invert(grasp.value)) # w_f_g = w_f_o * (g_f_o)^-1
         default_conf = arm_conf(arm, grasp.carry)
         arm_joints = get_arm_joints(robot, arm)
         base_joints = get_group_joints(robot, 'base')
+        # if pose_to_xyzyaw(pose.value) == (1.093, 7.088, 0.696, 2.8):
+        #     yield (Conf(robot, base_joints, (1.241, 6.672, 1.874)),)
+
         if learned:
             base_generator = learned_pose_generator(robot, gripper_pose, arm=arm, grasp_type=grasp.grasp_type)
         else:
@@ -443,9 +467,16 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=25, collisions=True, 
                 pose.assign()
                 bq.assign()
                 set_joint_positions(robot, arm_joints, default_conf)
-                if any(pairwise_collision(robot, b) for b in obstacles + [obj]):
-                    continue
-                #print('IR attempts:', count)
+                if verbose:
+                    for b in obstacles + [obj]:
+                        if pairwise_collision(robot, b):
+                            print(f'       get_ir_sampler  |  base_generator  |  collision between {robot} and {b}')
+                            continue
+                else:
+                    if any(pairwise_collision(robot, b) for b in obstacles + [obj]):
+                        continue
+                if verbose: print('IR attempts:', count)
+
                 # print('IR checked:', bq, obstacles + [obj], ' | ', arm_joints, default_conf)  ## YANG
                 yield (bq,)
                 break
@@ -521,12 +552,14 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False):
 
 ##################################################
 
-def get_ik_ir_gen(problem, max_attempts=25, learned=True, teleport=False, **kwargs):
+def get_ik_ir_gen(problem, max_attempts=25, learned=True, teleport=False, verbose=True, **kwargs):
     # TODO: compose using general fn
-    ir_sampler = get_ir_sampler(problem, learned=learned, max_attempts=1, **kwargs)
+    # ir_sampler = get_ir_sampler(problem, learned=learned, max_attempts=1, **kwargs)
+    ir_sampler = get_ir_sampler(problem, learned=learned, max_attempts=40, verbose=verbose, **kwargs)
     ik_fn = get_ik_fn(problem, teleport=teleport, **kwargs)
     def gen(*inputs):
-        b, a, p, g = inputs
+        if verbose: set_renderer(enable=True)
+        a, o, p, g = inputs
         ir_generator = ir_sampler(*inputs)
         attempts = 0
         while True:
@@ -536,16 +569,29 @@ def get_ik_ir_gen(problem, max_attempts=25, learned=True, teleport=False, **kwar
                 attempts = 0
                 yield None
             attempts += 1
+            if verbose: print(f'   {attempts} | get_ik_ir_gen | inputs = {inputs}')
+
             try:
                 ir_outputs = next(ir_generator)
             except StopIteration:
+                if verbose: print('    stopped ir_generator in', attempts, 'attempts')
                 return
+
             if ir_outputs is None:
                 continue
+            inp = ir_generator.gi_frame.f_locals
+            inp = [inp[k] for k in ['pose', 'grasp', 'custom_limits']]
+            if verbose:
+                print(f'           ir_generator  |  inputs = {inp}  |  ir_outputs = {ir_outputs}')
+                samp = create_box(.1, .1, .1, mass=1, color=(1, 0, 1, 1))
+                x,y,_ = ir_outputs[0].values
+                set_point(samp, (x,y,0.2))
+
             ik_outputs = ik_fn(*(inputs + ir_outputs))
             if ik_outputs is None:
                 continue
-            print('IK attempts:', attempts)
+            # print('                         ik_outputs = ik_fn(*(inputs + ir_outputs)) =', ik_outputs, ' | commands =', ik_outputs[0].commands)
+            if verbose: print('succeed after IK attempts:', attempts)
             yield ir_outputs + ik_outputs
             return
             #if not p.init:
@@ -723,7 +769,7 @@ def get_target_path(trajectory):
 BASE_CONSTANT = 1
 BASE_VELOCITY = 0.25
 
-def get_custom_limits(robot, base_limits, yaw_limit=None):
+def get_base_custom_limits(robot, base_limits, yaw_limit=None):
     x_limits, y_limits = zip(*base_limits)
     custom_limits = {
         joint_from_name(robot, 'x'): x_limits,
@@ -837,42 +883,3 @@ def get_cfree_traj_grasp_pose_test(problem, collisions=True):
                 return False
         return True
     return test
-
-
-#######################################################
-
-def nice_float(ele):
-    if isinstance(ele, int) or ele.is_integer():
-        return int(ele)
-    else:
-        return round(ele, 3)
-
-def nice_tuple(tup):
-    new_tup = []
-    for ele in tup:
-        new_tup.append(nice_float(ele))
-    return tuple(new_tup)
-
-def nice(tuple_of_tuples):
-
-    ## float, int
-    if isinstance(tuple_of_tuples, float):
-        return nice_float(tuple_of_tuples)
-
-    ## position, pose
-    elif isinstance(tuple_of_tuples[0], tuple):
-
-        ## pose = point + euler -> (x, y, z, yaw)
-        if len(tuple_of_tuples[0]) == 3 and len(tuple_of_tuples[1]) == 4:
-            xyzyaw = list(nice_tuple(tuple_of_tuples[0]))
-            xyzyaw.append(nice_float(euler_from_quat(tuple_of_tuples[1])[2]))
-            return tuple(xyzyaw)
-
-        new_tuple = []
-        for tup in tuple_of_tuples:
-            new_tuple.append(nice_tuple(tup))
-
-        return tuple(new_tuple)
-
-    ## point, euler, conf
-    return nice_tuple(tuple_of_tuples)

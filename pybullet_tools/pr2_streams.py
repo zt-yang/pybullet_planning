@@ -41,8 +41,8 @@ from pybullet_tools.utils import invert, multiply, get_name, set_pose, get_link_
     RED, remove_body, aabb2d_from_aabb, aabb_overlap, aabb_contains_point, get_aabb_center, get_link_name, \
     get_links, check_initial_end, get_collision_fn, BLUE, WHITE, TAN, GREY, YELLOW, aabb_contains_aabb
 
-from bullet.utils import sample_obj_in_body_link_space, nice, set_camera_target_body, is_contained
-from bullet.worlds.utils import visualize_point
+from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, set_camera_target_body, is_contained, \
+    visualize_point
 
 BASE_EXTENT = 3.5 # 2.5
 BASE_LIMITS = (-BASE_EXTENT*np.ones(2), BASE_EXTENT*np.ones(2))
@@ -374,12 +374,12 @@ def get_handle_grasps(joint_object, under=False, tool_pose=TOOL_POSE, body_pose=
 def get_handle_grasp_gen(problem, collisions=False, randomize=True, visualize=False):
     collisions = True
     obstacles = problem.fixed if collisions else []
-    BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
-    name_to_body = problem.world.name_to_body
+
     def fn(body):
         # TODO: max_grasps
         # TODO: return grasps one by one
         grasps = []
+        BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
         joint = BODY_TO_OBJECT[body]
         body_pose = joint.get_handle_pose()
         #carry_conf = get_carry_conf(arm, 'top')
@@ -877,7 +877,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
     world = problem.world
     saver = BodySaver(robot)
     obstacles = problem.fixed if collisions else []
-    BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
+
     def fn(a, o, pst1, pst2, g, bq1, aq1, fluents=[]):
         if pst1.value == pst2.value:
             return None
@@ -890,6 +890,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         arm_joints = get_arm_joints(robot, a)
         resolutions = 0.05 ** np.ones(len(arm_joints))
 
+        BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
         joint_object = BODY_TO_OBJECT[o]
         old_pose = get_link_pose(joint_object.body, joint_object.handle_link)
         tool_from_root = get_tool_from_root(robot, a)
@@ -1024,7 +1025,7 @@ def get_turn_knob_handle_motion_gen(problem, custom_limits={}, collisions=True, 
     world = problem.world
     saver = BodySaver(robot)
     obstacles = problem.fixed if collisions else []
-    BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
+
     def fn(a, o, pst1, pst2, g, bq1, aq1, fluents=[]):
         if pst1.value == pst2.value:
             return None
@@ -1037,6 +1038,7 @@ def get_turn_knob_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         arm_joints = get_arm_joints(robot, a)
         resolutions = 0.05 ** np.ones(len(arm_joints))
 
+        BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
         joint_object = BODY_TO_OBJECT[o]
         old_pose = get_link_pose(joint_object.body, joint_object.handle_link)
         if visualize:
@@ -1111,7 +1113,7 @@ def get_pull_drawer_handle_motion_gen(problem, custom_limits={}, collisions=True
     robot = problem.robot
     saver = BodySaver(robot)
     obstacles = problem.fixed if collisions else []
-    BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
+
     def fn(a, o, pst1, pst2, g, bq1, fluents=[]):  ##
         if extent == 'max':
             pst1 = Position(o, 'min')
@@ -1125,6 +1127,7 @@ def get_pull_drawer_handle_motion_gen(problem, custom_limits={}, collisions=True
         saver.restore()
         pst1.assign()
         bq1.assign()
+        BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
         joint_object = BODY_TO_OBJECT[o]
         tool_from_root = get_tool_from_root(robot, a)
         old_pose = get_link_pose(joint_object.body, joint_object.handle_link)
