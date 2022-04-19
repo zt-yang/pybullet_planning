@@ -23,7 +23,7 @@ from .utils import invert, multiply, get_name, set_pose, get_link_pose, is_place
     get_min_limit, user_input, step_simulation, get_body_name, get_bodies, BASE_LINK, \
     add_segments, get_max_limit, link_from_name, BodySaver, get_aabb, Attachment, interpolate_poses, \
     plan_direct_joint_motion, has_gui, create_attachment, wait_for_duration, get_extend_fn, set_renderer, \
-    get_custom_limits, all_between, get_unit_vector, wait_if_gui, \
+    get_custom_limits, all_between, get_unit_vector, wait_if_gui, joint_from_name, \
     set_base_values, euler_from_quat, INF, elapsed_time, get_moving_links, flatten_links, get_relative_pose
 
 BASE_EXTENT = 3.5 # 2.5
@@ -49,14 +49,15 @@ class Pose(object):
     #def __init__(self, position, orientation):
     #    self.position = position
     #    self.orientation = orientation
-    def __init__(self, body, value=None, support=None, init=False):
+    def __init__(self, body, value=None, support=None, init=False, index=None):
         self.body = body
         if value is None:
             value = get_pose(self.body)
         self.value = tuple(value)
         self.support = support
         self.init = init
-        self.index = next(self.num)
+        if index == None:
+            self.index = next(self.num)
     @property
     def bodies(self):
         return flatten_links(self.body)
@@ -70,29 +71,38 @@ class Pose(object):
     def __repr__(self):
         index = self.index
         #index = id(self) % 1000
-        return 'p{}'.format(index)
+        return 'p{}={}'.format(index, nice(self.value))
+        # return 'p{}'.format(index)
 
 class Grasp(object):
-    def __init__(self, grasp_type, body, value, approach, carry):
+    def __init__(self, grasp_type, body, value, approach, carry, index=None):
         self.grasp_type = grasp_type
         self.body = body
         self.value = tuple(value) # gripper_from_object
         self.approach = tuple(approach)
         self.carry = tuple(carry)
+        if index == None:
+            index = id(self)
+        self.index = index
+
     def get_attachment(self, robot, arm):
         tool_link = link_from_name(robot, PR2_TOOL_FRAMES[arm])
         return Attachment(robot, tool_link, self.value, self.body)
     def __repr__(self):
-        return 'g{}'.format(id(self) % 1000)
+        return 'g{}={}'.format(self.index % 1000, nice(self.value))
+        # return 'g{}'.format(id(self) % 1000)
 
 class Conf(object):
-    def __init__(self, body, joints, values=None, init=False):
+    def __init__(self, body, joints, values=None, init=False, index=None):
         self.body = body
         self.joints = joints
         if values is None:
             values = get_joint_positions(self.body, self.joints)
         self.values = tuple(values)
         self.init = init
+        if index == None:
+            index = id(self)
+        self.index = index
     @property
     def bodies(self): # TODO: misnomer
         return flatten_links(self.body, get_moving_links(self.body, self.joints))
@@ -101,7 +111,10 @@ class Conf(object):
     def iterate(self):
         yield self
     def __repr__(self):
-        return 'q{}'.format(id(self) % 1000)
+        if len(self.joints) == 7:
+            return 'aq{}={}'.format(self.index % 1000, nice(self.values))
+        return 'q{}={}'.format(self.index % 1000, nice(self.values))
+        # return 'q{}'.format(id(self) % 1000)
 
 #####################################
 
@@ -114,10 +127,13 @@ class Command(object):
         raise NotImplementedError()
 
 class Commands(object):
-    def __init__(self, state, savers=[], commands=[]):
+    def __init__(self, state, savers=[], commands=[], index=None):
         self.state = state
         self.savers = tuple(savers)
         self.commands = tuple(commands)
+        if index == None:
+            index = id(self)
+        self.index = index
     def assign(self):
         for saver in self.savers:
             saver.restore()
@@ -127,7 +143,11 @@ class Commands(object):
             for result in command.apply(state, **kwargs):
                 yield result
     def __repr__(self):
-        return 'c{}'.format(id(self) % 1000)
+        commands = self.commands
+        if len(commands) == 1:
+            commands = commands[0]  ## YANG: to prevent error in prolog inference
+        return 'c{}={}'.format(self.index % 1000, commands)
+        # return 'c{}'.format(id(self) % 1000)
 
 #####################################
 
@@ -426,6 +446,7 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=25, collisions=True, 
                 if any(pairwise_collision(robot, b) for b in obstacles + [obj]):
                     continue
                 #print('IR attempts:', count)
+                # print('IR checked:', bq, obstacles + [obj], ' | ', arm_joints, default_conf)  ## YANG
                 yield (bq,)
                 break
             else:
@@ -437,10 +458,10 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=25, collisions=True, 
 def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False):
     robot = problem.robot
     obstacles = problem.fixed if collisions else []
-    if is_ik_compiled():
-        print('Using ikfast for inverse kinematics')
-    else:
-        print('Using pybullet for inverse kinematics')
+    # if is_ik_compiled():
+    #     print('Using ikfast for inverse kinematics')
+    # else:
+    #     print('Using pybullet for inverse kinematics')
 
     def fn(arm, obj, pose, grasp, base_conf):
         approach_obstacles = {obst for obst in obstacles if not is_placement(obj, obst)}
@@ -467,7 +488,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False):
         #approach_conf = pr2_inverse_kinematics(robot, arm, approach_pose, custom_limits=custom_limits,
         #                                       upper_limits=USE_CURRENT, nearby_conf=USE_CURRENT)
         approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits)
-        if (approach_conf is None) or any(pairwise_collision(robot, b) for b in obstacles + [obj]):
+        if (approach_conf is None) or any(pairwise_collision(robot, b) for b in obstacles):
             #print('Approach IK failure', approach_conf)
             #wait_if_gui()
             return None
@@ -541,6 +562,7 @@ def get_motion_gen(problem, custom_limits={}, collisions=True, teleport=False):
     def fn(bq1, bq2, fluents=[]):
         saver.restore()
         bq1.assign()
+        print('bullet.get_motion_gen\tobstacles:', obstacles)
         if teleport:
             path = [bq1, bq2]
         elif is_drake_pr2(robot):
@@ -695,3 +717,162 @@ def get_target_point(conf):
 def get_target_path(trajectory):
     # TODO: only do bounding boxes for moving links on the trajectory
     return [get_target_point(conf) for conf in trajectory.path]
+
+#######################################################
+
+BASE_CONSTANT = 1
+BASE_VELOCITY = 0.25
+
+def get_custom_limits(robot, base_limits, yaw_limit=None):
+    x_limits, y_limits = zip(*base_limits)
+    custom_limits = {
+        joint_from_name(robot, 'x'): x_limits,
+        joint_from_name(robot, 'y'): y_limits,
+    }
+    if yaw_limit is not None:
+        custom_limits.update({
+            joint_from_name(robot, 'theta'): yaw_limit,
+        })
+    return custom_limits
+
+def distance_fn(q1, q2):
+    distance = get_distance(q1.values[:2], q2.values[:2])
+    return BASE_CONSTANT + distance / BASE_VELOCITY
+
+
+def move_cost_fn(t):
+    distance = t.distance(distance_fn=lambda q1, q2: get_distance(q1[:2], q2[:2]))
+    return BASE_CONSTANT + distance / BASE_VELOCITY
+
+def get_cfree_pose_pose_test(collisions=True, **kwargs):
+    def test(b1, p1, b2, p2):
+        if not collisions or (b1 == b2):
+            return True
+        p1.assign()
+        p2.assign()
+        return not pairwise_collision(b1, b2, **kwargs) #, max_distance=0.001)
+    return test
+
+
+def get_cfree_obj_approach_pose_test(collisions=True):
+    def test(b1, p1, g1, b2, p2):
+        if not collisions or (b1 == b2):
+            return True
+        p2.assign()
+        grasp_pose = multiply(p1.value, invert(g1.value))
+        approach_pose = multiply(p1.value, invert(g1.approach), g1.value)
+        for obj_pose in interpolate_poses(grasp_pose, approach_pose):
+            set_pose(b1, obj_pose)
+            if pairwise_collision(b1, b2):
+                return False
+        return True
+    return test
+
+
+def get_cfree_approach_pose_test(problem, collisions=True):
+    # TODO: apply this before inverse kinematics as well
+    arm = 'left'
+    gripper = problem.get_gripper()
+    def test(b1, p1, g1, b2, p2):
+        if not collisions or (b1 == b2):
+            return True
+        p2.assign()
+        for _ in iterate_approach_path(problem.robot, arm, gripper, p1, g1, body=b1):
+            if pairwise_collision(b1, b2) or pairwise_collision(gripper, b2):
+                return False
+        return True
+    return test
+
+
+def get_cfree_traj_pose_test(robot, collisions=True, verbose=False):
+    def test(c, b2, p2):
+        # TODO: infer robot from c
+        if not collisions:
+            return True
+        state = c.assign()
+        if b2 in state.attachments:
+            return True
+        p2.assign()
+
+        if verbose:
+            robot_pose = robot.get_pose()
+            print('    get_cfree_traj_pose_test   \    pose of robot', nice(robot_pose))
+        for _ in c.apply(state):
+            state.assign()
+            for b1 in state.attachments:
+                if pairwise_collision(b1, b2):
+                    if verbose:
+                        print(f'      collision with {b1}, {b2}')
+                        print(f'         pose of {b1}', nice(get_pose(b1)))
+                        print(f'         pose of {b2}', nice(get_pose(b2)))
+                    #wait_for_user()
+                    return False
+            if pairwise_collision(robot, b2):
+                if verbose:
+                    print(f'      collision {robot}, {b2}')
+                    print(f'         pose of robot', nice(robot.get_pose()))
+                    print(f'         pose of {b2}', nice(get_pose(b2)))
+                return False
+        # TODO: just check collisions with moving links
+        return True
+    return test
+
+
+def get_cfree_traj_grasp_pose_test(problem, collisions=True):
+    def test(c, a, b1, g, b2, p2):
+        raise NotImplementedError()
+        if not collisions or (b1 == b2):
+            return True
+        state = c.assign()
+        if (b1 in state.attachments) or (b2 in state.attachments):
+            return True
+        p2.assign()
+        grasp_attachment = g.get_attachment(problem.robot, a)
+        for _ in c.apply(state):
+            state.assign()
+            grasp_attachment.assign()
+            if pairwise_collision(b1, b2):
+                return False
+            if pairwise_collision(problem.robot, b2):
+                return False
+        return True
+    return test
+
+
+#######################################################
+
+def nice_float(ele):
+    if isinstance(ele, int) or ele.is_integer():
+        return int(ele)
+    else:
+        return round(ele, 3)
+
+def nice_tuple(tup):
+    new_tup = []
+    for ele in tup:
+        new_tup.append(nice_float(ele))
+    return tuple(new_tup)
+
+def nice(tuple_of_tuples):
+
+    ## float, int
+    if isinstance(tuple_of_tuples, float):
+        return nice_float(tuple_of_tuples)
+
+    ## position, pose
+    elif isinstance(tuple_of_tuples[0], tuple):
+
+        ## pose = point + euler -> (x, y, z, yaw)
+        if len(tuple_of_tuples[0]) == 3 and len(tuple_of_tuples[1]) == 4:
+            xyzyaw = list(nice_tuple(tuple_of_tuples[0]))
+            xyzyaw.append(nice_float(euler_from_quat(tuple_of_tuples[1])[2]))
+            return tuple(xyzyaw)
+
+        new_tuple = []
+        for tup in tuple_of_tuples:
+            new_tuple.append(nice_tuple(tup))
+
+        return tuple(new_tuple)
+
+    ## point, euler, conf
+    return nice_tuple(tuple_of_tuples)

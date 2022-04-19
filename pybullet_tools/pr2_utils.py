@@ -48,10 +48,8 @@ gripper_from_side = gripper_from_arm
 
 #####################################
 
-BASE_JOINTS = ['x', 'y', 'theta']
-
 PR2_GROUPS = {
-    'base': BASE_JOINTS,
+    'base': ['x', 'y', 'theta'],
     'torso': ['torso_lift_joint'],
     'head': ['head_pan_joint', 'head_tilt_joint'],
     arm_from_arm(LEFT_ARM): ['l_shoulder_pan_joint', 'l_shoulder_lift_joint', 'l_upper_arm_roll_joint',
@@ -604,7 +602,7 @@ def attach_viewcone(robot, head_name=HEAD_LINK_NAME, depth=MAX_VISUAL_DISTANCE,
         lines.append(add_line(p1, p2, color=color, parent=robot, parent_link=head_link, **kwargs))
     return lines
 
-def draw_viewcone(pose=Pose(), depth=MAX_VISUAL_DISTANCE,
+def draw_viewcone(pose, depth=MAX_VISUAL_DISTANCE,
                   camera_matrix=None, color=(1, 0, 0), **kwargs):
     # TODO: unify with attach_viewcone
     lines = []
@@ -774,9 +772,9 @@ def close_until_collision(robot, gripper_joints, bodies=[], open_conf=None, clos
         if any(pairwise_collision((robot, collision_links), body, **kwargs) for body in bodies):
             if i == 0:
                 return None
-            return close_path[i-1]
-    return close_path[-1]
-    #return None # False
+            return close_path[i-1][0]
+    return close_path[-1][0]
+
 
 def compute_grasp_width(robot, arm, body, grasp_pose, **kwargs):
     tool_link = get_gripper_link(robot, arm)
