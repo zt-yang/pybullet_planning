@@ -54,9 +54,9 @@ def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
             set_arm_conf(pr2, a, initial_conf)
             open_arm(pr2, a)
 
-def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, scale=1,
-               verbose=False, maybe=False, moveable=False):
-    pass
+def load_asset(obj, **kwargs):
+    from world_builder.utils import load_asset as helper
+    return helper(obj, **kwargs)
 
 
 def add_body(body, pose=unit_pose()):

@@ -3,9 +3,9 @@ from __future__ import print_function
 import os
 import time
 
-from bullet.utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
-    set_camera_target_robot, nice
-from bullet.processes.pddlstream_agent.pr2_streams import get_stable_gen, get_contain_gen, get_position_gen, \
+from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
+    set_camera_target_robot, nice, BASE_LIMITS
+from pybullet_tools.pr2_streams import get_stable_gen, get_contain_gen, get_position_gen, \
     Position, get_handle_grasp_gen, LinkPose, get_ik_ir_grasp_handle_gen, get_pull_drawer_handle_motion_gen, \
     get_joint_position_test, get_marker_grasp_gen, get_bconf_in_region_test, get_pull_door_handle_motion_gen, \
     get_bconf_in_region_gen, get_pose_in_region_gen, visualize_grasp, get_motion_wconf_gen, get_update_wconf_p_two_gen, \
@@ -14,11 +14,10 @@ from bullet.processes.pddlstream_agent.pr2_streams import get_stable_gen, get_co
     get_cfree_btraj_pose_test, get_joint_position_open_gen, get_ik_ungrasp_mark_gen, \
     sample_joint_position_open_list_gen, get_update_wconf_pst_gen, get_ik_ir_wconf_gen, \
     get_update_wconf_p_gen, get_ik_ir_wconf_gen, get_pose_in_space_test, get_turn_knob_handle_motion_gen
-
-from bullet.worlds.kitchen_worlds import BASE_LIMITS
-from bullet.entities import Object
-
-from pybullet_tools.pr2_primitives import get_group_joints, Conf
+from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
+    get_ik_ir_gen, get_motion_gen, get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
+    move_cost_fn, get_grasp_gen, Attach, Detach, Clean, Cook, control_commands, \
+    get_gripper_joints, GripperCommand, apply_commands, State
 from pybullet_tools.pr2_problems import create_pr2
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, create_gripper, set_group_conf
 from pybullet_tools.utils import connect, disconnect, wait_if_gui, LockRenderer, HideOutput, get_client, \
@@ -26,34 +25,23 @@ from pybullet_tools.utils import connect, disconnect, wait_if_gui, LockRenderer,
     euler_from_quat, get_joint, get_joints, PoseSaver, get_pose, get_link_pose, get_aabb, \
     get_joint_position, aabb_overlap, add_text, remove_handles, get_com_pose, get_closest_points,\
     set_color, RED, YELLOW, GREEN, multiply, get_unit_vector, unit_quat, get_bodies, BROWN, \
-    pairwise_collision
-
-# from leap_utils import check_domain
-import sys
-from os.path import join, isfile
-sys.path.insert(0, os.path.abspath(join('..','..','..')))
-from pddlstream.algorithms.algorithm import parse_problem, reset_globals
-from pddlstream.algorithms.constraints import PlanConstraints
-
-## for pr2 streams
-from examples.pybullet.namo.stream import get_custom_limits as get_base_custom_limits
-from examples.pybullet.utils.pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
-    get_grasp_gen, Attach, Detach, Clean, Cook, control_commands, \
-    get_gripper_joints, GripperCommand, apply_commands, State
-from examples.pybullet.utils.pybullet_tools.utils import connect, get_pose, point_from_pose, \
+    pairwise_collision, connect, get_pose, point_from_pose, \
     disconnect, get_joint_positions, enable_gravity, save_state, restore_state, HideOutput, remove_body, \
     get_distance, LockRenderer, get_min_limit, get_max_limit, has_gui, WorldSaver, wait_if_gui, add_line, SEPARATOR, \
     BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED
+
+from os.path import join, isfile
+from pddlstream.algorithms.algorithm import parse_problem, reset_globals
+from pddlstream.algorithms.constraints import PlanConstraints
 from pddlstream.language.generator import from_gen_fn, from_list_fn, from_fn, fn_from_constant, empty_gen, from_test
 from pddlstream.language.constants import Equal, AND, PDDLProblem, is_plan
 from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler
 from pddlstream.language.function import FunctionInfo
 from pddlstream.language.stream import StreamInfo, PartialInputs
 from pddlstream.language.object import SharedOptValue
-from examples.pybullet.tamp.streams import get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
-    move_cost_fn
 from collections import namedtuple
 
+from world_builder.entities import Object
 
 def place_movable(certified):
     for literal in certified:
