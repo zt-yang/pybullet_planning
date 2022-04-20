@@ -8,7 +8,10 @@ import math
 import pybullet as p
 from pprint import pprint
 
-from pybullet_tools.utils import unit_pose, get_collision_data, get_links, \
+from .pr2_utils import draw_viewcone, get_viewcone, get_group_conf, set_group_conf, get_other_arm, \
+    get_carry_conf, set_arm_conf, open_arm, close_arm, arm_conf, REST_LEFT_ARM
+
+from .utils import unit_pose, get_collision_data, get_links, LockRenderer, \
     set_pose, get_movable_joints, draw_pose, pose_from_pose2d, set_velocity, set_joint_states, get_bodies, \
     flatten, INF, inf_generator, get_time_step, get_all_links, get_visual_data, pose2d_from_pose, multiply, invert, \
     get_sample_fn, pairwise_collisions, sample_placement, is_placement, aabb_contains_point, point_from_pose, \
@@ -18,8 +21,38 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, \
     set_camera_pose, TAN, RGBA, sample_aabb, get_min_limit, get_max_limit, get_joint_position, get_joint_name, \
     euler_from_quat, get_client, JOINT_TYPES, get_joint_type, get_link_pose, get_closest_points, \
     body_collision, is_placed_on_aabb, joint_from_name, body_from_end_effector, flatten_links, \
-    get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, Point
+    get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, Point, get_camera_matrix
 
+
+OBJ = '?obj'
+
+BASE_LINK = 'base_link'
+BASE_JOINTS = ['x', 'y', 'theta']
+BASE_VELOCITIES = np.array([1., 1., math.radians(180)]) / 1. # per second
+BASE_RESOLUTIONS = np.array([0.05, 0.05, math.radians(10)])
+
+zero_limits = 0 * np.ones(2)
+half_limits = 12 * np.ones(2)
+BASE_LIMITS = (-half_limits, +half_limits) ## (zero_limits, +half_limits) ##
+BASE_LIMITS = ((-1, 3), (6, 13))
+
+CAMERA_FRAME = 'high_def_optical_frame'
+EYE_FRAME = 'wide_stereo_gazebo_r_stereo_camera_frame'
+CAMERA_MATRIX = get_camera_matrix(width=640, height=480, fx=525., fy=525.) # 319.5, 239.5 | 772.55, 772.5
+
+def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
+    other_arm = get_other_arm(arm)
+    if not DUAL_ARM:
+        initial_conf = get_carry_conf(arm, grasp_type)
+        set_arm_conf(pr2, arm, initial_conf)
+        open_arm(pr2, arm)
+        set_arm_conf(pr2, other_arm, arm_conf(other_arm, REST_LEFT_ARM))
+        close_arm(pr2, other_arm)
+    else:
+        for a in [arm, other_arm]:
+            initial_conf = get_carry_conf(a, grasp_type)
+            set_arm_conf(pr2, a, initial_conf)
+            open_arm(pr2, a)
 
 def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, scale=1,
                verbose=False, maybe=False, moveable=False):
