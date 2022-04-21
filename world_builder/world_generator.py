@@ -94,7 +94,7 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
         if world_name != None, will be generated into kitchen-world/assets/scenes/{world_name}.lisdf
     """
 
-    exp_path = LISDF_PATH
+    exp_path = EXP_PATH
     lisdf_path = LISDF_PATH
     if root_path != None:
         exp_path = join(root_path, exp_path)
