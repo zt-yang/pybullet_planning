@@ -5,7 +5,7 @@ from os.path import join, isdir, isfile, dirname, abspath
 from pybullet_planning.pybullet_tools.utils import get_bodies, euler_from_quat, get_collision_data, get_joint_name, \
     get_joint_position, get_camera
 from pybullet_planning.pybullet_tools.pr2_utils import get_arm_joints
-from pybullet_planning.pybullet_tools.bullet_utils import OBJ_SCALES, generate_problem_pddl
+from pybullet_planning.pybullet_tools.bullet_utils import OBJ_SCALES, get_readable_list
 from .entities import Robot
 from .utils import read_xml, get_file_by_category, get_model_scale
 
@@ -162,7 +162,7 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
 
         elif obj.is_box: ## and obj.name not in objects:
             if len(get_collision_data(body)) == 0:
-                print()
+                print('world_generator | len(get_collision_data(body)) == 0')
             dim = get_collision_data(body)[0].dimensions
             wlh = " ".join([str(round(o, 3)) for o in dim])
             models_sdf += MODEL_BOX_STR.format(
@@ -305,3 +305,99 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test', EXIT=True
         f.write(pddlstream_problem.stream_pddl)
 
     if EXIT: sys.exit()
+
+
+
+def get_pddl_from_list(fact, world):
+    fact = get_readable_list(fact, world, NAME_ONLY=True)
+    line = ' '.join([str(ele) for ele in fact])
+    line = line.replace("'", "")
+    return '(' + line + ')'
+
+
+def generate_problem_pddl(state, pddlstream_problem,
+                          world_name='lisdf', domain_name='domain', out_path=None):
+    from pybullet_tools.logging import myprint as print
+    facts = pddlstream_problem.init
+    goals = pddlstream_problem.goal
+    if goals[0] == 'and':
+        goals = [list(n) for n in goals[1:]]
+    world = state.world
+
+    PDDL_STR = """
+(define
+  (problem {world_name})
+  (:domain {domain_name})
+
+  (:objects
+    {objects_pddl}
+  )
+
+  (:init
+{init_pddl}
+  )
+
+  (:goal (and
+    {goal_pddl}
+  ))
+)
+        """
+
+    kinds = {}  # pred: continuous vars
+    by_len = {}  # pred: length of fact
+    predicates = {}  # pred: [fact]
+    all_pred_names = {}  # pred: arity
+    for fact in facts:
+        pred = fact[0]
+        if pred in ['=', 'wconf', 'inwconf']: continue
+        if pred.lower() not in all_pred_names:
+            all_pred_names[pred.lower()] = len(fact[1:])
+        fact = get_pddl_from_list(fact, world)
+
+        if pred not in predicates:
+            predicates[pred] = []
+
+            num_con = len([o for o in fact[1:] if not isinstance(o, str)])
+            if num_con not in kinds:
+                kinds[num_con] = []
+            kinds[num_con].append(pred)
+
+            num = len(fact)
+            if num not in by_len:
+                by_len[num] = []
+            by_len[num].append(pred)
+
+        predicates[pred].append(fact)
+    kinds = {k: v for k, v in sorted(kinds.items(), key=lambda item: item[0])}
+    by_len = {k: v for k, v in sorted(by_len.items(), key=lambda item: item[0])}
+
+    init_pddl = ''
+    for kind, preds in kinds.items():
+        pp = {k: v for k, v in predicates.items() if k in preds}
+
+        if kind == 0:
+            init_pddl += '\t;; discrete facts (e.g. types, affordances)'
+        else:
+            init_pddl += '\t;; facts involving continuous vars'
+
+        for oo, ppds in by_len.items():
+            ppp = {k: v for k, v in pp.items() if k in ppds}
+            ppp = {k: v for k, v in sorted(ppp.items())}
+            for pred in ppp:
+                init_pddl += '\n\t' + '\n\t'.join(predicates[pred])
+            init_pddl += '\n'
+
+    objects = [o.name for o in world.BODY_TO_OBJECT.values()]
+    objects.extend(['left', 'right'])
+    objects_pddl = '\n\t'.join(sorted(objects))
+    goal_pddl = '\n\t'.join([get_pddl_from_list(g, world) for g in sorted(goals)])
+    problem_pddl = PDDL_STR.format(
+        objects_pddl=objects_pddl, init_pddl=init_pddl, goal_pddl=goal_pddl,
+        world_name=world_name, domain_name=domain_name
+    )
+    if out_path != None:
+        with open(out_path, 'w') as f:
+            f.writelines(problem_pddl)
+    else:
+        print(f'----------------{problem_pddl}')
+    return all_pred_names

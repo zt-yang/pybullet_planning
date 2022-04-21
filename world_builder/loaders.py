@@ -338,7 +338,7 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
         l = o['l'] / SCALING
 
         if cat == 'floor':
-            world.add_object(
+            world.add_box(
                 Floor(create_box(w=round(w, 1), l=round(l, 1), h=FLOOR_HEIGHT, color=TAN, collision=True), name=name),
                 Pose(point=Point(x=round(x, 1), y=round(y, 1), z=-2 * FLOOR_HEIGHT)))
 
@@ -351,7 +351,7 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                 category=cat))
             body = obj.body
             if 'door' in cat.lower():
-                world.add_object(
+                world.add_box(
                     Floor(create_box(w=round(w, 1), l=round(l, 1), h=FLOOR_HEIGHT, color=TAN, collision=True), name=f'doorway_{name}'),
                     Pose(point=Point(x=round(x, 1), y=round(y, 1), z=-2 * FLOOR_HEIGHT)))
 
