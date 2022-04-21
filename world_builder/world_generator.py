@@ -177,7 +177,7 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
             else:
                 file, scale = get_file_scale(obj.name)
             if exp_name != None:
-                file = file.replace('../models/', '../../assets/models/')
+                file = file.replace('../assets/', '../../assets/')
 
             models_sdf += MODEL_URDF_STR.format(
                 name=obj.name, file=file, is_static=is_static,
