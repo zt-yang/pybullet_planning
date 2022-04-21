@@ -89,10 +89,16 @@ def get_camera_spec():
     camera = [target[0]+dx, target[1]+dy, target[2]+dz]
     return camera, list(target)
 
-def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None):
+def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_path=None):
     """ if exp_name != None, will be generated into kitchen-world/experiments/{exp_name}/scene.lisdf
         if world_name != None, will be generated into kitchen-world/assets/scenes/{world_name}.lisdf
     """
+
+    exp_path = LISDF_PATH
+    lisdf_path = LISDF_PATH
+    if root_path != None:
+        exp_path = join(root_path, exp_path)
+        lisdf_path = join(root_path, lisdf_path)
 
     if floorplan != None:
         objects, _, _, SCALING, _, _, _, _ = read_xml(floorplan)
@@ -102,14 +108,14 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None):
         SCALING = 1
 
     if exp_name != None:
-        outpath = join(EXP_PATH, exp_name)
+        outpath = join(exp_path, exp_name)
         if isdir(outpath):
             shutil.rmtree(outpath)
         os.mkdir(outpath)
-        outpath = join(EXP_PATH, exp_name, "scene.lisdf")
+        outpath = join(exp_path, exp_name, "scene.lisdf")
         world_name = exp_name
     else:
-        outpath = join(LISDF_PATH, f"{world_name}.lisdf")
+        outpath = join(lisdf_path, f"{world_name}.lisdf")
 
     _, _, _, _, _, _, _, _, yaw, pitch, dist, target = get_camera()
 
@@ -273,14 +279,18 @@ def clean_domain_pddl(pddl_str, all_pred_names):
 
 
 def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test', EXIT=True,
-                           floorplan=None, world_name=None):
-    outpath = join(EXP_PATH, exp_name)
+                           floorplan=None, world_name=None, root_path=None):
+    exp_path = EXP_PATH
+    if root_path != None:
+        exp_path = join(root_path, exp_path)
+    outpath = join(exp_path, exp_name)
     if isdir(outpath):
         shutil.rmtree(outpath)
     os.mkdir(outpath)
 
     ## --- scene in scene.lisdf
-    to_lisdf(state.world, pddlstream_problem.init, floorplan=floorplan, exp_name=exp_name, world_name=world_name)
+    to_lisdf(state.world, pddlstream_problem.init, floorplan=floorplan, exp_name=exp_name,
+             world_name=world_name, root_path=root_path)
 
     ## --- init and goal in problem.pddl
     all_pred_names = generate_problem_pddl(state, pddlstream_problem, world_name=world_name,

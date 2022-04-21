@@ -105,7 +105,7 @@ class Object(Index):
             self.supported_objects.append(obj)
 
     def place_new_obj(self, obj_name):
-        from bullet.utils import sample_obj_on_body_link_surface
+        from pybullet_tools.bullet_utils import sample_obj_on_body_link_surface
         BODY_TO_OBJECT = self.world.BODY_TO_OBJECT
         body = sample_obj_on_body_link_surface(obj_name, self.body, self.link)
         obj = self.world.add_object(Object(body, category=obj_name))
@@ -113,7 +113,7 @@ class Object(Index):
         return obj
 
     def place_obj(self, obj, xyzyaw=None):
-        from bullet.utils import sample_obj_on_body_link_surface, nice
+        from pybullet_tools.bullet_utils import sample_obj_on_body_link_surface, nice
         if isinstance(obj, str):
             obj = self.place_new_obj(obj)
         # obj_name = obj.category.capitalize().replace('bottle','Bottle')
@@ -340,13 +340,13 @@ class Space(Region):
         self.objects_inside = []
 
     def place_and_attach(self, obj):
-        from bullet.utils import create_attachment
+        from pybullet_tools.bullet_utils import create_attachment
         self.objects_inside.append(obj)
         attachment = create_attachment(self, self.link, obj, OBJ=True)
         self.world.ATTACHMENTS[obj] = attachment
 
     def place_new_obj(self, obj_name):
-        from bullet.utils import sample_obj_in_body_link_space
+        from pybullet_tools.bullet_utils import sample_obj_in_body_link_space
         BODY_TO_OBJECT = self.world.BODY_TO_OBJECT
         body = sample_obj_in_body_link_space(obj_name, self.body, self.link)
         obj = self.world.add_object(Object(body, category=obj_name))
@@ -354,7 +354,7 @@ class Space(Region):
         return obj
 
     def place_obj(self, obj, xyzyaw=None):
-        from bullet.utils import sample_obj_in_body_link_space, nice
+        from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice
         if xyzyaw == None:
             if isinstance(obj, str):
                 self.place_new_obj(obj)
@@ -570,7 +570,7 @@ class Camera(object):
             if np.dot(normal, p) < 0:
                 outside = True
         in_view = not outside
-        # from bullet.utils import nice
+        # from pybullet_tools.bullet_utils import nice
         # print(f'  point in world {point_in_world}, in camera {nice(p)}, in view? {in_view}')
         return in_view
 

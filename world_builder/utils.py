@@ -25,13 +25,13 @@ GRASPABLES = ['BraiserLid', 'Egg', 'VeggieCabbage', 'MeatTurkeyLeg', 'VeggieGree
 GRASPABLES = [o.lower() for o in GRASPABLES]
 ASSET_PATH = join('..', 'assets')
 
-def read_xml(plan_name):
+def read_xml(plan_name, asset_path=ASSET_PATH):
     X_OFFSET, Y_OFFSET, SCALING = None, None, None
     FLOOR_X_MIN, FLOOR_X_MAX = inf, -inf
     FLOOR_Y_MIN, FLOOR_Y_MAX = inf, -inf
     objects = {}
     objects_by_category = {}
-    content = untangle.parse(join(ASSET_PATH, 'floorplans', plan_name)).svg.g.g.g
+    content = untangle.parse(join(asset_path, 'floorplans', plan_name)).svg.g.g.g
     for object in content:
         name = None
         rect = object.rect[0]
@@ -173,7 +173,7 @@ def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, scale=1,
         elif category.lower() == 'veggiestem':
             set_color(body, WHITE, 0)
         elif category.lower() == 'facetbase':
-            from bullet.utils import open_doors_drawers
+            from pybullet_tools.bullet_utils import open_doors_drawers
             open_doors_drawers(body)
 
         if moveable:
@@ -246,7 +246,7 @@ def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, scale=1,
 #         elif category.lower() == 'veggiestem':
 #             set_color(body, WHITE, 0)
 #         elif category.lower() == 'facetbase':
-#             from bullet.utils import open_doors_drawers
+#             from pybullet_tools.bullet_utils import open_doors_drawers
 #             open_doors_drawers(body)
 #
 #         if moveable:
@@ -256,7 +256,7 @@ def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, scale=1,
 #     return body
 
 def world_of_models(floor_width=5, floor_length = 5):
-    from bullet.utils import add_body
+    from pybullet_tools.bullet_utils import add_body
     set_camera_pose(camera_point=[floor_width, 0., 5], target_point=[1., 0, 1.])
     floor = add_body(Floor(create_box(w=floor_width*2, l=floor_length*2, h=FLOOR_HEIGHT, color=TAN, collision=True)),
                      Pose(point=Point(z=-2*FLOOR_HEIGHT)))

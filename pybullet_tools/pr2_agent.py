@@ -204,7 +204,7 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
                                 init_facts=[], ## avoid duplicates
                                 facts=[],  ## completely overwrite
                                 collisions=True, teleport=False):
-    from zzz.logging import myprint as print
+    from pybullet_tools.logging import myprint as print
 
     robot = state.robot
     world = state.world
@@ -287,7 +287,7 @@ def is_plan_abstract(plan):
 def solve_pddlstream(problem, state, domain_pddl=None):
     from examples.pybullet.utils.pybullet_tools.utils import CLIENTS
     from pddlstream.algorithms.focused import solve_focused
-    from zzz.logging import myprint as print
+    from pybullet_tools.logging import myprint as print
 
     start_time = time.time()
 

@@ -5,7 +5,7 @@ import string
 
 import pybullet as p
 from .utils import LIGHT_GREY, read_xml, load_asset, FLOOR_HEIGHT, WALL_HEIGHT, \
-    find_point_for_single_push
+    find_point_for_single_push, ASSET_PATH
 
 from .world import World, State
 from .entities import Object, Region, Environment, Robot, Camera, Floor, Stove, Supporter,\
@@ -272,7 +272,7 @@ def studio(args):
     # enable_real_time()
     # run_thread(robot)
 
-def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, surfaces=None):
+def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, surfaces=None, asset_path=ASSET_PATH):
 
     if spaces == None:
         spaces = {
@@ -316,7 +316,7 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
         }
 
     ## read xml file
-    objects, X_OFFSET, Y_OFFSET, SCALING, FLOOR_X_MIN, FLOOR_X_MAX, FLOOR_Y_MIN, FLOOR_Y_MAX = read_xml(plan_name)
+    objects, X_OFFSET, Y_OFFSET, SCALING, FLOOR_X_MIN, FLOOR_X_MAX, FLOOR_Y_MIN, FLOOR_Y_MAX = read_xml(plan_name, asset_path=asset_path)
 
     #######################################################
     ## add reference floor

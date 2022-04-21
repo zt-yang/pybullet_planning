@@ -1527,6 +1527,8 @@ def invert(pose):
 
 def multiply(*poses):
     pose = poses[0]
+    if isinstance(pose, float):
+        print()
     for next_pose in poses[1:]:
         pose = p.multiplyTransforms(pose[0], pose[1], *next_pose)
     return pose
@@ -3768,7 +3770,7 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
                     and pairwise_collision(body1, body2, **kwargs):
                 #print(get_body_name(body1), get_body_name(body2))
                 if verbose:
-                    from bullet.utils import nice  ## YANG
+                    from pybullet_tools.bullet_utils import nice  ## YANG
                     if not isinstance(body1, int):
                         print('bullet.get_collision_fn', body1.body, 'at', nice(q), 'collides with', body2)
                     else:
@@ -3811,7 +3813,7 @@ def plan_direct_joint_motion(body, joints, end_conf, **kwargs):
     return plan_waypoints_joint_motion(body, joints, [end_conf], **kwargs)
 
 def check_initial_end(start_conf, end_conf, collision_fn, verbose=True):
-    from bullet.utils import nice  ## YANG
+    from pybullet_tools.bullet_utils import nice  ## YANG
     # TODO: collision_fn might not accept kwargs
     if collision_fn(start_conf, verbose=verbose):
         print(f'bullet.Warning: initial configuration {nice(start_conf)} is in collision')
@@ -4723,7 +4725,7 @@ def plan_cartesian_motion(robot, first_joint, target_link, waypoint_poses,
     # https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/examples/inverse_kinematics_husky_kuka.py
     # TODO: plan a path without needing to following intermediate waypoints
 
-    from bullet.utils import nice  ## YANG
+    from pybullet_tools.bullet_utils import nice  ## YANG
 
     lower_limits, upper_limits = get_custom_limits(robot, get_movable_joints(robot), custom_limits)
     sub_robot, selected_joints, sub_target_link = create_sub_robot(robot, first_joint, target_link)
