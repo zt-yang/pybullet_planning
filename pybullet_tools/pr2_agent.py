@@ -404,7 +404,7 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
                                base_limits=BASE_LIMITS,
                                 init_facts=[], ## avoid duplicates
                                 facts=[],  ## completely overwrite
-                                collisions=True, teleport=False, pddl_path=None):
+                                collisions=True, teleport=False):
     from pybullet_tools.logging import myprint as print
 
     robot = state.robot
@@ -471,7 +471,7 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
         init = init + init_added
 
     domain_pddl = read(domain_pddl)
-    stream_pddl = read(get_file_path(__file__, join('pddl', 'streams', stream_pddl)))
+    stream_pddl = read(stream_pddl)
     constant_map = {}
     goal = [g for g in goal if not (g[0] == 'not' and g[1][0] == '=')]
     print_goal(goal)
