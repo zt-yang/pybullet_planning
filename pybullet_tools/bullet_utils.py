@@ -437,7 +437,7 @@ class Attachment(object):
             self.parent, self.parent_link))
 
     def assign(self):
-        from bullet.processes.pddlstream_agent.pr2_streams import LINK_POSE_TO_JOINT_POSITION
+        from .pr2_streams import LINK_POSE_TO_JOINT_POSITION
         # robot_base_pose = self.parent.get_positions(roundto=3)
         # robot_arm_pose = self.parent.get_positions(joint_group='left', roundto=3)  ## only left arm for now
         parent_link_pose = get_link_pose(self.parent, self.parent_link)
@@ -702,15 +702,15 @@ def generate_problem_pddl(state, pddlstream_problem,
   (problem {world_name})
   (:domain {domain_name})
 
-  (:objects 
+  (:objects
     {objects_pddl}
   )
 
-  (:init 
+  (:init
 {init_pddl}
   )
 
-  (:goal (and 
+  (:goal (and
     {goal_pddl}
   ))
 )
