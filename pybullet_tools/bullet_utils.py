@@ -9,7 +9,7 @@ import pybullet as p
 from pprint import pprint
 
 from .pr2_utils import draw_viewcone, get_viewcone, get_group_conf, set_group_conf, get_other_arm, \
-    get_carry_conf, set_arm_conf, open_arm, close_arm, arm_conf, REST_LEFT_ARM
+    get_carry_conf, set_arm_conf, open_arm, close_arm, arm_conf, REST_LEFT_ARM, get_group_joints
 
 from .utils import unit_pose, get_collision_data, get_links, LockRenderer, \
     set_pose, get_movable_joints, draw_pose, pose_from_pose2d, set_velocity, set_joint_states, get_bodies, \
@@ -544,6 +544,8 @@ def get_point_distance(p1, p2):
 
 
 def get_pose2d(robot):
+    if isinstance(robot, int):
+        return get_group_conf(robot, 'base')
     point, quat = robot.get_pose()
     x, y, _ = point
     _, _, yaw = euler_from_quat(quat)

@@ -8,9 +8,13 @@ from lisdf.components.model import URDFInclude
 import warnings
 warnings.filterwarnings('ignore')
 
+from pybullet_planning.pybullet_tools.pr2_problems import create_floor
+from pybullet_planning.pybullet_tools.pr2_utils import set_group_conf, get_group_joints
 from pybullet_planning.pybullet_tools.utils import load_pybullet, connect, wait_if_gui, HideOutput, \
-    disconnect, set_pose, set_joint_position, joint_from_name, quat_from_euler, \
-    set_camera_pose, set_camera_pose2
+    disconnect, set_pose, set_joint_position, joint_from_name, quat_from_euler, draw_pose, unit_pose, \
+    set_camera_pose, set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
+    set_joint_positions
+from pybullet_planning.pybullet_tools.bullet_utils import nice
 
 ASSET_PATH = join(dirname(__file__), '..', '..', 'assets')
 
@@ -24,11 +28,32 @@ class World():
     def robot(self):
         return self.name_to_body['pr2']
 
+    def summarize_all_objects(self):
+        from pybullet_tools.logging import myprint as print
+
+        print('----------------')
+        print(f'PART I: world objects |')
+        for body, name in self.body_to_name.items():
+
+            line = f'{body}\t  |  {name}'
+            if isinstance(body, tuple) and len(body) == 2:
+                body, joint = body
+                pose = get_joint_position(body, joint)
+            elif isinstance(body, tuple) and len(body) == 3:
+                body, _, link = body
+                pose = get_link_pose(body, link)
+            else:
+                pose = get_pose(body)
+            print(f"{line}\t|  Pose: {nice(pose)}")
+        print('----------------')
+
 def load_lisdf_pybullet(lisdf_path, verbose=True):
     # scenes_path = dirname(os.path.abspath(lisdf_path))
     tmp_path = join(ASSET_PATH, 'tmp')
 
     connect(use_gui=True, shadows=False, width=1980, height=1238)
+    draw_pose(unit_pose(), length=1.)
+    create_floor()
 
     # with HideOutput():
         # load_pybullet(join('models', 'Basin', '102379', 'mobility.urdf'))
@@ -38,9 +63,9 @@ def load_lisdf_pybullet(lisdf_path, verbose=True):
     world = load_sdf(lisdf_path).worlds[0]
     bullet_world = World(world)
 
-    if world.name in HACK_CAMERA_POSES:
-        cp, tp = HACK_CAMERA_POSES[world.name]
-        set_camera_pose(camera_point=cp, target_point=tp)
+    # if world.name in HACK_CAMERA_POSES:
+    #     cp, tp = HACK_CAMERA_POSES[world.name]
+    #     set_camera_pose(camera_point=cp, target_point=tp)
 
     if world.gui != None:
         camera_pose = world.gui.camera.pose
@@ -70,8 +95,13 @@ def load_lisdf_pybullet(lisdf_path, verbose=True):
             bullet_world.name_to_body[model.name] = body
 
         ## set pose of body using PyBullet tools' data structure
-        pose = (model.pose.pos, quat_from_euler(model.pose.rpy))
-        set_pose(body, pose)
+        if model.name == 'pr2':
+            pose = model.pose.pos
+            set_group_conf(body, 'base', pose)
+        else:
+            pose = (model.pose.pos, quat_from_euler(model.pose.rpy))
+            set_pose(body, pose)
+
         if model.name in model_states:
             for js in model_states[model.name].joint_states:
                 position = js.axis_states[0].value

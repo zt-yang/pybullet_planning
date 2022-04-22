@@ -26,7 +26,7 @@ from .utils import invert, multiply, get_name, set_pose, get_link_pose, is_place
     get_custom_limits, all_between, get_unit_vector, wait_if_gui, joint_from_name, create_box, set_point, \
     set_base_values, euler_from_quat, INF, elapsed_time, get_moving_links, flatten_links, get_relative_pose
 
-from .bullet_utils import nice
+from .bullet_utils import nice, set_camera_target_robot, set_camera_target_body
 
 BASE_EXTENT = 3.5 # 2.5
 BASE_LIMITS = (-BASE_EXTENT*np.ones(2), BASE_EXTENT*np.ones(2))
