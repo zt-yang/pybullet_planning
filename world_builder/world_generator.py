@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import shutil
 from os.path import join, isdir, isfile, dirname, abspath
 from pybullet_planning.pybullet_tools.utils import get_bodies, euler_from_quat, get_collision_data, get_joint_name, \
@@ -296,6 +297,8 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test', EXIT=True
     all_pred_names = generate_problem_pddl(state, pddlstream_problem, world_name=world_name,
                                            out_path=join(outpath, 'problem.pddl'))
 
+    config = {'base_limits': state.world.args.base_limits}
+
     ## --- domain and stream copied over  ## shutil.copy()
     with open(join(outpath, 'domain_full.pddl'), 'w') as f:
         f.write(pddlstream_problem.domain_pddl)
@@ -303,9 +306,10 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test', EXIT=True
         f.write(clean_domain_pddl(pddlstream_problem.domain_pddl, all_pred_names))
     with open(join(outpath, 'stream.pddl'), 'w') as f:
         f.write(pddlstream_problem.stream_pddl)
+    with open(join(outpath, 'planning_config.json'), 'w') as f:
+        json.dump(config, f)
 
     if EXIT: sys.exit()
-
 
 
 def get_pddl_from_list(fact, world):
