@@ -5,7 +5,7 @@ import shutil
 from os.path import join, isdir, isfile, dirname, abspath
 from pybullet_planning.pybullet_tools.utils import get_bodies, euler_from_quat, get_collision_data, get_joint_name, \
     get_joint_position, get_camera
-from pybullet_planning.pybullet_tools.pr2_utils import get_arm_joints
+from pybullet_planning.pybullet_tools.pr2_utils import get_arm_joints, get_group_joints
 from pybullet_planning.pybullet_tools.bullet_utils import OBJ_SCALES, get_readable_list
 from .entities import Robot
 from .utils import read_xml, get_file_by_category, get_model_scale
@@ -152,13 +152,15 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
             if exp_name != None:
                 actor_sdf = actor_sdf.replace('../models/', '../../assets/models/')
 
+            ## robot joint states
             joints_xml = ''
-            for arm in ['left', 'right']:
-                for j in get_arm_joints(body, arm):
-                    joints_xml += STATE_JOINTS_STR.format(
-                        name=get_joint_name(body, j),
-                        angle=round(get_joint_position(body, j), 3)
-                    )
+            js = list(get_group_joints(body, 'torso'))
+            js.extend(list(get_arm_joints(body, 'left'))+list(get_arm_joints(body, 'right')))
+            for j in js:
+                joints_xml += STATE_JOINTS_STR.format(
+                    name=get_joint_name(body, j),
+                    angle=round(get_joint_position(body, j), 3)
+                )
             state_sdf += MODEL_STATE_STR.format(name='pr2', joints_xml=joints_xml)
 
         elif obj.is_box: ## and obj.name not in objects:
