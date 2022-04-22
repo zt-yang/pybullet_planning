@@ -47,6 +47,11 @@ class World():
             print(f"{line}\t|  Pose: {nice(pose)}")
         print('----------------')
 
+    def get_name(self, body):
+        if body in self.body_to_name:
+            return self.body_to_name[body]
+        return None
+
 def load_lisdf_pybullet(lisdf_path, verbose=True):
     # scenes_path = dirname(os.path.abspath(lisdf_path))
     tmp_path = join(ASSET_PATH, 'tmp')

@@ -185,7 +185,7 @@ def get_stable_gen(problem, collisions=True, num_trials=20, **kwargs):
 
 def learned_pose_sampler(world, body, surface, body_pose):
     ## hack to reduce planning time
-    if 'eggblock' in world.BODY_TO_OBJECT[body].name and 'braiser_bottom' in world.BODY_TO_OBJECT[surface].name:
+    if 'eggblock' in world.get_name(body) and 'braiser_bottom' in world.get_name(surface):
         (x, y, z), quat = body_pose
         x = 0.55
         body_pose = (x, y, z), quat

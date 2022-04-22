@@ -63,6 +63,11 @@ class World(object):
         objs = [o for o in objs if o not in self.floors and o not in self.movable]
         return objs
 
+    def get_name(self, body):
+        if body in self.BODY_TO_OBJECT:
+            return self.BODY_TO_OBJECT[body].name
+        return None
+
     def add_box(self, object, pose=None):
         obj = self.add_object(object, pose=pose)
         obj.is_box = True
