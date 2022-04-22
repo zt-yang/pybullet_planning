@@ -390,7 +390,7 @@ def generate_problem_pddl(state, pddlstream_problem,
     objects = [o.name for o in world.BODY_TO_OBJECT.values()]
     objects.extend(['left', 'right'])
     objects_pddl = '\n\t'.join(sorted(objects))
-    goal_pddl = '\n\t'.join([get_pddl_from_list(g, world) for g in sorted(goals)])
+    goal_pddl = '\n\t'.join([get_pddl_from_list(g, world) for g in sorted(goals)]).lower()
     problem_pddl = PDDL_STR.format(
         objects_pddl=objects_pddl, init_pddl=init_pddl, goal_pddl=goal_pddl,
         world_name=world_name, domain_name=domain_name
