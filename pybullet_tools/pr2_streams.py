@@ -431,10 +431,13 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
         else:
             pose_value = pose.value
 
-        approach_obstacles = problem.world.refine_marker_obstacles(obj, obstacles)
-        ## {obst for obst in obstacles if obst !=obj} ##{obst for obst in obstacles if not is_placement(obj, obst)}
-        if set(obstacles) != set(approach_obstacles):
-            print(f'approach_obstacles = {approach_obstacles}')
+        if hasattr(world, 'refine_marker_obstacles'):
+            approach_obstacles = problem.world.refine_marker_obstacles(obj, obstacles)
+            ## {obst for obst in obstacles if obst !=obj} ##{obst for obst in obstacles if not is_placement(obj, obst)}
+            if set(obstacles) != set(approach_obstacles):
+                print(f'approach_obstacles = {approach_obstacles}')
+        else:
+            approach_obstacles = obstacles
 
         for _ in iterate_approach_path(robot, arm, gripper, pose_value, grasp):
             # if verbose:

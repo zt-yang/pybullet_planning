@@ -3285,7 +3285,9 @@ def vertices_from_link(body, link=BASE_LINK, collision=True):
 OBJ_MESH_CACHE = {}
 
 def vertices_from_rigid(body, link=BASE_LINK):
-    assert implies(link == BASE_LINK, get_num_links(body) == 0)
+    # assert implies(link == BASE_LINK, get_num_links(body) == 0)
+    if not implies(link == BASE_LINK, get_num_links(body) == 0):
+        link = get_links(body)[0]
     try:
         vertices = vertices_from_link(body, link)
     except RuntimeError:
