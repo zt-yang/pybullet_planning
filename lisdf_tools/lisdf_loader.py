@@ -13,10 +13,12 @@ from pybullet_planning.pybullet_tools.pr2_utils import set_group_conf, get_group
 from pybullet_planning.pybullet_tools.utils import load_pybullet, connect, wait_if_gui, HideOutput, \
     disconnect, set_pose, set_joint_position, joint_from_name, quat_from_euler, draw_pose, unit_pose, \
     set_camera_pose, set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
-    set_joint_positions
+    set_joint_positions, get_links, get_joints, get_joint_name
 from pybullet_planning.pybullet_tools.bullet_utils import nice
 
 ASSET_PATH = join(dirname(__file__), '..', '..', 'assets')
+LINK_STR = '--'
+
 
 class World():
     def __init__(self, lisdf):
@@ -27,6 +29,17 @@ class World():
     @property
     def robot(self):
         return self.name_to_body['pr2']
+
+    def add_body(self, body, name):
+        self.body_to_name[body] = name
+        self.name_to_body[name] = body
+
+    def update_objects(self, objects):
+        for o in objects.values():
+            if LINK_STR in o.name:
+                body = self.name_to_body[o.name.split(LINK_STR)[0]]
+                id = find_id(body, o.name)
+                self.add_body(id, o.name)
 
     def summarize_all_objects(self):
         from pybullet_tools.logging import myprint as print
@@ -51,6 +64,17 @@ class World():
         if body in self.body_to_name:
             return self.body_to_name[body]
         return None
+
+def find_id(body, full_name):
+    name = full_name.split(LINK_STR)[1]
+    for joint in get_joints(body):
+        if get_joint_name(body, joint) == name:
+            return (body, joint)
+    for link in get_links(body):
+        if get_link_name(body, link) == name:
+            return (body, None, link)
+    print(f'\n\n\nlisdf_loader.find_id | whats {name} in {full_name} ({body})\n\n')
+    return None
 
 def load_lisdf_pybullet(lisdf_path, verbose=True):
     # scenes_path = dirname(os.path.abspath(lisdf_path))
@@ -96,8 +120,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=True):
             if verbose: print(f'..... loading {model.name} from {uri}', end="\r")
             body = load_pybullet(uri, scale=scale)
             if isinstance(body, tuple): body = body[0]
-            bullet_world.body_to_name[body] = model.name
-            bullet_world.name_to_body[model.name] = body
+            bullet_world.add_body(body, model.name)
 
         ## set pose of body using PyBullet tools' data structure
         if model.name == 'pr2':

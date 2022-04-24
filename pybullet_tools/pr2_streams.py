@@ -51,7 +51,7 @@ LINK_POSE_TO_JOINT_POSITION = {}
 
 class Position(object):
     num = count()
-    def __init__(self, body, value=None):
+    def __init__(self, body, value=None, index=None):
         self.body, self.joint = body
         if value is None:
             value = get_joint_position(self.body, self.joint)
@@ -59,8 +59,9 @@ class Position(object):
             value = self.get_limits()[1]
         elif value == 'min':
             value = self.get_limits()[0]
-        self.value = value
-        self.index = next(self.num)
+        self.value = float(value)
+        if index == None: index = next(self.num)
+        self.index = index
     @property
     def bodies(self):
         return flatten_links(self.body)

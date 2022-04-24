@@ -5,10 +5,13 @@ from lisdf.parsing import load_all
 
 from pddlstream.language.constants import Equal, AND
 
-from pybullet_tools.pr2_streams import WConf
-from pybullet_tools.pr2_primitives import Pose, Conf
+from pybullet_tools.pr2_streams import WConf, HandleGrasp, Position, LinkPose ##, MarkerGrasp
+from pybullet_tools.pr2_primitives import Pose, Conf, APPROACH_DISTANCE, Grasp, \
+    TOP_HOLDING_LEFT_ARM
 from pybullet_tools.pr2_utils import get_arm_joints, get_group_joints, create_gripper
-from pybullet_tools.utils import quat_from_euler, remove_body
+from pybullet_tools.utils import quat_from_euler, remove_body, get_unit_vector, unit_quat, \
+    multiply
+from pybullet_tools.bullet_utils import xyzyaw_to_pose
 
 class Problem():
     def __init__(self, world):
@@ -62,10 +65,14 @@ def pddl_to_init_goal(exp_dir, world):
         join(exp_dir, 'domain.pddl'),
         join(exp_dir, 'problem.pddl'),
     )
+    world.update_objects(problem.objects)
     robot = world.robot
     existed = [] ## {k: [] for k in ['q', 'aq', 'p', 'g', 'hg', 'pstn', 'lp']}
     def check_existed(o):
         for e in existed:
+            # print('check_existed', o, e)
+            # print(o.__dict__)
+            # print(e.__dict__)
             if o.__dict__ == e.__dict__:
                 return e
         existed.append(o)
@@ -81,16 +88,28 @@ def pddl_to_init_goal(exp_dir, world):
             else:
                 typ = ''.join([i for i in arg.name if not i.isdigit()])
                 index = int(''.join([i for i in arg.name if i.isdigit()]))
-                value = list(arg.value.value)
+                value = arg.value.value
+                if isinstance(value, tuple): value = list(value)
                 if typ == 'q':
                     elem = Conf(robot, get_group_joints(robot, 'base'), value, index=index)
                 elif typ == 'aq':
                     elem = Conf(robot, get_arm_joints(robot, args[-1]), value, index=index)
                 elif typ == 'p':
+                    elem = Pose(args[-1], xyzyaw_to_pose(value), index=index)
+                elif typ == 'lp':
+                    continue
+                elif typ == 'pstn':
+                    elem = Position(args[-1], value, index=index)
+                elif typ.endswith('g'):
                     body = args[-1]
-                    if len(value) == 4:
-                        value = value[:3] + [0, 0] + value[-1:]
-                    elem = Pose(body, (tuple(value[:3]), quat_from_euler(value[-3:])), index=index)
+                    g = value
+                    approach_vector = APPROACH_DISTANCE * get_unit_vector([1, 0, 0])
+                    app = multiply((approach_vector, unit_quat()), g)
+                    a = TOP_HOLDING_LEFT_ARM
+                    if typ == 'g':
+                        elem = Grasp('top', body, g, app, a, index=index)
+                    elif typ == 'hg':
+                        elem = HandleGrasp('side', body, g, app, a, index=index)
                 else:
                     print(f'\n\n\n\n\nnot implemented for typ {typ}\n\n\n\n')
                 elem = check_existed(elem)

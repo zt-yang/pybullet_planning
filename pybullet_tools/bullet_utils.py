@@ -746,7 +746,7 @@ def pose_to_xyzyaw(pose):
 
 
 def xyzyaw_to_pose(xyzyaw):
-    return tuple((xyzyaw[:3], quat_from_euler(Euler(0, 0, xyzyaw[-1]))))
+    return tuple((tuple(xyzyaw[:3]), quat_from_euler(Euler(0, 0, xyzyaw[-1]))))
 
 
 def draw_collision_shapes(body, links=[]):
