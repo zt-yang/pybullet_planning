@@ -748,7 +748,6 @@ def pose_to_xyzyaw(pose):
 def xyzyaw_to_pose(xyzyaw):
     return tuple((tuple(xyzyaw[:3]), quat_from_euler(Euler(0, 0, xyzyaw[-1]))))
 
-
 def draw_collision_shapes(body, links=[]):
     """ not working """
     if isinstance(body, tuple):
@@ -769,8 +768,6 @@ def draw_collision_shapes(body, links=[]):
             print(
                 f'link = {link}, colldion_body = {i} | dims = {nice(shape.dimensions)} | shape_from_world = {nice(shape_from_world)}')
 
-
-
 def visualize_point(point, world):
     z = 0
     if len(point) == 3:
@@ -779,3 +776,6 @@ def visualize_point(point, world):
         x, y = point
     body = create_box(.05, .05, .05, mass=1, color=(1, 0, 0, 1))
     set_pose(Pose(point=Point(x, y, z)))
+
+def get_file_short_name(path):
+    return path[path.rfind('/')+1:]

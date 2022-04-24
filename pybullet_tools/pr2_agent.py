@@ -18,7 +18,7 @@ from pybullet_planning.pybullet_tools.pr2_primitives import get_group_joints, Co
     get_gripper_joints, GripperCommand, apply_commands, State
 
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
-    set_camera_target_robot, nice, BASE_LIMITS
+    set_camera_target_robot, nice, BASE_LIMITS, get_file_short_name
 from pybullet_tools.pr2_problems import create_pr2
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, create_gripper, set_group_conf
 from pybullet_tools.utils import connect, disconnect, wait_if_gui, LockRenderer, HideOutput, get_client, \
@@ -420,8 +420,8 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     init = facts
 
     print(f'pr2_agent.pddlstream_from_state_goal(\n'
-          f'\tdomain = {domain_pddl[domain_pddl.rfind("/")]}, \n'
-          f'\tstream = {stream_pddl[stream_pddl.rfind("/")]}, base_limits = {base_limits}')
+          f'\tdomain = {get_file_short_name(domain_pddl)}, \n'
+          f'\tstream = {get_file_short_name(stream_pddl)}, base_limits = {base_limits}')
 
     if isinstance(goals, tuple): ## debugging
         test, name = goals
