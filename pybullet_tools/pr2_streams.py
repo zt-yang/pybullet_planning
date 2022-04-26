@@ -321,9 +321,9 @@ def get_handle_grasps(body_joint, tool_pose=TOOL_POSE, body_pose=unit_pose(),
     handle_pose = get_handle_pose(body_joint)
     # set_camera_target_body(body, dx=1, dy=1, dz=1)
 
-    def check_cfree_gripper(grasp, visualize=True, color=GREEN):
+    def check_cfree_gripper(grasp, visualize=False, color=GREEN):
         gripper_grasp = visualize_grasp(robot, handle_pose, grasp, color=color)
-        if visualize:
+        if visualize: ## somtimes cameras blocked by robot, need to change dx, dy
             set_camera_target_body(gripper_grasp, dx=1, dy=1, dz=0)
 
         result = True
@@ -371,17 +371,23 @@ def get_handle_grasps(body_joint, tool_pose=TOOL_POSE, body_pose=unit_pose(),
         json.dump(db, f, indent=4)
     return grasps
 
-def get_handle_link(joint):
+def get_handle_link(body_joint):
     from world_builder.entities import ArticulatedObjectPart
-    body, joint = joint
+    body, joint = body_joint
     j = ArticulatedObjectPart(body, joint)
     return j.handle_link
 
-def get_handle_pose(joint):
+def get_handle_pose(body_joint):
     from world_builder.entities import ArticulatedObjectPart
-    body, joint = joint
+    body, joint = body_joint
     j = ArticulatedObjectPart(body, joint)
     return j.get_handle_pose()
+
+def get_handle_width(body_joint):
+    from world_builder.entities import ArticulatedObjectPart
+    body, joint = body_joint
+    j = ArticulatedObjectPart(body, joint)
+    return j.handle_width
 
 def get_handle_grasp_gen(problem, collisions=False, randomize=True, visualize=False):
     collisions = True
@@ -403,7 +409,7 @@ def get_handle_grasp_gen(problem, collisions=False, randomize=True, visualize=Fa
                                                  robot=problem.robot, obstacles=obstacles, full_name=full_name))  ## , body_pose=body_pose
 
         for grasp in grasps:
-            grasp.grasp_width = joint.handle_width
+            grasp.grasp_width = get_handle_width(body_joint)
 
         # if randomize:
         #     random.shuffle(grasps)
