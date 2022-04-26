@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import random
 from itertools import product
-
+from os.path import isfile
 import numpy as np
 import math
 import pybullet as p
@@ -11,7 +11,7 @@ from pprint import pprint
 from .pr2_utils import draw_viewcone, get_viewcone, get_group_conf, set_group_conf, get_other_arm, \
     get_carry_conf, set_arm_conf, open_arm, close_arm, arm_conf, REST_LEFT_ARM, get_group_joints
 
-from .utils import unit_pose, get_collision_data, get_links, LockRenderer, \
+from .utils import unit_pose, get_collision_data, get_links, LockRenderer, pairwise_collision, get_link_name, \
     set_pose, get_movable_joints, draw_pose, pose_from_pose2d, set_velocity, set_joint_states, get_bodies, \
     flatten, INF, inf_generator, get_time_step, get_all_links, get_visual_data, pose2d_from_pose, multiply, invert, \
     get_sample_fn, pairwise_collisions, sample_placement, is_placement, aabb_contains_point, point_from_pose, \
@@ -40,6 +40,7 @@ BASE_LIMITS = ((-1, 3), (6, 13))
 CAMERA_FRAME = 'high_def_optical_frame'
 EYE_FRAME = 'wide_stereo_gazebo_r_stereo_camera_frame'
 CAMERA_MATRIX = get_camera_matrix(width=640, height=480, fx=525., fy=525.) # 319.5, 239.5 | 772.55, 772.5
+
 
 def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
     other_arm = get_other_arm(arm)
@@ -219,45 +220,86 @@ def is_above(robot, aabb):
 
 #######################################################
 
-def nice_float(ele):
+def nice_float(ele, round_to=3):
     if isinstance(ele, int) or ele.is_integer():
         return int(ele)
     else:
-        return round(ele, 3)
+        return round(ele, round_to)
 
 
-def nice_tuple(tup):
+def nice_tuple(tup, round_to=3):
     new_tup = []
     for ele in tup:
-        new_tup.append(nice_float(ele))
+        new_tup.append(nice_float(ele, round_to))
     return tuple(new_tup)
 
 
-def nice(tuple_of_tuples):
+def nice(tuple_of_tuples, round_to=3):
     ## float, int
     if isinstance(tuple_of_tuples, float):
-        return nice_float(tuple_of_tuples)
+        return nice_float(tuple_of_tuples, round_to)
+
+    elif len(tuple_of_tuples) == 0:
+        return []
 
     ## position, pose
     elif isinstance(tuple_of_tuples[0], tuple):
 
-        ## pose = point + euler -> (x, y, z, yaw)
+        ## pose = (point, quat) -> (point, euler)
         if len(tuple_of_tuples[0]) == 3 and len(tuple_of_tuples[1]) == 4:
-            return pose_to_xyzyaw(tuple_of_tuples)
+            return nice( (tuple_of_tuples[0], euler_from_quat(tuple_of_tuples[1])), round_to)
+            ## pose = (point, quat) -> (x, y, z, yaw)
+            # return pose_to_xyzyaw(tuple_of_tuples)
 
         new_tuple = []
         for tup in tuple_of_tuples:
-            new_tuple.append(nice_tuple(tup))
+            new_tuple.append(nice_tuple(tup, round_to))
         return tuple(new_tuple)
 
     ## AABB
     elif isinstance(tuple_of_tuples, AABB):
         lower, upper = tuple_of_tuples
-        return AABB(nice_tuple(lower), nice_tuple(upper))
+        return AABB(nice_tuple(lower, round_to), nice_tuple(upper, round_to))
 
     ## point, euler, conf
-    return nice_tuple(tuple_of_tuples)
+    return nice_tuple(tuple_of_tuples, round_to)
 
+#######################################################
+
+def collided(obj, obstacles, world=None, tag='', verbose=False, min_num_pts=0):
+    result = False
+
+    if verbose:
+        ## first find the bodies that collides with obj
+        bodies = []
+        for b in obstacles:
+            if pairwise_collision(obj, b):
+                result = True
+                bodies.append(b)
+        ## then find the exact links
+        body_links = {}
+        for b in bodies:
+            key = world.get_debug_name(b) if (world != None) else b
+            d = {}
+            for l in get_links(b):
+                pts = get_closest_points(b, obj, link1=l, link2=None)
+                if len(pts) >= min_num_pts:
+                    link = get_link_name(b, l)
+                    d[link] = len(pts)
+            d = {k: v for k, v in sorted(d.items(), key=lambda item: item[1], reverse=True)}
+            body_links[key] = d
+
+        ## when debugging, give a threshold for oven
+        if len(body_links) == 0:
+            result = False
+        else:
+            prefix = 'pr2_streams.collided '
+            if len(tag) > 0: prefix += f'( {tag} )'
+            print(f'{prefix} | {obj} with {body_links}')
+    else:
+        if any(pairwise_collision(obj, b) for b in obstacles):
+            result = True
+    return result
 
 #######################################################
 
@@ -656,11 +698,12 @@ def close_joint(body, joint):
 def get_readable_list(lst, world=None, NAME_ONLY=False):
     to_print = []
     for word in lst:
-        if world != None and word in world.BODY_TO_OBJECT:  ## isinstance(word, int) and
-            if NAME_ONLY:
-                to_print.append(f'{world.BODY_TO_OBJECT[word].name}')
-            else:
-                to_print.append(f'{world.BODY_TO_OBJECT[word].debug_name}')
+        if world != None:
+            name = world.get_name(word)
+            if name != None:
+                if not NAME_ONLY:
+                    name = world.get_debug_name(word)
+                to_print.append(name)
         else:
             to_print.append(word)
     return to_print
@@ -780,3 +823,50 @@ def visualize_point(point, world):
 
 def get_file_short_name(path):
     return path[path.rfind('/')+1:]
+
+def equal_float(a, b, epsilon=0):
+    return abs(a - b) <= epsilon
+
+def equal(tup_a, tup_b, epsilon=0):
+    if isinstance(tup_a, float) or isinstance(tup_a, int):
+        return equal_float(tup_a, tup_b, epsilon)
+
+    elif isinstance(tup_a, tuple):
+        a = list(tup_a)
+        b = list(tup_b)
+        return any([not equal_float(a[i], b[i], epsilon) for i in range(len(a))])
+
+    return None
+
+def get_gripper_directions():
+    """ for faces, 'sideways' = 'sagittal' , 'frontal' = 'frontback' """
+    PI = math.pi
+    label = "point {}, face {}"
+    labels = {
+        (PI/2, 0, 0): label.format('front', 'sideways'),
+        (PI, 0, 0): label.format('front', 'horizontal'),
+
+        (PI/2, 0, -PI): label.format('back', 'sideways'),
+        (PI, 0, -PI): label.format('back', 'horizontal'),
+
+        (PI/2, 0, -PI/2): label.format('left', 'frontal'),
+        (PI, 0, -PI/2): label.format('left', 'horizontal'),
+
+        (PI/2, 0, PI/2): label.format('right', 'frontal'),
+
+        (PI, -PI/2, PI/2): label.format('up', 'sideways'),
+        (PI, -PI/2, -PI/2): label.format('up', 'sideways'),
+        (PI, -PI/2, 0): label.format('up', 'frontal'),
+    }
+    labels.update({(k[0]-PI, k[1], k[2]): v for k, v in labels.items()})
+    return labels
+
+GRIPPER_DIRECTIONS = get_gripper_directions()
+
+def get_gripper_direction(pose, epsilon=0.01):
+    """ fuzzy match of euler values to gripper direction label """
+    euler = euler_from_quat(pose[1])
+    for key in get_gripper_directions():
+        if equal(euler, key, epsilon):
+            return GRIPPER_DIRECTIONS[key]
+    return None

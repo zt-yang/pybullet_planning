@@ -2,6 +2,7 @@ from os.path import join, isfile, isdir, abspath, dirname
 from os import mkdir
 from datetime import datetime
 import csv
+import pprint
 
 TXT_FILE = abspath('txt_file.txt')
 
@@ -109,3 +110,9 @@ def write_stream_statistics(externals, verbose=True):
     write_pickle(filename, data)
     if verbose:
         print('Wrote:', filename)
+
+def dump_json(db, db_file):
+    """ don't break lines for list elements """
+    with open(db_file, 'w') as f:
+        # pprint(db, f, indent=2, width=120) ## single quote
+        f.write(pprint.pformat(db, indent=2, width=120).replace("'", '"'))

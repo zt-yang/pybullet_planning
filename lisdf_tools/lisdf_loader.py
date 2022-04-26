@@ -66,6 +66,9 @@ class World():
             return self.body_to_name[body]
         return None
 
+    def get_debug_name(self, body):
+        return f"{self.get_name(body)}|{body}"
+
     # def get_full_name(self, body_id):
     #     """ concatenated string for links and joints,
     #         e.g. fridge::fridge_door (joint), fridge::door_body (body)
