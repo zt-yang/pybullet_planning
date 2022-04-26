@@ -51,8 +51,8 @@ LINK_POSE_TO_JOINT_POSITION = {}
 
 class Position(object):
     num = count()
-    def __init__(self, body, value=None, index=None):
-        self.body, self.joint = body
+    def __init__(self, body_joint, value=None, index=None):
+        self.body, self.joint = body_joint
         if value is None:
             value = get_joint_position(self.body, self.joint)
         elif value == 'max':
@@ -304,25 +304,27 @@ def pr2_grasp(body, value, grasp_type=None):
     return Grasp(grasp_type, body, value, multiply((approach_vector, unit_quat()), value),
                  TOP_HOLDING_LEFT_ARM)
 
-def get_handle_grasps(joint_object, under=False, tool_pose=TOOL_POSE, body_pose=unit_pose(),
+def get_handle_grasps(body_joint, tool_pose=TOOL_POSE, body_pose=unit_pose(),
                       max_width=MAX_GRASP_WIDTH, grasp_length=GRASP_LENGTH,
-                      robot=None, obstacles=[]):
+                      robot=None, obstacles=[], full_name=None):
     from pybullet_tools.utils import Pose, get_joints, is_movable
 
     PI = math.pi
     db_file = os.path.dirname(os.path.abspath(__file__))
-    db_file = os.path.join(db_file,'handle_grasps.json')
+    db_file = os.path.join(db_file, 'handle_grasps.json')
     db = json.load(open(db_file, 'r'))
-    name = joint_object.shorter_name
-    if name in db:
-        return [(tuple(e[0]), tuple(e[1])) for e in db[name]]
+    body = body_joint[0]
+    handle_link = get_handle_link(body_joint)
+    if full_name != None and full_name in db and len(db[full_name]) > 0:
+        return [(tuple(e[0]), tuple(e[1])) for e in db[full_name]]
 
-    handle_pose = joint_object.get_handle_pose()
+    handle_pose = get_handle_pose(body_joint)
+    # set_camera_target_body(body, dx=1, dy=1, dz=1)
 
-    def check_cfree_gripper(joint_object, grasp, visualize=False, color=GREEN):
+    def check_cfree_gripper(grasp, visualize=True, color=GREEN):
         gripper_grasp = visualize_grasp(robot, handle_pose, grasp, color=color)
-        # if visualize:
-        #     set_camera_target_body(gripper_grasp, dx=0, dy=1, dz=0)
+        if visualize:
+            set_camera_target_body(gripper_grasp, dx=1, dy=1, dz=0)
 
         result = True
         ## when gripper isn't closed, it shouldn't collide
@@ -332,14 +334,14 @@ def get_handle_grasps(joint_object, under=False, tool_pose=TOOL_POSE, body_pose=
         ## when gripper is closed, it should collide with object
         joints = [joint for joint in get_joints(gripper_grasp) if is_movable(gripper_grasp, joint)]
         set_joint_positions(gripper_grasp, joints, [0] * 4)
-        if not pairwise_collision(gripper_grasp, joint_object.body):
+        if not pairwise_collision(gripper_grasp, body):
             result = False
 
         remove_body(gripper_grasp)
         return result
 
     # TODO: compute bounding box width wrt tool frame
-    center, (w, l, h) = approximate_as_prism(joint_object.body, body_pose=body_pose, link=joint_object.handle_link)
+    center, (w, l, h) = approximate_as_prism(body, body_pose=body_pose, link=handle_link)
     translate_center = Pose(point=point_from_pose(body_pose)-center)
     num_h = 4
     top_offset = h / num_h
@@ -347,7 +349,7 @@ def get_handle_grasps(joint_object, under=False, tool_pose=TOOL_POSE, body_pose=
 
     grasps = []
     rots = [[0,0,0], [0,0,PI/2], [0,0,PI], [0,PI/2,0], [0,PI,0], [PI/2,0,0], [PI,0,0]]
-    title = f'pr2_streams.get_handle_grasps({name}): '
+    title = f'pr2_streams.get_handle_grasps({full_name}): '
     for i in range(len(rots)):
         for j in range(len(rots)):
             r1 = Pose(euler=rots[i])
@@ -355,7 +357,7 @@ def get_handle_grasps(joint_object, under=False, tool_pose=TOOL_POSE, body_pose=
             for gh in range(0, num_h):
                 translate_z = Pose(point=[gh*top_offset, 0, w / 2 - gl])
                 grasp = multiply(tool_pose, translate_z, r1, r2, translate_center, body_pose)
-                result = check_cfree_gripper(joint_object, grasp)
+                result = check_cfree_gripper(grasp)
                 print(f'{title}test grasp ({i*len(rots)+j}/{len(rots)**2}, {gh}), {result}')
                 if result:
                     if grasp not in grasps:
@@ -363,30 +365,42 @@ def get_handle_grasps(joint_object, under=False, tool_pose=TOOL_POSE, body_pose=
                 else:
                     break
 
-    db[name] = grasps
+    db[full_name] = grasps
     os.remove(db_file)
     with open(db_file, 'w') as f:
         json.dump(db, f, indent=4)
     return grasps
 
+def get_handle_link(joint):
+    from world_builder.entities import ArticulatedObjectPart
+    body, joint = joint
+    j = ArticulatedObjectPart(body, joint)
+    return j.handle_link
+
+def get_handle_pose(joint):
+    from world_builder.entities import ArticulatedObjectPart
+    body, joint = joint
+    j = ArticulatedObjectPart(body, joint)
+    return j.get_handle_pose()
+
 def get_handle_grasp_gen(problem, collisions=False, randomize=True, visualize=False):
     collisions = True
     obstacles = problem.fixed if collisions else []
-
-    def fn(body):
+    world = problem.world
+    def fn(body_joint):
         # TODO: max_grasps
         # TODO: return grasps one by one
         grasps = []
-        BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
-        joint = BODY_TO_OBJECT[body]
-        body_pose = joint.get_handle_pose()
+        body_pose = get_handle_pose(body_joint)
+        full_name = world.get_name(body_joint)
+        body, joint = body_joint
         #carry_conf = get_carry_conf(arm, 'top')
         approach_vector = APPROACH_DISTANCE * get_unit_vector([1, 0, 0]) ##[2, 0, -1])
         # grasps.extend(HandleGrasp('top', body, g, multiply((approach_vector, unit_quat()), g), TOP_HOLDING_LEFT_ARM)
         #               for g in get_handle_grasps(joint, grasp_length=GRASP_LENGTH))  ## , body_pose=body_pose
         grasps.extend(HandleGrasp('side', body, g, multiply((approach_vector, unit_quat()), g), TOP_HOLDING_LEFT_ARM)
-                      for g in get_handle_grasps(joint, grasp_length=GRASP_LENGTH,
-                                                 robot=problem.robot, obstacles=obstacles))  ## , body_pose=body_pose
+                      for g in get_handle_grasps(body_joint, grasp_length=GRASP_LENGTH,
+                                                 robot=problem.robot, obstacles=obstacles, full_name=full_name))  ## , body_pose=body_pose
 
         for grasp in grasps:
             grasp.grasp_width = joint.handle_width
@@ -1245,6 +1259,7 @@ def visualize_grasp(robot, body_pose, grasp, arm='left', color=GREEN):
     grasp_pose = multiply(multiply(body_pose, invert(grasp)), tool_from_root)
     set_pose(gripper_grasp, grasp_pose)
     return gripper_grasp
+
 
 ##################################################
 

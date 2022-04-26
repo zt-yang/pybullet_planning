@@ -111,6 +111,7 @@ def pddl_to_init_goal(exp_dir, world):
                     elif typ == 'hg':
                         elem = HandleGrasp('side', body, g, app, a, index=index)
                 else:
+                    elem = None
                     print(f'\n\n\n\n\nnot implemented for typ {typ}\n\n\n\n')
                 elem = check_existed(elem)
             args.append(elem)

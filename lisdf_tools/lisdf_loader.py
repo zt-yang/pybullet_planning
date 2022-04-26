@@ -8,16 +8,17 @@ from lisdf.components.model import URDFInclude
 import warnings
 warnings.filterwarnings('ignore')
 
-from pybullet_planning.pybullet_tools.pr2_problems import create_floor
-from pybullet_planning.pybullet_tools.pr2_utils import set_group_conf, get_group_joints
-from pybullet_planning.pybullet_tools.utils import load_pybullet, connect, wait_if_gui, HideOutput, \
+from pybullet_tools.pr2_problems import create_floor
+from pybullet_tools.pr2_utils import set_group_conf, get_group_joints
+from pybullet_tools.utils import load_pybullet, connect, wait_if_gui, HideOutput, \
     disconnect, set_pose, set_joint_position, joint_from_name, quat_from_euler, draw_pose, unit_pose, \
     set_camera_pose, set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
-    set_joint_positions, get_links, get_joints, get_joint_name
-from pybullet_planning.pybullet_tools.bullet_utils import nice
+    set_joint_positions, get_links, get_joints, get_joint_name, get_body_name
+from pybullet_tools.bullet_utils import nice
 
 ASSET_PATH = join(dirname(__file__), '..', '..', 'assets')
-LINK_STR = '--'
+LINK_STR = '::'
+## may also change to :: to be the same as Jiayuan, but need to check whether prolog works
 
 
 class World():
@@ -42,6 +43,7 @@ class World():
                 self.add_body(id, o.name)
 
     def summarize_all_objects(self):
+        """ call this after pddl_to_init_goal() where world.update_objects() happens """
         from pybullet_tools.logging import myprint as print
 
         print('----------------')
@@ -64,6 +66,18 @@ class World():
         if body in self.body_to_name:
             return self.body_to_name[body]
         return None
+
+    # def get_full_name(self, body_id):
+    #     """ concatenated string for links and joints,
+    #         e.g. fridge::fridge_door (joint), fridge::door_body (body)
+    #     """
+    #     if len(body_id) == 2:
+    #         body, joint = body_id
+    #         return LINK_STR.join([get_body_name(body), get_joint_name(body, joint)])
+    #     if len(body_id) == 3:
+    #         body, _, link = body_id
+    #         return LINK_STR.join([get_body_name(body), get_link_name(body, link)])
+    #     return None
 
 def find_id(body, full_name):
     name = full_name.split(LINK_STR)[1]
