@@ -1,3 +1,5 @@
+LINK_STR = '::'
+
 import os
 import sys
 from os.path import join, abspath, dirname, isdir, isfile
@@ -17,9 +19,6 @@ from pybullet_tools.utils import load_pybullet, connect, wait_if_gui, HideOutput
 from pybullet_tools.bullet_utils import nice
 
 ASSET_PATH = join(dirname(__file__), '..', '..', 'assets')
-LINK_STR = '::'
-## may also change to :: to be the same as Jiayuan, but need to check whether prolog works
-
 
 class World():
     def __init__(self, lisdf):

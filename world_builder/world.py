@@ -16,7 +16,7 @@ from pybullet_tools.pr2_streams import get_stable_gen, get_contain_gen, get_posi
     Position, get_handle_grasp_gen, LinkPose, pr2_grasp, WConf
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
     is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
-    set_camera_target_body, xyzyaw_to_pose, nice
+    set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR
 from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints, \
     get_group_conf, get_top_grasps, get_side_grasps, create_gripper
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
@@ -106,12 +106,12 @@ class World(object):
         ## object parts: doors, drawers
         if joint != None:
             BODY_TO_OBJECT[(body, joint)] = object
-            object.name = f"{BODY_TO_OBJECT[body].name}--{object.name}"
+            object.name = f"{BODY_TO_OBJECT[body].name}{LINK_STR}{object.name}"
 
         ## object parts: surface, space
         elif link != None:
             BODY_TO_OBJECT[(body, None, link)] = object
-            object.name = f"{BODY_TO_OBJECT[body].name}--{object.name}"
+            object.name = f"{BODY_TO_OBJECT[body].name}{LINK_STR}{object.name}"
             if category == 'surface':
                 BODY_TO_OBJECT[body].surfaces.append(link)
             if category == 'space':

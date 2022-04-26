@@ -4,9 +4,9 @@ import json
 import shutil
 from os.path import join, isdir, isfile, dirname, abspath
 from pybullet_planning.pybullet_tools.utils import get_bodies, euler_from_quat, get_collision_data, get_joint_name, \
-    get_joint_position, get_camera
-from pybullet_planning.pybullet_tools.pr2_utils import get_arm_joints, get_group_joints
-from pybullet_planning.pybullet_tools.bullet_utils import OBJ_SCALES, get_readable_list
+    get_joint_position, get_camera, joint_from_name
+from pybullet_planning.pybullet_tools.pr2_utils import get_arm_joints, get_group_joints, PR2_GROUPS
+from pybullet_planning.pybullet_tools.bullet_utils import OBJ_SCALES, get_readable_list, LINK_STR
 from .entities import Robot
 from .utils import read_xml, get_file_by_category, get_model_scale
 
@@ -14,10 +14,10 @@ LISDF_PATH = join('assets', 'scenes')
 EXP_PATH = join('test_cases')
 
 ACTOR_STR = """
-    <include name="pr2">    
+    <include name="pr2">
       <uri>../models/drake/pr2_description/urdf/pr2_simplified.urdf</uri>
       {pose_xml}
-    </include>            
+    </include>
 """
 MODEL_BOX_STR = """
     <model name="{name}">
@@ -154,8 +154,10 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
 
             ## robot joint states
             joints_xml = ''
-            js = list(get_group_joints(body, 'torso'))
-            js.extend(list(get_arm_joints(body, 'left'))+list(get_arm_joints(body, 'right')))
+            all_joints = sum(PR2_GROUPS.values(), [])
+            js = [joint_from_name(body, j) for j in all_joints]
+            # js = list(get_group_joints(body, 'torso'))
+            # js.extend(list(get_arm_joints(body, 'left'))+list(get_arm_joints(body, 'right')))
             for j in js:
                 joints_xml += STATE_JOINTS_STR.format(
                     name=get_joint_name(body, j),
@@ -195,7 +197,7 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
         if name not in model_joints:
             model_joints[name] = ""
         model_joints[name] += STATE_JOINTS_STR.format(
-            name=joint_name.replace(name+"--", ''),
+            name=joint_name.replace(name+LINK_STR, ''),
             angle=round(get_joint_position(body, joint), 3)
         )
     for name, joints_xml in model_joints.items():

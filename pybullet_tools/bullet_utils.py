@@ -25,6 +25,7 @@ from .utils import unit_pose, get_collision_data, get_links, LockRenderer, \
 
 
 OBJ = '?obj'
+LINK_STR = '::'  ## for lisdf object names
 
 BASE_LINK = 'base_link'
 BASE_JOINTS = ['x', 'y', 'theta']
