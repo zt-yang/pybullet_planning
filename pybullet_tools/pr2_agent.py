@@ -15,7 +15,7 @@ from pybullet_planning.pybullet_tools.pr2_streams import get_stable_gen, get_con
 from pybullet_planning.pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
     get_ik_ir_gen, get_motion_gen, get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
     move_cost_fn, get_grasp_gen, Attach, Detach, Clean, Cook, control_commands, \
-    get_gripper_joints, GripperCommand, apply_commands, State
+    get_gripper_joints, GripperCommand, apply_commands, State, Trajectory
 
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
     set_camera_target_robot, nice, BASE_LIMITS, get_file_short_name
@@ -44,7 +44,10 @@ from pddlstream.language.external import defer_shared, never_defer
 from collections import namedtuple
 
 from world_builder.entities import Object
-
+from world_builder.actions import AttachAction, ReleaseAction, FlipAction, PressAction, TeleportAction, InteractAction,\
+    OpenJointAction, PickUpAction, PutDownAction, ChopAction, CrackAction, ToggleSwitchAction, OBJECT_PARTS, \
+    TeleportObjectAction, GripperAction, AttachObjectAction, DetachObjectAction, JustClean, JustCook, JustSeason, \
+    JustServe, MoveArmAction, MoveBaseAction, MagicDisappear, TeleportObject, JustSucceed
 
 def get_stream_map(p, c, l, t):
     # p = problem
@@ -205,43 +208,166 @@ def post_process(problem, plan, teleport=False):
     if plan is None:
         return None
     commands = []
-    for i, (name, args) in enumerate(plan):
-        if name == 'move_base':
-            c = args[-1]
-            new_commands = c.commands
-        elif name == 'pick':
-            a, b, p, g, _, c = args
-            [t] = c.commands
-            close_gripper = GripperCommand(problem.robot, a, g.grasp_width, teleport=teleport)
-            attach = Attach(problem.robot, a, g, b)
-            new_commands = [t, close_gripper, attach, t.reverse()]
-        elif name == 'place':
-            a, b, p, g, _, c = args
-            [t] = c.commands
-            gripper_joint = get_gripper_joints(problem.robot, a)[0]
-            position = get_max_limit(problem.robot, gripper_joint)
-            open_gripper = GripperCommand(problem.robot, a, position, teleport=teleport)
-            detach = Detach(problem.robot, a, b)
-            new_commands = [t, detach, open_gripper, t.reverse()]
-        elif name == 'clean': # TODO: add text or change color?
-            body, sink = args
-            new_commands = [Clean(body)]
-        elif name == 'cook':
-            body, stove = args
-            new_commands = [Cook(body)]
-        elif name == 'press_clean':
-            body, sink, arm, button, bq, c = args
-            [t] = c.commands
-            new_commands = [t, Clean(body), t.reverse()]
-        elif name == 'press_cook':
-            body, sink, arm, button, bq, c = args
-            [t] = c.commands
-            new_commands = [t, Cook(body), t.reverse()]
-        else:
-            raise ValueError(name)
-        print(i, name, args, new_commands)
+    for i, action in enumerate(plan):
+        new_commands = get_primitive_commands(action, problem.robot, problem.world, teleport)
         commands += new_commands
+        print(i, f"{action[0]} [ {action[1]} ]", new_commands)
     return commands
+
+def get_primitive_commands_old(action, robot, world=None, teleport=False):
+    name, args = action
+    if name == 'move_base':
+        c = args[-1]
+        new_commands = c.commands
+    elif name == 'pick':
+        a, b, p, g, _, c = args
+        [t] = c.commands
+        close_gripper = GripperCommand(robot, a, g.grasp_width, teleport=teleport)
+        attach = Attach(robot, a, g, b)
+        new_commands = [t, close_gripper, attach, t.reverse()]
+    elif name == 'place':
+        a, b, p, g, _, c = args
+        [t] = c.commands
+        gripper_joint = get_gripper_joints(robot, a)[0]
+        position = get_max_limit(robot, gripper_joint)
+        open_gripper = GripperCommand(robot, a, position, teleport=teleport)
+        detach = Detach(robot, a, b)
+        new_commands = [t, detach, open_gripper, t.reverse()]
+    elif name == 'clean':  # TODO: add text or change color?
+        body, sink = args
+        new_commands = [Clean(body)]
+    elif name == 'cook':
+        body, stove = args
+        new_commands = [Cook(body)]
+    elif name == 'press_clean':
+        body, sink, arm, button, bq, c = args
+        [t] = c.commands
+        new_commands = [t, Clean(body), t.reverse()]
+    elif name == 'press_cook':
+        body, sink, arm, button, bq, c = args
+        [t] = c.commands
+        new_commands = [t, Cook(body), t.reverse()]
+    else:
+        raise ValueError(name)
+
+    return new_commands
+
+def get_primitive_commands(action, robot, world, teleport=False):
+    def get_traj(t):
+        [t] = t.commands
+        if teleport:
+            t = Trajectory([t.path[0]] + [t.path[-1]])
+        return t
+
+    name, args = action
+    if 'pull_door_handle' in name:
+        if '_wconf' in name:
+            args = args[:-2]
+        a, o, p1, p2, g, q1, q2, bt, aq1, aq2, at = args[:11]
+        at = list(get_traj(at).path)
+        bt = list(get_traj(bt).path)
+        new_commands = []
+        for i in range(len(at)):
+            new_commands.extend([MoveBaseAction(bt[i]), MoveArmAction(at[i])])
+
+    elif 'move_base' in name or 'pull_' in name:
+        if 'move_base' in name:
+            q1, q2, t = args[:3]
+        elif 'pull_marker' in name:
+            if '_wconf' in name:
+                args = args[:-2]
+            a, o, p1, p2, g, q1, q2, o2, p3, p4, t = args
+        elif name == 'pull_marker_wconf':
+            a, o, p1, p2, g, q1, q2, t, w1, w2 = args
+        elif 'pull_drawer_handle' in name:
+            a, o, p1, p2, g, q1, q2, t = args
+
+        new_commands = [get_traj(t)]
+
+    elif name == 'turn_knob':
+        a, o, p1, p2, g, q, aq1, aq2, t = args
+        t = get_traj(t)
+        new_commands = [t] + world.get_events(o)
+
+    elif name == 'pick':
+        a, o, p, g, q, t = args[:6]
+        t = get_traj(t)
+        # teleport = TeleportObjectAction(a, g, o)
+        close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
+        attach = AttachObjectAction(a, g, o)
+        new_commands = [t, close_gripper, attach, t.reverse()]  ## teleport,
+
+    elif name == 'grasp_handle':
+        a, o, p, g, q, aq1, aq2, t = args
+        t = get_traj(t)
+        close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
+        attach = AttachObjectAction(a, g, o)
+        new_commands = [t, close_gripper, attach]
+
+    elif name == 'ungrasp_handle':
+        a, o, p, g, q, aq1, aq2, t = args
+        t = get_traj(t)
+        detach = DetachObjectAction(a, o)
+        open_gripper = GripperAction(a, extent=1, teleport=teleport)
+        new_commands = [detach, open_gripper, t.reverse()]
+
+    elif name == 'grasp_marker':
+        a, o1, o2, p, g, q, t = args
+        t = get_traj(t)
+        close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
+        attach = AttachObjectAction(a, g, o1)
+        attach2 = AttachObjectAction(a, g, o2)
+        new_commands = [t, close_gripper, attach, attach2]
+
+    elif name == 'ungrasp_marker':
+        a, o, o2, p, g, q, t = args
+        t = get_traj(t)
+        detach = DetachObjectAction(a, o)
+        detach2 = DetachObjectAction(a, o2)
+        open_gripper = GripperAction(a, extent=1, teleport=teleport)
+        new_commands = [detach, detach2, open_gripper, t.reverse()]
+
+    elif name == 'place':
+        a, o, p, g, _, t = args[:6]
+        t = get_traj(t)
+        open_gripper = GripperAction(a, extent=1, teleport=teleport)
+        detach = DetachObjectAction(a, o)
+        new_commands = [t, detach, open_gripper, t.reverse()]
+
+    elif 'clean' in name:  # TODO: add text or change color?
+        body, sink = args[:2]
+        new_commands = [JustClean(body)]
+
+    elif 'cook' in name:
+        body, stove = args[:2]
+        new_commands = [JustCook(body)]
+
+    elif name == 'season':
+        body, counter, seasoning = args
+        new_commands = [JustSeason(body)]
+
+    elif name == 'serve':
+        body, serve, plate = args
+        new_commands = [JustServe(body)]
+
+    elif name == 'magic':  ## for testing that UnsafeBTraj takes changes in pose into account
+        marker, cart, p1, p2 = args
+        new_commands = [MagicDisappear(marker), MagicDisappear(cart)]
+
+    elif name == 'teleport':
+        body, p1, p2, w1, w2 = args
+        w1.printout()
+        w2.printout()
+        new_commands = [TeleportObject(body, p2)]
+
+    elif name == 'declare_victory':
+        new_commands = [JustSucceed()]
+
+    else:
+        raise NotImplementedError(name)
+
+    return new_commands
+
 
 #######################################################
 

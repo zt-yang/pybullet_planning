@@ -25,6 +25,7 @@ class World():
         self.lisdf = lisdf
         self.body_to_name = {}
         self.name_to_body = {}
+        self.ATTACHMENTS = {}
 
     @property
     def robot(self):
@@ -56,6 +57,8 @@ class World():
             elif isinstance(body, tuple) and len(body) == 3:
                 body, _, link = body
                 pose = get_link_pose(body, link)
+            elif self.get_name(body) in ['pr2']:
+                pose = get_group_joints(body, 'base')
             else:
                 pose = get_pose(body)
             print(f"{line}\t|  Pose: {nice(pose)}")
@@ -80,6 +83,9 @@ class World():
     #         body, _, link = body_id
     #         return LINK_STR.join([get_body_name(body), get_link_name(body, link)])
     #     return None
+
+    def get_events(self, body):
+        pass
 
 def find_id(body, full_name):
     name = full_name.split(LINK_STR)[1]

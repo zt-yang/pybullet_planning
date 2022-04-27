@@ -21,7 +21,8 @@ from .utils import unit_pose, get_collision_data, get_links, LockRenderer, pairw
     set_camera_pose, TAN, RGBA, sample_aabb, get_min_limit, get_max_limit, get_joint_position, get_joint_name, \
     euler_from_quat, get_client, JOINT_TYPES, get_joint_type, get_link_pose, get_closest_points, \
     body_collision, is_placed_on_aabb, joint_from_name, body_from_end_effector, flatten_links, \
-    get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, Point, get_camera_matrix
+    get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, Point, get_camera_matrix, \
+    YELLOW, add_line, draw_point
 
 
 OBJ = '?obj'
@@ -700,10 +701,12 @@ def get_readable_list(lst, world=None, NAME_ONLY=False):
     for word in lst:
         if world != None:
             name = world.get_name(word)
-            if name != None:
+            if name != None and not isinstance(to_print[-1], tuple): ## ['=', ('PickCost',), 'pr2|1']
                 if not NAME_ONLY:
                     name = world.get_debug_name(word)
                 to_print.append(name)
+            else:
+                to_print.append(word)
         else:
             to_print.append(word)
     return to_print
@@ -800,17 +803,46 @@ def draw_collision_shapes(body, links=[]):
     if len(links) == 0:
         links = get_links(body)
     body_from_world = get_pose(body)
+    handles = []
     for link in links:
-        collision_data = set(get_collision_data(body, link))
+        collision_data = get_collision_data(body, link)
         for i in range(len(collision_data)):
             shape = collision_data[i]
             shape_from_body = (shape.local_frame_pos, shape.local_frame_orn)
             shape_from_world = multiply(shape_from_body, body_from_world)
-            w, l, h = shape.dimensions
-            tmp = create_box(w, l, h)
-            set_pose(tmp, shape_from_world)
-            print(
-                f'link = {link}, colldion_body = {i} | dims = {nice(shape.dimensions)} | shape_from_world = {nice(shape_from_world)}')
+            draw_bounding_lines(shape_from_world, shape.dimensions)
+            print(f'link = {link}, colldion_body = {i} | dims = {nice(shape.dimensions)} | shape_from_world = {nice(shape_from_world)}')
+
+def draw_bounding_lines(pose, dimensions):
+    w, l, h = dimensions  ## it's meshscale instead of wlh
+    # tmp = create_box(w, l, h)
+    # set_pose(tmp, pose)
+
+    ## first get the points using local transforms
+    transforms = [(w/2, l/2, h/2)]
+    transforms.extend([(-t[0], t[1], t[2]) for t in transforms])
+    transforms.extend([(t[0], -t[1], t[2]) for t in transforms])
+    transforms.extend([(t[0], -t[1], -t[2]) for t in transforms])
+    transforms = [Pose(t, Euler()) for t in transforms]
+
+    def one_diff(t1, t2):
+        return len([t1[k] != t2[k] for k in range(len(t1))]) == 1
+
+    lines = []
+    handles = []
+    for t1 in transforms:
+        pt1 = multiply(pose, t1)[0]
+        for t2 in transforms:
+            pt2 = multiply(pose, t2)[0]
+            if pt1 != pt2 and one_diff(pt1, pt2):
+                if (pt1, pt2) not in lines:
+                    handles.append(add_line(pt1, pt2, color=YELLOW))
+                    lines.extend([(pt1, pt2), (pt2, pt1)])
+        handles.extend(draw_point(pt1, size=0.01, color=YELLOW))
+
+    # remove_body(tmp)
+    return handles
+
 
 def visualize_point(point, world):
     z = 0

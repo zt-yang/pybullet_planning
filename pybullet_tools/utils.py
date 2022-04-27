@@ -2869,16 +2869,11 @@ def get_collision_data(body, link=BASE_LINK):
     # TODO: cache
     # print('    get_collision_data', body, link)
     # return [CollisionShapeData(*tup) for tup in p.getCollisionShapeData(body, link, physicsClientId=CLIENT)]
-    ## after reinstalling pybullet, problems occur
-    with HideOutput(True):
-        k = 0
-        while True:
-            try:
-                data = p.getCollisionShapeData(body, link, physicsClientId=CLIENT)
-                return [CollisionShapeData(*tup) for tup in data]
-            except:
-                print(f'pybullet.get_collision_data({body}, {link}) | pybullet.error: Error receiving collision shape info {k}')
-            k += 1
+    try:
+        data = p.getCollisionShapeData(body, link, physicsClientId=CLIENT)
+        return [CollisionShapeData(*tup) for tup in data]
+    except:
+        print(f'pybullet.get_collision_data({body}, {link}) | pybullet.error: Error receiving collision shape info {k}')
     return []
 
 def can_collide(body, link=BASE_LINK, **kwargs):

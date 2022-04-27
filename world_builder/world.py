@@ -73,6 +73,9 @@ class World(object):
             return self.BODY_TO_OBJECT[body].debug_name
         return None
 
+    def get_events(self, body):
+        return self.BODY_TO_OBJECT[body].events
+
     def add_box(self, object, pose=None):
         obj = self.add_object(object, pose=pose)
         obj.is_box = True

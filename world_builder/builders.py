@@ -21,8 +21,7 @@ from pybullet_tools.pr2_agent import pddlstream_from_state_goal, test_marker_pul
 from pybullet_tools.pr2_streams import get_marker_grasp_gen, Position, \
     sample_points_along_line, get_bconf_in_region_test, get_bconf_in_region_gen, get_pull_marker_to_bconf_motion_gen, \
     get_pull_marker_to_pose_motion_gen, get_pull_marker_random_motion_gen, get_parent_new_pose, get_bqs_given_p2
-from pybullet_tools.bullet_utils import OBJ_SCALES, set_camera_target_body, set_camera_target_robot, draw_collision_shapes, \
-    generate_problem_pddl
+from pybullet_tools.bullet_utils import OBJ_SCALES, set_camera_target_body, set_camera_target_robot, draw_collision_shapes
 
 def test_pick(world, w=.5, h=.9, mass=1):
 
@@ -97,9 +96,13 @@ def test_kitchen_oven(world, floorplan='counter.svg'):
     pot = world.name_to_object('braiserbody')
     world.put_on_surface(pot, 'front_right_stove')
     set_camera_target_body(oven, dx=1, dy=0, dz=1)
-    bottom = world.add_object(Surface(pot, link_from_name(pot, 'braiser_bottom')))
+    bottom = world.add_object(Surface(pot.body, link_from_name(pot, 'braiser_bottom')))
     world.put_on_surface(egg, 'braiser_bottom')
     # world.remove_object(oven)
     # world.remove_object(pot)
+
+    ## -- test draw body collision shapes
+    # draw_collision_shapes(world.name_to_body('braiserlid'))
+    # draw_collision_shapes(world.name_to_body('oven'))
 
     return floorplan

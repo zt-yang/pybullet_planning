@@ -316,6 +316,8 @@ def get_handle_grasps(body_joint, tool_pose=TOOL_POSE, body_pose=unit_pose(),
                       robot=None, obstacles=[], full_name=None, world=None):
     from pybullet_tools.utils import Pose
 
+    DEBUG = False
+
     PI = math.pi
     db_file = os.path.dirname(os.path.abspath(__file__))
     db_file = os.path.join(db_file, 'handle_grasps.json')
@@ -327,18 +329,20 @@ def get_handle_grasps(body_joint, tool_pose=TOOL_POSE, body_pose=unit_pose(),
 
     handle_pose = get_handle_pose(body_joint)
 
-    def check_cfree_gripper(grasp, visualize=True, color=GREEN):
+    def check_cfree_gripper(grasp, visualize=DEBUG, color=GREEN, min_num_pts=40):
         gripper_grasp = visualize_grasp(robot, handle_pose, grasp, color=color)
 
         ## when gripper isn't closed, it shouldn't collide
-        firstly = collided(gripper_grasp, obstacles, world=world, verbose=True, tag='firstly')
+        firstly = collided(gripper_grasp, obstacles, min_num_pts=min_num_pts,
+                           world=world, verbose=DEBUG, tag='firstly')
         if visualize: ## and not firstly: ## somtimes cameras blocked by robot, need to change dx, dy
             ## also helps slow down visualization of the sampling the testing process
             set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.2)
 
         ## when gripper is closed, it should collide with object
         close_cloned_gripper(gripper_grasp)
-        secondly = collided(gripper_grasp, obstacles, world=world, verbose=True)
+        secondly = collided(gripper_grasp, obstacles, min_num_pts=min_num_pts,
+                            world=world, verbose=DEBUG)
 
         remove_body(gripper_grasp)
         return not firstly and secondly
@@ -533,8 +537,9 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
         else:
             pose_value = pose.value
 
+        ## TODO: change to world.get_grasp_parent
         addons = [obj]
-        if world.BODY_TO_OBJECT[obj].grasp_parent != None:
+        if hasattr(world, 'BODY_TO_OBJECT') and world.BODY_TO_OBJECT[obj].grasp_parent != None:
             addons.append(world.BODY_TO_OBJECT[obj].grasp_parent)
 
         approach_obstacles = {obst for obst in obstacles if not is_placement(obj, obst)}
