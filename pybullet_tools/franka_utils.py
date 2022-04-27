@@ -97,54 +97,44 @@ def sample_ik_tests(robot):
 
 ######################################################
 
-from .utils import clone_body, irange
-from .bullet_utils import nice
-#
-# def plan_cartesian_motion(robot, waypoint_poses, custom_limits=(), target_link=BASE_LINK,
-#                           max_iterations=200, max_time=INF, **kwargs):
-#     """ a quick implementation based on plan_cartesian_motion from utils.py """
-#
-#     lower_limits, upper_limits = custom_limits
-#
-#     sub_robot = clone_body(robot, visual=False, collision=False)
-#     null_space = None
-#
-#     solutions = []
-#     for target_pose in waypoint_poses:
-#         print(f'franka_utils.plan_cartesian_motion | target_pose {nice(target_pose)}')
-#         start_time = time.time()
-#         for iteration in irange(max_iterations):
-#             if elapsed_time(start_time) >= max_time:
-#                 remove_body(sub_robot)
-#                 return None
-#             sub_kinematic_conf = inverse_kinematics_helper(sub_robot, sub_target_link, target_pose, null_space=null_space)
-#             if sub_kinematic_conf is None:
-#                 remove_body(sub_robot)
-#                 return None
-#
-#             # print(f'pddlstream.plan_cartesian_motion | {iteration}\t {nice(sub_kinematic_conf)}')
-#             set_joint_positions(sub_robot, sub_joints, sub_kinematic_conf)
-#             # print(f'\t link pose {get_link_pose(sub_robot, sub_target_link)}')
-#             if is_pose_close(get_link_pose(sub_robot, sub_target_link), target_pose, **kwargs):
-#                 # print(f'\t is close {get_link_pose(sub_robot, sub_target_link)}')
-#                 set_joint_positions(robot, selected_joints, sub_kinematic_conf)
-#                 kinematic_conf = get_configuration(robot)
-#                 if not all_between(lower_limits, kinematic_conf, upper_limits):
-#                     # print(f'\t out of limits {kinematic_conf} lower {lower_limits} upper {upper_limits}')
-#
-#                     #movable_joints = get_movable_joints(robot)
-#                     #print([(get_joint_name(robot, j), l, v, u) for j, l, v, u in
-#                     #       zip(movable_joints, lower_limits, kinematic_conf, upper_limits) if not (l <= v <= u)])
-#                     #print("Limits violated")
-#                     #wait_if_gui()
-#                     remove_body(sub_robot)
-#                     return None
-#                 #print("IK iterations:", iteration)
-#                 solutions.append(kinematic_conf)
-#                 break
-#         else:
-#             remove_body(sub_robot)
-#             return None
-#     # TODO: finally:
-#     remove_body(sub_robot)
-#     return solutions
+from pybullet_tools.utils import plan_joint_motion, create_flying_body, SE3, euler_from_quat, BodySaver, \
+    intrinsic_euler_from_quat, quat_from_euler, wait_for_duration
+from pybullet_tools.pr2_primitives import Trajectory, Commands, State
+
+def pose_to_se3(p):
+    # return list(p[0]) + list(euler_from_quat(p[1]))
+    return np.concatenate([np.asarray(p[0]), np.asarray(euler_from_quat(p[1]))])
+
+def se3_to_pose(conf):
+    return (conf[:3], quat_from_euler(conf[3:]))
+
+def plan_se3_motion(robot, pose1, pose2, obstacles=[], custom_limits={}):
+    sub_robot = create_flying_body(SE3, robot, robot)
+    joints = get_movable_joints(sub_robot)
+    initial_conf = pose_to_se3(pose1)
+    final_conf = pose_to_se3(pose2)
+    set_joint_positions(sub_robot, joints, initial_conf)
+    path = plan_joint_motion(sub_robot, joints, final_conf, obstacles=obstacles,
+                             self_collisions=False, custom_limits=custom_limits)
+    return path
+
+def get_free_motion_gen(problem, custom_limits={}, collisions=True, visualize=False, teleport=False):
+    robot = problem.robot
+    saver = BodySaver(robot)
+    obstacles = problem.fixed if collisions else []
+    def fn(p1, p2, fluents=[]):
+        from pybullet_tools.pr2_primitives import Pose
+        saver.restore()
+        p1.assign()
+        raw_path = plan_se3_motion(robot, p1.value, p2.value, obstacles=obstacles, custom_limits=custom_limits)
+        path = [Pose(robot, se3_to_pose(conf)) for conf in raw_path]
+        if visualize:
+            for p in path:
+                p.assign()
+                wait_for_duration(0.01)
+            wait_for_user('finished')
+            p1.assign()
+        t = Trajectory(path)
+        cmd = Commands(State(), savers=[BodySaver(robot)], commands=[t])
+        return (cmd,)
+    return fn
