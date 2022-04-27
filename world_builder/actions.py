@@ -9,9 +9,11 @@ from pybullet_tools.pr2_streams import Position
 from pybullet_tools.utils import str_from_object, get_closest_points, INF, create_attachment, wait_if_gui, \
     get_aabb, get_joint_position, get_joint_name, get_link_pose, link_from_name, PI, Pose, Euler, \
     get_extend_fn, get_joint_positions, set_joint_positions, get_max_limit, get_pose, set_pose, set_color, \
-    remove_body, create_cylinder, set_all_static
+    remove_body, create_cylinder, set_all_static, wait_for_duration
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, get_gripper_joints
-from pybullet_tools.pr2_primitives import Trajectory
+from pybullet_tools.pr2_primitives import Trajectory, Command
+
+from .world import State
 
 class Action(object): # TODO: command
     def transition(self, state):
@@ -377,3 +379,21 @@ class RemoveBodyEvent(Action):
             objects.remove(body)
             print(f'    bullet.actions.RemoveBodyEvent | {body}')
         return state.new_state(objects=objects)
+
+#######################################################
+
+def apply_actions(problem, actions, time_step=0.01):
+    """ act out the whole plan and event in the world without observation/replanning """
+    state_event = State(problem.world)
+    for i, action in enumerate(actions):
+        print(i, action)
+        if isinstance(action, Command):
+            print('\n\n\napply_actions found Command', action)
+            import sys
+            sys.exit()
+        elif isinstance(action, Action):
+            state_event = action.transition(state_event.copy())
+        elif isinstance(action, list):
+            for a in action:
+                state_event = a.transition(state_event.copy())
+        wait_for_duration(time_step)

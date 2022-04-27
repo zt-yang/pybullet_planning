@@ -209,12 +209,13 @@ def post_process(problem, plan, teleport=False):
         return None
     commands = []
     for i, action in enumerate(plan):
-        new_commands = get_primitive_commands(action, problem.robot, problem.world, teleport)
+        # new_commands = get_primitive_commands(action, problem.robot, teleport)
+        new_commands = get_primitive_actions(action, problem.world, teleport)
         commands += new_commands
-        print(i, f"{action[0]} [ {action[1]} ]", new_commands)
+        print(i, action)
     return commands
 
-def get_primitive_commands_old(action, robot, world=None, teleport=False):
+def get_primitive_commands(action, robot, teleport=False):
     name, args = action
     if name == 'move_base':
         c = args[-1]
@@ -252,11 +253,15 @@ def get_primitive_commands_old(action, robot, world=None, teleport=False):
 
     return new_commands
 
-def get_primitive_commands(action, robot, world, teleport=False):
+def get_primitive_actions(action, world, teleport=False):
     def get_traj(t):
         [t] = t.commands
         if teleport:
             t = Trajectory([t.path[0]] + [t.path[-1]])
+        if len(t.path[0].values) == 3:
+            t = [MoveBaseAction(conf) for conf in t.path]
+        elif len(t.path[0].values) == 7:
+            t = [MoveArmAction(conf) for conf in t.path]
         return t
 
     name, args = action
@@ -287,7 +292,7 @@ def get_primitive_commands(action, robot, world, teleport=False):
     elif name == 'turn_knob':
         a, o, p1, p2, g, q, aq1, aq2, t = args
         t = get_traj(t)
-        new_commands = [t] + world.get_events(o)
+        new_commands = t + world.get_events(o)
 
     elif name == 'pick':
         a, o, p, g, q, t = args[:6]
@@ -295,7 +300,8 @@ def get_primitive_commands(action, robot, world, teleport=False):
         # teleport = TeleportObjectAction(a, g, o)
         close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
         attach = AttachObjectAction(a, g, o)
-        new_commands = [t, close_gripper, attach, t.reverse()]  ## teleport,
+
+        new_commands = [t, close_gripper, attach, t[::-1]]  ## teleport,
 
     elif name == 'grasp_handle':
         a, o, p, g, q, aq1, aq2, t = args
@@ -309,7 +315,7 @@ def get_primitive_commands(action, robot, world, teleport=False):
         t = get_traj(t)
         detach = DetachObjectAction(a, o)
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
-        new_commands = [detach, open_gripper, t.reverse()]
+        new_commands = [detach, open_gripper, t[::-1]]
 
     elif name == 'grasp_marker':
         a, o1, o2, p, g, q, t = args
@@ -325,14 +331,14 @@ def get_primitive_commands(action, robot, world, teleport=False):
         detach = DetachObjectAction(a, o)
         detach2 = DetachObjectAction(a, o2)
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
-        new_commands = [detach, detach2, open_gripper, t.reverse()]
+        new_commands = [detach, detach2, open_gripper, t[::-1]]
 
     elif name == 'place':
         a, o, p, g, _, t = args[:6]
         t = get_traj(t)
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
         detach = DetachObjectAction(a, o)
-        new_commands = [t, detach, open_gripper, t.reverse()]
+        new_commands = [t, detach, open_gripper, t[::-1]]
 
     elif 'clean' in name:  # TODO: add text or change color?
         body, sink = args[:2]

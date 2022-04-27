@@ -3,8 +3,6 @@ from itertools import product
 from collections import defaultdict
 import copy
 
-# from bullet.actions import Action
-
 from pddlstream.language.constants import Equal, AND
 
 from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, get_pose, LockRenderer, \
@@ -21,7 +19,7 @@ from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints
     get_group_conf, get_top_grasps, get_side_grasps, create_gripper
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
     get_grasp_gen, Attach, Detach, Clean, Cook, control_commands, link_from_name, \
-    get_gripper_joints, GripperCommand, apply_commands, State
+    get_gripper_joints, GripperCommand, apply_commands, State, Command
 
 from .entities import Region, Environment, Robot, Surface, ArticulatedObjectPart, Door, Drawer, Knob
 from world_builder.utils import GRASPABLES

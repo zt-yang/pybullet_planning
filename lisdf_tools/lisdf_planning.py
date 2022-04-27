@@ -68,11 +68,12 @@ def pddl_to_init_goal(exp_dir, world):
     world.update_objects(problem.objects)
     robot = world.robot
     existed = [] ## {k: [] for k in ['q', 'aq', 'p', 'g', 'hg', 'pstn', 'lp']}
-    def check_existed(o):
+    def check_existed(o, debug=False):
         for e in existed:
-            # print('check_existed', o, e)
-            # print(o.__dict__)
-            # print(e.__dict__)
+            if debug:
+                print('check_existed', o, e)
+                print(o.__dict__)
+                print(e.__dict__)
             if o.__dict__ == e.__dict__:
                 return e
         existed.append(o)
@@ -95,7 +96,11 @@ def pddl_to_init_goal(exp_dir, world):
                 elif typ == 'aq':
                     elem = Conf(robot, get_arm_joints(robot, args[-1]), value, index=index)
                 elif typ == 'p':
-                    elem = Pose(args[-1], xyzyaw_to_pose(value), index=index)
+                    if len(value) == 4:
+                        value = xyzyaw_to_pose(value)
+                    elif len(value) == 2:
+                        value = (tuple(value[0]), quat_from_euler(value[1]))
+                    elem = Pose(args[-1], value, index=index)
                 elif typ == 'lp':
                     continue
                 elif typ == 'pstn':
