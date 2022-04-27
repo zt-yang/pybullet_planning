@@ -554,7 +554,7 @@ def load_pot_lid(world):
     return bottom, lid
 
 def load_basin_faucet(world):
-    from bullet.actions import ChangeLinkColorEvent, CreateCylinderEvent, RemoveBodyEvent
+    from pybullet_tools.world_builder.actions import ChangeLinkColorEvent, CreateCylinderEvent, RemoveBodyEvent
     cold_blue = RGBA(0.537254902, 0.811764706, 0.941176471, 1.)
 
     name_to_body = world.name_to_body

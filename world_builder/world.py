@@ -391,12 +391,18 @@ class World(object):
         body, joint = self.name_to_body(name)
         toggle_joint(body, joint)
 
-    def put_on_surface(self, obj, surface='hitman_tmp', OAO=False):
+    def get_object(self, obj):
         if isinstance(obj, str):
             obj = self.name_to_object(obj)
-        if isinstance(obj, int):
+        elif obj in self.BODY_TO_OBJECT:
             obj = self.BODY_TO_OBJECT[obj]
-        surface_obj = self.name_to_object(surface)
+        return obj
+
+    def put_on_surface(self, obj, surface='hitman_tmp', OAO=False):
+        obj = self.get_object(obj)
+        surface_obj = self.get_object(surface)
+        surface = surface_obj.name
+
         surface_obj.place_obj(obj)
         world_to_surface = surface_obj.get_pose()
 
