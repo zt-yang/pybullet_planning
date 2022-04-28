@@ -8,19 +8,25 @@ from .utils import create_box, set_base_values, set_point, set_pose, get_pose, \
     add_data_path, connect, dump_body, disconnect, wait_for_user, get_movable_joints, get_sample_fn, \
     set_joint_positions, get_joint_name, LockRenderer, link_from_name, get_link_pose, \
     multiply, Pose, Point, interpolate_poses, HideOutput, draw_pose, set_camera_pose, load_pybullet, \
-    assign_link_colors, add_line, point_from_pose, remove_handles, BLUE, INF
+    assign_link_colors, add_line, point_from_pose, remove_handles, BLUE, INF, create_shape, \
+    approximate_as_prism
 
 from .pr2_utils import DRAKE_PR2_URDF
 
 from .ikfast.utils import IKFastInfo
 from .ikfast.ikfast import * # For legacy purposes
 
-FE_GRIPPER_URDF = "models/franka_description/robots/hand.urdf"
+FE_GRIPPER_URDF = "models/franka_description/robots/hand_se3.urdf"
 #FRANKA_URDF = "models/franka_description/robots/panda_arm.urdf"
 FRANKA_URDF = "models/franka_description/robots/panda_arm_hand.urdf"
 
 PANDA_INFO = IKFastInfo(module_name='franka_panda.ikfast_panda_arm', base_link='panda_link0',
                         ee_link='panda_link8', free_joints=['panda_joint7'])
+
+class Problem():
+    def __init__(self, robot, obstacles):
+        self.robot = robot
+        self.fixed = obstacles
 
 def create_franka():
     with LockRenderer():
@@ -98,43 +104,72 @@ def sample_ik_tests(robot):
 ######################################################
 
 from pybullet_tools.utils import plan_joint_motion, create_flying_body, SE3, euler_from_quat, BodySaver, \
-    intrinsic_euler_from_quat, quat_from_euler, wait_for_duration
+    intrinsic_euler_from_quat, quat_from_euler, wait_for_duration, get_aabb, get_aabb_extent, \
+    joint_from_name
 from pybullet_tools.pr2_primitives import Trajectory, Commands, State
+
+SE3_GROUP = ['x', 'y', 'z', 'roll', 'pitch', 'yaw']
+
+def get_joints_by_group(robot, group):
+    return [joint_from_name(robot, j) for j in group]
+
+def get_se3_joints(robot):
+    return get_joints_by_group(robot, SE3_GROUP)
 
 def pose_to_se3(p):
     # return list(p[0]) + list(euler_from_quat(p[1]))
+    print('\n\n franka_utils.pose_to_se3 | deprecated! \n\n')
     return np.concatenate([np.asarray(p[0]), np.asarray(euler_from_quat(p[1]))])
 
 def se3_to_pose(conf):
+    print('\n\n franka_utils.se3_to_pose | deprecated! \n\n')
     return (conf[:3], quat_from_euler(conf[3:]))
 
-def plan_se3_motion(robot, pose1, pose2, obstacles=[], custom_limits={}):
-    sub_robot = create_flying_body(SE3, robot, robot)
-    joints = get_movable_joints(sub_robot)
-    initial_conf = pose_to_se3(pose1)
-    final_conf = pose_to_se3(pose2)
-    set_joint_positions(sub_robot, joints, initial_conf)
-    path = plan_joint_motion(sub_robot, joints, final_conf, obstacles=obstacles,
+def se3_from_pose(p):
+    return np.concatenate([np.asarray(p[0]), np.asarray(euler_from_quat(p[1]))])
+
+def pose_from_se3(conf):
+    return (conf[:3], quat_from_euler(conf[3:]))
+
+def approximate_as_box(robot):
+    pose = get_pose(robot)
+    set_pose(robot, unit_pose())
+    aabb = get_aabb(robot)
+    set_pose(robot, pose)
+    return get_aabb_extent(aabb)
+
+def plan_se3_motion(robot, initial_conf, final_conf, obstacles=[], custom_limits={}):
+    joints = get_se3_joints(robot)
+    set_joint_positions(robot, joints, initial_conf)
+    path = plan_joint_motion(robot, joints, final_conf, obstacles=obstacles,
                              self_collisions=False, custom_limits=custom_limits)
     return path
+
+from pybullet_tools.pr2_primitives import Conf
 
 def get_free_motion_gen(problem, custom_limits={}, collisions=True, visualize=False, teleport=False):
     robot = problem.robot
     saver = BodySaver(robot)
     obstacles = problem.fixed if collisions else []
-    def fn(p1, p2, fluents=[]):
-        from pybullet_tools.pr2_primitives import Pose
+    def fn(q1, q2, fluents=[]):
         saver.restore()
-        p1.assign()
-        raw_path = plan_se3_motion(robot, p1.value, p2.value, obstacles=obstacles, custom_limits=custom_limits)
-        path = [Pose(robot, se3_to_pose(conf)) for conf in raw_path]
+        q1.assign()
+        raw_path = plan_se3_motion(robot, q1.values, q2.values, obstacles=obstacles, custom_limits=custom_limits)
+        if raw_path == None:
+            return []
+        path = [Conf(robot, get_se3_joints(robot), conf) for conf in raw_path]
         if visualize:
-            for p in path:
-                p.assign()
-                wait_for_duration(0.01)
+            for q in subsample_path(path, order=3):
+                q.assign()
+                draw_pose(pose_from_se3(q.values), length=0.02)
+                wait_for_duration(0.5)
             wait_for_user('finished')
-            p1.assign()
+            return raw_path
+            q1.assign()
         t = Trajectory(path)
         cmd = Commands(State(), savers=[BodySaver(robot)], commands=[t])
         return (cmd,)
     return fn
+
+def subsample_path(path, order=2, max_len=10, min_len=3):
+    return path[::order]

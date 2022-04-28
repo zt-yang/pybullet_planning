@@ -2873,7 +2873,7 @@ def get_collision_data(body, link=BASE_LINK):
         data = p.getCollisionShapeData(body, link, physicsClientId=CLIENT)
         return [CollisionShapeData(*tup) for tup in data]
     except:
-        print(f'pybullet.get_collision_data({body}, {link}) | pybullet.error: Error receiving collision shape info {k}')
+        print(f'pybullet.get_collision_data({body}, {link}) | pybullet.error: Error receiving collision shape info')
     return []
 
 def can_collide(body, link=BASE_LINK, **kwargs):
@@ -5207,6 +5207,10 @@ def read_obj(path, decompose=True):
     meshes = {}
     vertices = []
     faces = []
+    # lines = open(path, 'r', encoding='latin-1').read()
+    # for line in lines.split('\n'):
+    if path.endswith('.stl'):
+        path = path.replace('.stl', '.obj')
     for line in read(path).split('\n'):
         tokens = line.split()
         if not tokens:

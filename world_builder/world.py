@@ -729,8 +729,9 @@ class State(object):
             ## initial position
             position = get_link_position(body)  ## Position(body)
             pose = get_link_pose(body)  ## LinkPose(body)
-            init += [('Joint', body), ('LinkPose', body, pose), ('AtLinkPose', body, pose),
-                     ('Position', body, position), ('AtPosition', body, position),
+            init += [('Joint', body),
+                     # ('LinkPose', body, pose), ('AtLinkPose', body, pose),
+                      ('Position', body, position), ('AtPosition', body, position),
                      ('IsClosedPosition', body, position),
                      ('IsJointTo', body, body[0])
                      ]
