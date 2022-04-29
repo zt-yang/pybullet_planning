@@ -2,6 +2,7 @@ import time
 from itertools import product
 from collections import defaultdict
 import copy
+from os.path import join
 
 from pddlstream.language.constants import Equal, AND
 
@@ -14,14 +15,15 @@ from pybullet_tools.pr2_streams import get_stable_gen, get_contain_gen, get_posi
     Position, get_handle_grasp_gen, LinkPose, pr2_grasp, WConf
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
     is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
-    set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR
+    set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR, CAMERA_MATRIX, visualize_camera_image
 from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints, \
     get_group_conf, get_top_grasps, get_side_grasps, create_gripper
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
     get_grasp_gen, Attach, Detach, Clean, Cook, control_commands, link_from_name, \
     get_gripper_joints, GripperCommand, apply_commands, State, Command
 
-from .entities import Region, Environment, Robot, Surface, ArticulatedObjectPart, Door, Drawer, Knob
+from .entities import Region, Environment, Robot, Surface, ArticulatedObjectPart, Door, Drawer, Knob, \
+    Camera
 from world_builder.utils import GRASPABLES
 
 class World(object):
@@ -44,6 +46,7 @@ class World(object):
     def set_skip_joints(self):
         ## not automatically add doors and drawers, save planning time
         self.SKIP_JOINTS = True
+        self.cameras = []
 
     @property
     def objects(self):
@@ -455,6 +458,23 @@ class World(object):
         if parent != None and parent in obstacles:
             obstacles.remove(parent)
         return obstacles
+
+    def add_camera(self, pose, img_dir=join('visualizations', 'camera_images')):
+        from .entities import StaticCamera
+        args = self.args
+        camera = StaticCamera(pose, camera_matrix=CAMERA_MATRIX, max_depth=2.5)
+        self.cameras.append(camera)
+        self.camera = camera
+        self.img_dir = img_dir
+        if args.camera:
+            return self.cameras[-1].get_image(segment=args.segment)
+        return None
+
+    def visualize_image(self, pose=None):
+        image = self.camera.get_image(segment=self.args.segment)
+        if pose != None:
+            self.camera.set_pose(pose)
+        visualize_camera_image(image, self.camera.index, img_dir=self.img_dir)
 
     @property
     def max_delta(self):

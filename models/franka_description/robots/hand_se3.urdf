@@ -12,7 +12,7 @@
     </visual>
     <collision>
       <geometry>
-        <mesh filename="package://franka_description/meshes/collision/hand.stl"/>
+        <mesh filename="package://franka_description/meshes/collision/hand.obj"/>
       </geometry>
     </collision>
   </link>
@@ -24,7 +24,7 @@
     </visual>
     <collision>
       <geometry>
-        <mesh filename="package://franka_description/meshes/collision/finger.stl"/>
+        <mesh filename="package://franka_description/meshes/collision/finger.obj"/>
       </geometry>
     </collision>
   </link>
@@ -38,7 +38,7 @@
     <collision>
       <origin rpy="0 0 3.14159265359" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://franka_description/meshes/collision/finger.stl"/>
+        <mesh filename="package://franka_description/meshes/collision/finger.obj"/>
       </geometry>
     </collision>
   </link>

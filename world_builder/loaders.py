@@ -93,6 +93,28 @@ def create_robot(world, base_q=(0,0,0), DUAL_ARM=False,
 
     return robot
 
+from pybullet_tools.flying_gripper_utils import create_fe_gripper, plan_se3_motion, Problem, \
+    get_free_motion_gen, set_gripper_positions, get_se3_joints, se3_from_pose, set_gripper_positions, \
+    set_se3_conf
+
+
+def create_gripper_robot(world, custom_limits, initial_q=(0, 0, 0, 0, 0, 0)):
+    from pybullet_tools.flying_gripper_utils import BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_LINK
+
+    with LockRenderer(lock=True):
+        with HideOutput(enable=True):
+            robot = create_fe_gripper()
+
+        with np.errstate(divide='ignore'):
+            weights = np.reciprocal(BASE_RESOLUTIONS)
+        robot = Robot(robot, base_link=BASE_LINK, joints=get_se3_joints(robot),
+                      custom_limits=custom_limits, resolutions=BASE_RESOLUTIONS, weights=weights)
+        world.add_robot(robot, BASE_VELOCITIES)
+        set_se3_conf(robot, initial_q)
+
+    return robot
+
+
 ######################################################
 
 def Box(x1=0., x2=0.,
@@ -100,7 +122,6 @@ def Box(x1=0., x2=0.,
         z1=0., z2=0.):
     return AABB(lower=[x1, y1, z1],
                 upper=[x2, y2, z2])
-
 
 def get_room_boxes(width=1., length=None, height=None, thickness=0.01, gap=INF, yaw=0.):
     # TODO: interval of beams
@@ -606,3 +627,19 @@ def load_kitchen_mechanism(world):
     world.add_to_cat(name_to_body('braiser_bottom'), 'HeatingSurface')
     name_to_object('joint_faucet_0').add_controlled(name_to_body('basin_bottom'))
     name_to_object('knob_joint_2').add_controlled(name_to_body('braiser_bottom'))
+
+
+def load_gripper_test_scene(world):
+    surfaces = {
+        'counter': {
+            'front_left_stove': [],
+            'front_right_stove': ['BraiserBody'],
+            'hitman_tmp': [],
+            'indigo_tmp': ['BraiserLid', 'MeatTurkeyLeg'],  ## , 'VeggieCabbage'
+        }
+    }
+
+    floor = load_floor_plan(world, plan_name='counter.svg', surfaces=surfaces)
+    world.remove_object(floor)
+    pot, lid = load_pot_lid(world)
+    set_camera_target_body(lid, dx=1.5, dy=0, dz=0.7)

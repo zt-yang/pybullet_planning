@@ -577,6 +577,71 @@ class Camera(object):
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, self.name)
 
+class StaticCamera(object):
+    def __init__(self, pose, camera_matrix, max_depth=2., name=None, draw_frame=None, **kwargs):
+        self.pose = pose
+        self.camera_matrix = camera_matrix
+        self.max_depth = max_depth
+        self.name = 'unknown_camera' if name is None else name
+        self.kwargs = dict(kwargs)
+        #self.__dict__.update(**kwargs)
+        # self.handles = []
+        # self.handles = self.draw()
+        self.get_boundaries()
+        self.index = 0
+
+    def get_pose(self):
+        return self.pose
+
+    def set_pose(self, pose):
+        self.pose = pose
+
+    def get_image(self, segment=True, segment_links=False, **kwargs):
+        # TODO: apply maximum depth
+        self.index += 1
+        #image = get_image(self.get_pose(), target_pos=[0, 0, 1])
+        return get_image_at_pose(self.get_pose(), self.camera_matrix,
+                                 tiny=False, segment=segment, segment_links=segment_links, **kwargs)
+
+    def draw(self):
+        return []
+
+    def get_boundaries(self):
+        """ return the normal vectors of four faces of the viewcone """
+        normals = []
+        cone_base = get_viewcone_base(depth=self.max_depth, camera_matrix=self.camera_matrix)
+        self.cone_base = cone_base
+        pairs = [(0, 1), (1, 2), (2, 3), (3, 0)]
+        for A, B in pairs:
+            A = cone_base[A]
+            B = cone_base[B]
+            C = np.asarray([0, 0, 0])
+            dir = np.cross((B - A), (C - A))
+            N = dir / np.linalg.norm(dir)
+            normals.append(N)
+        self.boundaries = normals
+
+    def point_in_camera_frame(self, point):
+        p_world_point = Pose(point=point)
+        X_world_eye = self.get_pose()
+        p_eye_point = multiply(invert(X_world_eye), p_world_point)
+        return p_eye_point[0]
+
+    def point_in_view(self, point_in_world):
+        p = self.point_in_camera_frame(point_in_world)
+        outside = False
+        for normal in self.boundaries:
+            if np.dot(normal, p) < 0:
+                outside = True
+        in_view = not outside
+        # from pybullet_tools.bullet_utils import nice
+        # print(f'  point in world {point_in_world}, in camera {nice(p)}, in view? {in_view}')
+        return in_view
+
+    def __repr__(self):
+        return '{}({})'.format(self.__class__.__name__, self.name)
+
+
 #######################################################
 
 def add_body_label(body, name, text='', offset=[0,0,0], **kwargs):

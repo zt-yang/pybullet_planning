@@ -6,13 +6,14 @@ from os.path import join, abspath, dirname, isdir, isfile
 sys.path.append('lisdf')
 from lisdf.parsing.sdf_j import load_sdf
 from lisdf.components.model import URDFInclude
+import numpy as np
 
 import warnings
 warnings.filterwarnings('ignore')
 
 from pybullet_tools.pr2_problems import create_floor
-from pybullet_tools.pr2_utils import set_group_conf, get_group_joints
-from pybullet_tools.utils import load_pybullet, connect, wait_if_gui, HideOutput, \
+from pybullet_tools.pr2_utils import set_group_conf, get_group_joints, get_viewcone_base
+from pybullet_tools.utils import load_pybullet, connect, wait_if_gui, HideOutput, invert, \
     disconnect, set_pose, set_joint_position, joint_from_name, quat_from_euler, draw_pose, unit_pose, \
     set_camera_pose, set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
     set_joint_positions, get_links, get_joints, get_joint_name, get_body_name
@@ -26,6 +27,7 @@ class World():
         self.body_to_name = {}
         self.name_to_body = {}
         self.ATTACHMENTS = {}
+        self.camera = None
 
     @property
     def robot(self):
@@ -180,6 +182,7 @@ def make_sdf_world(sdf_model):
   </world>
 </sdf>"""
 
+#######################
 
 if __name__ == "__main__":
 

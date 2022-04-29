@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import random
 from itertools import product
-from os.path import isfile
+from os.path import isfile, join
 import numpy as np
 import math
 import pybullet as p
@@ -902,3 +902,20 @@ def get_gripper_direction(pose, epsilon=0.01):
         if equal(euler, key, epsilon):
             return GRIPPER_DIRECTIONS[key]
     return None
+
+def visualize_camera_image(image, index=0, img_dir='.'):
+    import seaborn as sns
+    sns.set()
+    import matplotlib.pyplot as plt
+
+    name = join(img_dir, f"depth_image_feg_{index}.png")
+
+    ax = sns.heatmap(image.depthPixels, annot=False, fmt="d")
+
+    plt.title("Depth Image", fontsize=12)
+
+    plt.savefig(name, bbox_inches='tight', dpi=100)
+    plt.close()
+
+
+    # plt.show()

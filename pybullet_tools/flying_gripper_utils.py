@@ -1,5 +1,6 @@
 import numpy as np
 from itertools import product
+from math import radians as rad
 
 from .utils import create_box, set_base_values, set_point, set_pose, get_pose, \
     get_bodies, z_rotation, load_model, load_pybullet, HideOutput, create_body, assign_link_colors, \
@@ -9,8 +10,9 @@ from .utils import create_box, set_base_values, set_point, set_pose, get_pose, \
     set_joint_positions, get_joint_name, LockRenderer, link_from_name, get_link_pose, \
     multiply, Pose, Point, interpolate_poses, HideOutput, draw_pose, set_camera_pose, load_pybullet, \
     assign_link_colors, add_line, point_from_pose, remove_handles, BLUE, INF, create_shape, \
-    approximate_as_prism
+    approximate_as_prism, set_renderer
 
+from pybullet_tools.pr2_primitives import Conf
 from .pr2_utils import DRAKE_PR2_URDF
 
 from .ikfast.utils import IKFastInfo
@@ -22,6 +24,9 @@ FRANKA_URDF = "models/franka_description/robots/panda_arm_hand.urdf"
 
 PANDA_INFO = IKFastInfo(module_name='franka_panda.ikfast_panda_arm', base_link='panda_link0',
                         ee_link='panda_link8', free_joints=['panda_joint7'])
+
+BASE_VELOCITIES = np.array([1., 1., 1, rad(180), rad(180), rad(180)]) / 1.
+BASE_RESOLUTIONS = np.array([0.05, 0.05, 0.05, rad(10), rad(10), rad(10)])
 
 class Problem():
     def __init__(self, robot, obstacles):
@@ -40,6 +45,7 @@ def create_fe_gripper():
     with LockRenderer():
         with HideOutput(True):
             robot = load_model(FE_GRIPPER_URDF, fixed_base=False)
+            set_gripper_positions(robot, w=0.08)
             # assign_link_colors(robot, max_colors=3, s=0.5, v=1.)
             # set_all_color(robot, GREEN)
     return robot
@@ -109,6 +115,15 @@ from pybullet_tools.utils import plan_joint_motion, create_flying_body, SE3, eul
 from pybullet_tools.pr2_primitives import Trajectory, Commands, State
 
 SE3_GROUP = ['x', 'y', 'z', 'roll', 'pitch', 'yaw']
+FINGERS_GROUP = ['panda_finger_joint1', 'panda_finger_joint2']
+BASE_LINK = 'world_link'
+
+def set_gripper_positions(robot, w=0.0):
+    joints = get_joints_by_group(robot, FINGERS_GROUP)
+    set_joint_positions(robot, joints, [w/2, w/2])
+
+def set_se3_conf(robot, se3):
+    set_joint_positions(robot, get_se3_joints(robot), se3)
 
 def get_joints_by_group(robot, group):
     return [joint_from_name(robot, j) for j in group]
@@ -142,28 +157,31 @@ def plan_se3_motion(robot, initial_conf, final_conf, obstacles=[], custom_limits
     joints = get_se3_joints(robot)
     set_joint_positions(robot, joints, initial_conf)
     path = plan_joint_motion(robot, joints, final_conf, obstacles=obstacles,
+                             weights=[1, 1, 1, 0.2, 0.2, 0.2], smooth=100,
                              self_collisions=False, custom_limits=custom_limits)
     return path
 
-from pybullet_tools.pr2_primitives import Conf
-
-def get_free_motion_gen(problem, custom_limits={}, collisions=True, visualize=False, teleport=False):
+def get_free_motion_gen(problem, custom_limits={}, collisions=True, teleport=False,
+                        visualize=False, time_step=0.05):
     robot = problem.robot
     saver = BodySaver(robot)
     obstacles = problem.fixed if collisions else []
     def fn(q1, q2, fluents=[]):
+
         saver.restore()
         q1.assign()
+        set_renderer(False)
         raw_path = plan_se3_motion(robot, q1.values, q2.values, obstacles=obstacles, custom_limits=custom_limits)
         if raw_path == None:
             return []
         path = [Conf(robot, get_se3_joints(robot), conf) for conf in raw_path]
         if visualize:
+            set_renderer(True)
             for q in subsample_path(path, order=3):
+                # wait_for_user('start?')
                 q.assign()
                 draw_pose(pose_from_se3(q.values), length=0.02)
-                wait_for_duration(0.5)
-            wait_for_user('finished')
+                wait_for_duration(time_step)
             return raw_path
             q1.assign()
         t = Trajectory(path)
@@ -173,3 +191,57 @@ def get_free_motion_gen(problem, custom_limits={}, collisions=True, visualize=Fa
 
 def subsample_path(path, order=2, max_len=10, min_len=3):
     return path[::order]
+
+def demo_by_waypoints(robot, initial_conf, waypoints):
+    """ hack for demonstrating motion planner and samplers
+    waypoints = [q3, q12, g3, q54, ...]
+    """
+    pass
+
+from pybullet_tools.pr2_primitives import get_grasp_gen
+from pybullet_tools.bullet_utils import set_camera_target_body, nice
+from pybullet_tools.utils import VideoSaver
+from os.path import join
+import math
+
+def quick_demo(state, custom_limits):
+    world = state.world
+    robot = create_fe_gripper()
+    problem = Problem(robot, state.fixed)
+    lid = world.name_to_body('lid')
+    # set_camera_target_body(lid, dx=0.6, dy=0.6, dz=0.3)
+    set_camera_target_body(lid, dx=0.8, dy=0, dz=0.4)
+
+    ## sample grasp
+    g_sampler = get_grasp_gen(state)
+    outputs = g_sampler(lid)
+    g = outputs[0][0]
+    body_pose = get_pose(lid)
+    approach_pose = multiply(body_pose, invert(g.approach), Pose(point=(0, 0, -0.05), euler=[0, math.pi / 2, 0]))
+
+    ## set approach pose as goal pose
+
+    joints = get_se3_joints(robot)
+    seconf1 = [0.9, 8, 0.7, 0, -math.pi/2, 0] ## [0.9, 8, 0.4, 0, 0, 0]
+    seconf2 = [0.9, 8, 1.4, 0, 0, 0]
+    seconf2 = se3_from_pose(approach_pose)
+    q1 = Conf(robot, joints, seconf1)
+    q2 = Conf(robot, joints, seconf2)
+    q1.assign()
+
+    ## plan and execute path, saving the first depth map and all se3 confs
+    funk = get_free_motion_gen(problem, custom_limits, visualize=True, time_step=0.1)
+
+    video_path = join('visualizations', 'video_tmp.mp4')
+    with VideoSaver(video_path):
+        raw_path = funk(q1, q2)
+    state.world.visualize_image(((1.7, 8.1, 1), (0.5, 0.5, -0.5, -0.5)))
+
+    ## output to json
+    print('len(raw_path)', len(raw_path))
+
+    with open('gripper_traj.txt', 'w') as f:
+        f.write('\n'.join([str(nice(p)) for p in raw_path]))
+
+    # wait_if_gui('end?')
+    sys.exit()
