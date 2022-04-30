@@ -355,7 +355,7 @@ def generate_problem_pddl(state, pddlstream_problem,
     by_len = {}  # pred: length of fact
     predicates = {}  # pred: [fact]
     all_pred_names = {}  # pred: arity
-    for fact in facts:
+    for fact in list(set(facts)):
         pred = fact[0]
         if pred in ['=', 'wconf', 'inwconf']: continue
         if pred.lower() not in all_pred_names:

@@ -41,11 +41,13 @@ def create_franka():
             # set_all_color(robot, GREEN)
     return robot
 
-def create_fe_gripper():
+def create_fe_gripper(init_q=None):
     with LockRenderer():
         with HideOutput(True):
             robot = load_model(FE_GRIPPER_URDF, fixed_base=False)
             set_gripper_positions(robot, w=0.08)
+            if init_q != None:
+                set_se3_conf(robot, init_q)
             # assign_link_colors(robot, max_colors=3, s=0.5, v=1.)
             # set_all_color(robot, GREEN)
     return robot

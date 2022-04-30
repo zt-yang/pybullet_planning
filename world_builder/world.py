@@ -538,7 +538,8 @@ class State(object):
     @property
     def fixed(self):   ## or the robot will go through tables
         objs = [obj for obj in self.objects if obj not in self.movable]
-        objs = [o for o in objs if self.world.BODY_TO_OBJECT[o].category != 'floor']
+        if hasattr(self.world, 'BODY_TO_OBJECT'):
+            objs = [o for o in objs if self.world.BODY_TO_OBJECT[o].category != 'floor']
         return objs
         # return [obj for obj in self.objects if isinstance(obj, Region) or isinstance(obj, Environment)]
     @property

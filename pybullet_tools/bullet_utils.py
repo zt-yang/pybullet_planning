@@ -267,7 +267,7 @@ def nice(tuple_of_tuples, round_to=3):
 
 #######################################################
 
-def collided(obj, obstacles, world=None, tag='', verbose=False, min_num_pts=0):
+def collided(obj, obstacles, world=None, tag='', verbose=False, visualize=False, min_num_pts=0):
     result = False
 
     if verbose:
@@ -279,19 +279,30 @@ def collided(obj, obstacles, world=None, tag='', verbose=False, min_num_pts=0):
                 bodies.append(b)
         ## then find the exact links
         body_links = {}
+        total = 0
         for b in bodies:
             key = world.get_debug_name(b) if (world != None) else b
             d = {}
             for l in get_links(b):
                 pts = get_closest_points(b, obj, link1=l, link2=None)
-                if len(pts) >= min_num_pts:
+                if len(pts) > 0:
                     link = get_link_name(b, l)
                     d[link] = len(pts)
+
+                    if visualize:  ## visualize collision points for debugging
+                        points = []
+                        for point in pts:
+                            points.append(visualize_point(point.positionOnA))
+                        print(f'visualized {len(pts)} collision points')
+                        for point in points:
+                            remove_body(point)
+
+                total += len(pts)
             d = {k: v for k, v in sorted(d.items(), key=lambda item: item[1], reverse=True)}
             body_links[key] = d
 
         ## when debugging, give a threshold for oven
-        if len(body_links) == 0:
+        if total <= min_num_pts:
             result = False
         else:
             prefix = 'pr2_streams.collided '
@@ -844,14 +855,15 @@ def draw_bounding_lines(pose, dimensions):
     return handles
 
 
-def visualize_point(point, world):
+def visualize_point(point, world=None):
     z = 0
     if len(point) == 3:
         x, y, z = point
     else:
         x, y = point
     body = create_box(.05, .05, .05, mass=1, color=(1, 0, 0, 1))
-    set_pose(Pose(point=Point(x, y, z)))
+    set_pose(body, Pose(point=Point(x, y, z)))
+    return body
 
 def get_file_short_name(path):
     return path[path.rfind('/')+1:]
@@ -866,7 +878,7 @@ def equal(tup_a, tup_b, epsilon=0):
     elif isinstance(tup_a, tuple):
         a = list(tup_a)
         b = list(tup_b)
-        return any([not equal_float(a[i], b[i], epsilon) for i in range(len(a))])
+        return all([equal_float(a[i], b[i], epsilon) for i in range(len(a))])
 
     return None
 
@@ -885,10 +897,14 @@ def get_gripper_directions():
         (PI, 0, -PI/2): label.format('left', 'horizontal'),
 
         (PI/2, 0, PI/2): label.format('right', 'frontal'),
+        (PI, 0, PI/2): label.format('right', 'horizontal'),
 
         (PI, -PI/2, PI/2): label.format('up', 'sideways'),
         (PI, -PI/2, -PI/2): label.format('up', 'sideways'),
         (PI, -PI/2, 0): label.format('up', 'frontal'),
+
+        (PI, PI/2, -PI/2): label.format('down', 'sideways'),
+        (PI, PI/2, -3*PI/2): label.format('down', 'sideways'),
     }
     labels.update({(k[0]-PI, k[1], k[2]): v for k, v in labels.items()})
     return labels

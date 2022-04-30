@@ -16,11 +16,15 @@ from pybullet_tools.pr2_utils import set_group_conf, get_group_joints, get_viewc
 from pybullet_tools.utils import load_pybullet, connect, wait_if_gui, HideOutput, invert, \
     disconnect, set_pose, set_joint_position, joint_from_name, quat_from_euler, draw_pose, unit_pose, \
     set_camera_pose, set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
-    set_joint_positions, get_links, get_joints, get_joint_name, get_body_name
+    set_joint_positions, get_links, get_joints, get_joint_name, get_body_name, link_from_name, \
+    parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK
 from pybullet_tools.bullet_utils import nice
+from pybullet_tools.pr2_streams import get_handle_link
 
 ASSET_PATH = join(dirname(__file__), '..', '..', 'assets')
-
+LINK_COLORS = ['#c0392b', '#d35400', '#f39c12', '#16a085', '#27ae60',
+               '#2980b9', '#8e44ad', '#2c3e50', '#95a5a6']
+LINK_COLORS = [RED, YELLOW, GREEN, BLUE, GREY, BLACK]
 class World():
     def __init__(self, lisdf):
         self.lisdf = lisdf
@@ -28,14 +32,36 @@ class World():
         self.name_to_body = {}
         self.ATTACHMENTS = {}
         self.camera = None
-
-    @property
-    def robot(self):
-        return self.name_to_body['pr2']
+        self.robot = None
+        self.movable = []
 
     def add_body(self, body, name):
         self.body_to_name[body] = name
         self.name_to_body[name] = body
+        if self.robot == None and name in ['robot', 'pr2', 'feg']:
+            self.robot = body
+
+    def add_robot(self, body, name='robot'):
+        self.add_body(body, name)
+
+    def add_semantic_label(self, body, file):
+        body_joints = []
+        with open(file, 'r') as f:
+            idx = 0
+            for line in f.readlines():
+                line = line.replace('\n', '')
+                link_name, part_type, part_name = line.split(' ')
+                if part_type == 'hinge' and part_name == 'door':
+                    link = link_from_name(body, link_name)
+                    joint = parent_joint_from_link(link)
+                    joint_name = line.replace(' ', '--')
+                    body_joint = (body, joint)
+                    body_joints.append(body_joint)
+                    self.add_body(body_joint, joint_name)
+                    handle_link = get_handle_link(body_joint)
+                    set_color(body, color=LINK_COLORS[idx], link=handle_link)
+                    idx += 1
+        return body_joints
 
     def update_objects(self, objects):
         for o in objects.values():
