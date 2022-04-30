@@ -3,6 +3,7 @@ import untangle
 from numpy import inf
 from os.path import join, isdir, isfile, dirname, abspath
 from os import listdir
+import json
 
 from .entities import Object, Floor, Moveable
 from pybullet_tools.utils import unit_pose, \
@@ -24,6 +25,8 @@ GRASPABLES = ['BraiserLid', 'Egg', 'VeggieCabbage', 'MeatTurkeyLeg', 'VeggieGree
               'VeggieTomato', 'VeggieZucchini', 'VeggiePotato', 'VeggieCauliflower', 'MeatChicken']
 GRASPABLES = [o.lower() for o in GRASPABLES]
 ASSET_PATH = join('..', 'assets')
+
+SCALE_DB = abspath(join(dirname(__file__), 'model_scales.json'))
 
 def read_xml(plan_name, asset_path=ASSET_PATH):
     X_OFFSET, Y_OFFSET, SCALING = None, None, None
@@ -78,6 +81,15 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
     return objects, X_OFFSET, Y_OFFSET, SCALING, FLOOR_X_MIN, FLOOR_X_MAX, FLOOR_Y_MIN, FLOOR_Y_MAX
 
 def get_model_scale(file, l, w, scale=1, category=None):
+    scale_db = {}
+    if isfile(SCALE_DB):
+        with open(SCALE_DB, "r") as read_file:
+            scale_db = json.loads(read_file.read())
+        if file in scale_db:
+            return scale_db[file]
+
+    if 'oven' in file.lower() or (category != None and category.lower() == 'oven'):
+        print(file, l, w)
     if w != None:
         with HideOutput():
             body = load_model(file, scale=scale, fixed_base=True)
@@ -86,7 +98,7 @@ def get_model_scale(file, l, w, scale=1, category=None):
         width = aabb.upper[0] - aabb.lower[0]
         length = aabb.upper[1] - aabb.lower[1]
 
-        scale = min(l / length, w / width)
+        scale = min(l / length, w / width) ## unable to construct
         if category != None:
             if 'door' == category.lower():
                 set_joint_position(body, get_joints(body)[1], -0.8)
@@ -96,7 +108,11 @@ def get_model_scale(file, l, w, scale=1, category=None):
             if 'door' == category.lower():
                 scale = (l / length + w / width) / 2
 
+        scale_db[file] = scale
+        with open(SCALE_DB, 'w') as f:
+            json.dump(scale_db, f)
         remove_body(body)
+
     return scale
 
 def get_file_by_category(category):
