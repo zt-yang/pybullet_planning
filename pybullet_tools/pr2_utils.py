@@ -11,7 +11,7 @@ from .pr2_never_collisions import NEVER_COLLISIONS
 from .utils import multiply, get_link_pose, set_joint_position, set_joint_positions, get_joint_positions, get_min_limit, get_max_limit, quat_from_euler, read_pickle, set_pose, \
     get_pose, euler_from_quat, link_from_name, point_from_pose, invert, Pose, \
     unit_pose, joints_from_names, PoseSaver, get_aabb, get_joint_limits, ConfSaver, get_bodies, create_mesh, remove_body, \
-    unit_from_theta, violates_limit, \
+    unit_from_theta, violates_limit, apply_affine, vertices_from_rigid, aabb_from_points, draw_aabb, \
     violates_limits, add_line, get_body_name, get_num_joints, approximate_as_cylinder, \
     approximate_as_prism, unit_quat, unit_point, angle_between, quat_from_pose, compute_jacobian, \
     movable_from_joints, quat_from_axis_angle, LockRenderer, Euler, get_links, get_link_name, \
@@ -290,6 +290,11 @@ SIDE_HEIGHT_OFFSET = 0.03 # z distance from top of object
 
 def get_top_grasps(body, under=False, tool_pose=TOOL_POSE, body_pose=unit_pose(),
                    max_width=MAX_GRASP_WIDTH, grasp_length=GRASP_LENGTH):
+    ## debug grasp orientation
+    # vertices = apply_affine(body_pose, vertices_from_rigid(body))
+    # aabb = aabb_from_points(vertices)
+    # draw_aabb(aabb)
+
     # TODO: rename the box grasps
     center, (w, l, h) = approximate_as_prism(body, body_pose=body_pose)
     reflect_z = Pose(euler=[0, math.pi, 0])

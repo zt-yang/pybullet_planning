@@ -116,6 +116,9 @@ def draw_pose2d_path(path, z=0., **kwargs):
     # return list(flatten(draw_point(np.append(pose2d[:2], [z]), **kwargs) for pose2d in path))
     return list(flatten(draw_pose2d(pose2d, z=z, **kwargs) for pose2d in path))
 
+def draw_pose3d_path(path, **kwargs):
+    from .flying_gripper_utils import pose_from_se3
+    return list(flatten(draw_pose(pose_from_se3(q), **kwargs) for q in path))
 
 def get_indices(sequence):
     return range(len(sequence))
@@ -830,7 +833,7 @@ def draw_bounding_lines(pose, dimensions):
     # set_pose(tmp, pose)
 
     ## first get the points using local transforms
-    transforms = [(w/2, l/2, h/2)]
+    transforms = [(w/2, h/2, l/2)]
     transforms.extend([(-t[0], t[1], t[2]) for t in transforms])
     transforms.extend([(t[0], -t[1], t[2]) for t in transforms])
     transforms.extend([(t[0], -t[1], -t[2]) for t in transforms])
@@ -881,6 +884,15 @@ def equal(tup_a, tup_b, epsilon=0):
         return all([equal_float(a[i], b[i], epsilon) for i in range(len(a))])
 
     return None
+
+# def equal(tup1, tup2, epsilon=0.001):
+#     if isinstance(tup1, float):
+#         return abs(tup1 - tup2) < epsilon
+#     if len(tup1) == 2:
+#         return equal(tup1[0], tup2[0]) and equal(tup1[1], tup2[1])
+#     return all([abs(tup1[i] - tup2[i]) < epsilon for i in range(len(tup1))])
+
+
 
 def get_gripper_directions():
     """ for faces, 'sideways' = 'sagittal' , 'frontal' = 'frontback' """

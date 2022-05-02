@@ -28,6 +28,7 @@ PANDA_INFO = IKFastInfo(module_name='franka_panda.ikfast_panda_arm', base_link='
 BASE_VELOCITIES = np.array([1., 1., 1, rad(180), rad(180), rad(180)]) / 1.
 BASE_RESOLUTIONS = np.array([0.05, 0.05, 0.05, rad(10), rad(10), rad(10)])
 
+ARM_NAME = 'hand'
 class Problem():
     def __init__(self, robot, obstacles):
         self.robot = robot
@@ -133,6 +134,9 @@ def get_joints_by_group(robot, group):
 def get_se3_joints(robot):
     return get_joints_by_group(robot, SE3_GROUP)
 
+def get_se3_conf(robot):
+    return get_joint_positions(robot, get_se3_joints(robot))
+
 def pose_to_se3(p):
     # return list(p[0]) + list(euler_from_quat(p[1]))
     print('\n\n franka_utils.pose_to_se3 | deprecated! \n\n')
@@ -155,11 +159,13 @@ def approximate_as_box(robot):
     set_pose(robot, pose)
     return get_aabb_extent(aabb)
 
-def plan_se3_motion(robot, initial_conf, final_conf, obstacles=[], custom_limits={}):
+def plan_se3_motion(robot, initial_conf, final_conf, obstacles=[],
+                    custom_limits={}, attachments=[]):
     joints = get_se3_joints(robot)
     set_joint_positions(robot, joints, initial_conf)
     path = plan_joint_motion(robot, joints, final_conf, obstacles=obstacles,
                              weights=[1, 1, 1, 0.2, 0.2, 0.2], smooth=100,
+                             attachments=attachments,
                              self_collisions=False, custom_limits=custom_limits)
     return path
 
@@ -173,7 +179,8 @@ def get_free_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
         saver.restore()
         q1.assign()
         set_renderer(False)
-        raw_path = plan_se3_motion(robot, q1.values, q2.values, obstacles=obstacles, custom_limits=custom_limits)
+        raw_path = plan_se3_motion(robot, q1.values, q2.values, obstacles=obstacles,
+                                   custom_limits=custom_limits)
         if raw_path == None:
             return []
         path = [Conf(robot, get_se3_joints(robot), conf) for conf in raw_path]
@@ -194,11 +201,64 @@ def get_free_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
 def subsample_path(path, order=2, max_len=10, min_len=3):
     return path[::order]
 
-def demo_by_waypoints(robot, initial_conf, waypoints):
-    """ hack for demonstrating motion planner and samplers
-    waypoints = [q3, q12, g3, q54, ...]
-    """
-    pass
+def get_ik_fn(problem, teleport=False, verbose=True, custom_limits={}, **kwargs):
+    robot = problem.robot
+    joints = get_se3_joints(robot)
+    obstacles = problem.fixed
+    def fn(a, o, p, g, fluents=[]):
+        p.assign()
+        attachment = g.get_attachment(problem.robot, a)
+        attachments = {attachment.child: attachment}
+
+        body_pose = get_pose(o)
+        approach_pose = multiply(body_pose, invert(g.approach),
+                                 Pose(point=(0, 0, -0.05), euler=[0, math.pi / 2, 0]))
+        grasp_pose = multiply(body_pose, invert(g.value),
+                              Pose(point=(0, 0, -0.05), euler=[0, math.pi / 2, 0]))
+
+        seconf1 = se3_from_pose(approach_pose)
+        seconf2 = se3_from_pose(grasp_pose)
+        q1 = Conf(robot, joints, seconf1)
+        q2 = Conf(robot, joints, seconf2)
+        q1.assign()
+        raw_path = plan_se3_motion(robot, q1.values, q2.values, obstacles=obstacles,
+                                   custom_limits=custom_limits, attachments=attachments.values())
+        if raw_path == None:
+            return None
+        path = [Conf(robot, get_se3_joints(robot), conf) for conf in raw_path]
+
+        t = Trajectory(path)
+        cmd = Commands(State(attachments=attachments), savers=[BodySaver(robot)], commands=[t])
+        return (q2, cmd)
+    return fn
+
+# def get_free_motion_gen(problem, teleport=False, verbose=True, custom_limits={}, **kwargs):
+#     robot = problem.robot
+#     obstacles = problem.fixed
+#
+#     def fn(q1, q2, fluents=[]):
+#         q1.assign()
+#         raw_path = plan_se3_motion(robot, q1.values, q2.values, obstacles=obstacles, custom_limits=custom_limits)
+#         if raw_path == None:
+#             return None
+#         path = [Conf(robot, get_se3_joints(robot), conf) for conf in raw_path]
+#
+#         t = Trajectory(path)
+#         cmd = Commands(State(), savers=[BodySaver(robot)], commands=[t])
+#         return (cmd,)
+#     return fn
+
+def visualize_feg_grasp(robot, g):
+    body_pose = get_pose(g.body)
+    approach_pose = multiply(body_pose, invert(g.approach), Pose(point=(0, 0, -0.05), euler=[0, math.pi / 2, 0]))
+    seconf2 = se3_from_pose(approach_pose)
+    sub = robot.create_gripper(visual=True)
+    q2 = Conf(sub, get_se3_joints(robot), seconf2)
+    q2.assign()
+
+    Conf(sub, get_se3_joints(robot), se3_from_pose(multiply(body_pose, invert(g.approach), Pose(euler=[0, math.pi / 2, 0])))).assign()
+    set_camera_target_body(sub, dx=1, dy=0, dz=0.5)
+    set_camera_target_body(sub, dx=1, dy=0, dz=0.5)
 
 from pybullet_tools.pr2_primitives import get_grasp_gen
 from pybullet_tools.bullet_utils import set_camera_target_body, nice
@@ -247,3 +307,4 @@ def quick_demo(state, custom_limits):
 
     # wait_if_gui('end?')
     sys.exit()
+

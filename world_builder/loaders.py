@@ -10,6 +10,7 @@ from .utils import LIGHT_GREY, read_xml, load_asset, FLOOR_HEIGHT, WALL_HEIGHT, 
 from .world import World, State
 from .entities import Object, Region, Environment, Robot, Camera, Floor, Stove, Supporter,\
     Surface, Moveable, Space, Steerable
+from .robots import PR2Robot, FEGripper
 
 from pybullet_tools.pr2_utils import draw_viewcone, get_viewcone, get_group_conf, set_group_conf, get_other_arm, \
     get_carry_conf, set_arm_conf, open_arm, close_arm, arm_conf, REST_LEFT_ARM
@@ -67,7 +68,7 @@ def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
             set_arm_conf(pr2, a, initial_conf)
             open_arm(pr2, a)
 
-def create_robot(world, base_q=(0,0,0), DUAL_ARM=False,
+def create_pr2_robot(world, base_q=(0,0,0), DUAL_ARM=False,
                  resolutions=BASE_RESOLUTIONS, max_velocities=BASE_VELOCITIES):
 
     with LockRenderer(lock=True):
@@ -77,7 +78,7 @@ def create_robot(world, base_q=(0,0,0), DUAL_ARM=False,
 
         with np.errstate(divide='ignore'):
             weights = np.reciprocal(resolutions)
-        robot = Robot(robot, base_link=BASE_LINK, joints=BASE_JOINTS,
+        robot = PR2Robot(robot, base_link=BASE_LINK, joints=BASE_JOINTS,
                       custom_limits=get_base_custom_limits(robot, BASE_LIMITS),
                       resolutions=resolutions, weights=weights)
         world.add_robot(robot, max_velocities)
@@ -107,7 +108,7 @@ def create_gripper_robot(world, custom_limits, initial_q=(0, 0, 0, 0, 0, 0)):
 
         with np.errstate(divide='ignore'):
             weights = np.reciprocal(BASE_RESOLUTIONS)
-        robot = Robot(robot, base_link=BASE_LINK, joints=get_se3_joints(robot),
+        robot = FEGripper(robot, base_link=BASE_LINK, joints=get_se3_joints(robot),
                       custom_limits=custom_limits, resolutions=BASE_RESOLUTIONS, weights=weights)
         world.add_robot(robot, BASE_VELOCITIES)
         set_se3_conf(robot, initial_q)
@@ -268,7 +269,7 @@ def studio(args):
     world.remove_object(floor)  ## remove the floor for support
 
     ## base_q=(0, 0, 0))  ## 4.309, 5.163, 0.82))  ##
-    robot = create_robot(world, base_q=(1.79, 6, PI/2+PI/2))
+    robot = create_pr2_robot(world, base_q=(1.79, 6, PI/2+PI/2))
     # set_camera_target_robot(robot, FRONT=False)
     if args.camera: robot.cameras[-1].get_image(segment=args.segment)
     # remove_object(floor) ## remove the floor for support

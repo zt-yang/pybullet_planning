@@ -575,6 +575,8 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     goal += goals
     if goals[0][0] == 'AtBConf':
         init += [('BConf', goals[0][1])]
+    elif goals[0][0] == 'AtSEConf':
+        init += [('SEConf', goals[0][1])]
     elif goals[0][0] == 'AtPosition':
         init += [('Position', goals[0][1], goals[0][2])]
     elif goals[0][0] == 'AtGrasp':
@@ -608,7 +610,8 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     constant_map = {}
     goal = [g for g in goal if not (g[0] == 'not' and g[1][0] == '=')]
     print_goal(goal)
-    stream_map = get_stream_map(problem, collisions, custom_limits, teleport)
+
+    stream_map = robot.get_stream_map(problem, collisions, custom_limits, teleport)
     # get_press_gen(problem, teleport=teleport)
     return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
 

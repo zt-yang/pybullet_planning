@@ -12,6 +12,7 @@ from pybullet_tools.utils import str_from_object, get_closest_points, INF, creat
     remove_body, create_cylinder, set_all_static, wait_for_duration
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, get_gripper_joints
 from pybullet_tools.pr2_primitives import Trajectory, Command
+from pybullet_tools.flying_gripper_utils import set_se3_conf
 
 from .world import State
 
@@ -379,6 +380,15 @@ class RemoveBodyEvent(Action):
             objects.remove(body)
             print(f'    bullet.actions.RemoveBodyEvent | {body}')
         return state.new_state(objects=objects)
+
+#######################################################
+
+class MoveInSE3Action(Action):
+    def __init__(self, conf):
+        self.conf = conf
+    def transition(self, state):
+        set_se3_conf(state.robot, self.conf)
+        return state.new_state()
 
 #######################################################
 

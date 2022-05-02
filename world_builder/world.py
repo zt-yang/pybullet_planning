@@ -15,7 +15,7 @@ from pybullet_tools.pr2_streams import get_stable_gen, get_contain_gen, get_posi
     Position, get_handle_grasp_gen, LinkPose, pr2_grasp, WConf
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
     is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
-    set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR, CAMERA_MATRIX, visualize_camera_image
+    set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR, CAMERA_MATRIX, visualize_camera_image, equal
 from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints, \
     get_group_conf, get_top_grasps, get_side_grasps, create_gripper
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
@@ -507,13 +507,9 @@ class State(object):
         self.grasp_types = ['top'] ##, 'side']
         ## allowing both types causes trouble when the AConf used for generating IK isn't the same as the one during execution
 
-
     def get_gripper(self, arm='left', visual=True):
-        # upper = get_max_limit(problem.robot, get_gripper_joints(problem.robot, 'left')[0])
-        # set_configuration(gripper, [0]*4)
-        # dump_body(gripper)
         if self.gripper is None:
-            self.gripper = create_gripper(self.robot, arm=arm, visual=visual)
+            self.gripper = self.robot.create_gripper(arm=arm, visual=visual)
         return self.gripper
     def remove_gripper(self):
         if self.gripper is not None:
@@ -613,34 +609,6 @@ class State(object):
         name_to_body = self.world.name_to_body
         BODY_TO_OBJECT = self.world.BODY_TO_OBJECT
 
-        def get_conf(joints):
-            if conf_saver == None:
-                return get_joint_positions(robot, joints)
-            return [conf_saver.conf[conf_saver.joints.index(n)] for n in joints]
-
-        def equal(tup1, tup2, epsilon=0.001):
-            if isinstance(tup1, float):
-                return abs(tup1 - tup2) < epsilon
-            if len(tup1) == 2:
-                return equal(tup1[0], tup2[0]) and equal(tup1[1], tup2[1])
-            return all([abs(tup1[i]-tup2[i]) < epsilon for i in range(len(tup1))])
-
-        def get_base_conf():
-            base_joints = get_group_joints(robot, 'base')
-            initial_bq = Conf(robot, base_joints, get_conf(base_joints))
-            for fact in init_facts:
-                if fact[0] == 'bconf' and equal(fact[1].values, initial_bq.values):
-                    return fact[1]
-            return initial_bq
-
-        def get_arm_conf(arm):
-            arm_joints = get_arm_joints(robot, arm)
-            conf = Conf(robot, arm_joints, get_conf(arm_joints))
-            for fact in init_facts:
-                if fact[0] == 'aconf' and fact[1] == arm and equal(fact[2].values, conf.values):
-                    return fact[2]
-            return conf
-
         def get_body_pose(body):
             if obj_poses == None:
                 pose = Pose(body, get_pose(body))
@@ -673,27 +641,11 @@ class State(object):
                     return fact[2]
             return grasp
 
+        init = [Equal(('PickCost',), 1), Equal(('PlaceCost',), 1),
+                ('CanMove',), ('CanPull',)]
+
         ## ---- robot conf ------------------
-        initial_bq = get_base_conf()
-        init = [('CanMove',), ('CanPull',),
-                ('BConf', initial_bq), ('AtBConf', initial_bq),
-                Equal(('PickCost',), 1), Equal(('PlaceCost',), 1)]
-        # if name_to_body('sink') != None:
-        #     init += ('Sink', name_to_body('sink'))
-
-        for arm in ARM_NAMES:
-            # for arm in problem.arms:
-            conf = get_arm_conf(arm)
-            init += [('Arm', arm), ('AConf', arm, conf),
-                     ('DefaultConf', arm, conf), ('AtAConf', arm, conf)]
-            if arm in ['left']:
-                init += [('Controllable', arm)]
-
-        HANDS_EMPTY = {arm: True for arm in ARM_NAMES}
-        for arm, empty in HANDS_EMPTY.items():
-            if empty: init += [('HandEmpty', arm)]
-            # else: print(f' \n\n {arm} hand isnt empy')
-
+        init += self.world.robot.get_init(init_facts=init_facts, conf_saver=conf_saver)
 
         ## ---- object poses / grasps ------------------
         graspables = [o.body for o in cat_to_objects('object') if o.category in GRASPABLES]
@@ -750,6 +702,7 @@ class State(object):
             ## initial position
             position = get_link_position(body)  ## Position(body)
             pose = get_link_pose(body)  ## LinkPose(body)
+            if ('Joint', body) in init: continue
             init += [('Joint', body),
                      # ('LinkPose', body, pose), ('AtLinkPose', body, pose),
                       ('Position', body, position), ('AtPosition', body, position),
