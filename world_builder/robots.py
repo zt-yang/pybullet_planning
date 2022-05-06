@@ -1,9 +1,11 @@
+import math
 from .entities import Robot
 
 from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color, TRANSPARENT, \
-    Attachment , link_from_name
+    Attachment, link_from_name, get_link_subtree, get_joints, is_movable, multiply, invert, \
+    set_joint_positions, set_pose, GREEN, dump_body
 
-from pybullet_tools.bullet_utils import equal
+from pybullet_tools.bullet_utils import equal, nice, get_gripper_direction, set_camera_target_body
 from pybullet_tools.pr2_primitives import Conf
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES
 
@@ -11,7 +13,8 @@ class PR2Robot(Robot):
 
     def get_init(self, init_facts=[], conf_saver=None):
         from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints, \
-            get_group_conf, get_top_grasps, get_side_grasps, create_gripper
+            get_group_conf, get_top_grasps, get_side_grasps
+
         robot = self.body
 
         def get_conf(joints):
@@ -59,17 +62,68 @@ class PR2Robot(Robot):
         from pybullet_tools.pr2_utils import create_gripper
         return create_gripper(self.body, arm=arm, visual=visual)
 
+    def visualize_grasp(self, body_pose, grasp, arm='left', color=GREEN):
+        from pybullet_tools.pr2_utils import PR2_GRIPPER_ROOTS
+        from pybullet_tools.pr2_primitives import get_tool_from_root
+
+        robot = self.body
+        gripper_grasp = self.create_gripper(arm, visual=True)
+        open_cloned_gripper(gripper_grasp)
+
+        set_all_color(gripper_grasp, color)
+        tool_from_root = get_tool_from_root(robot, arm)
+        grasp_pose = multiply(multiply(body_pose, invert(grasp)), tool_from_root)
+        set_pose(gripper_grasp, grasp_pose)
+
+        direction = get_gripper_direction(grasp_pose)
+        print('\n', nice(grasp_pose), direction)
+        if direction == None:
+            print('new direction')
+            return gripper_grasp, True
+        if 'down' in direction:
+            print('pointing down')
+            return gripper_grasp, True
+        return gripper_grasp, False
+
     def get_attachment(self, grasp, arm):
         tool_link = link_from_name(self.body, PR2_TOOL_FRAMES[arm])
         return Attachment(self.body, tool_link, grasp.value, grasp.body)
 
 class FEGripper(Robot):
 
-    def create_gripper(self, arm=None, visual=True):
+    def create_gripper(self, arm='hand', visual=True, color=None):
         gripper = clone_body(self.body, visual=False, collision=True)
         if not visual:
             set_all_color(self.body, TRANSPARENT)
+        if color != None:
+            set_all_color(self.body, color)
         return gripper
+
+    def visualize_grasp(self, body_pose, grasp, arm='hand', color=GREEN):
+        from pybullet_tools.flying_gripper_utils import open_cloned_gripper, se3_from_pose, \
+            set_cloned_se3_conf
+        from pybullet_tools.utils import Pose
+
+        gripper_grasp = self.create_gripper(arm, visual=True)
+        open_cloned_gripper(self.body, gripper_grasp)
+
+        set_all_color(gripper_grasp, color)
+        tool_from_body = Pose(point=(0.1, 0, 0), euler=[0, math.pi / 2, 0])
+        grasp_pose = multiply(body_pose, invert(grasp), tool_from_body) ##
+        conf = se3_from_pose(grasp_pose)
+        set_cloned_se3_conf(self.body, gripper_grasp, conf)
+
+        def test_trans(tool_from_body):
+            grasp_pose = multiply(multiply(body_pose, invert(grasp)), tool_from_body)
+            conf = se3_from_pose(grasp_pose)
+            set_cloned_se3_conf(self.body, gripper_grasp, conf)
+
+        # if grasp_type == 'top':
+        #     test_trans(Pose(point=(-0.2, 0, 0), euler=[0, math.pi / 2, 0]))
+        # else:
+
+        set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.8)
+        return gripper_grasp
 
     def get_init(self, init_facts=[], conf_saver=None):
         from pybullet_tools.flying_gripper_utils import get_se3_joints, get_se3_conf, ARM_NAME
@@ -100,3 +154,13 @@ class FEGripper(Robot):
     def get_attachment(self, grasp, arm=None):
         tool_link = link_from_name(self.body, 'panda_hand')
         return Attachment(self.body, tool_link, grasp.value, grasp.body)
+
+
+def get_gripper_joints(gripper_grasp):
+    return [joint for joint in get_joints(gripper_grasp) if is_movable(gripper_grasp, joint)]
+
+def close_cloned_gripper(gripper_grasp):
+    set_joint_positions(gripper_grasp, get_gripper_joints(gripper_grasp), [0] * 4)
+
+def open_cloned_gripper(gripper_grasp):
+    set_joint_positions(gripper_grasp, get_gripper_joints(gripper_grasp), [0.548] * 4)

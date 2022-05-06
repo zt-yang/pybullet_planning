@@ -42,6 +42,7 @@ from pybullet_tools.utils import invert, multiply, get_name, set_pose, get_link_
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, set_camera_target_body, is_contained, \
     visualize_point, collided, GRIPPER_DIRECTIONS, get_gripper_direction
 from pybullet_tools.logging import dump_json
+from world_builder.robots import close_cloned_gripper
 
 from .general_streams import *
 
@@ -65,15 +66,6 @@ def pr2_grasp(body, value, grasp_type=None):
                  TOP_HOLDING_LEFT_ARM)
 
 
-def get_gripper_joints(gripper_grasp):
-    return [joint for joint in get_joints(gripper_grasp) if is_movable(gripper_grasp, joint)]
-
-def close_cloned_gripper(gripper_grasp):
-    set_joint_positions(gripper_grasp, get_gripper_joints(gripper_grasp), [0] * 4)
-
-def open_cloned_gripper(gripper_grasp):
-    set_joint_positions(gripper_grasp, get_gripper_joints(gripper_grasp), [0.548] * 4)
-
 def get_handle_grasps(body_joint, tool_pose=TOOL_POSE, body_pose=unit_pose(),
                       max_width=MAX_GRASP_WIDTH, grasp_length=GRASP_LENGTH,
                       robot=None, obstacles=[], full_name=None, world=None):
@@ -95,7 +87,7 @@ def get_handle_grasps(body_joint, tool_pose=TOOL_POSE, body_pose=unit_pose(),
     handle_pose = get_handle_pose(body_joint)
 
     def check_cfree_gripper(grasp, visualize=DEBUG, color=GREEN, min_num_pts=150):
-        gripper_grasp, debug = visualize_grasp(robot, handle_pose, grasp, color=color)
+        gripper_grasp, debug = robot.visualize_grasp(handle_pose, grasp, color=color)
         if visualize or debug: ## and not firstly: ## somtimes cameras blocked by robot, need to change dx, dy
             ## also helps slow down visualization of the sampling the testing process
             set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.2) ## oven
@@ -686,7 +678,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         tool_from_root = get_tool_from_root(robot, a)
         if visualize:
             set_renderer(enable=True)
-            gripper_before = visualize_grasp(robot, old_pose, g.value)
+            gripper_before = robot.visualize_grasp(old_pose, g.value)
         gripper_before = multiply(old_pose, invert(g.value))  ## multiply(, tool_from_root)
         world_from_base = bconf_to_pose(bq1)
         gripper_from_base = multiply(invert(gripper_before), world_from_base)
@@ -711,7 +703,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
             pst_after.assign()
             new_pose = get_link_pose(joint_object.body, joint_object.handle_link)
             if visualize:
-                gripper_after = visualize_grasp(robot, new_pose, g.value, color=BROWN)
+                gripper_after = robot.visualize_grasp(new_pose, g.value, color=BROWN)
                 set_camera_target_body(gripper_after, dx=0.2, dy=0, dz=1) ## look top down
                 remove_body(gripper_after)
             gripper_after = multiply(new_pose, invert(g.value))  ## multiply(, tool_from_root)
@@ -833,7 +825,7 @@ def get_turn_knob_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         old_pose = get_link_pose(joint_object.body, joint_object.handle_link)
         if visualize:
             set_renderer(enable=True)
-            gripper_before_body = visualize_grasp(robot, old_pose, g.value)
+            gripper_before_body = robot.visualize_grasp(old_pose, g.value)
         gripper_before = multiply(old_pose, invert(g.value))  ## multiply(, tool_from_root)
 
         ## saving the mapping between robot bconf to object pst for execution
@@ -852,7 +844,7 @@ def get_turn_knob_handle_motion_gen(problem, custom_limits={}, collisions=True, 
             new_pose = get_link_pose(joint_object.body, joint_object.handle_link)
             if visualize:
                 if i == 0: remove_body(gripper_before_body)
-                gripper_after = visualize_grasp(robot, new_pose, g.value, color=BROWN)
+                gripper_after = robot.visualize_grasp(new_pose, g.value, color=BROWN)
                 set_camera_target_body(gripper_after, dx=0.2, dy=0, dz=1) ## look top down
                 remove_body(gripper_after)
             gripper_after = multiply(new_pose, invert(g.value))  ## multiply(, tool_from_root)
@@ -995,7 +987,7 @@ def get_marker_grasps(body, under=False, tool_pose=TOOL_POSE, body_pose=unit_pos
     from pybullet_tools.utils import Pose
 
     def check_cfree_gripper(grasp, visualize=False):
-        gripper_grasp = visualize_grasp(robot, get_pose(body), grasp)
+        gripper_grasp = robot.visualize_grasp(get_pose(body), grasp)
         if visualize:
             set_camera_target_body(gripper_grasp, dx=0, dy=-1, dz=1)
 
@@ -1025,26 +1017,26 @@ def get_marker_grasps(body, under=False, tool_pose=TOOL_POSE, body_pose=unit_pos
                         grasps += [grasp]  # , np.array([l])
     return grasps
 
-def visualize_grasp(robot, body_pose, grasp, arm='left', color=GREEN):
-    link_name = PR2_GRIPPER_ROOTS[arm]
-    links = get_link_subtree(robot, link_from_name(robot, link_name))
-    gripper_grasp = clone_body(robot, links=links, visual=True, collision=True)
-    open_cloned_gripper(gripper_grasp)
-
-    set_all_color(gripper_grasp, color)
-    tool_from_root = get_tool_from_root(robot, arm)
-    grasp_pose = multiply(multiply(body_pose, invert(grasp)), tool_from_root)
-    set_pose(gripper_grasp, grasp_pose)
-
-    direction = get_gripper_direction(grasp_pose)
-    print('\n', nice(grasp_pose), direction)
-    if direction == None:
-        print('new direction')
-        return gripper_grasp, True
-    if 'down' in direction:
-        print('pointing down')
-        return gripper_grasp, True
-    return gripper_grasp, False
+# def visualize_grasp(robot, body_pose, grasp, arm='left', color=GREEN):
+#     link_name = PR2_GRIPPER_ROOTS[arm]
+#     links = get_link_subtree(robot, link_from_name(robot, link_name))
+#     gripper_grasp = clone_body(robot, links=links, visual=True, collision=True)
+#     open_cloned_gripper(gripper_grasp)
+#
+#     set_all_color(gripper_grasp, color)
+#     tool_from_root = get_tool_from_root(robot, arm)
+#     grasp_pose = multiply(multiply(body_pose, invert(grasp)), tool_from_root)
+#     set_pose(gripper_grasp, grasp_pose)
+#
+#     direction = get_gripper_direction(grasp_pose)
+#     print('\n', nice(grasp_pose), direction)
+#     if direction == None:
+#         print('new direction')
+#         return gripper_grasp, True
+#     if 'down' in direction:
+#         print('pointing down')
+#         return gripper_grasp, True
+#     return gripper_grasp, False
 
 
 ##################################################

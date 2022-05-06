@@ -125,6 +125,18 @@ def set_gripper_positions(robot, w=0.0):
     joints = get_joints_by_group(robot, FINGERS_GROUP)
     set_joint_positions(robot, joints, [w/2, w/2])
 
+def open_gripper(robot):
+    set_gripper_positions(robot, w=0.08)
+
+def open_cloned_gripper(robot, gripper, w = 0.12): ## 0.08 is the limit
+    """ because link and joint names aren't cloned """
+    joints = get_joints_by_group(robot, FINGERS_GROUP)
+    set_joint_positions(gripper, joints, [w / 2, w / 2])
+
+def set_cloned_se3_conf(robot, gripper, conf):
+    joints = get_joints_by_group(robot, SE3_GROUP)
+    return set_joint_positions(gripper, joints, conf)
+
 def set_se3_conf(robot, se3):
     set_joint_positions(robot, get_se3_joints(robot), se3)
 
@@ -137,14 +149,14 @@ def get_se3_joints(robot):
 def get_se3_conf(robot):
     return get_joint_positions(robot, get_se3_joints(robot))
 
-def pose_to_se3(p):
-    # return list(p[0]) + list(euler_from_quat(p[1]))
-    print('\n\n franka_utils.pose_to_se3 | deprecated! \n\n')
-    return np.concatenate([np.asarray(p[0]), np.asarray(euler_from_quat(p[1]))])
-
-def se3_to_pose(conf):
-    print('\n\n franka_utils.se3_to_pose | deprecated! \n\n')
-    return (conf[:3], quat_from_euler(conf[3:]))
+# def pose_to_se3(p):
+#     # return list(p[0]) + list(euler_from_quat(p[1]))
+#     print('\n\n franka_utils.pose_to_se3 | deprecated! \n\n')
+#     return np.concatenate([np.asarray(p[0]), np.asarray(euler_from_quat(p[1]))])
+#
+# def se3_to_pose(conf):
+#     print('\n\n franka_utils.se3_to_pose | deprecated! \n\n')
+#     return (conf[:3], quat_from_euler(conf[3:]))
 
 def se3_from_pose(p):
     return np.concatenate([np.asarray(p[0]), np.asarray(euler_from_quat(p[1]))])

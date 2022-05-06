@@ -150,7 +150,7 @@ class World(object):
             self.OBJECTS_BY_CATEGORY[cat] = []
         self.OBJECTS_BY_CATEGORY[cat].append(object)
 
-    def add_robot(self, robot, max_velocities=None):
+    def add_robot(self, robot, name='robot', max_velocities=None):
         self.robot = robot  # TODO: multi-robot
         self.ROBOT_TO_OBJECT[robot.body] = robot
         self.max_velocities = get_max_velocities(robot, robot.joints) if (max_velocities is None) else max_velocities
@@ -486,7 +486,8 @@ class World(object):
 #######################################################
 
 class State(object):
-    def __init__(self, world, objects=[], attachments={}, facts=[], variables={}):
+    def __init__(self, world, objects=[], attachments={}, facts=[],
+                 variables={}, grasp_types=['top']):
         self.world = world
         if len(objects) == 0:
             objects = get_bodies()
@@ -504,7 +505,7 @@ class State(object):
 
         ## serve as problem for streams
         self.gripper = None
-        self.grasp_types = ['top'] ##, 'side']
+        self.grasp_types = grasp_types ##, 'side']
         ## allowing both types causes trouble when the AConf used for generating IK isn't the same as the one during execution
 
     def get_gripper(self, arm='left', visual=True):

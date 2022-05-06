@@ -68,7 +68,7 @@ def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
             set_arm_conf(pr2, a, initial_conf)
             open_arm(pr2, a)
 
-def create_pr2_robot(world, base_q=(0,0,0), DUAL_ARM=False,
+def create_pr2_robot(world, base_q=(0,0,0), DUAL_ARM=False, custom_limits=BASE_LIMITS,
                  resolutions=BASE_RESOLUTIONS, max_velocities=BASE_VELOCITIES):
 
     with LockRenderer(lock=True):
@@ -79,9 +79,9 @@ def create_pr2_robot(world, base_q=(0,0,0), DUAL_ARM=False,
         with np.errstate(divide='ignore'):
             weights = np.reciprocal(resolutions)
         robot = PR2Robot(robot, base_link=BASE_LINK, joints=BASE_JOINTS,
-                      custom_limits=get_base_custom_limits(robot, BASE_LIMITS),
+                      custom_limits=get_base_custom_limits(robot, custom_limits),
                       resolutions=resolutions, weights=weights)
-        world.add_robot(robot, max_velocities)
+        world.add_robot(robot, max_velocities=max_velocities)
         set_group_conf(robot, 'base', base_q)
         # print('initial base conf', get_group_conf(robot, 'base'))
         # set_camera_target_robot(robot, FRONT=True)
@@ -110,7 +110,7 @@ def create_gripper_robot(world, custom_limits, initial_q=(0, 0, 0, 0, 0, 0)):
             weights = np.reciprocal(BASE_RESOLUTIONS)
         robot = FEGripper(robot, base_link=BASE_LINK, joints=get_se3_joints(robot),
                       custom_limits=custom_limits, resolutions=BASE_RESOLUTIONS, weights=weights)
-        world.add_robot(robot, BASE_VELOCITIES)
+        world.add_robot(robot, max_velocities=BASE_VELOCITIES)
         set_se3_conf(robot, initial_q)
 
     return robot

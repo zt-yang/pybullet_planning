@@ -38,11 +38,10 @@ class World():
     def add_body(self, body, name):
         self.body_to_name[body] = name
         self.name_to_body[name] = body
-        if self.robot == None and name in ['robot', 'pr2', 'feg']:
-            self.robot = body
 
-    def add_robot(self, body, name='robot'):
+    def add_robot(self, body, name='robot', **kwargs):
         self.add_body(body, name)
+        self.robot = body
 
     def add_semantic_label(self, body, file):
         body_joints = []

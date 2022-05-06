@@ -22,7 +22,8 @@ from .utils import unit_pose, get_collision_data, get_links, LockRenderer, pairw
     euler_from_quat, get_client, JOINT_TYPES, get_joint_type, get_link_pose, get_closest_points, \
     body_collision, is_placed_on_aabb, joint_from_name, body_from_end_effector, flatten_links, \
     get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, Point, get_camera_matrix, \
-    YELLOW, add_line, draw_point
+    YELLOW, add_line, draw_point, RED, BROWN, BLACK, BLUE, GREY, remove_handles, apply_affine, vertices_from_rigid, \
+    aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat
 
 
 OBJ = '?obj'
@@ -827,33 +828,141 @@ def draw_collision_shapes(body, links=[]):
             draw_bounding_lines(shape_from_world, shape.dimensions)
             print(f'link = {link}, colldion_body = {i} | dims = {nice(shape.dimensions)} | shape_from_world = {nice(shape_from_world)}')
 
+
+def fit_dimensions(body, body_pose=unit_pose()):
+    vertices = []
+    for link in get_links(body):
+        new_vertices = apply_affine(body_pose, vertices_from_rigid(body, link))
+        for p in new_vertices[::10]:
+            draw_point(p, size=0.01, color=YELLOW)
+        vertices.extend(new_vertices)
+    aabb = aabb_from_points(vertices)
+    return aabb, get_aabb_center(aabb), get_aabb_extent(aabb)
+
+def draw_fitted_box(body):
+    body_pose = multiply(get_pose(body), Pose(euler=Euler(math.pi/2, 0, -math.pi/2))) ##
+    origin = unit_pose()  ## (Point(), body_pose[1])
+    vertices = []
+    for link in get_links(body):
+        new_vertices = apply_affine(origin, vertices_from_rigid(body, link))
+        vertices.extend(new_vertices)
+        ## testing invert tform
+        # new_vertices = apply_affine(body_pose, vertices_from_rigid(body, link)[::10])
+        # for p in new_vertices[::10]:
+        #     draw_point(p, size=0.01, color=YELLOW)
+    aabb = aabb_from_points(vertices)
+    handles = draw_bounding_box(aabb, body_pose)
+    handles.extend(draw_face_points(aabb, body_pose, dist=0.04))
+
+    # draw_face_vectors(aabb, body_pose)
+    return handles
+
+def draw_bounding_box(aabb, body_pose):
+    handles = []
+    for a, b in get_aabb_edges(aabb):
+        p1, p2 = apply_affine(body_pose, [a, b])
+        handles.append(add_line(p1, p2))
+    return handles
+
+def draw_face_points(aabb, body_pose, dist=0.04):
+    c = get_aabb_center(aabb)
+    w, l, h = get_aabb_extent(aabb)
+    faces = [(w/2+dist, 0, 0), (0, l/2+dist, 0), (0, 0, h/2+dist)]
+    faces += [minus(0, f) for f in faces]
+    faces = [add(f, c) for f in faces]
+    faces = apply_affine(body_pose, faces)
+    handles = []
+    for f in faces:
+        handles.append(draw_point(f, size=0.02, color=RED))
+    return handles
+
+def draw_face_vectors(aabb, body_pose, dist=0.1):
+    from pybullet_tools.flying_gripper_utils import set_se3_conf, create_fe_gripper, se3_from_pose
+
+    c = get_aabb_center(aabb)
+    w, l, h = get_aabb_extent(aabb)
+    faces = [(w/2+dist, 0, 0), (0, l/2+dist, 0), (0, 0, h/2+dist)]
+    faces += [minus(0, f) for f in faces]
+    # faces = [add(f, c) for f in faces]
+    # faces = apply_affine(body_pose, faces)
+    handles = []
+    P = math.pi
+    rots = {
+        (1, 0, 0): [(-P/2, -P/2, 0), (0, -P/2, 0), (P/2, -P/2, 0), (P, -P/2, 0)],
+        (-1, 0, 0): [(-P/2, P/2, 0), (0, P/2, 0), (P/2, P/2, 0), (P, P/2, 0)],
+        (0, 1, 0): [(P/2, 0, -P/2), (P/2, 0, 0), (P/2, 0, P/2), (P/2, 0, P)],
+        (0, -1, 0): [(-P/2, 0, -P/2), (-P/2, 0, 0), (-P/2, 0, P/2), (-P/2, 0, P)],
+        (0, 0, 1): [(0, P, -P/2), (0, P, 0), (0, P, P/2), (0, P, P)],
+        (0, 0, -1): [(0, 0, -P/2), (0, 0, 0), (0, 0, P/2), (0, 0, P)],
+    }
+    rots.update({
+        # (1, 0, 0): [(-P, -P/2, P), (-P, 0, P), (-P, P/2, P), (-P, P, P)],
+        # (-1, 0, 0): [(-P/2, P/2, 0), (0, P/2, 0), (P/2, P/2, 0), (P, P/2, 0)],
+        # (0, 1, 0): [(P/2, 0, -P/2), (P/2, 0, 0), (P/2, 0, P/2), (P/2, 0, P)],
+        # (0, -1, 0): [(-P/2, 0, -P/2), (-P/2, 0, 0), (-P/2, 0, P/2), (-P/2, 0, P)],
+        # (0, 0, 1): [(0, P, -P/2), (0, P, 0), (0, P, P/2), (0, P, P)],
+        # (0, 0, -1): [(0, 0, -P/2), (0, 0, 0), (0, 0, P/2), (0, 0, P)],
+    })
+    for f in faces:
+        p = np.array(f)
+        p = p / np.linalg.norm(p)
+        ang = tuple(p) ## euler_from_quat(multiply(Pose(euler=tuple(p)), Pose(euler=Euler(math.pi/2, 0, -math.pi/2)))[1])
+        r = random.choice(rots[tuple(p)]) ## rots[ang][0] ##
+        # r = euler_from_quat(multiply(Pose(euler=r), Pose(euler=Euler(math.pi/2, 0, -math.pi/2)))[1])
+        conf = list(f) + list(r)
+        f = add(f, c)
+        # f = apply_affine(body_pose, [f])[0]
+        # handles.append(draw_point(f, size=0.02, color=RED))
+
+        o_X_g = pose = Pose(point=f, euler=r) ## pose of gripper in object frame
+        w_X_g = pose = multiply(body_pose, Pose(point=f, euler=r)) ## add(f, c)
+        conf = list(se3_from_pose(list(pose)))
+        robot = create_fe_gripper(conf)
+        # set_se3_conf(robot, list(se3_from_pose(list(multiply(body_pose, Pose(euler=(0, -P/2, 0)), Pose(point=f, euler=(-P/2, -P/2, 0)))))))
+
+        set_camera_target_body(robot, dx=0.5, dy=0.5, dz=0.5)
+        break
+
+        # handles.append(draw_point(f, size=0.02, color=RED))
+    return handles
+
+def add(elem1, elem2):
+    return tuple(np.asarray(elem1)+np.asarray(elem2))
+
+def minus(elem1, elem2):
+    return tuple(np.asarray(elem1)-np.asarray(elem2))
+
 def draw_bounding_lines(pose, dimensions):
     w, l, h = dimensions  ## it's meshscale instead of wlh
     # tmp = create_box(w, l, h)
     # set_pose(tmp, pose)
 
     ## first get the points using local transforms
-    transforms = [(w/2, h/2, l/2)]
-    transforms.extend([(-t[0], t[1], t[2]) for t in transforms])
-    transforms.extend([(t[0], -t[1], t[2]) for t in transforms])
-    transforms.extend([(t[0], -t[1], -t[2]) for t in transforms])
-    transforms = [Pose(t, Euler()) for t in transforms]
+    def draw_given_transforms(transforms, color=RED):
+        # if len(handles) > 0: remove_handles(handles)
+        transforms.extend([(-t[0], t[1], t[2]) for t in transforms])
+        transforms.extend([(t[0], -t[1], t[2]) for t in transforms])
+        transforms.extend([(t[0], -t[1], -t[2]) for t in transforms])
+        transforms = [Pose(t, Euler()) for t in transforms]
 
-    def one_diff(t1, t2):
-        return len([t1[k] != t2[k] for k in range(len(t1))]) == 1
+        def one_diff(t1, t2):
+            return len([t1[k] != t2[k] for k in range(len(t1))]) == 1
 
-    lines = []
-    handles = []
-    for t1 in transforms:
-        pt1 = multiply(pose, t1)[0]
-        for t2 in transforms:
-            pt2 = multiply(pose, t2)[0]
-            if pt1 != pt2 and one_diff(pt1, pt2):
-                if (pt1, pt2) not in lines:
-                    handles.append(add_line(pt1, pt2, color=YELLOW))
-                    lines.extend([(pt1, pt2), (pt2, pt1)])
-        handles.extend(draw_point(pt1, size=0.01, color=YELLOW))
+        lines = []
+        handles = []
+        for t1 in transforms:
+            pt1 = multiply(pose, t1)[0]
+            for t2 in transforms:
+                pt2 = multiply(pose, t2)[0]
+                if pt1 != pt2 and one_diff(pt1, pt2):
+                    if (pt1, pt2) not in lines:
+                        handles.append(add_line(pt1, pt2, width=0.5, color=color))
+                        lines.extend([(pt1, pt2), (pt2, pt1)])
+            handles.extend(draw_point(pt1, size=0.02, color=color))
+        return handles
 
+    transforms = [(w/2, h/2, l/2)] ## [(h/2, l/2, w/2)]
+    handles = draw_given_transforms(transforms, color=RED)
     # remove_body(tmp)
     return handles
 

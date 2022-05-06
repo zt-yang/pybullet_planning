@@ -6,7 +6,7 @@ import time
 from pybullet_planning.pybullet_tools.pr2_streams import get_stable_gen, get_contain_gen, get_position_gen, \
     Position, get_handle_grasp_gen, LinkPose, get_ik_ir_grasp_handle_gen, get_pull_drawer_handle_motion_gen, \
     get_joint_position_test, get_marker_grasp_gen, get_bconf_in_region_test, get_pull_door_handle_motion_gen, \
-    get_bconf_in_region_gen, get_pose_in_region_gen, visualize_grasp, get_motion_wconf_gen, get_update_wconf_p_two_gen, \
+    get_bconf_in_region_gen, get_pose_in_region_gen, get_motion_wconf_gen, get_update_wconf_p_two_gen, \
     get_marker_pose_gen, get_pull_marker_to_pose_motion_gen, get_pull_marker_to_bconf_motion_gen,  \
     get_pull_marker_random_motion_gen, get_ik_ungrasp_handle_gen, get_pose_in_region_test, \
     get_cfree_btraj_pose_test, get_joint_position_open_gen, get_ik_ungrasp_mark_gen, \
@@ -777,15 +777,15 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False):
     for i in range(len(outputs)):
         grasp = outputs[i][0]
         if RETAIN_ALL:
-            gripper_grasp = visualize_grasp(robot, body_pose, grasp.value, color=colors[i%len(colors)])
+            gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, color=colors[i%len(colors)])
         else:
-            gripper_grasp = visualize_grasp(robot, body_pose, grasp.value, color=GREEN)
-            gripper_approach = visualize_grasp(robot, body_pose, grasp.approach, color=BROWN)
+            gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, color=GREEN)
+            gripper_approach = robot.visualize_grasp(body_pose, grasp.approach, color=BROWN)
             # set_camera_target_body(gripper_approach, dx=0, dy=-1, dz=0)
             remove_body(gripper_grasp)
             remove_body(gripper_approach)
-    if RETAIN_ALL:
-        wait_if_gui()
+    # if RETAIN_ALL:
+    #     wait_if_gui()
 
 def visualize_grasps_by_quat(state, outputs, body_pose, RETAIN_ALL=False):
     robot = state.robot
