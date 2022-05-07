@@ -776,10 +776,11 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False):
     colors = [BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED]
     for i in range(len(outputs)):
         grasp = outputs[i][0]
+        w = grasp.grasp_width
         if RETAIN_ALL:
-            gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, color=colors[i%len(colors)])
+            gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, color=colors[i%len(colors)], width=w)
         else:
-            gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, color=GREEN)
+            gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, color=GREEN, width=w)
             gripper_approach = robot.visualize_grasp(body_pose, grasp.approach, color=BROWN)
             # set_camera_target_body(gripper_approach, dx=0, dy=-1, dz=0)
             remove_body(gripper_grasp)

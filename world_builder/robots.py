@@ -3,11 +3,13 @@ from .entities import Robot
 
 from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color, TRANSPARENT, \
     Attachment, link_from_name, get_link_subtree, get_joints, is_movable, multiply, invert, \
-    set_joint_positions, set_pose, GREEN, dump_body
+    set_joint_positions, set_pose, GREEN, dump_body, get_pose, remove_body, PoseSaver
 
 from pybullet_tools.bullet_utils import equal, nice, get_gripper_direction, set_camera_target_body
 from pybullet_tools.pr2_primitives import Conf
-from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES
+from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, close_until_collision
+
+
 
 class PR2Robot(Robot):
 
@@ -62,13 +64,26 @@ class PR2Robot(Robot):
         from pybullet_tools.pr2_utils import create_gripper
         return create_gripper(self.body, arm=arm, visual=visual)
 
+    def get_gripper_joints(self, gripper_grasp):
+        return [joint for joint in get_joints(gripper_grasp) if is_movable(gripper_grasp, joint)]
+
+    def close_cloned_gripper(self, gripper_grasp):
+        set_joint_positions(gripper_grasp, self.get_gripper_joints(gripper_grasp), [0] * 4)
+
+    def open_cloned_gripper(self, gripper_grasp):
+        set_joint_positions(gripper_grasp, self.get_gripper_joints(gripper_grasp), [0.548] * 4)
+
+    def compute_grasp_width(self, **kwargs):
+        from pybullet_tools.pr2_utils import compute_grasp_width
+        return compute_grasp_width(self.body, **kwargs)
+
     def visualize_grasp(self, body_pose, grasp, arm='left', color=GREEN):
         from pybullet_tools.pr2_utils import PR2_GRIPPER_ROOTS
         from pybullet_tools.pr2_primitives import get_tool_from_root
 
         robot = self.body
         gripper_grasp = self.create_gripper(arm, visual=True)
-        open_cloned_gripper(gripper_grasp)
+        self.open_cloned_gripper(gripper_grasp)
 
         set_all_color(gripper_grasp, color)
         tool_from_root = get_tool_from_root(robot, arm)
@@ -83,6 +98,7 @@ class PR2Robot(Robot):
         if 'down' in direction:
             print('pointing down')
             return gripper_grasp, True
+
         return gripper_grasp, False
 
     def get_attachment(self, grasp, arm):
@@ -99,31 +115,48 @@ class FEGripper(Robot):
             set_all_color(self.body, color)
         return gripper
 
-    def visualize_grasp(self, body_pose, grasp, arm='hand', color=GREEN):
-        from pybullet_tools.flying_gripper_utils import open_cloned_gripper, se3_from_pose, \
-            set_cloned_se3_conf
-        from pybullet_tools.utils import Pose
+    def get_gripper_joints(self, gripper_grasp=None):
+        from pybullet_tools.flying_gripper_utils import get_joints_by_group, FINGERS_GROUP
+        return get_joints_by_group(self.body, FINGERS_GROUP)
 
-        gripper_grasp = self.create_gripper(arm, visual=True)
-        open_cloned_gripper(self.body, gripper_grasp)
+    def open_cloned_gripper(self, gripper, width=1):
+        from pybullet_tools.flying_gripper_utils import open_cloned_gripper
+        open_cloned_gripper(self.body, gripper, w=width)
 
-        set_all_color(gripper_grasp, color)
-        tool_from_body = Pose(point=(0.1, 0, 0), euler=[0, math.pi / 2, 0])
-        grasp_pose = multiply(body_pose, invert(grasp), tool_from_body) ##
-        conf = se3_from_pose(grasp_pose)
-        set_cloned_se3_conf(self.body, gripper_grasp, conf)
+    def close_cloned_gripper(self, gripper):
+        from pybullet_tools.flying_gripper_utils import close_cloned_gripper
+        close_cloned_gripper(self.body, gripper)
 
-        def test_trans(tool_from_body):
-            grasp_pose = multiply(multiply(body_pose, invert(grasp)), tool_from_body)
-            conf = se3_from_pose(grasp_pose)
-            set_cloned_se3_conf(self.body, gripper_grasp, conf)
+    def compute_grasp_width(self, arm, body, grasp_pose, **kwargs):
+        body_pose = multiply(self.get_body_pose(body), grasp_pose)
+        # gripper = self.create_gripper(arm, visual=True)
+        with PoseSaver(self.body):
+            gripper = self.body
+            set_pose(gripper, body_pose)
+            gripper_joints = self.get_gripper_joints()
+            width = close_until_collision(gripper, gripper_joints, bodies=[body], **kwargs)
+            # remove_body(gripper)
+        return width
 
-        # if grasp_type == 'top':
-        #     test_trans(Pose(point=(-0.2, 0, 0), euler=[0, math.pi / 2, 0]))
-        # else:
+    def get_body_pose(self, body):
+        from pybullet_tools.utils import Pose, Euler
+        if isinstance(body, tuple) and len(body[0]) == 3 and len(body[1]) == 4:
+            body_pose = body
+        else:
+            body_pose = get_pose(body)
+        return multiply(body_pose, Pose(euler=Euler(math.pi/2, 0, -math.pi/2)))
 
-        set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.8)
-        return gripper_grasp
+    def visualize_grasp(self, body_pose, grasp, arm='hand', color=GREEN, width=1):
+        body_pose = self.get_body_pose(body_pose)
+        gripper = self.create_gripper(arm, visual=True)
+        self.open_cloned_gripper(gripper, width)
+
+        set_all_color(gripper, color)
+        grasp_pose = multiply(body_pose, grasp) ##
+        set_pose(gripper, grasp_pose)
+
+        # set_camera_target_body(gripper, dx=0.5, dy=0.5, dz=0.8)
+        return gripper
 
     def get_init(self, init_facts=[], conf_saver=None):
         from pybullet_tools.flying_gripper_utils import get_se3_joints, get_se3_conf, ARM_NAME
@@ -154,13 +187,3 @@ class FEGripper(Robot):
     def get_attachment(self, grasp, arm=None):
         tool_link = link_from_name(self.body, 'panda_hand')
         return Attachment(self.body, tool_link, grasp.value, grasp.body)
-
-
-def get_gripper_joints(gripper_grasp):
-    return [joint for joint in get_joints(gripper_grasp) if is_movable(gripper_grasp, joint)]
-
-def close_cloned_gripper(gripper_grasp):
-    set_joint_positions(gripper_grasp, get_gripper_joints(gripper_grasp), [0] * 4)
-
-def open_cloned_gripper(gripper_grasp):
-    set_joint_positions(gripper_grasp, get_gripper_joints(gripper_grasp), [0.548] * 4)

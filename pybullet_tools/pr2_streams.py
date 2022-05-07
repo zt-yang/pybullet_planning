@@ -40,9 +40,8 @@ from pybullet_tools.utils import invert, multiply, get_name, set_pose, get_link_
     get_joints, is_movable, pairwise_link_collision, get_closest_points
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, set_camera_target_body, is_contained, \
-    visualize_point, collided, GRIPPER_DIRECTIONS, get_gripper_direction
+    visualize_point, collided, GRIPPER_DIRECTIONS, get_gripper_direction, check_cfree_gripper
 from pybullet_tools.logging import dump_json
-from world_builder.robots import close_cloned_gripper
 
 from .general_streams import *
 
@@ -86,25 +85,6 @@ def get_handle_grasps(body_joint, tool_pose=TOOL_POSE, body_pose=unit_pose(),
 
     handle_pose = get_handle_pose(body_joint)
 
-    def check_cfree_gripper(grasp, visualize=DEBUG, color=GREEN, min_num_pts=150):
-        gripper_grasp, debug = robot.visualize_grasp(handle_pose, grasp, color=color)
-        if visualize or debug: ## and not firstly: ## somtimes cameras blocked by robot, need to change dx, dy
-            ## also helps slow down visualization of the sampling the testing process
-            set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.2) ## oven
-            set_camera_target_body(gripper_grasp, dx=1, dy=0.5, dz=0.8) ## faucet
-
-        ## when gripper isn't closed, it shouldn't collide
-        firstly = collided(gripper_grasp, obstacles, min_num_pts=min_num_pts,
-                           world=world, verbose=visualize, tag='firstly')
-
-        ## when gripper is closed, it should collide with object
-        close_cloned_gripper(gripper_grasp)
-        secondly = collided(gripper_grasp, obstacles, min_num_pts=0,
-                            world=world, verbose=DEBUG)
-
-        remove_body(gripper_grasp)
-        return not firstly and secondly
-
     # TODO: compute bounding box width wrt tool frame
     center, (w, l, h) = approximate_as_prism(body, body_pose=body_pose, link=handle_link)
     translate_center = Pose(point=point_from_pose(body_pose)-center)
@@ -132,7 +112,7 @@ def get_handle_grasps(body_joint, tool_pose=TOOL_POSE, body_pose=unit_pose(),
             for gh in range(0, num_h):
                 translate_z = Pose(point=[gh*top_offset, 0, w / 2 - gl])
                 grasp = multiply(tool_pose, translate_z, r1, r2, translate_center, body_pose)
-                result = check_cfree_gripper(grasp) ##
+                result = check_cfree_gripper(grasp, world, handle_pose, obstacles, visualize=DEBUG) ##
                 print(f'{title}test grasp ({index}, gh={gh}), {result}')
                 if result:
                     if grasp not in grasps:

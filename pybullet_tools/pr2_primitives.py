@@ -347,9 +347,14 @@ def get_grasp_gen(problem, collisions=False, randomize=True):
             approach_vector = APPROACH_DISTANCE*get_unit_vector([2, 0, -1])
             grasps.extend(Grasp('side', body, g, multiply((approach_vector, unit_quat()), g), SIDE_HOLDING_LEFT_ARM)
                           for g in get_side_grasps(body, grasp_length=GRASP_LENGTH))
+        if 'hand' in problem.grasp_types:
+            from .bullet_utils import get_hand_grasps
+            approach_vector = APPROACH_DISTANCE*get_unit_vector([0, 0, -1])
+            grasps.extend(Grasp('hand', body, g, multiply(g, (approach_vector, unit_quat())), g)
+                          for g in get_hand_grasps(problem, body))
         filtered_grasps = []
         for grasp in grasps:
-            grasp_width = compute_grasp_width(problem.robot, arm, body, grasp.value) if collisions else 0.0
+            grasp_width = problem.robot.compute_grasp_width(arm, body, grasp.value) if collisions else 0.0
             if grasp_width is not None:
                 grasp.grasp_width = grasp_width
                 filtered_grasps.append(grasp)

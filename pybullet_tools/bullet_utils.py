@@ -839,23 +839,18 @@ def fit_dimensions(body, body_pose=unit_pose()):
     aabb = aabb_from_points(vertices)
     return aabb, get_aabb_center(aabb), get_aabb_extent(aabb)
 
-def draw_fitted_box(body):
+def draw_fitted_box(body, draw_centroid=False):
     body_pose = multiply(get_pose(body), Pose(euler=Euler(math.pi/2, 0, -math.pi/2))) ##
     origin = unit_pose()  ## (Point(), body_pose[1])
     vertices = []
     for link in get_links(body):
         new_vertices = apply_affine(origin, vertices_from_rigid(body, link))
         vertices.extend(new_vertices)
-        ## testing invert tform
-        # new_vertices = apply_affine(body_pose, vertices_from_rigid(body, link)[::10])
-        # for p in new_vertices[::10]:
-        #     draw_point(p, size=0.01, color=YELLOW)
     aabb = aabb_from_points(vertices)
     handles = draw_bounding_box(aabb, body_pose)
-    handles.extend(draw_face_points(aabb, body_pose, dist=0.04))
-
-    # draw_face_vectors(aabb, body_pose)
-    return handles
+    if draw_centroid:
+        handles.extend(draw_face_points(aabb, body_pose, dist=0.04))
+    return body_pose, aabb, handles
 
 def draw_bounding_box(aabb, body_pose):
     handles = []
@@ -864,7 +859,7 @@ def draw_bounding_box(aabb, body_pose):
         handles.append(add_line(p1, p2))
     return handles
 
-def draw_face_points(aabb, body_pose, dist=0.04):
+def draw_face_points(aabb, body_pose, dist=0.08):
     c = get_aabb_center(aabb)
     w, l, h = get_aabb_extent(aabb)
     faces = [(w/2+dist, 0, 0), (0, l/2+dist, 0), (0, 0, h/2+dist)]
@@ -876,15 +871,19 @@ def draw_face_points(aabb, body_pose, dist=0.04):
         handles.append(draw_point(f, size=0.02, color=RED))
     return handles
 
-def draw_face_vectors(aabb, body_pose, dist=0.1):
+def get_hand_grasps(state, body, grasp_length=0.1):
     from pybullet_tools.flying_gripper_utils import set_se3_conf, create_fe_gripper, se3_from_pose
+
+    dist = grasp_length
+    robot = state.robot
+    obstacles = state.fixed
+    body_pose, aabb, handles = draw_fitted_box(body)
+    body_pose = get_pose(body)
 
     c = get_aabb_center(aabb)
     w, l, h = get_aabb_extent(aabb)
     faces = [(w/2+dist, 0, 0), (0, l/2+dist, 0), (0, 0, h/2+dist)]
     faces += [minus(0, f) for f in faces]
-    # faces = [add(f, c) for f in faces]
-    # faces = apply_affine(body_pose, faces)
     handles = []
     P = math.pi
     rots = {
@@ -896,35 +895,57 @@ def draw_face_vectors(aabb, body_pose, dist=0.1):
         (0, 0, -1): [(0, 0, -P/2), (0, 0, 0), (0, 0, P/2), (0, 0, P)],
     }
     rots.update({
-        # (1, 0, 0): [(-P, -P/2, P), (-P, 0, P), (-P, P/2, P), (-P, P, P)],
-        # (-1, 0, 0): [(-P/2, P/2, 0), (0, P/2, 0), (P/2, P/2, 0), (P, P/2, 0)],
-        # (0, 1, 0): [(P/2, 0, -P/2), (P/2, 0, 0), (P/2, 0, P/2), (P/2, 0, P)],
-        # (0, -1, 0): [(-P/2, 0, -P/2), (-P/2, 0, 0), (-P/2, 0, P/2), (-P/2, 0, P)],
-        # (0, 0, 1): [(0, P, -P/2), (0, P, 0), (0, P, P/2), (0, P, P)],
-        # (0, 0, -1): [(0, 0, -P/2), (0, 0, 0), (0, 0, P/2), (0, 0, P)],
+        (1, 0, 0): [(P/2, 0, -P/2), (P/2, P, -P/2)],
+        (-1, 0, 0): [(P/2, 0, P/2), (P/2, P, P/2)],
+        (0, 1, 0): [(0, P/2, -P/2), (0, -P/2, P/2), (P/2, P, 0), (P/2, 0, 0)],
+        (0, -1, 0): [(0, P/2, P/2), (0, -P/2, -P/2), (-P/2, P, 0), (-P/2, 0, 0)],
+        (0, 0, 1): [(P, 0, P/2), (P, 0, -P/2)],
+        (0, 0, -1): [(0, 0, -P/2), (0, 0, P/2)],
     })
+    grasps = []
     for f in faces:
         p = np.array(f)
         p = p / np.linalg.norm(p)
-        ang = tuple(p) ## euler_from_quat(multiply(Pose(euler=tuple(p)), Pose(euler=Euler(math.pi/2, 0, -math.pi/2)))[1])
-        r = random.choice(rots[tuple(p)]) ## rots[ang][0] ##
-        # r = euler_from_quat(multiply(Pose(euler=r), Pose(euler=Euler(math.pi/2, 0, -math.pi/2)))[1])
-        conf = list(f) + list(r)
-        f = add(f, c)
-        # f = apply_affine(body_pose, [f])[0]
-        # handles.append(draw_point(f, size=0.02, color=RED))
+        ang = tuple(p)
+        r = rots[ang][0] ## random.choice(rots[tuple(p)]) ##
+        # f = add(f, c)
 
-        o_X_g = pose = Pose(point=f, euler=r) ## pose of gripper in object frame
-        w_X_g = pose = multiply(body_pose, Pose(point=f, euler=r)) ## add(f, c)
-        conf = list(se3_from_pose(list(pose)))
-        robot = create_fe_gripper(conf)
-        # set_se3_conf(robot, list(se3_from_pose(list(multiply(body_pose, Pose(euler=(0, -P/2, 0)), Pose(point=f, euler=(-P/2, -P/2, 0)))))))
+        grasp = multiply(Pose(point=f), Pose(euler=r))
+        if check_cfree_gripper(grasp, state.world, body_pose, [body],
+                               visualize=False, RETAIN_ALL=False):
+            grasps += [grasp]
+        # grasp = multiply(body_pose, Pose(point=f), Pose(euler=r))
+        # gripper = robot.create_gripper(color=RED)
+        # set_pose(gripper, grasp)
 
-        set_camera_target_body(robot, dx=0.5, dy=0.5, dz=0.5)
-        break
+    return grasps
 
-        # handles.append(draw_point(f, size=0.02, color=RED))
-    return handles
+def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=True,
+                        color=GREEN, min_num_pts=40, RETAIN_ALL=False):
+    robot = world.robot
+    gripper_grasp = robot.visualize_grasp(object_pose, grasp, color=color)
+    if visualize: ## and not firstly: ## somtimes cameras blocked by robot, need to change dx, dy
+        ## also helps slow down visualization of the sampling the testing process
+        set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.2) ## oven
+        set_camera_target_body(gripper_grasp, dx=1, dy=0.5, dz=0.8) ## faucet
+
+    ## when gripper isn't closed, it shouldn't collide
+    firstly = collided(gripper_grasp, obstacles, min_num_pts=min_num_pts,
+                       world=world, verbose=False, tag='firstly')
+
+    ## when gripper is closed, it should collide with object
+    robot.close_cloned_gripper(gripper_grasp)
+    secondly = collided(gripper_grasp, obstacles, min_num_pts=0,
+                        world=world, verbose=False, tag='secondly')
+
+    result = not firstly and secondly
+    if not result or not RETAIN_ALL:
+        remove_body(gripper_grasp)
+    elif RETAIN_ALL:
+        robot.open_cloned_gripper(gripper_grasp)
+
+    return result
+
 
 def add(elem1, elem2):
     return tuple(np.asarray(elem1)+np.asarray(elem2))
