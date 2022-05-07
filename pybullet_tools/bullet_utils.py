@@ -23,7 +23,7 @@ from .utils import unit_pose, get_collision_data, get_links, LockRenderer, pairw
     body_collision, is_placed_on_aabb, joint_from_name, body_from_end_effector, flatten_links, \
     get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, Point, get_camera_matrix, \
     YELLOW, add_line, draw_point, RED, BROWN, BLACK, BLUE, GREY, remove_handles, apply_affine, vertices_from_rigid, \
-    aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat
+    aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer
 
 
 OBJ = '?obj'
@@ -884,31 +884,23 @@ def get_hand_grasps(state, body, grasp_length=0.1):
     w, l, h = get_aabb_extent(aabb)
     faces = [(w/2+dist, 0, 0), (0, l/2+dist, 0), (0, 0, h/2+dist)]
     faces += [minus(0, f) for f in faces]
-    handles = []
     P = math.pi
     rots = {
-        (1, 0, 0): [(-P/2, -P/2, 0), (0, -P/2, 0), (P/2, -P/2, 0), (P, -P/2, 0)],
-        (-1, 0, 0): [(-P/2, P/2, 0), (0, P/2, 0), (P/2, P/2, 0), (P, P/2, 0)],
-        (0, 1, 0): [(P/2, 0, -P/2), (P/2, 0, 0), (P/2, 0, P/2), (P/2, 0, P)],
-        (0, -1, 0): [(-P/2, 0, -P/2), (-P/2, 0, 0), (-P/2, 0, P/2), (-P/2, 0, P)],
-        (0, 0, 1): [(0, P, -P/2), (0, P, 0), (0, P, P/2), (0, P, P)],
-        (0, 0, -1): [(0, 0, -P/2), (0, 0, 0), (0, 0, P/2), (0, 0, P)],
-    }
-    rots.update({
         (1, 0, 0): [(P/2, 0, -P/2), (P/2, P, -P/2)],
         (-1, 0, 0): [(P/2, 0, P/2), (P/2, P, P/2)],
         (0, 1, 0): [(0, P/2, -P/2), (0, -P/2, P/2), (P/2, P, 0), (P/2, 0, 0)],
         (0, -1, 0): [(0, P/2, P/2), (0, -P/2, -P/2), (-P/2, P, 0), (-P/2, 0, 0)],
         (0, 0, 1): [(P, 0, P/2), (P, 0, -P/2)],
         (0, 0, -1): [(0, 0, -P/2), (0, 0, P/2)],
-    })
+    }
+    set_renderer(False)
     grasps = []
     for f in faces:
         p = np.array(f)
         p = p / np.linalg.norm(p)
         ang = tuple(p)
         r = rots[ang][0] ## random.choice(rots[tuple(p)]) ##
-        # f = add(f, c)
+        f = add(f, c)
 
         grasp = multiply(Pose(point=f), Pose(euler=r))
         if check_cfree_gripper(grasp, state.world, body_pose, [body],
@@ -918,6 +910,7 @@ def get_hand_grasps(state, body, grasp_length=0.1):
         # gripper = robot.create_gripper(color=RED)
         # set_pose(gripper, grasp)
 
+    set_renderer(True)
     return grasps
 
 def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=True,

@@ -135,6 +135,7 @@ class FEGripper(Robot):
             set_pose(gripper, body_pose)
             gripper_joints = self.get_gripper_joints()
             width = close_until_collision(gripper, gripper_joints, bodies=[body], **kwargs)
+            if width != None: width *= 2
             # remove_body(gripper)
         return width
 

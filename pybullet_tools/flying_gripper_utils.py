@@ -279,17 +279,17 @@ def get_ik_fn(problem, teleport=False, verbose=True, custom_limits={}, **kwargs)
 #         return (cmd,)
 #     return fn
 
-def visualize_feg_grasp(robot, g):
-    body_pose = get_pose(g.body)
-    approach_pose = multiply(body_pose, invert(g.approach), Pose(point=(0, 0, -0.05), euler=[0, math.pi / 2, 0]))
-    seconf2 = se3_from_pose(approach_pose)
-    sub = robot.create_gripper(visual=True)
-    q2 = Conf(sub, get_se3_joints(robot), seconf2)
-    q2.assign()
-
-    Conf(sub, get_se3_joints(robot), se3_from_pose(multiply(body_pose, invert(g.approach), Pose(euler=[0, math.pi / 2, 0])))).assign()
-    set_camera_target_body(sub, dx=1, dy=0, dz=0.5)
-    set_camera_target_body(sub, dx=1, dy=0, dz=0.5)
+# def visualize_feg_grasp(robot, g):
+#     body_pose = get_pose(g.body)
+#     approach_pose = multiply(body_pose, invert(g.approach), Pose(point=(0, 0, -0.05), euler=[0, math.pi / 2, 0]))
+#     seconf2 = se3_from_pose(approach_pose)
+#     sub = robot.create_gripper(visual=True)
+#     q2 = Conf(sub, get_se3_joints(robot), seconf2)
+#     q2.assign()
+#
+#     Conf(sub, get_se3_joints(robot), se3_from_pose(multiply(body_pose, invert(g.approach), Pose(euler=[0, math.pi / 2, 0])))).assign()
+#     set_camera_target_body(sub, dx=1, dy=0, dz=0.5)
+#     set_camera_target_body(sub, dx=1, dy=0, dz=0.5)
 
 from pybullet_tools.pr2_primitives import get_grasp_gen
 from pybullet_tools.bullet_utils import set_camera_target_body, nice
