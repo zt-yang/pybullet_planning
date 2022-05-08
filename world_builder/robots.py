@@ -106,7 +106,14 @@ class PR2Robot(Robot):
         tool_link = link_from_name(self.body, PR2_TOOL_FRAMES[arm])
         return Attachment(self.body, tool_link, grasp.value, grasp.body)
 
+    def get_attachment_link(self, arm):
+        return link_from_name(self.body, PR2_TOOL_FRAMES.get(arm, arm))
+
 class FEGripper(Robot):
+
+    def get_attachment_link(self, arm):
+        from pybullet_tools.flying_gripper_utils import TOOL_LINK
+        return link_from_name(self.body, TOOL_LINK)
 
     def create_gripper(self, arm='hand', visual=True, color=None):
         from pybullet_tools.utils import unit_pose

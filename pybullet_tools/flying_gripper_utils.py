@@ -285,14 +285,16 @@ def get_ik_fn(problem, teleport=False, verbose=True, custom_limits={}, **kwargs)
         attachment = g.get_attachment(problem.robot, a)
         attachments = {attachment.child: attachment}
 
-        body_pose = get_pose(o)
-        approach_pose = multiply(body_pose, invert(g.approach),
-                                 Pose(point=(0, 0, -0.05), euler=[0, math.pi / 2, 0]))
-        grasp_pose = multiply(body_pose, invert(g.value),
-                              Pose(point=(0, 0, -0.05), euler=[0, math.pi / 2, 0]))
+        body_pose = robot.get_body_pose(o)
+        # approach_pose = multiply(body_pose, invert(g.approach),
+        #                          Pose(point=(0, 0, -0.05), euler=[0, math.pi / 2, 0]))
+        # grasp_pose = multiply(body_pose, invert(g.value),
+        #                       Pose(point=(0, 0, -0.05), euler=[0, math.pi / 2, 0]))
+        approach_pose = multiply(body_pose, g.approach)
+        grasp_pose = multiply(body_pose, g.value)
 
-        seconf1 = se3_from_pose(approach_pose)
-        seconf2 = se3_from_pose(grasp_pose)
+        seconf1 = se3_ik(robot, approach_pose)
+        seconf2 = se3_ik(robot, grasp_pose)
         q1 = Conf(robot, joints, seconf1)
         q2 = Conf(robot, joints, seconf2)
         q1.assign()
@@ -304,7 +306,7 @@ def get_ik_fn(problem, teleport=False, verbose=True, custom_limits={}, **kwargs)
 
         t = Trajectory(path)
         cmd = Commands(State(attachments=attachments), savers=[BodySaver(robot)], commands=[t])
-        return (q2, cmd)
+        return (q1, cmd)
     return fn
 
 # def get_free_motion_gen(problem, teleport=False, verbose=True, custom_limits={}, **kwargs):

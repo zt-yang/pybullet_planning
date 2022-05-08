@@ -243,7 +243,7 @@ class GripperAction(Action):
             gripper_joint = get_gripper_joints(robot, self.arm)[0]
             self.position = get_max_limit(robot, gripper_joint)
 
-        joints = get_gripper_joints(robot, self.arm)
+        joints = robot.get_gripper_joints(self.arm)
         start_conf = get_joint_positions(robot, joints)
         end_conf = [self.position] * len(joints)
         if self.teleport:
@@ -262,7 +262,7 @@ class AttachObjectAction(Action):
         self.grasp = grasp
         self.object = object
     def transition(self, state):
-        link = link_from_name(state.robot, PR2_TOOL_FRAMES.get(self.arm, self.arm))
+        link = state.robot.get_attachment_link(self.arm)
         new_attachments = add_attachment(state=state, obj=self.object, parent=state.robot,
                                          parent_link=link, attach_distance=None)  ## can attach without contact
         return state.new_state(attachments=new_attachments)

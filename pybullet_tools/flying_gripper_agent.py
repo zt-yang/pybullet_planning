@@ -65,7 +65,7 @@ def get_stream_map(p, c, l, t):
         'plan-free-motion': from_fn(get_free_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
         # 'plan-base-motion-wconf': from_fn(get_motion_wconf_gen(p, collisions=c, teleport=t, custom_limits=l)),
         #
-        'test-cfree-traj-pose': from_test(get_cfree_traj_pose_test(p.robot, collisions=c, verbose=True)),
+        'test-cfree-traj-pose': from_test(get_cfree_traj_pose_test(p.robot, collisions=c, verbose=False)),
 
         # 'test-cfree-btraj-pose': from_test(get_cfree_btraj_pose_test(p.robot, collisions=c)),
 
