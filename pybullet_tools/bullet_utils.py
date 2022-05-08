@@ -2,16 +2,20 @@ from __future__ import print_function
 
 import random
 from itertools import product
-from os.path import isfile, join
+from os.path import isfile, dirname, abspath, join
 import numpy as np
 import math
 import pybullet as p
 from pprint import pprint
 
-from .pr2_utils import draw_viewcone, get_viewcone, get_group_conf, set_group_conf, get_other_arm, \
+import os
+import json
+from pybullet_tools.logging import dump_json
+
+from pybullet_tools.pr2_utils import draw_viewcone, get_viewcone, get_group_conf, set_group_conf, get_other_arm, \
     get_carry_conf, set_arm_conf, open_arm, close_arm, arm_conf, REST_LEFT_ARM, get_group_joints
 
-from .utils import unit_pose, get_collision_data, get_links, LockRenderer, pairwise_collision, get_link_name, \
+from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockRenderer, pairwise_collision, get_link_name, \
     set_pose, get_movable_joints, draw_pose, pose_from_pose2d, set_velocity, set_joint_states, get_bodies, \
     flatten, INF, inf_generator, get_time_step, get_all_links, get_visual_data, pose2d_from_pose, multiply, invert, \
     get_sample_fn, pairwise_collisions, sample_placement, is_placement, aabb_contains_point, point_from_pose, \
@@ -1055,6 +1059,27 @@ def get_gripper_direction(pose, epsilon=0.01):
         if equal(euler, key, epsilon):
             return GRIPPER_DIRECTIONS[key]
     return None
+
+def find_grasp_in_db(db_file_name, full_name=None):
+    db_file = dirname(abspath(__file__))
+    db_file = join(db_file, db_file_name)
+    db = json.load(open(db_file, 'r'))
+
+    found = None
+    if full_name != None and full_name in db and len(db[full_name]) > 0:
+        if len(db[full_name][0][1]) == 4:
+            found = [(tuple(e[0]), tuple(e[1])) for e in db[full_name]]
+        else:
+            found = [(tuple(e[0]), quat_from_euler(e[1])) for e in db[full_name]]
+    return found, db, db_file
+
+def add_grasp_in_db(db, db_file, full_name, grasps):
+    db[full_name] = []
+    for g in grasps:
+        g = nice(g, 4)
+        db[full_name].append([list(g[0]), list(g[1])])
+    os.remove(db_file)
+    dump_json(db, db_file)
 
 def visualize_camera_image(image, index=0, img_dir='.'):
     import seaborn as sns

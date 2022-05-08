@@ -14,6 +14,8 @@ from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, close_until_collision
 
 class PR2Robot(Robot):
 
+    grasp_types = ['top']
+
     def get_init(self, init_facts=[], conf_saver=None):
         from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints, \
             get_group_conf, get_top_grasps, get_side_grasps
@@ -110,6 +112,8 @@ class PR2Robot(Robot):
         return link_from_name(self.body, PR2_TOOL_FRAMES.get(arm, arm))
 
 class FEGripper(Robot):
+
+    grasp_types = ['hand']
 
     def get_attachment_link(self, arm):
         from pybullet_tools.flying_gripper_utils import TOOL_LINK

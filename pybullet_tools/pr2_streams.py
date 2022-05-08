@@ -64,24 +64,20 @@ def pr2_grasp(body, value, grasp_type=None):
     return Grasp(grasp_type, body, value, multiply((approach_vector, unit_quat()), value),
                  TOP_HOLDING_LEFT_ARM)
 
-
 def get_handle_grasps(body_joint, tool_pose=TOOL_POSE, body_pose=unit_pose(),
                       max_width=MAX_GRASP_WIDTH, grasp_length=GRASP_LENGTH,
                       robot=None, obstacles=[], full_name=None, world=None):
     from pybullet_tools.utils import Pose
+    from bullet_utils import find_grasp_in_db, add_grasp_in_db
 
-    DEBUG = False
+    DEBUG = True
 
     PI = math.pi
-    db_file = os.path.dirname(os.path.abspath(__file__))
-    db_file = os.path.join(db_file, 'handle_grasps.json')
-    db = json.load(open(db_file, 'r'))
     body = body_joint[0]
     handle_link = get_handle_link(body_joint)
-    if full_name != None and full_name in db and len(db[full_name]) > 0:
-        if len(db[full_name][0][1]) == 4:
-            return [(tuple(e[0]), tuple(e[1])) for e in db[full_name]]
-        return [(tuple(e[0]), quat_from_euler(e[1])) for e in db[full_name]]
+
+    found, db, db_file = find_grasp_in_db('handle_grasps.json', full_name)
+    if found != None: return found
 
     handle_pose = get_handle_pose(body_joint)
 
@@ -121,12 +117,7 @@ def get_handle_grasps(body_joint, tool_pose=TOOL_POSE, body_pose=unit_pose(),
                     break
 
     ## lastly store the newly sampled grasps
-    db[full_name] = []
-    for g in grasps:
-        g = nice(g, 4)
-        db[full_name].append([list(g[0]), list(g[1])])
-    os.remove(db_file)
-    dump_json(db, db_file)
+    add_grasp_in_db(db, db_file, full_name, grasps)
     return grasps
 
 def get_handle_grasp_gen(problem, collisions=False, randomize=True, visualize=False):

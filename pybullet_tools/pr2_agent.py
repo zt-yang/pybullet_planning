@@ -747,6 +747,7 @@ def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=True):
     else: ##if isinstance(name, Object):
         body_joint = name
         name = state.world.BODY_TO_OBJECT[body_joint].shorter_name
+
     funk = get_handle_grasp_gen(state, visualize=False)
     outputs = funk(body_joint)
     if visualize:
