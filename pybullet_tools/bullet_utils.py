@@ -877,6 +877,8 @@ def get_hand_grasps(state, body, grasp_length=0.1):
     dist = grasp_length
     robot = state.robot
     obstacles = state.fixed
+    if len(obstacles) == 0:
+        obstacles = [body]
     body_pose, aabb, handles = draw_fitted_box(body)
     body_pose = get_pose(body)
 
@@ -903,7 +905,7 @@ def get_hand_grasps(state, body, grasp_length=0.1):
         f = add(f, c)
 
         grasp = multiply(Pose(point=f), Pose(euler=r))
-        if check_cfree_gripper(grasp, state.world, body_pose, [body],
+        if check_cfree_gripper(grasp, state.world, body_pose, obstacles,
                                visualize=False, RETAIN_ALL=False):
             grasps += [grasp]
         # grasp = multiply(body_pose, Pose(point=f), Pose(euler=r))

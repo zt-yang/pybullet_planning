@@ -152,7 +152,7 @@ def get_cloned_se3_conf(robot, gripper):
     joints = get_joints_by_group(robot, SE3_GROUP)
     return get_joint_positions(gripper, joints)
 
-def get_cloned_pose(robot, gripper):
+def get_cloned_hand_pose(robot, gripper):
     link = link_from_name(robot, TOOL_LINK)
     return get_link_pose(gripper, link)
 
@@ -186,14 +186,11 @@ def get_se3_conf(robot):
 #     return (conf[:3], quat_from_euler(conf[3:]))
 
 def se3_from_pose(p):
-    def m(r=0,p=0,y=0):
-        return ((0,0,0), quat_from_euler((r,p,y)))
-    roll, pitch, yaw = euler_from_quat(p[1])
-    r = euler_from_quat(multiply(m(y=yaw), m(p=pitch), m(r=roll))[1])
-    return list(np.concatenate([np.asarray(p[0]), np.asarray(r)]))
-    # return list(np.concatenate([np.asarray(p[0]), np.asarray(euler_from_quat(p[1]))]))
+    print('Deprecated se3_from_pose, please use se3_ik()')
+    return list(np.concatenate([np.asarray(p[0]), np.asarray(euler_from_quat(p[1]))]))
 
 def pose_from_se3(conf):
+    # print('Deprecated pose_from_se3, please use se3_fk()')
     return (conf[:3], quat_from_euler(conf[3:]))
 
 from pybullet_tools.utils import irange, is_pose_close, CLIENT

@@ -383,11 +383,18 @@ class RemoveBodyEvent(Action):
 
 #######################################################
 
-class MovePoseAction(Action):
-    def __init__(self, pose):
-        self.pose = pose
+# class MovePoseAction(Action):
+#     def __init__(self, pose):
+#         self.pose = pose
+#     def transition(self, state):
+#         set_pose(self.pose.body, self.pose.value)
+#         return state.new_state()
+
+class MoveInSE3Action(Action):
+    def __init__(self, conf):
+        self.conf = conf
     def transition(self, state):
-        set_pose(self.pose.body, self.pose.value)
+        set_se3_conf(state.robot, self.conf)
         return state.new_state()
 
 #######################################################
