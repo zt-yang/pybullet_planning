@@ -31,6 +31,9 @@ BASE_VELOCITIES = np.array([1., 1., 1, rad(180), rad(180), rad(180)]) / 1.
 BASE_RESOLUTIONS = np.array([0.05, 0.05, 0.05, rad(10), rad(10), rad(10)])
 
 ARM_NAME = 'hand'
+TOOL_LINK = 'panda_hand'
+CACHE = {}
+
 class Problem():
     def __init__(self, robot, obstacles):
         self.robot = robot
@@ -97,7 +100,7 @@ def test_ik(robot, info, tool_link, tool_pose):
 
 def sample_ik_tests(robot):
     joints = get_movable_joints(robot)
-    tool_link = link_from_name(robot, 'panda_hand')
+    tool_link = link_from_name(robot, TOOL_LINK)
 
     info = PANDA_INFO
     check_ik_solver(info)
@@ -149,6 +152,14 @@ def get_cloned_se3_conf(robot, gripper):
     joints = get_joints_by_group(robot, SE3_GROUP)
     return get_joint_positions(gripper, joints)
 
+def get_cloned_pose(robot, gripper):
+    link = link_from_name(robot, TOOL_LINK)
+    return get_link_pose(gripper, link)
+
+def get_hand_pose(robot):
+    link = link_from_name(robot, TOOL_LINK)
+    return get_link_pose(robot, link)
+
 def set_se3_conf(robot, se3):
     set_joint_positions(robot, get_se3_joints(robot), se3)
     # pose = pose_from_se3(se3)
@@ -188,28 +199,35 @@ def pose_from_se3(conf):
 from pybullet_tools.utils import irange, is_pose_close, CLIENT
 import pybullet as p
 
-def se3_ik(robot, target_pose, max_iterations=200, max_time=2):
+def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
+    if nice(target_pose) in CACHE:
+        if verbose: print(f'se3_ik | for pose {nice(target_pose)} found in cache')
+        return CACHE[nice(target_pose)]
     start_time = time.time()
-    link = link_from_name(robot, 'panda_hand')
+    link = link_from_name(robot, TOOL_LINK)
     target_point, target_quat = target_pose
     sub_joints = get_se3_joints(robot) ## [3:]  ## only find
     sub_robot = robot.create_gripper(color=BLUE)
     for iteration in irange(max_iterations):
         if elapsed_time(start_time) >= max_time:
             remove_body(sub_robot)
+            if verbose: print(f'se3_ik | for pose {nice(target_pose)} failed after {max_time} sec')
             return None
         sub_kinematic_conf = p.calculateInverseKinematics(sub_robot, link, target_point, target_quat, physicsClientId=CLIENT)
         sub_kinematic_conf = sub_kinematic_conf[:-2] ##[3:-2]
         set_joint_positions(sub_robot, sub_joints, sub_kinematic_conf)
-        new_pose = nice(get_link_pose(sub_robot, link))
-        print(nice(sub_kinematic_conf), '\t', new_pose, '\t', nice(target_pose))
+        # new_pose = nice(get_link_pose(sub_robot, link))
+        # print(nice(sub_kinematic_conf), '\t', new_pose, '\t', nice(target_pose))
         if is_pose_close(get_link_pose(sub_robot, link), target_pose):
-            print('found conf', nice(sub_kinematic_conf))
+            if verbose: print(f'se3_ik | for pose {nice(target_pose)} found after {iteration} trials and '
+                        f'{nice(elapsed_time(start_time))} sec', nice(sub_kinematic_conf))
             set_camera_target_body(sub_robot, dx=0.5, dy=0.5, dz=0.5)
             remove_body(sub_robot)
+            CACHE[nice(target_pose)] = sub_kinematic_conf
             return sub_kinematic_conf
             # se3_conf = list(target_point) + list(sub_kinematic_conf)
             # return tuple(se3_conf)
+    if verbose: print(f'se3_ik | for pose {nice(target_pose)} failed after {max_iterations} iterations')
     return None
 
 def approximate_as_box(robot):

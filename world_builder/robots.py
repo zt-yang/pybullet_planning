@@ -3,7 +3,8 @@ from .entities import Robot
 
 from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color, TRANSPARENT, \
     Attachment, link_from_name, get_link_subtree, get_joints, is_movable, multiply, invert, \
-    set_joint_positions, set_pose, GREEN, dump_body, get_pose, remove_body, PoseSaver
+    set_joint_positions, set_pose, GREEN, dump_body, get_pose, remove_body, PoseSaver, \
+    ConfSaver
 
 from pybullet_tools.bullet_utils import equal, nice, get_gripper_direction, set_camera_target_body
 from pybullet_tools.pr2_primitives import Conf
@@ -130,11 +131,12 @@ class FEGripper(Robot):
         close_cloned_gripper(self.body, gripper)
 
     def compute_grasp_width(self, arm, body, grasp_pose, **kwargs):
-        body_pose = multiply(self.get_body_pose(body), grasp_pose)
-        # gripper = self.create_gripper(arm, visual=True)
-        with PoseSaver(self.body):
+        from pybullet_tools.flying_gripper_utils import se3_ik, set_se3_conf
+        grasp_pose = multiply(self.get_body_pose(body), grasp_pose)
+        with ConfSaver(self.body):
             gripper = self.body
-            set_pose(gripper, body_pose)
+            conf = se3_ik(gripper, grasp_pose)
+            set_se3_conf(gripper, conf)
             gripper_joints = self.get_gripper_joints()
             width = close_until_collision(gripper, gripper_joints, bodies=[body], **kwargs)
             if width != None: width *= 2
@@ -150,13 +152,17 @@ class FEGripper(Robot):
         return multiply(body_pose, Pose(euler=Euler(math.pi/2, 0, -math.pi/2)))
 
     def visualize_grasp(self, body_pose, grasp, arm='hand', color=GREEN, width=1):
+        from pybullet_tools.flying_gripper_utils import se3_ik, set_cloned_se3_conf, get_cloned_se3_conf
+
         body_pose = self.get_body_pose(body_pose)
         gripper = self.create_gripper(arm, visual=True)
         self.open_cloned_gripper(gripper, width)
 
         set_all_color(gripper, color)
         grasp_pose = multiply(body_pose, grasp) ##
-        set_pose(gripper, grasp_pose)
+        # set_pose(self.body, grasp_pose)
+        grasp_conf = se3_ik(self, grasp_pose)
+        set_cloned_se3_conf(self.body, gripper, grasp_conf)
 
         # set_camera_target_body(gripper, dx=0.5, dy=0.5, dz=0.8)
         return gripper
