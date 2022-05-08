@@ -96,6 +96,7 @@ class Object(Index):
         self.supported_objects = []
         self.events = []
         self.is_box = False
+        self.categories = [category] ## for added categories like moveable
 
     ## =============== put other object on top of object =============
     ##

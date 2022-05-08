@@ -871,14 +871,14 @@ def draw_face_points(aabb, body_pose, dist=0.08):
         handles.append(draw_point(f, size=0.02, color=RED))
     return handles
 
-def get_hand_grasps(state, body, grasp_length=0.1):
+def get_hand_grasps(state, body, grasp_length=0.1, visualize=False):
     from pybullet_tools.flying_gripper_utils import set_se3_conf, create_fe_gripper, se3_from_pose
 
     dist = grasp_length
     robot = state.robot
     obstacles = state.fixed
-    if len(obstacles) == 0:
-        obstacles = [body]
+    if body not in obstacles:
+        obstacles += [body]
     body_pose, aabb, handles = draw_fitted_box(body)
     body_pose = get_pose(body)
 
@@ -895,7 +895,7 @@ def get_hand_grasps(state, body, grasp_length=0.1):
         (0, 0, 1): [(P, 0, P/2), (P, 0, -P/2)],
         (0, 0, -1): [(0, 0, -P/2), (0, 0, P/2)],
     }
-    set_renderer(False)
+    set_renderer(visualize)
     grasps = []
     for f in faces:
         p = np.array(f)
@@ -921,8 +921,8 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=True,
     gripper_grasp = robot.visualize_grasp(object_pose, grasp, color=color)
     if visualize: ## and not firstly: ## somtimes cameras blocked by robot, need to change dx, dy
         ## also helps slow down visualization of the sampling the testing process
-        set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.2) ## oven
-        set_camera_target_body(gripper_grasp, dx=1, dy=0.5, dz=0.8) ## faucet
+        set_camera_target_body(gripper_grasp, dx=0.3, dy=0.5, dz=0.2) ## oven
+        # set_camera_target_body(gripper_grasp, dx=1, dy=0.5, dz=0.8) ## faucet
 
     ## when gripper isn't closed, it shouldn't collide
     firstly = collided(gripper_grasp, obstacles, min_num_pts=min_num_pts,

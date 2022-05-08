@@ -4076,6 +4076,8 @@ def sample_placement_on_aabb(top_body, bottom_aabb, top_pose=unit_pose(),
     return None
 
 def sample_placement(top_body, bottom_body, bottom_link=None, **kwargs):
+    if isinstance(bottom_body, tuple) and len(bottom_body) == 3:
+        bottom_body, _, bottom_link = bottom_body
     bottom_aabb = get_aabb(bottom_body, link=bottom_link)
     return sample_placement_on_aabb(top_body, bottom_aabb, **kwargs)
 

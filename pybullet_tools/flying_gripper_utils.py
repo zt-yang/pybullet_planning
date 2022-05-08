@@ -216,9 +216,10 @@ def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
         # new_pose = nice(get_link_pose(sub_robot, link))
         # print(nice(sub_kinematic_conf), '\t', new_pose, '\t', nice(target_pose))
         if is_pose_close(get_link_pose(sub_robot, link), target_pose):
-            if verbose: print(f'se3_ik | for pose {nice(target_pose)} found after {iteration} trials and '
-                        f'{nice(elapsed_time(start_time))} sec', nice(sub_kinematic_conf))
-            set_camera_target_body(sub_robot, dx=0.5, dy=0.5, dz=0.5)
+            if verbose:
+                print(f'se3_ik | for pose {nice(target_pose)} found after {iteration} trials and '
+                    f'{nice(elapsed_time(start_time))} sec', nice(sub_kinematic_conf))
+                set_camera_target_body(sub_robot, dx=0.5, dy=0.5, dz=0.5)
             remove_body(sub_robot)
             CACHE[nice(target_pose)] = sub_kinematic_conf
             return sub_kinematic_conf

@@ -169,6 +169,8 @@ class FEGripper(Robot):
         grasp_pose = multiply(body_pose, grasp) ##
         # set_pose(self.body, grasp_pose)
         grasp_conf = se3_ik(self, grasp_pose)
+        if grasp_conf == None:
+            print(f'robots.visualize_grasp | ik failed for {nice(grasp_pose)}')
         set_cloned_se3_conf(self.body, gripper, grasp_conf)
 
         # set_camera_target_body(gripper, dx=0.5, dy=0.5, dz=0.8)

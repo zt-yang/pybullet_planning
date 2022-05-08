@@ -142,13 +142,13 @@ class World(object):
         return object
 
     def add_to_cat(self, body, cat):
-        object = body
-        if isinstance(body, int) or isinstance(body, tuple):
-            object = self.BODY_TO_OBJECT[body]
+        object = self.get_object(body)
 
         if cat not in self.OBJECTS_BY_CATEGORY:
             self.OBJECTS_BY_CATEGORY[cat] = []
         self.OBJECTS_BY_CATEGORY[cat].append(object)
+        if cat not in object.categories:
+            object.categories.append(cat)
 
     def add_robot(self, robot, name='robot', max_velocities=None):
         self.robot = robot  # TODO: multi-robot
@@ -290,6 +290,7 @@ class World(object):
         ]
 
     def remove_object(self, object):
+        object = self.get_object(object)
         body = object.body
 
         ## remove all objects initiated by the body
@@ -302,12 +303,14 @@ class World(object):
         bodies += [bb for bb in self.BODY_TO_OBJECT.keys() if isinstance(bb, tuple) and bb[0] == body and bb not in bodies]
         for b in bodies:
             if b in self.BODY_TO_OBJECT:
-                category = self.BODY_TO_OBJECT[b].category
                 obj = self.BODY_TO_OBJECT.pop(b)
-                self.OBJECTS_BY_CATEGORY[category] = [
-                    o for o in self.OBJECTS_BY_CATEGORY[category] if not
-                    (o.body == obj.body and o.link == obj.link and o.joint == obj.joint)
-                ]
+
+                # so cat_to_bodies('moveable') won't find it
+                for cat in obj.categories:
+                    self.OBJECTS_BY_CATEGORY[cat] = [
+                        o for o in self.OBJECTS_BY_CATEGORY[cat] if not
+                        (o.body == obj.body and o.link == obj.link and o.joint == obj.joint)
+                    ]
                 if hasattr(obj, 'supporting_surface') and isinstance(obj.supporting_surface, Surface):
                     surface = obj.supporting_surface
                     surface.supported_objects.remove(obj)
@@ -349,8 +352,13 @@ class World(object):
                 bodies.append((o.body, o.joint))
             else:
                 bodies.append(o.body)
-        bodies = list(set(bodies))
-        return bodies
+        filtered_bodies = []
+        for b in set(bodies):
+            if b in self.BODY_TO_OBJECT:
+                filtered_bodies += [b]
+            else:
+                print(f'world.cat_to_bodies | category {cat} found {b}')
+        return filtered_bodies
 
     def cat_to_objects(self, cat):
         bodies = self.cat_to_bodies(cat)
