@@ -1,3 +1,5 @@
+import random
+
 import numpy as np
 from itertools import product
 from math import radians as rad
@@ -139,18 +141,18 @@ def close_cloned_gripper(robot, gripper):
     joints = get_joints_by_group(robot, FINGERS_GROUP)
     set_joint_positions(gripper, joints, [0, 0])
 
-# def set_cloned_se3_conf(robot, gripper, conf):
-#     joints = get_joints_by_group(robot, SE3_GROUP)
-#     return set_joint_positions(gripper, joints, conf)
-#
-# def get_cloned_se3_conf(robot, gripper):
-#     joints = get_joints_by_group(robot, SE3_GROUP)
-#     return get_joint_positions(gripper, joints)
+def set_cloned_se3_conf(robot, gripper, conf):
+    joints = get_joints_by_group(robot, SE3_GROUP)
+    return set_joint_positions(gripper, joints, conf)
+
+def get_cloned_se3_conf(robot, gripper):
+    joints = get_joints_by_group(robot, SE3_GROUP)
+    return get_joint_positions(gripper, joints)
 
 def set_se3_conf(robot, se3):
-    # set_joint_positions(robot, get_se3_joints(robot), se3)
-    pose = pose_from_se3(se3)
-    set_pose(robot, pose)
+    set_joint_positions(robot, get_se3_joints(robot), se3)
+    # pose = pose_from_se3(se3)
+    # set_pose(robot, pose)
 
 def get_joints_by_group(robot, group):
     return [joint_from_name(robot, j) for j in group]
@@ -159,9 +161,9 @@ def get_se3_joints(robot):
     return get_joints_by_group(robot, SE3_GROUP)
 
 def get_se3_conf(robot):
-    # return get_joint_positions(robot, get_se3_joints(robot))
-    pose = get_pose(robot)
-    return se3_from_pose(pose)
+    return get_joint_positions(robot, get_se3_joints(robot))
+    # pose = get_pose(robot)
+    # return se3_from_pose(pose)
 
 # def pose_to_se3(p):
 #     # return list(p[0]) + list(euler_from_quat(p[1]))
@@ -173,15 +175,42 @@ def get_se3_conf(robot):
 #     return (conf[:3], quat_from_euler(conf[3:]))
 
 def se3_from_pose(p):
-    # def m(r=0,p=0,y=0):
-    #     return ((0,0,0), quat_from_euler((r,p,y)))
-    # roll, pitch, yaw = euler_from_quat(p[1])
-    # r = euler_from_quat(multiply(m(r=roll), m(p=pitch), m(y=yaw))[1])
-    # return list(np.concatenate([np.asarray(p[0]), np.asarray(r)]))
-    return list(np.concatenate([np.asarray(p[0]), np.asarray(euler_from_quat(p[1]))]))
+    def m(r=0,p=0,y=0):
+        return ((0,0,0), quat_from_euler((r,p,y)))
+    roll, pitch, yaw = euler_from_quat(p[1])
+    r = euler_from_quat(multiply(m(y=yaw), m(p=pitch), m(r=roll))[1])
+    return list(np.concatenate([np.asarray(p[0]), np.asarray(r)]))
+    # return list(np.concatenate([np.asarray(p[0]), np.asarray(euler_from_quat(p[1]))]))
 
 def pose_from_se3(conf):
     return (conf[:3], quat_from_euler(conf[3:]))
+
+from pybullet_tools.utils import irange, is_pose_close, CLIENT
+import pybullet as p
+
+def se3_ik(robot, target_pose, max_iterations=200, max_time=2):
+    start_time = time.time()
+    link = link_from_name(robot, 'panda_hand')
+    target_point, target_quat = target_pose
+    sub_joints = get_se3_joints(robot) ## [3:]  ## only find
+    sub_robot = robot.create_gripper(color=BLUE)
+    for iteration in irange(max_iterations):
+        if elapsed_time(start_time) >= max_time:
+            remove_body(sub_robot)
+            return None
+        sub_kinematic_conf = p.calculateInverseKinematics(sub_robot, link, target_point, target_quat, physicsClientId=CLIENT)
+        sub_kinematic_conf = sub_kinematic_conf[:-2] ##[3:-2]
+        set_joint_positions(sub_robot, sub_joints, sub_kinematic_conf)
+        new_pose = nice(get_link_pose(sub_robot, link))
+        print(nice(sub_kinematic_conf), '\t', new_pose, '\t', nice(target_pose))
+        if is_pose_close(get_link_pose(sub_robot, link), target_pose):
+            print('found conf', nice(sub_kinematic_conf))
+            set_camera_target_body(sub_robot, dx=0.5, dy=0.5, dz=0.5)
+            remove_body(sub_robot)
+            return sub_kinematic_conf
+            # se3_conf = list(target_point) + list(sub_kinematic_conf)
+            # return tuple(se3_conf)
+    return None
 
 def approximate_as_box(robot):
     pose = get_pose(robot)

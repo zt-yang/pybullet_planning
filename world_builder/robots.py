@@ -108,7 +108,9 @@ class PR2Robot(Robot):
 class FEGripper(Robot):
 
     def create_gripper(self, arm='hand', visual=True, color=None):
+        from pybullet_tools.utils import unit_pose
         gripper = clone_body(self.body, visual=False, collision=True)
+        set_pose(gripper, unit_pose())
         if not visual:
             set_all_color(self.body, TRANSPARENT)
         if color != None:

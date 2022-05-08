@@ -95,8 +95,8 @@ def create_pr2_robot(world, base_q=(0,0,0), DUAL_ARM=False, custom_limits=BASE_L
     return robot
 
 from pybullet_tools.flying_gripper_utils import create_fe_gripper, plan_se3_motion, Problem, \
-    get_free_motion_gen, set_gripper_positions, get_se3_joints, se3_from_pose, set_gripper_positions, \
-    set_se3_conf
+    get_free_motion_gen, set_gripper_positions, get_se3_joints, set_gripper_positions, \
+    set_se3_conf ## se3_from_pose,
 
 
 def create_gripper_robot(world, custom_limits, initial_q=(0, 0, 0, 0, 0, 0)):

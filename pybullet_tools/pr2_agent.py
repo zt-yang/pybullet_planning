@@ -778,7 +778,19 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False):
         grasp = outputs[i][0]
         w = grasp.grasp_width
         if RETAIN_ALL:
+            from .flying_gripper_utils import set_cloned_se3_conf, get_cloned_se3_conf, get_se3_conf, se3_from_pose, \
+                se3_ik
+            from .utils import set_pose, unit_pose, euler_from_quat
+            import math
             gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, color=colors[i%len(colors)], width=w)
+            set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.5)
+            pose = get_pose(gripper_grasp)
+            conf = se3_from_pose(pose)
+            # conf = get_se3_conf(gripper_grasp)
+            # conf = se3_ik(robot, pose)
+            set_pose(gripper_grasp, unit_pose())
+            set_cloned_se3_conf(robot, gripper_grasp, conf)
+            set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.5)
         else:
             gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, color=GREEN, width=w)
             gripper_approach = robot.visualize_grasp(body_pose, grasp.approach, color=BROWN)
