@@ -843,12 +843,18 @@ def fit_dimensions(body, body_pose=unit_pose()):
     aabb = aabb_from_points(vertices)
     return aabb, get_aabb_center(aabb), get_aabb_extent(aabb)
 
-def draw_fitted_box(body, draw_centroid=False):
-    body_pose = multiply(get_pose(body), Pose(euler=Euler(math.pi/2, 0, -math.pi/2))) ##
-    origin = unit_pose()  ## (Point(), body_pose[1])
+def draw_fitted_box(body, link=None, draw_centroid=False):
+
+    if link == None:
+        body_pose = multiply(get_pose(body), Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2)))  ##
+        links = get_links(body)
+    else:
+        body_pose = multiply(get_link_pose(body, link))  ##
+        links = [link]
+
     vertices = []
-    for link in get_links(body):
-        new_vertices = apply_affine(origin, vertices_from_rigid(body, link))
+    for link in links:
+        new_vertices = apply_affine(unit_pose(), vertices_from_rigid(body, link))
         vertices.extend(new_vertices)
     aabb = aabb_from_points(vertices)
     handles = draw_bounding_box(aabb, body_pose)
@@ -875,7 +881,9 @@ def draw_face_points(aabb, body_pose, dist=0.08):
         handles.append(draw_point(f, size=0.02, color=RED))
     return handles
 
-def get_hand_grasps(state, body, grasp_length=0.1, visualize=False):
+def get_hand_grasps(state, body, link=None, grasp_length=0.1,
+                    HANDLE_FILTER=True, LENGTH_VARIANTS=False,
+                    visualize=False, RETAIN_ALL=False):
     from pybullet_tools.flying_gripper_utils import set_se3_conf, create_fe_gripper, se3_from_pose
 
     dist = grasp_length
@@ -883,38 +891,61 @@ def get_hand_grasps(state, body, grasp_length=0.1, visualize=False):
     obstacles = state.fixed
     if body not in obstacles:
         obstacles += [body]
-    body_pose, aabb, handles = draw_fitted_box(body)
-    body_pose = get_pose(body)
+    body_pose, aabb, handles = draw_fitted_box(body, link=link)
+    if link == None:
+        body_pose = get_pose(body)
+    else:
+        body_pose = multiply(body_pose, invert(Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))))
 
+    ## get the points in hand frame to be transformed to the origin of object frame in different directions
     c = get_aabb_center(aabb)
-    w, l, h = get_aabb_extent(aabb)
+    w, l, h = dimensions = get_aabb_extent(aabb)
     faces = [(w/2+dist, 0, 0), (0, l/2+dist, 0), (0, 0, h/2+dist)]
     faces += [minus(0, f) for f in faces]
+
+    ## for finding the longest dimension
+    max_value = max(dimensions)
+    filter = [int(x != max_value) for x in dimensions]
+
     P = math.pi
     rots = {
-        (1, 0, 0): [(P/2, 0, -P/2), (P/2, P, -P/2)],
-        (-1, 0, 0): [(P/2, 0, P/2), (P/2, P, P/2)],
+        (1, 0, 0): [(P/2, 0, -P/2), (P/2, P, -P/2), (P/2, -P/2, -P/2), (P/2, P/2, -P/2)],
+        (-1, 0, 0): [(P/2, 0, P/2), (P/2, P, P/2), (P/2, -P/2, P/2), (P/2, P/2, P/2)],
         (0, 1, 0): [(0, P/2, -P/2), (0, -P/2, P/2), (P/2, P, 0), (P/2, 0, 0)],
         (0, -1, 0): [(0, P/2, P/2), (0, -P/2, -P/2), (-P/2, P, 0), (-P/2, 0, 0)],
-        (0, 0, 1): [(P, 0, P/2), (P, 0, -P/2)],
-        (0, 0, -1): [(0, 0, -P/2), (0, 0, P/2)],
+        (0, 0, 1): [(P, 0, P/2), (P, 0, -P/2), (P, 0, 0), (P, 0, P)],
+        (0, 0, -1): [(0, 0, -P/2), (0, 0, P/2), (0, 0, 0), (0, 0, P)],
     }
     set_renderer(visualize)
     grasps = []
     for f in faces:
         p = np.array(f)
         p = p / np.linalg.norm(p)
-        ang = tuple(p)
-        r = rots[ang][0] ## random.choice(rots[tuple(p)]) ##
-        f = add(f, c)
 
-        grasp = multiply(Pose(point=f), Pose(euler=r))
-        if check_cfree_gripper(grasp, state.world, body_pose, obstacles,
-                               visualize=False, RETAIN_ALL=False):
-            grasps += [grasp]
-        # grasp = multiply(body_pose, Pose(point=f), Pose(euler=r))
-        # gripper = robot.create_gripper(color=RED)
-        # set_pose(gripper, grasp)
+        ## only attempt the bigger surfaces
+        on_longest = sum([filter[i]*p[i] for i in range(3)]) != 0
+        if HANDLE_FILTER and not on_longest:
+            continue
+
+        ang = tuple(p)
+        f = add(f, c)
+        # r = rots[ang][0] ## random.choice(rots[tuple(p)]) ##
+        for r in rots[ang]:
+            grasp = multiply(Pose(point=f), Pose(euler=r))
+            if check_cfree_gripper(grasp, state.world, body_pose, obstacles,
+                                   visualize=visualize, RETAIN_ALL=RETAIN_ALL):
+                grasps += [grasp]
+
+                ## slide along the longest dimension
+                if LENGTH_VARIANTS and on_longest:
+                    dl_max = max_value / 3
+                    dl_candidates = [random.uniform(-dl_max, dl_max) for k in range(3)]
+                    dl_candidates = [dl_max, -dl_max]
+                    for dl in dl_candidates:
+                        grasp_dl = multiply(grasp, Pose(point=(dl,0,0)))
+                        if check_cfree_gripper(grasp_dl, state.world, body_pose, obstacles, color=BROWN,
+                                               visualize=visualize, RETAIN_ALL=RETAIN_ALL):
+                            grasps += [grasp_dl]
 
     set_renderer(True)
     return grasps
@@ -932,10 +963,12 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=True,
     firstly = collided(gripper_grasp, obstacles, min_num_pts=min_num_pts,
                        world=world, verbose=False, tag='firstly')
 
-    ## when gripper is closed, it should collide with object
-    robot.close_cloned_gripper(gripper_grasp)
-    secondly = collided(gripper_grasp, obstacles, min_num_pts=0,
-                        world=world, verbose=False, tag='secondly')
+    secondly = False
+    if not firstly:
+        ## when gripper is closed, it should collide with object
+        robot.close_cloned_gripper(gripper_grasp)
+        secondly = collided(gripper_grasp, obstacles, min_num_pts=0,
+                            world=world, verbose=False, tag='secondly')
 
     result = not firstly and secondly
     if not result or not RETAIN_ALL:

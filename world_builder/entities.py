@@ -386,29 +386,35 @@ class ArticulatedObjectPart(Object):
         self.handle_horizontal, self.handle_width = self.get_handle_orientation(body)
 
     def find_handle_link(self, body, joint):
+        if (body, joint) in [(6, 1)]:
+            print('debug find_handle_link')
         link = get_joint_info(body, joint).linkName.decode("utf-8")
 
-        ## the only handle
+        ## the only handle, for those carefully engineered names
         links = [l for l in get_links(body) if 'handle' in get_link_name(body, l)]
         if len(links) == 1:
             return links[0]
 
-        ## when the substring matches
+        ## when the substring matches, for those carefully engineered names
         if link.endswith('_link'):
             name = link[:link.index('_link')]
             links = [l for l in get_links(body) if name in get_link_name(body, l)]
-            links = [l for l in links if 'handle' in get_link_name(body, l) or 'knob' in get_link_name(body, l)]
+            links = [l for l in links if 'handle' in get_link_name(body, l) or 'nob' in get_link_name(body, l)]
             if len(links) == 1:
                 return links[0]
-        else: ## try to find in children links
-            links += [l for l in get_link_children(body, link)]
 
+        ## try to find in children links
+        if len(links) == 0:
+            links += [l for l in get_link_children(body, link_from_name(body, link))]
+
+        ## sort links by similarity in names
         words = self.name.split('_')
         if len(links) > 0:
             counts = {links[i]: sum([w in words for w in get_link_name(body, links[i]).split('_')]) for i in range(len(links))}
             counts = dict(sorted(counts.items(), key=lambda item: item[1], reverse=True))
             return list(counts.keys())[0]
 
+        ## default to the joint's parent link
         return link_from_name(body, link)
 
     def get_handle_orientation(self, body):
