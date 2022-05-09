@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import os
+import sys
 import time
 
 from pybullet_planning.pybullet_tools.pr2_streams import get_stable_gen, get_contain_gen, get_position_gen, \
@@ -26,7 +27,7 @@ from pybullet_tools.utils import connect, disconnect, wait_if_gui, LockRenderer,
     euler_from_quat, get_joint, get_joints, PoseSaver, get_pose, get_link_pose, get_aabb, \
     get_joint_position, aabb_overlap, add_text, remove_handles, get_com_pose, get_closest_points,\
     set_color, RED, YELLOW, GREEN, multiply, get_unit_vector, unit_quat, get_bodies, BROWN, \
-    pairwise_collision, connect, get_pose, point_from_pose, \
+    pairwise_collision, connect, get_pose, point_from_pose, set_renderer, \
     disconnect, get_joint_positions, enable_gravity, save_state, restore_state, HideOutput, remove_body, \
     get_distance, LockRenderer, get_min_limit, get_max_limit, has_gui, WorldSaver, wait_if_gui, add_line, SEPARATOR, \
     BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS
@@ -741,19 +742,19 @@ def test_marker_pull_grasps(state, marker, visualize=False):
     print('test_marker_pull_grasps:', grasps)
     return grasps
 
-def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=True):
+def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=True, verbose=True):
     if isinstance(name, str):
         body_joint = state.world.name_to_body(name)
     else: ##if isinstance(name, Object):
         body_joint = name
         name = state.world.BODY_TO_OBJECT[body_joint].shorter_name
 
-    funk = get_handle_grasp_gen(state, visualize=False)
+    funk = get_handle_grasp_gen(state, visualize=False, verbose=verbose)
     outputs = funk(body_joint)
     if visualize:
         name_to_object = state.world.name_to_object
         body_pose = name_to_object(name).get_handle_pose()
-        visualize_grasps_by_quat(state, outputs, body_pose, RETAIN_ALL=True)
+        visualize_grasps_by_quat(state, outputs, body_pose, verbose=verbose)
     print('test_handle_grasps:', outputs)
     goals = [("AtHandleGrasp", 'left', body_joint, outputs[0][0])]
     return goals
@@ -790,24 +791,27 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False):
     # if RETAIN_ALL:
     #     wait_if_gui()
 
-def visualize_grasps_by_quat(state, outputs, body_pose, RETAIN_ALL=False):
+def visualize_grasps_by_quat(state, outputs, body_pose, verbose=False):
     robot = state.robot
     colors = [BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED]
     all_grasps = {}
     for i in range(len(outputs)):
         grasp = outputs[i][0]
-        quat = grasp.value[1]
+        quat = nice(grasp.value[1])
         if quat not in all_grasps:
             all_grasps[quat] = []
         all_grasps[quat].append(grasp)
 
     j = 0
+    set_renderer(True)
     for k, v in all_grasps.items():
         print(f'{len(v)} grasps of quat {k}')
         visuals = []
+        color = colors[j%len(colors)]
         for grasp in v:
-            gripper_grasp = visualize_grasp(robot, body_pose, grasp.value, color=colors[j%len(colors)])
-            visuals.append(gripper_grasp)
+            gripper = robot.visualize_grasp(body_pose, grasp.value, color=color, verbose=verbose,
+                                            width=grasp.grasp_width, body=grasp.body)
+            visuals.append(gripper)
         j += 1
         wait_if_gui()
         for visual in visuals:

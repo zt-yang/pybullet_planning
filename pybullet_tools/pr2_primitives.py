@@ -338,7 +338,7 @@ def get_grasp_gen(problem, collisions=False, randomize=True):
         # TODO: return grasps one by one
         grasps = []
         arm = 'left'
-        #carry_conf = get_carry_conf(arm, 'top')
+        # carry_conf = problem.robot.get_carry_conf('top')
         if 'top' in problem.grasp_types:
             approach_vector = APPROACH_DISTANCE*get_unit_vector([1, 0, 0])
             grasps.extend(Grasp('top', body, g, multiply((approach_vector, unit_quat()), g), TOP_HOLDING_LEFT_ARM)

@@ -197,8 +197,9 @@ from pybullet_tools.utils import irange, is_pose_close, CLIENT
 import pybullet as p
 
 def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
+    title = f'   se3_ik | for pose {nice(target_pose)}'
     if nice(target_pose) in CACHE:
-        if verbose: print(f'se3_ik | for pose {nice(target_pose)} found in cache')
+        if verbose: print(f'{title} found in cache')
         return CACHE[nice(target_pose)]
     start_time = time.time()
     link = link_from_name(robot, TOOL_LINK)
@@ -208,7 +209,7 @@ def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
     for iteration in irange(max_iterations):
         if elapsed_time(start_time) >= max_time:
             remove_body(sub_robot)
-            if verbose: print(f'se3_ik | for pose {nice(target_pose)} failed after {max_time} sec')
+            if verbose: print(f'{title} failed after {max_time} sec')
             return None
         sub_kinematic_conf = p.calculateInverseKinematics(sub_robot, link, target_point, target_quat, physicsClientId=CLIENT)
         sub_kinematic_conf = sub_kinematic_conf[:-2] ##[3:-2]
@@ -217,7 +218,7 @@ def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
         # print(nice(sub_kinematic_conf), '\t', new_pose, '\t', nice(target_pose))
         if is_pose_close(get_link_pose(sub_robot, link), target_pose):
             if verbose:
-                print(f'se3_ik | for pose {nice(target_pose)} found after {iteration} trials and '
+                print(f'{title} found after {iteration} trials and '
                     f'{nice(elapsed_time(start_time))} sec', nice(sub_kinematic_conf))
                 set_camera_target_body(sub_robot, dx=0.5, dy=0.5, dz=0.5)
             remove_body(sub_robot)
@@ -225,7 +226,7 @@ def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
             return sub_kinematic_conf
             # se3_conf = list(target_point) + list(sub_kinematic_conf)
             # return tuple(se3_conf)
-    if verbose: print(f'se3_ik | for pose {nice(target_pose)} failed after {max_iterations} iterations')
+    if verbose: print(f'{title} failed after {max_iterations} iterations')
     return None
 
 def approximate_as_box(robot):

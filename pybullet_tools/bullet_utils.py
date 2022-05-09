@@ -252,7 +252,7 @@ def nice(tuple_of_tuples, round_to=3):
         return []
 
     ## position, pose
-    elif isinstance(tuple_of_tuples[0], tuple):
+    elif isinstance(tuple_of_tuples[0], tuple) or isinstance(tuple_of_tuples[0], np.ndarray):
 
         ## pose = (point, quat) -> (point, euler)
         if len(tuple_of_tuples[0]) == 3 and len(tuple_of_tuples[1]) == 4:
@@ -843,13 +843,15 @@ def fit_dimensions(body, body_pose=unit_pose()):
     aabb = aabb_from_points(vertices)
     return aabb, get_aabb_center(aabb), get_aabb_extent(aabb)
 
-def draw_fitted_box(body, link=None, draw_centroid=False):
+def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False):
 
     if link == None:
         body_pose = multiply(get_pose(body), Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2)))  ##
         links = get_links(body)
     else:
-        body_pose = multiply(get_link_pose(body, link))  ##
+        body_pose = get_link_pose(body, link)  ##
+        if verbose:
+            print(f'bullet_utils.draw_fitted_box | body_pose = get_link_pose({body}, {link}) = {nice(body_pose)}')
         links = [link]
 
     vertices = []
@@ -882,8 +884,8 @@ def draw_face_points(aabb, body_pose, dist=0.08):
     return handles
 
 def get_hand_grasps(state, body, link=None, grasp_length=0.1,
-                    HANDLE_FILTER=True, LENGTH_VARIANTS=False,
-                    visualize=False, RETAIN_ALL=False):
+                    HANDLE_FILTER=False, LENGTH_VARIANTS=False,
+                    visualize=False, RETAIN_ALL=False, verbose=False):
     from pybullet_tools.flying_gripper_utils import set_se3_conf, create_fe_gripper, se3_from_pose
 
     dist = grasp_length
@@ -891,11 +893,13 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
     obstacles = state.fixed
     if body not in obstacles:
         obstacles += [body]
-    body_pose, aabb, handles = draw_fitted_box(body, link=link)
+    body_pose, aabb, handles = draw_fitted_box(body, link=link, verbose=verbose)
     if link == None:
         body_pose = get_pose(body)
-    else:
-        body_pose = multiply(body_pose, invert(Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))))
+    else: ## for handle grasps, use the original pose of handle_link
+        body_pose = multiply(body_pose, invert(robot.tool_from_hand))
+        if verbose:
+            print(f'bullet_utils.get_hand_grasps | hand_link = {link} | body_pose = multiply(body_pose, invert(robot.tool_from_hand)) = {nice(body_pose)}')
 
     ## get the points in hand frame to be transformed to the origin of object frame in different directions
     c = get_aabb_center(aabb)
@@ -932,9 +936,14 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
         # r = rots[ang][0] ## random.choice(rots[tuple(p)]) ##
         for r in rots[ang]:
             grasp = multiply(Pose(point=f), Pose(euler=r))
-            if check_cfree_gripper(grasp, state.world, body_pose, obstacles,
+            if check_cfree_gripper(grasp, state.world, body_pose, obstacles, verbose=verbose,
                                    visualize=visualize, RETAIN_ALL=RETAIN_ALL):
                 grasps += [grasp]
+
+                # # debug
+                # if verbose:
+                #     set_renderer(True)
+                #     return grasps
 
                 ## slide along the longest dimension
                 if LENGTH_VARIANTS and on_longest:
@@ -943,17 +952,24 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                     dl_candidates = [dl_max, -dl_max]
                     for dl in dl_candidates:
                         grasp_dl = multiply(grasp, Pose(point=(dl,0,0)))
-                        if check_cfree_gripper(grasp_dl, state.world, body_pose, obstacles, color=BROWN,
-                                               visualize=visualize, RETAIN_ALL=RETAIN_ALL):
+                        if check_cfree_gripper(grasp_dl, state.world, body_pose, obstacles, verbose=verbose,
+                                               visualize=visualize, RETAIN_ALL=RETAIN_ALL, color=BROWN):
                             grasps += [grasp_dl]
+
 
     set_renderer(True)
     return grasps
 
 def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=True,
-                        color=GREEN, min_num_pts=40, RETAIN_ALL=False):
+                        color=GREEN, min_num_pts=40, RETAIN_ALL=False, verbose=False):
+    from pybullet_tools.flying_gripper_utils import get_cloned_se3_conf
     robot = world.robot
-    gripper_grasp = robot.visualize_grasp(object_pose, grasp, color=color)
+    # print(f'bullet_utils.check_cfree_gripper(object_pose={nice(object_pose)}) before robot.visualize_grasp')
+    gripper_grasp = robot.visualize_grasp(object_pose, grasp, color=color, verbose=verbose)
+    if verbose:
+        print(f'bullet_utils.check_cfree_gripper | gripper_grasp {gripper_grasp} | object_pose {nice(object_pose)}'
+            f' | se_conf {nice(get_cloned_se3_conf(robot, gripper_grasp))} | grasp = {nice(grasp)}')
+
     if visualize: ## and not firstly: ## somtimes cameras blocked by robot, need to change dx, dy
         ## also helps slow down visualization of the sampling the testing process
         set_camera_target_body(gripper_grasp, dx=0.3, dy=0.5, dz=0.2) ## oven

@@ -4,15 +4,66 @@ from .entities import Robot
 from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color, TRANSPARENT, \
     Attachment, link_from_name, get_link_subtree, get_joints, is_movable, multiply, invert, \
     set_joint_positions, set_pose, GREEN, dump_body, get_pose, remove_body, PoseSaver, \
-    ConfSaver
+    ConfSaver, get_unit_vector, unit_quat
 
 from pybullet_tools.bullet_utils import equal, nice, get_gripper_direction, set_camera_target_body
-from pybullet_tools.pr2_primitives import Conf
+from pybullet_tools.pr2_primitives import APPROACH_DISTANCE, Conf, Grasp
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, close_until_collision
 
+class RobotAPI(Robot):
 
+    def get_init(self, init_facts=[], conf_saver=None):
+        raise NotImplementedError('should implement this for RobotAPI!')
 
-class PR2Robot(Robot):
+    def get_stream_map(self, problem, collisions, custom_limits, teleport):
+        raise NotImplementedError('should implement this for RobotAPI!')
+
+    def create_gripper(self, arm='left', visual=True):
+        raise NotImplementedError('should implement this for RobotAPI!')
+
+    def get_gripper_joints(self, gripper_grasp):
+        raise NotImplementedError('should implement this for RobotAPI!')
+
+    def close_cloned_gripper(self, gripper_grasp):
+        raise NotImplementedError('should implement this for RobotAPI!')
+
+    def compute_grasp_width(self, arm, body, grasp_pose, **kwargs):
+        raise NotImplementedError('should implement this for RobotAPI!')
+
+    def visualize_grasp(self, body_pose, grasp, arm='left', color=GREEN):
+        raise NotImplementedError('should implement this for RobotAPI!')
+
+    def get_attachment(self, grasp, arm):
+        raise NotImplementedError('should implement this for RobotAPI!')
+
+    def get_attachment_link(self, arm):
+        raise NotImplementedError('should implement this for RobotAPI!')
+
+    def get_carry_conf(self, arm, grasp_type, g):
+        raise NotImplementedError('should implement this for RobotAPI!')
+
+    def get_approach_vector(self, arm, grasp_type):
+        raise NotImplementedError('should implement this for RobotAPI!')
+
+    def get_approach_pose(self, approach_vector, g):
+        raise NotImplementedError('should implement this for RobotAPI!')
+
+    def make_grasps(self, g_type, arm, body, grasps_O, collisions=True):
+        app = self.get_approach_vector(arm, g_type)
+        grasps_R = [Grasp(g_type, body, g, self.get_approach_pose(app, g),
+                          self.get_carry_conf(arm, g_type, g))
+                    for g in grasps_O]
+
+        ## filter for grasp width
+        filtered_grasps = []
+        for grasp in grasps_R:
+            grasp_width = self.compute_grasp_width(g_type, body, grasp.value) if collisions else 0.0
+            if grasp_width is not None:
+                grasp.grasp_width = grasp_width
+                filtered_grasps.append(grasp)
+        return filtered_grasps
+
+class PR2Robot(RobotAPI):
 
     grasp_types = ['top']
 
@@ -111,9 +162,26 @@ class PR2Robot(Robot):
     def get_attachment_link(self, arm):
         return link_from_name(self.body, PR2_TOOL_FRAMES.get(arm, arm))
 
-class FEGripper(Robot):
+    def get_carry_conf(self, arm, grasp_type, g):
+        if grasp_type == 'top':
+            return TOP_HOLDING_LEFT_ARM
+        if grasp_type == 'side':
+            return SIDE_HOLDING_LEFT_ARM
+
+    def get_approach_vector(self, arm, grasp_type):
+        if grasp_type == 'top':
+            return APPROACH_DISTANCE*get_unit_vector([1, 0, 0])
+        if grasp_type == 'side':
+            return APPROACH_DISTANCE*get_unit_vector([2, 0, -1])
+
+    def get_approach_pose(self, approach_vector, g):
+        return multiply((approach_vector, unit_quat()), g)
+
+class FEGripper(RobotAPI):
+    from pybullet_tools.utils import Pose, Euler
 
     grasp_types = ['hand']
+    tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
 
     def get_attachment_link(self, arm):
         from pybullet_tools.flying_gripper_utils import TOOL_LINK
@@ -141,43 +209,70 @@ class FEGripper(Robot):
         from pybullet_tools.flying_gripper_utils import close_cloned_gripper
         close_cloned_gripper(self.body, gripper)
 
-    def compute_grasp_width(self, arm, body, grasp_pose, **kwargs):
-        from pybullet_tools.flying_gripper_utils import se3_ik, set_se3_conf
-        grasp_pose = multiply(self.get_body_pose(body), grasp_pose)
+    def compute_grasp_width(self, arm, body_pose, grasp, body=None, verbose=False, **kwargs):
+        from pybullet_tools.flying_gripper_utils import se3_ik, set_se3_conf, get_se3_conf
+        body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
+        grasp_pose = multiply(body_pose, grasp)
+        if verbose:
+            print(f'robots.compute_grasp_width | body_pose = {nice(body_pose)} | grasp = {nice(grasp)}')
+            print('robots.compute_grasp_width | grasp_pose = multiply(body_pose, grasp) = ', nice(grasp_pose))
+
         with ConfSaver(self.body):
+            conf = se3_ik(self, grasp_pose)
             gripper = self.body
-            conf = se3_ik(gripper, grasp_pose)
             set_se3_conf(gripper, conf)
+            if verbose:
+                print(f'robots.compute_grasp_width | gripper_grasp {gripper} | object_pose {nice(body_pose)}'
+                      f' | se_conf {nice(get_se3_conf(gripper))} | grasp = {nice(grasp)} ')
+
             gripper_joints = self.get_gripper_joints()
+            if isinstance(body, tuple): body = body[0]
             width = close_until_collision(gripper, gripper_joints, bodies=[body], **kwargs)
             if width != None: width *= 2
             # remove_body(gripper)
         return width
 
-    def get_body_pose(self, body):
-        from pybullet_tools.utils import Pose, Euler
-        if isinstance(body, tuple) and len(body[0]) == 3 and len(body[1]) == 4:
-            body_pose = body
-        else:
-            body_pose = get_pose(body)
-        return multiply(body_pose, Pose(euler=Euler(math.pi/2, 0, -math.pi/2)))
+    def get_body_pose(self, body_pose, body=None, verbose=False):
+        T = self.tool_from_hand
+        title = f'    robot.get_body_pose({nice(body_pose)}, body={body})'
 
-    def visualize_grasp(self, body_pose, grasp, arm='hand', color=GREEN, width=1):
+        ## if body_pose is handle link pose and body is (body, joint)
+        if body != None and isinstance(body, tuple) and not isinstance(body[0], tuple):
+            if verbose: print(f'{title} | return as is')
+            return body_pose
+            # new_body_pose = multiply(body_pose, invert(T), T)
+            # print(f'{title} | multiply(body_pose, invert(self.tool_from_hand), self.tool_from_hand) = {nice(new_body_pose)}')
+            # return new_body_pose
+
+        ## if body is given in the place of body_pose
+        b = body_pose
+        if not (isinstance(b, tuple) and isinstance(b[0], tuple) and len(b[0]) == 3 and len(b[1]) == 4):
+            if verbose: print(f'{title} | actually given body')
+            body_pose = get_pose(b)
+
+        new_body_pose = multiply(body_pose, T)
+        if verbose: print(f'{title} | multiply(body_pose, self.tool_from_hand) = {nice(new_body_pose)}')
+        return new_body_pose
+
+    def visualize_grasp(self, body_pose, grasp, arm='hand', color=GREEN, width=1, body=None, verbose=False):
         from pybullet_tools.flying_gripper_utils import se3_ik, set_cloned_se3_conf, get_cloned_se3_conf
 
-        body_pose = self.get_body_pose(body_pose)
+        body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
         gripper = self.create_gripper(arm, visual=True)
         self.open_cloned_gripper(gripper, width)
 
         set_all_color(gripper, color)
         grasp_pose = multiply(body_pose, grasp) ##
+        if verbose:
+            print(f'robots.visualize_grasp | body_pose = {nice(body_pose)} | grasp = {nice(grasp)}')
+            print('robots.visualize_grasp | grasp_pose = multiply(body_pose, grasp) = ', nice(grasp_pose))
         # set_pose(self.body, grasp_pose)
         grasp_conf = se3_ik(self, grasp_pose)
         if grasp_conf == None:
             print(f'robots.visualize_grasp | ik failed for {nice(grasp_pose)}')
         set_cloned_se3_conf(self.body, gripper, grasp_conf)
 
-        # set_camera_target_body(gripper, dx=0.5, dy=0.5, dz=0.8)
+        # set_camera_target_body(gripper, dx=0.5, dy=0.5, dz=0.5)
         return gripper
 
     def get_init(self, init_facts=[], conf_saver=None):
@@ -209,3 +304,12 @@ class FEGripper(Robot):
     def get_attachment(self, grasp, arm=None):
         tool_link = link_from_name(self.body, 'panda_hand')
         return Attachment(self.body, tool_link, grasp.value, grasp.body)
+
+    def get_carry_conf(self, arm, grasp_type, g):
+        return g
+
+    def get_approach_vector(self, arm, grasp_type):
+        return APPROACH_DISTANCE*get_unit_vector([0, 0, -1])
+
+    def get_approach_pose(self, approach_vector, g):
+        return multiply(g, (approach_vector, unit_quat()))
