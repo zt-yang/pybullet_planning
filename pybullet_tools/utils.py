@@ -3425,6 +3425,8 @@ def any_link_pair_collision(body1, links1, body2, links2=None, **kwargs):
         links1 = get_all_links(body1)
     if links2 is None:
         links2 = get_all_links(body2)
+    if isinstance(links1, int) or isinstance(links2, int):
+        print('utils.any_link_pair_collision | debug')
     for link1, link2 in product(links1, links2):
         if (body1 == body2) and (link1 == link2):
             continue
@@ -4026,6 +4028,8 @@ def stable_z_on_aabb(body, aabb):
     return (upper + extent/2 + (get_point(body) - center))[2]
 
 def stable_z(body, surface, surface_link=None):
+    if get_aabb(surface, link=surface_link) == None:
+        print('utils.stable_z | debug')
     return stable_z_on_aabb(body, get_aabb(surface, link=surface_link))
 
 def is_placed_on_aabb(body, bottom_aabb, above_epsilon=1e-2, below_epsilon=0.0):
@@ -4219,6 +4223,7 @@ class Attachment(object):
         return flatten_links(self.child) | flatten_links(self.parent, get_link_subtree(
             self.parent, self.parent_link))
     def assign(self):
+        print('\n\nDEPRECATED | use bullet_utils.Attachment')
         parent_link_pose = get_link_pose(self.parent, self.parent_link)
         child_pose = body_from_end_effector(parent_link_pose, self.grasp_pose)
         set_pose(self.child, child_pose)

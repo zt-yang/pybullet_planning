@@ -175,6 +175,9 @@ def opt_ik_fn(a, o, p, g):
     t = CustomValue('t-ik', tuple())
     return q, t
 
+def opt_ik_wconf_fn(a, o, p, g, w):
+    return opt_ik_fn(a, o, p, g)
+
 def opt_motion_fn(q1, q2):
     t = CustomValue('t-pbm', (q1, q2))
     return t,
@@ -482,7 +485,7 @@ stream_info.update({
     'plan-base-motion': StreamInfo(opt_gen_fn=from_fn(opt_motion_fn)),
     # 'plan-base-motion-wconf': StreamInfo(opt_gen_fn=from_fn(opt_motion_wconf_fn)),
     'sample-joint-position': StreamInfo(opt_gen_fn=from_fn(opt_position_fn)),
-    'inverse-kinematics-grasp-handle': StreamInfo(opt_gen_fn=from_fn(opt_ik_grasp_fn)),
+    # 'inverse-kinematics-grasp-handle': StreamInfo(opt_gen_fn=from_fn(opt_ik_grasp_fn)),
 })
 
 #######################################################

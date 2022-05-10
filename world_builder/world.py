@@ -763,7 +763,7 @@ class State(object):
     def get_wconf(self, init=None):
         if init == None:
             init = self.get_joint_facts()
-        poses = {i[1]: i[2] for i in init if i[0] == 'AtPose'}
+        poses = {} ## {i[1]: i[2] for i in init if i[0] == 'AtPose'}
         positions = {i[1]: i[2] for i in init if i[0] == 'AtPosition'}
         wconf = WConf(poses, positions)
         return wconf

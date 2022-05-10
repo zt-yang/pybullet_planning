@@ -55,32 +55,18 @@ def get_stream_map(p, c, l, t):
         'sample-pose-inside': from_gen_fn(get_contain_gen(p, collisions=c)),  ##
         'sample-grasp': from_list_fn(get_grasp_gen(p, collisions=True)),
 
-        'inverse-kinematics': from_fn(get_ik_fn(p, collisions=c, teleport=t, custom_limits=l, verbose=False)),
+        'inverse-kinematics-wconf': from_fn(get_ik_fn(p, collisions=c, teleport=t, custom_limits=l, verbose=False)),
         'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(collisions=c)),
         'test-cfree-approach-pose': from_test(get_cfree_approach_pose_test(p, collisions=c)),
 
-        # 'inverse-kinematics-wconf': from_gen_fn(get_ik_ir_wconf_gen(p, collisions=c, teleport=t, custom_limits=l,
-        #                                                             learned=False, max_attempts=60, verbose=False,
-        #                                                             visualize=False)),
-        'plan-free-motion': from_fn(get_free_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
-        # 'plan-base-motion-wconf': from_fn(get_motion_wconf_gen(p, collisions=c, teleport=t, custom_limits=l)),
-        #
+        'plan-free-motion-wconf': from_fn(get_free_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
         'test-cfree-traj-pose': from_test(get_cfree_traj_pose_test(p.robot, collisions=c, verbose=False)),
 
-        # 'test-cfree-btraj-pose': from_test(get_cfree_btraj_pose_test(p.robot, collisions=c)),
+        'get-joint-position-open': from_list_fn(sample_joint_position_open_list_gen(p)),
+        'sample-handle-grasp': from_list_fn(get_handle_grasp_gen(p, collisions=c, verbose=False)),
 
-        # # 'get-joint-position-open': from_fn(get_joint_position_open_gen(p)),
-        # 'get-joint-position-open': from_list_fn(sample_joint_position_open_list_gen(p)),
-        # # 'sample-joint-position-open': from_fn(get_position_gen(p, collisions=c, extent='max')),
-        # # 'sample-joint-position-closed': from_fn(get_position_gen(p, collisions=c, extent='min')),
-        # # 'test-joint-position-open': from_test(get_joint_position_test(extent='max')),
-        # # 'test-joint-position-closed': from_test(get_joint_position_test(extent='min')),
-        #
-        # 'sample-handle-grasp': from_list_fn(get_handle_grasp_gen(p, collisions=c)),
-        #
-        # 'inverse-kinematics-grasp-handle': from_gen_fn(
-        #     get_ik_ir_grasp_handle_gen(p, collisions=c, teleport=t, custom_limits=l,
-        #                                learned=False, verbose=False, ACONF=True, WCONF=False)),
+        'inverse-kinematics-grasp-handle': from_fn(get_ik_fn(p, collisions=c, teleport=t, custom_limits=l, verbose=False)),
+
         # 'inverse-kinematics-ungrasp-handle': from_gen_fn(
         #     get_ik_ungrasp_handle_gen(p, collisions=c, teleport=t, custom_limits=l,
         #                               verbose=False, WCONF=False)),
@@ -131,6 +117,8 @@ def get_stream_map(p, c, l, t):
     }
     return stream_map
 
+from pybullet_tools.pr2_agent import opt_move_cost_fn, opt_pose_fn, opt_ik_fn, opt_ik_wconf_fn, opt_motion_fn
+
 def get_stream_info(partial, defer):
     stream_info = {
         # 'test-cfree-pose-pose': StreamInfo(p_success=1e-3, verbose=verbose),
@@ -143,6 +131,8 @@ def get_stream_info(partial, defer):
                            'sample-pose': StreamInfo(opt_gen_fn=PartialInputs('?r')),
                            'inverse-kinematics': StreamInfo(opt_gen_fn=PartialInputs('?p')),
                            'plan-base-motion': StreamInfo(opt_gen_fn=PartialInputs('?q1 ?q2'),
+                                                          defer_fn=defer_shared if defer else never_defer),
+                           'plan-base-motion-wconf': StreamInfo(opt_gen_fn=PartialInputs('?q1 ?q2 ?w'),
                                                           defer_fn=defer_shared if defer else never_defer),
                        } if partial else {
         'sample-pose': StreamInfo(opt_gen_fn=from_fn(opt_pose_fn)),

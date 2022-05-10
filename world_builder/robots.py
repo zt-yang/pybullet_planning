@@ -2,13 +2,14 @@ import math
 from .entities import Robot
 
 from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color, TRANSPARENT, \
-    Attachment, link_from_name, get_link_subtree, get_joints, is_movable, multiply, invert, \
+    link_from_name, get_link_subtree, get_joints, is_movable, multiply, invert, \
     set_joint_positions, set_pose, GREEN, dump_body, get_pose, remove_body, PoseSaver, \
-    ConfSaver, get_unit_vector, unit_quat
+    ConfSaver, get_unit_vector, unit_quat, get_link_pose
 
-from pybullet_tools.bullet_utils import equal, nice, get_gripper_direction, set_camera_target_body
+from pybullet_tools.bullet_utils import equal, nice, get_gripper_direction, set_camera_target_body, Attachment
 from pybullet_tools.pr2_primitives import APPROACH_DISTANCE, Conf, Grasp
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, close_until_collision
+from pybullet_tools.general_streams import get_handle_link
 
 class RobotAPI(Robot):
 
@@ -63,6 +64,15 @@ class RobotAPI(Robot):
                 grasp.grasp_width = grasp_width
                 filtered_grasps.append(grasp)
         return filtered_grasps
+
+    def make_attachment(self, grasp, tool_link):
+        o = grasp.body
+        if isinstance(o, tuple) and len(o) == 2:
+            body, joint = o
+            link = get_handle_link(o)
+            return Attachment(self.body, tool_link, grasp.value, body, child_joint=joint, child_link=link)
+
+        return Attachment(self.body, tool_link, grasp.value, grasp.body)
 
 class PR2Robot(RobotAPI):
 
@@ -158,7 +168,8 @@ class PR2Robot(RobotAPI):
 
     def get_attachment(self, grasp, arm):
         tool_link = link_from_name(self.body, PR2_TOOL_FRAMES[arm])
-        return Attachment(self.body, tool_link, grasp.value, grasp.body)
+        return self.make_attachment(grasp, tool_link)
+        # return Attachment(self.body, tool_link, grasp.value, grasp.body)
 
     def get_attachment_link(self, arm):
         return link_from_name(self.body, PR2_TOOL_FRAMES.get(arm, arm))
@@ -183,10 +194,6 @@ class FEGripper(RobotAPI):
 
     grasp_types = ['hand']
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
-
-    def get_attachment_link(self, arm):
-        from pybullet_tools.flying_gripper_utils import TOOL_LINK
-        return link_from_name(self.body, TOOL_LINK)
 
     def create_gripper(self, arm='hand', visual=True, color=None):
         from pybullet_tools.utils import unit_pose
@@ -244,11 +251,19 @@ class FEGripper(RobotAPI):
             # print(f'{title} | multiply(body_pose, invert(self.tool_from_hand), self.tool_from_hand) = {nice(new_body_pose)}')
             # return new_body_pose
 
-        ## if body is given in the place of body_pose
+        ## if body or body_joint is given in the place of body_pose
         b = body_pose
         if not (isinstance(b, tuple) and isinstance(b[0], tuple) and len(b[0]) == 3 and len(b[1]) == 4):
-            if verbose: print(f'{title} | actually given body')
-            body_pose = get_pose(b)
+            if isinstance(b, tuple):
+                handle_link = get_handle_link(b)
+                new_body_pose = body_pose = get_link_pose(b[0], handle_link)
+                # new_body_pose = multiply(body_pose, invert(T))
+                if verbose: print(f'{title} | actually given (body, joint), multiply(get_link_pose(body, '
+                                  f'handle_link), invert(T)) = {nice(new_body_pose)}')
+                return new_body_pose
+            else:
+                body_pose = get_pose(b)
+                if verbose: print(f'{title} | actually given body, body_pose = get_pose(b) = {nice(body_pose)}')
 
         new_body_pose = multiply(body_pose, T)
         if verbose: print(f'{title} | multiply(body_pose, self.tool_from_hand) = {nice(new_body_pose)}')
@@ -267,7 +282,7 @@ class FEGripper(RobotAPI):
             print(f'robots.visualize_grasp | body_pose = {nice(body_pose)} | grasp = {nice(grasp)}')
             print('robots.visualize_grasp | grasp_pose = multiply(body_pose, grasp) = ', nice(grasp_pose))
         # set_pose(self.body, grasp_pose)
-        grasp_conf = se3_ik(self, grasp_pose)
+        grasp_conf = se3_ik(self, grasp_pose, verbose=verbose)
         if grasp_conf == None:
             print(f'robots.visualize_grasp | ik failed for {nice(grasp_pose)}')
         set_cloned_se3_conf(self.body, gripper, grasp_conf)
@@ -303,7 +318,12 @@ class FEGripper(RobotAPI):
 
     def get_attachment(self, grasp, arm=None):
         tool_link = link_from_name(self.body, 'panda_hand')
-        return Attachment(self.body, tool_link, grasp.value, grasp.body)
+        return self.make_attachment(grasp, tool_link)
+        # return Attachment(self.body, tool_link, grasp.value, grasp.body)
+
+    def get_attachment_link(self, arm):
+        from pybullet_tools.flying_gripper_utils import TOOL_LINK
+        return link_from_name(self.body, TOOL_LINK)
 
     def get_carry_conf(self, arm, grasp_type, g):
         return g

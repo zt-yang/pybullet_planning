@@ -940,10 +940,10 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                                    visualize=visualize, RETAIN_ALL=RETAIN_ALL):
                 grasps += [grasp]
 
-                # # debug
-                # if verbose:
-                #     set_renderer(True)
-                #     return grasps
+                # debug
+                if verbose:
+                    set_renderer(True)
+                    return grasps
 
                 ## slide along the longest dimension
                 if LENGTH_VARIANTS and on_longest:

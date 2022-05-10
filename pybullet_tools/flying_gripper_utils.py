@@ -14,7 +14,7 @@ from .utils import create_box, set_base_values, set_point, set_pose, get_pose, \
     assign_link_colors, add_line, point_from_pose, remove_handles, BLUE, INF, create_shape, \
     approximate_as_prism, set_renderer
 
-from pybullet_tools.pr2_primitives import Conf
+from pybullet_tools.pr2_primitives import Conf, Grasp
 from .pr2_utils import DRAKE_PR2_URDF
 
 from .ikfast.utils import IKFastInfo
@@ -205,8 +205,8 @@ def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
     start_time = time.time()
     link = link_from_name(robot, TOOL_LINK)
     target_point, target_quat = target_pose
-    sub_joints = get_se3_joints(robot) ## [3:]  ## only find
-    sub_robot = robot.create_gripper(color=BLUE)
+    sub_joints = get_se3_joints(robot)
+    sub_robot = robot.create_gripper()  ## color=BLUE ## for debugging
     for iteration in irange(max_iterations):
         if elapsed_time(start_time) >= max_time:
             remove_body(sub_robot)
@@ -215,8 +215,6 @@ def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
         sub_kinematic_conf = p.calculateInverseKinematics(sub_robot, link, target_point, target_quat, physicsClientId=CLIENT)
         sub_kinematic_conf = sub_kinematic_conf[:-2] ##[3:-2]
         set_joint_positions(sub_robot, sub_joints, sub_kinematic_conf)
-        # new_pose = nice(get_link_pose(sub_robot, link))
-        # print(nice(sub_kinematic_conf), '\t', new_pose, '\t', nice(target_pose))
         if is_pose_close(get_link_pose(sub_robot, link), target_pose):
             if verbose:
                 print(f'{title} found after {iteration} trials and '
@@ -225,8 +223,6 @@ def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
             remove_body(sub_robot)
             CACHE[nice(target_pose)] = sub_kinematic_conf
             return sub_kinematic_conf
-            # se3_conf = list(target_point) + list(sub_kinematic_conf)
-            # return tuple(se3_conf)
     if verbose or report_failure: print(f'{title} failed after {max_iterations} iterations')
     return None
 
@@ -252,10 +248,11 @@ def get_free_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
     robot = problem.robot
     saver = BodySaver(robot)
     obstacles = problem.fixed if collisions else []
-    def fn(q1, q2, fluents=[]):
+    def fn(q1, q2, w, fluents=[]):
 
         saver.restore()
         q1.assign()
+        w.assign()
         set_renderer(False)
         raw_path = plan_se3_motion(robot, q1.values, q2.values, obstacles=obstacles,
                                    custom_limits=custom_limits)
@@ -283,24 +280,34 @@ def get_ik_fn(problem, teleport=False, verbose=True, custom_limits={}, **kwargs)
     robot = problem.robot
     joints = get_se3_joints(robot)
     obstacles = problem.fixed
-    def fn(a, o, p, g, fluents=[]):
+    title = 'flying_gripper_utils.get_ik_fn |'
+    def fn(a, o, p, g, w, fluents=[]):
         p.assign()
-        attachment = g.get_attachment(problem.robot, a)
-        attachments = {attachment.child: attachment}
+        w.assign()
+        attachments = {}
+        if isinstance(g, Grasp):
+            attachment = g.get_attachment(problem.robot, a)
+            attachments = {attachment.child: attachment}
 
-        body_pose = robot.get_body_pose(o)
+        body_pose = robot.get_body_pose(o, verbose=verbose)
         # approach_pose = multiply(body_pose, invert(g.approach),
         #                          Pose(point=(0, 0, -0.05), euler=[0, math.pi / 2, 0]))
         # grasp_pose = multiply(body_pose, invert(g.value),
         #                       Pose(point=(0, 0, -0.05), euler=[0, math.pi / 2, 0]))
         approach_pose = multiply(body_pose, g.approach)
         grasp_pose = multiply(body_pose, g.value)
+        if verbose:
+            print(f'{title} | body_pose = {nice(body_pose)}')
+            print(f'{title} | grasp_pose = {nice(grasp_pose)}')
+            print(f'{title} | approach_pose = {nice(approach_pose)}')
 
-        seconf1 = se3_ik(robot, approach_pose)
-        seconf2 = se3_ik(robot, grasp_pose)
+        seconf1 = se3_ik(robot, approach_pose, verbose=verbose)
+        seconf2 = se3_ik(robot, grasp_pose, verbose=verbose)
         q1 = Conf(robot, joints, seconf1)
         q2 = Conf(robot, joints, seconf2)
         q1.assign()
+        if verbose:
+            set_renderer(True)
         raw_path = plan_se3_motion(robot, q1.values, q2.values, obstacles=obstacles,
                                    custom_limits=custom_limits, attachments=attachments.values())
         if raw_path == None:
@@ -312,33 +319,6 @@ def get_ik_fn(problem, teleport=False, verbose=True, custom_limits={}, **kwargs)
         return (q1, cmd)
     return fn
 
-# def get_free_motion_gen(problem, teleport=False, verbose=True, custom_limits={}, **kwargs):
-#     robot = problem.robot
-#     obstacles = problem.fixed
-#
-#     def fn(q1, q2, fluents=[]):
-#         q1.assign()
-#         raw_path = plan_se3_motion(robot, q1.values, q2.values, obstacles=obstacles, custom_limits=custom_limits)
-#         if raw_path == None:
-#             return None
-#         path = [Conf(robot, get_se3_joints(robot), conf) for conf in raw_path]
-#
-#         t = Trajectory(path)
-#         cmd = Commands(State(), savers=[BodySaver(robot)], commands=[t])
-#         return (cmd,)
-#     return fn
-
-# def visualize_feg_grasp(robot, g):
-#     body_pose = get_pose(g.body)
-#     approach_pose = multiply(body_pose, invert(g.approach), Pose(point=(0, 0, -0.05), euler=[0, math.pi / 2, 0]))
-#     seconf2 = se3_from_pose(approach_pose)
-#     sub = robot.create_gripper(visual=True)
-#     q2 = Conf(sub, get_se3_joints(robot), seconf2)
-#     q2.assign()
-#
-#     Conf(sub, get_se3_joints(robot), se3_from_pose(multiply(body_pose, invert(g.approach), Pose(euler=[0, math.pi / 2, 0])))).assign()
-#     set_camera_target_body(sub, dx=1, dy=0, dz=0.5)
-#     set_camera_target_body(sub, dx=1, dy=0, dz=0.5)
 
 from pybullet_tools.pr2_streams import get_grasp_gen
 from pybullet_tools.bullet_utils import set_camera_target_body, nice
