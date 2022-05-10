@@ -334,6 +334,7 @@ def get_grasp_gen(problem, collisions=False, randomize=True):
         if grasp_type not in GET_GRASPS:
             raise ValueError('Unexpected grasp type:', grasp_type)
     def fn(body):
+        print('\n\n\n\nDEPRECATED, please use pr2_utils.get_grasp_gen')
         # TODO: max_grasps
         # TODO: return grasps one by one
         grasps = []

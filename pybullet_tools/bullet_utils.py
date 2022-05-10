@@ -245,7 +245,7 @@ def nice_tuple(tup, round_to=3):
 
 def nice(tuple_of_tuples, round_to=3):
     ## float, int
-    if isinstance(tuple_of_tuples, float):
+    if isinstance(tuple_of_tuples, float) or isinstance(tuple_of_tuples, int):
         return nice_float(tuple_of_tuples, round_to)
 
     elif len(tuple_of_tuples) == 0:

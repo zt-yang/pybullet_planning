@@ -57,7 +57,8 @@ class RobotAPI(Robot):
         ## filter for grasp width
         filtered_grasps = []
         for grasp in grasps_R:
-            grasp_width = self.compute_grasp_width(g_type, body, grasp.value) if collisions else 0.0
+            grasp_width = self.compute_grasp_width(g_type, get_pose(body), grasp.value,
+                                                   body=body) if collisions else 0.0
             if grasp_width is not None:
                 grasp.grasp_width = grasp_width
                 filtered_grasps.append(grasp)
@@ -228,7 +229,6 @@ class FEGripper(RobotAPI):
             gripper_joints = self.get_gripper_joints()
             if isinstance(body, tuple): body = body[0]
             width = close_until_collision(gripper, gripper_joints, bodies=[body], **kwargs)
-            if width != None: width *= 2
             # remove_body(gripper)
         return width
 

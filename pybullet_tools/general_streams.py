@@ -20,9 +20,8 @@ from pybullet_tools.pr2_utils import TOP_HOLDING_LEFT_ARM, SIDE_HOLDING_LEFT_ARM
 from pybullet_tools.pr2_primitives import control_commands, apply_commands, Grasp, \
     APPROACH_DISTANCE, TOP_HOLDING_LEFT_ARM, get_tool_from_root, Conf, Commands, State, create_trajectory, \
     Trajectory, get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
-    move_cost_fn, get_ik_ir_gen, get_motion_gen, get_grasp_gen, Attach, Detach, Clean, \
+    move_cost_fn, get_ik_ir_gen, get_motion_gen, Attach, Detach, Clean, \
     Cook, control_commands, get_gripper_joints, GripperCommand, apply_commands, State
-
 from pybullet_tools.ikfast.pr2.ik import is_ik_compiled, pr2_inverse_kinematics
 from pybullet_tools.utils import invert, multiply, get_name, set_pose, get_link_pose, is_placement, \
     pairwise_collision, set_joint_positions, get_joint_positions, sample_placement, get_pose, waypoints_from_path, \
