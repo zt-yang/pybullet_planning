@@ -5,7 +5,7 @@ import time
 
 from pybullet_planning.pybullet_tools.pr2_streams import get_contain_gen, get_position_gen, \
     Position, get_handle_grasp_gen, LinkPose, get_ik_ir_grasp_handle_gen, get_pull_drawer_handle_motion_gen, \
-    get_joint_position_test, get_marker_grasp_gen, get_bconf_in_region_test, get_pull_door_handle_motion_gen, \
+    get_joint_position_test, get_marker_grasp_gen, get_bconf_in_region_test, \
     get_bconf_in_region_gen, get_pose_in_region_gen, get_motion_wconf_gen, get_update_wconf_p_two_gen, \
     get_marker_pose_gen, get_pull_marker_to_pose_motion_gen, get_pull_marker_to_bconf_motion_gen,  \
     get_pull_marker_random_motion_gen, get_ik_ungrasp_handle_gen, get_pose_in_region_test, \
@@ -43,7 +43,7 @@ from pddlstream.language.object import SharedOptValue
 from pddlstream.language.external import defer_shared, never_defer
 from collections import namedtuple
 
-from .flying_gripper_utils import get_ik_fn, get_free_motion_gen
+from .flying_gripper_utils import get_ik_fn, get_free_motion_gen, get_pull_door_handle_motion_gen
 
 def get_stream_map(p, c, l, t):
     # p = problem
@@ -67,20 +67,10 @@ def get_stream_map(p, c, l, t):
 
         'inverse-kinematics-grasp-handle': from_fn(get_ik_fn(p, collisions=c, teleport=t, custom_limits=l, verbose=False)),
 
-        # 'inverse-kinematics-ungrasp-handle': from_gen_fn(
-        #     get_ik_ungrasp_handle_gen(p, collisions=c, teleport=t, custom_limits=l,
-        #                               verbose=False, WCONF=False)),
-        # 'inverse-kinematics-grasp-handle-wconf': from_gen_fn(
-        #     get_ik_ir_grasp_handle_gen(p, collisions=c, teleport=t, custom_limits=l,
-        #                                learned=False, verbose=False, ACONF=True, WCONF=True)),
-        # 'inverse-kinematics-ungrasp-handle-wconf': from_gen_fn(
-        #     get_ik_ungrasp_handle_gen(p, collisions=c, teleport=t, custom_limits=l,
-        #                               verbose=False, WCONF=True)),
-        #
         # 'plan-base-pull-drawer-handle': from_fn(
         #     get_pull_drawer_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
-        # 'plan-base-pull-door-handle': from_fn(
-        #     get_pull_door_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
+        'plan-base-pull-door-handle': from_fn(
+            get_pull_door_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
         # 'plan-arm-turn-knob-handle': from_fn(
         #     get_turn_knob_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
         #
