@@ -147,7 +147,7 @@ class WConf(object):
         return string
 
     def __repr__(self):
-        return 'wconf{}({})'.format(id(self) % 1000, len(self.poses))
+        return 'wconf{}({})'.format(id(self) % 1000, len(self.positions))
 
 ##################################################
 def get_stable_gen(problem, collisions=True, num_trials=20, **kwargs):
@@ -317,7 +317,7 @@ def get_top_grasps(body, under=False, tool_pose=TOOL_POSE, body_pose=unit_pose()
         new_vertices = apply_affine(origin, vertices_from_rigid(body, link))
 
     # TODO: rename the box grasps
-    # center, (w, l, h) = approximate_as_prism(body, body_pose=body_pose)
+    center, (w, l, h) = approximate_as_prism(body, body_pose=body_pose)
     reflect_z = Pose(euler=[0, math.pi, 0])
     translate_z = Pose(point=[0, 0, h / 2 - grasp_length])
     translate_center = Pose(point=point_from_pose(body_pose)-center)
@@ -357,3 +357,46 @@ def get_side_grasps(body, under=False, tool_pose=TOOL_POSE, body_pose=unit_pose(
                 grasps += [multiply(tool_pose, translate_z, rotate_z, swap_xz,
                                     translate_center, body_pose)]  # , np.array([l])
     return grasps
+
+
+def get_update_wconf_p_gen(verbose=True):
+    def fn(w1, o, p):
+        poses = copy.deepcopy(w1.poses)
+        if verbose:
+            print('pr2_streams.get_update_wconf_p_gen\tbefore:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})
+        if o != p.body:
+            return None
+        elif o in poses and poses[o].value == p.value:
+            poses.pop(o)
+        else:
+            poses[o] = copy.deepcopy(p)
+        w2 = WConf(poses, w1.positions)
+        if verbose:
+            print('pr2_streams.get_update_wconf_p_gen\t after:', {o0: nice(p0.value[0]) for o0,p0 in w2.poses.items()})
+        return (w2,)
+    return fn
+
+def get_update_wconf_p_two_gen(verbose=False):
+    def fn(w1, o, p, o2, p2):
+        poses = copy.deepcopy(w1.poses)
+        if verbose:
+            print('pr2_streams.get_update_wconf_p_two_gen\tbefore:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})
+        poses[o] = p
+        poses[o2] = p2
+        w2 = WConf(poses, w1.positions)
+        if verbose:
+            print('pr2_streams.get_update_wconf_p_two_gen\t after:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})
+        return (w2,)
+    return fn
+
+def get_update_wconf_pst_gen(verbose=False):
+    def fn(w1, o, pst):
+        positions = copy.deepcopy(w1.positions)
+        if verbose:
+            print('pr2_streams.get_update_wconf_pst_gen\tbefore:', {o0: nice(p0.value) for o0,p0 in positions.items()})
+        positions[o] = pst
+        w2 = WConf(w1.poses, positions)
+        if verbose:
+            print('pr2_streams.get_update_wconf_pst_gen\t after:', {o0: nice(p0.value) for o0,p0 in w2.positions.items()})
+        return (w2,)
+    return fn

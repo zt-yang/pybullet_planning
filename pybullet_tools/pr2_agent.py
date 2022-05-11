@@ -574,6 +574,12 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
         elif test == 'test_pose_gen':
             goals, ff = test_pose_gen(state, init, name[0], name[1])
             init += ff
+        elif test == 'test_update_wconf_pst':
+            goals, ff = test_update_wconf_pst(state, init, name)
+            init += ff
+        elif test == 'test_door_pull_traj':
+            goals, ff = test_door_pull_traj(state, init, name)
+            init += ff
 
     goal = [AND]
     goal += goals
@@ -895,3 +901,27 @@ def test_pose_gen(problem, init, o, s):
     print(f'test_pose_gen({o}, {s}) | {p}')
     pose.assign()
     return [('AtPose', o, p)], [('Pose', o, p), ('Supported', o, p, s)]
+
+def test_update_wconf_pst(problem, init, o):
+    pst1 = [f[2] for f in init if f[0].lower() == 'atposition' and f[1] == o][0]
+    funk1 = sample_joint_position_open_list_gen(problem)
+    pst2 = funk1(o, pst1)[0][0]
+
+    w1 = [f[1] for f in init if f[0].lower() == 'inwconf'][0]
+    funk2 = get_update_wconf_pst_gen()
+    [w2] = funk2(w1, o, pst2)
+    return [('InWConf', w2)], [('WConf', w2)]
+
+def test_door_pull_traj(problem, init, o):
+    from pybullet_tools.flying_gripper_utils import get_pull_door_handle_motion_gen
+    pst1 = [f[2] for f in init if f[0].lower() == 'atposition' and f[1] == o][0]
+    funk1 = sample_joint_position_open_list_gen(problem)
+    pst2 = funk1(o, pst1)[0][0]
+
+    funk2 = get_handle_grasp_gen(problem, visualize=True)
+    g = funk2(o)[0][0]
+
+    q1 = [f[1] for f in init if f[0].lower() == 'atseconf'][0]
+    funk3 = get_pull_door_handle_motion_gen(problem, visualize=True, verbose=True)
+    [q2, cmd] = funk3('hand', o, pst1, pst2, g, q1)
+    return [("AtPosition", o, pst2)], [("Position", o, pst2)]

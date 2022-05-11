@@ -7,14 +7,16 @@ from math import radians as rad
 from .utils import create_box, set_base_values, set_point, set_pose, get_pose, \
     get_bodies, z_rotation, load_model, load_pybullet, HideOutput, create_body, assign_link_colors, \
     get_box_geometry, get_cylinder_geometry, create_shape_array, unit_pose, Pose, \
-    Point, LockRenderer, FLOOR_URDF, TABLE_URDF, add_data_path, TAN, set_color, BASE_LINK, remove_body,\
+    Point, LockRenderer, FLOOR_URDF, TABLE_URDF, add_data_path, TAN, set_color, remove_body,\
     add_data_path, connect, dump_body, disconnect, wait_for_user, get_movable_joints, get_sample_fn, \
     set_joint_positions, get_joint_name, LockRenderer, link_from_name, get_link_pose, \
     multiply, Pose, Point, interpolate_poses, HideOutput, draw_pose, set_camera_pose, load_pybullet, \
-    assign_link_colors, add_line, point_from_pose, remove_handles, BLUE, INF, create_shape, \
+    assign_link_colors, add_line, point_from_pose, remove_handles, BLUE, BROWN, INF, create_shape, \
     approximate_as_prism, set_renderer
 
 from pybullet_tools.pr2_primitives import Conf, Grasp
+from pybullet_tools.general_streams import Position
+from pybullet_tools.bullet_utils import collided
 from .pr2_utils import DRAKE_PR2_URDF
 
 from .ikfast.utils import IKFastInfo
@@ -124,7 +126,7 @@ from pybullet_tools.pr2_primitives import Trajectory, Commands, State
 
 SE3_GROUP = ['x', 'y', 'z', 'roll', 'pitch', 'yaw']
 FINGERS_GROUP = ['panda_finger_joint1', 'panda_finger_joint2']
-BASE_LINK = 'world_link'
+BASE_LINK = 'world_link' ## 'panda_hand' ##
 
 def set_gripper_positions(robot, w=0.0):
     joints = get_joints_by_group(robot, FINGERS_GROUP)
@@ -198,6 +200,8 @@ import pybullet as p
 
 def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
     report_failure = True
+    debug = False
+
     title = f'   se3_ik | for pose {nice(target_pose)}'
     if nice(target_pose) in CACHE:
         if verbose: print(f'{title} found in cache')
@@ -215,6 +219,7 @@ def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
         sub_kinematic_conf = p.calculateInverseKinematics(sub_robot, link, target_point, target_quat, physicsClientId=CLIENT)
         sub_kinematic_conf = sub_kinematic_conf[:-2] ##[3:-2]
         set_joint_positions(sub_robot, sub_joints, sub_kinematic_conf)
+        if debug: print(f'   se3_ik iter {iteration} | {nice(sub_kinematic_conf, 4)}')
         if is_pose_close(get_link_pose(sub_robot, link), target_pose):
             if verbose:
                 print(f'{title} found after {iteration} trials and '
@@ -320,7 +325,8 @@ def get_ik_fn(problem, teleport=False, verbose=True, custom_limits={}, **kwargs)
     return fn
 
 def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, teleport=False,
-                                    num_intervals=30, max_ir_trial=30, visualize=False, verbose=False):
+                                    num_intervals=15, max_ir_trial=30, visualize=False, verbose=False):
+    from pybullet_tools.pr2_streams import LINK_POSE_TO_JOINT_POSITION
     if teleport:
         num_intervals = 1
     robot = problem.robot
@@ -336,111 +342,66 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         pst1.assign()
         q1.assign()
 
-        arm_joints = get_arm_joints(robot, a)
-        resolutions = 0.05 ** np.ones(len(arm_joints))
-
+        # arm_joints = get_arm_joints(robot, a)
+        # resolutions = 0.05 ** np.ones(len(arm_joints))
+        #
         BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
         joint_object = BODY_TO_OBJECT[o]
         old_pose = get_link_pose(joint_object.body, joint_object.handle_link)
-        tool_from_root = get_tool_from_root(robot, a)
+        # tool_from_root = get_tool_from_root(robot, a)
         if visualize:
             set_renderer(enable=True)
-            gripper_before = robot.visualize_grasp(old_pose, g.value)
-        gripper_before = multiply(old_pose, invert(g.value))  ## multiply(, tool_from_root)
-        world_from_base = bconf_to_pose(bq1)
-        gripper_from_base = multiply(invert(gripper_before), world_from_base)
-        # print('gripper_before', nice(gripper_before))
-        # print('invert(gripper_before)', nice(invert(gripper_before)))
-
-        MOVE_BASE = True
+            gripper_before = robot.visualize_grasp(old_pose, g.value, verbose=verbose,
+                                                   width=g.grasp_width, body=g.body)
+            set_camera_target_body(gripper_before, dx=0.2, dy=0, dz=1) ## look top down
+            remove_body(gripper_before)
+        # gripper_before = multiply(old_pose, invert(g.value))  ## multiply(, tool_from_root)
+        # world_from_base = bconf_to_pose(bq1)
+        # gripper_from_base = multiply(invert(gripper_before), world_from_base)
+        # # print('gripper_before', nice(gripper_before))
+        # # print('invert(gripper_before)', nice(invert(gripper_before)))
 
         ## saving the mapping between robot bconf to object pst for execution
         mapping = {}
-        rpose_rounded = tuple([round(n, 3) for n in bq1.values])
+        rpose_rounded = tuple([round(n, 3) for n in q1.values])
         mapping[rpose_rounded] = pst1.value
 
-        bpath = []
-        apath = []
-        bq_after = Conf(bq1.body, bq1.joints, bq1.values)
-        aq_after = Conf(aq1.body, aq1.joints, aq1.values)
+        path = []
+        q_after = Conf(q1.body, q1.joints, q1.values)
         for i in range(num_intervals):
-            step_str = f"pr2_streams.get_pull_door_handle_motion_gen | step {i}/{num_intervals}\t"
+            step_str = f"flying_gripper_utils.get_pull_door_handle_motion_gen | step {i}/{num_intervals}\t"
             value = (i + 1) / num_intervals * (pst2.value - pst1.value) + pst1.value
             pst_after = Position((pst1.body, pst1.joint), value)
             pst_after.assign()
             new_pose = get_link_pose(joint_object.body, joint_object.handle_link)
+
             if visualize:
-                gripper_after = robot.visualize_grasp(new_pose, g.value, color=BROWN)
+                mod_pose = Pose(euler=euler_from_quat(new_pose[1]))
+                gripper_after = robot.visualize_grasp(new_pose, g.value, color=BROWN, verbose=True,
+                                                      width=g.grasp_width, body=g.body, mod_pose=mod_pose)
                 set_camera_target_body(gripper_after, dx=0.2, dy=0, dz=1) ## look top down
                 remove_body(gripper_after)
             gripper_after = multiply(new_pose, invert(g.value))  ## multiply(, tool_from_root)
 
-            ## try to transform the base the same way as gripper to a cfree pose
-            if MOVE_BASE:
-                world_from_base = multiply(gripper_after, gripper_from_base)
-                bq_after = pose_to_bconf(world_from_base, robot)
+            gripper_conf = se3_ik(robot, gripper_after, verbose=verbose)
+            if gripper_conf == None:
+                break
+            q_after = Conf(robot, get_se3_joints(robot), gripper_conf)
 
-                bq_after.assign()
-                if any(pairwise_collision(robot, b) for b in obstacles):
-                    collided = []
-                    for b in obstacles:
-                        if pairwise_collision(robot, b):
-                            collided.append(b)
-                    collided = [world.BODY_TO_OBJECT[c].shorter_name for c in collided]
-                    print(f'{step_str} base collide at {nice(world_from_base)} with {collided}')
-                    MOVE_BASE = False
-                    if len(bpath) > 1:
-                        bpath[-1].assign()
-                else:
-                    bpath.append(bq_after)
-                    apath.append(aq_after)
-                    if verbose: print(f'{step_str} : {nice(bq_after.values)}\t{nice(aq_after.values)}')
+            q_after.assign()
+            if collided(robot, obstacles, world=world, verbose=False, tag='firstly'):
+                print(f'{step_str} hand collided')
+                if len(path) > 1:
+                    path[-1].assign()
 
-            ## move the arm with IK
-            if not MOVE_BASE and False:
-                aq_after.assign()
-                arm_conf = pr2_inverse_kinematics(robot, a, gripper_after)
-                trial = 0
-                while arm_conf is None: ## need to shift bq a bit
-                    trial += 1
-                    if trial > max_ir_trial:
-                        break
-                    bq_proposed = sample_new_bconf(bq_after)
-                    bq_proposed.assign()
-                    print(f'{step_str} Cant find arm_conf ({trial}) at {nice(bq_after.values)}, try {nice(bq_proposed.values)}')
-                    arm_conf = pr2_inverse_kinematics(robot, a, gripper_after)
-                    if arm_conf is not None:
-                        collision_fn = get_collision_fn(robot, arm_joints, obstacles, self_collisions=SELF_COLLISIONS)
-                        if collision_fn(arm_conf):
-                            bq_after = bq_proposed
-                            bpath.append(bq_after)
-                            apath.append(aq_after)
-                            print(f'{step_str} : {nice(bq_after.values)}\t{nice(aq_after.values)}')
-                            break
-                if trial > max_ir_trial:
-                    break
-                aq_after.assign()
-                path = plan_joint_motion(robot, arm_joints, arm_conf, obstacles=obstacles, self_collisions=SELF_COLLISIONS,
-                                         resolutions=resolutions, restarts=2, max_iterations=25, smooth=25)
-                if path is None:
-                    print(f'{step_str} Cant find arm path from {nice(aq_after.values)} to {nice(arm_conf)}')
-                    break
-                # elif len(path) > num_intervals/2:
-                #     print(f'{step_str} adding arm_path of len ({len(path)})')
-                blank = ''.join([' ']*90)
-                path_str = f"\n{blank}".join([str(nice(ac)) for ac in path])
-                print(f'{step_str} adding arm_path of len ({len(path)}) {path_str}')
-                apath += create_trajectory(robot, arm_joints, path[1:]).path
-                bpath += [bq_after] * len(path)
-                aq_after = apath[-1]
+            else:
+                path.append(q_after)
+                if verbose: print(f'{step_str} : {nice(q_after.values)}')
 
-            rpose_rounded = tuple([round(n, 3) for n in bq_after.values])
+            rpose_rounded = tuple([round(n, 3) for n in q_after.values])
             mapping[rpose_rounded] = value
 
-        if visualize:
-            remove_body(gripper_before)
-
-        if len(apath) < num_intervals: ## * 0.75:
+        if len(path) < num_intervals: ## * 0.75:
             return None
 
         body, joint = o
@@ -450,19 +411,12 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         LINK_POSE_TO_JOINT_POSITION[body][joint] = mapping
         # print(f'pr2_streams.get_pull_door_handle_motion_gen | last bconf = {rpose_rounded}, pstn value = {value}')
 
-        # apath.append(apath[-1])
-        # bpath.append(bpath[-1]) ## replicate the last one because somehow it's missing
-        bt = Trajectory(bpath)
-        at = Trajectory(apath) ## create_trajectory(robot, get_arm_joints(robot, a), apath)
-        base_cmd = Commands(State(), savers=[BodySaver(robot)], commands=[bt])
-        arm_cmd =  Commands(State(), savers=[BodySaver(robot)], commands=[at])
-        bq2 = bt.path[-1]
-        aq2 = at.path[-1]
-        if aq2.values == aq1.values:
-            aq2 = aq1
-        step_str = f"pr2_streams.get_pull_door_handle_motion_gen | step {len(bpath)}/{num_intervals}\t"
-        if not verbose: print(f'{step_str} : {nice(bq2.values)}\t{nice(aq2.values)}')
-        return (bq2, base_cmd, aq2, arm_cmd)
+        t = Trajectory(path)
+        cmd = Commands(State(), savers=[BodySaver(robot)], commands=[t])
+        q2 = t.path[-1]
+        step_str = f"pr2_streams.get_pull_door_handle_motion_gen | step {len(path)}/{num_intervals}\t"
+        if not verbose: print(f'{step_str} : {nice(q2.values)}')
+        return (q2, cmd)
 
     return fn
 

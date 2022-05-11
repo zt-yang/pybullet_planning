@@ -1422,48 +1422,6 @@ def get_motion_wconf_gen(problem, custom_limits={}, collisions=True, teleport=Fa
         return (cmd,)
     return fn
 
-def get_update_wconf_p_gen(verbose=True):
-    def fn(w1, o, p):
-        poses = copy.deepcopy(w1.poses)
-        if verbose:
-            print('pr2_streams.get_update_wconf_p_gen\tbefore:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})
-        if o != p.body:
-            return None
-        elif o in poses and poses[o].value == p.value:
-            poses.pop(o)
-        else:
-            poses[o] = copy.deepcopy(p)
-        w2 = WConf(poses, w1.positions)
-        if verbose:
-            print('pr2_streams.get_update_wconf_p_gen\t after:', {o0: nice(p0.value[0]) for o0,p0 in w2.poses.items()})
-        return (w2,)
-    return fn
-
-def get_update_wconf_p_two_gen(verbose=False):
-    def fn(w1, o, p, o2, p2):
-        poses = copy.deepcopy(w1.poses)
-        if verbose:
-            print('pr2_streams.get_update_wconf_p_two_gen\tbefore:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})
-        poses[o] = p
-        poses[o2] = p2
-        w2 = WConf(poses, w1.positions)
-        if verbose:
-            print('pr2_streams.get_update_wconf_p_two_gen\t after:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})
-        return (w2,)
-    return fn
-
-def get_update_wconf_pst_gen(verbose=False):
-    def fn(w1, o, pst):
-        positions = copy.deepcopy(w1.positions)
-        if verbose:
-            print('pr2_streams.get_update_wconf_pst_gen\tbefore:', {o0: nice(p0.value) for o0,p0 in positions.items()})
-        positions[o] = pst
-        w2 = WConf(w1.poses, positions)
-        if verbose:
-            print('pr2_streams.get_update_wconf_pst_gen\t after:', {o0: nice(p0.value) for o0,p0 in w2.positions.items()})
-        return (w2,)
-    return fn
-
 ##################################################
 
 def get_cfree_btraj_pose_test(robot, collisions=True, verbose=True):

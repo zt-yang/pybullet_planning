@@ -154,7 +154,7 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
 
             ## robot joint states
             joints_xml = ''
-            all_joints = sum(PR2_GROUPS.values(), [])
+            all_joints = world.robot.get_all_joints()
             js = [joint_from_name(body, j) for j in all_joints]
             # js = list(get_group_joints(body, 'torso'))
             # js.extend(list(get_arm_joints(body, 'left'))+list(get_arm_joints(body, 'right')))
