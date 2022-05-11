@@ -4,11 +4,11 @@ from .entities import Robot
 from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color, TRANSPARENT, \
     link_from_name, get_link_subtree, get_joints, is_movable, multiply, invert, \
     set_joint_positions, set_pose, GREEN, dump_body, get_pose, remove_body, PoseSaver, \
-    ConfSaver, get_unit_vector, unit_quat, get_link_pose
+    ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose
 
 from pybullet_tools.bullet_utils import equal, nice, get_gripper_direction, set_camera_target_body, Attachment
 from pybullet_tools.pr2_primitives import APPROACH_DISTANCE, Conf, Grasp
-from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, close_until_collision
+from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, close_until_collision
 from pybullet_tools.general_streams import get_handle_link
 
 class RobotAPI(Robot):
@@ -73,6 +73,7 @@ class RobotAPI(Robot):
             return Attachment(self.body, tool_link, grasp.value, body, child_joint=joint, child_link=link)
 
         return Attachment(self.body, tool_link, grasp.value, grasp.body)
+
 
 class PR2Robot(RobotAPI):
 
@@ -189,6 +190,9 @@ class PR2Robot(RobotAPI):
     def get_approach_pose(self, approach_vector, g):
         return multiply((approach_vector, unit_quat()), g)
 
+    def get_all_joints(self):
+        return sum(PR2_GROUPS.values(), [])
+
 class FEGripper(RobotAPI):
     from pybullet_tools.utils import Pose, Euler
 
@@ -269,22 +273,39 @@ class FEGripper(RobotAPI):
         if verbose: print(f'{title} | multiply(body_pose, self.tool_from_hand) = {nice(new_body_pose)}')
         return new_body_pose
 
-    def visualize_grasp(self, body_pose, grasp, arm='hand', color=GREEN, width=1, body=None, verbose=False):
+    def visualize_grasp(self, body_pose, grasp, arm='hand', color=GREEN, width=1, verbose=False,
+                        body=None, mod_pose=None):
         from pybullet_tools.flying_gripper_utils import se3_ik, set_cloned_se3_conf, get_cloned_se3_conf
+        from pybullet_tools.utils import Pose, euler_from_quat
+        title = 'robots.visualize_grasp |'
 
         body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
         gripper = self.create_gripper(arm, visual=True)
         self.open_cloned_gripper(gripper, width)
-
         set_all_color(gripper, color)
-        grasp_pose = multiply(body_pose, grasp) ##
+
+        ## in case of weird collision body
+        # if mod_pose == None: mod_pose = body_pose
+        # mod_grasp_pose = multiply(mod_pose, grasp) ##
+
+        grasp_pose = multiply(body_pose, grasp)  ##
         if verbose:
-            print(f'robots.visualize_grasp | body_pose = {nice(body_pose)} | grasp = {nice(grasp)}')
-            print('robots.visualize_grasp | grasp_pose = multiply(body_pose, grasp) = ', nice(grasp_pose))
+            print(f'{title} body_pose = {nice(body_pose)} | grasp = {nice(grasp)}')
+            print(f'{title} grasp_pose = multiply(body_pose, grasp) = ', nice(grasp_pose))
+
+        if mod_pose == None:
+            grasp_conf = se3_ik(self, grasp_pose, verbose=verbose)
+            if grasp_conf == None:
+                print(f'{title} body_pose = {nice(body_pose)} --> ik failed')
+        else:
+            mod_pose = Pose(point=mod_pose[0], euler=euler_from_quat(body_pose[1]))
+            grasp_pose = multiply(mod_pose, grasp)  ##
+            grasp_conf = se3_ik(self, grasp_pose, verbose=verbose)
+            grasp_conf = list(body_pose[0]) + list(grasp_conf)[3:]
+            if grasp_conf == None:
+                print(f'{title} body_pose = {nice(body_pose)} | mod_pose = {nice(mod_pose)} --> ik failed')
+
         # set_pose(self.body, grasp_pose)
-        grasp_conf = se3_ik(self, grasp_pose, verbose=verbose)
-        if grasp_conf == None:
-            print(f'robots.visualize_grasp | ik failed for {nice(grasp_pose)}')
         set_cloned_se3_conf(self.body, gripper, grasp_conf)
 
         # set_camera_target_body(gripper, dx=0.5, dy=0.5, dz=0.5)
@@ -333,3 +354,7 @@ class FEGripper(RobotAPI):
 
     def get_approach_pose(self, approach_vector, g):
         return multiply(g, (approach_vector, unit_quat()))
+
+    def get_all_joints(self):
+        from pybullet_tools.flying_gripper_utils import SE3_GROUP, FINGERS_GROUP
+        return SE3_GROUP + FINGERS_GROUP

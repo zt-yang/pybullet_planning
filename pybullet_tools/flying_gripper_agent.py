@@ -71,6 +71,7 @@ def get_stream_map(p, c, l, t):
         #     get_pull_drawer_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
         'plan-base-pull-door-handle': from_fn(
             get_pull_door_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
+
         # 'plan-arm-turn-knob-handle': from_fn(
         #     get_turn_knob_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
         #
@@ -97,7 +98,7 @@ def get_stream_map(p, c, l, t):
         #
         # 'update-wconf-p': from_fn(get_update_wconf_p_gen()),
         # 'update-wconf-p-two': from_fn(get_update_wconf_p_two_gen()),
-        # 'update-wconf-pst': from_fn(get_update_wconf_pst_gen()),
+        'update-wconf-pst': from_fn(get_update_wconf_pst_gen()),
 
         'MoveCost': move_cost_fn,
 
