@@ -78,6 +78,7 @@ class RobotAPI(Robot):
 class PR2Robot(RobotAPI):
 
     grasp_types = ['top']
+    joint_groups = ['left', 'right']
 
     def get_init(self, init_facts=[], conf_saver=None):
         from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints, \
@@ -193,10 +194,20 @@ class PR2Robot(RobotAPI):
     def get_all_joints(self):
         return sum(PR2_GROUPS.values(), [])
 
+    def get_lisdf_string(self):
+        return """
+    <include name="pr2">
+      <uri>../models/drake/pr2_description/urdf/pr2_simplified.urdf</uri>
+      {pose_xml}
+    </include>
+"""
+
+
 class FEGripper(RobotAPI):
     from pybullet_tools.utils import Pose, Euler
 
     grasp_types = ['hand']
+    joint_groups = ['hand']
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
 
     def create_gripper(self, arm='hand', visual=True, color=None):
@@ -358,3 +369,12 @@ class FEGripper(RobotAPI):
     def get_all_joints(self):
         from pybullet_tools.flying_gripper_utils import SE3_GROUP, FINGERS_GROUP
         return SE3_GROUP + FINGERS_GROUP
+
+    def get_lisdf_string(self):
+        from pybullet_tools.flying_gripper_utils import FE_GRIPPER_URDF
+        return """
+    <include name="feg">
+      <uri>../models/franka_description/robots/hand_se3.urdf</uri>
+      {pose_xml}
+    </include>
+"""
