@@ -789,7 +789,6 @@ def distance_fn(q1, q2):
     distance = get_distance(q1.values[:2], q2.values[:2])
     return BASE_CONSTANT + distance / BASE_VELOCITY
 
-
 def move_cost_fn(t):
     distance = t.distance(distance_fn=lambda q1, q2: get_distance(q1[:2], q2[:2]))
     return BASE_CONSTANT + distance / BASE_VELOCITY

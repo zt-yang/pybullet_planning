@@ -20,6 +20,9 @@ from pybullet_tools.utils import load_pybullet, connect, wait_if_gui, HideOutput
     parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK
 from pybullet_tools.bullet_utils import nice
 from pybullet_tools.pr2_streams import get_handle_link
+from pybullet_tools.flying_gripper_utils import set_se3_conf
+
+from world_builder.loaders import create_gripper_robot
 
 ASSET_PATH = join(dirname(__file__), '..', '..', 'assets')
 LINK_COLORS = ['#c0392b', '#d35400', '#f39c12', '#16a085', '#27ae60',
@@ -68,6 +71,14 @@ class World():
                 body = self.name_to_body[o.name.split(LINK_STR)[0]]
                 id = find_id(body, o.name)
                 self.add_body(id, o.name)
+            # if o.name in ['pr2', 'feg']:
+            #     self.add_robot(id, o.name)
+
+    # def update_robot(self, domain_name):
+    #     if 'pr2' in domain_name:
+    #         self.robot = 'pr2'
+    #     elif 'fe' in domain_name:
+    #         self.robot = 'feg'
 
     def summarize_all_objects(self):
         """ call this after pddl_to_init_goal() where world.update_objects() happens """
@@ -125,10 +136,16 @@ def find_id(body, full_name):
     print(f'\n\n\nlisdf_loader.find_id | whats {name} in {full_name} ({body})\n\n')
     return None
 
+import json
+
 def load_lisdf_pybullet(lisdf_path, verbose=True):
     # scenes_path = dirname(os.path.abspath(lisdf_path))
     tmp_path = join(ASSET_PATH, 'tmp')
 
+    planning_config = json.load(open(join(lisdf_path, 'planning_config.json')))
+    custom_limits = planning_config['base_limits']
+
+    lisdf_path = join(lisdf_path, 'scene.lisdf')
     connect(use_gui=True, shadows=False, width=1980, height=1238)
     draw_pose(unit_pose(), length=1.)
     create_floor()
@@ -169,15 +186,21 @@ def load_lisdf_pybullet(lisdf_path, verbose=True):
             if verbose: print(f'..... loading {model.name} from {uri}', end="\r")
             body = load_pybullet(uri, scale=scale)
             if isinstance(body, tuple): body = body[0]
-            bullet_world.add_body(body, model.name)
 
         ## set pose of body using PyBullet tools' data structure
-        if model.name == 'pr2':
+        if model.name in ['pr2', 'feg']:
             pose = model.pose.pos
-            set_group_conf(body, 'base', pose)
+            if model.name == 'pr2':
+                create_gripper_robot(world, custom_limits)
+                set_group_conf(body, 'base', pose)
+            elif model.name == 'feg':
+                robot = create_gripper_robot(bullet_world, custom_limits)
+                # set_se3_conf(body, pose)
+            # bullet_world.add_robot(body, model.name)
         else:
             pose = (model.pose.pos, quat_from_euler(model.pose.rpy))
             set_pose(body, pose)
+            bullet_world.add_body(body, model.name)
 
         if model.name in model_states:
             for js in model_states[model.name].joint_states:

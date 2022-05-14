@@ -14,7 +14,7 @@ from pybullet_planning.pybullet_tools.pr2_streams import get_contain_gen, get_po
     get_update_wconf_p_gen, get_ik_ir_wconf_gen, get_pose_in_space_test, get_turn_knob_handle_motion_gen, get_grasp_gen
 from pybullet_planning.pybullet_tools.pr2_primitives import get_stable_gen, get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
     get_ik_ir_gen, get_motion_gen, get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
-    move_cost_fn, Attach, Detach, Clean, Cook, control_commands, \
+    Attach, Detach, Clean, Cook, control_commands, \
     get_gripper_joints, GripperCommand, apply_commands, State, Trajectory
 
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
@@ -108,7 +108,8 @@ def get_stream_map(p, c, l, t):
     }
     return stream_map
 
-from pybullet_tools.pr2_agent import opt_move_cost_fn, opt_pose_fn, opt_ik_fn, opt_ik_wconf_fn, opt_motion_fn
+from pybullet_tools.pr2_agent import opt_move_cost_fn, opt_pose_fn, opt_ik_fn, opt_ik_wconf_fn, opt_motion_fn, \
+    move_cost_fn
 
 def get_stream_info(partial, defer):
     stream_info = {
@@ -119,12 +120,12 @@ def get_stream_info(partial, defer):
         'MoveCost': FunctionInfo(opt_move_cost_fn),
     }
     stream_info.update({
-                           'sample-pose': StreamInfo(opt_gen_fn=PartialInputs('?r')),
-                           'inverse-kinematics': StreamInfo(opt_gen_fn=PartialInputs('?p')),
-                           'plan-base-motion': StreamInfo(opt_gen_fn=PartialInputs('?q1 ?q2'),
-                                                          defer_fn=defer_shared if defer else never_defer),
-                           'plan-base-motion-wconf': StreamInfo(opt_gen_fn=PartialInputs('?q1 ?q2 ?w'),
-                                                          defer_fn=defer_shared if defer else never_defer),
+        'sample-pose': StreamInfo(opt_gen_fn=PartialInputs('?r')),
+        'inverse-kinematics': StreamInfo(opt_gen_fn=PartialInputs('?p')),
+        'plan-base-motion': StreamInfo(opt_gen_fn=PartialInputs('?q1 ?q2'),
+                                      defer_fn=defer_shared if defer else never_defer),
+        'plan-base-motion-wconf': StreamInfo(opt_gen_fn=PartialInputs('?q1 ?q2 ?w'),
+                                      defer_fn=defer_shared if defer else never_defer),
                        } if partial else {
         'sample-pose': StreamInfo(opt_gen_fn=from_fn(opt_pose_fn)),
         'inverse-kinematics': StreamInfo(opt_gen_fn=from_fn(opt_ik_fn)),

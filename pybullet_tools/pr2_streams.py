@@ -171,17 +171,19 @@ def get_handle_grasp_gen(problem, collisions=False, randomize=False, visualize=F
 
 def get_grasp_gen(problem, collisions=False, randomize=True):
     robot = problem.robot
+    grasp_types = robot.grasp_types
+
     def fn(body):
         arm = 'left'
         def get_grasps(g_type, grasps_O):
             return robot.make_grasps(g_type, arm, body, grasps_O, collisions=collisions)
 
         grasps = []
-        if 'top' in problem.grasp_types:
+        if 'top' in grasp_types:
             grasps.extend(get_grasps('top', get_top_grasps(body, grasp_length=GRASP_LENGTH)))
-        if 'side' in problem.grasp_types:
+        if 'side' in grasp_types:
             grasps.extend(get_grasps('side', get_side_grasps(body, grasp_length=GRASP_LENGTH)))
-        if 'hand' in problem.grasp_types:
+        if 'hand' in grasp_types:
             from .bullet_utils import get_hand_grasps
             grasps.extend(get_grasps('hand', get_hand_grasps(problem, body)))
 
