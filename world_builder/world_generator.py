@@ -13,12 +13,12 @@ from .utils import read_xml, get_file_by_category, get_model_scale
 LISDF_PATH = join('assets', 'scenes')
 EXP_PATH = join('test_cases')
 
-ACTOR_STR = """
-    <include name="pr2">
-      <uri>../models/drake/pr2_description/urdf/pr2_simplified.urdf</uri>
-      {pose_xml}
-    </include>
-"""
+# ACTOR_STR = """
+#     <include name="pr2">
+#       <uri>../models/drake/pr2_description/urdf/pr2_simplified.urdf</uri>
+#       {pose_xml}
+#     </include>
+# """
 MODEL_BOX_STR = """
     <model name="{name}">
       <static>{is_static}</static>
@@ -148,6 +148,7 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
         pose_xml = to_pose_xml(obj.get_pose())
         print(obj.name)
         if isinstance(obj, Robot):
+            ACTOR_STR = world.robot.get_lisdf_string()
             actor_sdf = ACTOR_STR.format(pose_xml=pose_xml)
             if exp_name != None:
                 actor_sdf = actor_sdf.replace('../models/', '../../assets/models/')
@@ -396,7 +397,7 @@ def generate_problem_pddl(state, pddlstream_problem,
             init_pddl += '\n'
 
     objects = [o.name for o in world.BODY_TO_OBJECT.values()]
-    objects.extend(['left', 'right'])
+    objects.extend(world.robot.joint_groups)
     objects_pddl = '\n\t'.join(sorted(objects))
     goal_pddl = '\n\t'.join([get_pddl_from_list(g, world) for g in sorted(goals)]).lower()
     problem_pddl = PDDL_STR.format(
