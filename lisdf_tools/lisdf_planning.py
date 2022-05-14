@@ -12,13 +12,14 @@ from pybullet_tools.pr2_utils import get_arm_joints, get_group_joints, create_gr
 from pybullet_tools.utils import quat_from_euler, remove_body, get_unit_vector, unit_quat, \
     multiply
 from pybullet_tools.bullet_utils import xyzyaw_to_pose
+from pybullet_tools.flying_gripper_utils import get_se3_joints
 
 class Problem():
     def __init__(self, world):
         self.world = world
         self.robot = world.robot
         self.fixed, self.movable, self.floors = self.init_from_world(world)
-        self.grasp_types = ['top']
+        # self.grasp_types = ['top']
         self.gripper = None
 
     def init_from_world(self, world):
@@ -26,7 +27,7 @@ class Problem():
         movable = []
         floors = []
         for model in world.lisdf.models:
-            if model.name != 'pr2':
+            if model.name not in ['pr2', 'feg']:
                 body = world.name_to_body[model.name]
                 if model.static: fixed.append(body)
                 else: movable.append(body)
@@ -50,7 +51,7 @@ class Problem():
         # set_configuration(gripper, [0]*4)
         # dump_body(gripper)
         if self.gripper is None:
-            self.gripper = create_gripper(self.robot, arm=arm, visual=visual)
+            self.gripper = self.robot.create_gripper(arm=arm, visual=visual)
         return self.gripper
 
     def remove_gripper(self):
@@ -90,11 +91,15 @@ def pddl_to_init_goal(exp_dir, world):
                 typ = ''.join([i for i in arg.name if not i.isdigit()])
                 index = int(''.join([i for i in arg.name if i.isdigit()]))
                 value = arg.value.value
+                robot_body = robot.body
                 if isinstance(value, tuple): value = list(value)
                 if typ == 'q':
-                    elem = Conf(robot, get_group_joints(robot, 'base'), value, index=index)
+                    if 'pr2' in robot.name:
+                        elem = Conf(robot_body, get_group_joints(robot_body, 'base'), value, index=index)
+                    elif 'feg' in robot.name:
+                        elem = Conf(robot_body, get_se3_joints(robot_body), value, index=index)
                 elif typ == 'aq':
-                    elem = Conf(robot, get_arm_joints(robot, args[-1]), value, index=index)
+                    elem = Conf(robot_body, get_arm_joints(robot_body, args[-1]), value, index=index)
                 elif typ == 'p':
                     if len(value) == 4:
                         value = xyzyaw_to_pose(value)
