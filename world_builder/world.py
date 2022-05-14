@@ -23,7 +23,7 @@ from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_
     get_gripper_joints, GripperCommand, apply_commands, State, Command
 
 from .entities import Region, Environment, Robot, Surface, ArticulatedObjectPart, Door, Drawer, Knob, \
-    Camera
+    Camera, Object
 from world_builder.utils import GRASPABLES
 
 class World(object):
@@ -403,7 +403,9 @@ class World(object):
         toggle_joint(body, joint)
 
     def get_object(self, obj):
-        if isinstance(obj, str):
+        if isinstance(obj, Object):
+            return obj
+        elif isinstance(obj, str):
             obj = self.name_to_object(obj)
         elif obj in self.BODY_TO_OBJECT:
             obj = self.BODY_TO_OBJECT[obj]

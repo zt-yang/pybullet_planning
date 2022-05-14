@@ -312,9 +312,9 @@ def get_handle_width(body_joint):
 
 def get_top_grasps(body, under=False, tool_pose=TOOL_POSE, body_pose=unit_pose(),
                    max_width=MAX_GRASP_WIDTH, grasp_length=GRASP_LENGTH):
-    ## debug grasp orientation
-    for link in get_links(body):
-        new_vertices = apply_affine(origin, vertices_from_rigid(body, link))
+    # ## debug grasp orientation
+    # for link in get_links(body):
+    #     new_vertices = apply_affine(origin, vertices_from_rigid(body, link))
 
     # TODO: rename the box grasps
     center, (w, l, h) = approximate_as_prism(body, body_pose=body_pose)

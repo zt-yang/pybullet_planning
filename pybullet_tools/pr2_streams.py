@@ -12,7 +12,7 @@ import json
 import numpy as np
 
 from pybullet_tools.pr2_problems import get_fixed_bodies, create_pr2
-from pybullet_tools.pr2_utils import TOP_HOLDING_LEFT_ARM, SIDE_HOLDING_LEFT_ARM, GET_GRASPS, get_gripper_joints, \
+from pybullet_tools.pr2_utils import GET_GRASPS, get_gripper_joints, \
     get_carry_conf, get_top_grasps, get_side_grasps, open_arm, arm_conf, get_gripper_link, get_arm_joints, \
     learned_pose_generator, PR2_TOOL_FRAMES, get_x_presses, PR2_GROUPS, joints_from_names, \
     is_drake_pr2, get_group_joints, get_group_conf, compute_grasp_width, PR2_GRIPPER_ROOTS, \
@@ -220,7 +220,7 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
         pose.assign()
         if isinstance(obj, tuple): ## may be a (body, joint) or a body with a marker
             obj = obj[0]
-        if isinstance(pose, Position):
+        if 'pstn' in str(pose): ## isinstance(pose, Position): ## path problem
             pose_value = linkpose_from_position(pose, world)
         else:
             pose_value = pose.value
@@ -291,7 +291,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
     def fn(arm, obj, pose, grasp, base_conf):
         if isinstance(obj, tuple): ## may be a (body, joint) or a body with a marker
             obj = obj[0]
-        if isinstance(pose, Position):
+        if 'pstn' in str(pose): ## isinstance(pose, Position):
             pose_value = linkpose_from_position(pose, world)
         else:
             pose_value = pose.value
@@ -530,7 +530,7 @@ def get_arm_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, ve
     def fn(arm, obj, pose, grasp, base_conf, grasp_conf):
         if isinstance(obj, tuple): ## may be a (body, joint) or a body with a marker
             obj = obj[0]
-        if isinstance(pose, Position):
+        if 'pstn' in str(pose): ## isinstance(pose, Position):
             pose_value = linkpose_from_position(pose, world)
         else:
             pose_value = pose.value

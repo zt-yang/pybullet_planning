@@ -966,6 +966,9 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=True,
     robot = world.robot
     # print(f'bullet_utils.check_cfree_gripper(object_pose={nice(object_pose)}) before robot.visualize_grasp')
     gripper_grasp = robot.visualize_grasp(object_pose, grasp, color=color, verbose=verbose)
+    if gripper_grasp == None:
+        return False
+
     if verbose:
         print(f'bullet_utils.check_cfree_gripper | gripper_grasp {gripper_grasp} | object_pose {nice(object_pose)}'
             f' | se_conf {nice(get_cloned_se3_conf(robot, gripper_grasp))} | grasp = {nice(grasp)}')
