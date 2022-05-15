@@ -290,15 +290,11 @@ def get_ik_fn(problem, teleport=False, verbose=True, custom_limits={}, **kwargs)
         p.assign()
         w.assign()
         attachments = {}
-        if isinstance(g, Grasp):
-            attachment = g.get_attachment(problem.robot, a)
-            attachments = {attachment.child: attachment}
+        # if isinstance(g, Grasp):
+        #     attachment = g.get_attachment(problem.robot, a)
+        #     attachments = {attachment.child: attachment}
 
         body_pose = robot.get_body_pose(o, verbose=verbose)
-        # approach_pose = multiply(body_pose, invert(g.approach),
-        #                          Pose(point=(0, 0, -0.05), euler=[0, math.pi / 2, 0]))
-        # grasp_pose = multiply(body_pose, invert(g.value),
-        #                       Pose(point=(0, 0, -0.05), euler=[0, math.pi / 2, 0]))
         approach_pose = multiply(body_pose, g.approach)
         grasp_pose = multiply(body_pose, g.value)
         if verbose:
@@ -314,7 +310,7 @@ def get_ik_fn(problem, teleport=False, verbose=True, custom_limits={}, **kwargs)
         if verbose:
             set_renderer(True)
         raw_path = plan_se3_motion(robot, q1.values, q2.values, obstacles=obstacles,
-                                   custom_limits=custom_limits, attachments=attachments.values())
+                                   custom_limits=custom_limits) ## , attachments=attachments.values()
         if raw_path == None:
             return None
         path = [Conf(robot, get_se3_joints(robot), conf) for conf in raw_path]
@@ -325,7 +321,7 @@ def get_ik_fn(problem, teleport=False, verbose=True, custom_limits={}, **kwargs)
     return fn
 
 def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, teleport=False,
-                                    num_intervals=15, max_ir_trial=30, visualize=False, verbose=False):
+                                    num_intervals=12, max_ir_trial=30, visualize=False, verbose=False):
     from pybullet_tools.pr2_streams import LINK_POSE_TO_JOINT_POSITION
     if teleport:
         num_intervals = 1
@@ -376,9 +372,13 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
             new_pose = get_link_pose(joint_object.body, joint_object.handle_link)
 
             if visualize:
-                mod_pose = Pose(euler=euler_from_quat(new_pose[1]))
+                # mod_pose = Pose(euler=euler_from_quat(new_pose[1]))
+                # gripper_after = robot.visualize_grasp(new_pose, g.value, color=BROWN, verbose=True,
+                #                                       width=g.grasp_width, body=g.body, mod_pose=mod_pose)
                 gripper_after = robot.visualize_grasp(new_pose, g.value, color=BROWN, verbose=True,
-                                                      width=g.grasp_width, body=g.body, mod_pose=mod_pose)
+                                                      width=g.grasp_width, body=g.body)
+                if gripper_after == None:
+                    break
                 set_camera_target_body(gripper_after, dx=0.2, dy=0, dz=1) ## look top down
                 remove_body(gripper_after)
             gripper_after = multiply(new_pose, invert(g.value))  ## multiply(, tool_from_root)

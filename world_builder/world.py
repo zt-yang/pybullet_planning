@@ -10,12 +10,13 @@ from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, g
     CameraImage, get_joint_positions, euler_from_quat, get_link_name, get_joint_position, \
     BodySaver, set_pose, INF, add_parameter, irange, wait_for_duration, get_bodies, remove_body, \
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
-    get_joints, multiply, invert, is_movable
+    get_joints, multiply, invert, is_movable, remove_handles
 from pybullet_tools.pr2_streams import get_stable_gen, get_contain_gen, get_position_gen, \
     Position, get_handle_grasp_gen, LinkPose, pr2_grasp, WConf, get_grasp_gen
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
     is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
-    set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR, CAMERA_MATRIX, visualize_camera_image, equal
+    set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR, CAMERA_MATRIX, visualize_camera_image, equal, \
+    draw_pose2d_path, draw_pose3d_path
 from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints, \
     get_group_conf, get_top_grasps, get_side_grasps, create_gripper
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
@@ -42,6 +43,30 @@ class World(object):
         self.sub_categories = {}
         self.sup_categories = {}
         self.SKIP_JOINTS = False
+
+        ## for visualization
+        self.handles = []
+        self.path = None
+
+    def remove_handles(self):
+        remove_handles(self.handles)
+
+    def add_handles(self, handles):
+        self.handles.extend(handles)
+
+    def set_path(self, path):
+        remove_handles(self.handles)
+        self.path = path
+        if self.path is None:
+            return self.path
+        if isinstance(self.path[0], tuple):  ## pr2
+            #path = adjust_path(self.robot, self.robot.joints, self.path)
+            self.handles.extend(draw_pose2d_path(self.path[::4], length=0.05))
+            #wait_if_gui()
+        else:  ## SE3 gripper
+            path = [p.values for p in path]
+            self.handles.extend(draw_pose3d_path(path, length=0.05))
+        return self.path
 
     def set_skip_joints(self):
         ## not automatically add doors and drawers, save planning time
@@ -585,6 +610,8 @@ class State(object):
     def apply_action(self, action): # Transition model
         if action is None:
             return self
+        if isinstance(action, list):
+            print('world.apply action')
         # assert isinstance(action, Action)
         return action.transition(self.copy())
     def camera_observation(self, include_rgb=False, include_depth=False, include_segment=False):

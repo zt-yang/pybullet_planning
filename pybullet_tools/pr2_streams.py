@@ -397,7 +397,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
 def get_ik_ir_wconf_gen(problem, max_attempts=25, learned=True, teleport=False,
                         verbose=False, visualize=False, **kwargs):
     # TODO: compose using general fn
-    ir_max_attempts = 20
+    ir_max_attempts = 40
     ir_sampler = get_ir_sampler(problem, learned=learned, max_attempts=ir_max_attempts, verbose=verbose, **kwargs)
     ik_fn = get_ik_fn(problem, teleport=teleport, verbose=False, **kwargs)
     robot = problem.robot

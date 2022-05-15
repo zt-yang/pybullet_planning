@@ -45,10 +45,7 @@ from pddlstream.language.external import defer_shared, never_defer
 from collections import namedtuple
 
 from world_builder.entities import Object
-from world_builder.actions import AttachAction, ReleaseAction, FlipAction, PressAction, TeleportAction, InteractAction,\
-    OpenJointAction, PickUpAction, PutDownAction, ChopAction, CrackAction, ToggleSwitchAction, OBJECT_PARTS, \
-    TeleportObjectAction, GripperAction, AttachObjectAction, DetachObjectAction, JustClean, JustCook, JustSeason, \
-    JustServe, MoveArmAction, MoveBaseAction, MagicDisappear, TeleportObject, JustSucceed
+from world_builder.actions import get_primitive_actions
 
 def get_stream_map(p, c, l, t):
     # p = problem
@@ -256,128 +253,6 @@ def get_primitive_commands(action, robot, teleport=False):
         raise ValueError(name)
 
     return new_commands
-
-def get_primitive_actions(action, world, teleport=False):
-    def get_traj(t):
-        [t] = t.commands
-        if teleport:
-            t = Trajectory([t.path[0]] + [t.path[-1]])
-        if len(t.path[0].values) == 3:
-            t = [MoveBaseAction(conf) for conf in t.path]
-        elif len(t.path[0].values) == 7:
-            t = [MoveArmAction(conf) for conf in t.path]
-        return t
-
-    name, args = action
-    if 'pull_door_handle' in name:
-        if '_wconf' in name:
-            args = args[:-2]
-        a, o, p1, p2, g, q1, q2, bt, aq1, aq2, at = args[:11]
-        at = list(get_traj(at).path)
-        bt = list(get_traj(bt).path)
-        new_commands = []
-        for i in range(len(at)):
-            new_commands.extend([MoveBaseAction(bt[i]), MoveArmAction(at[i])])
-
-    elif 'move_base' in name or 'pull_' in name:
-        if 'move_base' in name:
-            q1, q2, t = args[:3]
-        elif 'pull_marker' in name:
-            if '_wconf' in name:
-                args = args[:-2]
-            a, o, p1, p2, g, q1, q2, o2, p3, p4, t = args
-        elif name == 'pull_marker_wconf':
-            a, o, p1, p2, g, q1, q2, t, w1, w2 = args
-        elif 'pull_drawer_handle' in name:
-            a, o, p1, p2, g, q1, q2, t = args
-
-        new_commands = [get_traj(t)]
-
-    elif name == 'turn_knob':
-        a, o, p1, p2, g, q, aq1, aq2, t = args
-        t = get_traj(t)
-        new_commands = t + world.get_events(o)
-
-    elif name == 'pick':
-        a, o, p, g, q, t = args[:6]
-        t = get_traj(t)
-        # teleport = TeleportObjectAction(a, g, o)
-        close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
-        attach = AttachObjectAction(a, g, o)
-
-        new_commands = [t, close_gripper, attach, t[::-1]]  ## teleport,
-
-    elif name == 'grasp_handle':
-        a, o, p, g, q, aq1, aq2, t = args
-        t = get_traj(t)
-        close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
-        attach = AttachObjectAction(a, g, o)
-        new_commands = [t, close_gripper, attach]
-
-    elif name == 'ungrasp_handle':
-        a, o, p, g, q, aq1, aq2, t = args
-        t = get_traj(t)
-        detach = DetachObjectAction(a, o)
-        open_gripper = GripperAction(a, extent=1, teleport=teleport)
-        new_commands = [detach, open_gripper, t[::-1]]
-
-    elif name == 'grasp_marker':
-        a, o1, o2, p, g, q, t = args
-        t = get_traj(t)
-        close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
-        attach = AttachObjectAction(a, g, o1)
-        attach2 = AttachObjectAction(a, g, o2)
-        new_commands = [t, close_gripper, attach, attach2]
-
-    elif name == 'ungrasp_marker':
-        a, o, o2, p, g, q, t = args
-        t = get_traj(t)
-        detach = DetachObjectAction(a, o)
-        detach2 = DetachObjectAction(a, o2)
-        open_gripper = GripperAction(a, extent=1, teleport=teleport)
-        new_commands = [detach, detach2, open_gripper, t[::-1]]
-
-    elif name == 'place':
-        a, o, p, g, _, t = args[:6]
-        t = get_traj(t)
-        open_gripper = GripperAction(a, extent=1, teleport=teleport)
-        detach = DetachObjectAction(a, o)
-        new_commands = [t, detach, open_gripper, t[::-1]]
-
-    elif 'clean' in name:  # TODO: add text or change color?
-        body, sink = args[:2]
-        new_commands = [JustClean(body)]
-
-    elif 'cook' in name:
-        body, stove = args[:2]
-        new_commands = [JustCook(body)]
-
-    elif name == 'season':
-        body, counter, seasoning = args
-        new_commands = [JustSeason(body)]
-
-    elif name == 'serve':
-        body, serve, plate = args
-        new_commands = [JustServe(body)]
-
-    elif name == 'magic':  ## for testing that UnsafeBTraj takes changes in pose into account
-        marker, cart, p1, p2 = args
-        new_commands = [MagicDisappear(marker), MagicDisappear(cart)]
-
-    elif name == 'teleport':
-        body, p1, p2, w1, w2 = args
-        w1.printout()
-        w2.printout()
-        new_commands = [TeleportObject(body, p2)]
-
-    elif name == 'declare_victory':
-        new_commands = [JustSucceed()]
-
-    else:
-        raise NotImplementedError(name)
-
-    return new_commands
-
 
 #######################################################
 

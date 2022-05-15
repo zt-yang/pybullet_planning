@@ -3,13 +3,14 @@ import pybullet as p
 import copy
 
 from pybullet_tools.bullet_utils import clip_delta, multiply2d, is_above, nice, open_joint, set_camera_target_robot, \
-    toggle_joint, add_attachment, remove_attachment
+    toggle_joint, add_attachment, remove_attachment, draw_pose2d_path, \
+    draw_pose3d_path
 from pybullet_tools.pr2_streams import Position
 
 from pybullet_tools.utils import str_from_object, get_closest_points, INF, create_attachment, wait_if_gui, \
     get_aabb, get_joint_position, get_joint_name, get_link_pose, link_from_name, PI, Pose, Euler, \
     get_extend_fn, get_joint_positions, set_joint_positions, get_max_limit, get_pose, set_pose, set_color, \
-    remove_body, create_cylinder, set_all_static, wait_for_duration
+    remove_body, create_cylinder, set_all_static, wait_for_duration, remove_handles
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, get_gripper_joints
 from pybullet_tools.pr2_primitives import Trajectory, Command
 from pybullet_tools.flying_gripper_utils import set_se3_conf
@@ -414,3 +415,156 @@ def apply_actions(problem, actions, time_step=0.01):
             for a in action:
                 state_event = a.transition(state_event.copy())
         wait_for_duration(time_step)
+
+def get_primitive_actions(action, world, teleport=False):
+    def get_traj(t, sub=4):
+        world.remove_handles()
+        remove_handles(world.handles)
+
+        ## get the confs
+        [t] = t.commands
+        if teleport:
+            t = Trajectory([t.path[0]] + [t.path[-1]])
+
+        ## subsample
+        path = t.path
+        if len(path) > 10:
+            path = list(t.path[::sub])
+            if t.path[-1] not in path:
+                path.append(t.path[-1])
+        confs = [conf.values for conf in path]
+
+        ## make the actions and draw the poses
+        DoF = len(t.path[0].values)
+        if DoF == 3:
+            t = [MoveBaseAction(conf) for conf in path]
+            world.add_handles(draw_pose2d_path(confs, length=0.05))
+
+        elif DoF == 6:
+            t = [MoveArmAction(conf) for conf in path]
+            world.add_handles(draw_pose3d_path(confs, length=0.05))
+
+        elif DoF == 7:
+            t = [MoveArmAction(conf) for conf in path]
+
+        else:
+            print('\n\nactions.get_primitive_actions | whats this traj', t)
+
+        return t
+
+    name, args = action
+    if 'pull_door_handle' in name:
+        if '_wconf' in name:
+            args = args[:-2]
+        a, o, p1, p2, g, q1, q2, bt, aq1, aq2, at = args[:11]
+        at = list(get_traj(at).path)
+        bt = list(get_traj(bt).path)
+        new_commands = []
+        for i in range(len(at)):
+            new_commands.extend([MoveBaseAction(bt[i]), MoveArmAction(at[i])])
+
+    elif 'move_base' in name or 'pull_' in name:
+        if 'move_base' in name:
+            q1, q2, t = args[:3]
+        elif 'pull_marker' in name:
+            if '_wconf' in name:
+                args = args[:-2]
+            a, o, p1, p2, g, q1, q2, o2, p3, p4, t = args
+        elif name == 'pull_marker_wconf':
+            a, o, p1, p2, g, q1, q2, t, w1, w2 = args
+        elif 'pull_drawer_handle' in name:
+            a, o, p1, p2, g, q1, q2, t = args
+        else:
+            print('\n\n actions.get_primitive_actions, not implemented', name)
+
+        new_commands = get_traj(t)
+
+    elif 'move_cartesian' in name:
+        q1, q2, t = args[:3]
+        t = get_traj(t)
+        new_commands = t
+
+    elif name == 'turn_knob':
+        a, o, p1, p2, g, q, aq1, aq2, t = args
+        t = get_traj(t)
+        new_commands = t + world.get_events(o)
+
+    elif name == 'pick':
+        a, o, p, g, q, t = args[:6]
+        t = get_traj(t)
+        # teleport = TeleportObjectAction(a, g, o)
+        close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
+        attach = AttachObjectAction(a, g, o)
+
+        new_commands = t + [close_gripper, attach] + t[::-1]  ## teleport,
+
+    elif name == 'grasp_handle':
+        a, o, p, g, q, aq1, aq2, t = args
+        t = get_traj(t)
+        close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
+        attach = AttachObjectAction(a, g, o)
+        new_commands = t + [close_gripper, attach]
+
+    elif name == 'ungrasp_handle':
+        a, o, p, g, q, aq1, aq2, t = args
+        t = get_traj(t)
+        detach = DetachObjectAction(a, o)
+        open_gripper = GripperAction(a, extent=1, teleport=teleport)
+        new_commands = [detach, open_gripper] + t[::-1]
+
+    elif name == 'grasp_marker':
+        a, o1, o2, p, g, q, t = args
+        t = get_traj(t)
+        close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
+        attach = AttachObjectAction(a, g, o1)
+        attach2 = AttachObjectAction(a, g, o2)
+        new_commands = t + [close_gripper, attach, attach2]
+
+    elif name == 'ungrasp_marker':
+        a, o, o2, p, g, q, t = args
+        t = get_traj(t)
+        detach = DetachObjectAction(a, o)
+        detach2 = DetachObjectAction(a, o2)
+        open_gripper = GripperAction(a, extent=1, teleport=teleport)
+        new_commands = [detach, detach2, open_gripper] + t[::-1]
+
+    elif name == 'place':
+        a, o, p, g, _, t = args[:6]
+        t = get_traj(t)
+        open_gripper = GripperAction(a, extent=1, teleport=teleport)
+        detach = DetachObjectAction(a, o)
+        new_commands = t + [detach, open_gripper] + t[::-1]
+
+    elif 'clean' in name:  # TODO: add text or change color?
+        body, sink = args[:2]
+        new_commands = [JustClean(body)]
+
+    elif 'cook' in name:
+        body, stove = args[:2]
+        new_commands = [JustCook(body)]
+
+    elif name == 'season':
+        body, counter, seasoning = args
+        new_commands = [JustSeason(body)]
+
+    elif name == 'serve':
+        body, serve, plate = args
+        new_commands = [JustServe(body)]
+
+    elif name == 'magic':  ## for testing that UnsafeBTraj takes changes in pose into account
+        marker, cart, p1, p2 = args
+        new_commands = [MagicDisappear(marker), MagicDisappear(cart)]
+
+    elif name == 'teleport':
+        body, p1, p2, w1, w2 = args
+        w1.printout()
+        w2.printout()
+        new_commands = [TeleportObject(body, p2)]
+
+    elif name == 'declare_victory':
+        new_commands = [JustSucceed()]
+
+    else:
+        raise NotImplementedError(name)
+
+    return new_commands
