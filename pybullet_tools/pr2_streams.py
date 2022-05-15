@@ -135,7 +135,7 @@ def get_handle_grasp_gen(problem, collisions=False, randomize=False, visualize=F
             from bullet_utils import get_hand_grasps
             arm = 'hand'
             grasps = get_hand_grasps(problem, body, link=handle_link, HANDLE_FILTER=True,
-                        visualize=False, RETAIN_ALL=False, LENGTH_VARIANTS=True, verbose=verbose)
+                        visualize=False, RETAIN_ALL=False, LENGTH_VARIANTS=False, verbose=verbose)
 
         elif robot.name.startswith('pr2'):
             arm = 'left'

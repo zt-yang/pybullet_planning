@@ -626,7 +626,7 @@ def test_marker_pull_grasps(state, marker, visualize=False):
     print('test_marker_pull_grasps:', grasps)
     return grasps
 
-def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=True, verbose=True):
+def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=True, verbose=False):
     if isinstance(name, str):
         body_joint = state.world.name_to_body(name)
     else: ##if isinstance(name, Object):
@@ -640,7 +640,8 @@ def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=True, ve
         body_pose = name_to_object(name).get_handle_pose()
         visualize_grasps_by_quat(state, outputs, body_pose, verbose=verbose)
     print('test_handle_grasps:', outputs)
-    goals = [("AtHandleGrasp", 'left', body_joint, outputs[0][0])]
+    grasp_type = state.robot.grasp_types[0]
+    goals = [("AtHandleGrasp", grasp_type, body_joint, outputs[0][0])]
     return goals
 
 def test_grasps(state, name='cabbage', visualize=True):
@@ -698,9 +699,9 @@ def visualize_grasps_by_quat(state, outputs, body_pose, verbose=False):
             visuals.append(gripper)
         j += 1
         wait_if_gui()
+        # set_camera_target_body(gripper, dx=0, dy=0, dz=1)
         for visual in visuals:
             remove_body(visual)
-
 
 def test_grasp_ik(state, init, name='cabbage', visualize=True):
     goals = test_grasps(state, name, visualize=False)
@@ -794,9 +795,17 @@ def test_door_pull_traj(problem, init, o):
     pst2 = funk1(o, pst1)[0][0]
 
     funk2 = get_handle_grasp_gen(problem, visualize=True)
-    g = funk2(o)[0][0]
+    # g = funk2(o)[0][0]
+    grasps = funk2(o)
 
     q1 = [f[1] for f in init if f[0].lower() == 'atseconf'][0]
     funk3 = get_pull_door_handle_motion_gen(problem, visualize=True, verbose=True)
-    [q2, cmd] = funk3('hand', o, pst1, pst2, g, q1)
-    return [("AtPosition", o, pst2)], [("Position", o, pst2)]
+    for i in range(len(grasps)):
+        (g,) = grasps[i]
+        print(f'!!!! pr2_agent.test_door_pull_traj | grasp {i}: {nice(g.value)}')
+        result = funk3('hand', o, pst1, pst2, g, q1)
+        if result != None:
+            [q2, cmd] = result
+            return [("AtPosition", o, pst2)], [("Position", o, pst2)]
+    print('\n\n!!!! cant find any handle grasp that works for', o)
+    sys.exit()

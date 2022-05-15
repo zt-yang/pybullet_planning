@@ -489,14 +489,15 @@ def get_primitive_actions(action, world, teleport=False):
         t = get_traj(t)
         new_commands = t + world.get_events(o)
 
-    elif name == 'pick':
+    elif name == 'pick' or name == 'grasp_handle_wconf':
         a, o, p, g, q, t = args[:6]
         t = get_traj(t)
-        # teleport = TeleportObjectAction(a, g, o)
         close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
         attach = AttachObjectAction(a, g, o)
-
-        new_commands = t + [close_gripper, attach] + t[::-1]  ## teleport,
+        if name == 'pick':
+            new_commands = t + [close_gripper, attach] + t[::-1]  ## teleport,
+        elif name == 'grasp_handle_wconf':
+            new_commands = t + [close_gripper, attach]  ## teleport,
 
     elif name == 'grasp_handle':
         a, o, p, g, q, aq1, aq2, t = args

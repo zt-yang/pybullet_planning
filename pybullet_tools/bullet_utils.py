@@ -914,7 +914,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
     P = math.pi
     rots = {
         (1, 0, 0): [(P/2, 0, -P/2), (P/2, P, -P/2), (P/2, -P/2, -P/2), (P/2, P/2, -P/2)],
-        (-1, 0, 0): [(P/2, 0, P/2), (P/2, P, P/2), (P/2, -P/2, P/2), (P/2, P/2, P/2)],
+        (-1, 0, 0): [(P/2, 0, P/2), (P/2, P, P/2), (-P, -P/2, 0), (-P, -P/2, -P)], ## , (P/2, -P/2, P/2), (P/2, P/2, P/2)
         (0, 1, 0): [(0, P/2, -P/2), (0, -P/2, P/2), (P/2, P, 0), (P/2, 0, 0)],
         (0, -1, 0): [(0, P/2, P/2), (0, -P/2, -P/2), (-P/2, P, 0), (-P/2, 0, 0)],
         (0, 0, 1): [(P, 0, P/2), (P, 0, -P/2), (P, 0, 0), (P, 0, P)],
@@ -940,10 +940,10 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                                    visualize=visualize, RETAIN_ALL=RETAIN_ALL):
                 grasps += [grasp]
 
-                # debug
-                if verbose:
-                    set_renderer(True)
-                    return grasps
+                # # debug
+                # if verbose:
+                #     set_renderer(True)
+                #     return grasps
 
                 ## slide along the longest dimension
                 if LENGTH_VARIANTS and on_longest:

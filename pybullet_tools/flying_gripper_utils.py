@@ -196,7 +196,7 @@ def pose_from_se3(conf):
 
 def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
     report_failure = True
-    debug = True
+    debug = False
 
     title = f'   se3_ik | for pose {nice(target_pose)}'
     if nice(target_pose) in CACHE:
@@ -232,7 +232,7 @@ def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
         sub_kinematic_conf = tuple(conf)
 
         set_joint_positions(sub_robot, sub_joints, sub_kinematic_conf)
-        if debug: print(f'   se3_ik iter {iteration} | {nice(sub_kinematic_conf, 4)}')
+        if verbose and debug: print(f'   se3_ik iter {iteration} | {nice(sub_kinematic_conf, 4)}')
         if is_pose_close(get_link_pose(sub_robot, link), target_pose):
             if verbose:
                 print(f'{title} found after {iteration} trials and '
@@ -422,12 +422,12 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
             LINK_POSE_TO_JOINT_POSITION[body] = {}
         # mapping = sorted(mapping.items(), key=lambda kv: kv[1])
         LINK_POSE_TO_JOINT_POSITION[body][joint] = mapping
-        # print(f'pr2_streams.get_pull_door_handle_motion_gen | last bconf = {rpose_rounded}, pstn value = {value}')
+        # print(f'flying_gripper_utils.get_pull_door_handle_motion_gen | last bconf = {rpose_rounded}, pstn value = {value}')
 
         t = Trajectory(path)
         cmd = Commands(State(), savers=[BodySaver(robot)], commands=[t])
         q2 = t.path[-1]
-        step_str = f"pr2_streams.get_pull_door_handle_motion_gen | step {len(path)}/{num_intervals}\t"
+        step_str = f"flying_gripper_utils.get_pull_door_handle_motion_gen | step {len(path)}/{num_intervals}\t"
         if not verbose: print(f'{step_str} : {nice(q2.values)}')
         return (q2, cmd)
 
