@@ -2,6 +2,7 @@ import random
 
 import numpy as np
 from itertools import product
+import pybullet as p
 from math import radians as rad
 
 from .utils import create_box, set_base_values, set_point, set_pose, get_pose, \
@@ -12,9 +13,11 @@ from .utils import create_box, set_base_values, set_point, set_pose, get_pose, \
     set_joint_positions, get_joint_name, LockRenderer, link_from_name, get_link_pose, \
     multiply, Pose, Point, interpolate_poses, HideOutput, draw_pose, set_camera_pose, load_pybullet, \
     assign_link_colors, add_line, point_from_pose, remove_handles, BLUE, BROWN, INF, create_shape, \
-    approximate_as_prism, set_renderer
+    approximate_as_prism, set_renderer, plan_joint_motion, create_flying_body, SE3, euler_from_quat, BodySaver, \
+    intrinsic_euler_from_quat, quat_from_euler, wait_for_duration, get_aabb, get_aabb_extent, \
+    joint_from_name, get_joint_limits, irange, is_pose_close, CLIENT
 
-from pybullet_tools.pr2_primitives import Conf, Grasp
+from pybullet_tools.pr2_primitives import Conf, Grasp, Trajectory, Commands, State
 from pybullet_tools.general_streams import Position
 from pybullet_tools.bullet_utils import collided
 from .pr2_utils import DRAKE_PR2_URDF
@@ -119,10 +122,6 @@ def sample_ik_tests(robot):
 
 ######################################################
 
-from pybullet_tools.utils import plan_joint_motion, create_flying_body, SE3, euler_from_quat, BodySaver, \
-    intrinsic_euler_from_quat, quat_from_euler, wait_for_duration, get_aabb, get_aabb_extent, \
-    joint_from_name
-from pybullet_tools.pr2_primitives import Trajectory, Commands, State
 
 SE3_GROUP = ['x', 'y', 'z', 'roll', 'pitch', 'yaw']
 FINGERS_GROUP = ['panda_finger_joint1', 'panda_finger_joint2']
@@ -195,12 +194,9 @@ def pose_from_se3(conf):
     # print('Deprecated pose_from_se3, please use se3_fk()')
     return (conf[:3], quat_from_euler(conf[3:]))
 
-from pybullet_tools.utils import irange, is_pose_close, CLIENT
-import pybullet as p
-
 def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
     report_failure = True
-    debug = False
+    debug = True
 
     title = f'   se3_ik | for pose {nice(target_pose)}'
     if nice(target_pose) in CACHE:
@@ -211,13 +207,30 @@ def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
     target_point, target_quat = target_pose
     sub_joints = get_se3_joints(robot)
     sub_robot = robot.create_gripper()  ## color=BLUE ## for debugging
+    limits = [get_joint_limits(robot, j) for j in sub_joints]
+    lower_limits = [l[0] for l in limits]
+    upper_limits = [l[1] for l in limits]
+    lower_limits[3:] = [-1.5*math.pi] * 3
+    upper_limits[3:] = [1.5*math.pi] * 3
+
     for iteration in irange(max_iterations):
         if elapsed_time(start_time) >= max_time:
             remove_body(sub_robot)
             if verbose or report_failure: print(f'{title} failed after {max_time} sec')
             return None
-        sub_kinematic_conf = p.calculateInverseKinematics(sub_robot, link, target_point, target_quat, physicsClientId=CLIENT)
+        sub_kinematic_conf = p.calculateInverseKinematics(sub_robot, link, target_point, target_quat,
+                                                          lowerLimits=lower_limits, upperLimits=upper_limits,
+                                                          physicsClientId=CLIENT)
         sub_kinematic_conf = sub_kinematic_conf[:-2] ##[3:-2]
+        conf = list(sub_kinematic_conf[:3])
+        for v in sub_kinematic_conf[3:]:
+            if v > 2*math.pi:
+                v -= 2*math.pi
+            if v < -2*math.pi:
+                v += 2*math.pi
+            conf.append(v)
+        sub_kinematic_conf = tuple(conf)
+
         set_joint_positions(sub_robot, sub_joints, sub_kinematic_conf)
         if debug: print(f'   se3_ik iter {iteration} | {nice(sub_kinematic_conf, 4)}')
         if is_pose_close(get_link_pose(sub_robot, link), target_pose):
