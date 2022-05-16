@@ -15,7 +15,7 @@ from .utils import create_box, set_base_values, set_point, set_pose, get_pose, \
     assign_link_colors, add_line, point_from_pose, remove_handles, BLUE, BROWN, INF, create_shape, \
     approximate_as_prism, set_renderer, plan_joint_motion, create_flying_body, SE3, euler_from_quat, BodySaver, \
     intrinsic_euler_from_quat, quat_from_euler, wait_for_duration, get_aabb, get_aabb_extent, \
-    joint_from_name, get_joint_limits, irange, is_pose_close, CLIENT
+    joint_from_name, get_joint_limits, irange, is_pose_close, CLIENT, set_all_color
 
 from pybullet_tools.pr2_primitives import Conf, Grasp, Trajectory, Commands, State
 from pybullet_tools.general_streams import Position
@@ -26,6 +26,7 @@ from .ikfast.utils import IKFastInfo
 from .ikfast.ikfast import * # For legacy purposes
 
 FE_GRIPPER_URDF = "models/franka_description/robots/hand_se3.urdf"
+FE_POINTER_URDF = "models/franka_description/robots/pointer_se3.urdf"
 #FRANKA_URDF = "models/franka_description/robots/panda_arm.urdf"
 FRANKA_URDF = "models/franka_description/robots/panda_arm_hand.urdf"
 
@@ -52,13 +53,19 @@ def create_franka():
             # set_all_color(robot, GREEN)
     return robot
 
-def create_fe_gripper(init_q=None):
+def create_fe_gripper(init_q=None, POINTER=False, scale=1, color=None):
+    path = FE_GRIPPER_URDF
+    if POINTER:
+        path = FE_POINTER_URDF
+        scale = 0.01
     with LockRenderer():
         with HideOutput(True):
-            robot = load_model(FE_GRIPPER_URDF, fixed_base=False)
+            robot = load_model(path, fixed_base=False, scale=scale)
             set_gripper_positions(robot, w=0.08)
             if init_q != None:
                 set_se3_conf(robot, init_q)
+            if color != None:
+                set_all_color(robot, color)
             # assign_link_colors(robot, max_colors=3, s=0.5, v=1.)
             # set_all_color(robot, GREEN)
     return robot
