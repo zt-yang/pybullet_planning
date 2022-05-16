@@ -509,7 +509,7 @@ class Attachment(object):
             set_pose(self.child, child_pose)
         elif self.child in LINK_POSE_TO_JOINT_POSITION:  ## pull drawer handle
             # for key in [robot_base_pose, robot_arm_pose]:
-            for group in ['base', 'left']:
+            for group in self.parent.joint_groups: ## ['base', 'left', 'hand']:
                 key = self.parent.get_positions(joint_group=group, roundto=3)
                 if key in LINK_POSE_TO_JOINT_POSITION[self.child][self.child_joint]:
                     position = LINK_POSE_TO_JOINT_POSITION[self.child][self.child_joint][key]

@@ -4,7 +4,7 @@ import os
 import sys
 import time
 
-from pybullet_planning.pybullet_tools.pr2_streams import get_stable_gen, get_contain_gen, get_position_gen, \
+from pybullet_tools.pr2_streams import get_stable_gen, get_contain_gen, get_position_gen, \
     Position, get_handle_grasp_gen, LinkPose, get_ik_ir_grasp_handle_gen, get_pull_drawer_handle_motion_gen, \
     get_joint_position_test, get_marker_grasp_gen, get_bconf_in_region_test, get_pull_door_handle_motion_gen, \
     get_bconf_in_region_gen, get_pose_in_region_gen, get_motion_wconf_gen, get_update_wconf_p_two_gen, \
@@ -13,7 +13,7 @@ from pybullet_planning.pybullet_tools.pr2_streams import get_stable_gen, get_con
     get_cfree_btraj_pose_test, get_joint_position_open_gen, get_ik_ungrasp_mark_gen, \
     sample_joint_position_open_list_gen, get_update_wconf_pst_gen, get_ik_ir_wconf_gen, \
     get_update_wconf_p_gen, get_ik_ir_wconf_gen, get_pose_in_space_test, get_turn_knob_handle_motion_gen, get_grasp_gen
-from pybullet_planning.pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
+from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
     get_ik_ir_gen, get_motion_gen, get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
     move_cost_fn, Attach, Detach, Clean, Cook, control_commands, \
     get_gripper_joints, GripperCommand, apply_commands, State, Trajectory
@@ -453,8 +453,7 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
             goals, ff = test_update_wconf_pst(state, init, name)
             init += ff
         elif test == 'test_door_pull_traj':
-            goals, ff = test_door_pull_traj(state, init, name)
-            init += ff
+            goals = test_door_pull_traj(state, init, name)
 
     goal = [AND]
     goal += goals
@@ -806,6 +805,6 @@ def test_door_pull_traj(problem, init, o):
         result = funk3('hand', o, pst1, pst2, g, q1)
         if result != None:
             [q2, cmd] = result
-            return [("AtPosition", o, pst2)], [("Position", o, pst2)]
+            return [("AtPosition", o, pst2)]
     print('\n\n!!!! cant find any handle grasp that works for', o)
     sys.exit()

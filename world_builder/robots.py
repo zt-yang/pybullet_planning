@@ -79,7 +79,7 @@ class RobotAPI(Robot):
 class PR2Robot(RobotAPI):
 
     grasp_types = ['top']
-    joint_groups = ['left', 'right']
+    joint_groups = ['left', 'right', 'base']
 
     def get_init(self, init_facts=[], conf_saver=None):
         from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints, \
@@ -209,6 +209,17 @@ class PR2Robot(RobotAPI):
       {pose_xml}
     </include>
 """
+
+    def get_positions(self, joint_group='base', roundto=None):
+        from pybullet_tools.pr2_utils import get_arm_joints
+        if joint_group == 'base':
+            joints = self.joints
+        else: ## if joint_group == 'left':
+            joints = get_arm_joints(self.body, joint_group)
+        positions = self.get_joint_positions(joints)
+        if roundto == None:
+            return positions
+        return tuple([round(n, roundto) for n in positions])
 
 
 class FEGripper(RobotAPI):
@@ -395,3 +406,6 @@ class FEGripper(RobotAPI):
       {pose_xml}
     </include>
 """
+    def get_positions(self, joint_group='hand', roundto=None):
+        from pybullet_tools.flying_gripper_utils import get_se3_conf
+        return tuple([round(n, roundto) for n in get_se3_conf(self)])

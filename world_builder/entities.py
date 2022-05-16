@@ -473,15 +473,15 @@ class Robot(Object):
     #    return self.active_joints
     def get_pose(self):
         return self.get_link_pose(self.base_link)
-    def get_positions(self, joint_group='base', roundto=None):
-        if joint_group == 'base':
-            joints = self.joints
-        else: ## if joint_group == 'left':
-            joints = get_arm_joints(self.body, joint_group)
-        positions = self.get_joint_positions(joints)
-        if roundto == None:
-            return positions
-        return tuple([round(n, roundto) for n in positions])
+    # def get_positions(self, joint_group='base', roundto=None):
+    #     if joint_group == 'base':
+    #         joints = self.joints
+    #     else: ## if joint_group == 'left':
+    #         joints = get_arm_joints(self.body, joint_group)
+    #     positions = self.get_joint_positions(joints)
+    #     if roundto == None:
+    #         return positions
+    #     return tuple([round(n, roundto) for n in positions])
     def set_base_positions(self, xytheta):
         set_group_conf(self.body, 'base', xytheta)
     def set_positions(self, positions, joints=None):

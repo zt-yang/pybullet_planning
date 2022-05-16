@@ -202,7 +202,7 @@ def pose_from_se3(conf):
     # print('Deprecated pose_from_se3, please use se3_fk()')
     return (conf[:3], quat_from_euler(conf[3:]))
 
-def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False, mod_target=None):
+def se3_ik(robot, target_pose, max_iterations=200, max_time=5, verbose=False, mod_target=None):
     report_failure = True
     debug = False
 
