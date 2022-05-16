@@ -461,7 +461,7 @@ def get_primitive_actions(action, world, teleport=False):
         if len(args) == 8:
             a, o, p1, p2, g, q1, q2, t = args
             new_commands = get_traj(t)
-            
+
         ## PR2
         else:
             a, o, p1, p2, g, q1, q2, bt, aq1, aq2, at = args[:11]

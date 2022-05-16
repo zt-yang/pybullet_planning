@@ -317,6 +317,7 @@ def get_ik_fn(problem, teleport=False, verbose=True, custom_limits={}, **kwargs)
     obstacles = problem.fixed
     title = 'flying_gripper_utils.get_ik_fn |'
     def fn(a, o, p, g, w, fluents=[]):
+        set_renderer(False)
         p.assign()
         w.assign()
         attachments = {}
@@ -364,6 +365,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         if pst1.value == pst2.value:
             return None
 
+        set_renderer(False)
         saver.restore()
         pst1.assign()
         q1.assign()
