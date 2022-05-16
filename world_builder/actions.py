@@ -498,7 +498,7 @@ def get_primitive_actions(action, world, teleport=False):
         new_commands = t + world.get_events(o)
 
     elif name == 'pick' or name == 'grasp_handle_wconf':
-        a, o, p, g, q, t = args[:6]
+        a, o, p, g, _, t = args[:6]
         t = get_traj(t)
         close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
         attach = AttachObjectAction(a, g, o)
@@ -537,12 +537,15 @@ def get_primitive_actions(action, world, teleport=False):
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
         new_commands = [detach, detach2, open_gripper] + t[::-1]
 
-    elif name == 'place':
+    elif name == 'place' or name == 'ungrasp_handle_wconf':
         a, o, p, g, _, t = args[:6]
         t = get_traj(t)
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
         detach = DetachObjectAction(a, o)
-        new_commands = t + [detach, open_gripper] + t[::-1]
+        if name == 'pick':
+            new_commands = t + [detach, open_gripper] + t[::-1]
+        elif name == 'ungrasp_handle_wconf':
+            new_commands = [detach, open_gripper] + t[::-1]
 
     elif 'clean' in name:  # TODO: add text or change color?
         body, sink = args[:2]
