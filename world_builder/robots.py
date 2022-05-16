@@ -4,7 +4,7 @@ from .entities import Robot
 from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color, TRANSPARENT, \
     link_from_name, get_link_subtree, get_joints, is_movable, multiply, invert, \
     set_joint_positions, set_pose, GREEN, dump_body, get_pose, remove_body, PoseSaver, \
-    ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose
+    ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles
 
 from pybullet_tools.bullet_utils import equal, nice, get_gripper_direction, set_camera_target_body, Attachment
 from pybullet_tools.pr2_primitives import APPROACH_DISTANCE, Conf, Grasp
@@ -293,7 +293,7 @@ class FEGripper(RobotAPI):
         return new_body_pose
 
     def visualize_grasp(self, body_pose, grasp, arm='hand', color=GREEN, width=1, verbose=False,
-                        body=None, mod_pose=None):
+                        body=None, mod_target=None):
         from pybullet_tools.flying_gripper_utils import se3_ik, set_cloned_se3_conf, get_cloned_se3_conf
         from pybullet_tools.utils import Pose, euler_from_quat
         title = 'robots.visualize_grasp |'
@@ -303,32 +303,37 @@ class FEGripper(RobotAPI):
         self.open_cloned_gripper(gripper, width)
         set_all_color(gripper, color)
 
-        ## in case of weird collision body
-        # if mod_pose == None: mod_pose = body_pose
-        # mod_grasp_pose = multiply(mod_pose, grasp) ##
-
         grasp_pose = multiply(body_pose, grasp)  ##
         if verbose:
-            draw_pose(grasp_pose, length=0.05)
+            handles = draw_pose(grasp_pose, length=0.05)
             print(f'{title} body_pose = {nice(body_pose)} | grasp = {nice(grasp)}')
             print(f'{title} grasp_pose = multiply(body_pose, grasp) = ', nice(grasp_pose))
 
-        if mod_pose == None:
-            grasp_conf = se3_ik(self, grasp_pose, verbose=verbose)
-            if grasp_conf == None:
-                print(f'{title} body_pose = {nice(body_pose)} --> ik failed')
-        else:
-            mod_pose = Pose(point=mod_pose[0], euler=euler_from_quat(body_pose[1]))
-            grasp_pose = multiply(mod_pose, grasp)  ##
-            grasp_conf = se3_ik(self, grasp_pose, verbose=verbose)
-            grasp_conf = list(body_pose[0]) + list(grasp_conf)[3:]
-            if grasp_conf == None:
-                print(f'{title} body_pose = {nice(body_pose)} | mod_pose = {nice(mod_pose)} --> ik failed')
+        grasp_conf = se3_ik(self, grasp_pose, verbose=verbose, mod_target=mod_target)
+        if grasp_conf == None:
+            print(f'{title} body_pose = {nice(body_pose)} --> ik failed')
 
+        # if mod_pose == None:
+        #     grasp_conf = se3_ik(self, grasp_pose, verbose=verbose)
+        #     if grasp_conf == None:
+        #         print(f'{title} body_pose = {nice(body_pose)} --> ik failed')
+        #
+        # ## in case of weird collision body
+        # else:
+        #     mod_pose = Pose(point=mod_pose[0], euler=euler_from_quat(body_pose[1]))
+        #     grasp_pose = multiply(mod_pose, grasp)  ##
+        #     grasp_conf = se3_ik(self, grasp_pose, verbose=verbose)
+        #     if grasp_conf == None:
+        #         print(f'{title} body_pose = {nice(body_pose)} | mod_pose = {nice(mod_pose)} --> ik failed')
+        #     else:
+        #         grasp_conf = list(multiply(body_pose, grasp)[0]) + list(grasp_conf)[3:]
+
+        if verbose:
+            remove_handles(handles)
         if grasp_conf == None:
             return None
 
-        # set_pose(self.body, grasp_pose)
+        # set_pose(self.body, grasp_pose) ## wrong!
         set_cloned_se3_conf(self.body, gripper, grasp_conf)
 
         # set_camera_target_body(gripper, dx=0.5, dy=0.5, dz=0.5)

@@ -1,3 +1,4 @@
+import copy
 import random
 
 import numpy as np
@@ -201,9 +202,13 @@ def pose_from_se3(conf):
     # print('Deprecated pose_from_se3, please use se3_fk()')
     return (conf[:3], quat_from_euler(conf[3:]))
 
-def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
+def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False, mod_target=None):
     report_failure = True
     debug = False
+
+    if mod_target != None:
+        actual_target = copy.deepcopy(target_pose)
+        target_pose = mod_target
 
     title = f'   se3_ik | for pose {nice(target_pose)}'
     if nice(target_pose) in CACHE:
@@ -212,13 +217,14 @@ def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
     start_time = time.time()
     link = link_from_name(robot, TOOL_LINK)
     target_point, target_quat = target_pose
+
     sub_joints = get_se3_joints(robot)
     sub_robot = robot.create_gripper()  ## color=BLUE ## for debugging
     limits = [get_joint_limits(robot, j) for j in sub_joints]
     lower_limits = [l[0] for l in limits]
     upper_limits = [l[1] for l in limits]
-    lower_limits[3:] = [-1.5*math.pi] * 3
-    upper_limits[3:] = [1.5*math.pi] * 3
+    # lower_limits[3:] = [-1.5*math.pi] * 3
+    # upper_limits[3:] = [1.5*math.pi] * 3
 
     for iteration in irange(max_iterations):
         if elapsed_time(start_time) >= max_time:
@@ -229,14 +235,14 @@ def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
                                                           lowerLimits=lower_limits, upperLimits=upper_limits,
                                                           physicsClientId=CLIENT)
         sub_kinematic_conf = sub_kinematic_conf[:-2] ##[3:-2]
-        conf = list(sub_kinematic_conf[:3])
-        for v in sub_kinematic_conf[3:]:
-            if v > 2*math.pi:
-                v -= 2*math.pi
-            if v < -2*math.pi:
-                v += 2*math.pi
-            conf.append(v)
-        sub_kinematic_conf = tuple(conf)
+        # conf = list(sub_kinematic_conf[:3])
+        # for v in sub_kinematic_conf[3:]:
+        #     if v > 2*math.pi:
+        #         v -= 2*math.pi
+        #     if v < -2*math.pi:
+        #         v += 2*math.pi
+        #     conf.append(v)
+        # sub_kinematic_conf = tuple(conf)
 
         set_joint_positions(sub_robot, sub_joints, sub_kinematic_conf)
         if verbose and debug: print(f'   se3_ik iter {iteration} | {nice(sub_kinematic_conf, 4)}')
@@ -246,7 +252,11 @@ def se3_ik(robot, target_pose, max_iterations=2000, max_time=5, verbose=False):
                     f'{nice(elapsed_time(start_time))} sec', nice(sub_kinematic_conf))
                 set_camera_target_body(sub_robot, dx=0.5, dy=0.5, dz=0.5)
             remove_body(sub_robot)
-            CACHE[nice(target_pose)] = sub_kinematic_conf
+            if mod_target != None:
+                sub_kinematic_conf = list(actual_target[0]) + list(sub_kinematic_conf)[3:]
+                CACHE[nice(actual_target)] = sub_kinematic_conf
+            else:
+                CACHE[nice(target_pose)] = sub_kinematic_conf
             return sub_kinematic_conf
     if verbose or report_failure: print(f'{title} failed after {max_iterations} iterations')
     return None
@@ -341,7 +351,7 @@ def get_ik_fn(problem, teleport=False, verbose=True, custom_limits={}, **kwargs)
     return fn
 
 def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, teleport=False,
-                                    num_intervals=12, max_ir_trial=30, visualize=False, verbose=False):
+                                    num_intervals=12, visualize=False, RETAIN_ALL=False, verbose=False):
     from pybullet_tools.pr2_streams import LINK_POSE_TO_JOINT_POSITION
     if teleport:
         num_intervals = 1
@@ -367,10 +377,10 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         # tool_from_root = get_tool_from_root(robot, a)
         if visualize:
             set_renderer(enable=True)
-            gripper_before = robot.visualize_grasp(old_pose, g.value, verbose=verbose,
-                                                   width=g.grasp_width, body=g.body)
-            set_camera_target_body(gripper_before, dx=0.2, dy=0, dz=1) ## look top down
-            remove_body(gripper_before)
+            gripper = robot.visualize_grasp(old_pose, g.value, verbose=verbose,
+                                            width=g.grasp_width, body=g.body)
+            set_camera_target_body(gripper, dx=0.2, dy=0, dz=1) ## look top down
+            remove_body(gripper)
         # gripper_before = multiply(old_pose, invert(g.value))  ## multiply(, tool_from_root)
         # world_from_base = bconf_to_pose(bq1)
         # gripper_from_base = multiply(invert(gripper_before), world_from_base)
@@ -391,29 +401,33 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
             pst_after.assign()
             new_pose = get_link_pose(joint_object.body, joint_object.handle_link)
 
-            if visualize:
-                # mod_pose = Pose(euler=euler_from_quat(new_pose[1]))
-                # gripper_after = robot.visualize_grasp(new_pose, g.value, color=BROWN, verbose=True,
-                #                                       width=g.grasp_width, body=g.body, mod_pose=mod_pose)
-                gripper_after = robot.visualize_grasp(new_pose, g.value, color=BROWN, verbose=True,
-                                                      width=g.grasp_width, body=g.body)
-                if gripper_after == None:
-                    break
-                set_camera_target_body(gripper_after, dx=0.2, dy=0, dz=1) ## look top down
-                remove_body(gripper_after)
-            gripper_after = multiply(new_pose, invert(g.value))  ## multiply(, tool_from_root)
+            ## somehow without mod_target, ik would fail
+            mod_pose = Pose(euler=euler_from_quat(new_pose[1]))
+            mod_grasp_pose = multiply(mod_pose, g.value)
 
-            gripper_conf = se3_ik(robot, gripper_after, verbose=verbose)
+            ## just visualizing
+            if visualize:
+                gripper = robot.visualize_grasp(new_pose, g.value, color=BROWN, verbose=True,
+                                        width=g.grasp_width, body=g.body, mod_target=mod_grasp_pose)
+                if gripper == None:
+                    break
+                set_camera_target_body(gripper, dx=0.2, dy=0, dz=1) ## look top down
+                set_camera_target_body(gripper, dx=0.2, dy=0, dz=1) ## look top down
+                remove_body(gripper)
+
+            ## actual computation
+            gripper_after = multiply(new_pose, g.value)
+            gripper_conf = se3_ik(robot, gripper_after, verbose=verbose, mod_target=mod_grasp_pose)
             if gripper_conf == None:
                 break
             q_after = Conf(robot, get_se3_joints(robot), gripper_conf)
 
             q_after.assign()
-            if collided(robot, obstacles, world=world, verbose=False, tag='firstly'):
-                print(f'{step_str} hand collided')
+            if collided(robot, obstacles, world=world, verbose=False, tag='handle pull'):
+                print(f'{step_str} hand collided', nice(gripper_conf))
                 if len(path) > 1:
                     path[-1].assign()
-
+                break
             else:
                 path.append(q_after)
                 if verbose: print(f'{step_str} : {nice(q_after.values)}')

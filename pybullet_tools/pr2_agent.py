@@ -799,10 +799,10 @@ def test_door_pull_traj(problem, init, o):
     grasps = funk2(o)
 
     q1 = [f[1] for f in init if f[0].lower() == 'atseconf'][0]
-    funk3 = get_pull_door_handle_motion_gen(problem, visualize=True, verbose=True)
+    funk3 = get_pull_door_handle_motion_gen(problem, visualize=False, verbose=False)
     for i in range(len(grasps)):
         (g,) = grasps[i]
-        print(f'!!!! pr2_agent.test_door_pull_traj | grasp {i}: {nice(g.value)}')
+        print(f'\n!!!! pr2_agent.test_door_pull_traj | grasp {i}: {nice(g.value)}')
         result = funk3('hand', o, pst1, pst2, g, q1)
         if result != None:
             [q2, cmd] = result
