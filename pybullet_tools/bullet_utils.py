@@ -397,7 +397,7 @@ def sample_obj_on_body_link_surface(obj, body, link, scales=OBJ_SCALES, PLACEMEN
 
 
 def sample_obj_in_body_link_space(obj, body, link=None, scales=OBJ_SCALES,
-                                  PLACEMENT_ONLY=False, XY_ONLY=False, verbose=True):
+                                  PLACEMENT_ONLY=False, XY_ONLY=False, verbose=False):
     set_renderer(verbose)
     if verbose: print()
 
@@ -775,7 +775,8 @@ def get_readable_list(lst, world=None, NAME_ONLY=False):
     for word in lst:
         if world != None:
             name = world.get_name(word)
-            if name != None and not isinstance(to_print[-1], tuple): ## ['=', ('PickCost',), 'pr2|1']
+            last_is_tuple = (len(to_print) != 0) and isinstance(to_print[-1], tuple)
+            if name != None and not last_is_tuple: ## ['=', ('PickCost',), 'pr2|1']
                 if not NAME_ONLY:
                     name = world.get_debug_name(word)
                 to_print.append(name)
@@ -1060,6 +1061,9 @@ def add(elem1, elem2):
 
 def minus(elem1, elem2):
     return tuple(np.asarray(elem1)-np.asarray(elem2))
+
+def dist(elem1, elem2):
+    return np.linalg.norm(np.asarray(elem1)-np.asarray(elem2))
 
 def draw_bounding_lines(pose, dimensions):
     w, l, h = dimensions  ## it's meshscale instead of wlh

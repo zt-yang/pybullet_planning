@@ -39,7 +39,7 @@ from pybullet_tools.utils import invert, multiply, get_name, set_pose, get_link_
     get_joints, is_movable, pairwise_link_collision, get_closest_points, Pose
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, set_camera_target_body, is_contained, \
-    visualize_point, collided, GRIPPER_DIRECTIONS, get_gripper_direction, Attachment
+    visualize_point, collided, GRIPPER_DIRECTIONS, get_gripper_direction, Attachment, dist
 from pybullet_tools.logging import dump_json
 
 
@@ -221,7 +221,7 @@ def get_pose_in_space_test():
     def test(o, p, r):
         p.assign()
         answer = is_contained(o, r)
-        print(f'pr2_streams.get_pose_in_space_test({o}, {p}, {r}) = {answer}')
+        print(f'general_streams.get_pose_in_space_test({o}, {p}, {r}) = {answer}')
         return answer
     return test
 
@@ -315,7 +315,7 @@ def get_update_wconf_p_gen(verbose=True):
     def fn(w1, o, p):
         poses = copy.deepcopy(w1.poses)
         if verbose:
-            print('pr2_streams.get_update_wconf_p_gen\tbefore:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})
+            print('general_streams.get_update_wconf_p_gen\tbefore:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})
         if o != p.body:
             return None
         elif o in poses and poses[o].value == p.value:
@@ -324,35 +324,71 @@ def get_update_wconf_p_gen(verbose=True):
             poses[o] = copy.deepcopy(p)
         w2 = WConf(poses, w1.positions)
         if verbose:
-            print('pr2_streams.get_update_wconf_p_gen\t after:', {o0: nice(p0.value[0]) for o0,p0 in w2.poses.items()})
+            print('general_streams.get_update_wconf_p_gen\t after:', {o0: nice(p0.value[0]) for o0,p0 in w2.poses.items()})
         return (w2,)
     return fn
 
 def get_update_wconf_p_two_gen(verbose=False):
+    title = 'general_streams.get_update_wconf_p_two_gen'
     def fn(w1, o, p, o2, p2):
         poses = copy.deepcopy(w1.poses)
         if verbose:
-            print('pr2_streams.get_update_wconf_p_two_gen\tbefore:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})
+            print(f'{title}\tbefore:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})
         poses[o] = p
         poses[o2] = p2
         w2 = WConf(poses, w1.positions)
         if verbose:
-            print('pr2_streams.get_update_wconf_p_two_gen\t after:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})
+            print(f'{title}\t after:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})
         return (w2,)
     return fn
 
 def get_update_wconf_pst_gen(verbose=False):
-    def fn(w1, o, pst):
+    title = 'general_streams.get_update_wconf_pst_gen'
+    def fn(w1, o, pstn):
         positions = copy.deepcopy(w1.positions)
         if verbose:
-            print('pr2_streams.get_update_wconf_pst_gen\tbefore:', {o0: nice(p0.value) for o0,p0 in positions.items()})
-        positions[o] = pst
+            print(f'{title}\tbefore:', {o0: nice(p0.value) for o0,p0 in positions.items()})
+        positions[o] = pstn
         w2 = WConf(w1.poses, positions)
         if verbose:
-            print('pr2_streams.get_update_wconf_pst_gen\t after:', {o0: nice(p0.value) for o0,p0 in w2.positions.items()})
+            print(f'{title}\t after:', {o0: nice(p0.value) for o0,p0 in w2.positions.items()})
         return (w2,)
     return fn
 
+def get_sample_wconf_list_gen(problem, verbose=True):
+    title = 'general_streams.get_sample_wconf_gen'
+    open_pstn_sampler = sample_joint_position_open_list_gen(problem)
+    def fn(o, w1):
+        positions = copy.deepcopy(w1.positions)
+        if verbose:
+            print(f'{title}\tbefore:', {o0: nice(p0.value) for o0, p0 in positions.items()})
+
+        ## find pstns that's an open position of joints whose handle link is closest to o
+        distances = {}
+        new_positions = {}
+        p = get_pose(o)[0]
+        for o0, p0 in positions.items():
+            new_pstn = open_pstn_sampler(o0, p0)[0][0]
+            if p0.value == new_pstn.value:
+                continue
+            d = dist(p, get_link_pose(o0[0], get_handle_link(o0))[0])
+            distances[o0] = d
+            new_positions[o0] = new_pstn
+        objs = [oo for oo, vv in sorted(distances.items(), key=lambda item: item[1])]
+
+        ## update pstn
+        wconfs = []
+        for oo in objs:
+            pstn = new_positions[oo]
+            positions[oo] = pstn
+            w2 = WConf(w1.poses, positions)
+            if verbose:
+                print(f'{title}\t new pstn: {pstn} \twith distance {distances[oo]}')
+            wconfs.append((pstn, w2))
+        return wconfs
+    return fn
+
+##################################################
 
 def get_cfree_approach_pose_test(problem, collisions=True):
     # TODO: apply this before inverse kinematics as well

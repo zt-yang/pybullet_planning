@@ -10,7 +10,7 @@ from pybullet_tools.pr2_streams import Position
 from pybullet_tools.utils import str_from_object, get_closest_points, INF, create_attachment, wait_if_gui, \
     get_aabb, get_joint_position, get_joint_name, get_link_pose, link_from_name, PI, Pose, Euler, \
     get_extend_fn, get_joint_positions, set_joint_positions, get_max_limit, get_pose, set_pose, set_color, \
-    remove_body, create_cylinder, set_all_static, wait_for_duration, remove_handles
+    remove_body, create_cylinder, set_all_static, wait_for_duration, remove_handles, set_renderer
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, get_gripper_joints
 from pybullet_tools.pr2_primitives import Trajectory, Command
 from pybullet_tools.flying_gripper_utils import set_se3_conf
@@ -307,6 +307,15 @@ class JustSucceed(Action):
     def __init__(self):
         pass
     def transition(self, state):
+        return state.new_state()
+
+class ChangeWConf(Action):
+    def __init__(self, wconf):
+        self.wconf = wconf
+    def transition(self, state):
+        self.wconf.assign()
+        set_renderer(True)
+        set_renderer(True)
         return state.new_state()
 
 class MagicDisappear(Action):
@@ -609,6 +618,10 @@ def get_primitive_actions(action, world, teleport=False):
 
     elif name == 'declare_victory':
         new_commands = [JustSucceed()]
+
+    elif name == 'toggle':
+        o, p1, p2, w1, w2 = args
+        new_commands = [ChangeWConf(w2)]
 
     else:
         print('\n\n havent implement commands for', name)

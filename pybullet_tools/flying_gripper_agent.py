@@ -10,13 +10,14 @@ from pybullet_planning.pybullet_tools.pr2_streams import get_contain_gen, get_po
     get_marker_pose_gen, get_pull_marker_to_pose_motion_gen, get_pull_marker_to_bconf_motion_gen,  \
     get_pull_marker_random_motion_gen, get_ik_ungrasp_handle_gen, get_pose_in_region_test, \
     get_cfree_btraj_pose_test, get_joint_position_open_gen, get_ik_ungrasp_mark_gen, \
-    sample_joint_position_open_list_gen, get_update_wconf_pst_gen, get_ik_ir_wconf_gen, \
-    get_update_wconf_p_gen, get_ik_ir_wconf_gen, get_pose_in_space_test, get_turn_knob_handle_motion_gen
-from pybullet_planning.pybullet_tools.pr2_primitives import get_stable_gen, get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
+    get_ik_ir_wconf_gen, get_ik_ir_wconf_gen, get_pose_in_space_test, get_turn_knob_handle_motion_gen
+from pybullet_planning.pybullet_tools.pr2_primitives import get_stable_gen, get_group_joints, Conf, \
+    get_base_custom_limits, Pose, Conf, \
     get_ik_ir_gen, get_motion_gen, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
     Attach, Detach, Clean, Cook, control_commands, \
     get_gripper_joints, GripperCommand, apply_commands, State, Trajectory
-from pybullet_tools.general_streams import get_cfree_approach_pose_test, get_grasp_list_gen, get_stable_list_gen
+from pybullet_tools.general_streams import get_cfree_approach_pose_test, get_grasp_list_gen, get_stable_list_gen, \
+    sample_joint_position_open_list_gen, get_update_wconf_pst_gen, get_update_wconf_p_gen, get_sample_wconf_list_gen
 
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
     set_camera_target_robot, nice, BASE_LIMITS, get_file_short_name
@@ -56,11 +57,11 @@ def get_stream_map(p, c, l, t):
         'sample-pose-inside': from_gen_fn(get_contain_gen(p, collisions=c)),  ##
         'sample-grasp': from_list_fn(get_grasp_list_gen(p, collisions=True)),
 
-        'inverse-kinematics-wconf': from_fn(get_ik_fn(p, collisions=c, teleport=t, custom_limits=l, verbose=False)),
+        'inverse-kinematics-hand': from_fn(get_ik_fn(p, collisions=c, teleport=t, custom_limits=l, verbose=False)),
         'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(collisions=c)),
         'test-cfree-approach-pose': from_test(get_cfree_approach_pose_test(p, collisions=c)),
 
-        'plan-free-motion-wconf': from_fn(get_free_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
+        'plan-free-motion-hand': from_fn(get_free_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
         'test-cfree-traj-pose': from_test(get_cfree_traj_pose_test(p.robot, collisions=c, verbose=False)),
 
         'get-joint-position-open': from_list_fn(sample_joint_position_open_list_gen(p)),
@@ -101,6 +102,7 @@ def get_stream_map(p, c, l, t):
         # 'update-wconf-p-two': from_fn(get_update_wconf_p_two_gen()),
         'update-wconf-pst': from_fn(get_update_wconf_pst_gen()),
         'test-reachable-pose': from_test(get_reachable_test(p, custom_limits=l)),
+        'sample-wconf-obj': from_list_fn(get_sample_wconf_list_gen(p)),
 
         'MoveCost': move_cost_fn,
 

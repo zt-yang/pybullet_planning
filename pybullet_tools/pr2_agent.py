@@ -456,6 +456,9 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
             init += ff
         elif test == 'test_door_pull_traj':
             goals = test_door_pull_traj(state, init, name)
+        elif test == 'test_sample_wconf':
+            goals, ff = test_sample_wconf(state, init, name)
+            init += ff
         elif test == 'test_reachable_pose':
             goals = test_reachable_pose(state, init, name)
 
@@ -841,6 +844,19 @@ def test_reachable_pose(state, init, o):
     funk = get_reachable_test(state, custom_limits=robot.custom_limits)
     p = [f[2] for f in init if f[0].lower() == "AtPose".lower() and f[1] == o][0]
     q = [f[1] for f in init if f[0].lower() == 'AtSEConf'.lower()][0]
-    w = [f[1] for f in init if f[0].lower() == 'InWconf'.lower()][0]
+    w = [f[1] for f in init if f[0].lower() == 'InWConf'.lower()][0]
     result = funk(o, p, q, w)
     sys.exit()
+
+def test_sample_wconf(state, init, o):
+    from pybullet_tools.general_streams import get_sample_wconf_list_gen
+    robot = state.robot
+    funk = get_sample_wconf_list_gen(state)
+    w1 = [f[1] for f in init if f[0].lower() == 'InWConf'.lower()][0]
+    outputs = funk(o, w1)
+    pstn, w2 = outputs[0]
+    return [('InWConf', w2)], [('WConf', w2), ('Position', pstn.body, pstn)]
+
+def test_at_reachable_pose(init, o):
+    p = [f[2] for f in init if f[0].lower() == "AtPose".lower() and f[1] == o][0]
+    return [('AtReachablePose', o, p)]
