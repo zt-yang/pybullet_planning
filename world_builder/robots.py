@@ -252,9 +252,9 @@ class FEGripper(RobotAPI):
         gripper = clone_body(self.body, visual=False, collision=True)
         set_pose(gripper, unit_pose())
         if not visual:
-            set_all_color(self.body, TRANSPARENT)
+            set_all_color(gripper, TRANSPARENT)
         if color != None:
-            set_all_color(self.body, color)
+            set_all_color(gripper, color)
         return gripper
 
     def get_gripper_joints(self, gripper_grasp=None):

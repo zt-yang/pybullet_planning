@@ -6,7 +6,7 @@ from itertools import product
 import pybullet as p
 from math import radians as rad
 
-from .utils import create_box, set_base_values, set_point, set_pose, get_pose, \
+from .utils import create_box, set_base_values, set_point, set_pose, get_pose, GREY, \
     get_bodies, z_rotation, load_model, load_pybullet, HideOutput, create_body, assign_link_colors, \
     get_box_geometry, get_cylinder_geometry, create_shape_array, unit_pose, unit_quat, Pose, \
     Point, LockRenderer, FLOOR_URDF, TABLE_URDF, add_data_path, TAN, set_color, remove_body,\
@@ -469,28 +469,34 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
 
     return fn
 
-def get_reachable_test(problem, custom_limits={}):
+def get_reachable_test(problem, custom_limits={}, visualize=False):
     robot = problem.robot
     obstacles = problem.fixed
     def test(o, p, g, q, w):
-        set_renderer(False)
+        set_renderer(True)
         p.assign()
         q.assign()
         w.assign()
-        approach_pose = multiply(p.value, g.approach)
+
+        body_pose = robot.get_body_pose(g.body)
+        approach_pose = multiply(body_pose, g.approach)
         conf = se3_ik(robot, approach_pose)
 
         result = True
         if conf == None:
             result = False
         else:
-            
+            if visualize:
+                gripper = robot.create_gripper('hand', color=GREY)
+                set_cloned_se3_conf(robot, gripper, conf)
+                set_camera_target_body(gripper, dx=0.5, dy=-0.5, dz=0.5)  ## look top down
+                remove_body(gripper)
             raw_path = plan_se3_motion(robot, q.values, conf, obstacles=obstacles,
                                        custom_limits=custom_limits)
             if raw_path == None:
                 result = False
 
-        print(f'flying_gripper_utils.get_reachable_test({o}, {p}, {q}, {g}, {w}) ->\t {result}')
+        print(f'       flying_gripper_utils.get_reachable_test({o}, {p}, {q}, {g}, {w}) ->\t {result}')
         return result
 
     return test
