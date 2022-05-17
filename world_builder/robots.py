@@ -389,7 +389,7 @@ class FEGripper(RobotAPI):
 
         initial_q = get_se3_q()
         arm = ARM_NAME
-        return [('SEConf', initial_q), ('AtSEConf', initial_q),
+        return [('SEConf', initial_q), ('AtSEConf', initial_q), ('OriginalSEConf', initial_q),
                 ('Arm', arm), ('Controllable', arm), ('HandEmpty', arm)]
 
     def get_stream_map(self, problem, collisions, custom_limits, teleport):

@@ -473,7 +473,7 @@ def get_reachable_test(problem, custom_limits={}, visualize=False):
     robot = problem.robot
     obstacles = problem.fixed
     def test(o, p, g, q, w):
-        set_renderer(True)
+        set_renderer(False)
         p.assign()
         q.assign()
         w.assign()
@@ -486,15 +486,18 @@ def get_reachable_test(problem, custom_limits={}, visualize=False):
         if conf == None:
             result = False
         else:
-            if visualize:
-                gripper = robot.create_gripper('hand', color=GREY)
-                set_cloned_se3_conf(robot, gripper, conf)
-                set_camera_target_body(gripper, dx=0.5, dy=-0.5, dz=0.5)  ## look top down
-                remove_body(gripper)
             raw_path = plan_se3_motion(robot, q.values, conf, obstacles=obstacles,
                                        custom_limits=custom_limits)
             if raw_path == None:
                 result = False
+
+            elif visualize:
+                set_renderer(True)
+                gripper = robot.create_gripper('hand', color=GREY)
+                set_cloned_se3_conf(robot, gripper, conf)
+                set_camera_target_body(gripper, dx=0.5, dy=-0.5, dz=0.5)  ## look top down
+                remove_body(gripper)
+                set_renderer(False)
 
         print(f'       flying_gripper_utils.get_reachable_test({o}, {p}, {q}, {g}, {w}) ->\t {result}')
         return result

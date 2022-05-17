@@ -387,6 +387,7 @@ def get_sample_wconf_list_gen(problem, verbose=True):
                 print(f'{title}\t after:', {o0: nice(p0.value) for o0, p0 in positions.items()},
                       f'\tnew pstn: {pstn} \twith distance {nice(distances[oo])}')
             wconfs.append((pstn, w2))
+            break  ## only toggle once
         return wconfs
     return fn
 

@@ -456,11 +456,16 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
             init += ff
         elif test == 'test_door_pull_traj':
             goals = test_door_pull_traj(state, init, name)
+        elif test == 'test_reachable_pose':
+            goals = test_reachable_pose(state, init, name)
         elif test == 'test_sample_wconf':
             goals, ff = test_sample_wconf(state, init, name)
             init += ff
-        elif test == 'test_reachable_pose':
-            goals = test_reachable_pose(state, init, name)
+        elif test == 'test_at_reachable_pose':
+            goals = test_at_reachable_pose(init, name)
+        else:
+            print('\n\n\npr2_agent.pddlstream_from_state_goal | didnt implement', goals)
+            sys.exit()
 
     goal = [AND]
     goal += goals
