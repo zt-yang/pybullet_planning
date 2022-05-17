@@ -44,7 +44,7 @@ from pddlstream.language.object import SharedOptValue
 from pddlstream.language.external import defer_shared, never_defer
 from collections import namedtuple
 
-from .flying_gripper_utils import get_ik_fn, get_free_motion_gen, get_pull_door_handle_motion_gen
+from .flying_gripper_utils import get_ik_fn, get_free_motion_gen, get_pull_door_handle_motion_gen, get_reachable_test
 
 def get_stream_map(p, c, l, t):
     # p = problem
@@ -100,6 +100,7 @@ def get_stream_map(p, c, l, t):
         # 'update-wconf-p': from_fn(get_update_wconf_p_gen()),
         # 'update-wconf-p-two': from_fn(get_update_wconf_p_two_gen()),
         'update-wconf-pst': from_fn(get_update_wconf_pst_gen()),
+        'test-reachable-pose': from_test(get_reachable_test(p, custom_limits=l)),
 
         'MoveCost': move_cost_fn,
 

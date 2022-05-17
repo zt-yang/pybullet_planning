@@ -456,6 +456,8 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
             init += ff
         elif test == 'test_door_pull_traj':
             goals = test_door_pull_traj(state, init, name)
+        elif test == 'test_reachable_pose':
+            goals = test_reachable_pose(state, init, name)
 
     goal = [AND]
     goal += goals
@@ -831,4 +833,14 @@ def test_door_pull_traj(problem, init, o):
             [q2, cmd] = result
             return [("AtPosition", o, pst2)]
     print('\n\n!!!! cant find any handle grasp that works for', o)
+    sys.exit()
+
+def test_reachable_pose(state, init, o):
+    from pybullet_tools.flying_gripper_utils import get_reachable_test
+    robot = state.robot
+    funk = get_reachable_test(state, custom_limits=robot.custom_limits)
+    p = [f[2] for f in init if f[0].lower() == "AtPose".lower() and f[1] == o][0]
+    q = [f[1] for f in init if f[0].lower() == 'AtSEConf'.lower()][0]
+    w = [f[1] for f in init if f[0].lower() == 'InWconf'.lower()][0]
+    result = funk(o, p, q, w)
     sys.exit()

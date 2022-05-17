@@ -8,11 +8,11 @@ from math import radians as rad
 
 from .utils import create_box, set_base_values, set_point, set_pose, get_pose, \
     get_bodies, z_rotation, load_model, load_pybullet, HideOutput, create_body, assign_link_colors, \
-    get_box_geometry, get_cylinder_geometry, create_shape_array, unit_pose, Pose, \
+    get_box_geometry, get_cylinder_geometry, create_shape_array, unit_pose, unit_quat, Pose, \
     Point, LockRenderer, FLOOR_URDF, TABLE_URDF, add_data_path, TAN, set_color, remove_body,\
     add_data_path, connect, dump_body, disconnect, wait_for_user, get_movable_joints, get_sample_fn, \
     set_joint_positions, get_joint_name, LockRenderer, link_from_name, get_link_pose, \
-    multiply, Pose, Point, interpolate_poses, HideOutput, draw_pose, set_camera_pose, load_pybullet, \
+    multiply, interpolate_poses, HideOutput, draw_pose, set_camera_pose, load_pybullet, \
     assign_link_colors, add_line, point_from_pose, remove_handles, BLUE, BROWN, INF, create_shape, \
     approximate_as_prism, set_renderer, plan_joint_motion, create_flying_body, SE3, euler_from_quat, BodySaver, \
     intrinsic_euler_from_quat, quat_from_euler, wait_for_duration, get_aabb, get_aabb_extent, \
@@ -468,6 +468,33 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         return (q2, cmd)
 
     return fn
+
+def get_reachable_test(problem, custom_limits={}):
+    robot = problem.robot
+    obstacles = problem.fixed
+    def test(o, p, g, q, w):
+        set_renderer(False)
+        p.assign()
+        q.assign()
+        w.assign()
+        approach_pose = multiply(p.value, g.approach)
+        conf = se3_ik(robot, approach_pose)
+
+        result = True
+        if conf == None:
+            result = False
+        else:
+            
+            raw_path = plan_se3_motion(robot, q.values, conf, obstacles=obstacles,
+                                       custom_limits=custom_limits)
+            if raw_path == None:
+                result = False
+
+        print(f'flying_gripper_utils.get_reachable_test({o}, {p}, {q}, {g}, {w}) ->\t {result}')
+        return result
+
+    return test
+
 
 from pybullet_tools.bullet_utils import set_camera_target_body, nice
 from pybullet_tools.utils import VideoSaver
