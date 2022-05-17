@@ -3734,6 +3734,8 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
     # TODO: sort bodies by bounding box size
 
     def collision_fn(q, verbose=False):
+        from pybullet_tools.bullet_utils import set_camera_target_body
+        ## set_camera_target_body(body, dx=0.2, dy=-0.2, dz=0.2)
         if limits_fn(q):
             return True
         set_joint_positions(body, joints, q)
@@ -3774,6 +3776,7 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
                         print('bullet.get_collision_fn', body1.body, 'at', nice(q), 'collides with', body2)
                     else:
                         print(body1, body2)
+                ## set_camera_target_body(body2, dx=0.5, dy=-0.2, dz=0.3)
                 return True
         return False
     return collision_fn

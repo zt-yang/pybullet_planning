@@ -12,12 +12,12 @@ from pybullet_tools.pr2_streams import get_stable_gen, get_contain_gen, get_posi
     get_pull_marker_random_motion_gen, get_ik_ungrasp_handle_gen, get_pose_in_region_test, \
     get_cfree_btraj_pose_test, get_joint_position_open_gen, get_ik_ungrasp_mark_gen, \
     sample_joint_position_open_list_gen, get_update_wconf_pst_gen, get_ik_ir_wconf_gen, \
-    get_update_wconf_p_gen, get_ik_ir_wconf_gen, get_pose_in_space_test, get_turn_knob_handle_motion_gen, get_grasp_gen
+    get_update_wconf_p_gen, get_ik_ir_wconf_gen, get_pose_in_space_test, get_turn_knob_handle_motion_gen
 from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
     get_ik_ir_gen, get_motion_gen, get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
     move_cost_fn, Attach, Detach, Clean, Cook, control_commands, \
     get_gripper_joints, GripperCommand, apply_commands, State, Trajectory
-
+from pybullet_tools.general_streams import get_grasp_list_gen
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
     set_camera_target_robot, nice, BASE_LIMITS, get_file_short_name
 from pybullet_tools.pr2_problems import create_pr2
@@ -31,6 +31,7 @@ from pybullet_tools.utils import connect, disconnect, wait_if_gui, LockRenderer,
     disconnect, get_joint_positions, enable_gravity, save_state, restore_state, HideOutput, remove_body, \
     get_distance, LockRenderer, get_min_limit, get_max_limit, has_gui, WorldSaver, wait_if_gui, add_line, SEPARATOR, \
     BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS
+from pybullet_tools.flying_gripper_utils import get_se3_joints
 
 from os.path import join, isfile
 from pddlstream.algorithms.algorithm import parse_problem, reset_globals
@@ -55,7 +56,7 @@ def get_stream_map(p, c, l, t):
     stream_map = {
         'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c)),
         'sample-pose-inside': from_gen_fn(get_contain_gen(p, collisions=c)),  ##
-        'sample-grasp': from_list_fn(get_grasp_gen(p, collisions=True)),
+        'sample-grasp': from_list_fn(get_grasp_list_gen(p, collisions=True)),
         'inverse-kinematics': from_gen_fn(get_ik_ir_gen(p, collisions=c, teleport=t, custom_limits=l,
                                                         learned=False, max_attempts=60, verbose=False)),
         'inverse-kinematics-wconf': from_gen_fn(get_ik_ir_wconf_gen(p, collisions=c, teleport=t, custom_limits=l,
@@ -413,7 +414,7 @@ class Problem(object):
 
 def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
                                stream_pddl='pr2_stream.pddl',
-                               base_limits=BASE_LIMITS,
+                               custom_limits=BASE_LIMITS,
                                 init_facts=[], ## avoid duplicates
                                 facts=[],  ## completely overwrite
                                 collisions=True, teleport=False):
@@ -422,7 +423,8 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     robot = state.robot
     world = state.world
     problem = state
-    custom_limits = get_base_custom_limits(robot, base_limits)
+    if not isinstance(custom_limits, dict):
+        custom_limits = get_base_custom_limits(robot, custom_limits)
 
     world.summarize_all_objects()
 
@@ -432,7 +434,7 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
 
     print(f'pr2_agent.pddlstream_from_state_goal(\n'
           f'\tdomain = {get_file_short_name(domain_pddl)}, \n'
-          f'\tstream = {get_file_short_name(stream_pddl)}, base_limits = {base_limits}')
+          f'\tstream = {get_file_short_name(stream_pddl)}, custom_limits = {custom_limits}')
 
     if isinstance(goals, tuple): ## debugging
         test, name = goals
@@ -644,17 +646,38 @@ def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=True, ve
     return goals
 
 def test_grasps(state, name='cabbage', visualize=True):
+    title = 'pr2_agent.test_grasps | '
     if isinstance(name, str):
         body = state.world.name_to_body(name)
     else: ## if isinstance(name, Object):
         body = name
-    funk = get_grasp_gen(state)
+    robot = state.robot
+
+    funk = get_grasp_list_gen(state)
     outputs = funk(body)
-    if visualize:
-        body_pose = get_pose(body)
-        visualize_grasps(state, outputs, body_pose)
-    print('test_grasps:', outputs)
-    goals = [("AtGrasp", 'left', body, outputs[1][0])]
+
+    if 'left' in robot.joint_groups:
+        if visualize:
+            body_pose = get_pose(body)
+            visualize_grasps(state, outputs, body_pose)
+        print(f'{title}grasps:', outputs)
+        goals = [("AtGrasp", 'left', body, outputs[1][0])]
+
+    elif 'hand' in robot.joint_groups:
+        from pybullet_tools.bullet_utils import collided
+
+        g = outputs[0][0]
+        gripper = robot.visualize_grasp(g.body, g.approach, width=g.grasp_width)
+        gripper_conf = get_cloned_se3_conf(robot, gripper)
+        goals = [("AtGrasp", 'hand', body, g)]
+        if visualize:
+            set_renderer(True)
+            goals = [("AtSEConf", Conf(robot, get_se3_joints(robot), gripper_conf))]
+            # body_collided = len(get_closest_points(gripper, 2)) != 0
+            # body_collided_2 = collided(gripper, [2], world=state.world, verbose=True, tag=title)
+            # print(f'{title}collision between gripper {gripper} and object {g.body}: {body_collided}')
+        else:
+            remove_body(gripper)
     return goals
 
 def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False):
@@ -702,14 +725,15 @@ def visualize_grasps_by_quat(state, outputs, body_pose, verbose=False):
         for visual in visuals:
             remove_body(visual)
 
+from pybullet_tools.flying_gripper_utils import get_cloned_se3_conf, se3_ik
 def test_grasp_ik(state, init, name='cabbage', visualize=True):
     goals = test_grasps(state, name, visualize=False)
     body, grasp = goals[0][-2:]
     robot = state.robot
-    custom_limits = get_base_custom_limits(robot, BASE_LIMITS)
+    custom_limits = robot.get_custom_limits()
     pose = [i for i in init if i[0].lower() == "AtPose".lower() and i[1] == body][0][-1]
-
     wconfs = [i for i in init if "NewWConf".lower() in i[0].lower()]
+
     if len(wconfs) == 0:
         funk = get_ik_ir_gen(state, verbose=visualize, custom_limits=custom_limits
                              )('left', body, pose, grasp)
@@ -719,9 +743,9 @@ def test_grasp_ik(state, init, name='cabbage', visualize=True):
         print('test_grasp_ik', body, pose, grasp, wconf)
         wconf.printout()
         funk = get_ik_ir_wconf_gen(state, verbose=visualize, custom_limits=custom_limits
-                             )('left', body, pose, grasp, wconf)
-
+                                   )('left', body, pose, grasp, wconf)
     next(funk)
+
     return goals
 
 def test_pulling_handle_ik(problem):

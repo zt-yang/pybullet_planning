@@ -11,8 +11,9 @@ from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, g
     BodySaver, set_pose, INF, add_parameter, irange, wait_for_duration, get_bodies, remove_body, \
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
     get_joints, multiply, invert, is_movable, remove_handles
-from pybullet_tools.pr2_streams import get_stable_gen, get_contain_gen, get_position_gen, \
-    Position, get_handle_grasp_gen, LinkPose, pr2_grasp, WConf, get_grasp_gen
+from pybullet_tools.pr2_streams import get_contain_gen, get_position_gen, \
+    Position, get_handle_grasp_gen, LinkPose, pr2_grasp, WConf
+from pybullet_tools.general_streams import get_stable_list_gen, get_grasp_list_gen
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
     is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
     set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR, CAMERA_MATRIX, visualize_camera_image, equal, \
@@ -43,10 +44,16 @@ class World(object):
         self.sub_categories = {}
         self.sup_categories = {}
         self.SKIP_JOINTS = False
+        self.cameras = []
 
         ## for visualization
         self.handles = []
         self.path = None
+
+    def remove_redundant_bodies(self):
+        for b in get_bodies():
+            if b not in self.BODY_TO_OBJECT and b not in self.ROBOT_TO_OBJECT:
+                remove_body(b)
 
     def remove_handles(self):
         remove_handles(self.handles)
@@ -71,7 +78,6 @@ class World(object):
     def set_skip_joints(self):
         ## not automatically add doors and drawers, save planning time
         self.SKIP_JOINTS = True
-        self.cameras = []
 
     @property
     def objects(self):
@@ -392,7 +398,7 @@ class World(object):
     def open_doors_drawers(self, body):
         doors, drawers = self.get_doors_drawers(body)
         for joint in doors + drawers:
-            open_joint(body, joint)
+            open_joint(body, joint, extent=1)
 
     def close_doors_drawers(self, body):
         doors, drawers = self.get_doors_drawers(body)

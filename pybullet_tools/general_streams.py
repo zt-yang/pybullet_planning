@@ -352,3 +352,70 @@ def get_update_wconf_pst_gen(verbose=False):
             print('pr2_streams.get_update_wconf_pst_gen\t after:', {o0: nice(p0.value) for o0,p0 in w2.positions.items()})
         return (w2,)
     return fn
+
+
+def get_cfree_approach_pose_test(problem, collisions=True):
+    # TODO: apply this before inverse kinematics as well
+    arm = 'left'
+    def test(b1, p1, g1, b2, p2):
+        if not collisions or (b1 == b2):
+            return True
+        p2.assign()
+        gripper = problem.get_gripper()
+        for _ in problem.robot.iterate_approach_path(arm, gripper, p1, g1, body=b1):
+            if pairwise_collision(b1, b2) or pairwise_collision(gripper, b2):
+                return False
+        return True
+    return test
+
+
+##################################################
+
+def get_grasp_list_gen(problem, collisions=False, randomize=True):
+    robot = problem.robot
+    grasp_types = robot.grasp_types
+
+    def fn(body):
+        arm = 'left'
+        def get_grasps(g_type, grasps_O):
+            return robot.make_grasps(g_type, arm, body, grasps_O, collisions=collisions)
+
+        grasps = []
+        if 'top' in grasp_types:
+            grasps.extend(get_grasps('top', get_top_grasps(body, grasp_length=GRASP_LENGTH)))
+        if 'side' in grasp_types:
+            grasps.extend(get_grasps('side', get_side_grasps(body, grasp_length=GRASP_LENGTH)))
+        if 'hand' in grasp_types:
+            from .bullet_utils import get_hand_grasps
+            grasps.extend(get_grasps('hand', get_hand_grasps(problem, body)))
+
+        if randomize:
+            random.shuffle(grasps)
+        return [(g,) for g in grasps]
+        #for g in grasps:
+        #    yield (g,)
+    return fn
+
+def get_stable_list_gen(problem, num_samples=3, collisions=True, **kwargs):
+    from pybullet_tools.pr2_primitives import Pose
+    obstacles = problem.fixed if collisions else []
+    def gen(body, surface):
+        # TODO: surface poses are being sampled in pr2_belief
+        if surface is None:
+            surfaces = problem.surfaces
+        else:
+            surfaces = [surface]
+        poses = []
+        while True:
+            surface = random.choice(surfaces) # TODO: weight by area
+            body_pose = sample_placement(body, surface, **kwargs)
+            if body_pose is None:
+                break
+            p = Pose(body, body_pose, surface)
+            p.assign()
+            if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, surface}):
+                # yield (p,)
+                poses.append(p)
+                if len(poses) >= num_samples:
+                    return [(p,) for p in poses]
+    return gen

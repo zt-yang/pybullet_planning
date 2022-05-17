@@ -542,7 +542,7 @@ def get_primitive_actions(action, world, teleport=False):
         t = get_traj(t)
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
         detach = DetachObjectAction(a, o)
-        if name == 'pick':
+        if name == 'place':
             new_commands = t + [detach, open_gripper] + t[::-1]
         elif name == 'ungrasp_handle_wconf':
             new_commands = [detach, open_gripper] + t[::-1]
@@ -577,6 +577,7 @@ def get_primitive_actions(action, world, teleport=False):
         new_commands = [JustSucceed()]
 
     else:
+        print('\n\n havent implement commands for', name)
         raise NotImplementedError(name)
 
     return new_commands

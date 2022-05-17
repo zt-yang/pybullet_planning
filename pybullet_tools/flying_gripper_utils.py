@@ -19,7 +19,7 @@ from .utils import create_box, set_base_values, set_point, set_pose, get_pose, \
     joint_from_name, get_joint_limits, irange, is_pose_close, CLIENT, set_all_color
 
 from pybullet_tools.pr2_primitives import Conf, Grasp, Trajectory, Commands, State
-from pybullet_tools.general_streams import Position
+from pybullet_tools.general_streams import Position, get_grasp_list_gen
 from pybullet_tools.bullet_utils import collided
 from .pr2_utils import DRAKE_PR2_URDF
 
@@ -203,7 +203,7 @@ def pose_from_se3(conf):
     return (conf[:3], quat_from_euler(conf[3:]))
 
 def se3_ik(robot, target_pose, max_iterations=200, max_time=5, verbose=False, mod_target=None):
-    report_failure = True
+    report_failure = False
     debug = False
 
     if mod_target != None:
@@ -250,7 +250,7 @@ def se3_ik(robot, target_pose, max_iterations=200, max_time=5, verbose=False, mo
             if verbose:
                 print(f'{title} found after {iteration} trials and '
                     f'{nice(elapsed_time(start_time))} sec', nice(sub_kinematic_conf))
-                set_camera_target_body(sub_robot, dx=0.5, dy=0.5, dz=0.5)
+                # set_camera_target_body(sub_robot, dx=0.5, dy=0.5, dz=0.5)
             remove_body(sub_robot)
             if mod_target != None:
                 sub_kinematic_conf = list(actual_target[0]) + list(sub_kinematic_conf)[3:]
@@ -273,7 +273,8 @@ def plan_se3_motion(robot, initial_conf, final_conf, obstacles=[],
     joints = get_se3_joints(robot)
     set_joint_positions(robot, joints, initial_conf)
     path = plan_joint_motion(robot, joints, final_conf, obstacles=obstacles,
-                             weights=[1, 1, 1, 0.2, 0.2, 0.2], smooth=100,
+                             weights=[1, 1, 1, 0.2, 0.2, 0.2],
+                             restarts=4, iterations=40, smooth=100,
                              attachments=attachments,
                              self_collisions=False, custom_limits=custom_limits)
     return path
@@ -288,11 +289,11 @@ def get_free_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
         saver.restore()
         q1.assign()
         w.assign()
-        set_renderer(False)
+        set_renderer(visualize)
         raw_path = plan_se3_motion(robot, q1.values, q2.values, obstacles=obstacles,
                                    custom_limits=custom_limits)
         if raw_path == None:
-            return []
+            return None
         path = [Conf(robot, get_se3_joints(robot), conf) for conf in raw_path]
         if visualize:
             set_renderer(True)
@@ -311,11 +312,43 @@ def get_free_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
 def subsample_path(path, order=2, max_len=10, min_len=3):
     return path[::order]
 
-def get_ik_fn(problem, teleport=False, verbose=True, custom_limits={}, **kwargs):
-    robot = problem.robot
+APPROACH_PATH = {}
+def get_approach_path(robot, o, g, obstacles=[], verbose=False, custom_limits={}):
+    title = 'flying_gripper_utils.get_approach_path |'
+    body_pose = robot.get_body_pose(o, verbose=verbose)
+    key = f"{str(g)}-{nice(body_pose)}"
+    if key in APPROACH_PATH:
+        if verbose:
+            print(f'{title} | found in cache for key {key}')
+        return APPROACH_PATH[key]
+
     joints = get_se3_joints(robot)
+    approach_pose = multiply(body_pose, g.approach)
+    grasp_pose = multiply(body_pose, g.value)
+    if verbose:
+        print(f'{title} | body_pose = {nice(body_pose)}')
+        print(f'{title} | grasp_pose = {nice(grasp_pose)}')
+        print(f'{title} | approach_pose = {nice(approach_pose)}')
+
+    seconf1 = se3_ik(robot, approach_pose, verbose=verbose)
+    seconf2 = se3_ik(robot, grasp_pose, verbose=verbose)
+    q1 = Conf(robot, joints, seconf1)
+    q2 = Conf(robot, joints, seconf2)
+    q1.assign()
+    if verbose:
+        set_renderer(True)
+    raw_path = plan_se3_motion(robot, q1.values, q2.values, obstacles=obstacles,
+                               custom_limits=custom_limits)  ## , attachments=attachments.values()
+    if raw_path == None:
+        APPROACH_PATH[key] = None
+        return None
+    path = [Conf(robot, get_se3_joints(robot), conf) for conf in raw_path]
+    APPROACH_PATH[key] = path
+    return path
+
+def get_ik_fn(problem, teleport=False, verbose=False, custom_limits={}, **kwargs):
+    robot = problem.robot
     obstacles = problem.fixed
-    title = 'flying_gripper_utils.get_ik_fn |'
     def fn(a, o, p, g, w, fluents=[]):
         set_renderer(False)
         p.assign()
@@ -325,28 +358,12 @@ def get_ik_fn(problem, teleport=False, verbose=True, custom_limits={}, **kwargs)
         #     attachment = g.get_attachment(problem.robot, a)
         #     attachments = {attachment.child: attachment}
 
-        body_pose = robot.get_body_pose(o, verbose=verbose)
-        approach_pose = multiply(body_pose, g.approach)
-        grasp_pose = multiply(body_pose, g.value)
-        if verbose:
-            print(f'{title} | body_pose = {nice(body_pose)}')
-            print(f'{title} | grasp_pose = {nice(grasp_pose)}')
-            print(f'{title} | approach_pose = {nice(approach_pose)}')
-
-        seconf1 = se3_ik(robot, approach_pose, verbose=verbose)
-        seconf2 = se3_ik(robot, grasp_pose, verbose=verbose)
-        q1 = Conf(robot, joints, seconf1)
-        q2 = Conf(robot, joints, seconf2)
-        q1.assign()
-        if verbose:
-            set_renderer(True)
-        raw_path = plan_se3_motion(robot, q1.values, q2.values, obstacles=obstacles,
-                                   custom_limits=custom_limits) ## , attachments=attachments.values()
-        if raw_path == None:
+        path = get_approach_path(robot, o, g, obstacles, verbose=verbose, custom_limits=custom_limits)
+        if path == None:
             return None
-        path = [Conf(robot, get_se3_joints(robot), conf) for conf in raw_path]
 
         t = Trajectory(path)
+        q1 = path[0]
         cmd = Commands(State(attachments=attachments), savers=[BodySaver(robot)], commands=[t])
         return (q1, cmd)
     return fn
@@ -456,8 +473,6 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
 
     return fn
 
-
-from pybullet_tools.pr2_streams import get_grasp_gen
 from pybullet_tools.bullet_utils import set_camera_target_body, nice
 from pybullet_tools.utils import VideoSaver
 from os.path import join
@@ -472,7 +487,7 @@ def quick_demo(state, custom_limits):
     set_camera_target_body(lid, dx=0.8, dy=0, dz=0.4)
 
     ## sample grasp
-    g_sampler = get_grasp_gen(state)
+    g_sampler = get_grasp_list_gen(state)
     outputs = g_sampler(lid)
     g = outputs[0][0]
     body_pose = get_pose(lid)

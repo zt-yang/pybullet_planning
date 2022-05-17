@@ -397,47 +397,91 @@ def sample_obj_on_body_link_surface(obj, body, link, scales=OBJ_SCALES, PLACEMEN
 
 
 def sample_obj_in_body_link_space(obj, body, link=None, scales=OBJ_SCALES,
-                                  PLACEMENT_ONLY=False, XY_ONLY=False, verbose=False):
+                                  PLACEMENT_ONLY=False, XY_ONLY=False, verbose=True):
+    set_renderer(verbose)
+    if verbose: print()
+
     aabb = get_aabb(body, link)
     x, y, z, yaw = sample_pose(obj, aabb)
     if isinstance(obj, str):
         obj = obj.lower()
-        maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, z=round(z, 1), scale=scales[obj], maybe=True)
+        maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, scale=scales[obj], maybe=True)
     else:
         maybe = obj
+    handles = draw_fitted_box(maybe)[-1]
 
-    def contained(maybe):
-        if not XY_ONLY:
-            return aabb_contains_aabb(get_aabb(maybe), aabb)
-        return aabb_contains_aabb(aabb2d_from_aabb(get_aabb(maybe)), aabb2d_from_aabb(aabb))
+    # def contained(maybe):
+    #     if not XY_ONLY:
+    #         return aabb_contains_aabb(get_aabb(maybe), aabb)
+    #     return aabb_contains_aabb(aabb2d_from_aabb(get_aabb(maybe)), aabb2d_from_aabb(aabb))
 
-    while not contained(maybe) or body_collision(body, maybe, link1=link):
-        x, y, z, yaw = sample_pose(obj, aabb, get_aabb(maybe))
-        if isinstance(obj, str):
-            remove_body(maybe)
-            maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, z=round(z, 1), scale=scales[obj], maybe=True)
-        else:
-            pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
-            set_pose(maybe, pose)
+    def sample_maybe(body, maybe, z, handles):
+        while not aabb_contains_aabb(get_aabb(maybe), aabb) or body_collision(body, maybe, link1=link):
+            x, y, z, yaw = sample_pose(obj, aabb, get_aabb(maybe))
+            z += 0.01
+            if isinstance(obj, str):
+                remove_body(maybe)
+                maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, scale=scales[obj], maybe=True)
+            else:
+                pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
+                set_pose(maybe, pose)
+
+            remove_handles(handles)
+            handles = draw_fitted_box(maybe)[-1]
+
         if verbose:
             print(f'sampling space for {body}-{link} {nice(aabb)} : {obj} {nice(get_aabb(maybe))}', )
+            print(f'   collision between {body}-{link} and {maybe}: {body_collision(body, maybe, link1=link)}')
+            print(f'   aabb of {body}-{link} contains that of {maybe}: {aabb_contains_aabb(get_aabb(maybe), aabb)}')
+            set_camera_target_body(maybe, dx=1.5, dy=0, dz=0.7)
 
-    ## lower the object until collision
-    for interval in [0.1, 0.05, 0.01, 0.001]:
-        while aabb_contains_aabb(get_aabb(maybe), aabb) and not body_collision(body, maybe, link1=link):
-            z -= interval
+        return maybe, z, handles
+
+    def adjust_z(body, maybe, z, handles):
+        ## lower the object until collision
+        for interval in [0.1, 0.05, 0.01]:
+            while aabb_contains_aabb(get_aabb(maybe), aabb) and not body_collision(body, maybe, link1=link):
+                z -= interval
+                pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
+                set_pose(maybe, pose)
+                remove_handles(handles)
+                handles = draw_fitted_box(maybe)[-1]
+                if verbose:
+                    print(f'trying pose for {obj}: z - interval = {nice(z + interval)} - {interval}) = {nice(z)}')
+            if not body_collision(body, maybe, link1=link) and not aabb_contains_aabb(get_aabb(maybe), aabb):
+                return None
+            reason = f'b.c. collision = {body_collision(body, maybe, link1=link)}, containment = {aabb_contains_aabb(get_aabb(maybe), aabb)}'
+            z += interval
             pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
             set_pose(maybe, pose)
+            remove_handles(handles)
+            handles = draw_fitted_box(maybe)[-1]
             if verbose:
-                print(f'trying pose (int={interval}) for {obj}: z={z}')
-        z += interval
-    # z -= interval
-    if verbose:
-        print(f'   collision between {body}-{link} and {maybe}: {body_collision(body, maybe, link1=link)}')
+                print(f'reset pose for {obj}: z + interval = {nice(z - interval)} + {interval}) = {nice(z)} | {reason}')
+        z -= interval
+
+        if verbose:
+            print(f'finalize pose for {obj}: z - interval = {nice(z + interval)} - {interval}) = {nice(z)}')
+            print(f'   collision between {body}-{link} and {maybe}: {body_collision(body, maybe, link1=link)}')
+            print(f'   aabb of {body}-{link} contains that of {maybe}: {aabb_contains_aabb(get_aabb(maybe), aabb)}')
+
+        return maybe, z, handles
+
+
+    maybe, z, handles = sample_maybe(body, maybe, z, handles)
+    result = adjust_z(body, maybe, z, handles)
+    while result == None:
+        maybe, z, handles = sample_maybe(body, maybe, z, handles)
+        result = adjust_z(body, maybe, z, handles)
+    maybe, z, handles = result
 
     if isinstance(obj, str):
         remove_body(maybe)
-        maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, z=round(z, 1), scale=scales[obj], moveable=True)
+        maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, scale=scales[obj], moveable=True)
+        # maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, z=round(z, 1), scale=scales[obj], moveable=True)
+
+    remove_handles(handles)
+    set_renderer(True)
     if PLACEMENT_ONLY: return x, y, z, yaw
     # print(nice(aabb2d_from_aabb(aabb)))
     # print(nice(aabb2d_from_aabb(get_aabb(maybe))))
@@ -685,7 +729,7 @@ def toggle_joint(body, joint):
         open_joint(body, joint)
 
 
-def open_joint(body, joint, extent=0.8, pstn=None):
+def open_joint(body, joint, extent=0.95, pstn=None):
     if pstn == None:
         if isinstance(joint, str):
             joint = joint_from_name(body, joint)
@@ -887,7 +931,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                     HANDLE_FILTER=False, LENGTH_VARIANTS=False,
                     visualize=False, RETAIN_ALL=False, verbose=False):
     from pybullet_tools.flying_gripper_utils import set_se3_conf, create_fe_gripper, se3_from_pose
-
+    title = 'bullet_utils.get_hand_grasps | '
     dist = grasp_length
     robot = state.robot
     obstacles = state.fixed
@@ -899,7 +943,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
     else: ## for handle grasps, use the original pose of handle_link
         body_pose = multiply(body_pose, invert(robot.tool_from_hand))
         if verbose:
-            print(f'bullet_utils.get_hand_grasps | hand_link = {link} | body_pose = multiply(body_pose, invert(robot.tool_from_hand)) = {nice(body_pose)}')
+            print(f'{title}hand_link = {link} | body_pose = multiply(body_pose, invert(robot.tool_from_hand)) = {nice(body_pose)}')
 
     ## get the points in hand frame to be transformed to the origin of object frame in different directions
     c = get_aabb_center(aabb)
@@ -956,8 +1000,10 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                                                visualize=visualize, RETAIN_ALL=RETAIN_ALL, color=BROWN):
                             grasps += [grasp_dl]
 
-
-    set_renderer(True)
+    # set_renderer(True)
+    print(title, grasps)
+    if len(grasps) == 0:
+        print(title, 'no grasps found')
     return grasps
 
 def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=True,

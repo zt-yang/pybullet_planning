@@ -25,7 +25,7 @@ from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, H
     get_link_pose, get_aabb, get_link_name, sample_aabb, aabb_contains_aabb, aabb2d_from_aabb, sample_placement, \
     aabb_overlap, get_links, get_collision_data, get_visual_data, link_from_name, body_collision, get_closest_points, \
     load_pybullet, FLOOR_URDF, get_aabb_center, AABB, INF, clip, aabb_union, get_aabb_center, Pose, Euler, get_box_geometry, \
-    get_aabb_extent, multiply, GREY, create_shape_array, create_body, STATIC_MASS
+    get_aabb_extent, multiply, GREY, create_shape_array, create_body, STATIC_MASS, set_renderer
 from pybullet_tools.bullet_utils import place_body, add_body, Pose2d, nice, OBJ_SCALES, OBJ_YAWS, \
     sample_obj_on_body_link_surface, sample_obj_in_body_link_space, set_camera_target_body, \
     open_joint, close_joint, set_camera_target_robot, summarize_joints, \
@@ -363,60 +363,60 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
             world.add_box(
                 Floor(create_box(w=round(w, 1), l=round(l, 1), h=FLOOR_HEIGHT, color=TAN, collision=True), name=name),
                 Pose(point=Point(x=round(x, 1), y=round(y, 1), z=-2 * FLOOR_HEIGHT)))
+            continue
 
-        else:
+        ## add the object itself
+        yaw = {0: 0, 90: PI / 2, 180: PI, 270: -PI / 2}[o['yaw']]
+        obj = world.add_object(Object(
+            load_asset(cat, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=floor, w=round(w, 1), l=round(l, 1)),
+            category=cat))
+        body = obj.body
+        if 'door' in cat.lower():
+            world.add_box(
+                Floor(create_box(w=round(w, 1), l=round(l, 1), h=FLOOR_HEIGHT, color=TAN, collision=True), name=f'doorway_{name}'),
+                Pose(point=Point(x=round(x, 1), y=round(y, 1), z=-2 * FLOOR_HEIGHT)))
 
-            ## add the object itself
-            yaw = {0: 0, 90: PI / 2, 180: PI, 270: -PI / 2}[o['yaw']]
-            obj = world.add_object(Object(
-                load_asset(cat, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=floor, w=round(w, 1), l=round(l, 1)),
-                category=cat))
-            body = obj.body
-            if 'door' in cat.lower():
-                world.add_box(
-                    Floor(create_box(w=round(w, 1), l=round(l, 1), h=FLOOR_HEIGHT, color=TAN, collision=True), name=f'doorway_{name}'),
-                    Pose(point=Point(x=round(x, 1), y=round(y, 1), z=-2 * FLOOR_HEIGHT)))
+        #######################################################
+        ## add moveable objects on designated places
+        if not LOAD_MOVEABLES: continue
 
-            #######################################################
-            ## add moveable objects on designated places
-            if not LOAD_MOVEABLES: continue
+        ## PLACE UTENCILS & INGREDIENTS
+        if cat in surfaces: ##('counter', 'Fridge'):  ## , 'DishWasher'
 
-            ## PLACE UTENCILS & INGREDIENTS
-            if cat in surfaces: ##('counter', 'Fridge'):  ## , 'DishWasher'
+            if DEBUG:
+                world.open_doors_drawers(body)
+                set_camera_target_body(body)
 
-                if DEBUG:
-                    world.open_doors_drawers(body)
-                    set_camera_target_body(body)
+            # if cat == 'DishWasher':
+            #     print('test joint')
+            for link in get_links(body):
+                # dump_link(body, link)
+                # set_color(body, YELLOW, link)
+                # draw_link_name(body, link)
 
-                # if cat == 'DishWasher':
-                #     print('test joint')
-                for link in get_links(body):
-                    # dump_link(body, link)
-                    # set_color(body, YELLOW, link)
-                    # draw_link_name(body, link)
+                link_name = get_link_name(body, link)
+                if cat in surfaces and link_name in surfaces[cat]:
+                    surface = Surface(body, link=link)
+                    world.add_object(surface)
+                    for o in surfaces[cat][link_name]:
+                        surface.place_new_obj(o)
 
-                    link_name = get_link_name(body, link)
-                    if cat in surfaces and link_name in surfaces[cat]:
-                        surface = Surface(body, link=link)
-                        world.add_object(surface)
-                        for o in surfaces[cat][link_name]:
-                            surface.place_new_obj(o)
+                if cat in spaces and link_name in spaces[cat]:
+                    space = Space(body, link=link)
+                    world.add_object(space)
+                    for o in spaces[cat][link_name]:
+                        space.place_new_obj(o)
+                        # sample_obj_in_body_link_space(obj, body, link)
 
-                    if cat in spaces and link_name in spaces[cat]:
-                        space = Space(body, link=link)
-                        world.add_object(space)
-                        for o in spaces[cat][link_name]:
-                            space.place_new_obj(o)
-                            # sample_obj_in_body_link_space(obj, body, link)
-
-                            # print(f'      pose: {nice(get_link_pose(body, link))} | aabb: {get_aabb(body, link)}')
-                if DEBUG:
-                    world.close_doors_drawers(body)
-                print()
+                        # print(f'      pose: {nice(get_link_pose(body, link))} | aabb: {get_aabb(body, link)}')
+            if DEBUG:
+                world.close_doors_drawers(body)
+            print()
 
     world.close_all_doors_drawers()
     for surface in ['faucet_platform', 'shelf_top']:
         world.remove_body_from_planning(world.name_to_body(surface))
+    set_renderer(True)
     return floor
 
 def load_rooms(world, DOOR_GAP = 1.9):
@@ -644,3 +644,46 @@ def load_gripper_test_scene(world):
     world.remove_object(floor)
     pot, lid = load_pot_lid(world)
     set_camera_target_body(lid, dx=1.5, dy=0, dz=0.7)
+
+    turkey = world.name_to_body('turkey')
+    world.add_to_cat(turkey, 'moveable')
+    world.add_to_cat(lid, 'moveable')
+    return pot, lid, turkey
+
+def load_cabinet_test_scene(world):
+    surfaces = {
+        'counter': {
+            'front_left_stove': [],
+            'front_right_stove': ['BraiserBody'],
+            'hitman_tmp': [],
+            'indigo_tmp': ['BraiserLid', 'MeatTurkeyLeg'],  ## , 'VeggieCabbage'
+        }
+    }
+    spaces = {
+        'counter': {
+            'sektion': ['OilBottle'], ##
+            'dagger': [], ## 'Salter', 'VinegarBottle'
+            'hitman_drawer_top': [],  ## 'Pan'
+            # 'hitman_drawer_bottom': ['Pan'],
+            # 'indigo_drawer_top': ['Fork'],  ## 'Fork', 'Knife'
+            # 'indigo_drawer_bottom': ['Fork', 'Knife'],
+            # 'indigo_tmp': ['Pot']
+        },
+    }
+
+    floor = load_floor_plan(world, plan_name='counter.svg', DEBUG=True,
+                            surfaces=surfaces, spaces=spaces)
+    world.remove_object(floor)
+    pot, lid = load_pot_lid(world)
+
+    lid = world.name_to_body('lid')
+    pot = world.name_to_body('braiser_bottom')
+    turkey = world.name_to_body('turkey')
+    counter = world.name_to_body('indigo_tmp')
+    oil = world.name_to_body('oilbottle')
+    vinegar = world.name_to_body('vinegarbottle')
+
+    world.add_to_cat(oil, 'moveable')
+    world.add_to_cat(lid, 'moveable')
+
+    return pot, lid, turkey, counter, oil, vinegar

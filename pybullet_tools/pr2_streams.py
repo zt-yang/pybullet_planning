@@ -167,48 +167,22 @@ def get_handle_grasp_gen(problem, collisions=False, randomize=False, visualize=F
         #    yield (g,)
     return fn
 
-##################################################
-
-def get_grasp_gen(problem, collisions=False, randomize=True):
-    robot = problem.robot
-    grasp_types = robot.grasp_types
-
-    def fn(body):
-        arm = 'left'
-        def get_grasps(g_type, grasps_O):
-            return robot.make_grasps(g_type, arm, body, grasps_O, collisions=collisions)
-
-        grasps = []
-        if 'top' in grasp_types:
-            grasps.extend(get_grasps('top', get_top_grasps(body, grasp_length=GRASP_LENGTH)))
-        if 'side' in grasp_types:
-            grasps.extend(get_grasps('side', get_side_grasps(body, grasp_length=GRASP_LENGTH)))
-        if 'hand' in grasp_types:
-            from .bullet_utils import get_hand_grasps
-            grasps.extend(get_grasps('hand', get_hand_grasps(problem, body)))
-
-        if randomize:
-            random.shuffle(grasps)
-        return [(g,) for g in grasps]
-        #for g in grasps:
-        #    yield (g,)
-    return fn
-
 def linkpose_from_position(pose, world):
     pose.assign()
     joint = world.BODY_TO_OBJECT[(pose.body, pose.joint)]
     pose_value = get_link_pose(joint.body, joint.handle_link)
     return pose_value ## LinkPose(pose.body, joint, pose_value)
 
-def iterate_approach_path(robot, arm, gripper, pose_value, grasp, body=None):
-    tool_from_root = get_tool_from_root(robot, arm)
-    grasp_pose = multiply(pose_value, invert(grasp.value))
-    approach_pose = multiply(pose_value, invert(grasp.approach))
-    for tool_pose in interpolate_poses(grasp_pose, approach_pose):
-        set_pose(gripper, multiply(tool_pose, tool_from_root))
-        # if body is not None:
-        #     set_pose(body, multiply(tool_pose, grasp.value))
-        yield
+## -------- moved to robot.
+# def iterate_approach_path(robot, arm, gripper, pose_value, grasp, body=None):
+#     tool_from_root = get_tool_from_root(robot, arm)
+#     grasp_pose = multiply(pose_value, invert(grasp.value))
+#     approach_pose = multiply(pose_value, invert(grasp.approach))
+#     for tool_pose in interpolate_poses(grasp_pose, approach_pose):
+#         set_pose(gripper, multiply(tool_pose, tool_from_root))
+#         # if body is not None:
+#         #     set_pose(body, multiply(tool_pose, grasp.value))
+#         yield
 
 def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
                    learned=True, verbose=False):
