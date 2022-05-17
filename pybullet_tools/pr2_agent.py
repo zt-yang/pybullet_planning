@@ -850,12 +850,12 @@ def test_reachable_pose(state, init, o):
 
 def test_sample_wconf(state, init, o):
     from pybullet_tools.general_streams import get_sample_wconf_list_gen
-    robot = state.robot
     funk = get_sample_wconf_list_gen(state)
     w1 = [f[1] for f in init if f[0].lower() == 'InWConf'.lower()][0]
     outputs = funk(o, w1)
-    pstn, w2 = outputs[0]
-    return [('InWConf', w2)], [('WConf', w2), ('Position', pstn.body, pstn)]
+    p2, w2 = outputs[0]
+    joint_o = (p2.body, p2.joint)
+    return [('InWConf', w2)], [('WConf', w2), ('Position', joint_o, p2), ('NewWConfPst', w1, joint_o, p2, w2)]
 
 def test_at_reachable_pose(init, o):
     p = [f[2] for f in init if f[0].lower() == "AtPose".lower() and f[1] == o][0]
