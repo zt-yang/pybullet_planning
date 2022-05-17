@@ -685,5 +685,6 @@ def load_cabinet_test_scene(world):
 
     world.add_to_cat(oil, 'moveable')
     world.add_to_cat(lid, 'moveable')
+    doors = world.add_joints_by_keyword('counter', 'chewie_door')
 
     return pot, lid, turkey, counter, oil, vinegar

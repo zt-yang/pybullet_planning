@@ -354,18 +354,14 @@ def get_ik_fn(problem, teleport=False, verbose=False, custom_limits={}, **kwargs
         p.assign()
         w.assign()
         attachments = {}
-        # if isinstance(g, Grasp):
-        #     attachment = g.get_attachment(problem.robot, a)
-        #     attachments = {attachment.child: attachment}
-
         path = get_approach_path(robot, o, g, obstacles, verbose=verbose, custom_limits=custom_limits)
         if path == None:
             return None
-
         t = Trajectory(path)
         q1 = path[0]
+        q2 = path[-1]
         cmd = Commands(State(attachments=attachments), savers=[BodySaver(robot)], commands=[t])
-        return (q1, cmd)
+        return (q1, q2, cmd)
     return fn
 
 def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, teleport=False,

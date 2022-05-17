@@ -418,4 +418,5 @@ def get_stable_list_gen(problem, num_samples=3, collisions=True, **kwargs):
                 poses.append(p)
                 if len(poses) >= num_samples:
                     return [(p,) for p in poses]
+        return []
     return gen

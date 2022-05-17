@@ -406,18 +406,14 @@ class World(object):
             close_joint(body, joint)
 
     def close_all_doors_drawers(self):
-        doors = []
-        drawers = []
-        if 'door' in self.OBJECTS_BY_CATEGORY:
-            doors = [(o.body, o.joint) for o in self.OBJECTS_BY_CATEGORY['door']]
-        if 'drawer' in self.OBJECTS_BY_CATEGORY:
-            drawers = [(o.body, o.joint) for o in self.OBJECTS_BY_CATEGORY['drawer']]
+        doors = [(o.body, o.joint) for o in self.cat_to_objects('door')]
+        drawers = [(o.body, o.joint) for o in self.cat_to_objects('drawer')]
         for body, joint in doors + drawers:
             close_joint(body, joint)
 
     def open_all_doors_drawers(self):
-        doors = [(o.body, o.joint) for o in self.OBJECTS_BY_CATEGORY['door']]
-        drawers = [(o.body, o.joint) for o in self.OBJECTS_BY_CATEGORY['drawer']]
+        doors = [(o.body, o.joint) for o in self.cat_to_objects('door')]
+        drawers = [(o.body, o.joint) for o in self.cat_to_objects('drawer')]
         for body, joint in doors + drawers:
             open_joint(body, joint)
 

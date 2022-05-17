@@ -347,11 +347,13 @@ class Space(Region):
         self.world.ATTACHMENTS[obj] = attachment
 
     def place_new_obj(self, obj_name):
-        from pybullet_tools.bullet_utils import sample_obj_in_body_link_space
+        from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, open_joint
         BODY_TO_OBJECT = self.world.BODY_TO_OBJECT
+        self.world.open_doors_drawers(self.body)
         body = sample_obj_in_body_link_space(obj_name, self.body, self.link)
         obj = self.world.add_object(Object(body, category=obj_name))
         self.place_and_attach(obj)
+        self.world.close_doors_drawers(self.body)
         return obj
 
     def place_obj(self, obj, xyzyaw=None):

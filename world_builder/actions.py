@@ -497,15 +497,16 @@ def get_primitive_actions(action, world, teleport=False):
         t = get_traj(t)
         new_commands = t + world.get_events(o)
 
-    elif name == 'pick' or name == 'grasp_handle_wconf':
+    ## ------------------------------------
+    ##    variates of pick
+    ## ------------------------------------
+
+    elif name == 'pick':
         a, o, p, g, _, t = args[:6]
         t = get_traj(t)
         close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
         attach = AttachObjectAction(a, g, o)
-        if name == 'pick':
-            new_commands = t + [close_gripper, attach] + t[::-1]  ## teleport,
-        elif name == 'grasp_handle_wconf':
-            new_commands = t + [close_gripper, attach]  ## teleport,
+        new_commands = t + [close_gripper, attach] + t[::-1]
 
     elif name == 'grasp_handle':
         a, o, p, g, q, aq1, aq2, t = args
@@ -513,13 +514,6 @@ def get_primitive_actions(action, world, teleport=False):
         close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
         attach = AttachObjectAction(a, g, o)
         new_commands = t + [close_gripper, attach]
-
-    elif name == 'ungrasp_handle':
-        a, o, p, g, q, aq1, aq2, t = args
-        t = get_traj(t)
-        detach = DetachObjectAction(a, o)
-        open_gripper = GripperAction(a, extent=1, teleport=teleport)
-        new_commands = [detach, open_gripper] + t[::-1]
 
     elif name == 'grasp_marker':
         a, o1, o2, p, g, q, t = args
@@ -529,6 +523,38 @@ def get_primitive_actions(action, world, teleport=False):
         attach2 = AttachObjectAction(a, g, o2)
         new_commands = t + [close_gripper, attach, attach2]
 
+    elif name == 'pick_hand':
+        a, o, p, g, _, _, t = args[:7]
+        t = get_traj(t)
+        close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
+        attach = AttachObjectAction(a, g, o)
+        new_commands = t + [close_gripper, attach] + t[::-1]
+
+    elif name == 'grasp_handle_hand':
+        a, o, p, g, _, _, t = args[:7]
+        t = get_traj(t)
+        close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
+        attach = AttachObjectAction(a, g, o)
+        new_commands = t + [close_gripper, attach]
+
+    ## ------------------------------------
+    ##    variates of pick
+    ## ------------------------------------
+
+    elif name == 'place':
+        a, o, p, g, _, t = args[:6]
+        t = get_traj(t)
+        open_gripper = GripperAction(a, extent=1, teleport=teleport)
+        detach = DetachObjectAction(a, o)
+        new_commands = t + [detach, open_gripper] + t[::-1]
+
+    elif name == 'ungrasp_handle':
+        a, o, p, g, q, aq1, aq2, t = args
+        t = get_traj(t)
+        detach = DetachObjectAction(a, o)
+        open_gripper = GripperAction(a, extent=1, teleport=teleport)
+        new_commands = [detach, open_gripper] + t[::-1]
+
     elif name == 'ungrasp_marker':
         a, o, o2, p, g, q, t = args
         t = get_traj(t)
@@ -537,15 +563,23 @@ def get_primitive_actions(action, world, teleport=False):
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
         new_commands = [detach, detach2, open_gripper] + t[::-1]
 
-    elif name == 'place' or name == 'ungrasp_handle_wconf':
-        a, o, p, g, _, t = args[:6]
+    elif name == 'place_hand':
+        a, o, p, g, _, _, t = args[:7]
         t = get_traj(t)
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
         detach = DetachObjectAction(a, o)
-        if name == 'place':
-            new_commands = t + [detach, open_gripper] + t[::-1]
-        elif name == 'ungrasp_handle_wconf':
-            new_commands = [detach, open_gripper] + t[::-1]
+        new_commands = t + [detach, open_gripper] + t[::-1]
+
+    elif name == 'ungrasp_handle_hand':
+        a, o, p, g, _, _, t = args[:7]
+        t = get_traj(t)
+        open_gripper = GripperAction(a, extent=1, teleport=teleport)
+        detach = DetachObjectAction(a, o)
+        new_commands = [detach, open_gripper] + t[::-1]
+
+    ## ------------------------------------
+    ##    symbolic high-level actions
+    ## ------------------------------------
 
     elif 'clean' in name:  # TODO: add text or change color?
         body, sink = args[:2]
