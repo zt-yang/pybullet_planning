@@ -243,7 +243,7 @@ def nice_tuple(tup, round_to=3):
     return tuple(new_tup)
 
 
-def nice(tuple_of_tuples, round_to=3):
+def nice(tuple_of_tuples, round_to=3, one_tuple=True):
     ## float, int
     if isinstance(tuple_of_tuples, float) or isinstance(tuple_of_tuples, int):
         return nice_float(tuple_of_tuples, round_to)
@@ -256,7 +256,10 @@ def nice(tuple_of_tuples, round_to=3):
 
         ## pose = (point, quat) -> (point, euler)
         if len(tuple_of_tuples[0]) == 3 and len(tuple_of_tuples[1]) == 4:
-            return nice( (tuple_of_tuples[0], euler_from_quat(tuple_of_tuples[1])), round_to)
+            if one_tuple:
+                one_list = list(tuple_of_tuples[0]) + list(euler_from_quat(tuple_of_tuples[1]))
+                return nice( tuple(one_list) , round_to)
+            return nice( (tuple_of_tuples[0], euler_from_quat(tuple_of_tuples[1])) , round_to)
             ## pose = (point, quat) -> (x, y, z, yaw)
             # return pose_to_xyzyaw(tuple_of_tuples)
 

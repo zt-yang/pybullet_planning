@@ -314,8 +314,8 @@ class ChangeWConf(Action):
         self.wconf = wconf
     def transition(self, state):
         self.wconf.assign()
-        set_renderer(True)
-        set_renderer(True)
+        # set_renderer(True)
+        # set_renderer(True)
         return state.new_state()
 
 class MagicDisappear(Action):
