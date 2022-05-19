@@ -151,21 +151,32 @@ def test_feg_pick(world, floorplan='counter.svg'):
 
     ## --- Randomization Strategy 2:
     ## place the pot on one of the burners on the stove
-
-    ## --- Randomization Strategy 3:
-    ## sample a movable and a surface
-    body = oil
+    # set_pose(turkey, pose)
+    # world.put_on_surface(lid, counter)
+    # world.put_on_surface(pot, world.name_to_body('front_right'))
 
     ## --- Just Checking:
     ## this is not the depth camera, which is small, 256 by 256 pixels in size
     ## this is the camera for viewing on your screen, defined in relation to a body, or robot
     set_camera_target_body(lid, dx=2, dy=0, dz=0.5)
     # set_camera_target_body(right_door[0], link=right_door[1], dx=2, dy=0, dz=0.5)
+    wait_if_gui('proceed?')
 
     ## see object poses and joint positions that's occluded by closed joints
     # world.open_all_doors_drawers()
 
     """ ============== [Goal] Sample goals ==================== """
+
+    ## --- Randomization Strategy 3:
+    ## sample a movable and a surface
+    body = [oil, vinegar, turkey][random.randint(0,2)]
+    surface = world.name_to_body('hitman_tmp')
+
+    goal_template = [
+        [('Holding', body)],
+        [('On', body, surface)],
+        [('On', body, surface), ('On', body, surface)]
+    ]
     goal = [('Holding', body)]
 
     """ ============== [Output] Save depth image ==================== """
