@@ -11,6 +11,7 @@ import numpy as np
 import warnings
 warnings.filterwarnings('ignore')
 
+from pybullet_tools.utils import remove_handles, remove_body, get_bodies
 from pybullet_tools.pr2_problems import create_floor
 from pybullet_tools.pr2_utils import set_group_conf, get_group_joints, get_viewcone_base
 from pybullet_tools.utils import load_pybullet, connect, wait_if_gui, HideOutput, invert, \
@@ -28,6 +29,7 @@ ASSET_PATH = join(dirname(__file__), '..', '..', 'assets')
 LINK_COLORS = ['#c0392b', '#d35400', '#f39c12', '#16a085', '#27ae60',
                '#2980b9', '#8e44ad', '#2c3e50', '#95a5a6']
 LINK_COLORS = [RED, YELLOW, GREEN, BLUE, GREY, BLACK]
+
 class World():
     def __init__(self, lisdf):
         self.lisdf = lisdf
@@ -37,6 +39,25 @@ class World():
         self.camera = None
         self.robot = None
         self.movable = []
+
+        ## for visualization
+        self.handles = []
+
+    def clear_viz(self):
+        self.remove_handles()
+        self.remove_redundant_bodies()
+
+    def remove_redundant_bodies(self):
+        for b in get_bodies():
+            if b not in self.body_to_name:
+                remove_body(b)
+
+    def remove_handles(self):
+        pass
+        # remove_handles(self.handles)
+
+    def add_handles(self, handles):
+        self.handles.extend(handles)
 
     def add_body(self, body, name):
         self.body_to_name[body] = name
@@ -124,6 +145,7 @@ class World():
 
     def get_events(self, body):
         pass
+
 
 def find_id(body, full_name):
     name = full_name.split(LINK_STR)[1]

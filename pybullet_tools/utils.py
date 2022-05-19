@@ -1772,6 +1772,8 @@ def get_base_values(body):
     return base_values_from_pose(get_pose(body))
 
 def set_pose(body, pose):
+    if len(pose) != 2:
+        print('utils.set_pose()')
     (point, quat) = pose
     p.resetBasePositionAndOrientation(body, point, quat, physicsClientId=CLIENT)
 
