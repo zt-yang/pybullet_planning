@@ -165,7 +165,7 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
                     name=get_joint_name(body, j),
                     angle=round(get_joint_position(body, j), 3)
                 )
-            state_sdf += MODEL_STATE_STR.format(name='pr2', joints_xml=joints_xml)
+            state_sdf += MODEL_STATE_STR.format(name=obj.name[:-1], joints_xml=joints_xml)
 
         elif obj.is_box: ## and obj.name not in objects:
             if len(get_collision_data(body)) == 0:
