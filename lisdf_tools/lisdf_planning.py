@@ -68,6 +68,7 @@ def pddl_to_init_goal(exp_dir, world):
     )
     world.update_objects(problem.objects)
     robot = world.robot
+
     existed = [] ## {k: [] for k in ['q', 'aq', 'p', 'g', 'hg', 'pstn', 'lp']}
     def check_existed(o, debug=False):
         for e in existed:
@@ -79,6 +80,15 @@ def pddl_to_init_goal(exp_dir, world):
                 return e
         existed.append(o)
         return o
+
+    def pose_from_tuple(value):
+        if len(value) == 4:
+            value = xyzyaw_to_pose(value)
+        elif len(value) == 6:
+            value = (tuple(value[:3]), quat_from_euler(value[3:]))
+        elif len(value) == 2 and len(value[1]) == 3:
+            value = (tuple(value[0]), quat_from_euler(value[1]))
+        return value
 
     def prop_to_list(v):
         args = [v.predicate.name]
@@ -101,18 +111,14 @@ def pddl_to_init_goal(exp_dir, world):
                 elif typ == 'aq':
                     elem = Conf(robot_body, get_arm_joints(robot_body, args[-1]), value, index=index)
                 elif typ == 'p':
-                    if len(value) == 4:
-                        value = xyzyaw_to_pose(value)
-                    elif len(value) == 2:
-                        value = (tuple(value[0]), quat_from_euler(value[1]))
-                    elem = Pose(args[-1], value, index=index)
+                    elem = Pose(args[-1], pose_from_tuple(value), index=index)
                 elif typ == 'lp':
                     continue
                 elif typ == 'pstn':
                     elem = Position(args[-1], value, index=index)
                 elif typ.endswith('g'):
                     body = args[-1]
-                    g = value
+                    g = pose_from_tuple(value)
                     approach_vector = APPROACH_DISTANCE * get_unit_vector([1, 0, 0])
                     app = multiply((approach_vector, unit_quat()), g)
                     a = TOP_HOLDING_LEFT_ARM

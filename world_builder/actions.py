@@ -428,7 +428,6 @@ def apply_actions(problem, actions, time_step=0.01):
 def get_primitive_actions(action, world, teleport=False):
     def get_traj(t, sub=4):
         world.remove_handles()
-        remove_handles(world.handles)
 
         ## get the confs
         [t] = t.commands

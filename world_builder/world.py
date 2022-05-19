@@ -50,6 +50,10 @@ class World(object):
         self.handles = []
         self.path = None
 
+    def clear_viz(self):
+        self.remove_handles()
+        self.remove_redundant_bodies()
+
     def remove_redundant_bodies(self):
         for b in get_bodies():
             if b not in self.BODY_TO_OBJECT and b not in self.ROBOT_TO_OBJECT:
