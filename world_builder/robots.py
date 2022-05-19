@@ -430,9 +430,11 @@ class FEGripper(RobotAPI):
         from pybullet_tools.flying_gripper_utils import get_se3_conf
         return tuple([round(n, roundto) for n in get_se3_conf(self)])
 
-    def iterate_approach_path(self, arm, gripper, pose_value, grasp, body=None):
+    def iterate_approach_path(self, arm, gripper, pose_value, grasp, obstacles=[], body=None):
         from pybullet_tools.flying_gripper_utils import get_approach_path, set_cloned_se3_conf
-        path = get_approach_path(self, body, grasp, custom_limits=self.custom_limits)
+        path = get_approach_path(self, body, grasp, obstacles=obstacles, custom_limits=self.custom_limits)
+        if path == None:
+            return
         for conf in path:
             set_cloned_se3_conf(self.body, gripper, conf.values)
             yield

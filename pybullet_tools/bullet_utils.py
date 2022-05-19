@@ -1020,7 +1020,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
     if len(grasps) == 0:
         print(title, 'no grasps found')
         return []
-    return grasps[:1]
+    return grasps  ##[:1]
 
 def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=True,
                         color=GREEN, min_num_pts=40, RETAIN_ALL=False, verbose=False):

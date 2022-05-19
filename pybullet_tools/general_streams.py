@@ -396,15 +396,19 @@ def get_sample_wconf_list_gen(problem, verbose=True):
 def get_cfree_approach_pose_test(problem, collisions=True):
     # TODO: apply this before inverse kinematics as well
     arm = 'left'
+    obstacles = problem.fixed
     def test(b1, p1, g1, b2, p2):
         if not collisions or (b1 == b2):
             return True
         p2.assign()
         gripper = problem.get_gripper()
-        for _ in problem.robot.iterate_approach_path(arm, gripper, p1, g1, body=b1):
+        result = False
+        for _ in problem.robot.iterate_approach_path(arm, gripper, p1, g1, obstacles=obstacles,  body=b1):
             if pairwise_collision(b1, b2) or pairwise_collision(gripper, b2):
-                return False
-        return True
+                result = False
+                break
+            result = True
+        return result
     return test
 
 
