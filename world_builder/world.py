@@ -511,10 +511,12 @@ class World(object):
             return self.cameras[-1].get_image(segment=args.segment)
         return None
 
-    def visualize_image(self, pose=None):
-        image = self.camera.get_image(segment=self.args.segment)
+    def visualize_image(self, pose=None, img_dir=None):
         if pose != None:
             self.camera.set_pose(pose)
+        if img_dir != None:
+            self.img_dir = img_dir
+        image = self.camera.get_image(segment=self.args.segment)
         visualize_camera_image(image, self.camera.index, img_dir=self.img_dir)
 
     @property

@@ -3,6 +3,7 @@ import sys
 import json
 import shutil
 from os.path import join, isdir, isfile, dirname, abspath
+from os import listdir
 from pybullet_planning.pybullet_tools.utils import get_bodies, euler_from_quat, get_collision_data, get_joint_name, \
     get_joint_position, get_camera, joint_from_name
 from pybullet_planning.pybullet_tools.pr2_utils import get_arm_joints, get_group_joints, PR2_GROUPS
@@ -284,7 +285,7 @@ def clean_domain_pddl(pddl_str, all_pred_names):
     return pddl_str
 
 
-def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test', EXIT=True,
+def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXIT=True,
                            floorplan=None, world_name=None, root_path=None):
     exp_path = EXP_PATH
     if root_path != None:
@@ -299,8 +300,8 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test', EXIT=True
              world_name=world_name, root_path=root_path)
 
     ## --- init and goal in problem.pddl
-    all_pred_names = generate_problem_pddl(state, pddlstream_problem, world_name=world_name,
-                                           out_path=join(outpath, 'problem.pddl'))
+    all_pred_names = generate_problem_pddl(state, pddlstream_problem.init, pddlstream_problem.goal,
+                             world_name=world_name, out_path=join(outpath, 'problem.pddl'))
 
     config = {'base_limits': state.world.args.base_limits}
 
@@ -317,6 +318,45 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test', EXIT=True
     if EXIT: sys.exit()
 
 
+def save_to_test_cases(state, goal, template_name, floorplan, out_dir, root_path='..'):
+
+    exp_path = EXP_PATH
+    if root_path != None:
+        exp_path = join(root_path, exp_path)
+
+    outpath = join(exp_path, out_dir)
+    if not isdir(outpath):
+        os.mkdir(outpath)
+
+    ## get current index
+    index = len([f for f in listdir(outpath) if 'DS_Store' not in f]) + 1
+    outpath = join(outpath, str(index))
+    os.mkdir(outpath)
+
+    init = state.get_facts()
+
+    ## --- scene in scene.lisdf
+    to_lisdf(state.world, init, floorplan=floorplan, exp_name=join(out_dir, str(index)),
+             world_name=template_name, root_path=root_path)
+
+    ## --- init and goal in problem.pddl
+    generate_problem_pddl(state, init, goal, world_name=template_name,
+                          out_path=join(outpath, 'problem.pddl'))
+
+    ## --- planning related files and params are referred to in template directory
+    config = {
+        'base_limits': state.world.robot.custom_limits,
+        'domain_full': join(template_name, 'domain_full.pddl'),
+        'domain': join(template_name, 'domain.pddl'),
+        'stream': join(template_name, 'stream.pddl'),
+    }
+    with open(join(outpath, 'planning_config.json'), 'w') as f:
+        json.dump(config, f, indent=4)
+
+    ## --- save depth image
+    state.world.visualize_image(img_dir=outpath)
+
+
 def get_pddl_from_list(fact, world):
     fact = get_readable_list(fact, world, NAME_ONLY=True)
     line = ' '.join([str(ele) for ele in fact])
@@ -324,11 +364,11 @@ def get_pddl_from_list(fact, world):
     return '(' + line + ')'
 
 
-def generate_problem_pddl(state, pddlstream_problem,
+def generate_problem_pddl(state, facts, goals, ## pddlstream_problem,
                           world_name='lisdf', domain_name='domain', out_path=None):
     from pybullet_tools.logging import myprint as print
-    facts = pddlstream_problem.init
-    goals = pddlstream_problem.goal
+    # facts = pddlstream_problem.init
+    # goals = pddlstream_problem.goal
     if goals[0] == 'and':
         goals = [list(n) for n in goals[1:]]
     world = state.world

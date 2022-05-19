@@ -294,7 +294,8 @@ def studio(args):
     # enable_real_time()
     # run_thread(robot)
 
-def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, surfaces=None, asset_path=ASSET_PATH):
+def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, surfaces=None,
+                    asset_path=ASSET_PATH, RANDOM_INSTANCE=False):
 
     if spaces == None:
         spaces = {
@@ -650,7 +651,7 @@ def load_gripper_test_scene(world):
     world.add_to_cat(lid, 'moveable')
     return pot, lid, turkey
 
-def load_cabinet_test_scene(world):
+def load_cabinet_test_scene(world, RANDOM_INSTANCE=False):
     surfaces = {
         'counter': {
             'front_left_stove': [],
@@ -672,7 +673,7 @@ def load_cabinet_test_scene(world):
     }
 
     floor = load_floor_plan(world, plan_name='counter.svg', DEBUG=True,
-                            surfaces=surfaces, spaces=spaces)
+                            surfaces=surfaces, spaces=spaces, RANDOM_INSTANCE=RANDOM_INSTANCE)
     world.remove_object(floor)
     pot, lid = load_pot_lid(world)
 
