@@ -850,8 +850,12 @@ def test_reachable_pose(state, init, o):
     p = [f[2] for f in init if f[0].lower() == "AtPose".lower() and f[1] == o][0]
     q = [f[1] for f in init if f[0].lower() == 'AtSEConf'.lower()][0]
     w = [f[1] for f in init if f[0].lower() == 'InWConf'.lower()][0]
-    result = funk(o, p, q, w)
-    sys.exit()
+
+    outputs = get_grasp_list_gen(state)(o)
+    for (g,) in outputs:
+        result = funk(o, p, g, q, w)
+        if result: return True
+    return False
 
 def test_sample_wconf(state, init, o):
     from pybullet_tools.general_streams import get_sample_wconf_list_gen

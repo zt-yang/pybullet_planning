@@ -474,32 +474,33 @@ def get_reachable_test(problem, custom_limits={}, visualize=False):
     obstacles = problem.fixed
     def test(o, p, g, q, w):
         set_renderer(False)
-        p.assign()
-        q.assign()
-        w.assign()
+        with ConfSaver(robot):
+            p.assign()
+            q.assign()
+            w.assign()
 
-        body_pose = robot.get_body_pose(g.body)
-        approach_pose = multiply(body_pose, g.approach)
-        conf = se3_ik(robot, approach_pose)
+            body_pose = robot.get_body_pose(g.body)
+            approach_pose = multiply(body_pose, g.approach)
+            conf = se3_ik(robot, approach_pose)
 
-        result = True
-        if conf == None:
-            result = False
-        else:
-            raw_path = plan_se3_motion(robot, q.values, conf, obstacles=obstacles,
-                                       custom_limits=custom_limits)
-            if raw_path == None:
+            result = True
+            if conf == None:
                 result = False
+            else:
+                raw_path = plan_se3_motion(robot, q.values, conf, obstacles=obstacles,
+                                           custom_limits=custom_limits)
+                if raw_path == None:
+                    result = False
 
-            elif visualize:
-                set_renderer(True)
-                gripper = robot.create_gripper('hand', color=GREY)
-                set_cloned_se3_conf(robot, gripper, conf)
-                set_camera_target_body(gripper, dx=0.5, dy=-0.5, dz=0.5)  ## look top down
-                remove_body(gripper)
-                set_renderer(False)
+                elif visualize:
+                    set_renderer(True)
+                    gripper = robot.create_gripper('hand', color=GREY)
+                    set_cloned_se3_conf(robot, gripper, conf)
+                    set_camera_target_body(gripper, dx=0.5, dy=-0.5, dz=0.5)  ## look top down
+                    remove_body(gripper)
+                    set_renderer(False)
 
-        print(f'       flying_gripper_utils.get_reachable_test({o}, {p}, {q}, {g}, {w}) ->\t {result}')
+            print(f'       flying_gripper_utils.get_reachable_test({o}, {p}, {q}, {g}, {w}) ->\t {result}')
         return result
 
     return test

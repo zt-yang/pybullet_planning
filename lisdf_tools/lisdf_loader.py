@@ -160,14 +160,19 @@ def find_id(body, full_name):
 
 import json
 
+
 def load_lisdf_pybullet(lisdf_path, verbose=True):
     # scenes_path = dirname(os.path.abspath(lisdf_path))
     tmp_path = join(ASSET_PATH, 'tmp')
 
-    planning_config = json.load(open(join(lisdf_path, 'planning_config.json')))
-    custom_limits = planning_config['base_limits']
+    config_path = join(lisdf_path, 'planning_config.json')
+    if isfile(config_path):
+        planning_config = json.load(open(config_path))
+        custom_limits = planning_config['base_limits']
+        lisdf_path = join(lisdf_path, 'scene.lisdf')
+    else:
+        custom_limits = {}
 
-    lisdf_path = join(lisdf_path, 'scene.lisdf')
     connect(use_gui=True, shadows=False, width=1980, height=1238)
     draw_pose(unit_pose(), length=1.)
     create_floor()
@@ -204,8 +209,8 @@ def load_lisdf_pybullet(lisdf_path, verbose=True):
             with open(uri, 'w') as f:
                 f.write(make_sdf_world(model.to_sdf()))
 
+        if verbose: print(f'..... loading {model.name} from {uri}', end="\r")
         with HideOutput():
-            if verbose: print(f'..... loading {model.name} from {uri}', end="\r")
             body = load_pybullet(uri, scale=scale)
             if isinstance(body, tuple): body = body[0]
 

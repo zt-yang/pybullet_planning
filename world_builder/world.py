@@ -45,6 +45,7 @@ class World(object):
         self.sup_categories = {}
         self.SKIP_JOINTS = False
         self.cameras = []
+        self.floorplan = None  ## for saving LISDF
 
         ## for visualization
         self.handles = []

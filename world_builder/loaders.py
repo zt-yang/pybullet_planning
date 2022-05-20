@@ -296,6 +296,7 @@ def studio(args):
 
 def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, surfaces=None,
                     asset_path=ASSET_PATH, RANDOM_INSTANCE=False):
+    world.floorplan = plan_name
 
     if spaces == None:
         spaces = {
@@ -651,7 +652,7 @@ def load_gripper_test_scene(world):
     world.add_to_cat(lid, 'moveable')
     return pot, lid, turkey
 
-def load_cabinet_test_scene(world, RANDOM_INSTANCE=False):
+def load_cabinet_test_scene(world, RANDOM_INSTANCE=False, MORE_MOVABLE=False):
     surfaces = {
         'counter': {
             'front_left_stove': [],
@@ -671,6 +672,8 @@ def load_cabinet_test_scene(world, RANDOM_INSTANCE=False):
             # 'indigo_tmp': ['Pot']
         },
     }
+    if MORE_MOVABLE:
+        surfaces['counter']['hitman_tmp'].append('VeggieCabbage')
 
     floor = load_floor_plan(world, plan_name='counter.svg', DEBUG=True,
                             surfaces=surfaces, spaces=spaces, RANDOM_INSTANCE=RANDOM_INSTANCE)
@@ -687,5 +690,13 @@ def load_cabinet_test_scene(world, RANDOM_INSTANCE=False):
     world.add_to_cat(oil, 'moveable')
     world.add_to_cat(lid, 'moveable')
     doors = world.add_joints_by_keyword('counter', 'chewie_door')
+
+    ### ------- more objects
+    if MORE_MOVABLE:
+        world.add_to_cat(turkey, 'moveable')
+
+        veggie = world.name_to_body('veggiecabbage')
+        world.add_to_cat(veggie, 'moveable')
+        world.put_on_surface(veggie, pot)
 
     return pot, lid, turkey, counter, oil, vinegar

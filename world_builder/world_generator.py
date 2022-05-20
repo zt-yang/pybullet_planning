@@ -91,9 +91,10 @@ def get_camera_spec():
     camera = [target[0]+dx, target[1]+dy, target[2]+dz]
     return camera, list(target)
 
-def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_path=None):
+def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_path=None, out_path=None):
     """ if exp_name != None, will be generated into kitchen-world/experiments/{exp_name}/scene.lisdf
         if world_name != None, will be generated into kitchen-world/assets/scenes/{world_name}.lisdf
+        if out_path != None, will be generated into out_path
     """
 
     exp_path = EXP_PATH
@@ -116,6 +117,8 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
         os.mkdir(outpath)
         outpath = join(exp_path, exp_name, "scene.lisdf")
         world_name = exp_name
+    elif out_path != None:
+        outpath = out_path
     else:
         outpath = join(lisdf_path, f"{world_name}.lisdf")
 
@@ -153,6 +156,8 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
             actor_sdf = ACTOR_STR.format(pose_xml=pose_xml)
             if exp_name != None:
                 actor_sdf = actor_sdf.replace('../models/', '../../assets/models/')
+            if out_path != None:
+                actor_sdf = actor_sdf.replace('../models/', '../../models/')
 
             ## robot joint states
             joints_xml = ''
@@ -185,6 +190,8 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
                 file, scale = get_file_scale(obj.name)
             if exp_name != None:
                 file = file.replace('../assets/', '../../assets/')
+            if out_path != None:
+                file = file.replace('../assets/', '../../')
 
             models_sdf += MODEL_URDF_STR.format(
                 name=obj.name, file=file, is_static=is_static,
@@ -283,6 +290,17 @@ def clean_domain_pddl(pddl_str, all_pred_names):
     pddl_str += '  )\n)'
     print(pddl_str)
     return pddl_str
+
+
+def save_to_exp_folder(state, init, goal, out_path):
+    floorplan = state.world.floorplan
+    world_name = 'experiment'
+    out_path = out_path.replace('.mp4', '')
+
+    to_lisdf(state.world, init, floorplan=floorplan, world_name=world_name,
+             out_path=out_path+'_scene.lisdf')
+    generate_problem_pddl(state, init, goal, world_name=world_name,
+                          out_path=out_path+'_problem.pddl')
 
 
 def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXIT=True,
