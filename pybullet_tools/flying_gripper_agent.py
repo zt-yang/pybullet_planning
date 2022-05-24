@@ -3,9 +3,8 @@ from __future__ import print_function
 import os
 import time
 
-from pybullet_planning.pybullet_tools.pr2_streams import get_contain_gen, get_position_gen, \
-    Position, get_handle_grasp_gen, LinkPose, get_ik_ir_grasp_handle_gen, get_pull_drawer_handle_motion_gen, \
-    get_joint_position_test, get_marker_grasp_gen, get_bconf_in_region_test, \
+from pybullet_planning.pybullet_tools.pr2_streams import get_handle_grasp_gen, get_ik_ir_grasp_handle_gen, \
+    get_pull_drawer_handle_motion_gen, get_joint_position_test, get_marker_grasp_gen, get_bconf_in_region_test, \
     get_bconf_in_region_gen, get_pose_in_region_gen, get_motion_wconf_gen, get_update_wconf_p_two_gen, \
     get_marker_pose_gen, get_pull_marker_to_pose_motion_gen, get_pull_marker_to_bconf_motion_gen,  \
     get_pull_marker_random_motion_gen, get_ik_ungrasp_handle_gen, get_pose_in_region_test, \
@@ -17,7 +16,8 @@ from pybullet_planning.pybullet_tools.pr2_primitives import get_stable_gen, get_
     Attach, Detach, Clean, Cook, control_commands, \
     get_gripper_joints, GripperCommand, apply_commands, State, Trajectory
 from pybullet_tools.general_streams import get_cfree_approach_pose_test, get_grasp_list_gen, get_stable_list_gen, \
-    sample_joint_position_open_list_gen, get_update_wconf_pst_gen, get_update_wconf_p_gen, get_sample_wconf_list_gen
+    sample_joint_position_open_list_gen, get_update_wconf_pst_gen, get_update_wconf_p_gen, get_sample_wconf_list_gen, \
+    Position, LinkPose, get_contain_gen, get_position_gen
 
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
     set_camera_target_robot, nice, BASE_LIMITS, get_file_short_name
@@ -53,8 +53,8 @@ def get_stream_map(p, c, l, t):
     # l = custom_limits
     # t = teleport
     stream_map = {
-        'sample-pose': from_list_fn(get_stable_list_gen(p, collisions=c)),
-        'sample-pose-inside': from_gen_fn(get_contain_gen(p, collisions=c)),  ##
+        'sample-pose-on': from_list_fn(get_stable_list_gen(p, collisions=c)),
+        'sample-pose-in': from_gen_fn(get_contain_gen(p, collisions=c)),
         'sample-grasp': from_list_fn(get_grasp_list_gen(p, collisions=True)),
 
         'inverse-kinematics-hand': from_fn(get_ik_fn(p, collisions=c, teleport=t, custom_limits=l, verbose=False)),
@@ -102,7 +102,7 @@ def get_stream_map(p, c, l, t):
         # 'update-wconf-p-two': from_fn(get_update_wconf_p_two_gen()),
         'update-wconf-pst': from_fn(get_update_wconf_pst_gen()),
         'test-reachable-pose': from_test(get_reachable_test(p, custom_limits=l)),
-        'sample-wconf-obj': from_list_fn(get_sample_wconf_list_gen(p)),
+        # 'sample-wconf-obj': from_list_fn(get_sample_wconf_list_gen(p)),
 
         'MoveCost': move_cost_fn,
 
@@ -124,7 +124,8 @@ def get_stream_info(partial, defer):
         'MoveCost': FunctionInfo(opt_move_cost_fn),
     }
     stream_info.update({
-        'sample-pose': StreamInfo(opt_gen_fn=PartialInputs('?r')),
+        'sample-pose-on': StreamInfo(opt_gen_fn=PartialInputs('?r')),
+        'sample-pose-in': StreamInfo(opt_gen_fn=PartialInputs('?r')),
         'inverse-kinematics': StreamInfo(opt_gen_fn=PartialInputs('?p')),
         'plan-base-motion': StreamInfo(opt_gen_fn=PartialInputs('?q1 ?q2'),
                                       defer_fn=defer_shared if defer else never_defer),

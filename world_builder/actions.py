@@ -266,6 +266,9 @@ class AttachObjectAction(Action):
         link = state.robot.get_attachment_link(self.arm)
         new_attachments = add_attachment(state=state, obj=self.object, parent=state.robot,
                                          parent_link=link, attach_distance=None)  ## can attach without contact
+        for k in new_attachments:
+            if k in state.world.ATTACHMENTS:
+                state.world.ATTACHMENTS.pop(k)
         return state.new_state(attachments=new_attachments)
 
 class DetachObjectAction(Action):

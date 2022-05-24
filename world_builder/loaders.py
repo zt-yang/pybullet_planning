@@ -689,7 +689,8 @@ def load_cabinet_test_scene(world, RANDOM_INSTANCE=False, MORE_MOVABLE=False):
 
     world.add_to_cat(oil, 'moveable')
     world.add_to_cat(lid, 'moveable')
-    doors = world.add_joints_by_keyword('counter', 'chewie_door')
+    world.add_joints_by_keyword('counter', 'chewie_door')
+    world.add_joints_by_keyword('counter', 'dagger_door')
 
     ### ------- more objects
     if MORE_MOVABLE:

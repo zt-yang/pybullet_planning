@@ -723,12 +723,12 @@ class State(object):
                     # print('   found supported', body, surface)
                     init += [('Supported', body, pose, surface)]
 
-            ## potential places to put in
+            ## potential places to put in ## TODO: check size
             for space in cat_to_bodies('container') + cat_to_bodies('space'):
                 init += [('Containable', body, space)]
-                # if is_contained(body, space):
-                #     print('   found contaied', body, space)
-                #     init += [('Contained', body, pose, space)]
+                if is_contained(body, space):
+                    print('   found contained', body, space)
+                    init += [('Contained', body, pose, space)]
 
 
         ## ---- cart poses / grasps ------------------

@@ -187,6 +187,10 @@ def learned_pose_sampler(world, body, surface, body_pose):
         body_pose = (x, y, z), quat
     return body_pose
 
+def get_mod_pose(pose):
+    (x,y,z), quat = pose
+    return ((x,y,z+0.01), quat)
+
 def get_contain_gen(problem, collisions=True, max_attempts=20, verbose=False, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
     obstacles = problem.fixed if collisions else []
@@ -208,9 +212,11 @@ def get_contain_gen(problem, collisions=True, max_attempts=20, verbose=False, **
                 body_pose = None
             if body_pose is None:
                 break
-            p = Pose(body, body_pose, space)
-            p.assign()
+            ## there will be collision between body and that link because of how pose is sampled
+            p_mod = p = Pose(body, get_mod_pose(body_pose), space)
+            p_mod.assign()
             if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, space}):
+                p = Pose(body, body_pose, space)
                 yield (p,)
         if verbose:
             print(f'  get_contain_gen | reached max_attempts = {max_attempts}')

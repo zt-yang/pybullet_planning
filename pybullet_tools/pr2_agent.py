@@ -417,7 +417,7 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
                                custom_limits=BASE_LIMITS,
                                 init_facts=[], ## avoid duplicates
                                 facts=[],  ## completely overwrite
-                                collisions=True, teleport=False):
+                                collisions=True, teleport=False, PRINT=True):
     from pybullet_tools.logging import myprint as print
 
     robot = state.robot
@@ -486,7 +486,8 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
         atbconf = [i for i in init if i[0].lower() == "AtBConf".lower()][0]
         goal[-1] = ("not", atbconf)
 
-    summarize_facts(init, world, name='Facts extracted from observation')
+    if PRINT:
+        summarize_facts(init, world, name='Facts extracted from observation')
 
     ## make all pred lower case
     new_init = []
@@ -505,7 +506,9 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     stream_pddl = read(stream_pddl)
     constant_map = {}
     goal = [g for g in goal if not (g[0] == 'not' and g[1][0] == '=')]
-    print_goal(goal)
+
+    if PRINT:
+        print_goal(goal)
 
     stream_map = robot.get_stream_map(problem, collisions, custom_limits, teleport)
     # get_press_gen(problem, teleport=teleport)
