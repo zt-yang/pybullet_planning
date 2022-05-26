@@ -273,24 +273,24 @@ class FEGripper(RobotAPI):
         from pybullet_tools.flying_gripper_utils import se3_ik, set_se3_conf, get_se3_conf
         body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
         if isinstance(body, tuple): body = body[0]
-        with PoseSaver(body):
-            body_pose = unit_pose()
-            grasp_pose = multiply(body_pose, grasp)
+        # with PoseSaver(body):
+        body_pose = unit_pose()
+        grasp_pose = multiply(body_pose, grasp)
+        if verbose:
+            print(f'robots.compute_grasp_width | body_pose = {nice(body_pose)} | grasp = {nice(grasp)}')
+            print('robots.compute_grasp_width | grasp_pose = multiply(body_pose, grasp) = ', nice(grasp_pose))
+
+        with ConfSaver(self.body):
+            conf = se3_ik(self, grasp_pose)
+            gripper = self.body
+            set_se3_conf(gripper, conf)
             if verbose:
-                print(f'robots.compute_grasp_width | body_pose = {nice(body_pose)} | grasp = {nice(grasp)}')
-                print('robots.compute_grasp_width | grasp_pose = multiply(body_pose, grasp) = ', nice(grasp_pose))
+                print(f'robots.compute_grasp_width | gripper_grasp {gripper} | object_pose {nice(body_pose)}'
+                      f' | se_conf {nice(get_se3_conf(gripper))} | grasp = {nice(grasp)} ')
 
-            with ConfSaver(self.body):
-                conf = se3_ik(self, grasp_pose)
-                gripper = self.body
-                set_se3_conf(gripper, conf)
-                if verbose:
-                    print(f'robots.compute_grasp_width | gripper_grasp {gripper} | object_pose {nice(body_pose)}'
-                          f' | se_conf {nice(get_se3_conf(gripper))} | grasp = {nice(grasp)} ')
-
-                gripper_joints = self.get_gripper_joints()
-                width = close_until_collision(gripper, gripper_joints, bodies=[body], **kwargs)
-                # remove_body(gripper)
+            gripper_joints = self.get_gripper_joints()
+            width = close_until_collision(gripper, gripper_joints, bodies=[body], **kwargs)
+            # remove_body(gripper)
         return width
 
     def get_body_pose(self, body_pose, body=None, verbose=False):

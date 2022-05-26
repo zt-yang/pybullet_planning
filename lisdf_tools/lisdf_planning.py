@@ -22,6 +22,10 @@ class Problem():
         # self.grasp_types = ['top']
         self.gripper = None
 
+    @property
+    def grasp_types(self):
+        return self.robot.grasp_types
+
     def init_from_world(self, world):
         fixed = []
         movable = []

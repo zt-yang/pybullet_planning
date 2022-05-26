@@ -23,7 +23,7 @@ from pybullet_tools.bullet_utils import nice
 from pybullet_tools.pr2_streams import get_handle_link
 from pybullet_tools.flying_gripper_utils import set_se3_conf
 
-from world_builder.loaders import create_gripper_robot
+from world_builder.loaders import create_gripper_robot, create_pr2_robot
 
 ASSET_PATH = join(dirname(__file__), '..', '..', 'assets')
 LINK_COLORS = ['#c0392b', '#d35400', '#f39c12', '#16a085', '#27ae60',
@@ -218,8 +218,8 @@ def load_lisdf_pybullet(lisdf_path, verbose=True):
         if model.name in ['pr2', 'feg']:
             pose = model.pose.pos
             if model.name == 'pr2':
-                create_gripper_robot(world, custom_limits)
-                set_group_conf(body, 'base', pose)
+                create_pr2_robot(bullet_world, base_q=pose, custom_limits=custom_limits)
+                # set_group_conf(body, 'base', pose)
             elif model.name == 'feg':
                 robot = create_gripper_robot(bullet_world, custom_limits)
                 # set_se3_conf(body, pose)

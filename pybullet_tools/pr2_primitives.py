@@ -355,7 +355,7 @@ def get_grasp_gen(problem, collisions=False, randomize=True):
                           for g in get_hand_grasps(problem, body))
         filtered_grasps = []
         for grasp in grasps:
-            grasp_width = problem.robot.compute_grasp_width(arm, body, grasp.value) if collisions else 0.0
+            grasp_width = problem.robot.compute_grasp_width(arm, body, grasp.value, body=body) if collisions else 0.0
             if grasp_width is not None:
                 grasp.grasp_width = grasp_width
                 filtered_grasps.append(grasp)

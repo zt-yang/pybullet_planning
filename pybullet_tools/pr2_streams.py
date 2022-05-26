@@ -209,7 +209,7 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
         else:
             approach_obstacles = obstacles
 
-        for _ in iterate_approach_path(robot, arm, gripper, pose_value, grasp):
+        for _ in robot.iterate_approach_path(arm, gripper, pose_value, grasp):
             # if verbose:
             for b in approach_obstacles:
                 if pairwise_collision(gripper, b):
