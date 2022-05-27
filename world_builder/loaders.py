@@ -702,3 +702,49 @@ def load_cabinet_test_scene(world, RANDOM_INSTANCE=False, MORE_MOVABLE=False):
         world.put_on_surface(veggie, pot)
 
     return pot, lid, turkey, counter, oil, vinegar
+
+def load_cabinet_rearrange_scene(world):
+    surfaces = {
+        'counter': {
+            'front_left_stove': ['OilBottle'],
+            'front_right_stove': ['BraiserBody'],
+            'hitman_tmp': [],
+            'indigo_tmp': ['BraiserLid', 'MeatTurkeyLeg', 'VeggieCabbage'],  ##
+        }
+    }
+    spaces = {
+        'counter': {
+            'sektion': [],  ##
+            'dagger': ['VinegarBottle'],  ## 'Salter',
+            'hitman_drawer_top': [],  ## 'Pan'
+            # 'hitman_drawer_bottom': ['Pan'],
+            # 'indigo_drawer_top': ['Fork'],  ## 'Fork', 'Knife'
+            # 'indigo_drawer_bottom': ['Fork', 'Knife'],
+            # 'indigo_tmp': ['Pot']
+        },
+    }
+
+    floor = load_floor_plan(world, plan_name='counter.svg', DEBUG=True, surfaces=surfaces, spaces=spaces)
+    world.remove_object(floor)
+    pot, lid = load_pot_lid(world)
+
+    turkey = world.name_to_body('turkey')
+    counter = world.name_to_body('indigo_tmp')
+    oil = world.name_to_body('bottle')
+    vinegar = world.name_to_body('vinegarbottle')
+    veggie = world.name_to_body('veggie')
+
+    world.add_to_cat(lid, 'bottle')
+    world.add_to_cat(vinegar, 'bottle')
+    world.add_to_cat(lid, 'moveable')
+    world.add_to_cat(vinegar, 'moveable')
+    world.add_to_cat(oil, 'moveable')
+    world.add_to_cat(turkey, 'moveable')
+    world.add_to_cat(veggie, 'moveable')
+    world.add_to_cat(turkey, 'edible')
+    world.add_to_cat(veggie, 'edible')
+
+    world.add_joints_by_keyword('counter', 'chewie_door')
+    world.add_joints_by_keyword('counter', 'dagger_door')
+
+    return pot, lid, turkey, veggie, counter, oil, vinegar
