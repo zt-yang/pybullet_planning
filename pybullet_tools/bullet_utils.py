@@ -328,7 +328,7 @@ def collided(obj, obstacles, world=None, tag='', verbose=False, visualize=False,
 
 OBJ_SCALES = {
     'OilBottle': 0.25, 'VinegarBottle': 0.25, 'Salter': 0.1, 'Knife': 0.1, 'Fork': 0.2,
-    'Microwave': 0.7, 'Pan': 0.3, 'Pot': 0.3, 'Kettle': 0.3,
+    'Microwave': 0.7, 'Pan': 0.3, 'Pot': 0.3, 'Kettle': 0.3, 'Bottle': 0.25,
     'Egg': 0.1, 'Veggie': 0.3, 'VeggieLeaf': 0.3, 'VeggieStem': 0.3,
     'MilkBottle': 0.2, 'Toaster': 0.2, 'Bucket': 0.7, 'Cart': 1.1,
     'PotBody': 0.3, 'BraiserBody': 0.37, 'BraiserLid': 0.37, 'Faucet': 0.35,

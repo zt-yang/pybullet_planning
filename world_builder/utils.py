@@ -4,6 +4,7 @@ from numpy import inf
 from os.path import join, isdir, isfile, dirname, abspath
 from os import listdir
 import json
+import random
 
 from .entities import Object, Floor, Moveable
 from pybullet_tools.utils import unit_pose, \
@@ -115,7 +116,7 @@ def get_model_scale(file, l, w, scale=1, category=None):
 
     return scale
 
-def get_file_by_category(category):
+def get_file_by_category(category, RANDOM_INSTANCE=False):
     asset_root = join(ASSET_PATH, 'models', category)  ## ROOT_DIR
     if isdir(asset_root):
         paths = [join(asset_root, f) for f in listdir(join(asset_root)) if isdir(join(asset_root, f))]
@@ -123,6 +124,8 @@ def get_file_by_category(category):
 
         if len(paths) == len(files):  ## mobility objects
             paths.sort()
+            if RANDOM_INSTANCE:
+                random.shuffle(paths)
             file = join(paths[0], 'mobility.urdf')
 
         elif category == 'counter':
@@ -158,11 +161,11 @@ def adjust_scale(body, category, file, w, l):
     return body
 
 def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, scale=1,
-               verbose=False, maybe=False, moveable=False):
+               verbose=False, maybe=False, moveable=False, RANDOM_INSTANCE=False):
 
     if verbose: print(f"\nLoading ... {category}")
 
-    file = get_file_by_category(category)
+    file = get_file_by_category(category, RANDOM_INSTANCE=RANDOM_INSTANCE)
     if file != None:
         if verbose: print(f"Loading ...... {file}")
         scale = get_model_scale(file, l, w, scale, category)

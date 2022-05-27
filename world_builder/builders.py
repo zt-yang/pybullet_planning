@@ -144,10 +144,12 @@ def test_feg_pick(world, floorplan='counter.svg'):
 
     ## --- Randomization Strategy 1:
     ## open a particular door with an epsilon greedy strategy
-    epsilon = 0.3
-    for door in [left_door, right_door]:
-        if random.random() < epsilon:
-            open_joint(door[0], door[1], extent=random.random())
+    # epsilon = 0.3
+    # for door in [left_door, right_door]:
+    #     if random.random() < epsilon:
+    #         open_joint(door[0], door[1], extent=random.random())
+    open_joint(left_door[0], left_door[1])
+    open_joint(right_door[0], right_door[1])
 
     ## --- Randomization Strategy 2:
     ## place the pot on one of the burners on the stove
@@ -160,7 +162,7 @@ def test_feg_pick(world, floorplan='counter.svg'):
     ## this is the camera for viewing on your screen, defined in relation to a body, or robot
     set_camera_target_body(lid, dx=2, dy=0, dz=0.5)
     # set_camera_target_body(right_door[0], link=right_door[1], dx=2, dy=0, dz=0.5)
-    wait_if_gui('proceed?')
+    # wait_if_gui('proceed?')
 
     ## see object poses and joint positions that's occluded by closed joints
     # world.open_all_doors_drawers()

@@ -370,7 +370,8 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
         ## add the object itself
         yaw = {0: 0, 90: PI / 2, 180: PI, 270: -PI / 2}[o['yaw']]
         obj = world.add_object(Object(
-            load_asset(cat, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=floor, w=round(w, 1), l=round(l, 1)),
+            load_asset(cat, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=floor,
+                       w=round(w, 1), l=round(l, 1), RANDOM_INSTANCE=RANDOM_INSTANCE),
             category=cat))
         body = obj.body
         if 'door' in cat.lower():
@@ -663,7 +664,7 @@ def load_cabinet_test_scene(world, RANDOM_INSTANCE=False, MORE_MOVABLE=False):
     }
     spaces = {
         'counter': {
-            'sektion': ['OilBottle'], ##
+            'sektion': ['Bottle'], ##
             'dagger': [], ## 'Salter', 'VinegarBottle'
             'hitman_drawer_top': [],  ## 'Pan'
             # 'hitman_drawer_bottom': ['Pan'],
@@ -684,7 +685,7 @@ def load_cabinet_test_scene(world, RANDOM_INSTANCE=False, MORE_MOVABLE=False):
     pot = world.name_to_body('braiser_bottom')
     turkey = world.name_to_body('turkey')
     counter = world.name_to_body('indigo_tmp')
-    oil = world.name_to_body('oilbottle')
+    oil = world.name_to_body('bottle')
     vinegar = world.name_to_body('vinegarbottle')
 
     world.add_to_cat(oil, 'moveable')
