@@ -191,7 +191,7 @@ def get_mod_pose(pose):
     (x,y,z), quat = pose
     return ((x,y,z+0.01), quat)
 
-def get_contain_gen(problem, collisions=True, max_attempts=20, verbose=False, **kwargs):
+def get_contain_list_gen(problem, collisions=True, max_attempts=20, num_samples=5, verbose=False, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
     obstacles = problem.fixed if collisions else []
 
@@ -201,7 +201,8 @@ def get_contain_gen(problem, collisions=True, max_attempts=20, verbose=False, **
         else:
             spaces = [space]
         attempts = 0
-        while attempts < max_attempts:
+        poses = []
+        while attempts < max_attempts and len(poses) < num_samples:
             attempts += 1
             space = random.choice(spaces)  # TODO: weight by area
             if isinstance(space, tuple):
@@ -217,10 +218,12 @@ def get_contain_gen(problem, collisions=True, max_attempts=20, verbose=False, **
             p_mod.assign()
             if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, space}):
                 p = Pose(body, body_pose, space)
-                yield (p,)
+                poses.append((p,))
+                # yield (p,)
         if verbose:
             print(f'  get_contain_gen | reached max_attempts = {max_attempts}')
-        yield None
+        # yield None
+        return poses
     return gen
 
 def get_pose_in_space_test():
@@ -362,9 +365,15 @@ def get_update_wconf_pst_gen(verbose=False):
     return fn
 
 def get_sample_wconf_list_gen(problem, verbose=True):
+    from pybullet_tools.flying_gripper_utils import get_reachable_test
     title = 'general_streams.get_sample_wconf_gen'
     open_pstn_sampler = sample_joint_position_open_list_gen(problem)
-    def fn(o, w1):
+    test_reachable = get_reachable_test(problem, custom_limits=problem.robot.custom_limits)
+    def fn(w1, o, p, q, g):
+        w1.assign()
+        p.assign()
+        q.assign()
+
         positions = copy.deepcopy(w1.positions)
         if verbose:
             print(f'{title}\tbefore:', {o0: nice(p0.value) for o0, p0 in positions.items()})
@@ -389,11 +398,12 @@ def get_sample_wconf_list_gen(problem, verbose=True):
             positions = copy.deepcopy(w1.positions)
             positions[oo] = pstn
             w2 = WConf(w1.poses, positions)
-            if verbose:
-                print(f'{title}\t after:', {o0: nice(p0.value) for o0, p0 in positions.items()},
-                      f'\tnew pstn: {pstn} \twith distance {nice(distances[oo])}')
-            wconfs.append((pstn, w2))
-            break  ## only toggle once
+            if test_reachable(o, p, g, q, w2):
+                if verbose:
+                    print(f'{title}\t after:', {o0: nice(p0.value) for o0, p0 in positions.items()},
+                          f'\tnew pstn: {pstn} \twith distance {nice(distances[oo])}')
+                wconfs.append((oo, pstn, w2))
+                # break  ## only toggle once
         return wconfs
     return fn
 

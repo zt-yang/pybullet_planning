@@ -11,9 +11,9 @@ from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, g
     BodySaver, set_pose, INF, add_parameter, irange, wait_for_duration, get_bodies, remove_body, \
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
     get_joints, multiply, invert, is_movable, remove_handles
-from pybullet_tools.pr2_streams import get_contain_gen, get_position_gen, \
+from pybullet_tools.pr2_streams import get_position_gen, \
     Position, get_handle_grasp_gen, LinkPose, pr2_grasp, WConf
-from pybullet_tools.general_streams import get_stable_list_gen, get_grasp_list_gen
+from pybullet_tools.general_streams import get_stable_list_gen, get_grasp_list_gen, get_contain_list_gen
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
     is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
     set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR, CAMERA_MATRIX, visualize_camera_image, equal, \
@@ -448,7 +448,7 @@ class World(object):
         surface_obj = self.get_object(surface)
         surface = surface_obj.name
 
-        surface_obj.place_obj(obj)
+        surface_obj.place_obj(obj, max_trial=1)
         world_to_surface = surface_obj.get_pose()
 
         point, quat = obj.get_pose()
@@ -492,7 +492,7 @@ class World(object):
             xyzyaw = list(pose[0])
             xyzyaw.append(euler_from_quat(pose[1])[-1])
             ## xyzyaw = (1.093, 7.088, 0.696, 2.8)
-        left_drawer.place_obj(obj, xyzyaw)
+        left_drawer.place_obj(obj, xyzyaw, max_trial=1)
 
     def refine_marker_obstacles(self, marker, obstacles):
         ## for steerables
@@ -780,7 +780,20 @@ class State(object):
         ## --- world configuration
         wconf = self.get_wconf(init)
         init += [('WConf', wconf), ('InWConf', wconf)]
-        print('initial wconf', wconf.printout())
+        print('world.get_facts | initial wconf', wconf.printout())
+
+        ## ---- add multiple world conf for joints
+        from pybullet_tools.general_streams import sample_joint_position_open_list_gen
+        joint_opener = sample_joint_position_open_list_gen(self, num_samples=1)
+        for body in cat_to_bodies('drawer') + cat_to_bodies('door'):
+            pstn = [f[2] for f in init if f[0] == 'AtPosition' and f[1] == body][0]
+            pstn_open = joint_opener(body, pstn)[0][0]
+            if pstn_open.value != pstn.value:
+                new_positions = copy.deepcopy(wconf.positions)
+                new_positions[body] = pstn_open
+                new_wconf = WConf({}, new_positions)
+                init += [('WConf', wconf), ('NewWConfPst', wconf, body, pstn, new_wconf)]
+                print('world.get_facts | possible wconf', new_wconf.printout())
 
         ## --- for testing IK
         # lid = self.world.name_to_body('braiserlid')
