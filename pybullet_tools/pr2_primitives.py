@@ -206,7 +206,7 @@ class Trajectory(Command):
         if self.path:
             conf = self.path[0]
             d = 3 if isinstance(conf, Pose) else len(conf.joints)
-        return 't({},{})'.format(d, len(self.path))
+        return 't({}, {})'.format(d, len(self.path))
 
 def create_trajectory(robot, joints, path):
     return Trajectory(Conf(robot, joints, q) for q in path)

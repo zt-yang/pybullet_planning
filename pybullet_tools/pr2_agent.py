@@ -504,7 +504,7 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
 
     domain_pddl = read(domain_pddl)
     stream_pddl = read(stream_pddl)
-    constant_map = {}
+    constant_map = {k: k for k in state.constants}
     goal = [g for g in goal if not (g[0] == 'not' and g[1][0] == '=')]
 
     if PRINT:

@@ -625,6 +625,9 @@ def get_primitive_actions(action, world, teleport=False):
         o, p1, p2, w1, w2 = args
         new_commands = [ChangeWConf(w2)]
 
+    elif name in ['declare_store_in_space', 'declare_store_on_surface']:
+        new_commands = []
+
     else:
         print('\n\n havent implement commands for', name)
         raise NotImplementedError(name)
