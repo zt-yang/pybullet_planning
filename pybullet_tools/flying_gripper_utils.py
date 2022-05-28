@@ -339,7 +339,7 @@ def get_approach_path(robot, o, g, obstacles=[], verbose=False, custom_limits={}
         set_renderer(True)
     raw_path = plan_se3_motion(robot, q1.values, q2.values, obstacles=obstacles,
                                custom_limits=custom_limits)  ## , attachments=attachments.values()
-    if raw_path == None:
+    if raw_path == None or q2 == None:
         APPROACH_PATH[key] = None
         return None
     ## to prevent the strange twisting motion
@@ -347,8 +347,8 @@ def get_approach_path(robot, o, g, obstacles=[], verbose=False, custom_limits={}
     path = []
     for conf in raw_path:
         conf = list(conf)
-        if conf == None or seconf2 == None:
-            print('conf == None')
+        if seconf2 == None:
+            print('path', path)
         conf[3:] = list(seconf2)[3:]
         path += [Conf(robot, get_se3_joints(robot), conf)]
     APPROACH_PATH[key] = path

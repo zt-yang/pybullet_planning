@@ -469,22 +469,23 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
 
     goal = [AND]
     goal += goals
-    if goals[0][0] == 'AtBConf':
-        init += [('BConf', goals[0][1])]
-    elif goals[0][0] == 'AtSEConf':
-        init += [('SEConf', goals[0][1])]
-    elif goals[0][0] == 'AtPosition':
-        init += [('Position', goals[0][1], goals[0][2]), ('IsOpenedPosition', goals[0][1], goals[0][2])]
-    elif goals[0][0] == 'AtGrasp':
-        init += [('Grasp', goals[0][2], goals[0][3])]
-    elif goals[0][0] == 'AtHandleGrasp':
-        init += [('HandleGrasp', goals[0][2], goals[0][3])]
-    elif goals[0][0] == 'AtMarkerGrasp':
-        init += [('MarkerGrasp', goals[0][2], goals[0][3])]
+    if len(goals) > 0:
+        if goals[0][0] == 'AtBConf':
+            init += [('BConf', goals[0][1])]
+        elif goals[0][0] == 'AtSEConf':
+            init += [('SEConf', goals[0][1])]
+        elif goals[0][0] == 'AtPosition':
+            init += [('Position', goals[0][1], goals[0][2]), ('IsOpenedPosition', goals[0][1], goals[0][2])]
+        elif goals[0][0] == 'AtGrasp':
+            init += [('Grasp', goals[0][2], goals[0][3])]
+        elif goals[0][0] == 'AtHandleGrasp':
+            init += [('HandleGrasp', goals[0][2], goals[0][3])]
+        elif goals[0][0] == 'AtMarkerGrasp':
+            init += [('MarkerGrasp', goals[0][2], goals[0][3])]
 
-    if goal[-1] == ("not", ("AtBConf", "")):
-        atbconf = [i for i in init if i[0].lower() == "AtBConf".lower()][0]
-        goal[-1] = ("not", atbconf)
+        if goal[-1] == ("not", ("AtBConf", "")):
+            atbconf = [i for i in init if i[0].lower() == "AtBConf".lower()][0]
+            goal[-1] = ("not", atbconf)
 
     if PRINT:
         summarize_facts(init, world, name='Facts extracted from observation')
