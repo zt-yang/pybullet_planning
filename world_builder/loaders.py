@@ -398,6 +398,9 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                 # draw_link_name(body, link)
 
                 link_name = get_link_name(body, link)
+
+                # if link_name == 'front_right_stove':
+                #     print('ss front_right_stove')
                 if cat in surfaces and link_name in surfaces[cat]:
                     surface = Surface(body, link=link)
                     world.add_object(surface)
@@ -632,7 +635,19 @@ def load_kitchen_mechanism(world):
     name_to_object('joint_faucet_0').add_controlled(name_to_body('basin_bottom'))
     name_to_object('knob_joint_2').add_controlled(name_to_body('braiser_bottom'))
 
+def load_kitchen_mechanism_stove(world):
+    name_to_body = world.name_to_body
+    name_to_object = world.name_to_object
 
+    controllers = {
+        'back_right_stove': 'knob_joint_1',
+        'back_left_stove': 'knob_joint_3',
+        'front_left_stove': 'knob_joint_4',
+    }
+    for k, v in controllers.items():
+        world.add_joints_by_keyword('oven', v, 'knob')
+        world.add_to_cat(name_to_body(k), 'HeatingSurface')
+        name_to_object(v).add_controlled(name_to_body(k))
 
 def load_gripper_test_scene(world):
     surfaces = {
@@ -755,6 +770,8 @@ def load_feg_kitchen(world):
         'counter': {
             'front_left_stove': [],
             'front_right_stove': ['BraiserBody'],
+            # 'back_left_stove': [],
+            # 'back_right_stove': [],
             'hitman_tmp': [],
             'indigo_tmp': ['BraiserLid', 'MeatTurkeyLeg', 'VeggieCabbage'],  ##
         },
@@ -789,6 +806,7 @@ def load_feg_kitchen(world):
     floor = load_floor_plan(world, plan_name='kitchen_v3.svg', surfaces=surfaces, spaces=spaces)
     world.remove_object(floor)
     load_kitchen_mechanism(world)
+    # load_kitchen_mechanism_stove(world)
 
     cabbage = world.name_to_body('cabbage')
     chicken = world.name_to_body('turkey')
@@ -803,4 +821,4 @@ def load_feg_kitchen(world):
     world.put_on_surface(lid, 'indigo_tmp')
 
     ## for debug
-    # world.add_to_cat(cabbage, 'cleaned')g
+    world.add_to_cat(chicken, 'cleaned')

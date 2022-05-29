@@ -6,7 +6,8 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
     all_between, get_name, dump_link, dump_joint, dump_body, PoseSaver, get_color, GREEN, unit_pose, \
     add_text, AABB, Point, Euler, PI, add_line, YELLOW, BLACK, remove_handles, get_com_pose, Pose, invert, \
     stable_z, get_joint_descendants, get_link_children, get_joint_info, get_links, link_from_name, set_renderer, \
-    get_min_limit, get_max_limit, get_link_parent, LockRenderer, HideOutput, pairwise_collisions, get_bodies
+    get_min_limit, get_max_limit, get_link_parent, LockRenderer, HideOutput, pairwise_collisions, get_bodies, \
+    remove_debug
 from pybullet_tools.bullet_utils import BASE_LINK
 import numpy as np
 import pybullet as p
@@ -243,11 +244,14 @@ class Object(Index):
         self.handles = []
     def add_text(self, text):
         if self.text_handle != None:
-            p.removeUserDebugItem(self.text_handle)
+            # p.removeUserDebugItem(self.text_handle)
+            remove_debug(self.text_handle)
             self.text += '_'
         self.text += text
-        p.addUserDebugText(self.text, textPosition=(0, 0, .5), textColorRGB=(1, 0, 0),  # textSize=1,
-                           lifeTime=0, parentObjectUniqueId=self.body)
+        # self.text_handle = p.addUserDebugText(self.text, textPosition=(0, 0, .5), textColorRGB=(1, 0, 0),  # textSize=1,
+        #                    lifeTime=0, parentObjectUniqueId=self.body, parentLinkIndex=-1)
+        self.text_handle = add_text(self.text, position=(0, 0, .5), color=(1, 0, 0),
+                           lifetime=0, parent=self.body)
     def is_active(self):
         return self.body is not None
     def remove(self): # TODO: overload del

@@ -24,7 +24,7 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     stable_z, Pose, Point, create_box, load_model, get_joints, set_joint_position, BROWN, Euler, PI, \
     set_camera_pose, TAN, RGBA, sample_aabb, get_min_limit, get_max_limit, get_joint_position, get_joint_name, \
     euler_from_quat, get_client, JOINT_TYPES, get_joint_type, get_link_pose, get_closest_points, \
-    body_collision, is_placed_on_aabb, joint_from_name, body_from_end_effector, flatten_links, \
+    body_collision, is_placed_on_aabb, joint_from_name, body_from_end_effector, flatten_links, get_aabb_volume, \
     get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, Point, get_camera_matrix, \
     YELLOW, add_line, draw_point, RED, BROWN, BLACK, BLUE, GREY, remove_handles, apply_affine, vertices_from_rigid, \
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer
@@ -375,18 +375,25 @@ def sample_obj_on_body_link_surface(obj, body, link, scales=OBJ_SCALES, PLACEMEN
     else:
         maybe = obj
     trial = 0
-    while not aabb_contains_aabb(aabb2d_from_aabb(get_aabb(maybe)), aabb2d_from_aabb(aabb)):
+
+    ## if surface smaller than object, just put in center
+    if get_aabb_volume(aabb2d_from_aabb(get_aabb(maybe))) > get_aabb_volume(aabb2d_from_aabb(aabb)):
         x, y, z, yaw = sample_pose(obj, aabb, get_aabb(maybe))
-        if isinstance(obj, str):
-            remove_body(maybe)
-            maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), scale=scales[obj],
-                               maybe=True)
-        else:
-            pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
-            set_pose(maybe, pose)
-        # print(f'sampling surface for {body}-{link}', nice(aabb2d_from_aabb(aabb)))
-        trial += 1
-        if trial > max_trial: break
+        x, y = get_aabb_center(aabb2d_from_aabb(aabb))
+
+    else:
+        while not aabb_contains_aabb(aabb2d_from_aabb(get_aabb(maybe)), aabb2d_from_aabb(aabb)):
+            x, y, z, yaw = sample_pose(obj, aabb, get_aabb(maybe))
+            if isinstance(obj, str):
+                remove_body(maybe)
+                maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), scale=scales[obj],
+                                   maybe=True)
+            else:
+                pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
+                set_pose(maybe, pose)
+            # print(f'sampling surface for {body}-{link}', nice(aabb2d_from_aabb(aabb)))
+            trial += 1
+            if trial > max_trial: break
 
     if isinstance(obj, str):
         remove_body(maybe)

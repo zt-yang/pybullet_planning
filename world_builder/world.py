@@ -449,34 +449,39 @@ class World(object):
         surface = surface_obj.name
 
         surface_obj.place_obj(obj, max_trial=1)
-        world_to_surface = surface_obj.get_pose()
 
+        ## ----------- rules of locate specific objects
+        world_to_surface = surface_obj.get_pose()
         point, quat = obj.get_pose()
-        x,y,z = point
-        ## hack to be closer to edge
-        if 'shelf' in surface:
-            surface_to_obj = ((-0.2, 0, -0.2), (0, 0, 1, 0))
-            (a, b, _), _ = multiply(world_to_surface, surface_to_obj)
-            obj.set_pose(((a, b, z), quat))
-            # obj.set_pose(((1, 4.4, z), quat))
-            # obj.set_pose(((1.6, 4.5, z), quat)) ## vertical orientation
-        elif 'braiser_bottom' in surface: ## for testing
-            (a, b, c), _ = world_to_surface
-            obj.set_pose(((0.55, b, z), (0, 0, 0.36488663206619243, 0.9310519565198234)))
-        elif 'braiser' in surface:
+        x, y, z = point
+        if 'faucet_platform' in surface:
             (a, b, c), quat = world_to_surface
-            obj.set_pose(((a, b, z), quat))
-        elif 'faucet_platform' in surface:
-            (a, b, c), quat = world_to_surface
-            obj.set_pose(((a-0.2, b, z), quat))
-        elif 'front_' in surface and '_stove' in surface:
-            obj.set_pose(((0.55, y, z), quat))
-        elif 'hitman_tmp' in surface: ## microwave or toaster
-            quat = (0, 0, 1, 0) ## facing out
-            obj.set_pose(((0.4, 6.4, z), quat))
-        elif 'tmp' in surface: ## egg
-            if y > 9: y = 8.9
-            obj.set_pose(((0.7, y, z), quat))
+            obj.set_pose(((a - 0.2, b, z), quat))
+
+        ## ---------- reachability hacks for PR2
+        if False and 'pr2' in self.robot.name:
+
+            ## hack to be closer to edge
+            if 'shelf' in surface:
+                surface_to_obj = ((-0.2, 0, -0.2), (0, 0, 1, 0))
+                (a, b, _), _ = multiply(world_to_surface, surface_to_obj)
+                obj.set_pose(((a, b, z), quat))
+                # obj.set_pose(((1, 4.4, z), quat))
+                # obj.set_pose(((1.6, 4.5, z), quat)) ## vertical orientation
+            elif 'braiser_bottom' in surface: ## for testing
+                (a, b, c), _ = world_to_surface
+                obj.set_pose(((0.55, b, z), (0, 0, 0.36488663206619243, 0.9310519565198234)))
+            elif 'braiser' in surface:
+                (a, b, c), quat = world_to_surface
+                obj.set_pose(((a, b, z), quat))
+            elif 'front_' in surface and '_stove' in surface:
+                obj.set_pose(((0.55, y, z), quat))
+            elif 'hitman_tmp' in surface: ## microwave or toaster
+                quat = (0, 0, 1, 0) ## facing out
+                obj.set_pose(((0.4, 6.4, z), quat))
+            elif 'tmp' in surface: ## egg
+                if y > 9: y = 8.9
+                obj.set_pose(((0.7, y, z), quat))
 
         if OAO: ## one and only
             self.remove_body_from_planning(self.name_to_body(surface))
