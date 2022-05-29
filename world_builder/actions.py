@@ -7,7 +7,7 @@ from pybullet_tools.bullet_utils import clip_delta, multiply2d, is_above, nice, 
     draw_pose3d_path
 from pybullet_tools.pr2_streams import Position
 
-from pybullet_tools.utils import str_from_object, get_closest_points, INF, create_attachment, wait_if_gui, \
+from pybullet_planning.pybullet_tools.utils import str_from_object, get_closest_points, INF, create_attachment, wait_if_gui, \
     get_aabb, get_joint_position, get_joint_name, get_link_pose, link_from_name, PI, Pose, Euler, \
     get_extend_fn, get_joint_positions, set_joint_positions, get_max_limit, get_pose, set_pose, set_color, \
     remove_body, create_cylinder, set_all_static, wait_for_duration, remove_handles, set_renderer
@@ -370,7 +370,7 @@ class CreateCylinderEvent(Action):
         objects = state.objects
         if self.body == None:
             self.body = create_cylinder(self.radius, self.height, color=self.color)
-            objects.append(self.body)
+            if self.body not in objects: objects.append(self.body)
             set_pose(self.body, self.pose)
             set_all_static()
             print(f'    bullet.actions.CreateCylinderEvent | {self.body} at {nice(self.pose)}')
@@ -482,6 +482,9 @@ def get_primitive_actions(action, world, teleport=False):
             for i in range(len(at)):
                 new_commands.extend([MoveBaseAction(bt[i]), MoveArmAction(at[i])])
 
+        ## for controlled event
+        new_commands += world.get_events(o)
+
     elif 'move_base' in name or 'pull_' in name:
         if 'move_base' in name:
             q1, q2, t = args[:3]
@@ -503,10 +506,10 @@ def get_primitive_actions(action, world, teleport=False):
         t = get_traj(t)
         new_commands = t
 
-    elif name == 'turn_knob':
-        a, o, p1, p2, g, q, aq1, aq2, t = args
-        t = get_traj(t)
-        new_commands = t + world.get_events(o)
+    # elif name == 'turn_knob':
+    #     a, o, p1, p2, g, q, aq1, aq2, t = args
+    #     t = get_traj(t)
+    #     new_commands = t + world.get_events(o)
 
     ## ------------------------------------
     ##    variates of pick

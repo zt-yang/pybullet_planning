@@ -784,7 +784,7 @@ class WorldSaver(Saver):
         if bodies is None:
             bodies = get_bodies()
         self.bodies = bodies
-        self.body_savers = [BodySaver(body) for body in self.bodies]
+        self.body_savers = [BodySaver(body) for body in self.bodies if body in get_bodies()]
         # TODO: add/remove new bodies
         # TODO: save the camera pose
 

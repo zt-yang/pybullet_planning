@@ -801,3 +801,6 @@ def load_feg_kitchen(world):
     lid = world.name_to_body('lid')
     world.open_joint_by_name('fridge_door', pstn=1.2)
     world.put_on_surface(lid, 'indigo_tmp')
+
+    ## for debug
+    # world.add_to_cat(cabbage, 'cleaned')g

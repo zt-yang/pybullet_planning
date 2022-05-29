@@ -644,7 +644,7 @@ class State(object):
         # TODO: make confs and poses state variables
         #robot_conf = self.robot.get_positions() if include_conf else None
         robot_conf = BodySaver(self.robot) if include_conf else None # TODO: unknown base but known arms
-        obj_poses = {obj: get_pose(obj) for obj in self.objects} if include_poses else None
+        obj_poses = {obj: get_pose(obj) for obj in self.objects if obj in get_bodies()} if include_poses else None
         facts = list(self.facts) if include_facts else None
         variables = dict(self.variables) if include_variables else None
         image = None  ##self.camera_observation(**kwargs)
