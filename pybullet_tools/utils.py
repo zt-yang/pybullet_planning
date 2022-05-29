@@ -1029,7 +1029,7 @@ def wait_for_interrupt(max_time=np.inf):
     except KeyboardInterrupt:
         pass
     finally:
-        print()
+        print(f'wait_for_interrupt(max_time={max_time})')
 
 def set_preview(enable):
     # lightPosition, shadowMapResolution, shadowMapWorldSize
@@ -1386,12 +1386,12 @@ def save_image(filename, rgba):
 def get_projection_matrix(width, height, vertical_fov, near, far):
     """
     OpenGL projection matrix
-    :param width: 
-    :param height: 
+    :param width:
+    :param height:
     :param vertical_fov: vertical field of view in radians
-    :param near: 
-    :param far: 
-    :return: 
+    :param near:
+    :param far:
+    :return:
     """
     # http://ksimek.github.io/2013/08/13/intrinsic/
     # http://www.songho.ca/opengl/gl_projectionmatrix.html
@@ -1457,21 +1457,21 @@ def get_image(camera_pos, target_pos, width=640, height=480, vertical_fov=60.0, 
         rgb = np.reshape(rgb, [height, width, -1]) # 4
         d = np.reshape(d, [height, width])
         seg = np.reshape(seg, [height, width])
-    
+
     depth = far * near / (far - (far - near) * d)
     # https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/examples/pointCloudFromCameraImage.py
     # https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/examples/getCameraImageTest.py
     segmented = None
     if segment:
         segmented = extract_segmented(seg)
-        
+
     camera_tform = np.reshape(view_matrix, [4, 4])
     camera_tform[:3, 3] = camera_pos
     view_pose = multiply(pose_from_tform(camera_tform), Pose(euler=Euler(roll=PI)))
 
     focal_length = get_focal_lengths(height, vertical_fov) # TODO: horizontal_fov
     camera_matrix = get_camera_matrix(width, height, focal_length)
-    
+
     return CameraImage(rgb, depth, segmented, view_pose, camera_matrix)
 
 def get_image_at_pose(camera_pose, camera_matrix, far=5.0, **kwargs):
@@ -1527,8 +1527,6 @@ def invert(pose):
 
 def multiply(*poses):
     pose = poses[0]
-    if isinstance(pose, float):
-        print()
     for next_pose in poses[1:]:
         pose = p.multiplyTransforms(pose[0], pose[1], *next_pose)
     return pose
@@ -1685,7 +1683,7 @@ def quat_angle_between(quat0, quat1):
     # q1 = unit_vector(quat1[:4])
     # d = clip(np.dot(q0, q1), min_value=-1., max_value=+1.)
     # angle = math.acos(d)
-    
+
     # TODO: angle_between
     delta = p.getDifferenceQuaternion(quat0, quat1)
     d = clip(delta[-1], min_value=-1., max_value=1.)
@@ -3439,7 +3437,17 @@ def any_link_pair_collision(body1, links1, body2, links2=None, **kwargs):
 link_pairs_collision = any_link_pair_collision
 
 def body_collision(body1, body2, **kwargs):
-    return len(get_closest_points(body1, body2, **kwargs)) != 0
+    results = get_closest_points(body1, body2, **kwargs)
+
+    ## YANG: debugging
+    from pybullet_tools.bullet_utils import nice, set_camera_target_body
+    # handles = []
+    # for collision_info in results:
+    #     handles.extend(draw_collision_info(collision_info, color=YELLOW))
+    # remove_handles(handles)
+    # print(f'utils.body_collision({body1}, {body2}, {kwargs}) | ', [nice(r.contactDistance) for r in results])
+
+    return len(results) != 0
 
 def pairwise_collision(body1, body2, **kwargs):
     if isinstance(body1, tuple) or isinstance(body2, tuple):

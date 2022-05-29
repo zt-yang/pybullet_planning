@@ -8,7 +8,7 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
     stable_z, get_joint_descendants, get_link_children, get_joint_info, get_links, link_from_name, set_renderer, \
     get_min_limit, get_max_limit, get_link_parent, LockRenderer, HideOutput, pairwise_collisions, get_bodies, \
     remove_debug
-from pybullet_tools.bullet_utils import BASE_LINK
+from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body
 import numpy as np
 import pybullet as p
 
@@ -106,6 +106,11 @@ class Object(Index):
         if obj not in self.supported_objects:
             self.supported_objects.append(obj)
 
+    def attach_obj(self, obj):
+        from pybullet_tools.bullet_utils import create_attachment
+        self.world.ATTACHMENTS[obj] = create_attachment(self, self.link, obj, OBJ=True)
+        self.support_obj(obj)
+
     def place_new_obj(self, obj_name, max_trial=8):
         from pybullet_tools.bullet_utils import sample_obj_on_body_link_surface
         set_renderer(False)
@@ -135,13 +140,13 @@ class Object(Index):
                 z = stable_z(obj, self.body, self.link)
                 obj.set_pose(Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw)))
                 if pairwise_collisions(obj, obstacles):
-                    print(f'entities.Object.place_obj({obj}, xyzyaw={xyzyaw}, max_trial={max_trial}) '
-                          f'| collided with {obstacles}! try again')
+                    # print(f'entities.Object.place_obj({obj}, xyzyaw={xyzyaw}, max_trial={max_trial}) '
+                    #       f'| collided with {obstacles}! try again')
                     done = False
                     continue
                 done = True
 
-        print(f'placed {obj.name} on {self.__class__.__name__.capitalize()} {self.name} at point {nice((x, y, z))}')
+        print(f'entities.place_obj.placed {obj.name} on {self.__class__.__name__.capitalize()} {self.name} at point {nice((x, y, z))}')
         self.support_obj(obj)
         set_renderer(True)
         return obj
@@ -361,18 +366,18 @@ class Space(Region):
         self.name = get_link_name(body, link)
         self.objects_inside = []
 
-    def place_and_attach(self, obj):
+    def include_and_attach(self, obj):
         from pybullet_tools.bullet_utils import create_attachment
         self.objects_inside.append(obj)
         attachment = create_attachment(self, self.link, obj, OBJ=True)
         self.world.ATTACHMENTS[obj] = attachment
 
-    def place_new_obj(self, obj_name, max_trial=8):
+    def place_new_obj(self, obj_name, max_trial=8, verbose=False):
         from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, open_joint
         self.world.open_doors_drawers(self.body)
-        body = sample_obj_in_body_link_space(obj_name, self.body, self.link)
+        body = sample_obj_in_body_link_space(obj_name, self.body, self.link, verbose=verbose)
         obj = self.world.add_object(Object(body, category=obj_name))
-        self.place_and_attach(obj)
+        self.include_and_attach(obj)
         self.world.close_doors_drawers(self.body)
         return obj
 
@@ -402,8 +407,8 @@ class Space(Region):
                     continue
                 done = True
 
-        print(f'placed {obj.name} in Space {self.name} at point {nice((x, y, z))}')
-        self.place_and_attach(obj)
+        print(f'entities.place_obj.placed {obj.name} in Space {self.name} at point {nice((x, y, z))}')
+        self.include_and_attach(obj)
         return obj
 
 #######################################################

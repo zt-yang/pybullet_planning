@@ -463,6 +463,8 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
             init += ff
         elif test == 'test_at_reachable_pose':
             goals = test_at_reachable_pose(init, name)
+        elif test == 'test_new_wconf':
+            goals = test_new_wconf(init, name)
         else:
             print('\n\n\npr2_agent.pddlstream_from_state_goal | didnt implement', goals)
             sys.exit()
@@ -873,3 +875,14 @@ def test_sample_wconf(state, init, o):
 def test_at_reachable_pose(init, o):
     p = [f[2] for f in init if f[0].lower() == "AtPose".lower() and f[1] == o][0]
     return [('AtReachablePose', o, p)]
+
+def test_new_wconf(init, j):
+    wconf = [w[1] for w in init if w[0].lower() == 'atwconf']
+    new_wconfs = [w[1] for w in init if w[0].lower() == 'wconf' and w[1] not in wconf]
+    for new_wconf in new_wconfs:
+        if new_wconf.positions[j].value > 0:
+            new_pstn = [f[3] for f in init if f[0].lower() == 'newwconfpst' and f[2] == j and f[4] == new_wconf][0]
+            # return [('AtPosition', j, new_pstn), ('InWConf', new_wconf)]
+            # return [('AtPosition', j, new_pstn)]
+            return [('InWConf', new_wconf)]
+    sys.exit()

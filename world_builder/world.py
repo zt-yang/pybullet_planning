@@ -10,7 +10,7 @@ from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, g
     CameraImage, get_joint_positions, euler_from_quat, get_link_name, get_joint_position, \
     BodySaver, set_pose, INF, add_parameter, irange, wait_for_duration, get_bodies, remove_body, \
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
-    get_joints, multiply, invert, is_movable, remove_handles
+    get_joints, multiply, invert, is_movable, remove_handles, set_renderer
 from pybullet_tools.pr2_streams import get_position_gen, \
     Position, get_handle_grasp_gen, LinkPose, pr2_grasp, WConf
 from pybullet_tools.general_streams import get_stable_list_gen, get_grasp_list_gen, get_contain_list_gen
@@ -46,6 +46,7 @@ class World(object):
         self.SKIP_JOINTS = False
         self.cameras = []
         self.floorplan = None  ## for saving LISDF
+        self.init = []
 
         ## for visualization
         self.handles = []
@@ -177,6 +178,9 @@ class World(object):
         object.world = self
         return object
 
+    def add_to_init(self, fact):
+        self.init.append(fact)
+
     def add_to_cat(self, body, cat):
         object = self.get_object(body)
 
@@ -214,8 +218,8 @@ class World(object):
                 self.add_to_cat(knob, 'joint')
         return joints
 
-    def get_doors_drawers(self, body):
-        if self.SKIP_JOINTS:
+    def get_doors_drawers(self, body, SKIP=True):
+        if self.SKIP_JOINTS:  ## SKIP and
             return [], []
         obj = self.BODY_TO_OBJECT[body]
         if obj.doors != None:
@@ -393,46 +397,69 @@ class World(object):
             if b in self.BODY_TO_OBJECT:
                 filtered_bodies += [b]
             else:
-                print(f'world.cat_to_bodies | category {cat} found {b}')
+                print(f'   world.cat_to_bodies | category {cat} found {b}')
         return filtered_bodies
 
     def cat_to_objects(self, cat):
         bodies = self.cat_to_bodies(cat)
         return [self.BODY_TO_OBJECT[b] for b in bodies]
 
+    def assign_attachment(self, body, tag=None):
+        title = f'   world.assign_attachment({body}) | '
+        if tag is not None:
+            title += f'tag = {tag} | '
+        for child, attach in self.ATTACHMENTS.items():
+            if attach.parent.body == body:
+                pose = get_pose(child)
+                attach.assign()
+                if pose != get_pose(child):  ## attachment made a difference
+                    print(title, attach)
+
+    def toggle_joint(self, body, joint):
+        toggle_joint(body, joint)
+        self.assign_attachment(body)
+
+    def close_joint(self, body, joint):
+        close_joint(body, joint)
+        self.assign_attachment(body)
+
+    def open_joint(self, body, joint, extent=1, pstn=None):
+        open_joint(body, joint, extent=extent, pstn=pstn)
+        self.assign_attachment(body)
+
     def open_doors_drawers(self, body):
-        doors, drawers = self.get_doors_drawers(body)
+        doors, drawers = self.get_doors_drawers(body, SKIP=False)
         for joint in doors + drawers:
-            open_joint(body, joint, extent=1)
+            self.open_joint(body, joint, extent=1)
 
     def close_doors_drawers(self, body):
-        doors, drawers = self.get_doors_drawers(body)
+        doors, drawers = self.get_doors_drawers(body, SKIP=False)
         for joint in doors + drawers:
-            close_joint(body, joint)
+            self.close_joint(body, joint)
 
     def close_all_doors_drawers(self):
         doors = [(o.body, o.joint) for o in self.cat_to_objects('door')]
         drawers = [(o.body, o.joint) for o in self.cat_to_objects('drawer')]
         for body, joint in doors + drawers:
-            close_joint(body, joint)
+            self.close_joint(body, joint)
 
     def open_all_doors_drawers(self):
         doors = [(o.body, o.joint) for o in self.cat_to_objects('door')]
         drawers = [(o.body, o.joint) for o in self.cat_to_objects('drawer')]
         for body, joint in doors + drawers:
-            open_joint(body, joint)
+            self.open_joint(body, joint)
 
     def open_joint_by_name(self, name, pstn=None):
         body, joint = self.name_to_body(name)
-        open_joint(body, joint, pstn=pstn)
+        self.open_joint(body, joint, pstn=pstn)
 
     def close_joint_by_name(self, name):
         body, joint = self.name_to_body(name)
-        close_joint(body, joint)
+        self.close_joint(body, joint)
 
     def toggle_joint_by_name(self, name):
         body, joint = self.name_to_body(name)
-        toggle_joint(body, joint)
+        self.toggle_joint(body, joint)
 
     def get_object(self, obj):
         if isinstance(obj, Object):
@@ -788,8 +815,9 @@ class State(object):
         print('world.get_facts | initial wconf', wconf.printout())
 
         ## ---- add multiple world conf for joints
-        from pybullet_tools.general_streams import sample_joint_position_open_list_gen
+        from pybullet_tools.general_streams import sample_joint_position_open_list_gen, get_pose_from_attachment
         joint_opener = sample_joint_position_open_list_gen(self, num_samples=1)
+        pose_generator = get_pose_from_attachment(self)
         for body in cat_to_bodies('drawer') + cat_to_bodies('door'):
             pstn = [f[2] for f in init if f[0] == 'AtPosition' and f[1] == body][0]
             pstn_open = joint_opener(body, pstn)[0][0]
@@ -797,8 +825,20 @@ class State(object):
                 new_positions = copy.deepcopy(wconf.positions)
                 new_positions[body] = pstn_open
                 new_wconf = WConf({}, new_positions)
-                init += [('WConf', wconf), ('NewWConfPst', wconf, body, pstn, new_wconf)]
+                init += [('WConf', new_wconf), ('Position', body, pstn_open),
+                         ('IsOpenedPosition', body, pstn_open),
+                         ('NewWConfPst', wconf, body, pstn_open, new_wconf)]
                 print('world.get_facts | possible wconf', new_wconf.printout())
+
+                for child, attach in self.world.ATTACHMENTS.items():
+                    if attach.parent.body == body[0]:
+                        result = pose_generator(child, new_wconf)
+                        if result != None:
+                            pose = result[0]
+                            init += [('Pose', child, pose), ('NewPoseFromAttachment', child, pose, new_wconf)]
+        wconf.assign()
+        for body in set([b[0] for b in wconf.positions]):
+            self.world.assign_attachment(body, tag='resume after pre-processing')
 
         ## --- for testing IK
         # lid = self.world.name_to_body('braiserlid')
@@ -810,6 +850,9 @@ class State(object):
         # egg = self.world.name_to_body('egg')
         # fridge = self.world.name_to_body('fridge')
         # init += [('MagicalObj1', egg), ('MagicalObj2', fridge)]
+
+        ## ---- for testing attachment
+        init += [f for f in self.world.init if f not in init]
 
         return init
 

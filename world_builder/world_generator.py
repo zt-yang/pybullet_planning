@@ -293,6 +293,8 @@ def clean_domain_pddl(pddl_str, all_pred_names):
 
 
 def save_to_exp_folder(state, init, goal, out_path):
+    if isinstance(goal, tuple): return  ## debug problems instead of real problems
+
     floorplan = state.world.floorplan
     world_name = 'experiment'
     out_path = out_path.replace('.mp4', '')
@@ -457,7 +459,9 @@ def generate_problem_pddl(state, facts, goals, ## pddlstream_problem,
     objects = [o.name for o in world.BODY_TO_OBJECT.values()]
     objects.extend(world.robot.joint_groups)
     objects_pddl = '\n\t'.join(sorted(objects))
+
     goal_pddl = '\n\t'.join([get_pddl_from_list(g, world) for g in sorted(goals)]).lower()
+
     problem_pddl = PDDL_STR.format(
         objects_pddl=objects_pddl, init_pddl=init_pddl, goal_pddl=goal_pddl,
         world_name=world_name, domain_name=domain_name

@@ -364,6 +364,21 @@ def get_update_wconf_pst_gen(verbose=False):
         return (w2,)
     return fn
 
+def get_pose_from_attachment(problem):
+    from pybullet_tools.pr2_primitives import Pose
+    world = problem.world
+    def fn(o, w):
+        old_pose = get_pose(o)
+        w.assign()
+        for body in set([b[0] for b in w.positions]):
+            world.assign_attachment(body, tag='during pre-processing')
+
+        if old_pose != get_pose(o):
+            p = Pose(o, get_pose(o))
+            return (p,)
+        return None
+    return fn
+
 def get_sample_wconf_list_gen(problem, verbose=True):
     from pybullet_tools.flying_gripper_utils import get_reachable_test
     title = 'general_streams.get_sample_wconf_gen'

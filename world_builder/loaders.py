@@ -338,6 +338,9 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                 'faucet_platform': ['Faucet']
             }
         }
+    spaces = {k.lower(): v for k, v in spaces.items()}
+    surfaces = {k.lower(): v for k, v in surfaces.items()}
+    regions = list(surfaces.keys()) + list(spaces.keys())
 
     ## read xml file
     objects, X_OFFSET, Y_OFFSET, SCALING, FLOOR_X_MIN, FLOOR_X_MAX, FLOOR_Y_MIN, FLOOR_Y_MAX = read_xml(plan_name, asset_path=asset_path)
@@ -355,7 +358,7 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
     #######################################################
     ## add each static object
     for name, o in objects.items():
-        cat = o['category']
+        cat = o['category'].lower()
         x = (o['x'] - X_OFFSET) / SCALING
         y = (o['y'] - Y_OFFSET) / SCALING
         w = o['w'] / SCALING
@@ -384,14 +387,15 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
         if not LOAD_MOVEABLES: continue
 
         ## PLACE UTENCILS & INGREDIENTS
-        if cat in surfaces: ##('counter', 'Fridge'):  ## , 'DishWasher'
+        # if cat.lower() == 'dishwasher':
+        #     print("cat.lower() == 'dishwasher'")
+
+        if cat in regions:
 
             if DEBUG:
                 world.open_doors_drawers(body)
                 set_camera_target_body(body)
 
-            # if cat == 'DishWasher':
-            #     print('test joint')
             for link in get_links(body):
                 # dump_link(body, link)
                 # set_color(body, YELLOW, link)
@@ -411,13 +415,12 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                     space = Space(body, link=link)
                     world.add_object(space)
                     for o in spaces[cat][link_name]:
-                        space.place_new_obj(o)
+                        space.place_new_obj(o, verbose=cat.lower() == 'dishwasher') ##
                         # sample_obj_in_body_link_space(obj, body, link)
 
                         # print(f'      pose: {nice(get_link_pose(body, link))} | aabb: {get_aabb(body, link)}')
             if DEBUG:
                 world.close_doors_drawers(body)
-            print()
 
     world.close_all_doors_drawers()
     for surface in ['faucet_platform', 'shelf_top']:
@@ -776,7 +779,7 @@ def load_feg_kitchen(world):
             'indigo_tmp': ['BraiserLid', 'MeatTurkeyLeg', 'VeggieCabbage'],  ##
         },
         'Fridge': {
-            'shelf_top': ['MilkBottle'],  ## 'Egg', 'Egg',
+            'shelf_top': [],  ## 'Egg', 'Egg', 'MilkBottle'
             # 'shelf_bottom': [  ## for recording many objects
             #     'VeggieCabbage', ## 'MeatTurkeyLeg',
             #     'VeggieArtichoke',
@@ -790,6 +793,9 @@ def load_feg_kitchen(world):
         },
         'Basin': {
             'faucet_platform': ['Faucet']
+        },
+        'dishwasher': {
+            "surface_plate_left": ['VeggieZucchini']
         }
     }
     spaces = {
@@ -801,7 +807,7 @@ def load_feg_kitchen(world):
             # 'indigo_drawer_top': ['Fork'],  ## 'Fork', 'Knife'
             # 'indigo_drawer_bottom': ['Fork', 'Knife'],
             # 'indigo_tmp': ['Pot']
-        },
+        }
     }
     floor = load_floor_plan(world, plan_name='kitchen_v3.svg', surfaces=surfaces, spaces=spaces)
     world.remove_object(floor)
@@ -820,5 +826,9 @@ def load_feg_kitchen(world):
     world.open_joint_by_name('fridge_door', pstn=1.2)
     world.put_on_surface(lid, 'indigo_tmp')
 
-    ## for debug
     world.add_to_cat(chicken, 'cleaned')
+
+    # world.name_to_object('surface_plate_left').place_new_object(lid, 'indigo_tmp')
+    obj = world.name_to_object('zucchini')
+    world.name_to_object('surface_plate_left').attach_obj(obj)
+    world.add_to_init(['AtAttachment', obj.body, world.name_to_body('dishwasher_door')])

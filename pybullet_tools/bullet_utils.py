@@ -333,7 +333,7 @@ OBJ_SCALES = {
     'MilkBottle': 0.2, 'Toaster': 0.2, 'Bucket': 0.7, 'Cart': 1.1,
     'PotBody': 0.3, 'BraiserBody': 0.37, 'BraiserLid': 0.37, 'Faucet': 0.35,
     'VeggieCabbage': 0.005, 'MeatTurkeyLeg': 0.0007, 'VeggieTomato': 0.005,
-    'VeggieZucchini': 0.016, 'VeggiePotato': 0.015, 'VeggieCauliflower': 0.008,
+    'VeggieZucchini': 0.01, 'VeggiePotato': 0.015, 'VeggieCauliflower': 0.008,
     'VeggieGreenPepper': 0.0003, 'VeggieArtichoke': 0.017, 'MeatChicken': 0.0008,
 }
 OBJ_SCALES = {k.lower(): v * 0.7 for k, v in OBJ_SCALES.items()}
@@ -409,7 +409,8 @@ def sample_obj_on_body_link_surface(obj, body, link, scales=OBJ_SCALES, PLACEMEN
 def sample_obj_in_body_link_space(obj, body, link=None, scales=OBJ_SCALES,
                                   PLACEMENT_ONLY=False, XY_ONLY=False, verbose=False):
     set_renderer(verbose)
-    if verbose: print()
+    if verbose:
+        print('sample_obj_in_body_link_space | verbose')
 
     aabb = get_aabb(body, link)
     x, y, z, yaw = sample_pose(obj, aabb)
@@ -442,8 +443,14 @@ def sample_obj_in_body_link_space(obj, body, link=None, scales=OBJ_SCALES,
     def sample_maybe(body, maybe, pose, handles):
         (x, y, z, yaw) = pose
 
+        # remaining_trials = 10
         while not aabb_contains_aabb(get_aabb(maybe), aabb) or body_collision(body, maybe, link1=link):
+            # remaining_trials -= 1
+            # if remaining_trials < 0:
+            #     break
             maybe, (x, y, z, yaw), handles = sample_one(maybe, handles)
+            if verbose:
+                draw_points(body, link)
 
         if verbose:
             print(f'sampling space for {body}-{link} {nice(aabb)} : {obj} {nice(get_aabb(maybe))}', )
@@ -909,8 +916,7 @@ def fit_dimensions(body, body_pose=unit_pose()):
     aabb = aabb_from_points(vertices)
     return aabb, get_aabb_center(aabb), get_aabb_extent(aabb)
 
-def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False):
-
+def get_model_points(body, link=None, verbose=False):
     if link == None:
         body_pose = multiply(get_pose(body), Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2)))  ##
         links = get_links(body)
@@ -924,6 +930,22 @@ def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False):
     for link in links:
         new_vertices = apply_affine(unit_pose(), vertices_from_rigid(body, link))
         vertices.extend(new_vertices)
+    return body_pose, vertices
+
+def draw_points(body, link=None):
+    body_pose, vertices = get_model_points(body, link)
+    vertices = apply_affine(body_pose, vertices)
+    handles = []
+    num_vertices = 40
+    if len(vertices) > num_vertices:
+        gap = int(len(vertices)/num_vertices)
+        vertices = vertices[::gap]
+    for v in vertices:
+        handles.append(draw_point(v, size=0.02, color=RED))
+    return handles
+
+def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False):
+    body_pose, vertices = get_model_points(body, link=link, verbose=verbose)
     aabb = aabb_from_points(vertices)
     handles = draw_bounding_box(aabb, body_pose)
     if draw_centroid:
