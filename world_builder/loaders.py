@@ -797,4 +797,7 @@ def load_feg_kitchen(world):
         world.add_to_cat(ingredient, 'moveable')
     world.put_on_surface(cabbage, 'shelf_bottom')
     world.put_on_surface(chicken, 'indigo_tmp')
+
+    lid = world.name_to_body('lid')
     world.open_joint_by_name('fridge_door', pstn=1.2)
+    world.put_on_surface(lid, 'indigo_tmp')
