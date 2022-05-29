@@ -446,7 +446,7 @@ def get_grasp_list_gen(problem, collisions=False, randomize=True):
             grasps.extend(get_grasps('side', get_side_grasps(body, grasp_length=GRASP_LENGTH)))
         if 'hand' in grasp_types:
             from .bullet_utils import get_hand_grasps
-            grasps.extend(get_grasps('hand', get_hand_grasps(problem, body)))
+            grasps.extend(get_grasps('hand', get_hand_grasps(problem, body,  visualize=False, RETAIN_ALL=False)))
 
         if randomize:
             random.shuffle(grasps)

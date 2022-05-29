@@ -19,7 +19,7 @@ from .utils import create_box, set_base_values, set_point, set_pose, get_pose, G
     joint_from_name, get_joint_limits, irange, is_pose_close, CLIENT, set_all_color
 
 from pybullet_tools.pr2_primitives import Conf, Grasp, Trajectory, Commands, State
-from pybullet_tools.general_streams import Position, get_grasp_list_gen
+from pybullet_tools.general_streams import Position, get_grasp_list_gen, get_handle_link
 from pybullet_tools.bullet_utils import collided
 from .pr2_utils import DRAKE_PR2_URDF
 
@@ -391,24 +391,20 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         pst1.assign()
         q1.assign()
 
-        # arm_joints = get_arm_joints(robot, a)
-        # resolutions = 0.05 ** np.ones(len(arm_joints))
-        #
-        BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
-        joint_object = BODY_TO_OBJECT[o]
-        old_pose = get_link_pose(joint_object.body, joint_object.handle_link)
-        # tool_from_root = get_tool_from_root(robot, a)
+        # BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
+        # joint_object = BODY_TO_OBJECT[o]
+        # old_pose = get_link_pose(joint_object.body, joint_object.handle_link)
+        handle_link = get_handle_link(o)
+        old_pose = get_link_pose(o[0], handle_link)
+
+        # print(f'flying_gripper_utils.get_pull_door_handle_motion_gen | handle_link of body_joint {o} is {joint_object.handle_link}')
+
         if visualize:
             set_renderer(enable=True)
             gripper = robot.visualize_grasp(old_pose, g.value, verbose=verbose,
                                             width=g.grasp_width, body=g.body)
             set_camera_target_body(gripper, dx=0.2, dy=0, dz=1) ## look top down
             remove_body(gripper)
-        # gripper_before = multiply(old_pose, invert(g.value))  ## multiply(, tool_from_root)
-        # world_from_base = bconf_to_pose(bq1)
-        # gripper_from_base = multiply(invert(gripper_before), world_from_base)
-        # # print('gripper_before', nice(gripper_before))
-        # # print('invert(gripper_before)', nice(invert(gripper_before)))
 
         ## saving the mapping between robot bconf to object pst for execution
         mapping = {}
@@ -416,13 +412,13 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         mapping[rpose_rounded] = pst1.value
 
         path = []
-        q_after = Conf(q1.body, q1.joints, q1.values)
         for i in range(num_intervals):
             step_str = f"flying_gripper_utils.get_pull_door_handle_motion_gen | step {i}/{num_intervals}\t"
             value = (i + 1) / num_intervals * (pst2.value - pst1.value) + pst1.value
             pst_after = Position((pst1.body, pst1.joint), value)
             pst_after.assign()
-            new_pose = get_link_pose(joint_object.body, joint_object.handle_link)
+            # new_pose = get_link_pose(joint_object.body, joint_object.handle_link)
+            new_pose = get_link_pose(o[0], handle_link)
 
             ## somehow without mod_target, ik would fail
             mod_pose = Pose(euler=euler_from_quat(new_pose[1]))

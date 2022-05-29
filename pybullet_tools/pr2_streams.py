@@ -129,13 +129,14 @@ def get_handle_grasp_gen(problem, collisions=False, randomize=False, visualize=F
     def fn(body_joint):
         body, joint = body_joint
         handle_link = get_handle_link(body_joint)
+        # print(f'{title} handle_link of body_joint {body_joint} is {handle_link}')
 
         g_type = 'top'
         if robot.name.startswith('feg'):
             from bullet_utils import get_hand_grasps
             arm = 'hand'
             grasps = get_hand_grasps(problem, body, link=handle_link, HANDLE_FILTER=True,
-                        visualize=False, RETAIN_ALL=False, LENGTH_VARIANTS=False, verbose=verbose)
+                        visualize=False, RETAIN_ALL=False, LENGTH_VARIANTS=True, verbose=verbose)
 
         elif robot.name.startswith('pr2'):
             arm = 'left'

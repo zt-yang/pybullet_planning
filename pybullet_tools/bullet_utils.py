@@ -1022,7 +1022,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
         return []
     return grasps  ##[:1]
 
-def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=True,
+def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False,
                         color=GREEN, min_num_pts=40, RETAIN_ALL=False, verbose=False):
     from pybullet_tools.flying_gripper_utils import get_cloned_se3_conf
     robot = world.robot
@@ -1037,8 +1037,9 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=True,
 
     if visualize: ## and not firstly: ## somtimes cameras blocked by robot, need to change dx, dy
         ## also helps slow down visualization of the sampling the testing process
-        set_camera_target_body(gripper_grasp, dx=0.3, dy=0.5, dz=0.2) ## oven
+        # set_camera_target_body(gripper_grasp, dx=0.3, dy=0.5, dz=0.2) ## oven
         # set_camera_target_body(gripper_grasp, dx=1, dy=0.5, dz=0.8) ## faucet
+        set_camera_target_body(gripper_grasp, dx=0.5, dy=-0.5, dz=0.5)  ## fridge shelf
 
     ## when gripper isn't closed, it shouldn't collide
     firstly = collided(gripper_grasp, obstacles, min_num_pts=min_num_pts,
