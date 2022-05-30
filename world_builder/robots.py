@@ -409,7 +409,7 @@ class FEGripper(RobotAPI):
         return g
 
     def get_approach_vector(self, arm, grasp_type):
-        return APPROACH_DISTANCE*get_unit_vector([0, 0, -1])
+        return APPROACH_DISTANCE/3 *get_unit_vector([0, 0, -1])
 
     def get_approach_pose(self, approach_vector, g):
         return multiply(g, (approach_vector, unit_quat()))

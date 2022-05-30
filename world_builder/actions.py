@@ -465,6 +465,9 @@ def get_primitive_actions(action, world, teleport=False):
 
     name, args = action
     if 'pull_door_handle' in name or 'pull_articulated_handle' in name:
+        if '_attachment' in name:
+            o3, p3, p4 = args[-3:]
+            args = args[:-3]
         if '_wconf' in name:
             args = args[:-2]
 

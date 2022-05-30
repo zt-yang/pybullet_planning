@@ -445,7 +445,7 @@ def get_cfree_approach_pose_test(problem, collisions=True):
 
 ##################################################
 
-def get_grasp_list_gen(problem, collisions=False, randomize=True):
+def get_grasp_list_gen(problem, collisions=False, randomize=True, visualize=False, RETAIN_ALL=False):
     robot = problem.robot
     grasp_types = robot.grasp_types
 
@@ -461,7 +461,7 @@ def get_grasp_list_gen(problem, collisions=False, randomize=True):
             grasps.extend(get_grasps('side', get_side_grasps(body, grasp_length=GRASP_LENGTH)))
         if 'hand' in grasp_types:
             from .bullet_utils import get_hand_grasps
-            grasps.extend(get_grasps('hand', get_hand_grasps(problem, body,  visualize=False, RETAIN_ALL=False)))
+            grasps.extend(get_grasps('hand', get_hand_grasps(problem, body, visualize=visualize, RETAIN_ALL=RETAIN_ALL)))
 
         if randomize:
             random.shuffle(grasps)

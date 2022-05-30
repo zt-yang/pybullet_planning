@@ -380,6 +380,8 @@ def sample_obj_on_body_link_surface(obj, body, link, scales=OBJ_SCALES, PLACEMEN
     if get_aabb_volume(aabb2d_from_aabb(get_aabb(maybe))) > get_aabb_volume(aabb2d_from_aabb(aabb)):
         x, y, z, yaw = sample_pose(obj, aabb, get_aabb(maybe))
         x, y = get_aabb_center(aabb2d_from_aabb(aabb))
+        pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
+        set_pose(maybe, pose)
 
     else:
         while not aabb_contains_aabb(aabb2d_from_aabb(get_aabb(maybe)), aabb2d_from_aabb(aabb)):
@@ -1068,7 +1070,9 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False,
         ## also helps slow down visualization of the sampling the testing process
         # set_camera_target_body(gripper_grasp, dx=0.3, dy=0.5, dz=0.2) ## oven
         # set_camera_target_body(gripper_grasp, dx=1, dy=0.5, dz=0.8) ## faucet
-        set_camera_target_body(gripper_grasp, dx=0.5, dy=-0.5, dz=0.5)  ## fridge shelf
+        # set_camera_target_body(gripper_grasp, dx=0.5, dy=-0.5, dz=0.5)  ## fridge shelf
+        # set_camera_target_body(gripper_grasp, dx=0.05, dy=-0.05, dz=0.5)  ## above dishwasher
+        set_camera_target_body(gripper_grasp, dx=0.05, dy=-0.05, dz=0.15)  ## inside dishwasher
 
     ## when gripper isn't closed, it shouldn't collide
     firstly = collided(gripper_grasp, obstacles, min_num_pts=min_num_pts,

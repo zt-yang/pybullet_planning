@@ -415,7 +415,7 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                     space = Space(body, link=link)
                     world.add_object(space)
                     for o in spaces[cat][link_name]:
-                        space.place_new_obj(o, verbose=cat.lower() == 'dishwasher') ##
+                        space.place_new_obj(o) ##, verbose=cat.lower() == 'dishwasher'
                         # sample_obj_in_body_link_space(obj, body, link)
 
                         # print(f'      pose: {nice(get_link_pose(body, link))} | aabb: {get_aabb(body, link)}')
@@ -795,7 +795,7 @@ def load_feg_kitchen(world):
             'faucet_platform': ['Faucet']
         },
         'dishwasher': {
-            "surface_plate_left": ['VeggieZucchini']
+            "surface_plate_left": ['VeggieTomato']  ##
         }
     }
     spaces = {
@@ -813,6 +813,7 @@ def load_feg_kitchen(world):
     world.remove_object(floor)
     load_kitchen_mechanism(world)
     # load_kitchen_mechanism_stove(world)
+    dishwasher_door = world.add_joints_by_keyword('dishwasher', 'dishwasher_door')[0]
 
     cabbage = world.name_to_body('cabbage')
     chicken = world.name_to_body('turkey')
@@ -829,6 +830,10 @@ def load_feg_kitchen(world):
     world.add_to_cat(chicken, 'cleaned')
 
     # world.name_to_object('surface_plate_left').place_new_object(lid, 'indigo_tmp')
-    obj = world.name_to_object('zucchini')
+
+    obj = world.name_to_object('tomato')
     world.name_to_object('surface_plate_left').attach_obj(obj)
-    world.add_to_init(['AtAttachment', obj.body, world.name_to_body('dishwasher_door')])
+    world.add_to_init(['ContainObj', obj.body])
+    world.add_to_init(['AtAttachment', obj.body, dishwasher_door])
+
+    return dishwasher_door
