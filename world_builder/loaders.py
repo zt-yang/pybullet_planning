@@ -25,7 +25,7 @@ from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, H
     get_link_pose, get_aabb, get_link_name, sample_aabb, aabb_contains_aabb, aabb2d_from_aabb, sample_placement, \
     aabb_overlap, get_links, get_collision_data, get_visual_data, link_from_name, body_collision, get_closest_points, \
     load_pybullet, FLOOR_URDF, get_aabb_center, AABB, INF, clip, aabb_union, get_aabb_center, Pose, Euler, get_box_geometry, \
-    get_aabb_extent, multiply, GREY, create_shape_array, create_body, STATIC_MASS, set_renderer
+    get_aabb_extent, multiply, GREY, create_shape_array, create_body, STATIC_MASS, set_renderer, quat_from_euler
 from pybullet_tools.bullet_utils import place_body, add_body, Pose2d, nice, OBJ_SCALES, OBJ_YAWS, \
     sample_obj_on_body_link_surface, sample_obj_in_body_link_space, set_camera_target_body, \
     open_joint, close_joint, set_camera_target_robot, summarize_joints, \
@@ -389,12 +389,15 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
         ## PLACE UTENCILS & INGREDIENTS
         # if cat.lower() == 'dishwasher':
         #     print("cat.lower() == 'dishwasher'")
+        #     DEBUG = True
+        # else:
+        #     DEBUG = False
 
         if cat in regions:
 
             if DEBUG:
-                world.open_doors_drawers(body)
-                set_camera_target_body(body)
+                world.open_doors_drawers(body, ADD_JOINT=False)
+                set_camera_target_body(body, dx=0.05, dy=0.05, dz=0.5)
 
             for link in get_links(body):
                 # dump_link(body, link)
@@ -416,9 +419,6 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                     world.add_object(space)
                     for o in spaces[cat][link_name]:
                         space.place_new_obj(o) ##, verbose=cat.lower() == 'dishwasher'
-                        # sample_obj_in_body_link_space(obj, body, link)
-
-                        # print(f'      pose: {nice(get_link_pose(body, link))} | aabb: {get_aabb(body, link)}')
             if DEBUG:
                 world.close_doors_drawers(body)
 
@@ -795,7 +795,8 @@ def load_feg_kitchen(world):
             'faucet_platform': ['Faucet']
         },
         'dishwasher': {
-            "surface_plate_left": ['VeggieTomato']  ##
+            "surface_plate_left": ['PlateFat'],  ## 'VeggieTomato'
+            # "surface_plate_right": ['PlateFlat']  ## two object attached to one joint is too much
         }
     }
     spaces = {
@@ -829,11 +830,29 @@ def load_feg_kitchen(world):
 
     world.add_to_cat(chicken, 'cleaned')
 
-    # world.name_to_object('surface_plate_left').place_new_object(lid, 'indigo_tmp')
+    ## ------- test placement with tomato
+    # obj = world.name_to_object('tomato')
+    # world.name_to_object('surface_plate_left').attach_obj(obj)
+    # world.add_to_init(['ContainObj', obj.body])
+    # world.add_to_init(['AtAttachment', obj.body, dishwasher_door])
 
-    obj = world.name_to_object('tomato')
+    world.open_joint_by_name('dishwasher_door')
+    obj = world.name_to_object('PlateFat')
+    obj.set_pose(((0.97, 6.23, 0.512), quat_from_euler((0, 0, math.pi))))
     world.name_to_object('surface_plate_left').attach_obj(obj)
+    world.add_to_cat(obj.body, 'moveable')
+    world.add_to_cat(obj.body, 'surface')
     world.add_to_init(['ContainObj', obj.body])
     world.add_to_init(['AtAttachment', obj.body, dishwasher_door])
+    world.close_joint_by_name('dishwasher_door')
+
+    ## ------- two object attached to one joint is too much
+    # obj = world.name_to_object('PlateFlat')
+    # obj.set_pose(((0.97, 6.23, 0.495), quat_from_euler((0, 0, math.pi))))
+    # world.name_to_object('surface_plate_right').attach_obj(obj)
+    # world.add_to_init(['ContainObj', obj.body])
+    # world.add_to_init(['AtAttachment', obj.body, dishwasher_door])
+
+
 
     return dishwasher_door

@@ -39,7 +39,8 @@ from pybullet_tools.utils import invert, multiply, get_name, set_pose, get_link_
     get_joints, is_movable, pairwise_link_collision, get_closest_points, Pose
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, set_camera_target_body, is_contained, \
-    visualize_point, collided, GRIPPER_DIRECTIONS, get_gripper_direction, Attachment, dist
+    visualize_point, collided, GRIPPER_DIRECTIONS, get_gripper_direction, Attachment, dist, sample_pose, \
+    xyzyaw_to_pose
 from pybullet_tools.logging import dump_json
 
 
@@ -480,6 +481,13 @@ def get_stable_list_gen(problem, num_samples=3, collisions=True, **kwargs):
         else:
             surfaces = [surface]
         poses = []
+
+        ## --------- Special case for plates -------------
+        result = check_plate_placement(body, surfaces, obstacles, num_samples)
+        if result is not None:
+            return result
+        ## ------------------------------------------------
+
         while True:
             surface = random.choice(surfaces) # TODO: weight by area
             body_pose = sample_placement(body, surface, **kwargs)
@@ -494,3 +502,41 @@ def get_stable_list_gen(problem, num_samples=3, collisions=True, **kwargs):
                     return [(p,) for p in poses]
         return []
     return gen
+
+def check_plate_placement(body, surfaces, obstacles, num_samples, num_trials=30):
+    from pybullet_tools.pr2_primitives import Pose
+    surface = random.choice(surfaces)
+    poses = []
+    trials = 0
+
+    if 'plate-fat' in get_name(body):
+        while trials < num_trials:
+            y = random.uniform(8.58, 9)
+            body_pose = ((0.84, y, 0.88), quat_from_euler((0, math.pi / 2, 0)))
+            p = Pose(body, body_pose, surface)
+            p.assign()
+            if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, surface}):
+                poses.append(p)
+                # for roll in [-math.pi/2, math.pi/2, math.pi]:
+                #     body_pose = (p.value[0], quat_from_euler((roll, math.pi / 2, 0)))
+                #     poses.append(Pose(body, body_pose, surface))
+
+                if len(poses) >= num_samples:
+                    return [(p,) for p in poses]
+            trials += 1
+        return []
+
+    if 'plate-fat' in get_name(surface):
+        aabb = get_aabb(surface)
+        while trials < num_trials:
+            body_pose = xyzyaw_to_pose(sample_pose(body, aabb))
+            p = Pose(body, body_pose, surface)
+            p.assign()
+            if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, surface}):
+                poses.append(p)
+                if len(poses) >= num_samples:
+                    return [(p,) for p in poses]
+            trials += 1
+        return []
+
+    return None

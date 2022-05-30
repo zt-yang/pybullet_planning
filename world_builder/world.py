@@ -427,15 +427,19 @@ class World(object):
         open_joint(body, joint, extent=extent, pstn=pstn)
         self.assign_attachment(body)
 
-    def open_doors_drawers(self, body):
+    def open_doors_drawers(self, body, ADD_JOINT=True):
         doors, drawers = self.get_doors_drawers(body, SKIP=False)
         for joint in doors + drawers:
             self.open_joint(body, joint, extent=1)
+            if not ADD_JOINT:
+                self.remove_object(joint)
 
-    def close_doors_drawers(self, body):
+    def close_doors_drawers(self, body, ADD_JOINT=True):
         doors, drawers = self.get_doors_drawers(body, SKIP=False)
         for joint in doors + drawers:
             self.close_joint(body, joint)
+            if not ADD_JOINT:
+                self.remove_object(joint)
 
     def close_all_doors_drawers(self):
         doors = [(o.body, o.joint) for o in self.cat_to_objects('door')]

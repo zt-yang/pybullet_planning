@@ -335,11 +335,18 @@ OBJ_SCALES = {
     'VeggieCabbage': 0.005, 'MeatTurkeyLeg': 0.0007, 'VeggieTomato': 0.005,
     'VeggieZucchini': 0.01, 'VeggiePotato': 0.015, 'VeggieCauliflower': 0.008,
     'VeggieGreenPepper': 0.0003, 'VeggieArtichoke': 0.017, 'MeatChicken': 0.0008,
+    'PlateFat': 0.8, 'PlateFlat': 0.8
 }
 OBJ_SCALES = {k.lower(): v * 0.7 for k, v in OBJ_SCALES.items()}
 OBJ_YAWS = {
     'Microwave': PI, 'Toaster': PI / 2
 }
+
+def get_scale(obj):
+    if obj in OBJ_SCALES:
+        return OBJ_SCALES[obj]
+    print('bullet_utils.get_scale | didnt find scale for', obj)
+    return 1
 
 
 def sample_pose(obj, aabb, obj_aabb=None, yaws=OBJ_YAWS):
@@ -370,7 +377,7 @@ def sample_obj_on_body_link_surface(obj, body, link, scales=OBJ_SCALES, PLACEMEN
     x, y, z, yaw = sample_pose(obj, aabb)
     if isinstance(obj, str):
         obj = obj.lower()
-        maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), scale=scales[obj],
+        maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), scale=get_scale(obj),
                            maybe=True)
     else:
         maybe = obj
@@ -388,7 +395,7 @@ def sample_obj_on_body_link_surface(obj, body, link, scales=OBJ_SCALES, PLACEMEN
             x, y, z, yaw = sample_pose(obj, aabb, get_aabb(maybe))
             if isinstance(obj, str):
                 remove_body(maybe)
-                maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), scale=scales[obj],
+                maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), scale=get_scale(obj),
                                    maybe=True)
             else:
                 pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
@@ -399,7 +406,7 @@ def sample_obj_on_body_link_surface(obj, body, link, scales=OBJ_SCALES, PLACEMEN
 
     if isinstance(obj, str):
         remove_body(maybe)
-        maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), scale=scales[obj],
+        maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), scale=get_scale(obj),
                            moveable=True)
     if PLACEMENT_ONLY: return x, y, z, yaw
 
@@ -418,7 +425,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, scales=OBJ_SCALES,
     x, y, z, yaw = sample_pose(obj, aabb)
     if isinstance(obj, str):
         obj = obj.lower()
-        maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, scale=scales[obj], maybe=True)
+        maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, scale=get_scale(obj), maybe=True)
     else:
         maybe = obj
     handles = draw_fitted_box(maybe)[-1]
@@ -433,7 +440,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, scales=OBJ_SCALES,
         z += 0.01
         if isinstance(obj, str):
             remove_body(maybe)
-            maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, scale=scales[obj], maybe=True)
+            maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, scale=get_scale(obj), maybe=True)
         else:
             pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
             set_pose(maybe, pose)
@@ -507,7 +514,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, scales=OBJ_SCALES,
 
     if isinstance(obj, str):
         remove_body(maybe)
-        maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, scale=scales[obj], moveable=True)
+        maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, scale=get_scale(obj), moveable=True)
         # maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, z=round(z, 1), scale=scales[obj], moveable=True)
 
     remove_handles(handles)
