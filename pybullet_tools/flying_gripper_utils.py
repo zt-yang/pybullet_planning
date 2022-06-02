@@ -290,6 +290,7 @@ def get_free_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
         q1.assign()
         w.assign()
         set_renderer(visualize)
+        print('flying_gripper_utils.get_free_motion_gen with obstacles', obstacles)
         raw_path = plan_se3_motion(robot, q1.values, q2.values, obstacles=obstacles,
                                    custom_limits=custom_limits)
         if raw_path == None:

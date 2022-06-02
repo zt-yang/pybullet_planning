@@ -743,7 +743,7 @@ def load_cabinet_rearrange_scene(world):
         },
     }
 
-    floor = load_floor_plan(world, plan_name='counter.svg', DEBUG=True, surfaces=surfaces, spaces=spaces)
+    floor = load_floor_plan(world, plan_name='counter.svg', surfaces=surfaces, spaces=spaces)
     world.remove_object(floor)
     pot, lid = load_pot_lid(world)
 

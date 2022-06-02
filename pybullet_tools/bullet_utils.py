@@ -982,7 +982,8 @@ def draw_face_points(aabb, body_pose, dist=0.08):
 
 def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                     HANDLE_FILTER=False, LENGTH_VARIANTS=False,
-                    visualize=False, RETAIN_ALL=False, verbose=False, collisions=False):
+                    visualize=False, RETAIN_ALL=False, verbose=False,
+                    collisions=False, num_samples=6):
     from pybullet_tools.flying_gripper_utils import set_se3_conf, create_fe_gripper, se3_from_pose
     title = 'bullet_utils.get_hand_grasps | '
     dist = grasp_length
@@ -1049,16 +1050,19 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                     dl_candidates = [random.uniform(-dl_max, dl_max) for k in range(3)]
                     dl_candidates = [dl_max, -dl_max]
                     for dl in dl_candidates:
-                        grasp_dl = multiply(grasp, Pose(point=(dl,0,0)))
+                        grasp_dl = multiply(grasp, Pose(point=(dl, 0, 0)))
                         if check_cfree_gripper(grasp_dl, state.world, body_pose, obstacles, verbose=verbose,
                                visualize=visualize, RETAIN_ALL=RETAIN_ALL, color=BROWN, collisions=collisions):
                             grasps += [grasp_dl]
 
     # set_renderer(True)
-    print(title, [nice(g) for g in grasps])
+    print(f"{title} ({len(grasps)}) {[nice(g) for g in grasps]}")
     if len(grasps) == 0:
         print(title, 'no grasps found')
         return []
+    # if len(grasps) > num_samples:
+    #     random.shuffle(grasps)
+    #     return grasps[:num_samples]
     return grasps  ##[:1]
 
 def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, color=GREEN,
