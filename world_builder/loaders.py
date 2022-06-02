@@ -768,7 +768,7 @@ def load_cabinet_rearrange_scene(world):
 
     return pot, lid, turkey, veggie, counter, oil, vinegar
 
-def load_feg_kitchen(world):
+def load_feg_kitchen_dishwasher(world):
     surfaces = {
         'counter': {
             'front_left_stove': [],
@@ -800,15 +800,15 @@ def load_feg_kitchen(world):
         }
     }
     spaces = {
-        'counter': {
-            'sektion': [],  ##
-            'dagger': ['VinegarBottle', 'OilBottle'],  ## 'Salter',
-            'hitman_drawer_top': [],  ## 'Pan'
-            # 'hitman_drawer_bottom': ['Pan'],
-            # 'indigo_drawer_top': ['Fork'],  ## 'Fork', 'Knife'
-            # 'indigo_drawer_bottom': ['Fork', 'Knife'],
-            # 'indigo_tmp': ['Pot']
-        }
+        # 'counter': {
+        #     # 'sektion': [],  ##
+        #     # 'dagger': ['VinegarBottle', 'OilBottle'],  ## 'Salter',
+        #     # 'hitman_drawer_top': [],  ## 'Pan'
+        #     # 'hitman_drawer_bottom': ['Pan'],
+        #     # 'indigo_drawer_top': ['Fork'],  ## 'Fork', 'Knife'
+        #     # 'indigo_drawer_bottom': ['Fork', 'Knife'],
+        #     # 'indigo_tmp': ['Pot']
+        # }
     }
     floor = load_floor_plan(world, plan_name='kitchen_v3.svg', surfaces=surfaces, spaces=spaces)
     world.remove_object(floor)
@@ -825,10 +825,10 @@ def load_feg_kitchen(world):
     world.put_on_surface(chicken, 'indigo_tmp')
 
     lid = world.name_to_body('lid')
-    world.open_joint_by_name('fridge_door', pstn=1.2)
-    world.put_on_surface(lid, 'indigo_tmp')
+    world.open_joint_by_name('fridge_door', pstn=1.5)
+    # world.put_on_surface(lid, 'indigo_tmp')
 
-    world.add_to_cat(chicken, 'cleaned')
+    # world.add_to_cat(chicken, 'cleaned')
 
     ## ------- test placement with tomato
     # obj = world.name_to_object('tomato')
@@ -853,6 +853,50 @@ def load_feg_kitchen(world):
     # world.add_to_init(['ContainObj', obj.body])
     # world.add_to_init(['AtAttachment', obj.body, dishwasher_door])
 
-
-
     return dishwasher_door
+
+def load_feg_kitchen(world):
+    surfaces = {
+        'counter': {
+            'front_left_stove': [],
+            'front_right_stove': ['BraiserBody'],
+            # 'back_left_stove': [],
+            # 'back_right_stove': [],
+            'hitman_tmp': [],
+            'indigo_tmp': ['BraiserLid', 'MeatTurkeyLeg', 'VeggieCabbage'],  ##
+        },
+        'Fridge': {
+            'shelf_top': [],  ## 'Egg', 'Egg', 'MilkBottle'
+            # 'shelf_bottom': [  ## for recording many objects
+            #     'VeggieCabbage', ## 'MeatTurkeyLeg',
+            #     'VeggieArtichoke',
+            #     'VeggieTomato',
+            #     'VeggieZucchini', 'VeggiePotato', 'VeggieCauliflower',
+            #     'MeatChicken',
+            #     'VeggieGreenPepper',
+            # ]
+            # 'shelf_bottom': ['VeggieCabbage']  ## for kitchen demo
+            'shelf_bottom': []  ## 'VeggieCabbage' ## for HPN testing
+        },
+        'Basin': {
+            'faucet_platform': ['Faucet']
+        },
+    }
+    floor = load_floor_plan(world, plan_name='kitchen_v3.svg', surfaces=surfaces)
+    world.remove_object(floor)
+    load_kitchen_mechanism(world)
+    # load_kitchen_mechanism_stove(world)
+
+    cabbage = world.name_to_body('cabbage')
+    chicken = world.name_to_body('turkey')
+    for ingredient in [cabbage, chicken]:
+        world.add_to_cat(ingredient, 'edible')
+        world.add_to_cat(ingredient, 'moveable')
+    world.put_on_surface(cabbage, 'shelf_bottom')
+    world.put_on_surface(chicken, 'indigo_tmp')
+
+    lid = world.name_to_body('lid')
+    world.open_joint_by_name('fridge_door', pstn=1.5)
+    # world.put_on_surface(lid, 'indigo_tmp')
+
+    world.add_to_cat(chicken, 'cleaned')

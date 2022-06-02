@@ -47,6 +47,7 @@ class World(object):
         self.cameras = []
         self.floorplan = None  ## for saving LISDF
         self.init = []
+        self.init_del = []
 
         ## for visualization
         self.handles = []
@@ -178,8 +179,17 @@ class World(object):
         object.world = self
         return object
 
+    def get_whole_fact(self, fact, init):
+        if fact[0].lower() in ['isopenposition', 'isclosedposition']:
+            fact += [f[2] for f in init if f[0].lower() == 'atposition' and f[1] == fact[1]]
+            print('world.get_whole_fact | ', fact)
+        return fact
+
     def add_to_init(self, fact):
         self.init.append(fact)
+
+    def del_fr_init(self, fact):
+        self.init_del.append(fact)
 
     def add_to_cat(self, body, cat):
         object = self.get_object(body)
@@ -856,7 +866,11 @@ class State(object):
         # init += [('MagicalObj1', egg), ('MagicalObj2', fridge)]
 
         ## ---- for testing attachment
-        init += [f for f in self.world.init if f not in init]
+        init += [self.world.get_whole_fact(f, init) for f in self.world.init if f not in init]
+        for f in self.world.init_del:
+            f = self.world.get_whole_fact(f, init)
+            if f in init:
+                init.remove(f)
 
         return init
 

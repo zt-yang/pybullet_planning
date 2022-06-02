@@ -462,7 +462,11 @@ def get_grasp_list_gen(problem, collisions=False, randomize=True, visualize=Fals
             grasps.extend(get_grasps('side', get_side_grasps(body, grasp_length=GRASP_LENGTH)))
         if 'hand' in grasp_types:
             from .bullet_utils import get_hand_grasps
+            ## hand ik won't work given collisions with other objects -> move body to somewhere free first
+            pose = get_pose(body)
+            set_pose(body, unit_pose())
             grasps.extend(get_grasps('hand', get_hand_grasps(problem, body, visualize=visualize, RETAIN_ALL=RETAIN_ALL)))
+            set_pose(body, pose)
 
         if randomize:
             random.shuffle(grasps)
@@ -526,7 +530,7 @@ def check_plate_placement(body, surfaces, obstacles, num_samples, num_trials=30)
             trials += 1
         return []
 
-    if 'plate-fat' in get_name(surface):
+    if isinstance(surface, int) and 'plate-fat' in get_name(surface):
         aabb = get_aabb(surface)
         while trials < num_trials:
             body_pose = xyzyaw_to_pose(sample_pose(body, aabb))

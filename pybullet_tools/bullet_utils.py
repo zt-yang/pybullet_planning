@@ -982,7 +982,7 @@ def draw_face_points(aabb, body_pose, dist=0.08):
 
 def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                     HANDLE_FILTER=False, LENGTH_VARIANTS=False,
-                    visualize=False, RETAIN_ALL=False, verbose=False):
+                    visualize=False, RETAIN_ALL=False, verbose=False, collisions=False):
     from pybullet_tools.flying_gripper_utils import set_se3_conf, create_fe_gripper, se3_from_pose
     title = 'bullet_utils.get_hand_grasps | '
     dist = grasp_length
@@ -1033,8 +1033,9 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
         # r = rots[ang][0] ## random.choice(rots[tuple(p)]) ##
         for r in rots[ang]:
             grasp = multiply(Pose(point=f), Pose(euler=r))
+
             if check_cfree_gripper(grasp, state.world, body_pose, obstacles, verbose=verbose,
-                                   visualize=visualize, RETAIN_ALL=RETAIN_ALL):
+                            visualize=visualize, RETAIN_ALL=RETAIN_ALL, collisions=collisions):
                 grasps += [grasp]
 
                 # # debug
@@ -1050,7 +1051,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                     for dl in dl_candidates:
                         grasp_dl = multiply(grasp, Pose(point=(dl,0,0)))
                         if check_cfree_gripper(grasp_dl, state.world, body_pose, obstacles, verbose=verbose,
-                                               visualize=visualize, RETAIN_ALL=RETAIN_ALL, color=BROWN):
+                               visualize=visualize, RETAIN_ALL=RETAIN_ALL, color=BROWN, collisions=collisions):
                             grasps += [grasp_dl]
 
     # set_renderer(True)
@@ -1060,8 +1061,8 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
         return []
     return grasps  ##[:1]
 
-def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False,
-                        color=GREEN, min_num_pts=40, RETAIN_ALL=False, verbose=False):
+def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, color=GREEN,
+                        min_num_pts=40, RETAIN_ALL=False, verbose=False, collisions=False):
     from pybullet_tools.flying_gripper_utils import get_cloned_se3_conf
     robot = world.robot
     # print(f'bullet_utils.check_cfree_gripper(object_pose={nice(object_pose)}) before robot.visualize_grasp')
@@ -1086,7 +1087,7 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False,
                        world=world, verbose=False, tag='firstly')
 
     secondly = False
-    if not firstly:
+    if not firstly or not collisions:
         ## when gripper is closed, it should collide with object
         robot.close_cloned_gripper(gripper_grasp)
         secondly = collided(gripper_grasp, obstacles, min_num_pts=0,
