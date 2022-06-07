@@ -164,6 +164,7 @@ import json
 def load_lisdf_pybullet(lisdf_path, verbose=True):
     # scenes_path = dirname(os.path.abspath(lisdf_path))
     tmp_path = join(ASSET_PATH, 'tmp')
+    if not isdir(tmp_path): os.mkdir(tmp_path)
 
     config_path = join(lisdf_path, 'planning_config.json')
     if isfile(config_path):
