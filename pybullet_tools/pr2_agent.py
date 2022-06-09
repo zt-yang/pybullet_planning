@@ -55,7 +55,7 @@ def get_stream_map(p, c, l, t):
     # t = teleport
     stream_map = {
         'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c)),
-        'sample-pose-inside': from_gen_fn(get_contain_gen(p, collisions=c)),  ##
+        'sample-pose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c)),  ##
         'sample-grasp': from_list_fn(get_grasp_list_gen(p, collisions=True)),
         'inverse-kinematics': from_gen_fn(get_ik_ir_gen(p, collisions=c, teleport=t, custom_limits=l,
                                                         learned=False, max_attempts=60, verbose=False)),

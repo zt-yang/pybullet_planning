@@ -1,3 +1,4 @@
+import copy
 from os.path import join, abspath, dirname, isdir, isfile
 
 import lisdf.components as C
@@ -135,16 +136,53 @@ def pddl_to_init_goal(exp_dir, world):
                     print(f'\n\n\n\n\nnot implemented for typ {typ}\n\n\n\n')
                 elem = check_existed(elem)
             args.append(elem)
-        return args
+        return tuple(args)
 
     goal = [prop_to_list(v) for v in problem.conjunctive_goal]
     init = [prop_to_list(v) for v in problem.init]
 
-    poses = {i[1]: i[2] for i in init if i[0] == 'AtPose'}
-    positions = {i[1]: i[2] for i in init if i[0] == 'AtPosition'}
-    wconf = WConf(poses, positions)
-    init += [('WConf', wconf), ('InWConf', wconf)]
+    poses = {i[1]: i[2] for i in init if i[0] == 'atpose'}
+    positions = {i[1]: i[2] for i in init if i[0] == 'atposition'}
+
+    ## just create a new one, if there aren't any in the (:objects
+    inwconf = [i[1] for i in init if i[0].lower() == 'inwconf']
+    if len(inwconf) > 0:
+        to_remove = []
+        inwconf = inwconf[0]
+        index = int(''.join([i for i in inwconf if i.isdigit()]))
+        wconf = WConf(poses, positions, index=index)
+        init += [('wconf', wconf), ('inwconf', wconf)]
+        to_remove += [('wconf', inwconf), ('inwconf', inwconf)]
+
+        newwconfpst = [i for i in init if i[0].lower() == 'newwconfpst']
+        for n in newwconfpst:
+            index = int(''.join([i for i in n[-1] if i.isdigit()]))
+            new_positions = copy.deepcopy(positions)
+            new_positions[n[2]] = n[3]
+            new_wconf = WConf(poses, new_positions, index=index)
+            init += [('wconf', new_wconf), ('newwconfpst', wconf, n[2], n[3], new_wconf)]
+            to_remove += [('wconf', n[-1])]
+        to_remove += newwconfpst
+        init = [i for i in init if i not in to_remove]
+    else:
+        wconf = WConf(poses, positions)
+        init += [('WConf', wconf), ('InWConf', wconf)]
+
+    ## ----------- debugging
+    new_init = []
+    remove_objects = [(5, 19), (5, 23), 6, 7, 8, 9, 10, 11, (5, 10)]
+    for i in init:
+        found = False
+        for elem in i:
+            if elem in remove_objects:
+                found = True
+        if not found:
+            new_init.append(i)
+    init = new_init
+    remove_objects = [str(o) for o in remove_objects]
+    world.body_to_name = {k: v for k, v in world.body_to_name.items() if str(k) not in remove_objects}
 
     init += [Equal(('PickCost',), 1), Equal(('PlaceCost',), 1)]
+    constants = {k: k for k in domain.constants}
 
-    return init, goal
+    return init, goal, constants

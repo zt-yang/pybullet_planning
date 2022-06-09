@@ -161,7 +161,7 @@ def find_id(body, full_name):
 import json
 
 
-def load_lisdf_pybullet(lisdf_path, verbose=True):
+def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
     # scenes_path = dirname(os.path.abspath(lisdf_path))
     tmp_path = join(ASSET_PATH, 'tmp')
     if not isdir(tmp_path): os.mkdir(tmp_path)
@@ -174,7 +174,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=True):
     else:
         custom_limits = {}
 
-    connect(use_gui=True, shadows=False, width=1980, height=1238)
+    connect(use_gui=True, shadows=False, width=width, height=height)
     draw_pose(unit_pose(), length=1.)
     create_floor()
 

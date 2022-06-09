@@ -122,16 +122,21 @@ class HandleGrasp(object):
         return 'hg{}={}'.format(id(self) % 1000, nice(self.value))
 
 class WConf(object):
-    def __init__(self, poses, positions):
+    def __init__(self, poses, positions, index=None):
         self.poses = poses
         self.positions = positions
+        if index is None:
+            index = id(self)
+        self.index = index
+
     def assign(self):
         for p in self.poses.values():
             p.assign()
         for p in self.positions.values():
             p.assign()
+
     def printout(self, obstacles=None):
-        if obstacles == None:
+        if obstacles is None:
             obstacles = list(self.poses.keys())
             positions = list(self.positions.keys())
         else:
@@ -144,13 +149,13 @@ class WConf(object):
         positions = {o: nice(self.positions[(o[0], o[1])].value) for o in positions}
         if len(positions) > 0:
             string += f'\t|\tpositions: {str(positions)}'
-        # print(string)
         return string
 
     def __repr__(self):
-        return 'wconf{}({})'.format(id(self) % 1000, len(self.positions))
+        return 'wconf{}'.format(self.index % 1000)
 
 ##################################################
+
 def get_stable_gen(problem, collisions=True, num_trials=20, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
     obstacles = problem.fixed if collisions else []

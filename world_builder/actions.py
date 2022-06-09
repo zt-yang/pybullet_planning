@@ -287,7 +287,8 @@ class JustDoAction(Action):
         label = self.__class__.__name__.lower().replace('just','').capitalize() + 'ed'
         if label.endswith('eed'): label = label.replace('eed', '')
         state.variables[label, self.body] = True
-        state.world.BODY_TO_OBJECT[self.body].add_text(label)
+        if hasattr(state.world, 'BODY_TO_OBJECT'):
+            state.world.BODY_TO_OBJECT[self.body].add_text(label)
         return state.new_state()
 
 class JustClean(JustDoAction):

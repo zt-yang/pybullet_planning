@@ -851,7 +851,7 @@ def print_goal(goal, world=None):
 
     print(f'Goal ({len(goal) - 1}): ({goal[0]}')
     for each in get_readable_list(goal[1:], world):
-        print(f'   {each},')
+        print(f'   {tuple(each)},')
     print(')')
 
 
