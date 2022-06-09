@@ -598,7 +598,7 @@ class State(object):
         self.grasp_types = grasp_types ##, 'side']
         ## allowing both types causes trouble when the AConf used for generating IK isn't the same as the one during execution
 
-        self.constants = ['movable', 'bottle', 'edible']
+        self.constants = ['@movable', '@bottle', '@edible']
 
     def get_gripper(self, arm='left', visual=True):
         if self.gripper is None:
@@ -816,8 +816,9 @@ class State(object):
             # init += [(cat, obj) for obj in objects]
             for obj in cat_to_bodies(cat):
                 init += [(cat, obj)]
-                if cat in self.constants:
-                    init += [('OfType', obj, cat)]
+                cat2 = f"@{cat}"
+                if cat2 in self.constants:
+                    init += [('OfType', obj, cat2)]
 
         ## ---- those added to state.variables[label, body]
         for k in self.variables:

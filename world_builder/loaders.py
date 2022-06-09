@@ -840,7 +840,7 @@ def load_feg_kitchen_dishwasher(world):
     obj = world.name_to_object('PlateFat')
     obj.set_pose(((0.97, 6.23, 0.512), quat_from_euler((0, 0, math.pi))))
     world.name_to_object('surface_plate_left').attach_obj(obj)
-    world.add_to_cat(obj.body, 'moveable')
+    world.add_to_cat(obj.body, 'movable')
     world.add_to_cat(obj.body, 'surface')
     world.add_to_init(['ContainObj', obj.body])
     world.add_to_init(['AtAttachment', obj.body, dishwasher_door])
