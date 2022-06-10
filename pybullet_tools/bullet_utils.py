@@ -348,12 +348,18 @@ def get_scale(obj):
     print('bullet_utils.get_scale | didnt find scale for', obj)
     return 1
 
-
 def sample_pose(obj, aabb, obj_aabb=None, yaws=OBJ_YAWS):
     ## sample a pose in aabb that can fit an object in
     if obj_aabb != None:
         lower, upper = obj_aabb
         diff = [(upper[i] - lower[i]) / 2 for i in range(3)]
+
+        ## if the surface is large enough, give more space
+        dx1, dy1 = get_aabb_extent(aabb2d_from_aabb(aabb))
+        dx2, dy2 = get_aabb_extent(aabb2d_from_aabb(obj_aabb))
+        if dx1 > 2*dx2 and dy1 > 2*dy2:
+            diff = [(upper[i] - lower[i]) / 2 * 3 for i in range(3)]
+
         lower = [aabb[0][i] + diff[i] for i in range(3)]
         upper = [aabb[1][i] - diff[i] for i in range(3)]
         aabb = AABB(lower=lower, upper=upper)
@@ -983,7 +989,7 @@ def draw_face_points(aabb, body_pose, dist=0.08):
 def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                     HANDLE_FILTER=False, LENGTH_VARIANTS=False,
                     visualize=False, RETAIN_ALL=False, verbose=False,
-                    collisions=False, num_samples=6):
+                    collisions=False, num_samples=6, debug_del=False):
     from pybullet_tools.flying_gripper_utils import set_se3_conf, create_fe_gripper, se3_from_pose
     title = 'bullet_utils.get_hand_grasps | '
     dist = grasp_length
@@ -998,6 +1004,19 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
         body_pose = multiply(body_pose, invert(robot.tool_from_hand))
         if verbose:
             print(f'{title}hand_link = {link} | body_pose = multiply(body_pose, invert(robot.tool_from_hand)) = {nice(body_pose)}')
+
+    def check_new(aabbs, aabb):
+        yzs = [AABB(m.lower[1:], m.upper[1:]) for m in aabbs]
+        if AABB(aabb.lower[1:], aabb.upper[1:]) in yzs: return False
+        xys = [AABB(m.lower[:-1], m.upper[:-1]) for m in aabbs]
+        if AABB(aabb.lower[:-1], aabb.upper[:-1]) in xys: return False
+        xzs = [AABB(m.lower[::2], m.upper[::2]) for m in aabbs]
+        if AABB(aabb.lower[::2], aabb.upper[::2]) in xzs: return False
+        if debug_del and len(aabbs) > 0:
+            print('aabbs\n  ', '\n  '.join([str(nice(n)) for n in aabbs]))
+            print('\naabb\n  ', nice(aabb))
+            print('check_new(aabbs, aabb)')
+        return True
 
     ## get the points in hand frame to be transformed to the origin of object frame in different directions
     c = get_aabb_center(aabb)
@@ -1020,6 +1039,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
     }
     set_renderer(visualize)
     grasps = []
+    aabbs = []
     for f in faces:
         p = np.array(f)
         p = p / np.linalg.norm(p)
@@ -1029,15 +1049,21 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
         if HANDLE_FILTER and not on_longest:
             continue
 
+        ## reduce num of grasps
+        these = []  ## debug
+
         ang = tuple(p)
         f = add(f, c)
         # r = rots[ang][0] ## random.choice(rots[tuple(p)]) ##
         for r in rots[ang]:
             grasp = multiply(Pose(point=f), Pose(euler=r))
 
-            if check_cfree_gripper(grasp, state.world, body_pose, obstacles, verbose=verbose,
-                            visualize=visualize, RETAIN_ALL=RETAIN_ALL, collisions=collisions):
+            result, aabb, gripper = check_cfree_gripper(grasp, state.world, body_pose, obstacles, verbose=verbose,
+                            visualize=visualize, RETAIN_ALL=RETAIN_ALL, collisions=collisions)
+            if result and check_new(aabbs, aabb):
                 grasps += [grasp]
+                aabbs += [aabb]
+                these += [grasp]
 
                 # # debug
                 # if verbose:
@@ -1051,9 +1077,25 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                     dl_candidates = [dl_max, -dl_max]
                     for dl in dl_candidates:
                         grasp_dl = multiply(grasp, Pose(point=(dl, 0, 0)))
-                        if check_cfree_gripper(grasp_dl, state.world, body_pose, obstacles, verbose=verbose,
-                               visualize=visualize, RETAIN_ALL=RETAIN_ALL, color=BROWN, collisions=collisions):
+                        result, aabb, gripper_dl = check_cfree_gripper(grasp, state.world, body_pose, obstacles,
+                                                           verbose=verbose, collisions=collisions,
+                                                           visualize=visualize, RETAIN_ALL=RETAIN_ALL)
+                        if result and check_new(aabbs, aabb):
                             grasps += [grasp_dl]
+                            aabbs += [aabb]
+                            these += [grasp_dl]
+                        elif gripper_dl is not None:
+                            remove_body(gripper_dl)
+
+            elif gripper is not None:
+                remove_body(gripper)
+
+        ## just to look at the orientation
+        if debug_del:
+            set_camera_target_body(body, dx=0.3, dy=0.3, dz=0.3)
+            print(f'bullet_utils.get_hand_grasps | rots[{ang}]', len(rots[ang]), [nice(n) for n in rots[ang]])
+            print(f'bullet_utils.get_hand_grasps -> ({len(these)})', [nice(n[1]) for n in these])
+            print('bullet_utils.get_hand_grasps')
 
     # set_renderer(True)
     print(f"{title} ({len(grasps)}) {[nice(g) for g in grasps]}")
@@ -1072,7 +1114,7 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
     # print(f'bullet_utils.check_cfree_gripper(object_pose={nice(object_pose)}) before robot.visualize_grasp')
     gripper_grasp = robot.visualize_grasp(object_pose, grasp, color=color, verbose=verbose)
     if gripper_grasp == None:
-        return False
+        return False, None, None
 
     if verbose:
         print(f'bullet_utils.check_cfree_gripper | gripper_grasp {gripper_grasp} | object_pose {nice(object_pose)}'
@@ -1086,24 +1128,32 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
         # set_camera_target_body(gripper_grasp, dx=0.05, dy=-0.05, dz=0.5)  ## above dishwasher
         set_camera_target_body(gripper_grasp, dx=0.05, dy=-0.05, dz=0.15)  ## inside dishwasher
 
-    ## when gripper isn't closed, it shouldn't collide
+    ## criteria 1: when gripper isn't closed, it shouldn't collide
     firstly = collided(gripper_grasp, obstacles, min_num_pts=min_num_pts,
                        world=world, verbose=False, tag='firstly')
 
+    ## criteria 2: when gripper is closed, it should collide with object
     secondly = False
     if not firstly or not collisions:
-        ## when gripper is closed, it should collide with object
         robot.close_cloned_gripper(gripper_grasp)
         secondly = collided(gripper_grasp, obstacles, min_num_pts=0,
                             world=world, verbose=False, tag='secondly')
 
-    result = not firstly and secondly
+    ## criteria 3: the gripper shouldn't be pointing upwards, heuristically
+    aabb = nice(get_aabb(gripper_grasp), round_to=2)
+    upwards = get_aabb_center(get_aabb(gripper_grasp, link=8))[2] - get_aabb_center(aabb)[2] > 0.01
+
+    ## combining all criteria
+    result = not firstly and secondly and not upwards
+
     if not result or not RETAIN_ALL:
         remove_body(gripper_grasp)
+        gripper_grasp = None
+
     elif RETAIN_ALL:
         robot.open_cloned_gripper(gripper_grasp)
 
-    return result
+    return result, aabb, gripper_grasp
 
 
 def add(elem1, elem2):

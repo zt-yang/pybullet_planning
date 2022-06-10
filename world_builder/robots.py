@@ -298,7 +298,7 @@ class FEGripper(RobotAPI):
         title = f'    robot.get_body_pose({nice(body_pose)}, body={body})'
 
         ## if body_pose is handle link pose and body is (body, joint)
-        if body != None and isinstance(body, tuple) and not isinstance(body[0], tuple):
+        if body is not None and isinstance(body, tuple) and not isinstance(body[0], tuple):
             if verbose: print(f'{title} | return as is')
             return body_pose
             # new_body_pose = multiply(body_pose, invert(T), T)

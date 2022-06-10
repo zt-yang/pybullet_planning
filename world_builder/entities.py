@@ -22,6 +22,8 @@ class Index(object):
     def __int__(self):
         raise NotImplementedError()
     def __eq__(self, other):
+        if other is None:
+            print('entities . debug')
         if self is other:
             return True
         try:
@@ -374,11 +376,11 @@ class Space(Region):
 
     def place_new_obj(self, obj_name, max_trial=8, verbose=False):
         from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, open_joint
-        self.world.open_doors_drawers(self.body)
+        # self.world.open_doors_drawers(self.body)
         body = sample_obj_in_body_link_space(obj_name, self.body, self.link, verbose=verbose)
         obj = self.world.add_object(Object(body, category=obj_name))
         self.include_and_attach(obj)
-        self.world.close_doors_drawers(self.body)
+        # self.world.close_doors_drawers(self.body)
         return obj
 
     def place_obj(self, obj, xyzyaw=None, max_trial=8):
