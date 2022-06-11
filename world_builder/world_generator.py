@@ -323,7 +323,12 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     all_pred_names = generate_problem_pddl(state, pddlstream_problem.init, pddlstream_problem.goal,
                              world_name=world_name, out_path=join(outpath, 'problem.pddl'))
 
-    config = {'base_limits': state.world.args.base_limits}
+    body_to_name = {i: state.world.body_to_name(i) for i in get_bodies()}
+    body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
+    config = {
+        'base_limits': state.world.args.base_limits,
+        'body_to_name': body_to_name
+    }
 
     ## --- domain and stream copied over  ## shutil.copy()
     with open(join(outpath, 'domain_full.pddl'), 'w') as f:

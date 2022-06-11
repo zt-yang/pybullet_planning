@@ -276,7 +276,7 @@ class Object(Index):
         self.events.append(event)
 
     @property
-    def pybullet_name(self, event):
+    def pybullet_name(self):
         if self.joint == None and self.link != None:
             return (self.body, self.joint, self.link)
         elif self.joint != None and self.link == None:
@@ -288,7 +288,7 @@ class Object(Index):
         return self.name.replace('counter#1--', '')
     @property
     def debug_name(self):
-        return f'{self.name}|{self.body}'
+        return f'{self.name}|{self.pybullet_name}'
         # return f'{self.shorter_name}|{self.body}'
 
 class Moveable(Object):
