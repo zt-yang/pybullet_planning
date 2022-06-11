@@ -367,6 +367,13 @@ class World(object):
 
         remove_body(body)
 
+    def body_to_name(self, body):
+        if body in self.BODY_TO_OBJECT:
+            return self.BODY_TO_OBJECT[body].name
+        elif body in self.ROBOT_TO_OBJECT:
+            return self.ROBOT_TO_OBJECT[body].name
+        return None
+
     def name_to_body(self, name):
         name = name.lower()
         possible = {}
