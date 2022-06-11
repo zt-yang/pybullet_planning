@@ -418,7 +418,7 @@ def generate_problem_pddl(state, facts, goals, ## pddlstream_problem,
     all_pred_names = {}  # pred: arity
     for fact in list(set(facts)):
         pred = fact[0]
-        if pred in ['=', 'wconf', 'inwconf']: continue
+        if pred in ['=']: continue
         if pred.lower() not in all_pred_names:
             all_pred_names[pred.lower()] = len(fact[1:])
         fact = get_pddl_from_list(fact, world)
@@ -458,6 +458,7 @@ def generate_problem_pddl(state, facts, goals, ## pddlstream_problem,
 
     objects = [o.name for o in world.BODY_TO_OBJECT.values()]
     objects.extend(world.robot.joint_groups)
+    objects.extend([str(i[1]) for i in facts if i[0].lower() == 'wconf'])
     objects_pddl = '\n\t'.join(sorted(objects))
 
     goal_pddl = '\n\t'.join([get_pddl_from_list(g, world) for g in sorted(goals)]).lower()
