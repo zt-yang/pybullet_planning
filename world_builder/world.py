@@ -306,6 +306,7 @@ class World(object):
 
         print('----------------')
         print(f'PART II: world objects | {self.summarize_all_types()}')
+        print('----------------')
         for body, object in BODY_TO_OBJECT.items():
             ## print class inheritance, if any
             typ_str = object._type()

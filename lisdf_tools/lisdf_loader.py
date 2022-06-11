@@ -107,6 +107,7 @@ class World():
 
         print('----------------')
         print(f'PART I: world objects |')
+        print('----------------')
         for body, name in self.body_to_name.items():
 
             line = f'{body}\t  |  {name}'
