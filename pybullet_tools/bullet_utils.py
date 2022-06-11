@@ -833,7 +833,9 @@ def summarize_facts(facts, world=None, name='Initial facts'):
     # predicates = {k: v for k, v in sorted(predicates.items(), key=lambda item: len(item[1][0]))}
     for pred in predicates:
         to_print_line = [get_readable_list(fa, world) for fa in predicates[pred]]
-        print('  ', pred, to_print_line)
+        to_print_line = sorted([str(l).lower() for l in to_print_line])
+        to_print = ', '.join(to_print_line)
+        print(f'  {pred} [{len(to_print_line)}] : {to_print}')
     print('----------------')
 
 def print_plan(plan, world=None):

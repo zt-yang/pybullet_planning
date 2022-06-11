@@ -168,19 +168,19 @@ def pddl_to_init_goal(exp_dir, world):
         wconf = WConf(poses, positions)
         init += [('WConf', wconf), ('InWConf', wconf)]
 
-    ## ----------- debugging
-    new_init = []
-    remove_objects = [(5, 19), (5, 23), 6, 7, 8, 9, 10, 11, (5, 10)]
-    for i in init:
-        found = False
-        for elem in i:
-            if elem in remove_objects:
-                found = True
-        if not found:
-            new_init.append(i)
-    init = new_init
-    remove_objects = [str(o) for o in remove_objects]
-    world.body_to_name = {k: v for k, v in world.body_to_name.items() if str(k) not in remove_objects}
+    # ## ----------- debugging
+    # new_init = []
+    # remove_objects = [(5, 19), (5, 23), 6, 7, 8, 9, 10, 11, (5, 10)]
+    # for i in init:
+    #     found = False
+    #     for elem in i:
+    #         if elem in remove_objects:
+    #             found = True
+    #     if not found:
+    #         new_init.append(i)
+    # init = new_init
+    # remove_objects = [str(o) for o in remove_objects]
+    # world.body_to_name = {k: v for k, v in world.body_to_name.items() if str(k) not in remove_objects}
 
     init += [Equal(('PickCost',), 1), Equal(('PlaceCost',), 1)]
     constants = {k: k for k in domain.constants}
