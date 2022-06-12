@@ -341,7 +341,7 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     body_to_name = {i: state.world.body_to_name(i) for i in get_bodies()}
     body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
     config = {
-        'base_limits': state.world.args.base_limits,
+        'base_limits': state.world.robot.custom_limits, ## state.world.args.base_limits,
         # 'body_to_name': body_to_name
     }
 

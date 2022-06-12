@@ -17,7 +17,7 @@ from pybullet_tools.general_streams import get_stable_list_gen, get_grasp_list_g
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
     is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
     set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR, CAMERA_MATRIX, visualize_camera_image, equal, \
-    draw_pose2d_path, draw_pose3d_path
+    draw_pose2d_path, draw_pose3d_path, sort_body_parts
 from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints, \
     get_group_conf, get_top_grasps, get_side_grasps, create_gripper
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
@@ -278,42 +278,47 @@ class World(object):
         BODY_TO_OBJECT = self.BODY_TO_OBJECT
         ROBOT_TO_OBJECT = self.ROBOT_TO_OBJECT
 
-        bodies = copy.deepcopy(get_bodies())
-        bodies.sort()
+        # bodies = copy.deepcopy(get_bodies())
+        # bodies.sort()
+        # print('----------------')
+        # print(f'PART I: pybullet bodies')
+        # print('----------------')
+        # for body in bodies:
+        #     if body in BODY_TO_OBJECT:
+        #         object = BODY_TO_OBJECT[body]
+        #         n = object.name
+        #         pose = nice(get_pose(body))
+        #         line = f'{body}  |  Name: {n}, Pose: {pose}'
+        #
+        #         doors, drawers, knobs = self.get_doors_drawers(body)
+        #         doors = [get_joint_name(body, j).replace(f'{n}--', '') for j in doors]
+        #         drawers = [get_joint_name(body, j).replace(f'{n}--', '') for j in drawers]
+        #
+        #         if len(doors) > 0:
+        #             line += f'  |  Doors: {doors}'
+        #         if len(drawers) > 0:
+        #             line += f'  |  Drawers: {drawers}'
+        #         print(line)
+        #
+        #     elif body in ROBOT_TO_OBJECT:
+        #         object = ROBOT_TO_OBJECT[body]
+        #         n = object.name
+        #         pose = nice(object.get_pose())
+        #         line = f'{body}  |  Name: {n}, Pose: {pose}'
+        #         print(line)
+        #
+        #     else:
+        #         print(f'{body}  |  Name: {get_name(body)}, not in BODY_TO_OBJECT')
+
         print('----------------')
-        print(f'PART I: pybullet bodies | obstacles = {self.fixed}')
+        print(f'PART I: world objects | {self.summarize_all_types()} | obstacles({len(self.fixed)}) = {self.fixed}')
         print('----------------')
-        for body in bodies:
-            if body in BODY_TO_OBJECT:
-                object = BODY_TO_OBJECT[body]
-                n = object.name
-                pose = nice(get_pose(body))
-                line = f'{body}  |  Name: {n}, Pose: {pose}'
-
-                doors, drawers, knobs = self.get_doors_drawers(body)
-                doors = [get_joint_name(body, j).replace(f'{n}--', '') for j in doors]
-                drawers = [get_joint_name(body, j).replace(f'{n}--', '') for j in drawers]
-
-                if len(doors) > 0:
-                    line += f'  |  Doors: {doors}'
-                if len(drawers) > 0:
-                    line += f'  |  Drawers: {drawers}'
-                print(line)
-
-            elif body in ROBOT_TO_OBJECT:
+        for body in [self.robot] + sort_body_parts(BODY_TO_OBJECT.keys()):
+            if body in ROBOT_TO_OBJECT:
                 object = ROBOT_TO_OBJECT[body]
-                n = object.name
-                pose = nice(object.get_pose())
-                line = f'{body}  |  Name: {n}, Pose: {pose}'
-                print(line)
-
             else:
-                print(f'{body}  |  Name: {get_name(body)}, not in BODY_TO_OBJECT')
+                object = BODY_TO_OBJECT[body]
 
-        print('----------------')
-        print(f'PART II: world objects | {self.summarize_all_types()}')
-        print('----------------')
-        for body, object in BODY_TO_OBJECT.items():
             ## ---- print class inheritance, if any
             typ_str = object._type()
             # if object._type().lower() in self.sup_categories:
@@ -806,21 +811,22 @@ class State(object):
         ## ---- object joint positions ------------- TODO: may need to add to saver
         knobs = cat_to_bodies('knob')
         for body in cat_to_bodies('drawer') + cat_to_bodies('door') + knobs:
-            if BODY_TO_OBJECT[body].handle_link == None:
+            if BODY_TO_OBJECT[body].handle_link is None:
+                continue
+            if ('Joint', body) in init or ('joint', body) in init:
                 continue
             ## initial position
             position = get_link_position(body)  ## Position(body)
             pose = get_link_pose(body)  ## LinkPose(body)
-            if ('Joint', body) in init: continue
-            init += [('Joint', body),
+            init += [## ('Joint', body),
                      # ('LinkPose', body, pose), ('AtLinkPose', body, pose),
                       ('Position', body, position), ('AtPosition', body, position),
-                     ('IsClosedPosition', body, position),
-                     ('IsJointTo', body, body[0])
+                      ('IsClosedPosition', body, position),
+                      ('IsJointTo', body, body[0])
                      ]
             if body in knobs:
                 controlled = BODY_TO_OBJECT[body].controlled
-                if controlled != None:
+                if controlled is not None:
                     init += [('ControlledBy', controlled, body)]
 
         ## ---- object types -------------

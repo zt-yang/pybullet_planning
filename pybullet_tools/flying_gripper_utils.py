@@ -205,6 +205,8 @@ def pose_from_se3(conf):
 def se3_ik(robot, target_pose, max_iterations=200, max_time=5, verbose=False, mod_target=None):
     report_failure = False
     debug = False
+    if verbose:
+        print('se_ik.(o==(10,3))')
 
     if mod_target != None:
         actual_target = copy.deepcopy(target_pose)
@@ -316,7 +318,7 @@ def subsample_path(path, order=2, max_len=10, min_len=3):
 APPROACH_PATH = {}
 def get_approach_path(robot, o, g, obstacles=[], verbose=False, custom_limits={}):
     title = 'flying_gripper_utils.get_approach_path |'
-    body_pose = robot.get_body_pose(o, verbose=verbose)
+    body_pose = robot.get_body_pose(o, verbose=False)
     key = f"{str(g)}-{nice(body_pose)}"
     if key in APPROACH_PATH:
         if verbose:
@@ -331,8 +333,8 @@ def get_approach_path(robot, o, g, obstacles=[], verbose=False, custom_limits={}
         print(f'{title} | grasp_pose = {nice(grasp_pose)}')
         print(f'{title} | approach_pose = {nice(approach_pose)}')
 
-    seconf1 = se3_ik(robot, approach_pose, verbose=verbose)
-    seconf2 = se3_ik(robot, grasp_pose, verbose=verbose)
+    seconf1 = se3_ik(robot, approach_pose, verbose=(o==(10,3)))
+    seconf2 = se3_ik(robot, grasp_pose, verbose=(o==(10,3)))
     q1 = Conf(robot, joints, seconf1)
     q2 = Conf(robot, joints, seconf2)
     q1.assign()
@@ -361,6 +363,8 @@ def get_ik_fn(problem, teleport=False, verbose=False, custom_limits={}, **kwargs
         p.assign()
         w.assign()
         attachments = {}
+        if o == (10, 3):
+            print('flying_gripper_utils.get_ik_fn | o == (10, 3)')
         path = get_approach_path(robot, o, g, obstacles, verbose=verbose, custom_limits=custom_limits)
         if path == None:
             return None
