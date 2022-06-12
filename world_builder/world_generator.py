@@ -1,11 +1,12 @@
 import os
 import sys
 import json
+import copy
 import shutil
 from os.path import join, isdir, isfile, dirname, abspath
 from os import listdir
 from pybullet_planning.pybullet_tools.utils import get_bodies, euler_from_quat, get_collision_data, get_joint_name, \
-    get_joint_position, get_camera, joint_from_name
+    get_joint_position, get_camera, joint_from_name, get_color
 from pybullet_planning.pybullet_tools.pr2_utils import get_arm_joints, get_group_joints, PR2_GROUPS
 from pybullet_planning.pybullet_tools.bullet_utils import OBJ_SCALES, get_readable_list, LINK_STR
 from .entities import Robot
@@ -32,6 +33,16 @@ MODEL_BOX_STR = """
             </box>
           </geometry>
         </collision>
+        <visual name="box_visual">
+          <geometry>
+            <box>
+              <size>{wlh}</size>
+            </box>
+          </geometry>
+          <material>
+            <diffuse>{rgb} 1</diffuse>
+          </material> 
+        </visual>
       </link>
     </model>
 """
@@ -140,7 +151,9 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
     joints = [f[1] for f in init if f[0] == 'joint']
 
     ## first add all actor and models
-    for body in get_bodies():
+    bodies = copy.deepcopy(get_bodies())
+    bodies.sort()
+    for body in bodies:
         if body in world.BODY_TO_OBJECT:
             obj = world.BODY_TO_OBJECT[body]
         elif body in world.ROBOT_TO_OBJECT:
@@ -153,7 +166,7 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
         print(obj.name)
         if isinstance(obj, Robot):
             ACTOR_STR = world.robot.get_lisdf_string()
-            actor_sdf = ACTOR_STR.format(pose_xml=pose_xml)
+            actor_sdf = ACTOR_STR.format(name=obj.name, pose_xml=pose_xml)
             if exp_name != None:
                 actor_sdf = actor_sdf.replace('../models/', '../../assets/models/')
             if out_path != None:
@@ -177,9 +190,11 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
                 print('world_generator | len(get_collision_data(body)) == 0')
             dim = get_collision_data(body)[0].dimensions
             wlh = " ".join([str(round(o, 3)) for o in dim])
+            color = get_color(obj)[:3]
+            rgb = " ".join([str(round(o, 3)) for o in color])
             models_sdf += MODEL_BOX_STR.format(
                 name=obj.name, is_static=is_static,
-                pose_xml=pose_xml, wlh=wlh
+                pose_xml=pose_xml, wlh=wlh, rgb=rgb
             )
 
         else:
@@ -327,7 +342,7 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
     config = {
         'base_limits': state.world.args.base_limits,
-        'body_to_name': body_to_name
+        # 'body_to_name': body_to_name
     }
 
     ## --- domain and stream copied over  ## shutil.copy()

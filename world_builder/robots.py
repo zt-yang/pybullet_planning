@@ -209,7 +209,7 @@ class PR2Robot(RobotAPI):
 
     def get_lisdf_string(self):
         return """
-    <include name="pr2">
+    <include name="{name}">
       <uri>../models/drake/pr2_description/urdf/pr2_simplified.urdf</uri>
       {pose_xml}
     </include>
@@ -421,7 +421,7 @@ class FEGripper(RobotAPI):
     def get_lisdf_string(self):
         from pybullet_tools.flying_gripper_utils import FE_GRIPPER_URDF
         return """
-    <include name="feg">
+    <include name="{name}">
       <uri>../models/franka_description/robots/hand_se3.urdf</uri>
       {pose_xml}
     </include>

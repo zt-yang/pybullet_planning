@@ -48,6 +48,7 @@ class World(object):
         self.floorplan = None  ## for saving LISDF
         self.init = []
         self.init_del = []
+        self.articulated_parts = {k: [] for k in ['door', 'drawer', 'knob', 'button']}
 
         ## for visualization
         self.handles = []
@@ -209,7 +210,7 @@ class World(object):
     def add_joint_object(self, body, joint, category=None):
         if category == None:
             category, state = check_joint_state(body, joint)
-        joints = {k:[] for k in ['door', 'drawer', 'knob']}
+        joints = {k: [] for k in ['door', 'drawer', 'knob']}
         if 'door' in category:
             joints['door'].append(joint)
             if (body, joint) not in self.BODY_TO_OBJECT:
@@ -230,20 +231,24 @@ class World(object):
 
     def get_doors_drawers(self, body, SKIP=True):
         if self.SKIP_JOINTS:  ## SKIP and
-            return [], []
+            return [], [], []
         obj = self.BODY_TO_OBJECT[body]
-        if obj.doors != None:
-            return obj.doors, obj.drawers
+        if obj.doors is not None:
+            return obj.doors, obj.drawers, obj.knobs
+
         doors = []
         drawers = []
+        knobs = []
         for joint in get_joints(body):
             joints = self.add_joint_object(body, joint)
             doors.extend(joints['door'])
             drawers.extend(joints['drawer'])
+            knobs.extend(joints['knob'])
 
         obj.doors = doors
         obj.drawers = drawers
-        return doors, drawers
+        obj.knobs = knobs
+        return doors, drawers, knobs
 
     def add_joints_by_keyword(self, body_name, joint_name, category=None):
         body = self.name_to_body(body_name)
@@ -273,7 +278,8 @@ class World(object):
         BODY_TO_OBJECT = self.BODY_TO_OBJECT
         ROBOT_TO_OBJECT = self.ROBOT_TO_OBJECT
 
-        bodies = get_bodies()
+        bodies = copy.deepcopy(get_bodies())
+        bodies.sort()
         print('----------------')
         print(f'PART I: pybullet bodies | obstacles = {self.fixed}')
         print('----------------')
@@ -284,7 +290,7 @@ class World(object):
                 pose = nice(get_pose(body))
                 line = f'{body}  |  Name: {n}, Pose: {pose}'
 
-                doors, drawers = self.get_doors_drawers(body)
+                doors, drawers, knobs = self.get_doors_drawers(body)
                 doors = [get_joint_name(body, j).replace(f'{n}--', '') for j in doors]
                 drawers = [get_joint_name(body, j).replace(f'{n}--', '') for j in drawers]
 
@@ -306,8 +312,9 @@ class World(object):
 
         print('----------------')
         print(f'PART II: world objects | {self.summarize_all_types()}')
+        print('----------------')
         for body, object in BODY_TO_OBJECT.items():
-            ## print class inheritance, if any
+            ## ---- print class inheritance, if any
             typ_str = object._type()
             # if object._type().lower() in self.sup_categories:
             #     typ = object._type().lower()
@@ -345,9 +352,9 @@ class World(object):
 
         ## remove all objects initiated by the body
         bodies = [body]
-        if object.doors != None:
+        if object.doors is not None:
             bodies += [(body, j) for j in object.doors]
-        if object.drawers != None:
+        if object.drawers is not None:
             bodies += [(body, j) for j in object.drawers]
         bodies += [(body, None, l) for l in object.surfaces + object.spaces]
         bodies += [bb for bb in self.BODY_TO_OBJECT.keys() if isinstance(bb, tuple) and bb[0] == body and bb not in bodies]
