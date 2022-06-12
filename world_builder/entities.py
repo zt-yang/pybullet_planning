@@ -23,7 +23,7 @@ class Index(object):
         raise NotImplementedError()
     def __eq__(self, other):
         if other is None:
-            print('entities . debug')
+            print('\n entities | __eq__(self, other): if other is None \n')
         if self is other:
             return True
         try:

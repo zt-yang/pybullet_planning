@@ -853,7 +853,6 @@ def print_plan(plan, world=None):
         step += 1
     print()
 
-
 def print_goal(goal, world=None):
     from pybullet_tools.logging import myprint as print
 
@@ -1310,5 +1309,34 @@ def visualize_camera_image(image, index=0, img_dir='.'):
     plt.savefig(name, bbox_inches='tight', dpi=100)
     plt.close()
 
-
     # plt.show()
+
+
+def sort_body_parts(bodies):
+    indices = []
+    links = {}
+    joints = {}
+    for body in bodies:
+        if isinstance(body, tuple) and len(body) == 2:
+            if body[0] not in joints:
+                joints[body[0]] = []
+            joints[body[0]].append(body)
+        elif isinstance(body, tuple) and len(body) == 3:
+            if body[0] not in links:
+                links[body[0]] = []
+            links[body[0]].append(body)
+        else:
+            indices.append(body)
+
+    sorted_bodies = []
+    for body in indices:
+        sorted_bodies.append(body)
+        if body in joints:
+            bodies = joints[body]
+            bodies.sort()
+            sorted_bodies.extend(bodies)
+        if body in links:
+            bodies = links[body]
+            bodies.sort()
+            sorted_bodies.extend(bodies)
+    return sorted_bodies
