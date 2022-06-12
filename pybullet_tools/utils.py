@@ -3832,6 +3832,7 @@ def check_initial_end(start_conf, end_conf, collision_fn, verbose=True):
         return False
     if collision_fn(end_conf, verbose=verbose):
         print(f'bullet.Warning: end configuration {nice(end_conf)} is in collision')
+        collision_fn(end_conf, verbose=True)
         return False
     return True
 

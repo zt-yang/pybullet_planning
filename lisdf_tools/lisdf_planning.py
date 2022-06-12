@@ -19,7 +19,6 @@ class Problem():
     def __init__(self, world):
         self.world = world
         self.robot = world.robot
-        self.fixed, self.movable, self.floors = self.init_from_world(world)
         # self.grasp_types = ['top']
         self.gripper = None
 
@@ -27,22 +26,23 @@ class Problem():
     def grasp_types(self):
         return self.robot.grasp_types
 
-    def init_from_world(self, world):
-        fixed = []
-        movable = []
-        floors = []
-        for model in world.lisdf.models:
-            if model.name not in ['pr2', 'feg']:
-                body = world.name_to_body[model.name]
-                if model.static: fixed.append(body)
-                else: movable.append(body)
-            if hasattr(model, 'links'):
-                for link in model.links:
-                    if link.name == 'box':
-                        for collision in link.collisions:
-                            if collision.shape.size[-1] < 0.05:
-                                floors.append(model)
-        return fixed, movable, floors
+    @property
+    def fixed(self):
+        if self.world.fixed is None:
+            self.world.check_world_obstacles()
+        return self.world.fixed
+
+    @property
+    def movable(self):
+        if self.world.movable is None:
+            self.world.check_world_obstacles()
+        return self.world.movable
+
+    @property
+    def floors(self):
+        if self.world.floors is None:
+            self.world.check_world_obstacles()
+        return self.world.floors
 
     @property
     def obstacles(self):

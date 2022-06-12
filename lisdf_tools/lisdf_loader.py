@@ -38,7 +38,9 @@ class World():
         self.ATTACHMENTS = {}
         self.camera = None
         self.robot = None
-        self.movable = []
+        self.movable = None
+        self.fixed = None
+        self.floors = None
 
         ## for visualization
         self.handles = []
@@ -103,6 +105,25 @@ class World():
     #     elif 'fe' in domain_name:
     #         self.robot = 'feg'
 
+    def check_world_obstacles(self):
+        fixed = []
+        movable = []
+        floors = []
+        for model in self.lisdf.models:
+            body = self.name_to_body[model.name]
+            if model.name not in ['pr2', 'feg']:
+                if model.static: fixed.append(body)
+                else: movable.append(body)
+            if hasattr(model, 'links'):
+                for link in model.links:
+                    if link.name == 'box':
+                        for collision in link.collisions:
+                            if collision.shape.size[-1] < 0.05:
+                                floors.append(body)
+        self.fixed = fixed
+        self.movable = movable
+        self.floors = floors
+
     def summarize_all_types(self, init=None):
         if init is None: return ''
         printout = ''
@@ -118,8 +139,11 @@ class World():
         """ call this after pddl_to_init_goal() where world.update_objects() happens """
         from pybullet_tools.logging import myprint as print
 
+        self.check_world_obstacles()
+        ob = [n for n in self.fixed if n not in self.floors]
+
         print('----------------')
-        print(f'PART I: world objects | {self.summarize_all_types(init)}')
+        print(f'PART I: world objects | {self.summarize_all_types(init)} | obstacles({len(ob)}) = {ob}')
         print('----------------')
 
         for body in sort_body_parts(self.body_to_name.keys()):
@@ -249,7 +273,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
             if category == 'pr2':
                 create_pr2_robot(bullet_world, base_q=pose, custom_limits=custom_limits, robot=body)
             elif category == 'feg':
-                create_gripper_robot(bullet_world, custom_limits=custom_limits, robot=body)
+                robot = create_gripper_robot(bullet_world, custom_limits=custom_limits, robot=body)
         else:
             pose = (model.pose.pos, quat_from_euler(model.pose.rpy))
             set_pose(body, pose)

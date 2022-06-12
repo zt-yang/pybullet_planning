@@ -487,7 +487,9 @@ def get_primitive_actions(action, world, teleport=False):
                 new_commands.extend([MoveBaseAction(bt[i]), MoveArmAction(at[i])])
 
         ## for controlled event
-        new_commands += world.get_events(o)
+        events = world.get_events(o)
+        if events is not None:
+            new_commands += world.get_events(o)
 
     elif 'move_base' in name or 'pull_' in name:
         if 'move_base' in name:

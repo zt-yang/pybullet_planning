@@ -545,8 +545,8 @@ def add_attachment(state=None, obj=None, parent=-1, parent_link=None, attach_dis
 
     joint = None
     if isinstance(obj, tuple):
-        BODY_TO_OBJECT = state.world.BODY_TO_OBJECT
-        link1 = BODY_TO_OBJECT[obj].handle_link
+        from pybullet_tools.general_streams import get_handle_link
+        link1 = get_handle_link(obj)
         obj, joint = obj
 
     collision_infos = get_closest_points(parent, obj, link1=link1, max_distance=INF)

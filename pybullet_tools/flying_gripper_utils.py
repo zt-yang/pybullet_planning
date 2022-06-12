@@ -135,6 +135,10 @@ SE3_GROUP = ['x', 'y', 'z', 'roll', 'pitch', 'yaw']
 FINGERS_GROUP = ['panda_finger_joint1', 'panda_finger_joint2']
 BASE_LINK = 'world_link' ## 'panda_hand' ##
 
+def get_gripper_positions(robot):
+    joints = get_joints_by_group(robot, FINGERS_GROUP)
+    return get_joint_positions(robot, joints)
+
 def set_gripper_positions(robot, w=0.0):
     joints = get_joints_by_group(robot, FINGERS_GROUP)
     set_joint_positions(robot, joints, [w/2, w/2])
@@ -159,6 +163,10 @@ def set_cloned_se3_conf(robot, gripper, conf):
 
 def get_cloned_se3_conf(robot, gripper):
     joints = get_joints_by_group(robot, SE3_GROUP)
+    return get_joint_positions(gripper, joints)
+
+def get_cloned_gripper_positions(robot, gripper):
+    joints = get_joints_by_group(robot, FINGERS_GROUP)
     return get_joint_positions(gripper, joints)
 
 def get_cloned_hand_pose(robot, gripper):
@@ -229,7 +237,7 @@ def se3_ik(robot, target_pose, max_iterations=200, max_time=5, verbose=False, mo
     # upper_limits[3:] = [1.5*math.pi] * 3
 
     for iteration in irange(max_iterations):
-        if elapsed_time(start_time) >= max_time:
+        if not verbose and elapsed_time(start_time) >= max_time:
             remove_body(sub_robot)
             if verbose or report_failure: print(f'{title} failed after {max_time} sec')
             return None
@@ -359,7 +367,7 @@ def get_ik_fn(problem, teleport=False, verbose=False, custom_limits={}, **kwargs
     robot = problem.robot
     obstacles = problem.fixed
     def fn(a, o, p, g, w, fluents=[]):
-        set_renderer(False)
+        # set_renderer(False)
         p.assign()
         w.assign()
         attachments = {}
