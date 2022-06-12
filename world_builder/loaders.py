@@ -69,28 +69,30 @@ def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
             open_arm(pr2, a)
 
 def create_pr2_robot(world, base_q=(0,0,0), DUAL_ARM=False, custom_limits=BASE_LIMITS,
-                 resolutions=BASE_RESOLUTIONS, max_velocities=BASE_VELOCITIES):
+                 resolutions=BASE_RESOLUTIONS, max_velocities=BASE_VELOCITIES, robot=None):
 
-    with LockRenderer(lock=True):
-        with HideOutput(enable=True):
-            robot = create_pr2()
-            set_pr2_ready(robot, DUAL_ARM=DUAL_ARM)
-
-        with np.errstate(divide='ignore'):
-            weights = np.reciprocal(resolutions)
-        robot = PR2Robot(robot, base_link=BASE_LINK, joints=BASE_JOINTS,
-                      custom_limits=get_base_custom_limits(robot, custom_limits),
-                      resolutions=resolutions, weights=weights)
-        world.add_robot(robot, max_velocities=max_velocities)
+    if robot is None:
+        with LockRenderer(lock=True):
+            with HideOutput(enable=True):
+                robot = create_pr2()
+                set_pr2_ready(robot, DUAL_ARM=DUAL_ARM)
         set_group_conf(robot, 'base', base_q)
-        # print('initial base conf', get_group_conf(robot, 'base'))
-        # set_camera_target_robot(robot, FRONT=True)
 
-        camera = Camera(robot, camera_frame=CAMERA_FRAME, camera_matrix=CAMERA_MATRIX, max_depth=2.5, draw_frame=EYE_FRAME)
-        robot.cameras.append(camera)
+    with np.errstate(divide='ignore'):
+        weights = np.reciprocal(resolutions)
+    robot = PR2Robot(robot, base_link=BASE_LINK, joints=BASE_JOINTS,
+                  custom_limits=get_base_custom_limits(robot, custom_limits),
+                  resolutions=resolutions, weights=weights)
+    world.add_robot(robot, max_velocities=max_velocities)
 
-        ## don't show depth and segmentation data yet
-        # if args.camera: robot.cameras[-1].get_image(segment=args.segment)
+    # print('initial base conf', get_group_conf(robot, 'base'))
+    # set_camera_target_robot(robot, FRONT=True)
+
+    camera = Camera(robot, camera_frame=CAMERA_FRAME, camera_matrix=CAMERA_MATRIX, max_depth=2.5, draw_frame=EYE_FRAME)
+    robot.cameras.append(camera)
+
+    ## don't show depth and segmentation data yet
+    # if args.camera: robot.cameras[-1].get_image(segment=args.segment)
 
     return robot
 
@@ -99,19 +101,20 @@ from pybullet_tools.flying_gripper_utils import create_fe_gripper, plan_se3_moti
     set_se3_conf ## se3_from_pose,
 
 
-def create_gripper_robot(world, custom_limits, initial_q=(0, 0, 0, 0, 0, 0)):
+def create_gripper_robot(world, custom_limits, initial_q=(0, 0, 0, 0, 0, 0), robot=None):
     from pybullet_tools.flying_gripper_utils import BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_LINK
 
-    with LockRenderer(lock=True):
-        with HideOutput(enable=True):
-            robot = create_fe_gripper()
-
-        with np.errstate(divide='ignore'):
-            weights = np.reciprocal(BASE_RESOLUTIONS)
-        robot = FEGripper(robot, base_link=BASE_LINK, joints=get_se3_joints(robot),
-                      custom_limits=custom_limits, resolutions=BASE_RESOLUTIONS, weights=weights)
-        world.add_robot(robot, max_velocities=BASE_VELOCITIES)
+    if robot is None:
+        with LockRenderer(lock=True):
+            with HideOutput(enable=True):
+                robot = create_fe_gripper()
         set_se3_conf(robot, initial_q)
+
+    with np.errstate(divide='ignore'):
+        weights = np.reciprocal(BASE_RESOLUTIONS)
+    robot = FEGripper(robot, base_link=BASE_LINK, joints=get_se3_joints(robot),
+                  custom_limits=custom_limits, resolutions=BASE_RESOLUTIONS, weights=weights)
+    world.add_robot(robot, max_velocities=BASE_VELOCITIES)
 
     return robot
 

@@ -19,7 +19,7 @@ from pybullet_tools.utils import load_pybullet, connect, wait_if_gui, HideOutput
     set_camera_pose, set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
     set_joint_positions, get_links, get_joints, get_joint_name, get_body_name, link_from_name, \
     parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK
-from pybullet_tools.bullet_utils import nice
+from pybullet_tools.bullet_utils import nice, sort_body_parts
 from pybullet_tools.pr2_streams import get_handle_link
 from pybullet_tools.flying_gripper_utils import set_se3_conf
 
@@ -64,6 +64,8 @@ class World():
         self.name_to_body[name] = body
 
     def add_robot(self, body, name='robot', **kwargs):
+        if not isinstance(body, int):
+            name = body.name
         self.add_body(body, name)
         self.robot = body
 
@@ -101,15 +103,27 @@ class World():
     #     elif 'fe' in domain_name:
     #         self.robot = 'feg'
 
-    def summarize_all_objects(self):
+    def summarize_all_types(self, init=None):
+        if init is None: return ''
+        printout = ''
+        for typ in ['graspable', 'surface', 'door', 'drawer']:
+            num = len([f[1] for f in init if f[0].lower() == typ])
+            if typ == 'graspable':
+                typ = 'moveable'
+            if num > 0:
+                printout += "{type}({num}), ".format(type=typ, num=num)
+        return printout
+
+    def summarize_all_objects(self, init=None):
         """ call this after pddl_to_init_goal() where world.update_objects() happens """
         from pybullet_tools.logging import myprint as print
 
         print('----------------')
-        print(f'PART I: world objects |')
-        for body, name in self.body_to_name.items():
+        print(f'PART I: world objects | {self.summarize_all_types(init)}')
+        print('----------------')
 
-            line = f'{body}\t  |  {name}'
+        for body in sort_body_parts(self.body_to_name.keys()):
+            line = f'{body}\t  |  {self.body_to_name[body]}'
             if isinstance(body, tuple) and len(body) == 2:
                 body, joint = body
                 pose = get_joint_position(body, joint)
@@ -167,16 +181,18 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
     if not isdir(tmp_path): os.mkdir(tmp_path)
 
     config_path = join(lisdf_path, 'planning_config.json')
+    custom_limits = {}
+    # body_to_name = None
     if isfile(config_path):
         planning_config = json.load(open(config_path))
         custom_limits = planning_config['base_limits']
+        # body_to_name = planning_config['body_to_name']
         lisdf_path = join(lisdf_path, 'scene.lisdf')
-    else:
-        custom_limits = {}
 
+    ## --- the floor and pose will become extra bodies
     connect(use_gui=True, shadows=False, width=width, height=height)
-    draw_pose(unit_pose(), length=1.)
-    create_floor()
+    # draw_pose(unit_pose(), length=1.)
+    # create_floor()
 
     # with HideOutput():
         # load_pybullet(join('models', 'Basin', '102379', 'mobility.urdf'))
@@ -200,15 +216,27 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
         model_states = world.states[0].model_states
         model_states = {s.name: s for s in model_states}
 
+    # ## load the bodies in the same way as the original problem
+    # if body_to_name is not None:
+    #     models = []
+    #     # for name in body_to_name.values:
+    #     #     for m in world.models:
+    #     #         if name == m.name:
+    #
+    # else:
+    #     models = world.models
+
     for model in world.models:
         scale = 1
         if isinstance(model, URDFInclude):
             uri = join(ASSET_PATH, 'scenes', model.uri)
             scale = model.scale_1d
+            category = model.content.name
         else:
             uri = join(tmp_path, f'{model.name}.sdf')
             with open(uri, 'w') as f:
                 f.write(make_sdf_world(model.to_sdf()))
+            category = model.links[0].name
 
         if verbose: print(f'..... loading {model.name} from {uri}', end="\r")
         with HideOutput():
@@ -216,15 +244,12 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
             if isinstance(body, tuple): body = body[0]
 
         ## set pose of body using PyBullet tools' data structure
-        if model.name in ['pr2', 'feg']:
+        if category in ['pr2', 'feg']:
             pose = model.pose.pos
-            if model.name == 'pr2':
-                create_pr2_robot(bullet_world, base_q=pose, custom_limits=custom_limits)
-                # set_group_conf(body, 'base', pose)
-            elif model.name == 'feg':
-                robot = create_gripper_robot(bullet_world, custom_limits)
-                # set_se3_conf(body, pose)
-            # bullet_world.add_robot(body, model.name)
+            if category == 'pr2':
+                create_pr2_robot(bullet_world, base_q=pose, custom_limits=custom_limits, robot=body)
+            elif category == 'feg':
+                create_gripper_robot(bullet_world, custom_limits=custom_limits, robot=body)
         else:
             pose = (model.pose.pos, quat_from_euler(model.pose.rpy))
             set_pose(body, pose)
