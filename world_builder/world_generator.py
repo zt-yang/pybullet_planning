@@ -147,8 +147,9 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
     models_sdf = ''
     state_sdf = ''
     model_joints = {} ## model_name : joints_xml
-    movables = world.cat_to_bodies('moveable')
-    joints = [f[1] for f in init if f[0] == 'joint']
+    c = world.cat_to_bodies
+    movables = c('moveable')
+    joints = c('door') + c('drawer') + c('knob')  ## [f[1] for f in init if f[0] == 'joint']
 
     ## first add all actor and models
     bodies = copy.deepcopy(get_bodies())
@@ -183,7 +184,7 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
                     name=get_joint_name(body, j),
                     angle=round(get_joint_position(body, j), 3)
                 )
-            state_sdf += MODEL_STATE_STR.format(name=obj.name[:-1], joints_xml=joints_xml)
+            state_sdf += MODEL_STATE_STR.format(name=obj.name, joints_xml=joints_xml)
 
         elif obj.is_box: ## and obj.name not in objects:
             if len(get_collision_data(body)) == 0:
@@ -341,7 +342,7 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     body_to_name = {i: state.world.body_to_name(i) for i in get_bodies()}
     body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
     config = {
-        'base_limits': state.world.robot.custom_limits, ## state.world.args.base_limits,
+        'base_limits': state.world.robot.custom_limits,  ## state.world.args.base_limits,
         # 'body_to_name': body_to_name
     }
 
