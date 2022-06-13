@@ -210,7 +210,7 @@ def change_world_state(world, test_case):
         model_states = lisdf_world.states[0].model_states
         model_states = {s.name: s for s in model_states}
 
-    print()
+    print('-------------------')
     for model in lisdf_world.models:
         if isinstance(model, URDFInclude):
             category = model.content.name
@@ -242,7 +242,7 @@ def change_world_state(world, test_case):
                 if not equal(old, position, epsilon=0.001):
                     set_joint_position(body, j, position)
                     print(f'{title} change {model.name}::{js.name} joint position from {nice(old)} to {nice(position)}')
-    print()
+    print('-------------------')
 
 def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
     # scenes_path = dirname(os.path.abspath(lisdf_path))
