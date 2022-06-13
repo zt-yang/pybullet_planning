@@ -141,7 +141,7 @@ def pddl_to_init_goal(exp_dir, world):
     goal = [prop_to_list(v) for v in problem.conjunctive_goal]
     init = [prop_to_list(v) for v in problem.init]
 
-    poses = {i[1]: i[2] for i in init if i[0] == 'atpose'}
+    poses = {}  ## {i[1]: i[2] for i in init if i[0] == 'atpose'}
     positions = {i[1]: i[2] for i in init if i[0] == 'atposition'}
 
     ## just create a new one, if there aren't any in the (:objects

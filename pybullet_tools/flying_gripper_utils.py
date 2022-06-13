@@ -361,6 +361,8 @@ def get_approach_path(robot, o, g, obstacles=[], verbose=False, custom_limits={}
         conf[3:] = list(seconf2)[3:]
         path += [Conf(robot, get_se3_joints(robot), conf)]
     APPROACH_PATH[key] = path
+    # if verbose:
+    #     print(f'{title} | put in cache for key {key}')
     return path
 
 def get_ik_fn(problem, teleport=False, verbose=False, custom_limits={}, **kwargs):
@@ -371,8 +373,6 @@ def get_ik_fn(problem, teleport=False, verbose=False, custom_limits={}, **kwargs
         p.assign()
         w.assign()
         attachments = {}
-        if o == (10, 3):
-            print('flying_gripper_utils.get_ik_fn | o == (10, 3)')
         path = get_approach_path(robot, o, g, obstacles, verbose=verbose, custom_limits=custom_limits)
         if path == None:
             return None
