@@ -389,6 +389,9 @@ class World(object):
     def name_to_body(self, name):
         name = name.lower()
         possible = {}
+        for body, obj in self.ROBOT_TO_OBJECT.items():
+            if name == obj.name:
+                return self.robot.body
         for body, obj in self.BODY_TO_OBJECT.items():
             if name == obj.shorter_name:
                 return body
@@ -442,7 +445,7 @@ class World(object):
                 pose = get_pose(child)
                 attach.assign()
                 if pose != get_pose(child):  ## attachment made a difference
-                    print(title, attach)
+                    print(title, attach, nice(attach.grasp_pose))
 
     def toggle_joint(self, body, joint):
         toggle_joint(body, joint)

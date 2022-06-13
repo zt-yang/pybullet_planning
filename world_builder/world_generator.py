@@ -146,7 +146,7 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
     actor_sdf = ''
     models_sdf = ''
     state_sdf = ''
-    model_joints = {} ## model_name : joints_xml
+    model_joints = {}  ## model_name : joints_xml
     c = world.cat_to_bodies
     movables = c('moveable')
     joints = c('door') + c('drawer') + c('knob')  ## [f[1] for f in init if f[0] == 'joint']
@@ -319,7 +319,6 @@ def save_to_exp_folder(state, init, goal, out_path):
              out_path=out_path+'_scene.lisdf')
     generate_problem_pddl(state, init, goal, world_name=world_name,
                           out_path=out_path+'_problem.pddl')
-
 
 def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXIT=True,
                            floorplan=None, world_name=None, root_path=None):

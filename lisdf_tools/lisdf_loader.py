@@ -7,6 +7,7 @@ sys.path.append('lisdf')
 from lisdf.parsing.sdf_j import load_sdf
 from lisdf.components.model import URDFInclude
 import numpy as np
+import json
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -19,10 +20,11 @@ from pybullet_tools.utils import load_pybullet, connect, wait_if_gui, HideOutput
     set_camera_pose, set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
     set_joint_positions, get_links, get_joints, get_joint_name, get_body_name, link_from_name, \
     parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK
-from pybullet_tools.bullet_utils import nice, sort_body_parts
+from pybullet_tools.bullet_utils import nice, sort_body_parts, equal
 from pybullet_tools.pr2_streams import get_handle_link
 from pybullet_tools.flying_gripper_utils import set_se3_conf
 
+from world_builder.entities import Space
 from world_builder.loaders import create_gripper_robot, create_pr2_robot
 
 ASSET_PATH = join(dirname(__file__), '..', '..', 'assets')
@@ -196,8 +198,51 @@ def find_id(body, full_name):
     print(f'\n\n\nlisdf_loader.find_id | whats {name} in {full_name} ({body})\n\n')
     return None
 
-import json
 
+def change_world_state(world, test_case):
+    title = f'lisdf_loader.change_world_state | '
+    lisdf_path = join(test_case, 'scene.lisdf')
+
+    lisdf_world = load_sdf(lisdf_path).worlds[0]
+    ## may be changes in joint positions
+    model_states = {}
+    if len(lisdf_world.states) > 0:
+        model_states = lisdf_world.states[0].model_states
+        model_states = {s.name: s for s in model_states}
+
+    print()
+    for model in lisdf_world.models:
+        if isinstance(model, URDFInclude):
+            category = model.content.name
+        else:
+            category = model.links[0].name
+        body = world.name_to_body(model.name)
+
+        ## set pose of body using PyBullet tools' data structure
+        if category not in ['pr2', 'feg']:
+            pose = (tuple(model.pose.pos), quat_from_euler(model.pose.rpy))
+            old = get_pose(body)
+            if not equal(old, pose):
+                set_pose(body, pose)
+                print(f'{title} change pose of {model.name} from {nice(old)} to {nice(pose)}')
+                obj = world.BODY_TO_OBJECT[body]
+                if obj in world.ATTACHMENTS:
+                    parent = world.ATTACHMENTS[obj].parent
+                    if isinstance(parent, Space):
+                        parent.include_and_attach(obj)
+                    else:
+                        parent.include_and_attach(obj)
+                    world.assign_attachment(parent)
+
+        if model.name in model_states:
+            for js in model_states[model.name].joint_states:
+                j = joint_from_name(body, js.name)
+                position = js.axis_states[0].value
+                old = get_joint_position(body, j)
+                if not equal(old, position, epsilon=0.001):
+                    set_joint_position(body, j, position)
+                    print(f'{title} change {model.name}::{js.name} joint position from {nice(old)} to {nice(position)}')
+    print()
 
 def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
     # scenes_path = dirname(os.path.abspath(lisdf_path))
@@ -240,16 +285,6 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
         model_states = world.states[0].model_states
         model_states = {s.name: s for s in model_states}
 
-    # ## load the bodies in the same way as the original problem
-    # if body_to_name is not None:
-    #     models = []
-    #     # for name in body_to_name.values:
-    #     #     for m in world.models:
-    #     #         if name == m.name:
-    #
-    # else:
-    #     models = world.models
-
     for model in world.models:
         scale = 1
         if isinstance(model, URDFInclude):
@@ -275,7 +310,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
             elif category == 'feg':
                 robot = create_gripper_robot(bullet_world, custom_limits=custom_limits, robot=body)
         else:
-            pose = (model.pose.pos, quat_from_euler(model.pose.rpy))
+            pose = (tuple(model.pose.pos), quat_from_euler(model.pose.rpy))
             set_pose(body, pose)
             bullet_world.add_body(body, model.name)
 

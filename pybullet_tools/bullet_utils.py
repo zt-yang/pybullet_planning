@@ -1217,14 +1217,14 @@ def get_file_short_name(path):
 def equal_float(a, b, epsilon=0):
     return abs(a - b) <= epsilon
 
-def equal(tup_a, tup_b, epsilon=0):
+def equal(tup_a, tup_b, epsilon=0.001):
     if isinstance(tup_a, float) or isinstance(tup_a, int):
         return equal_float(tup_a, tup_b, epsilon)
 
     elif isinstance(tup_a, tuple):
         a = list(tup_a)
         b = list(tup_b)
-        return all([equal_float(a[i], b[i], epsilon) for i in range(len(a))])
+        return all([equal(a[i], b[i], epsilon) for i in range(len(a))])
 
     return None
 

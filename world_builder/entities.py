@@ -370,7 +370,8 @@ class Space(Region):
 
     def include_and_attach(self, obj):
         from pybullet_tools.bullet_utils import create_attachment
-        self.objects_inside.append(obj)
+        if obj not in self.objects_inside:
+            self.objects_inside.append(obj)
         attachment = create_attachment(self, self.link, obj, OBJ=True)
         self.world.ATTACHMENTS[obj] = attachment
 
