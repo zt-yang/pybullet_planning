@@ -572,7 +572,7 @@ class World(object):
     def add_camera(self, pose, img_dir=join('visualizations', 'camera_images')):
         from .entities import StaticCamera
         args = self.args
-        camera = StaticCamera(pose, camera_matrix=CAMERA_MATRIX, max_depth=2.5)
+        camera = StaticCamera(pose, camera_matrix=CAMERA_MATRIX, max_depth=6)
         self.cameras.append(camera)
         self.camera = camera
         self.img_dir = img_dir
