@@ -438,7 +438,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
             ## just visualizing
             if visualize:
                 gripper = robot.visualize_grasp(new_pose, g.value, color=BROWN, verbose=True,
-                                        width=g.grasp_width, body=g.body, mod_target=mod_grasp_pose)
+                                        width=1, body=g.body, mod_target=mod_grasp_pose)  ## g.grasp_width
                 if gripper == None:
                     break
                 set_camera_target_body(gripper, dx=0.2, dy=0, dz=1) ## look top down

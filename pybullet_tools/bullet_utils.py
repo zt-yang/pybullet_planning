@@ -1007,6 +1007,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
             print(f'{title}hand_link = {link} | body_pose = multiply(body_pose, invert(robot.tool_from_hand)) = {nice(body_pose)}')
 
     def check_new(aabbs, aabb):
+        return True
         yzs = [AABB(m.lower[1:], m.upper[1:]) for m in aabbs]
         if AABB(aabb.lower[1:], aabb.upper[1:]) in yzs: return False
         xys = [AABB(m.lower[:-1], m.upper[:-1]) for m in aabbs]

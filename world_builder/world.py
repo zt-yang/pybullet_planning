@@ -460,14 +460,14 @@ class World(object):
         self.assign_attachment(body)
 
     def open_doors_drawers(self, body, ADD_JOINT=True):
-        doors, drawers = self.get_doors_drawers(body, SKIP=False)
+        doors, drawers, knobs = self.get_doors_drawers(body, SKIP=False)
         for joint in doors + drawers:
             self.open_joint(body, joint, extent=1)
             if not ADD_JOINT:
                 self.remove_object(joint)
 
     def close_doors_drawers(self, body, ADD_JOINT=True):
-        doors, drawers = self.get_doors_drawers(body, SKIP=False)
+        doors, drawers, knobs = self.get_doors_drawers(body, SKIP=False)
         for joint in doors + drawers:
             self.close_joint(body, joint)
             if not ADD_JOINT:
@@ -821,7 +821,7 @@ class State(object):
             ## initial position
             position = get_link_position(body)  ## Position(body)
             pose = get_link_pose(body)  ## LinkPose(body)
-            init += [## ('Joint', body),
+            init += [ ('Joint', body),
                      # ('LinkPose', body, pose), ('AtLinkPose', body, pose),
                       ('Position', body, position), ('AtPosition', body, position),
                       ('IsClosedPosition', body, position),
@@ -852,31 +852,31 @@ class State(object):
         init += [('WConf', wconf), ('InWConf', wconf)]
         print('world.get_facts | initial wconf', wconf.printout())
 
-        ## ---- add multiple world conf for joints
-        from pybullet_tools.general_streams import sample_joint_position_open_list_gen, get_pose_from_attachment
-        joint_opener = sample_joint_position_open_list_gen(self, num_samples=1)
-        pose_generator = get_pose_from_attachment(self)
-        for body in cat_to_bodies('drawer') + cat_to_bodies('door'):
-            pstn = [f[2] for f in init if f[0] == 'AtPosition' and f[1] == body][0]
-            pstn_open = joint_opener(body, pstn)[0][0]
-            if pstn_open.value != pstn.value:
-                new_positions = copy.deepcopy(wconf.positions)
-                new_positions[body] = pstn_open
-                new_wconf = WConf({}, new_positions)
-                init += [('WConf', new_wconf), ('Position', body, pstn_open),
-                         ('IsOpenedPosition', body, pstn_open),
-                         ('NewWConfPst', wconf, body, pstn_open, new_wconf)]
-                print('world.get_facts | possible wconf', new_wconf.printout())
-
-                for child, attach in self.world.ATTACHMENTS.items():
-                    if attach.parent.body == body[0]:
-                        result = pose_generator(child, new_wconf)
-                        if result != None:
-                            pose = result[0]
-                            init += [('Pose', child, pose), ('NewPoseFromAttachment', child, pose, new_wconf)]
-        wconf.assign()
-        for body in set([b[0] for b in wconf.positions]):
-            self.world.assign_attachment(body, tag='resume after pre-processing')
+        # ## ---- add multiple world conf for joints
+        # from pybullet_tools.general_streams import sample_joint_position_open_list_gen, get_pose_from_attachment
+        # joint_opener = sample_joint_position_open_list_gen(self, num_samples=1)
+        # pose_generator = get_pose_from_attachment(self)
+        # for body in cat_to_bodies('drawer') + cat_to_bodies('door'):
+        #     pstn = [f[2] for f in init if f[0] == 'AtPosition' and f[1] == body][0]
+        #     pstn_open = joint_opener(body, pstn)[0][0]
+        #     if pstn_open.value != pstn.value:
+        #         new_positions = copy.deepcopy(wconf.positions)
+        #         new_positions[body] = pstn_open
+        #         new_wconf = WConf({}, new_positions)
+        #         init += [('WConf', new_wconf), ('Position', body, pstn_open),
+        #                  ('IsOpenedPosition', body, pstn_open),
+        #                  ('NewWConfPst', wconf, body, pstn_open, new_wconf)]
+        #         print('world.get_facts | possible wconf', new_wconf.printout())
+        #
+        #         for child, attach in self.world.ATTACHMENTS.items():
+        #             if attach.parent.body == body[0]:
+        #                 result = pose_generator(child, new_wconf)
+        #                 if result != None:
+        #                     pose = result[0]
+        #                     init += [('Pose', child, pose), ('NewPoseFromAttachment', child, pose, new_wconf)]
+        # wconf.assign()
+        # for body in set([b[0] for b in wconf.positions]):
+        #     self.world.assign_attachment(body, tag='resume after pre-processing')
 
         ## --- for testing IK
         # lid = self.world.name_to_body('braiserlid')
