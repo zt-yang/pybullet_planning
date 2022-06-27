@@ -2,7 +2,8 @@ from __future__ import print_function
 
 import random
 from itertools import product
-from os.path import isfile, dirname, abspath, join
+from os.path import isfile, dirname, abspath, join, isdir
+from os import mkdir
 import numpy as np
 import math
 import pybullet as p
@@ -1301,6 +1302,7 @@ def visualize_camera_image(image, index=0, img_dir='.'):
     sns.set()
     import matplotlib.pyplot as plt
 
+    if not isdir(img_dir): mkdir(img_dir)
     name = join(img_dir, f"depth_image_feg_{index}.png")
 
     ax = sns.heatmap(image.depthPixels, annot=False, fmt="d")

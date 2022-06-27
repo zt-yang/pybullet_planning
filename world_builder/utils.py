@@ -117,10 +117,11 @@ def get_model_scale(file, l, w, scale=1, category=None):
     return scale
 
 def get_file_by_category(category, RANDOM_INSTANCE=False):
+    ## correct the capitalization because Ubuntu cares about it
+    category = [c for c in listdir(join(ASSET_PATH, 'models')) if c.lower() == category.lower()][0]
+
     asset_root = join(ASSET_PATH, 'models', category)  ## ROOT_DIR
     if isdir(asset_root):
-        ## correct the capitalization because Ubuntu cares about it
-        category = [c for c in listdir(join(ASSET_PATH, 'models')) if c.lower() == category.lower()][0]
         asset_root = join(ASSET_PATH, 'models', category)
 
         paths = [join(asset_root, f) for f in listdir(join(asset_root)) if isdir(join(asset_root, f))]
@@ -167,7 +168,7 @@ def adjust_scale(body, category, file, w, l):
 def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, scale=1,
                verbose=False, maybe=False, moveable=False, RANDOM_INSTANCE=False):
 
-    if verbose: print(f"\nLoading ... {category}")
+    if verbose: print(f"\nLoading ... {category}", end='\r')
 
     file = get_file_by_category(category, RANDOM_INSTANCE=RANDOM_INSTANCE)
     if file != None:
