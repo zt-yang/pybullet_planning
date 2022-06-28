@@ -131,12 +131,15 @@ class World():
         if init is None: return ''
         printout = ''
         for typ in ['graspable', 'surface', 'door', 'drawer']:
-            num = len([f[1] for f in init if f[0].lower() == typ])
+            num = len(self.cat_to_bodies(typ, init))
             if typ == 'graspable':
                 typ = 'moveable'
             if num > 0:
                 printout += "{type}({num}), ".format(type=typ, num=num)
         return printout
+
+    def cat_to_bodies(self, cat, init):
+        return [f[1] for f in init if f[0].lower() == cat]
 
     def summarize_all_objects(self, init=None):
         """ call this after pddl_to_init_goal() where world.update_objects() happens """
@@ -195,17 +198,19 @@ class World():
         self.cameras.append(camera)
         self.camera = camera
         self.img_dir = img_dir
-        return self.cameras[-1].get_image(segment=False)
 
-    def visualize_image(self, pose=None, img_dir=None):
+    def visualize_image(self, pose=None, img_dir=None, index=None, image=None):
         from pybullet_tools.bullet_utils import visualize_camera_image
 
-        if pose != None:
+        if pose is not None:
             self.camera.set_pose(pose)
-        if img_dir != None:
+        if img_dir is not None:
             self.img_dir = img_dir
-        image = self.camera.get_image(segment=False)
-        visualize_camera_image(image, self.camera.index, img_dir=self.img_dir)
+        if index is None:
+            index = self.camera.index
+        if image is None:
+            image = self.camera.get_image(segment=False)
+        visualize_camera_image(image, index, img_dir=self.img_dir)
 
 
 def find_id(body, full_name):

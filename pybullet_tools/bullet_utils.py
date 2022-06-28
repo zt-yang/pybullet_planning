@@ -1302,12 +1302,13 @@ def visualize_camera_image(image, index=0, img_dir='.'):
     sns.set()
     import matplotlib.pyplot as plt
 
-    if not isdir(img_dir): mkdir(img_dir)
-    name = join(img_dir, f"depth_image_feg_{index}.png")
+    if not isdir(img_dir):
+        os.makedirs(img_dir, exist_ok=True)
+    name = join(img_dir, f"depth_image_{index}.png")
 
-    ax = sns.heatmap(image.depthPixels, annot=False, fmt="d")
+    ax = sns.heatmap(image.depthPixels, annot=False, fmt="d", vmin=2, vmax=5)
 
-    plt.title("Depth Image", fontsize=12)
+    plt.title(f"Depth Image ({index})", fontsize=12)
 
     plt.savefig(name, bbox_inches='tight', dpi=100)
     plt.close()
