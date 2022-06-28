@@ -46,6 +46,7 @@ class World():
 
         ## for visualization
         self.handles = []
+        self.cameras = []
 
     def clear_viz(self):
         self.remove_handles()
@@ -185,6 +186,26 @@ class World():
 
     def get_events(self, body):
         pass
+
+    def add_camera(self, pose, img_dir=join('visualizations', 'camera_images')):
+        from world_builder.entities import StaticCamera
+        from pybullet_tools.bullet_utils import CAMERA_MATRIX
+
+        camera = StaticCamera(pose, camera_matrix=CAMERA_MATRIX, max_depth=6)
+        self.cameras.append(camera)
+        self.camera = camera
+        self.img_dir = img_dir
+        return self.cameras[-1].get_image(segment=False)
+
+    def visualize_image(self, pose=None, img_dir=None):
+        from pybullet_tools.bullet_utils import visualize_camera_image
+
+        if pose != None:
+            self.camera.set_pose(pose)
+        if img_dir != None:
+            self.img_dir = img_dir
+        image = self.camera.get_image(segment=False)
+        visualize_camera_image(image, self.camera.index, img_dir=self.img_dir)
 
 
 def find_id(body, full_name):
