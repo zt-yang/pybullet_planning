@@ -111,8 +111,8 @@ def write_stream_statistics(externals, verbose=True):
     if verbose:
         print('Wrote:', filename)
 
-def dump_json(db, db_file):
+def dump_json(db, db_file, indent=2, width=160, **kwargs):
     """ don't break lines for list elements """
     with open(db_file, 'w') as f:
         # pprint(db, f, indent=2, width=120) ## single quote
-        f.write(pprint.pformat(db, indent=2, width=120).replace("'", '"'))
+        f.write(pprint.pformat(db, indent=indent, width=width, **kwargs).replace("'", '"'))

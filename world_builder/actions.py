@@ -642,3 +642,4 @@ def get_primitive_actions(action, world, teleport=False):
         raise NotImplementedError(name)
 
     return new_commands
+
