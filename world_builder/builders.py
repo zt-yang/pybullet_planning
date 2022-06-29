@@ -144,12 +144,12 @@ def test_feg_pick(world, floorplan='counter.svg'):
 
     ## --- Randomization Strategy 1:
     ## open a particular door with an epsilon greedy strategy
-    # epsilon = 0.3
-    # for door in [left_door, right_door]:
-    #     if random.random() < epsilon:
-    #         open_joint(door[0], door[1], extent=random.random())
-    open_joint(left_door[0], left_door[1])
-    open_joint(right_door[0], right_door[1])
+    epsilon = 0.3
+    for door in [left_door, right_door]:
+        if random.random() < epsilon:
+            open_joint(door[0], door[1], extent=random.random())
+    # open_joint(left_door[0], left_door[1])
+    # open_joint(right_door[0], right_door[1])
 
     ## --- Randomization Strategy 2:
     ## place the pot on one of the burners on the stove
@@ -171,7 +171,7 @@ def test_feg_pick(world, floorplan='counter.svg'):
 
     ## --- Randomization Strategy 3:
     ## sample a movable and a surface
-    body = [oil, vinegar, turkey][random.randint(0,2)]
+    body = [oil, vinegar, turkey][random.randint(0, 2)]
     surface = world.name_to_body('hitman_tmp')
 
     goal_template = [
@@ -179,12 +179,12 @@ def test_feg_pick(world, floorplan='counter.svg'):
         [('On', body, surface)],
         [('On', body, surface), ('On', body, surface)]
     ]
-    goal = [('Holding', body)]
+    goal = random.choice(goal_template)
 
     """ ============== [Output] Save depth image ==================== """
     ## you may sample a camera pose ((point), (quaternian))
-    camera_pose = ((1.7, 6.1, 1.5), (0.5, 0.5, -0.5, -0.5))
-    camera_pose = ((1.7, 6.1, 1.5), quat_from_euler((-math.pi/2, 0, math.pi/2)))
+    camera_pose = ((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5))
     world.add_camera(camera_pose)
+    world.visualize_image()
 
     return floorplan, goal

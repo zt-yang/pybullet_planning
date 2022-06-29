@@ -12,7 +12,8 @@ import json
 import warnings
 warnings.filterwarnings('ignore')
 
-from pybullet_tools.utils import remove_handles, remove_body, get_bodies
+from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove_body, get_links, \
+    clone_body, get_joint_limits, ConfSaver
 from pybullet_tools.pr2_problems import create_floor
 from pybullet_tools.pr2_utils import set_group_conf, get_group_joints, get_viewcone_base
 from pybullet_tools.utils import load_pybullet, connect, wait_if_gui, HideOutput, invert, \
@@ -26,6 +27,8 @@ from pybullet_tools.flying_gripper_utils import set_se3_conf
 
 from world_builder.entities import Space
 from world_builder.loaders import create_gripper_robot, create_pr2_robot
+
+from lisdf_tools.lisdf_planning import pddl_to_init_goal
 
 ASSET_PATH = join(dirname(__file__), '..', '..', 'assets')
 LINK_COLORS = ['#c0392b', '#d35400', '#f39c12', '#16a085', '#27ae60',
@@ -367,6 +370,58 @@ def make_sdf_world(sdf_model):
 
   </world>
 </sdf>"""
+
+#######################
+
+def get_depth_images(exp_dir, width=1280, height=960):  ## , width=720, height=560)
+    camera_pose = ((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5))
+
+    world = load_lisdf_pybullet(exp_dir, width=width, height=height)
+    init = pddl_to_init_goal(exp_dir, world)[0]
+
+    world.add_camera(camera_pose)
+    world.visualize_image(index='scene')
+
+    b2n = world.body_to_name
+    c2b = world.cat_to_bodies
+    bodies = c2b('graspable', init) + [world.robot.body]
+    body_links = c2b('surface', init) + c2b('space', init)
+    body_joints = c2b('door', init) + c2b('drawer', init)
+
+    links_to_show = {b: [b[2]] for b in body_links}
+    for body_joint in body_joints:
+        body, joint = body_joint
+        with ConfSaver(body):
+            min_pstn, max_pstn = get_joint_limits(body, joint)
+            set_joint_position(body, joint, min_pstn)
+            lps = [get_link_pose(body, l) for l in get_links(body)]
+            set_joint_position(body, joint, max_pstn)
+            links_to_show[body_joint] = [i for i in range(len(lps)) if lps[i] != get_link_pose(body, i)]
+
+    def get_index(body_index):
+        return f"[{body_index}]_{b2n[body_index]}"
+
+    def get_image_and_reset(world, index):
+        world.visualize_image(index=index)
+        disconnect()
+        world = load_lisdf_pybullet(exp_dir, width=width, height=height)
+        world.add_camera(camera_pose)
+        return world
+
+    for body in bodies:
+        for b in get_bodies():
+            if b != body:
+                remove_body(b)
+        get_image_and_reset(world, get_index(body))
+
+    for bo in body_links + body_joints:
+        index = get_index(bo)
+        all_bodies = get_bodies()
+        clone_body(bo[0], links=links_to_show[bo], visual=True, collision=True)
+        for b in all_bodies:
+            remove_body(b)
+        get_image_and_reset(world, index)
+    print()
 
 #######################
 

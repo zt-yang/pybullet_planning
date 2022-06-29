@@ -2700,7 +2700,7 @@ UNKNOWN_FILE = 'unknown_file'
 
 def visual_shape_from_data(data, client=None):
     client = get_client(client)
-    if (data.visualGeometryType == p.GEOM_MESH) and (data.meshAssetFileName == UNKNOWN_FILE):
+    if (data.visualGeometryType == p.GEOM_MESH) and is_unknown_file(data.meshAssetFileName):
         return NULL_ID
     # visualFramePosition: translational offset of the visual shape with respect to the link
     # visualFrameOrientation: rotational offset (quaternion x,y,z,w) of the visual shape with respect to the link frame
@@ -2740,9 +2740,12 @@ CollisionShapeData = namedtuple('CollisionShapeData', ['object_unique_id', 'link
                                                        'geometry_type', 'dimensions', 'filename',
                                                        'local_frame_pos', 'local_frame_orn'])
 
+def is_unknown_file(s):
+    return s == UNKNOWN_FILE or (not isinstance(s, str) and s.decode(encoding='UTF-8') == UNKNOWN_FILE)
+
 def collision_shape_from_data(data, body, link, client=None):
     client = get_client(client)
-    if (data.geometry_type == p.GEOM_MESH) and (data.filename == UNKNOWN_FILE):
+    if (data.geometry_type == p.GEOM_MESH) and is_unknown_file(data.filename):
         return NULL_ID
     pose = multiply(get_joint_inertial_pose(body, link), get_data_pose(data))
     point, quat = pose
@@ -2768,7 +2771,11 @@ def clone_visual_shape(body, link, client=None):
     visual_data = get_visual_data(body, link)
     if not visual_data:
         return NULL_ID
-    assert (len(visual_data) == 1)
+    if len(visual_data) > 1:
+        for v in visual_data:
+            if len(v.filename) > 0 and not is_unknown_file(v.filename):
+                return visual_shape_from_data(v, client)
+    # assert ()
     return visual_shape_from_data(visual_data[0], client)
 
 def clone_collision_shape(body, link, client=None):
@@ -2776,8 +2783,12 @@ def clone_collision_shape(body, link, client=None):
     collision_data = get_collision_data(body, link)
     if not collision_data:
         return NULL_ID
-    assert (len(collision_data) == 1)
+    # assert (len(collision_data) == 1)
     # TODO: can do CollisionArray
+    if len(collision_data) > 1:
+        for c in collision_data:
+            if len(c.filename) > 0 and not is_unknown_file(c.filename):
+                return collision_shape_from_data(c, body, link, client)
     return collision_shape_from_data(collision_data[0], body, link, client)
 
 def clone_body(body, links=None, collision=True, visual=True, client=None):
@@ -2824,9 +2835,16 @@ def clone_body(body, links=None, collision=True, visual=True, client=None):
 
     base_dynamics_info = get_dynamics_info(body, base_link)
     base_point, base_quat = get_link_pose(body, base_link)
+
+    ## added by Yang
+    baseCollisionShapeIndex = clone_collision_shape(body, base_link, client) if collision else NULL_ID
+    baseVisualShapeIndex = clone_visual_shape(body, base_link, client) if visual else NULL_ID
+    if len(collision_shapes) > 0: baseCollisionShapeIndex = NULL_ID
+    if len(visual_shapes) > 0: baseVisualShapeIndex = visual_shapes[0]
+
     new_body = p.createMultiBody(baseMass=base_dynamics_info.mass,
-                                 baseCollisionShapeIndex=clone_collision_shape(body, base_link, client) if collision else NULL_ID,
-                                 baseVisualShapeIndex=clone_visual_shape(body, base_link, client) if visual else NULL_ID,
+                                 baseCollisionShapeIndex=baseCollisionShapeIndex,
+                                 baseVisualShapeIndex=baseVisualShapeIndex,
                                  basePosition=base_point,
                                  baseOrientation=base_quat,
                                  baseInertialFramePosition=base_dynamics_info.local_inertial_pos,
@@ -3246,7 +3264,7 @@ def vertices_from_data(data):
         vertices = get_aabb_vertices(aabb)
     elif geometry_type == p.GEOM_MESH:
         filename, scale = get_data_filename(data), get_data_scale(data)
-        if filename == UNKNOWN_FILE:
+        if is_unknown_file(filename):
             raise RuntimeError(filename)
         # _, ext = os.path.splitext(filename)
         # if ext != '.obj':
