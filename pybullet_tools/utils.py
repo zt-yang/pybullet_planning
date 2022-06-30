@@ -4842,15 +4842,17 @@ def read_button(debug):
     return read_counter(debug) % 2 == 1
 
 def add_text(text, position=unit_point(), color=BLACK, lifetime=None, parent=NULL_ID, parent_link=BASE_LINK):
-    return p.addUserDebugText(str(text), textPosition=position, textColorRGB=color[:3], # textSize=1,
-                              lifeTime=get_lifetime(lifetime), parentObjectUniqueId=parent, parentLinkIndex=parent_link,
-                              physicsClientId=CLIENT)
+    with HideOutput():
+        return p.addUserDebugText(str(text), textPosition=position, textColorRGB=color[:3], # textSize=1,
+                                  lifeTime=get_lifetime(lifetime), parentObjectUniqueId=parent, parentLinkIndex=parent_link,
+                                  physicsClientId=CLIENT)
 
 def add_line(start, end, color=BLACK, width=1, lifetime=None, parent=NULL_ID, parent_link=BASE_LINK):
     assert (len(start) == 3) and (len(end) == 3)
-    return p.addUserDebugLine(start, end, lineColorRGB=color[:3], lineWidth=width,
-                              lifeTime=get_lifetime(lifetime), parentObjectUniqueId=parent, parentLinkIndex=parent_link,
-                              physicsClientId=CLIENT)
+    with HideOutput():
+        return p.addUserDebugLine(start, end, lineColorRGB=color[:3], lineWidth=width,
+                                  lifeTime=get_lifetime(lifetime), parentObjectUniqueId=parent, parentLinkIndex=parent_link,
+                                  physicsClientId=CLIENT)
 
 def remove_debug(debug):
     p.removeUserDebugItem(debug, physicsClientId=CLIENT)

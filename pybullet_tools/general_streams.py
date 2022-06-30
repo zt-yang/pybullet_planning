@@ -465,18 +465,25 @@ def get_grasp_list_gen(problem, collisions=True, randomize=True, visualize=False
             grasps.extend(get_grasps('top', get_top_grasps(body, grasp_length=GRASP_LENGTH)))
         if 'side' in grasp_types:
             grasps.extend(get_grasps('side', get_side_grasps(body, grasp_length=GRASP_LENGTH)))
+
+        ## feg gripper
         if 'hand' in grasp_types:
             from .bullet_utils import get_hand_grasps
 
-            ## hand ik won't work given collisions with other objects -> move body to somewhere free first
-            if not collisions:
-                pose = get_pose(body)
-                set_pose(body, unit_pose())
+            # ## hand ik won't work given collisions with other objects -> move body to somewhere free first
+            # if not collisions:
+            #     pose = get_pose(body)
+            #     set_pose(body, unit_pose())
 
             grasps.extend(get_grasps('hand', get_hand_grasps(problem, body, visualize=visualize, RETAIN_ALL=RETAIN_ALL)))
 
-            if not collisions:
-                set_pose(body, pose)
+            # if not collisions:
+            #     set_pose(body, pose)
+
+        ## pr2
+        else:
+            from .bullet_utils import get_hand_grasps
+            grasps = get_grasps('hand', get_hand_grasps(problem, body, visualize=visualize, RETAIN_ALL=RETAIN_ALL))
 
         if randomize:
             random.shuffle(grasps)

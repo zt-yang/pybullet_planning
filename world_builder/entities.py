@@ -70,7 +70,7 @@ class Link(Index):
 #######################################################
 
 class Object(Index):
-    def __init__(self, body, joint=None, link=None, category=None, name=None, collision=True):
+    def __init__(self, body, joint=None, link=None, category=None, name=None, collision=True, verbose=False):
         self.body = body
         self.joint = joint
         self.link = link
@@ -81,6 +81,7 @@ class Object(Index):
         category = category.lower()
         self.category = category
         self.name = name
+        self.verbose = verbose  ## whether to omit all debug messages
 
         self.collision = collision
         self.handles = []
@@ -100,6 +101,7 @@ class Object(Index):
         self.events = []
         self.is_box = False
         self.categories = [category] ## for added categories like moveable
+
 
     ## =============== put other object on top of object =============
     ##
@@ -148,7 +150,9 @@ class Object(Index):
                     continue
                 done = True
 
-        print(f'entities.place_obj.placed {obj.name} on {self.__class__.__name__.capitalize()} {self.name} at point {nice((x, y, z))}')
+        if self.verbose:
+            supporter_name = f"{self.__class__.__name__.capitalize()} {self.name}"
+            print(f'entities.place_obj.placed {obj.name} on {supporter_name} at point {nice((x, y, z))}')
         self.support_obj(obj)
         # set_renderer(True)
         return obj

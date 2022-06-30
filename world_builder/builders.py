@@ -115,7 +115,7 @@ def test_kitchen_oven(world, floorplan='counter.svg'):
 
     return floorplan, []
 
-def test_feg_pick(world, floorplan='counter.svg'):
+def test_feg_pick(world, floorplan='counter.svg', verbose=True):
 
     """ ============== [State Space] Add world objects (Don't change) ================ """
 
@@ -125,7 +125,7 @@ def test_feg_pick(world, floorplan='counter.svg'):
 
     ## add all objects, with dynamic object instances randomly drawn from assets/{category}/
     ## and collision free poses randomly drawn for objects. all joints are set to closed state
-    pot, lid, turkey, counter, oil, vinegar = load_cabinet_test_scene(world, RANDOM_INSTANCE=True)
+    pot, lid, turkey, counter, oil, vinegar = load_cabinet_test_scene(world, RANDOM_INSTANCE=True, verbose=verbose)
 
     """ ============== [Init] Add robot ==================== """
 
@@ -182,9 +182,8 @@ def test_feg_pick(world, floorplan='counter.svg'):
     goal = random.choice(goal_template)
 
     """ ============== [Output] Save depth image ==================== """
-    ## you may sample a camera pose ((point), (quaternian))
+    ## you may purturb the camera pose ((point), (quaternian))
     camera_pose = ((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5))
     world.add_camera(camera_pose)
-    world.visualize_image()
 
     return floorplan, goal

@@ -102,7 +102,8 @@ def get_camera_spec():
     camera = [target[0]+dx, target[1]+dy, target[2]+dz]
     return camera, list(target)
 
-def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_path=None, out_path=None):
+def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None,
+             root_path=None, out_path=None, verbose=True):
     """ if exp_name != None, will be generated into kitchen-world/experiments/{exp_name}/scene.lisdf
         if world_name != None, will be generated into kitchen-world/assets/scenes/{world_name}.lisdf
         if out_path != None, will be generated into out_path
@@ -164,7 +165,7 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
 
         is_static = 'false' if body in movables else 'true'
         pose_xml = to_pose_xml(obj.get_pose())
-        print(obj.name)
+        # print(obj.name)
         if isinstance(obj, Robot):
             ACTOR_STR = world.robot.get_lisdf_string()
             actor_sdf = ACTOR_STR.format(name=obj.name, pose_xml=pose_xml)
@@ -243,7 +244,7 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None, root_p
 
     with open(outpath, 'w') as f:
         f.write(world_sdf)
-    print(f'\n\nwritten {outpath}\n\n')
+    if verbose: print(f'\n\nwritten {outpath}\n\n')
 
     return LISDF_PATH
 
@@ -358,7 +359,7 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     if EXIT: sys.exit()
 
 
-def save_to_test_cases(state, goal, template_name, floorplan, out_dir, root_path='..'):
+def save_to_test_cases(state, goal, template_name, floorplan, out_dir, root_path='..', verbose=True):
 
     exp_path = EXP_PATH
     if root_path != None:
@@ -373,11 +374,11 @@ def save_to_test_cases(state, goal, template_name, floorplan, out_dir, root_path
     outpath = join(outpath, str(index))
     os.mkdir(outpath)
 
-    init = state.get_facts()
+    init = state.get_facts(verbose=verbose)
 
     ## --- scene in scene.lisdf
     to_lisdf(state.world, init, floorplan=floorplan, exp_name=join(out_dir, str(index)),
-             world_name=template_name, root_path=root_path)
+             world_name=template_name, root_path=root_path, verbose=verbose)
 
     ## --- init and goal in problem.pddl
     generate_problem_pddl(state, init, goal, world_name=template_name,

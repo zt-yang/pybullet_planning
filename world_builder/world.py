@@ -719,7 +719,7 @@ class State(object):
         return Observation(self, robot_conf=robot_conf, obj_poses=obj_poses,
                            facts=facts, variables=variables, image=image)
 
-    def get_facts(self, init_facts=[], conf_saver=None, obj_poses=None):
+    def get_facts(self, init_facts=[], conf_saver=None, obj_poses=None, verbose=True):
         robot = self.world.robot.body
         cat_to_bodies = self.world.cat_to_bodies
         cat_to_objects = self.world.cat_to_objects
@@ -797,7 +797,7 @@ class State(object):
             for space in cat_to_bodies('container') + cat_to_bodies('space'):
                 init += [('Containable', body, space)]
                 if is_contained(body, space):
-                    print('   found contained', body, space)
+                    if verbose: print('   found contained', body, space)
                     init += [('Contained', body, pose, space)]
 
 
@@ -850,7 +850,7 @@ class State(object):
         ## --- world configuration
         wconf = self.get_wconf(init)
         init += [('WConf', wconf), ('InWConf', wconf)]
-        print('world.get_facts | initial wconf', wconf.printout())
+        if verbose: print('world.get_facts | initial wconf', wconf.printout())
 
         # ## ---- add multiple world conf for joints
         # from pybullet_tools.general_streams import sample_joint_position_open_list_gen, get_pose_from_attachment
