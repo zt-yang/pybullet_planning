@@ -474,16 +474,16 @@ def get_grasp_list_gen(problem, collisions=True, randomize=True, visualize=False
             # if not collisions:
             #     pose = get_pose(body)
             #     set_pose(body, unit_pose())
-
-            grasps.extend(get_grasps('hand', get_hand_grasps(problem, body, visualize=visualize, RETAIN_ALL=RETAIN_ALL)))
+            gs = get_hand_grasps(problem, body, visualize=visualize, RETAIN_ALL=RETAIN_ALL, LENGTH_VARIANTS=True)
+            grasps.extend(get_grasps('hand', gs))
 
             # if not collisions:
             #     set_pose(body, pose)
 
-        ## pr2
-        else:
-            from .bullet_utils import get_hand_grasps
-            grasps = get_grasps('hand', get_hand_grasps(problem, body, visualize=visualize, RETAIN_ALL=RETAIN_ALL))
+        # ## pr2
+        # else:
+        #     from .bullet_utils import get_hand_grasps
+        #     grasps = get_grasps('hand', get_hand_grasps(problem, body, visualize=True, RETAIN_ALL=RETAIN_ALL))
 
         if randomize:
             random.shuffle(grasps)

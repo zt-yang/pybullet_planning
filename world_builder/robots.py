@@ -85,6 +85,7 @@ class PR2Robot(RobotAPI):
 
     grasp_types = ['top']
     joint_groups = ['left', 'right', 'base']
+    finger_link = 7  ## for detecting if a grasp is pointing upwards
 
     def get_init(self, init_facts=[], conf_saver=None):
         from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints, \
@@ -166,11 +167,14 @@ class PR2Robot(RobotAPI):
 
         set_all_color(gripper_grasp, color)
         tool_from_root = get_tool_from_root(robot, arm)
+        tool_from_root = multiply(tool_from_root, ((0, 0.02, 0), (0, 0, 0, 1)))  ## y adjustment for PR2
         grasp_pose = multiply(multiply(body_pose, invert(grasp)), tool_from_root)
         set_pose(gripper_grasp, grasp_pose)
 
-        direction = get_gripper_direction(grasp_pose)
-        print('\n', nice(grasp_pose), direction)
+        ## ---- identify the direction the gripper is pointing towards
+        # direction = get_gripper_direction(grasp_pose)
+        # print('\n', nice(grasp_pose), direction)
+
         # if verbose:
         #     if direction == None:
         #         print('new direction')
@@ -190,16 +194,18 @@ class PR2Robot(RobotAPI):
         return link_from_name(self.body, PR2_TOOL_FRAMES.get(arm, arm))
 
     def get_carry_conf(self, arm, grasp_type, g):
-        if grasp_type == 'top':
-            return TOP_HOLDING_LEFT_ARM
-        if grasp_type == 'side':
-            return SIDE_HOLDING_LEFT_ARM
+        return TOP_HOLDING_LEFT_ARM
+        # if grasp_type == 'top':
+        #     return TOP_HOLDING_LEFT_ARM
+        # if grasp_type == 'side':
+        #     return SIDE_HOLDING_LEFT_ARM
 
     def get_approach_vector(self, arm, grasp_type):
-        if grasp_type == 'top':
-            return APPROACH_DISTANCE*get_unit_vector([1, 0, 0])
-        if grasp_type == 'side':
-            return APPROACH_DISTANCE*get_unit_vector([2, 0, -1])
+        return tuple(APPROACH_DISTANCE / 3 * get_unit_vector([0, 0, -1]))
+        # if grasp_type == 'top':
+        #     return APPROACH_DISTANCE*get_unit_vector([1, 0, 0])
+        # if grasp_type == 'side':
+        #     return APPROACH_DISTANCE*get_unit_vector([2, 0, -1])
 
     def get_approach_pose(self, approach_vector, g):
         return multiply((approach_vector, unit_quat()), g)
@@ -246,6 +252,7 @@ class FEGripper(RobotAPI):
     grasp_types = ['hand']
     joint_groups = ['hand']
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
+    finger_link = 8  ## for detecting if a grasp is pointing upwards
 
     def create_gripper(self, arm='hand', visual=True, color=None):
         from pybullet_tools.utils import unit_pose

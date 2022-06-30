@@ -1007,6 +1007,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
         if verbose:
             print(f'{title}hand_link = {link} | body_pose = multiply(body_pose, invert(robot.tool_from_hand)) = {nice(body_pose)}')
 
+    ## only one in each direction
     def check_new(aabbs, aabb):
         return True
         yzs = [AABB(m.lower[1:], m.upper[1:]) for m in aabbs]
@@ -1129,7 +1130,8 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
         # set_camera_target_body(gripper_grasp, dx=1, dy=0.5, dz=0.8) ## faucet
         # set_camera_target_body(gripper_grasp, dx=0.5, dy=-0.5, dz=0.5)  ## fridge shelf
         # set_camera_target_body(gripper_grasp, dx=0.05, dy=-0.05, dz=0.5)  ## above dishwasher
-        set_camera_target_body(gripper_grasp, dx=0.05, dy=-0.05, dz=0.15)  ## inside dishwasher
+        # set_camera_target_body(gripper_grasp, dx=0.05, dy=-0.05, dz=0.15)  ## inside dishwasher
+        set_camera_target_body(gripper_grasp, dx=0.15, dy=-0.15, dz=0)  ## bottle on floor
 
     ## criteria 1: when gripper isn't closed, it shouldn't collide
     firstly = collided(gripper_grasp, obstacles, min_num_pts=min_num_pts,
@@ -1143,8 +1145,9 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
                             world=world, verbose=False, tag='secondly')
 
     ## criteria 3: the gripper shouldn't be pointing upwards, heuristically
+    finger_link = robot.finger_link
     aabb = nice(get_aabb(gripper_grasp), round_to=2)
-    upwards = get_aabb_center(get_aabb(gripper_grasp, link=8))[2] - get_aabb_center(aabb)[2] > 0.01
+    upwards = get_aabb_center(get_aabb(gripper_grasp, link=finger_link))[2] - get_aabb_center(aabb)[2] > 0.01
 
     ## combining all criteria
     result = not firstly and secondly and not upwards
