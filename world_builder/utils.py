@@ -17,6 +17,7 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, \
     set_camera_pose, TAN, RGBA, sample_aabb, get_min_limit, get_max_limit, set_color, WHITE, get_links, \
     get_link_name, get_link_pose, euler_from_quat, get_collision_data, get_joint_name, get_joint_position
 from pybullet_tools.logging import dump_json
+from world_builder.paths import ASSET_PATH
 
 LIGHT_GREY = RGBA(0.5, 0.5, 0.5, 0.6)
 DARK_GREEN = RGBA(35/255, 66/255, 0, 1)
@@ -26,7 +27,7 @@ WALL_HEIGHT = 0.5
 GRASPABLES = ['BraiserLid', 'Egg', 'VeggieCabbage', 'MeatTurkeyLeg', 'VeggieGreenPepper', 'VeggieArtichoke',
               'VeggieTomato', 'VeggieZucchini', 'VeggiePotato', 'VeggieCauliflower', 'MeatChicken']
 GRASPABLES = [o.lower() for o in GRASPABLES]
-ASSET_PATH = join('..', 'assets')
+
 
 SCALE_DB = abspath(join(dirname(__file__), 'model_scales.json'))
 
@@ -87,8 +88,8 @@ def get_model_scale(file, l=None, w=None, h=None, scale=1, category=None):
     if isfile(SCALE_DB):
         with open(SCALE_DB, "r") as read_file:
             scale_db = json.loads(read_file.read())
-        if file in scale_db:
-            return scale_db[file]
+        # if file in scale_db:
+        #     return scale_db[file]
 
     if 'oven' in file.lower() or (category != None and category.lower() == 'oven'):
         print(file, l, w)
