@@ -88,8 +88,8 @@ def get_model_scale(file, l=None, w=None, h=None, scale=1, category=None):
     if isfile(SCALE_DB):
         with open(SCALE_DB, "r") as read_file:
             scale_db = json.loads(read_file.read())
-        if file in scale_db:
-            return scale_db[file]
+        # if file in scale_db:
+        #     return scale_db[file]
 
     if 'oven' in file.lower() or (category != None and category.lower() == 'oven'):
         print(file, l, w)

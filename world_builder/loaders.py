@@ -921,9 +921,10 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
             Object(create_box(0.5, 0.5, h, color=(.75, .75, .75, 1)), category='supporter', name='table'),
             Pose(point=Point(x=1, y=1, z=h / 2)))
 
-        cabbage = world.add_object(
-            Moveable(create_box(wb, wb, hb, color=GREEN), name='cabbage'),
-            Pose(point=Point(x=1, y=1, z=h + hb/2)))
+        cabbage = world.add_object(Object(
+            load_asset('VeggieCabbage', x=1, y=1, z=h + hb/2, floor=table,
+                       scale=OBJ_SCALES['veggiecabbage']),
+            category='VeggieCabbage'))
 
         return
 
