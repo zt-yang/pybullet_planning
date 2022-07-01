@@ -520,6 +520,9 @@ class World(object):
         if 'faucet_platform' in surface:
             (a, b, c), quat = world_to_surface
             obj.set_pose(((a - 0.2, b, z), quat))
+        elif 'hitman_tmp' in surface:  ## microwave or toaster
+            quat = (0, 0, 1, 0)  ## facing out
+            obj.set_pose(((0.4, 6.4, z), quat))
 
         ## ---------- reachability hacks for PR2
         if False and 'pr2' in self.robot.name:
@@ -539,9 +542,7 @@ class World(object):
                 obj.set_pose(((a, b, z), quat))
             elif 'front_' in surface and '_stove' in surface:
                 obj.set_pose(((0.55, y, z), quat))
-            elif 'hitman_tmp' in surface: ## microwave or toaster
-                quat = (0, 0, 1, 0) ## facing out
-                obj.set_pose(((0.4, 6.4, z), quat))
+
             elif 'tmp' in surface: ## egg
                 if y > 9: y = 8.9
                 obj.set_pose(((0.7, y, z), quat))

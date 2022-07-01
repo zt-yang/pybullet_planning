@@ -305,7 +305,7 @@ def clean_domain_pddl(pddl_str, all_pred_names):
             args += f" ?{string[i]}"
         pddl_str += f'    ({args})\n'
     pddl_str += '  )\n)'
-    print(pddl_str)
+    # print(pddl_str)
     return pddl_str
 
 
