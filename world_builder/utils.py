@@ -7,7 +7,7 @@ import json
 import random
 
 from .entities import Object, Floor, Moveable
-from pybullet_tools.utils import unit_pose, \
+from pybullet_tools.utils import unit_pose, get_aabb_extent, \
     set_pose, get_movable_joints, draw_pose, pose_from_pose2d, set_velocity, set_joint_states, get_bodies, \
     flatten, INF, inf_generator, get_time_step, get_all_links, get_visual_data, pose2d_from_pose, multiply, invert, \
     get_sample_fn, pairwise_collisions, sample_placement, is_placement, aabb_contains_point, point_from_pose, \
@@ -16,6 +16,7 @@ from pybullet_tools.utils import unit_pose, \
     stable_z, Pose, Point, create_box, load_model, get_joints, set_joint_position, BROWN, Euler, PI, \
     set_camera_pose, TAN, RGBA, sample_aabb, get_min_limit, get_max_limit, set_color, WHITE, get_links, \
     get_link_name, get_link_pose, euler_from_quat, get_collision_data, get_joint_name, get_joint_position
+from pybullet_tools.logging import dump_json
 
 LIGHT_GREY = RGBA(0.5, 0.5, 0.5, 0.6)
 DARK_GREEN = RGBA(35/255, 66/255, 0, 1)
@@ -81,7 +82,7 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
 
     return objects, X_OFFSET, Y_OFFSET, SCALING, FLOOR_X_MIN, FLOOR_X_MAX, FLOOR_Y_MIN, FLOOR_Y_MAX
 
-def get_model_scale(file, l, w, scale=1, category=None):
+def get_model_scale(file, l=None, w=None, h=None, scale=1, category=None):
     scale_db = {}
     if isfile(SCALE_DB):
         with open(SCALE_DB, "r") as read_file:
@@ -91,28 +92,40 @@ def get_model_scale(file, l, w, scale=1, category=None):
 
     if 'oven' in file.lower() or (category != None and category.lower() == 'oven'):
         print(file, l, w)
-    if w != None:
-        with HideOutput():
-            body = load_model(file, scale=scale, fixed_base=True)
 
-        aabb = get_aabb(body)
-        width = aabb.upper[0] - aabb.lower[0]
-        length = aabb.upper[1] - aabb.lower[1]
+    ## ------- Case 1: no restrictions or directly given scale
+    if w is None and h is None:
+        return scale
 
+    ## --- load and adjust
+    with HideOutput():
+        body = load_model(file, scale=scale, fixed_base=True)
+    aabb = get_aabb(body)
+    extent = get_aabb_extent(aabb)
+
+    ## ------- Case 2: given width and length of object
+    if w is not None:
+        width, length = extent[:2]
         scale = min(l / length, w / width) ## unable to construct
-        if category != None:
-            if 'door' == category.lower():
-                set_joint_position(body, get_joints(body)[1], -0.8)
-            if 'dishwasher' == category.lower():
-                set_joint_position(body, get_joints(body)[3], -0.66)
 
-            if 'door' == category.lower():
-                scale = (l / length + w / width) / 2
+    ## ------ Case 3: given height of object
+    elif h is not None:
+        height = extent[2]
+        scale = h/height
 
-        scale_db[file] = scale
-        with open(SCALE_DB, 'w') as f:
-            json.dump(scale_db, f)
-        remove_body(body)
+    ## ------ Case N: exceptions
+    if category is not None:
+        if 'door' == category.lower():
+            set_joint_position(body, get_joints(body)[1], -0.8)
+        if 'dishwasher' == category.lower():
+            set_joint_position(body, get_joints(body)[3], -0.66)
+        if 'door' == category.lower():
+            scale = (l / length + w / width) / 2
+
+    scale_db[file] = scale
+    with open(SCALE_DB, 'w') as f:
+        json.dump(scale_db, f)
+    remove_body(body)
 
     return scale
 
@@ -165,7 +178,7 @@ def adjust_scale(body, category, file, w, l):
 
     return body
 
-def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, scale=1,
+def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, h=None, scale=1,
                verbose=False, maybe=False, moveable=False, RANDOM_INSTANCE=False):
 
     if verbose: print(f"\nLoading ... {category}", end='\r')
@@ -173,14 +186,14 @@ def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, scale=1,
     file = get_file_by_category(category, RANDOM_INSTANCE=RANDOM_INSTANCE)
     if file != None:
         if verbose: print(f"Loading ...... {file}")
-        scale = get_model_scale(file, l, w, scale, category)
+        scale = get_model_scale(file, l, w, h, scale, category)
         with HideOutput():
             body = load_model(file, scale=scale, fixed_base=True)
     else:
         body = create_box(w=w, l=l, h=1, color=BROWN, collision=True)
 
     ## PLACE OBJECT
-    if z == None:
+    if z is None:
         if category.lower() in ['oven']:
             aabb = get_aabb(body)
             height = aabb.upper[2] - aabb.lower[2]
@@ -204,6 +217,7 @@ def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, scale=1,
             object = Moveable(body, category=category)
         else:
             object = Object(body, category=category)
+
     return body
 
 # def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, scale=1,

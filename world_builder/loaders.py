@@ -903,3 +903,30 @@ def load_feg_kitchen(world):
     # world.put_on_surface(lid, 'indigo_tmp')
 
     world.add_to_cat(chicken, 'cleaned')
+
+
+def load_random_mini_kitchen_counter(world, w=5, l=5, h=0.9, wb=.07, hb=.1, table_only=False):
+    """ each kitchen counter has one minifridge and one microwave
+    """
+    floor = world.add_object(
+        Floor(create_box(w=6, l=6, h=FLOOR_HEIGHT, color=BLACK, collision=True)),
+        Pose(point=Point(x=w/2, y=l/2, z=-2 * FLOOR_HEIGHT)))
+
+    counter = world.add_object(Object(
+        load_asset('KitchenCounter', x=w/2, y=l/2, yaw=0, floor=floor, h=h,
+                   RANDOM_INSTANCE=True, verbose=True), category='supporter', name='counter'))
+
+    if table_only:
+        table = world.add_object(
+            Object(create_box(w, w, h, color=(.75, .75, .75, 1)), category='supporter', name='table'),
+            Pose(point=Point(x=1, y=1, z=h / 2)))
+
+        cabbage = world.add_object(
+            Moveable(create_box(wb, wb, hb, color=GREEN), name='cabbage'),
+            Pose(point=Point(x=1, y=1, z=h + hb/2)))
+
+        return
+
+    minifridge = world.add_object(Surface(
+        load_asset('MiniFridge', x=w/2, y=l/2, yaw=math.pi/2, floor=floor,
+                   w=round(w, 1), l=round(l, 1), RANDOM_INSTANCE=True)))
