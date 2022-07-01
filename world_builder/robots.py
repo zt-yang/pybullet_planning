@@ -5,7 +5,7 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
     link_from_name, get_link_subtree, get_joints, is_movable, multiply, invert, \
     set_joint_positions, set_pose, GREEN, dump_body, get_pose, remove_body, PoseSaver, \
     ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles, \
-    interpolate_poses
+    interpolate_poses, Pose, Euler, quat_from_euler, set_renderer
 
 from pybullet_tools.bullet_utils import equal, nice, get_gripper_direction, set_camera_target_body, Attachment, \
     BASE_LIMITS
@@ -15,6 +15,7 @@ from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, close_until_co
 from pybullet_tools.general_streams import get_handle_link
 
 class RobotAPI(Robot):
+    tool_from_hand = unit_pose()
 
     def get_init(self, init_facts=[], conf_saver=None):
         raise NotImplementedError('should implement this for RobotAPI!')
@@ -80,11 +81,42 @@ class RobotAPI(Robot):
     def get_custom_limits(self):
         return self.custom_limits
 
+    def get_body_pose(self, body_pose, body=None, verbose=False):
+        T = self.tool_from_hand
+        title = f'    robot.get_body_pose({nice(body_pose)}, body={body})'
+
+        ## if body_pose is handle link pose and body is (body, joint)
+        if body is not None and isinstance(body, tuple) and not isinstance(body[0], tuple):
+            if verbose: print(f'{title} | return as is')
+            return body_pose
+            # new_body_pose = multiply(body_pose, invert(T), T)
+            # print(f'{title} | multiply(body_pose, invert(self.tool_from_hand), self.tool_from_hand) = {nice(new_body_pose)}')
+            # return new_body_pose
+
+        ## if body or body_joint is given in the place of body_pose
+        b = body_pose
+        if not (isinstance(b, tuple) and isinstance(b[0], tuple) and len(b[0]) == 3 and len(b[1]) == 4):
+            if isinstance(b, tuple):
+                handle_link = get_handle_link(b)
+                new_body_pose = body_pose = get_link_pose(b[0], handle_link)
+                # new_body_pose = multiply(body_pose, invert(T))
+                if verbose: print(f'{title} | actually given (body, joint), multiply(get_link_pose(body, '
+                                  f'handle_link), invert(T)) = {nice(new_body_pose)}')
+                return new_body_pose
+            else:
+                body_pose = get_pose(b)
+                if verbose: print(f'{title} | actually given body, body_pose = get_pose(b) = {nice(body_pose)}')
+
+        new_body_pose = multiply(body_pose, T)
+        if verbose: print(f'{title} | multiply(body_pose, self.tool_from_hand) = {nice(new_body_pose)}')
+        return new_body_pose
+
 
 class PR2Robot(RobotAPI):
 
     grasp_types = ['top']
     joint_groups = ['left', 'right', 'base']
+    tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
     finger_link = 7  ## for detecting if a grasp is pointing upwards
 
     def get_init(self, init_facts=[], conf_saver=None):
@@ -155,21 +187,33 @@ class PR2Robot(RobotAPI):
 
     def compute_grasp_width(self, arm, body_pose, grasp_pose, body=None, verbose=False, **kwargs):
         from pybullet_tools.pr2_utils import compute_grasp_width
-        return compute_grasp_width(self.body, arm, body, grasp_pose, **kwargs)
+        with PoseSaver(body):
+            return compute_grasp_width(self.body, arm, body, grasp_pose, **kwargs)
 
-    def visualize_grasp(self, body_pose, grasp, arm='left', color=GREEN, verbose=False, **kwargs):
+    def visualize_grasp(self, body_pose, grasp, arm='left', color=GREEN,
+                        body=None, verbose=False, **kwargs):
         from pybullet_tools.pr2_utils import PR2_GRIPPER_ROOTS
         from pybullet_tools.pr2_primitives import get_tool_from_root
 
         robot = self.body
+        body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
+
         gripper_grasp = self.create_gripper(arm, visual=True)
         self.open_cloned_gripper(gripper_grasp)
-
         set_all_color(gripper_grasp, color)
-        tool_from_root = get_tool_from_root(robot, arm)
-        tool_from_root = multiply(tool_from_root, ((0, 0.02, 0), (0, 0, 0, 1)))  ## y adjustment for PR2
-        grasp_pose = multiply(multiply(body_pose, invert(grasp)), tool_from_root)
+
+        if verbose:
+            handles = draw_pose(multiply(body_pose, grasp), length=0.05)
+        tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
+        grasp_pose = multiply(body_pose, grasp, tool_from_root)
         set_pose(gripper_grasp, grasp_pose)
+
+        ## ----------- old
+        if False:
+            tool_from_root = get_tool_from_root(robot, arm)
+            # tool_from_root = multiply(tool_from_root, ((0, 0.02, 0), (0, 0, 0, 1)))  ## y adjustment for PR2
+            grasp_pose = multiply(multiply(body_pose, invert(grasp)), tool_from_root)
+            set_pose(gripper_grasp, grasp_pose)
 
         ## ---- identify the direction the gripper is pointing towards
         # direction = get_gripper_direction(grasp_pose)
@@ -247,7 +291,6 @@ class PR2Robot(RobotAPI):
             yield
 
 class FEGripper(RobotAPI):
-    from pybullet_tools.utils import Pose, Euler
 
     grasp_types = ['hand']
     joint_groups = ['hand']
@@ -300,49 +343,20 @@ class FEGripper(RobotAPI):
             # remove_body(gripper)
         return width
 
-    def get_body_pose(self, body_pose, body=None, verbose=False):
-        T = self.tool_from_hand
-        title = f'    robot.get_body_pose({nice(body_pose)}, body={body})'
-
-        ## if body_pose is handle link pose and body is (body, joint)
-        if body is not None and isinstance(body, tuple) and not isinstance(body[0], tuple):
-            if verbose: print(f'{title} | return as is')
-            return body_pose
-            # new_body_pose = multiply(body_pose, invert(T), T)
-            # print(f'{title} | multiply(body_pose, invert(self.tool_from_hand), self.tool_from_hand) = {nice(new_body_pose)}')
-            # return new_body_pose
-
-        ## if body or body_joint is given in the place of body_pose
-        b = body_pose
-        if not (isinstance(b, tuple) and isinstance(b[0], tuple) and len(b[0]) == 3 and len(b[1]) == 4):
-            if isinstance(b, tuple):
-                handle_link = get_handle_link(b)
-                new_body_pose = body_pose = get_link_pose(b[0], handle_link)
-                # new_body_pose = multiply(body_pose, invert(T))
-                if verbose: print(f'{title} | actually given (body, joint), multiply(get_link_pose(body, '
-                                  f'handle_link), invert(T)) = {nice(new_body_pose)}')
-                return new_body_pose
-            else:
-                body_pose = get_pose(b)
-                if verbose: print(f'{title} | actually given body, body_pose = get_pose(b) = {nice(body_pose)}')
-
-        new_body_pose = multiply(body_pose, T)
-        if verbose: print(f'{title} | multiply(body_pose, self.tool_from_hand) = {nice(new_body_pose)}')
-        return new_body_pose
-
     def visualize_grasp(self, body_pose, grasp, arm='hand', color=GREEN, width=1, verbose=False,
                         body=None, mod_target=None):
         from pybullet_tools.flying_gripper_utils import se3_ik, set_cloned_se3_conf, get_cloned_se3_conf
         from pybullet_tools.utils import Pose, euler_from_quat
         title = 'robots.visualize_grasp |'
 
+        verbose=True
         body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
         gripper = self.create_gripper(arm, visual=True)
         self.open_cloned_gripper(gripper, width)
         set_all_color(gripper, color)
 
         grasp_pose = multiply(body_pose, grasp)  ##
-        if verbose:
+        if verbose or True:
             handles = draw_pose(grasp_pose, length=0.05)
             print(f'{title} body_pose = {nice(body_pose)} | grasp = {nice(grasp)}')
             print(f'{title} grasp_pose = multiply(body_pose, grasp) = ', nice(grasp_pose))
