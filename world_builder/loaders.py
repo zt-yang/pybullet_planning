@@ -918,7 +918,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
 
     if table_only:
         table = world.add_object(
-            Object(create_box(w, w, h, color=(.75, .75, .75, 1)), category='supporter', name='table'),
+            Object(create_box(0.5, 0.5, h, color=(.75, .75, .75, 1)), category='supporter', name='table'),
             Pose(point=Point(x=1, y=1, z=h / 2)))
 
         cabbage = world.add_object(
