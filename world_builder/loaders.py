@@ -905,11 +905,11 @@ def load_feg_kitchen(world):
     world.add_to_cat(chicken, 'cleaned')
 
 
-def load_random_mini_kitchen_counter(world, w=5, l=5, h=0.9, wb=.07, hb=.1, table_only=False):
+def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, table_only=False):
     """ each kitchen counter has one minifridge and one microwave
     """
     floor = world.add_object(
-        Floor(create_box(w=6, l=6, h=FLOOR_HEIGHT, color=BLACK, collision=True)),
+        Floor(create_box(w=w, l=l, h=FLOOR_HEIGHT, color=BLACK, collision=True)),
         Pose(point=Point(x=w/2, y=l/2, z=-2 * FLOOR_HEIGHT)))
 
     counter = world.add_object(Object(

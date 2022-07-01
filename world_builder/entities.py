@@ -70,7 +70,8 @@ class Link(Index):
 #######################################################
 
 class Object(Index):
-    def __init__(self, body, joint=None, link=None, category=None, name=None, collision=True, verbose=False):
+    def __init__(self, body, joint=None, link=None, category=None, name=None,
+                 collision=True, verbose=False):
         self.body = body
         self.joint = joint
         self.link = link
@@ -322,6 +323,7 @@ class Floor(Region):
         super(Floor, self).__init__(body, **kwargs)
         self.category = 'floor'
         self.name = 'floor1'
+        self.is_box = True
 
 class Environment(Region):
     def __init__(self, body, **kwargs):
