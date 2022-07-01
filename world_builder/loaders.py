@@ -927,6 +927,6 @@ def load_random_mini_kitchen_counter(world, w=5, l=5, h=0.9, wb=.07, hb=.1, tabl
 
         return
 
-    minifridge = world.add_object(Surface(
+    minifridge = world.add_object(Object(
         load_asset('MiniFridge', x=w/2, y=l/2, yaw=math.pi/2, floor=floor,
                    w=round(w, 1), l=round(l, 1), RANDOM_INSTANCE=True)))
