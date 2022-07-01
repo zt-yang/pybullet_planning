@@ -250,9 +250,11 @@ class World(object):
         obj.knobs = knobs
         return doors, drawers, knobs
 
-    def add_joints_by_keyword(self, body_name, joint_name, category=None):
+    def add_joints_by_keyword(self, body_name, joint_name=None, category=None):
         body = self.name_to_body(body_name)
-        joints = [j for j in get_joints(body) if is_movable(body, j) and joint_name in get_joint_name(body, j)]
+        joints = [j for j in get_joints(body) if is_movable(body, j)]
+        if joint_name is not None:
+            joints = [j for j in joints if joint_name in get_joint_name(body, j)]
         for j in joints:
             self.add_joint_object(body, j, category=category)
         return [(body, j) for j in joints]

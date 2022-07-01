@@ -355,7 +355,7 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
     x = ((FLOOR_X_MIN + FLOOR_X_MAX) / 2 - X_OFFSET) / SCALING
     y = ((FLOOR_Y_MIN + FLOOR_Y_MAX) / 2 - Y_OFFSET) / SCALING
     floor = world.add_object(
-        Floor(create_box(w=round(w, 1), l=round(l, 1), h=FLOOR_HEIGHT, color=BLACK, collision=True)),
+        Floor(create_box(w=round(w, 1), l=round(l, 1), h=FLOOR_HEIGHT, color=TAN, collision=True)),
         Pose(point=Point(x=round(x, 1), y=round(y, 1), z=-2 * FLOOR_HEIGHT)))
 
     #######################################################
@@ -909,25 +909,29 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     """ each kitchen counter has one minifridge and one microwave
     """
     floor = world.add_object(
-        Floor(create_box(w=w, l=l, h=FLOOR_HEIGHT, color=BLACK, collision=True)),
+        Floor(create_box(w=w, l=l, h=FLOOR_HEIGHT, color=TAN, collision=True)),
         Pose(point=Point(x=w/2, y=l/2, z=-2 * FLOOR_HEIGHT)))
 
     counter = world.add_object(Object(
         load_asset('KitchenCounter', x=w/2, y=l/2, yaw=0, floor=floor, h=h,
                    RANDOM_INSTANCE=True, verbose=True), category='supporter', name='counter'))
 
-    if table_only:
-        table = world.add_object(
-            Object(create_box(0.5, 0.5, h, color=(.75, .75, .75, 1)), category='supporter', name='table'),
-            Pose(point=Point(x=1, y=1, z=h / 2)))
+    ## --- add cabage on an external table
+    x, y = 1, 3
+    table = world.add_object(
+        Object(create_box(0.5, 0.5, h, color=(.75, .75, .75, 1)), category='supporter', name='table'),
+        Pose(point=Point(x=x, y=y, z=h / 2)))
+    cat = 'VeggieCabbage'
+    cabbage = world.add_object(Object(
+        load_asset(cat, x=x, y=y, yaw=0, floor=table, scale=OBJ_SCALES[cat.lower()]), category=cat))
 
-        cabbage = world.add_object(Object(
-            load_asset('VeggieCabbage', x=1, y=1, z=h + hb/2, floor=table,
-                       scale=OBJ_SCALES['veggiecabbage']),
-            category='VeggieCabbage'))
-
-        return
+    if table_only:  return
 
     minifridge = world.add_object(Object(
-        load_asset('MiniFridge', x=w/2, y=l/2, yaw=math.pi/2, floor=floor,
-                   w=round(w, 1), l=round(l, 1), RANDOM_INSTANCE=True)))
+        load_asset('MiniFridge', x=w/2, y=l/2, yaw=math.pi/2, floor=floor, h=0.8, RANDOM_INSTANCE=True)))
+    world.add_joints_by_keyword(minifridge, 'door')
+
+    fridgestorage = world.add_object(Space(minifridge.body, -1, name='fridgestorage'))
+    counter.place_obj(minifridge)
+
+    world.open_all_doors_drawers()
