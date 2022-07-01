@@ -511,7 +511,7 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     goal = [g for g in goal if not (g[0] == 'not' and g[1][0] == '=')]
 
     if PRINT:
-        print_goal(goal)
+        print_goal(goal, world=world)
 
     stream_map = robot.get_stream_map(problem, collisions, custom_limits, teleport)
     # get_press_gen(problem, teleport=teleport)
