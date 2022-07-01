@@ -46,8 +46,7 @@ BASE_LIMITS = ((-1, 3), (6, 13))
 
 CAMERA_FRAME = 'high_def_optical_frame'
 EYE_FRAME = 'wide_stereo_gazebo_r_stereo_camera_frame'
-CAMERA_MATRIX = get_camera_matrix(width=640, height=480, fx=525., fy=525.) # 319.5, 239.5 | 772.55, 772.5
-
+CAMERA_MATRIX = get_camera_matrix(width=640, height=480, fx=525., fy=525.) # 319.5, 239.5 | 772.55, 772.5S
 
 def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
     other_arm = get_other_arm(arm)
@@ -994,6 +993,8 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                     collisions=False, num_samples=6, debug_del=False):
     from pybullet_tools.flying_gripper_utils import set_se3_conf, create_fe_gripper, se3_from_pose
     title = 'bullet_utils.get_hand_grasps | '
+    parallel = True
+
     dist = grasp_length
     robot = state.robot
     obstacles = state.fixed
@@ -1022,6 +1023,44 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
             print('check_new(aabbs, aabb)')
         return True
 
+    def check_grasp(r):
+        grasps = []
+        grasp = multiply(Pose(point=f), Pose(euler=r))
+
+        result, aabb, gripper = check_cfree_gripper(grasp, state.world, body_pose, obstacles, verbose=verbose,
+                                                    visualize=visualize, RETAIN_ALL=RETAIN_ALL, collisions=collisions)
+        if result:  ##  and check_new(aabbs, aabb):
+            grasps += [grasp]
+            # aabbs += [aabb]
+            # these += [grasp]
+
+            # # debug
+            # if verbose:
+            #     set_renderer(True)
+            #     return grasps
+
+            ## slide along the longest dimension
+            if LENGTH_VARIANTS and on_longest:
+                dl_max = max_value / 3
+                dl_candidates = [random.uniform(-dl_max, dl_max) for k in range(3)]
+                dl_candidates = [dl_max, -dl_max]
+                for dl in dl_candidates:
+                    grasp_dl = multiply(grasp, Pose(point=(dl, 0, 0)))
+                    result, aabb, gripper_dl = check_cfree_gripper(grasp, state.world, body_pose, obstacles,
+                                                                   verbose=verbose, collisions=collisions,
+                                                                   visualize=visualize, RETAIN_ALL=RETAIN_ALL)
+                    if result:  ## and check_new(aabbs, aabb):
+                        grasps += [grasp_dl]
+                        # aabbs += [aabb]
+                        # these += [grasp_dl]
+                    elif gripper_dl is not None:
+                        remove_body(gripper_dl)
+
+        elif gripper is not None:
+            remove_body(gripper)
+
+        return grasps
+
     ## get the points in hand frame to be transformed to the origin of object frame in different directions
     c = get_aabb_center(aabb)
     w, l, h = dimensions = get_aabb_extent(aabb)
@@ -1043,7 +1082,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
     }
     set_renderer(visualize)
     grasps = []
-    aabbs = []
+    # aabbs = []
     for f in faces:
         p = np.array(f)
         p = p / np.linalg.norm(p)
@@ -1054,52 +1093,28 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
             continue
 
         ## reduce num of grasps
-        these = []  ## debug
+        # these = []  ## debug
 
         ang = tuple(p)
         f = add(f, c)
         # r = rots[ang][0] ## random.choice(rots[tuple(p)]) ##
+
+        # if parallel:
+        #     from multiprocessing import Pool, cpu_count
+        #     with Pool(processes=int(cpu_count()*0.7)) as pool:
+        #         for result in pool.imap_unordered(check_grasp, rots[ang]):
+        #             grasps.extend(result)
+        #
+        # else:
         for r in rots[ang]:
-            grasp = multiply(Pose(point=f), Pose(euler=r))
+            grasps.extend(check_grasp(r))
 
-            result, aabb, gripper = check_cfree_gripper(grasp, state.world, body_pose, obstacles, verbose=verbose,
-                            visualize=visualize, RETAIN_ALL=RETAIN_ALL, collisions=collisions)
-            if result and check_new(aabbs, aabb):
-                grasps += [grasp]
-                aabbs += [aabb]
-                these += [grasp]
-
-                # # debug
-                # if verbose:
-                #     set_renderer(True)
-                #     return grasps
-
-                ## slide along the longest dimension
-                if LENGTH_VARIANTS and on_longest:
-                    dl_max = max_value / 3
-                    dl_candidates = [random.uniform(-dl_max, dl_max) for k in range(3)]
-                    dl_candidates = [dl_max, -dl_max]
-                    for dl in dl_candidates:
-                        grasp_dl = multiply(grasp, Pose(point=(dl, 0, 0)))
-                        result, aabb, gripper_dl = check_cfree_gripper(grasp, state.world, body_pose, obstacles,
-                                                           verbose=verbose, collisions=collisions,
-                                                           visualize=visualize, RETAIN_ALL=RETAIN_ALL)
-                        if result and check_new(aabbs, aabb):
-                            grasps += [grasp_dl]
-                            aabbs += [aabb]
-                            these += [grasp_dl]
-                        elif gripper_dl is not None:
-                            remove_body(gripper_dl)
-
-            elif gripper is not None:
-                remove_body(gripper)
-
-        ## just to look at the orientation
-        if debug_del:
-            set_camera_target_body(body, dx=0.3, dy=0.3, dz=0.3)
-            print(f'bullet_utils.get_hand_grasps | rots[{ang}]', len(rots[ang]), [nice(n) for n in rots[ang]])
-            print(f'bullet_utils.get_hand_grasps -> ({len(these)})', [nice(n[1]) for n in these])
-            print('bullet_utils.get_hand_grasps')
+        # ## just to look at the orientation
+        # if debug_del:
+        #     set_camera_target_body(body, dx=0.3, dy=0.3, dz=0.3)
+        #     print(f'bullet_utils.get_hand_grasps | rots[{ang}]', len(rots[ang]), [nice(n) for n in rots[ang]])
+        #     print(f'bullet_utils.get_hand_grasps -> ({len(these)})', [nice(n[1]) for n in these])
+        #     print('bullet_utils.get_hand_grasps')
 
     # set_renderer(True)
     print(f"{title} ({len(grasps)}) {[nice(g) for g in grasps]}")
