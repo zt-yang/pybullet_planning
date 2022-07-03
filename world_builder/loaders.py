@@ -1,3 +1,5 @@
+import random
+
 import numpy as np
 import math
 import os
@@ -913,7 +915,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
         Pose(point=Point(x=w/2, y=l/2, z=-2 * FLOOR_HEIGHT)))
 
     counter = world.add_object(Object(
-        load_asset('KitchenCounter', x=w/2, y=l/2, yaw=0, floor=floor, h=h,
+        load_asset('KitchenCounter', x=w/2, y=l/2, yaw=math.pi, floor=floor, h=h,
                    RANDOM_INSTANCE=True, verbose=True), category='supporter', name='counter'))
 
     ## --- add cabage on an external table
@@ -927,11 +929,30 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
 
     if table_only:  return
 
+    ## --- ADD A FRIDGE TO BE PUT INTO OR ONTO, ALIGN TO ONE SIDE
     minifridge = world.add_object(Object(
-        load_asset('MiniFridge', x=w/2, y=l/2, yaw=math.pi/2, floor=floor, h=0.8, RANDOM_INSTANCE=True)))
-    world.add_joints_by_keyword(minifridge, 'door')
+        load_asset('MiniFridge', x=w/2, y=l/2, yaw=math.pi, floor=table, h=0.8,
+                   RANDOM_INSTANCE=True), name='minifridge'))
 
+    world.add_joints_by_keyword('minifridge', category='door')
+    x = get_aabb(counter).upper[0] - get_aabb_extent(get_aabb(minifridge))[0]/2
+    y_min = get_aabb(counter).lower[1] + get_aabb_extent(get_aabb(minifridge))[1]/2
+    y_max = get_aabb_center(get_aabb(counter))[1]
+    if y_min > y_max:
+        y = y_max
+    else:
+        y = random.uniform(y_min, y_max)
+    (_, _, z), quat = get_pose(minifridge)
+    set_pose(minifridge, ((x, y, z), quat))
+    set_camera_target_body(minifridge, dx=1, dy=1, dz=1)
+
+    ## --- ADD ONE SPACE TO BE PUT INTO
     fridgestorage = world.add_object(Space(minifridge.body, -1, name='fridgestorage'))
-    counter.place_obj(minifridge)
 
     world.open_all_doors_drawers()
+
+    x += np.random.normal(3, 0.2)
+    y += np.random.normal(0, 0.2)
+    camera_pose = ((x, y, 1.3), (0.5, 0.5, -0.5, -0.5))
+    world.add_camera(camera_pose)
+    world.visualize_image()
