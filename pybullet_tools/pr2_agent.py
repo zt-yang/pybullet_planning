@@ -656,7 +656,7 @@ def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=False, v
         name_to_object = state.world.name_to_object
         body_pose = name_to_object(name).get_handle_pose()
         visualize_grasps_by_quat(state, outputs, body_pose, verbose=verbose)
-    print('test_handle_grasps:', outputs)
+    print(f'test_handle_grasps ({len(outputs)}): {outputs}')
     arm = state.robot.arms[0]
     goals = [("AtHandleGrasp", arm, body_joint, outputs[0][0])]
     return goals

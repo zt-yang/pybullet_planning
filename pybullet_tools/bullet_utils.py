@@ -347,6 +347,7 @@ def get_scale_by_category(file=None, category=None):
     if file is not None:
         if category in MODEL_HEIGHTS:
             height = MODEL_HEIGHTS[category]['height']
+            print('bullet_utils.get_scale_by_category', file)
             scale = get_model_scale(file, h=height)
         elif category in MODEL_SCALES:
             f = file.lower()

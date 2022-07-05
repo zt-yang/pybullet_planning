@@ -338,43 +338,16 @@ class Surface(Region):
     """ to support objects on top, like kitchentop and fridge shelves """
     def __init__(self, body, link, **kwargs):
         super(Region, self).__init__(body, link=link, **kwargs)
-        self.name = get_link_name(body, link)
+        if self.name is None:
+            self.name = get_link_name(body, link)
         self.supported_objects = []
-
-    # def support_obj(self, obj):
-    #     obj.supporting_surface = self
-    #     if obj not in self.supported_objects:
-    #         self.supported_objects.append(obj)
-
-    # def place_new_obj(self, obj_name):
-    #     from pybullet_tools.bullet_utils import sample_obj_on_body_link_surface
-    #     BODY_TO_OBJECT = self.world.BODY_TO_OBJECT
-    #     body = sample_obj_on_body_link_surface(obj_name, self.body, self.link)
-    #     obj = self.world.add_object(Object(body, category=obj_name))
-    #     self.world.put_on_surface(obj, surface=self.shorter_name)
-    #     self.support_obj(obj)
-    #     return obj
-
-    # def place_obj(self, obj, max_trial=8):
-    #     from pybullet_tools.bullet_utils import sample_obj_on_body_link_surface, nice
-    #     if isinstance(obj, str):
-    #         obj = self.place_new_obj(obj, max_trial=max_trial)
-    #     # obj_name = obj.category.capitalize().replace('bottle','Bottle')
-    #     # if obj_name == 'Moveable':
-    #     #     obj_name = obj
-    #     x, y, z, yaw = sample_obj_on_body_link_surface(
-    #         obj, self.body, self.link, PLACEMENT_ONLY=True, max_trial=max_trial)
-    #     z = stable_z(obj, self.body, self.link)
-    #     print(f'placed {obj.name} on surface {self.name} at point {nice((x, y, z))}')
-    #     obj.set_pose(Pose(point=Point(x=x,y=y,z=z), euler=Euler(yaw=yaw)))
-    #     self.support_obj(obj)
-    #     return obj
 
 class Space(Region):
     """ to support object inside, like cabinets and drawers """
     def __init__(self, body, link, **kwargs):
         super(Region, self).__init__(body, link=link, **kwargs)
-        self.name = get_link_name(body, link)
+        if self.name is None:
+            self.name = get_link_name(body, link)
         self.objects_inside = []
 
     def include_and_attach(self, obj):

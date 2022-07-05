@@ -354,14 +354,13 @@ class FEGripper(RobotAPI):
         from pybullet_tools.utils import Pose, euler_from_quat
         title = 'robots.visualize_grasp |'
 
-        verbose=True
         body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
         gripper = self.create_gripper(arm, visual=True)
         self.open_cloned_gripper(gripper, width)
         set_all_color(gripper, color)
 
-        grasp_pose = multiply(body_pose, grasp)  ##
-        if verbose or True:
+        grasp_pose = multiply(body_pose, grasp)
+        if verbose:
             handles = draw_pose(grasp_pose, length=0.05)
             print(f'{title} body_pose = {nice(body_pose)} | grasp = {nice(grasp)}')
             print(f'{title} grasp_pose = multiply(body_pose, grasp) = ', nice(grasp_pose))
