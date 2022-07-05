@@ -28,7 +28,8 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     body_collision, is_placed_on_aabb, joint_from_name, body_from_end_effector, flatten_links, get_aabb_volume, \
     get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, Point, get_camera_matrix, \
     YELLOW, add_line, draw_point, RED, BROWN, BLACK, BLUE, GREY, remove_handles, apply_affine, vertices_from_rigid, \
-    aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer
+    aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
+    parent_joint_from_link
 
 
 OBJ = '?obj'
@@ -992,7 +993,8 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                     visualize=False, RETAIN_ALL=False, verbose=False,
                     collisions=False, num_samples=6, debug_del=False):
     from pybullet_tools.flying_gripper_utils import set_se3_conf, create_fe_gripper, se3_from_pose
-    title = 'bullet_utils.get_hand_grasps | '
+    body_name = (body, link) if link is not None else body
+    title = f'bullet_utils.get_hand_grasps({body_name}) | '
     parallel = True
 
     dist = grasp_length
@@ -1045,7 +1047,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                 dl_candidates = [random.uniform(-dl_max, dl_max) for k in range(3)]
                 dl_candidates = [dl_max, -dl_max]
                 for dl in dl_candidates:
-                    grasp_dl = multiply(grasp, Pose(point=(dl, 0, 0)))
+                    grasp_dl = robot.mod_grasp_along_handle(grasp, dl)
                     result, aabb, gripper_dl = check_cfree_gripper(grasp, state.world, body_pose, obstacles,
                                                                    verbose=verbose, collisions=collisions,
                                                                    visualize=visualize, RETAIN_ALL=RETAIN_ALL)
@@ -1146,7 +1148,8 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
         # set_camera_target_body(gripper_grasp, dx=0.5, dy=-0.5, dz=0.5)  ## fridge shelf
         # set_camera_target_body(gripper_grasp, dx=0.05, dy=-0.05, dz=0.5)  ## above dishwasher
         # set_camera_target_body(gripper_grasp, dx=0.05, dy=-0.05, dz=0.15)  ## inside dishwasher
-        set_camera_target_body(gripper_grasp, dx=0.15, dy=-0.15, dz=0)  ## bottle on floor
+        # set_camera_target_body(gripper_grasp, dx=0.15, dy=-0.15, dz=0)  ## bottles on floor
+        set_camera_target_body(gripper_grasp, dx=2, dy=1, dz=1)  ## minifridges on the floor
 
     ## criteria 1: when gripper isn't closed, it shouldn't collide
     firstly = collided(gripper_grasp, obstacles, min_num_pts=min_num_pts,
@@ -1362,3 +1365,19 @@ def sort_body_parts(bodies):
             bodies.sort()
             sorted_bodies.extend(bodies)
     return sorted_bodies
+
+
+def get_partnet_doors(path, body):
+    file = join(path, 'semantics.txt')
+    body_joints = {}
+    with open(file, 'r') as f:
+        for line in f.readlines():
+            line = line.replace('\n', '')
+            link_name, part_type, part_name = line.split(' ')
+            if part_type == 'hinge' and part_name == 'door':
+                link = link_from_name(body, link_name)
+                joint = parent_joint_from_link(link)
+                joint_name = line.replace(' ', '--')
+                body_joint = (body, joint)
+                body_joints[body_joint] = joint_name
+    return body_joints

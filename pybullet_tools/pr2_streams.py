@@ -120,60 +120,6 @@ def get_handle_grasps(body_joint, tool_pose=TOOL_POSE, body_pose=unit_pose(),
     add_grasp_in_db(db, db_file, full_name, grasps)
     return grasps
 
-def get_handle_grasp_gen(problem, collisions=False, randomize=False, visualize=False, verbose=False):
-    collisions = True
-    obstacles = problem.fixed if collisions else []
-    world = problem.world
-    robot = problem.robot
-    title = 'pr2_streams.get_handle_grasp_gen |'
-    def fn(body_joint):
-        body, joint = body_joint
-        handle_link = get_handle_link(body_joint)
-        # print(f'{title} handle_link of body_joint {body_joint} is {handle_link}')
-
-        g_type = 'top'
-        if robot.name.startswith('feg'):
-            from bullet_utils import get_hand_grasps
-            arm = 'hand'
-            grasps = get_hand_grasps(problem, body, link=handle_link, HANDLE_FILTER=True,
-                        visualize=False, RETAIN_ALL=False, LENGTH_VARIANTS=True, verbose=verbose)
-
-        elif robot.name.startswith('pr2'):
-            arm = 'left'
-            full_name = world.get_name(body_joint)
-            grasps = get_handle_grasps(body_joint, grasp_length=GRASP_LENGTH, robot=problem.robot,
-                                        obstacles=obstacles, full_name=full_name, world=world)
-        else:
-            raise NotImplementedError('what robot is think')
-
-        if verbose: print(f'\n{title} grasps =', [nice(g) for g in grasps])
-
-        app = robot.get_approach_vector(arm, g_type)
-        grasps = [HandleGrasp('side', body_joint, g, robot.get_approach_pose(app, g),
-                              robot.get_carry_conf(arm, g_type, g)) for g in grasps]
-        for grasp in grasps:
-            if robot.name.startswith('feg'):
-                body_pose = get_link_pose(body, handle_link)
-                if verbose: print(f'{title} get_link_pose({body}, {handle_link})'
-                                  f' = {nice(body_pose)} | grasp = {nice(grasp.value)}')
-                grasp.grasp_width = robot.compute_grasp_width(arm, body_pose,
-                                    grasp.value, body=body_joint, verbose=verbose) if collisions else 0.0
-            elif robot.name.startswith('pr2'):
-                grasp.grasp_width = get_handle_width(body_joint)
-
-        if randomize:
-            random.shuffle(grasps)
-        return [(g,) for g in grasps]
-        #for g in grasps:
-        #    yield (g,)
-    return fn
-
-def linkpose_from_position(pose, world):
-    pose.assign()
-    joint = world.BODY_TO_OBJECT[(pose.body, pose.joint)]
-    pose_value = get_link_pose(joint.body, joint.handle_link)
-    return pose_value ## LinkPose(pose.body, joint, pose_value)
-
 ## -------- moved to robot.
 # def iterate_approach_path(robot, arm, gripper, pose_value, grasp, body=None):
 #     tool_from_root = get_tool_from_root(robot, arm)

@@ -438,13 +438,20 @@ class ArticulatedObjectPart(Object):
         if (body, joint) in [(6, 1)]:
             print('debug find_handle_link')
         link = get_joint_info(body, joint).linkName.decode("utf-8")
+        children_link = get_link_children(body, link_from_name(body, link))
 
         ## the only handle, for those carefully engineered names
         links = [l for l in get_links(body) if 'handle' in get_link_name(body, l)]
         if len(links) == 1:
             return links[0]
 
-        ## when the substring matches, for those carefully engineered names
+        ## if there's only one in the link's children
+        elif len(links) > 1:
+            also_in_children = [l for l in links if l in children_link]
+            if len(also_in_children) == 1:
+                return also_in_children[0]
+
+        ## when the substring matches, for those carefully engineered names, e.g. counter
         if link.endswith('_link'):
             name = link[:link.index('_link')]
             links = [l for l in get_links(body) if name in get_link_name(body, l)]
@@ -454,7 +461,7 @@ class ArticulatedObjectPart(Object):
 
         ## try to find in children links
         if len(links) == 0:
-            links += [l for l in get_link_children(body, link_from_name(body, link))]
+            links += children_link
 
         ## sort links by similarity in names
         words = self.name.split('_')

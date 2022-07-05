@@ -229,6 +229,9 @@ class PR2Robot(RobotAPI):
 
         return gripper_grasp
 
+    def mod_grasp_along_handle(self, grasp, dl):
+        return multiply(grasp, Pose(point=(0, dl, 0)))
+
     def get_attachment(self, grasp, arm):
         tool_link = link_from_name(self.body, PR2_TOOL_FRAMES[arm])
         return self.make_attachment(grasp, tool_link)
@@ -390,6 +393,9 @@ class FEGripper(RobotAPI):
 
         # set_camera_target_body(gripper, dx=0.5, dy=0.5, dz=0.5)
         return gripper
+
+    def mod_grasp_along_handle(self, grasp, dl):
+        return multiply(grasp, Pose(point=(dl, 0, 0)))
 
     def get_init(self, init_facts=[], conf_saver=None):
         from pybullet_tools.flying_gripper_utils import get_se3_joints, get_se3_conf, ARM_NAME

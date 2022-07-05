@@ -77,24 +77,14 @@ class World():
         self.add_body(body, name)
         self.robot = body
 
-    def add_semantic_label(self, body, file):
-        body_joints = []
-        with open(file, 'r') as f:
-            idx = 0
-            for line in f.readlines():
-                line = line.replace('\n', '')
-                link_name, part_type, part_name = line.split(' ')
-                if part_type == 'hinge' and part_name == 'door':
-                    link = link_from_name(body, link_name)
-                    joint = parent_joint_from_link(link)
-                    joint_name = line.replace(' ', '--')
-                    body_joint = (body, joint)
-                    body_joints.append(body_joint)
-                    self.add_body(body_joint, joint_name)
-                    handle_link = get_handle_link(body_joint)
-                    set_color(body, color=LINK_COLORS[idx], link=handle_link)
-                    idx += 1
-        return body_joints
+    def add_semantic_label(self, body, body_joints):
+        """ find the doors and color each handle """
+        idx = 0
+        for body_joint, joint_name in body_joints.items():
+            self.add_body(body_joint, joint_name)
+            handle_link = get_handle_link(body_joint)
+            set_color(body, color=LINK_COLORS[idx], link=handle_link)
+            idx += 1
 
     def update_objects(self, objects):
         for o in objects.values():

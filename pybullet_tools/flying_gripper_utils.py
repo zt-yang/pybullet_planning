@@ -213,8 +213,6 @@ def pose_from_se3(conf):
 def se3_ik(robot, target_pose, max_iterations=200, max_time=5, verbose=False, mod_target=None):
     report_failure = False
     debug = False
-    if verbose:
-        print('se_ik.(o==(10,3))')
 
     if mod_target != None:
         actual_target = copy.deepcopy(target_pose)
