@@ -327,27 +327,35 @@ def collided(obj, obstacles, world=None, tag='', verbose=False, visualize=False,
 
 #######################################################
 
-OBJ_SCALES = {
-    'OilBottle': 0.25, 'VinegarBottle': 0.25, 'Salter': 0.1, 'Knife': 0.1, 'Fork': 0.2,
-    'Microwave': 0.7, 'Pan': 0.3, 'Pot': 0.3, 'Kettle': 0.3, 'Bottle': 0.25,
-    'Egg': 0.1, 'Veggie': 0.3, 'VeggieLeaf': 0.3, 'VeggieStem': 0.3,
-    'MilkBottle': 0.2, 'Toaster': 0.2, 'Bucket': 0.7, 'Cart': 1.1,
-    'PotBody': 0.3, 'BraiserBody': 0.37, 'BraiserLid': 0.37, 'Faucet': 0.35,
-    'VeggieCabbage': 0.005, 'MeatTurkeyLeg': 0.0007, 'VeggieTomato': 0.005,
-    'VeggieZucchini': 0.01, 'VeggiePotato': 0.015, 'VeggieCauliflower': 0.008,
-    'VeggieGreenPepper': 0.0003, 'VeggieArtichoke': 0.017, 'MeatChicken': 0.0008,
-    'PlateFat': 0.8, 'PlateFlat': 0.8
-}
-OBJ_SCALES = {k.lower(): v * 0.7 for k, v in OBJ_SCALES.items()}
 OBJ_YAWS = {
     'Microwave': PI, 'Toaster': PI / 2
 }
 
-def get_scale(obj):
-    if obj in OBJ_SCALES:
-        return OBJ_SCALES[obj]
-    print('bullet_utils.get_scale | didnt find scale for', obj)
-    return 1
+def get_scale_by_category(file=None, category=None):
+    from world_builder.partnet_scales import MODEL_HEIGHTS, MODEL_SCALES, OBJ_SCALES
+    from world_builder.utils import get_model_scale
+
+    scale = 1
+    cat = category.lower()
+
+    ## general category-level
+    if category is not None:
+        if cat in OBJ_SCALES:
+            scale = OBJ_SCALES[cat]
+
+    ## specific instance-level
+    if file is not None:
+        if category in MODEL_HEIGHTS:
+            height = MODEL_HEIGHTS[category]['height']
+            scale = get_model_scale(file, h=height)
+        elif category in MODEL_SCALES:
+            f = file.lower()
+            f = f[f.index(cat)+len(cat)+1:]
+            id = f[:f.index('/')]
+            if id in MODEL_SCALES[category]:
+                scale = MODEL_SCALES[category][id]
+
+    return scale
 
 def sample_pose(obj, aabb, obj_aabb=None, yaws=OBJ_YAWS):
     ## sample a pose in aabb that can fit an object in
@@ -375,7 +383,7 @@ def sample_pose(obj, aabb, obj_aabb=None, yaws=OBJ_YAWS):
     return x, y, z, yaw
 
 
-def sample_obj_on_body_link_surface(obj, body, link, scales=OBJ_SCALES, PLACEMENT_ONLY=False, max_trial=3):
+def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_trial=3):
     aabb = get_aabb(body, link)
     # x, y, z, yaw = sample_pose(obj, aabb)
     # maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), scale=scales[obj], maybe=True)
@@ -384,8 +392,7 @@ def sample_obj_on_body_link_surface(obj, body, link, scales=OBJ_SCALES, PLACEMEN
     x, y, z, yaw = sample_pose(obj, aabb)
     if isinstance(obj, str):
         obj = obj.lower()
-        maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), scale=get_scale(obj),
-                           maybe=True)
+        maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), maybe=True)
     else:
         maybe = obj
     trial = 0
@@ -402,8 +409,7 @@ def sample_obj_on_body_link_surface(obj, body, link, scales=OBJ_SCALES, PLACEMEN
             x, y, z, yaw = sample_pose(obj, aabb, get_aabb(maybe))
             if isinstance(obj, str):
                 remove_body(maybe)
-                maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), scale=get_scale(obj),
-                                   maybe=True)
+                maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), maybe=True)
             else:
                 pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
                 set_pose(maybe, pose)
@@ -413,7 +419,7 @@ def sample_obj_on_body_link_surface(obj, body, link, scales=OBJ_SCALES, PLACEMEN
 
     if isinstance(obj, str):
         remove_body(maybe)
-        maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), scale=get_scale(obj),
+        maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link),
                            moveable=True)
     if PLACEMENT_ONLY: return x, y, z, yaw
 
@@ -422,8 +428,7 @@ def sample_obj_on_body_link_surface(obj, body, link, scales=OBJ_SCALES, PLACEMEN
     return maybe
 
 
-def sample_obj_in_body_link_space(obj, body, link=None, scales=OBJ_SCALES,
-                                  PLACEMENT_ONLY=False, XY_ONLY=False, verbose=False):
+def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False, XY_ONLY=False, verbose=False):
     set_renderer(verbose)
     if verbose:
         print('sample_obj_in_body_link_space | verbose')
@@ -432,7 +437,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, scales=OBJ_SCALES,
     x, y, z, yaw = sample_pose(obj, aabb)
     if isinstance(obj, str):
         obj = obj.lower()
-        maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, scale=get_scale(obj), maybe=True)
+        maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, maybe=True)
     else:
         maybe = obj
     handles = draw_fitted_box(maybe)[-1]
@@ -447,7 +452,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, scales=OBJ_SCALES,
         z += 0.01
         if isinstance(obj, str):
             remove_body(maybe)
-            maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, scale=get_scale(obj), maybe=True)
+            maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, maybe=True)
         else:
             pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
             set_pose(maybe, pose)
@@ -521,7 +526,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, scales=OBJ_SCALES,
 
     if isinstance(obj, str):
         remove_body(maybe)
-        maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, scale=get_scale(obj), moveable=True)
+        maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, moveable=True)
         # maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, z=round(z, 1), scale=scales[obj], moveable=True)
 
     remove_handles(handles)
@@ -1137,10 +1142,6 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
     if gripper_grasp == None:
         return False, None, None
 
-    if verbose:
-        print(f'bullet_utils.check_cfree_gripper | gripper_grasp {gripper_grasp} | object_pose {nice(object_pose)}'
-            f' | se_conf {nice(get_cloned_se3_conf(robot, gripper_grasp))} | grasp = {nice(grasp)}')
-
     if visualize: ## and not firstly: ## somtimes cameras blocked by robot, need to change dx, dy
         ## also helps slow down visualization of the sampling the testing process
         # set_camera_target_body(gripper_grasp, dx=0.3, dy=0.5, dz=0.2) ## oven
@@ -1368,6 +1369,8 @@ def sort_body_parts(bodies):
 
 
 def get_partnet_doors(path, body):
+    if path.endswith('urdf'):
+        path = path[:path.rfind('/')]
     file = join(path, 'semantics.txt')
     body_joints = {}
     with open(file, 'r') as f:

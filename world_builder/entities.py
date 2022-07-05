@@ -72,6 +72,9 @@ class Link(Index):
 class Object(Index):
     def __init__(self, body, joint=None, link=None, category=None, name=None,
                  collision=True, verbose=False):
+        if isinstance(body, tuple) and isinstance(body[1], str):
+            body, path = body
+            self.path = path
         self.body = body
         self.joint = joint
         self.link = link

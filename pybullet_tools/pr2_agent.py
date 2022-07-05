@@ -643,22 +643,22 @@ def test_marker_pull_grasps(state, marker, visualize=False):
     print('test_marker_pull_grasps:', grasps)
     return grasps
 
-def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=True, verbose=False):
+def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=False, verbose=False):
     if isinstance(name, str):
         body_joint = state.world.name_to_body(name)
     else: ##if isinstance(name, Object):
         body_joint = name
         name = state.world.BODY_TO_OBJECT[body_joint].shorter_name
 
-    funk = get_handle_grasp_gen(state, visualize=False, verbose=verbose)
+    funk = get_handle_grasp_gen(state, visualize=visualize, verbose=verbose)
     outputs = funk(body_joint)
     if visualize:
         name_to_object = state.world.name_to_object
         body_pose = name_to_object(name).get_handle_pose()
         visualize_grasps_by_quat(state, outputs, body_pose, verbose=verbose)
     print('test_handle_grasps:', outputs)
-    grasp_type = state.robot.grasp_types[0]
-    goals = [("AtHandleGrasp", grasp_type, body_joint, outputs[0][0])]
+    arm = state.robot.arms[0]
+    goals = [("AtHandleGrasp", arm, body_joint, outputs[0][0])]
     return goals
 
 def test_grasps(state, name='cabbage', visualize=True):

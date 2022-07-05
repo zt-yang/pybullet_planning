@@ -16,6 +16,7 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, \
     stable_z, Pose, Point, create_box, load_model, get_joints, set_joint_position, BROWN, Euler, PI, \
     set_camera_pose, TAN, RGBA, sample_aabb, get_min_limit, get_max_limit, set_color, WHITE, get_links, \
     get_link_name, get_link_pose, euler_from_quat, get_collision_data, get_joint_name, get_joint_position
+from pybullet_tools.bullet_utils import get_scale_by_category
 from pybullet_tools.logging import dump_json
 from world_builder.paths import ASSET_PATH
 
@@ -185,6 +186,7 @@ def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, h=None, 
     if verbose: print(f"\nLoading ... {category}", end='\r')
 
     file = get_file_by_category(category, RANDOM_INSTANCE=RANDOM_INSTANCE)
+    scale = get_scale_by_category(file=file, category=category)
     if file != None:
         if verbose: print(f"Loading ...... {file}")
         scale = get_model_scale(file, l, w, h, scale, category)
@@ -219,7 +221,7 @@ def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, h=None, 
         else:
             object = Object(body, category=category)
 
-    return body
+    return body, file
 
 # def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, scale=1,
 #                verbose=False, maybe=False, moveable=False):

@@ -114,6 +114,7 @@ class RobotAPI(Robot):
 
 class PR2Robot(RobotAPI):
 
+    arms = ['left']
     grasp_types = ['top']
     joint_groups = ['left', 'right', 'base']
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
@@ -295,6 +296,7 @@ class PR2Robot(RobotAPI):
 
 class FEGripper(RobotAPI):
 
+    arms = ['hand']
     grasp_types = ['hand']
     joint_groups = ['hand']
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
