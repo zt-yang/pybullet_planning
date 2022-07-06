@@ -432,7 +432,7 @@ def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_t
 def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False, XY_ONLY=False, verbose=False):
     set_renderer(verbose)
     if verbose:
-        print('sample_obj_in_body_link_space | verbose')
+        print(f'sample_obj_in_body_link_space(obj={obj}, body={body}, link={link})')
 
     aabb = get_aabb(body, link)
     x, y, z, yaw = sample_pose(obj, aabb)
@@ -465,20 +465,20 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False, XY
     def sample_maybe(body, maybe, pose, handles):
         (x, y, z, yaw) = pose
 
-        # remaining_trials = 10
+        remaining_trials = 10
         while not aabb_contains_aabb(get_aabb(maybe), aabb) or body_collision(body, maybe, link1=link):
-            # remaining_trials -= 1
-            # if remaining_trials < 0:
-            #     break
+            remaining_trials -= 1
+            if remaining_trials < 0:
+                break
             maybe, (x, y, z, yaw), handles = sample_one(maybe, handles)
             if verbose:
                 draw_points(body, link)
-
-        if verbose:
-            print(f'sampling space for {body}-{link} {nice(aabb)} : {obj} {nice(get_aabb(maybe))}', )
-            print(f'   collision between {body}-{link} and {maybe}: {body_collision(body, maybe, link1=link)}')
-            print(f'   aabb of {body}-{link} contains that of {maybe}: {aabb_contains_aabb(get_aabb(maybe), aabb)}')
-            set_camera_target_body(maybe, dx=1.5, dy=0, dz=0.7)
+                print('\n ---- remaining_trials =', remaining_trials)
+                print(f'sampling space for {body}-{link} {nice(aabb)} : {obj} {nice(get_aabb(maybe))}', )
+                print(f'   collision between {body}-{link} and {maybe}: {body_collision(body, maybe, link1=link)}')
+                print(f'   aabb of {body}-{link} contains that of {maybe}: {aabb_contains_aabb(get_aabb(maybe), aabb)}')
+                print()
+                # set_camera_target_body(maybe, dx=1.5, dy=0, dz=0.7)
 
         return maybe, (x, y, z, yaw), handles
 
@@ -1369,19 +1369,35 @@ def sort_body_parts(bodies):
     return sorted_bodies
 
 
-def get_partnet_doors(path, body):
+def get_partnet_semantics(path):
     if path.endswith('urdf'):
         path = path[:path.rfind('/')]
     file = join(path, 'semantics.txt')
-    body_joints = {}
+    lines = []
     with open(file, 'r') as f:
         for line in f.readlines():
-            line = line.replace('\n', '')
-            link_name, part_type, part_name = line.split(' ')
-            if part_type == 'hinge' and part_name == 'door':
-                link = link_from_name(body, link_name)
-                joint = parent_joint_from_link(link)
-                joint_name = line.replace(' ', '--')
-                body_joint = (body, joint)
-                body_joints[body_joint] = joint_name
+            lines.append(line.replace('\n', ''))
+    return lines
+
+
+def get_partnet_doors(path, body):
+    body_joints = {}
+    for line in get_partnet_semantics(path):
+        link_name, part_type, part_name = line.split(' ')
+        if part_type == 'hinge' and part_name == 'door':
+            link = link_from_name(body, link_name)
+            joint = parent_joint_from_link(link)
+            joint_name = line.replace(' ', '--')
+            body_joint = (body, joint)
+            body_joints[body_joint] = joint_name
     return body_joints
+
+
+def get_partnet_spaces(path, body):
+    space_links = {}
+    for line in get_partnet_semantics(path):
+        link_name, part_type, part_name = line.split(' ')
+        if '_body' in part_name:
+            link = link_from_name(body, link_name)
+            space_links[(body, None, link)] = part_name
+    return space_links

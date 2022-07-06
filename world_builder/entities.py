@@ -73,8 +73,9 @@ class Object(Index):
     def __init__(self, body, joint=None, link=None, category=None, name=None,
                  collision=True, verbose=False):
         if isinstance(body, tuple) and isinstance(body[1], str):
-            body, path = body
+            body, path, scale = body
             self.path = path
+            self.scale = scale
         self.body = body
         self.joint = joint
         self.link = link

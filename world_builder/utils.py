@@ -221,7 +221,7 @@ def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, h=None, 
         else:
             object = Object(body, category=category)
 
-    return body, file
+    return body, file, scale
 
 # def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, scale=1,
 #                verbose=False, maybe=False, moveable=False):
