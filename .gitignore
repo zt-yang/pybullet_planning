@@ -12,3 +12,6 @@ temp
 **/*.swp
 **/*.~un
 build/
+
+bullet/examples/statistics/
+bullet/examples/temp/
