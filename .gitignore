@@ -12,3 +12,7 @@ temp
 **/*.swp
 **/*.~un
 build/
+
+## temp file that shouldn't be copied or released to the public
+## until I figure out how to pip install it
+pybullet_tools/srl_stream_utils.py

@@ -1,4 +1,8 @@
-## written by Caelan Garrett at NVIDIA, for internal use only
+"""
+written by Caelan Garrett at NVIDIA, for internal use only
+please contact cgarrett@nvidia.com if you are to use this
+"""
+
 import os
 import numpy as np
 import pybullet as p
