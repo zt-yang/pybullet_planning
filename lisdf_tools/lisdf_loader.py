@@ -77,13 +77,19 @@ class World():
         self.add_body(body, name)
         self.robot = body
 
-    def add_semantic_label(self, body, body_joints):
-        """ find the doors and color each handle """
+    def add_joints(self, body, body_joints):
         idx = 0
         for body_joint, joint_name in body_joints.items():
             self.add_body(body_joint, joint_name)
             handle_link = get_handle_link(body_joint)
             set_color(body, color=LINK_COLORS[idx], link=handle_link)
+            idx += 1
+
+    def add_spaces(self, body, body_links):
+        idx = 0
+        for body_link, link_name in body_links.items():
+            self.add_body(body_link, link_name)
+            set_color(body, color=LINK_COLORS[idx], link=body_link[-1])
             idx += 1
 
     def update_objects(self, objects):

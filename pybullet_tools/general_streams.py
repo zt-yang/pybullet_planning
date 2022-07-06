@@ -197,11 +197,12 @@ def get_mod_pose(pose):
     (x,y,z), quat = pose
     return ((x,y,z+0.01), quat)
 
-def get_contain_list_gen(problem, collisions=True, max_attempts=20, num_samples=5, verbose=False, **kwargs):
+def get_contain_list_gen(problem, collisions=True, max_attempts=20, num_samples=3, verbose=False, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
     obstacles = problem.fixed if collisions else []
 
     def gen(body, space):
+        title = f"  get_contain_gen({body}, {space}) |"
         if space is None:
             spaces = problem.spaces
         else:
@@ -227,8 +228,9 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=20, num_samples=
                 poses.append((p,))
                 # yield (p,)
         if verbose:
-            print(f'  get_contain_gen | reached max_attempts = {max_attempts}')
+            print(f'{title} reached max_attempts = {max_attempts}')
         # yield None
+        print(f'{title} return {len(poses)} poses = {poses}')
         return poses
     return gen
 
