@@ -1173,7 +1173,8 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
         secondly = collided(gripper_grasp, obstacles, min_num_pts=0, world=world, verbose=False, tag='secondly')
 
         ## boxes don't contain vertices for collision checking
-        if body is not None and isinstance(body, int) and get_collision_data(body)[0].geometry_type == p.GEOM_BOX:
+        if body is not None and isinstance(body, int) and len(get_collision_data(body)) > 0 \
+                and get_collision_data(body)[0].geometry_type == p.GEOM_BOX:
             secondly = secondly or aabb_contains_aabb(get_aabb(gripper_grasp, robot.finger_link), get_aabb(body))
 
     ## criteria 3: the gripper shouldn't be pointing upwards, heuristically
