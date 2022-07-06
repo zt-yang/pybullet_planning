@@ -29,7 +29,7 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, Point, get_camera_matrix, \
     YELLOW, add_line, draw_point, RED, BROWN, BLACK, BLUE, GREY, remove_handles, apply_affine, vertices_from_rigid, \
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
-    parent_joint_from_link
+    parent_joint_from_link, draw_aabb
 
 
 OBJ = '?obj'
@@ -435,6 +435,8 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False, XY
         print(f'sample_obj_in_body_link_space(obj={obj}, body={body}, link={link})')
 
     aabb = get_aabb(body, link)
+    # draw_aabb(aabb)
+
     x, y, z, yaw = sample_pose(obj, aabb)
     if isinstance(obj, str):
         obj = obj.lower()
@@ -969,7 +971,12 @@ def draw_points(body, link=None):
 
 def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False):
     body_pose, vertices = get_model_points(body, link=link, verbose=verbose)
-    aabb = aabb_from_points(vertices)
+    if link is None:  link = -1
+    data = get_collision_data(body, link)[0]
+    if data.geometry_type == p.GEOM_MESH:
+        aabb = aabb_from_points(vertices)
+    else: ## if data.geometry_typep == p.GEOM_BOX:
+        aabb = get_aabb(body)
     handles = draw_bounding_box(aabb, body_pose)
     if draw_centroid:
         handles.extend(draw_face_points(aabb, body_pose, dist=0.04))
@@ -1008,7 +1015,9 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
     obstacles = state.fixed
     if body not in obstacles:
         obstacles += [body]
+
     body_pose, aabb, handles = draw_fitted_box(body, link=link, verbose=verbose)
+
     if link == None:
         body_pose = get_pose(body)
     else: ## for handle grasps, use the original pose of handle_link
@@ -1031,11 +1040,11 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
             print('check_new(aabbs, aabb)')
         return True
 
-    def check_grasp(r):
+    def check_grasp(f, r):
         grasps = []
         grasp = multiply(Pose(point=f), Pose(euler=r))
 
-        result, aabb, gripper = check_cfree_gripper(grasp, state.world, body_pose, obstacles, verbose=verbose,
+        result, aabb, gripper = check_cfree_gripper(grasp, state.world, body_pose, obstacles, verbose=verbose, body=body,
                                                     visualize=visualize, RETAIN_ALL=RETAIN_ALL, collisions=collisions)
         if result:  ##  and check_new(aabbs, aabb):
             grasps += [grasp]
@@ -1054,7 +1063,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                 dl_candidates = [dl_max, -dl_max]
                 for dl in dl_candidates:
                     grasp_dl = robot.mod_grasp_along_handle(grasp, dl)
-                    result, aabb, gripper_dl = check_cfree_gripper(grasp, state.world, body_pose, obstacles,
+                    result, aabb, gripper_dl = check_cfree_gripper(grasp, state.world, body_pose, obstacles, body=body,
                                                                    verbose=verbose, collisions=collisions,
                                                                    visualize=visualize, RETAIN_ALL=RETAIN_ALL)
                     if result:  ## and check_new(aabbs, aabb):
@@ -1115,7 +1124,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
         #
         # else:
         for r in rots[ang]:
-            grasps.extend(check_grasp(r))
+            grasps.extend(check_grasp(f, r))
 
         # ## just to look at the orientation
         # if debug_del:
@@ -1134,7 +1143,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
     #     return grasps[:num_samples]
     return grasps  ##[:1]
 
-def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, color=GREEN,
+def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, color=GREEN, body=None,
                         min_num_pts=40, RETAIN_ALL=False, verbose=False, collisions=False):
     from pybullet_tools.flying_gripper_utils import get_cloned_se3_conf
     robot = world.robot
@@ -1161,8 +1170,11 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
     secondly = False
     if not firstly or not collisions:
         robot.close_cloned_gripper(gripper_grasp)
-        secondly = collided(gripper_grasp, obstacles, min_num_pts=0,
-                            world=world, verbose=False, tag='secondly')
+        secondly = collided(gripper_grasp, obstacles, min_num_pts=0, world=world, verbose=False, tag='secondly')
+
+        ## boxes don't contain vertices for collision checking
+        if body is not None and isinstance(body, int) and get_collision_data(body)[0].geometry_type == p.GEOM_BOX:
+            secondly = secondly or aabb_contains_aabb(get_aabb(gripper_grasp, robot.finger_link), get_aabb(body))
 
     ## criteria 3: the gripper shouldn't be pointing upwards, heuristically
     finger_link = robot.finger_link

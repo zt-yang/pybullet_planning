@@ -54,7 +54,7 @@ def get_stream_map(p, c, l, t):
     # t = teleport
     stream_map = {
         'sample-pose-on': from_list_fn(get_stable_list_gen(p, collisions=c)),
-        'sample-pose-in': from_list_fn(get_contain_list_gen(p, collisions=c)),
+        'sample-pose-in': from_list_fn(get_contain_list_gen(p, collisions=c, verbose=False)),
         'sample-grasp': from_list_fn(get_grasp_list_gen(p, collisions=True)),
 
         'inverse-kinematics-hand': from_fn(get_ik_fn(p, collisions=c, teleport=t, custom_limits=l, verbose=False)),

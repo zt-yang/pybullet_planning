@@ -31,7 +31,7 @@ from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, H
     get_joint_name
 from pybullet_tools.bullet_utils import place_body, add_body, Pose2d, nice, OBJ_YAWS, \
     sample_obj_on_body_link_surface, sample_obj_in_body_link_space, set_camera_target_body, \
-    open_joint, close_joint, set_camera_target_robot, summarize_joints, get_partnet_doors, \
+    open_joint, close_joint, set_camera_target_robot, summarize_joints, get_partnet_doors, get_partnet_spaces, \
     set_pr2_ready, BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, \
     BASE_LIMITS, CAMERA_FRAME, CAMERA_MATRIX, EYE_FRAME
 
@@ -931,7 +931,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     ## --- ADD A FRIDGE TO BE PUT INTO OR ONTO, ALIGN TO ONE SIDE
     minifridge = world.add_object(Object(
         load_asset('MiniFridge', x=w/2, y=l/2, yaw=math.pi, floor=counter,
-                   RANDOM_INSTANCE=True), name='minifridge'))
+                   RANDOM_INSTANCE=False), name='minifridge'))
     x = get_aabb(counter).upper[0] - get_aabb_extent(get_aabb(minifridge))[0]/2
     y_min = get_aabb(counter).lower[1] + get_aabb_extent(get_aabb(minifridge))[1]/2
     y_max = get_aabb_center(get_aabb(counter))[1]
@@ -941,7 +941,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
         y = random.uniform(y_min, y_max)
     (_, _, z), quat = get_pose(minifridge)
     set_pose(minifridge, ((x, y, z), quat))
-    set_camera_target_body(minifridge, dx=1, dy=1, dz=1)
+    set_camera_target_body(minifridge, dx=1, dy=0, dz=1)
 
     ## --- ADD EACH DOOR JOINT
     minifridge_doors = get_partnet_doors(minifridge.path, minifridge.body)
@@ -950,9 +950,14 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     # world.add_joints_by_keyword('minifridge', category='door')
 
     ## --- ADD ONE SPACE TO BE PUT INTO
-    fridgestorage = world.add_object(Space(minifridge.body, -1, name='fridgestorage'))
+    minifridge_spaces = get_partnet_spaces(minifridge.path, minifridge.body)
+    for b, _, l in minifridge_spaces:
+        fridgestorage = world.add_object(Space(b, l, name='fridgestorage'))
+        break
 
-    # world.open_all_doors_drawers()
+    world.open_all_doors_drawers()
+    set_renderer(True)
+    wait_if_gui()
 
     x += np.random.normal(3, 0.2)
     y += np.random.normal(0, 0.2)
