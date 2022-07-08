@@ -1002,10 +1002,10 @@ def simulate_for_sim_duration(sim_duration, real_dt=0, frequency=INF):
         time.sleep(real_dt)
 
 def wait_for_user(message='Press enter to continue'):
-    # if has_gui() and is_darwin():
-    #     # OS X doesn't multi-thread the OpenGL visualizer
-    #     #wait_for_interrupt()
-    #     return threaded_input(message)  ## commented out by YANG
+    if has_gui() and is_darwin():
+        # OS X doesn't multi-thread the OpenGL visualizer
+        #wait_for_interrupt()
+        return threaded_input(message)  ## commented out by YANG
     return user_input(message)
 
 def wait_if_gui(*args, **kwargs):

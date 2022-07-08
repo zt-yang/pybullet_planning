@@ -170,7 +170,14 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
             # else:
             #     if any([pairwise_collision(gripper, b) or pairwise_collision(obj, b) for b in approach_obstacles]):
             #         return
-        gripper_pose = multiply(pose_value, invert(grasp.value)) # w_f_g = w_f_o * (g_f_o)^-1
+
+
+        # gripper_pose = multiply(pose_value, invert(grasp.value)) # w_f_g = w_f_o * (g_f_o)^-1
+        gripper_grasp = robot.visualize_grasp(pose_value, grasp.value, arm, body=grasp.body)
+        gripper_pose = get_pose(gripper_grasp)
+        set_renderer(enable=verbose)
+        remove_body(gripper_grasp)
+
         default_conf = arm_conf(arm, grasp.carry)
         arm_joints = get_arm_joints(robot, arm)
         base_joints = get_group_joints(robot, 'base')
@@ -396,7 +403,7 @@ def get_ik_ir_grasp_handle_gen(problem, max_attempts=40, learned=True, teleport=
     ir_sampler = get_ir_sampler(problem, learned=learned, max_attempts=40, **kwargs)
     ik_fn = get_ik_fn(problem, teleport=teleport, ACONF=ACONF, **kwargs)
     def gen(*inputs):
-        if verbose: set_renderer(enable=True)
+        set_renderer(enable=verbose)
         if WCONF:
             b, a, p, g, w = inputs
             w.assign()

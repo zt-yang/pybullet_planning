@@ -202,6 +202,7 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=20, num_samples=
     obstacles = problem.fixed if collisions else []
 
     def gen(body, space):
+        set_renderer(verbose)
         title = f"  get_contain_gen({body}, {space}) |"
         if space is None:
             spaces = problem.spaces

@@ -972,8 +972,8 @@ def draw_points(body, link=None):
 def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False):
     body_pose, vertices = get_model_points(body, link=link, verbose=verbose)
     if link is None:  link = -1
-    data = get_collision_data(body, link)[0]
-    if data.geometry_type == p.GEOM_MESH:
+    data = get_collision_data(body, link)
+    if len(data) == 0 or data[0].geometry_type == p.GEOM_MESH:
         aabb = aabb_from_points(vertices)
     else: ## if data.geometry_typep == p.GEOM_BOX:
         aabb = get_aabb(body)
