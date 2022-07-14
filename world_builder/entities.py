@@ -9,6 +9,7 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
     get_min_limit, get_max_limit, get_link_parent, LockRenderer, HideOutput, pairwise_collisions, get_bodies, \
     remove_debug
 from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_box_entity
+
 import numpy as np
 import pybullet as p
 
@@ -126,10 +127,14 @@ class Object(Index):
 
     def place_new_obj(self, obj_name, max_trial=8):
         from pybullet_tools.bullet_utils import sample_obj_on_body_link_surface
+        from world_builder.utils import load_asset
+
         # set_renderer(False)
-        body = sample_obj_on_body_link_surface(obj_name, self.body, self.link, max_trial=max_trial)
-        obj = self.world.add_object(Object(body, category=obj_name))
-        self.world.put_on_surface(obj, surface=self.shorter_name)
+        obj = self.world.add_object(
+            Object(load_asset(obj_name.lower(), maybe=True), category=obj_name)
+        )
+        # body = sample_obj_on_body_link_surface(obj, self.body, self.link, max_trial=max_trial)
+        self.world.put_on_surface(obj, max_trial=max_trial, surface=self.shorter_name)
         self.support_obj(obj)
         # set_renderer(True)
         return obj
@@ -364,9 +369,18 @@ class Space(Region):
 
     def place_new_obj(self, obj_name, max_trial=8, verbose=False):
         from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, open_joint
+        from world_builder.utils import load_asset
+
         # self.world.open_doors_drawers(self.body)
-        body = sample_obj_in_body_link_space(obj_name, self.body, self.link, verbose=verbose)
-        obj = self.world.add_object(Object(body, category=obj_name))
+
+        # body = sample_obj_in_body_link_space(obj_name, self.body, self.link, verbose=verbose)
+        # obj = self.world.add_object(Object(body, category=obj_name))
+
+        obj = self.world.add_object(
+            Object(load_asset(obj_name.lower(), maybe=True), category=obj_name)
+        )
+        sample_obj_in_body_link_space(obj, self.body, self.link)
+
         self.include_and_attach(obj)
         # self.world.close_doors_drawers(self.body)
         return obj

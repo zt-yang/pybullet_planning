@@ -63,11 +63,6 @@ def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
             set_arm_conf(pr2, a, initial_conf)
             open_arm(pr2, a)
 
-def load_asset(obj, **kwargs):
-    from world_builder.utils import load_asset as helper
-    return helper(obj, **kwargs)
-
-
 def add_body(body, pose=unit_pose()):
     set_pose(body, pose)
     return body
@@ -331,11 +326,10 @@ OBJ_YAWS = {
     'Microwave': PI, 'Toaster': PI / 2
 }
 
-def get_scale_by_category(file=None, category=None):
+def get_scale_by_category(file=None, category=None, scale = 1):
     from world_builder.partnet_scales import MODEL_HEIGHTS, MODEL_SCALES, OBJ_SCALES
     from world_builder.utils import get_model_scale
 
-    scale = 1
     cat = category.lower()
 
     ## general category-level
@@ -1420,3 +1414,8 @@ def get_partnet_spaces(path, body):
             link = link_from_name(body, link_name)
             space_links[(body, None, link)] = part_name
     return space_links
+
+
+def get_datetime():
+    from datetime import datetime
+    return datetime.now().strftime("%m%d_%H:%M")

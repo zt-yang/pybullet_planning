@@ -294,6 +294,19 @@ class PR2Robot(RobotAPI):
             #     set_pose(body, multiply(tool_pose, grasp.value))
             yield
 
+    def get_custom_limits(self):  ## TODO: needs to test this
+        custom_limits = get_base_custom_limits(self.body, self.custom_limits)
+        return custom_limits
+
+    def get_stream_map(self, **kwargs):
+        from pybullet_tools.pr2_agent import get_stream_map
+        return get_stream_map(**kwargs)
+
+    def get_stream_info(self, **kwargs):
+        from pybullet_tools.pr2_agent import get_stream_info
+        return get_stream_info(**kwargs)
+
+
 class FEGripper(RobotAPI):
 
     arms = ['hand']
@@ -466,3 +479,11 @@ class FEGripper(RobotAPI):
         for conf in path:
             set_cloned_se3_conf(self.body, gripper, conf.values)
             yield
+
+    def get_stream_map(self, problem, collisions, custom_limits, teleport):
+        from pybullet_tools.flying_gripper_agent import get_stream_map
+        return get_stream_map(problem, collisions, custom_limits, teleport)
+
+    def get_stream_info(self, **kwargs):
+        from pybullet_tools.flying_gripper_agent import get_stream_info
+        return get_stream_info(**kwargs)

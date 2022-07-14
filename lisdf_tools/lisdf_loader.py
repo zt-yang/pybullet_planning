@@ -13,7 +13,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove_body, get_links, \
-    clone_body, get_joint_limits, ConfSaver
+    clone_body, get_joint_limits, ConfSaver, read
 from pybullet_tools.pr2_problems import create_floor
 from pybullet_tools.pr2_utils import set_group_conf, get_group_joints, get_viewcone_base
 from pybullet_tools.utils import load_pybullet, connect, wait_if_gui, HideOutput, invert, \
@@ -24,6 +24,8 @@ from pybullet_tools.utils import load_pybullet, connect, wait_if_gui, HideOutput
 from pybullet_tools.bullet_utils import nice, sort_body_parts, equal
 from pybullet_tools.pr2_streams import get_handle_link
 from pybullet_tools.flying_gripper_utils import set_se3_conf
+
+from pddlstream.language.constants import AND, PDDLProblem
 
 from world_builder.entities import Space
 from world_builder.loaders import create_gripper_robot, create_pr2_robot
@@ -68,6 +70,8 @@ class World():
         self.handles.extend(handles)
 
     def add_body(self, body, name):
+        if body is None:
+            print('lisdf_loader.body = None')
         self.body_to_name[body] = name
         self.name_to_body[name] = body
 
@@ -366,6 +370,26 @@ def make_sdf_world(sdf_model):
 
   </world>
 </sdf>"""
+
+#######################
+
+def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
+
+    world = problem.world
+
+    domain_pddl = read(join(exp_dir, 'domain_full.pddl'))
+    stream_pddl = read(join(exp_dir, 'stream.pddl'))
+    planning_config = json.load(open(join(exp_dir, 'planning_config.json')))
+
+    init, goal, constant_map = pddl_to_init_goal(exp_dir, world)
+    goal = [AND] + goal
+    problem.add_init(init)
+
+    custom_limits = planning_config['base_limits']
+    stream_map = world.robot.get_stream_map(problem, collisions, custom_limits, teleport)
+
+    return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
+
 
 #######################
 
