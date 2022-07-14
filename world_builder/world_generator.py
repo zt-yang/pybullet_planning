@@ -8,7 +8,7 @@ from os import listdir
 from pybullet_planning.pybullet_tools.utils import get_bodies, euler_from_quat, get_collision_data, get_joint_name, \
     get_joint_position, get_camera, joint_from_name, get_color
 from pybullet_planning.pybullet_tools.pr2_utils import get_arm_joints, get_group_joints, PR2_GROUPS
-from pybullet_planning.pybullet_tools.bullet_utils import get_readable_list, LINK_STR
+from pybullet_planning.pybullet_tools.bullet_utils import get_readable_list, LINK_STR, get_scale_by_category
 from .entities import Robot
 from .utils import read_xml, get_file_by_category, get_model_scale
 
@@ -200,6 +200,8 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None,
             )
 
         else:
+            if not hasattr(obj, 'path'):
+                print('world_generator.file', obj)
             file = obj.path
             scale = get_scale_by_category(file, obj.category)
             # if obj.category in OBJ_SCALES:

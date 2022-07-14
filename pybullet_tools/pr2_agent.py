@@ -551,7 +551,7 @@ def solve_pddlstream(problem, state, domain_pddl=None):
             solution = solve_focused(pddlstream_problem, stream_info=stream_info,
                                      planner='ff-astar1', max_planner_time=10, debug=False,
                                      unit_costs=True, success_cost=INF,
-                                     max_time=INF, verbose=True, visualize=False,
+                                     max_time=INF, verbose=True, visualize=True,
                                      unit_efforts=True, effort_weight=1,
                                      bind=True, max_skeletons=INF,  # TODO: double check that max_skeletons=None is working
                                      search_sample_ratio=0)

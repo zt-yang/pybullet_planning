@@ -29,7 +29,7 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, Point, get_camera_matrix, \
     YELLOW, add_line, draw_point, RED, BROWN, BLACK, BLUE, GREY, remove_handles, apply_affine, vertices_from_rigid, \
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
-    parent_joint_from_link, draw_aabb
+    parent_joint_from_link, draw_aabb, wait_for_user
 
 
 OBJ = '?obj'
@@ -433,6 +433,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False, XY
     set_renderer(verbose)
     if verbose:
         print(f'sample_obj_in_body_link_space(obj={obj}, body={body}, link={link})')
+        # wait_for_user()
 
     aabb = get_aabb(body, link)
     # draw_aabb(aabb)
@@ -968,6 +969,11 @@ def draw_points(body, link=None):
     for v in vertices:
         handles.append(draw_point(v, size=0.02, color=RED))
     return handles
+
+def is_box_entity(body, link=-1):
+    if link is None:  link = -1
+    data = get_collision_data(body, link)
+    return len(data) != 0 and data[0].geometry_type == p.GEOM_BOX
 
 def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False):
     body_pose, vertices = get_model_points(body, link=link, verbose=verbose)

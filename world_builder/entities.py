@@ -8,7 +8,7 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
     stable_z, get_joint_descendants, get_link_children, get_joint_info, get_links, link_from_name, set_renderer, \
     get_min_limit, get_max_limit, get_link_parent, LockRenderer, HideOutput, pairwise_collisions, get_bodies, \
     remove_debug
-from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body
+from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_box_entity
 import numpy as np
 import pybullet as p
 
@@ -72,10 +72,15 @@ class Link(Index):
 class Object(Index):
     def __init__(self, body, joint=None, link=None, category=None, name=None,
                  collision=True, verbose=False):
+
+        self.is_box = False
         if isinstance(body, tuple) and isinstance(body[1], str):
             body, path, scale = body
             self.path = path
             self.scale = scale
+        elif is_box_entity(body):
+            self.is_box = True
+
         self.body = body
         self.joint = joint
         self.link = link
@@ -104,7 +109,6 @@ class Object(Index):
         self.spaces = []
         self.supported_objects = []
         self.events = []
-        self.is_box = False
         self.categories = [category] ## for added categories like moveable
 
 

@@ -4061,7 +4061,7 @@ def stable_z_on_aabb(body, aabb):
 
 def stable_z(body, surface, surface_link=None):
     if get_aabb(surface, link=surface_link) == None:
-        print('utils.stable_z | debug')
+        print(f'utils.stable_z | debug, surface = {surface}, surface_link= {surface_link} got None aabb')
     return stable_z_on_aabb(body, get_aabb(surface, link=surface_link))
 
 def is_placed_on_aabb(body, bottom_aabb, above_epsilon=1e-2, below_epsilon=0.0):
