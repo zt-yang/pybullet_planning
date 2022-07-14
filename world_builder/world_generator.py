@@ -5,12 +5,15 @@ import copy
 import shutil
 from os.path import join, isdir, isfile, dirname, abspath
 from os import listdir
+
 from pybullet_planning.pybullet_tools.utils import get_bodies, euler_from_quat, get_collision_data, get_joint_name, \
-    get_joint_position, get_camera, joint_from_name, get_color
+    get_joint_position, get_camera, joint_from_name, get_color, disconnect
 from pybullet_planning.pybullet_tools.pr2_utils import get_arm_joints, get_group_joints, PR2_GROUPS
-from pybullet_planning.pybullet_tools.bullet_utils import get_readable_list, LINK_STR, get_scale_by_category
-from .entities import Robot
+from pybullet_planning.pybullet_tools.bullet_utils import get_readable_list, LINK_STR, get_scale_by_category, nice
+from .entities import Robot, LINK_STR
 from .utils import read_xml, get_file_by_category, get_model_scale
+
+from pybullet_planning.lisdf_tools.lisdf_loader import get_depth_images
 
 LISDF_PATH = join('assets', 'scenes')
 EXP_PATH = join('test_cases')
@@ -215,7 +218,8 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None,
                 file = file.replace('../assets/', '../../')
 
             models_sdf += MODEL_URDF_STR.format(
-                name=obj.name, file=file, is_static=is_static,
+                name=obj.lisdf_name, file=file,
+                is_static=is_static,
                 pose_xml=pose_xml, scale=scale
             )
 
@@ -263,9 +267,6 @@ def test_get_camera_spec():
 
     def equal(a, b, epsilon=0.01):
         return np.linalg.norm(np.asarray(a) - np.asarray(b)) < epsilon
-
-    def nice(lst):
-        return [round(n, 3) for n in lst]
 
     connect(use_gui=True, shadows=False, width=1980, height=1238)
 
@@ -326,7 +327,7 @@ def save_to_exp_folder(state, init, goal, out_path):
                           out_path=out_path+'_problem.pddl')
 
 def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXIT=True,
-                           floorplan=None, world_name=None, root_path=None):
+                           floorplan=None, world_name=None, root_path=None, DEPTH_IMAGES=False):
     exp_path = EXP_PATH
     if root_path != None:
         exp_path = join(root_path, exp_path)
@@ -347,6 +348,7 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
     config = {
         'base_limits': state.world.robot.custom_limits,  ## state.world.args.base_limits,
+        'obs_camera_pose': nice(state.world.camera.pose),
         # 'body_to_name': body_to_name
     }
 
@@ -359,6 +361,11 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
         f.write(pddlstream_problem.stream_pddl)
     with open(join(outpath, 'planning_config.json'), 'w') as f:
         json.dump(config, f)
+
+    if DEPTH_IMAGES:
+        disconnect()
+        get_depth_images(outpath, EXIT=EXIT, camera_pose=state.world.camera.pose,
+                         img_dir=join(outpath, 'depth_maps'), verbose=True)
 
     if EXIT: sys.exit()
 
@@ -403,7 +410,7 @@ def save_to_test_cases(state, goal, template_name, floorplan, out_dir, root_path
 
 
 def get_pddl_from_list(fact, world):
-    fact = get_readable_list(fact, world, NAME_ONLY=True)
+    fact = get_readable_list(fact, world, NAME_ONLY=True, TO_LISDF=True)
     line = ' '.join([str(ele) for ele in fact])
     line = line.replace("'", "")
     return '(' + line + ')'
@@ -481,7 +488,7 @@ def generate_problem_pddl(state, facts, goals, ## pddlstream_problem,
                 init_pddl += '\n\t' + '\n\t'.join(predicates[pred])
             init_pddl += '\n'
 
-    objects = [o.name for o in world.BODY_TO_OBJECT.values()]
+    objects = [o.lisdf_name for o in world.BODY_TO_OBJECT.values()]
     objects.extend(world.robot.joint_groups)
     objects.extend([str(i[1]) for i in facts if i[0].lower() == 'wconf'])
     objects_pddl = '\n\t'.join(sorted(objects))

@@ -812,14 +812,16 @@ def close_joint(body, joint):
 
 #######################################################
 
-def get_readable_list(lst, world=None, NAME_ONLY=False):
+def get_readable_list(lst, world=None, NAME_ONLY=False, TO_LISDF=False):
     to_print = []
     for word in lst:
-        if world != None:
+        if world is not None:
             name = world.get_name(word)
             last_is_tuple = (len(to_print) != 0) and isinstance(to_print[-1], tuple)
-            if name != None and not last_is_tuple: ## ['=', ('PickCost',), 'pr2|1']
-                if not NAME_ONLY:
+            if name is not None and not last_is_tuple: ## ['=', ('PickCost',), 'pr2|1']
+                if TO_LISDF:
+                    name = world.get_lisdf_name(word)
+                elif not NAME_ONLY:
                     name = world.get_debug_name(word)
                 to_print.append(name)
             else:

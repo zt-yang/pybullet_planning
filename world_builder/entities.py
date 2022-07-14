@@ -10,8 +10,8 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
     remove_debug
 from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_box_entity
 import numpy as np
-import pybullet as p
 
+LINK_STR = '::'  ## same as in pybullet_planning/lisdf_tools/lisdf_loader
 
 class Index(object):
     # TODO: unify with some of the following?
@@ -290,12 +290,23 @@ class Object(Index):
 
     @property
     def pybullet_name(self):
-        if self.joint == None and self.link != None:
+        if self.joint is None and self.link is not None:
             return (self.body, self.joint, self.link)
-        elif self.joint != None and self.link == None:
+        elif self.joint is not None and self.link is None:
             return (self.body, self.joint)
         else:
             return self.body
+
+    @property
+    def lisdf_name(self):
+        if self.joint is not None or self.link is not None:
+            body_name = self.name.split(LINK_STR)[0]
+            if self.joint is None and self.link is not None:
+                return f"{body_name}{LINK_STR}{get_link_name(self.body, self.link)}"
+            elif self.joint is not None and self.link is None:
+                return f"{body_name}{LINK_STR}{get_joint_name(self.body, self.joint)}"
+        return self.name
+
     @property
     def shorter_name(self):
         return self.name.replace('counter#1--', '')

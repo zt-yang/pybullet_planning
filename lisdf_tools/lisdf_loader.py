@@ -12,11 +12,10 @@ import json
 import warnings
 warnings.filterwarnings('ignore')
 
-from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove_body, get_links, \
-    clone_body, get_joint_limits, ConfSaver
 from pybullet_tools.pr2_problems import create_floor
 from pybullet_tools.pr2_utils import set_group_conf, get_group_joints, get_viewcone_base
-from pybullet_tools.utils import load_pybullet, connect, wait_if_gui, HideOutput, invert, \
+from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove_body, get_links, \
+    clone_body, get_joint_limits, ConfSaver, load_pybullet, connect, wait_if_gui, HideOutput, invert, \
     disconnect, set_pose, set_joint_position, joint_from_name, quat_from_euler, draw_pose, unit_pose, \
     set_camera_pose, set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
     set_joint_positions, get_links, get_joints, get_joint_name, get_body_name, link_from_name, \
@@ -369,13 +368,16 @@ def make_sdf_world(sdf_model):
 
 #######################
 
-def get_depth_images(exp_dir, width=1280, height=960):  ## , width=720, height=560)
-    camera_pose = ((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5))
+def get_depth_images(exp_dir, width=1280, height=960,  ## , width=720, height=560)
+                     EXIT=True, verbose=False,
+                     camera_pose=((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5)),
+                     img_dir=join('visualizations', 'camera_images')):
 
-    world = load_lisdf_pybullet(exp_dir, width=width, height=height)
+    os.makedirs(img_dir, exist_ok=True)
+    world = load_lisdf_pybullet(exp_dir, width=width, height=height, verbose=verbose)
     init = pddl_to_init_goal(exp_dir, world)[0]
 
-    world.add_camera(camera_pose)
+    world.add_camera(camera_pose, img_dir)
     world.visualize_image(index='scene')
 
     b2n = world.body_to_name
@@ -401,7 +403,7 @@ def get_depth_images(exp_dir, width=1280, height=960):  ## , width=720, height=5
         world.visualize_image(index=index)
         disconnect()
         world = load_lisdf_pybullet(exp_dir, width=width, height=height)
-        world.add_camera(camera_pose)
+        world.add_camera(camera_pose, img_dir)
         return world
 
     for body in bodies:
@@ -417,7 +419,10 @@ def get_depth_images(exp_dir, width=1280, height=960):  ## , width=720, height=5
         for b in all_bodies:
             remove_body(b)
         get_image_and_reset(world, index)
-    print()
+
+    if EXIT:
+        disconnect()
+
 
 #######################
 

@@ -113,6 +113,11 @@ class World(object):
             return self.BODY_TO_OBJECT[body].debug_name
         return None
 
+    def get_lisdf_name(self, body):
+        if body in self.BODY_TO_OBJECT:
+            return self.BODY_TO_OBJECT[body].lisdf_name
+        return None
+
     def get_events(self, body):
         return self.BODY_TO_OBJECT[body].events
 
