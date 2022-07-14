@@ -513,12 +513,12 @@ class World(object):
             obj = self.BODY_TO_OBJECT[obj]
         return obj
 
-    def put_on_surface(self, obj, surface='hitman_tmp', OAO=False):
+    def put_on_surface(self, obj, surface='hitman_tmp', max_trial=1, OAO=False):
         obj = self.get_object(obj)
         surface_obj = self.get_object(surface)
         surface = surface_obj.name
 
-        surface_obj.place_obj(obj, max_trial=1)
+        surface_obj.place_obj(obj, max_trial=max_trial)
 
         ## ----------- rules of locate specific objects
         world_to_surface = surface_obj.get_pose()

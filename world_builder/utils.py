@@ -92,8 +92,8 @@ def get_model_scale(file, l=None, w=None, h=None, scale=1, category=None):
         # if file in scale_db:
         #     return scale_db[file]
 
-    if 'oven' in file.lower() or (category != None and category.lower() == 'oven'):
-        print(file, l, w)
+    # if 'oven' in file.lower() or (category != None and category.lower() == 'oven'):
+    #     print(file, l, w)
 
     ## ------- Case 1: no restrictions or directly given scale
     if w is None and h is None:
@@ -180,13 +180,15 @@ def adjust_scale(body, category, file, w, l):
 
     return body
 
-def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, h=None, scale=1,
+
+def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=None, scale=1,
                verbose=False, maybe=False, moveable=False, RANDOM_INSTANCE=False):
 
     if verbose: print(f"\nLoading ... {category}", end='\r')
 
+    """ ============= load body by category ============= """
     file = get_file_by_category(category, RANDOM_INSTANCE=RANDOM_INSTANCE)
-    scale = get_scale_by_category(file=file, category=category)
+    scale = get_scale_by_category(file=file, category=category, scale=scale)
     if file != None:
         if verbose: print(f"Loading ...... {file}")
         scale = get_model_scale(file, l, w, h, scale, category)
@@ -195,7 +197,7 @@ def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, h=None, 
     else:
         body = create_box(w=w, l=l, h=1, color=BROWN, collision=True)
 
-    ## PLACE OBJECT
+    """ ============= place object z on a surface or floor ============= """
     if z is None:
         if category.lower() in ['oven']:
             aabb = get_aabb(body)
@@ -203,23 +205,27 @@ def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, h=None, 
             z = height / 2
         elif isinstance(floor, tuple):
             z = stable_z(body, floor[0], floor[1])
-        else:
+        elif isinstance(floor, int):
             z = stable_z(body, floor)
+        else:
+            z = 0
     pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
     set_pose(body, pose)
-    if not maybe:
-        if category.lower() == 'veggieleaf':
-            set_color(body, DARK_GREEN, 0)
-        elif category.lower() == 'veggiestem':
-            set_color(body, WHITE, 0)
-        elif category.lower() == 'facetbase':
-            from pybullet_tools.bullet_utils import open_doors_drawers
-            open_doors_drawers(body)
 
-        if moveable:
-            object = Moveable(body, category=category)
-        else:
-            object = Object(body, category=category)
+    """ ============= category-specific modification ============= """
+    if category.lower() == 'veggieleaf':
+        set_color(body, DARK_GREEN, 0)
+    elif category.lower() == 'veggiestem':
+        set_color(body, WHITE, 0)
+    elif category.lower() == 'facetbase':
+        from pybullet_tools.bullet_utils import open_doors_drawers
+        open_doors_drawers(body)
+
+    """ ============= create an Object ============= """
+    if moveable:
+        object = Moveable(body, category=category)
+    else:
+        object = Object(body, category=category)
 
     return body, file, scale
 

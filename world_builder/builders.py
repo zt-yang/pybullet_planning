@@ -7,7 +7,7 @@ from .entities import Object, Region, Environment, Robot, Camera, Floor, Stove,\
     Surface, Moveable, Supporter, Steerable, Door
 from .loaders import create_pr2_robot, load_rooms, load_cart, load_cart_regions, load_blocked_kitchen, \
     load_blocked_sink, load_blocked_stove, load_floor_plan, load_experiment_objects, load_pot_lid, load_basin_faucet, \
-    load_kitchen_mechanism, create_gripper_robot, load_cabinet_test_scene
+    load_kitchen_mechanism, create_gripper_robot, load_cabinet_test_scene, load_random_mini_kitchen_counter
 from .utils import load_asset, FLOOR_HEIGHT, WALL_HEIGHT, visualize_point
 from .world_generator import to_lisdf, save_to_kitchen_worlds
 
@@ -25,8 +25,8 @@ from pybullet_tools.pr2_agent import pddlstream_from_state_goal, test_marker_pul
 from pybullet_tools.pr2_streams import get_marker_grasp_gen, Position, \
     sample_points_along_line, get_bconf_in_region_test, get_bconf_in_region_gen, get_pull_marker_to_bconf_motion_gen, \
     get_pull_marker_to_pose_motion_gen, get_pull_marker_random_motion_gen, get_parent_new_pose, get_bqs_given_p2
-from pybullet_tools.bullet_utils import OBJ_SCALES, set_camera_target_body, set_camera_target_robot, \
-    draw_collision_shapes, open_joint
+from pybullet_tools.bullet_utils import set_camera_target_body, set_camera_target_robot, draw_collision_shapes, \
+    open_joint
 
 def test_pick(world, w=.5, h=.9, mass=1):
 
@@ -187,3 +187,28 @@ def test_feg_pick(world, floorplan='counter.svg', verbose=True):
     world.add_camera(camera_pose)
 
     return floorplan, goal
+
+############################################
+
+def test_one_fridge(world, verbose=True):
+    floorplan = sample_one_fridge_scene(world, verbose)
+    goal = sample_one_fridge_goal(world, verbose)
+    return floorplan, goal
+
+def sample_one_fridge_scene(world, verbose=True):
+
+    """ ============== [State Space] Add world objects (Don't change) ================ """
+
+    world.set_skip_joints()
+    load_random_mini_kitchen_counter(world)
+
+    """ ============== [Init] Sample an initial conf for robot ==================== """
+
+
+    return None
+
+
+def sample_one_fridge_goal(world, verbose=True):
+    return None
+
+############################################

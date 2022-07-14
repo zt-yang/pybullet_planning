@@ -19,10 +19,12 @@ from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove
     disconnect, set_pose, set_joint_position, joint_from_name, quat_from_euler, draw_pose, unit_pose, \
     set_camera_pose, set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
     set_joint_positions, get_links, get_joints, get_joint_name, get_body_name, link_from_name, \
-    parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK
+    parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK, read
 from pybullet_tools.bullet_utils import nice, sort_body_parts, equal
 from pybullet_tools.pr2_streams import get_handle_link
 from pybullet_tools.flying_gripper_utils import set_se3_conf
+
+from pddlstream.language.constants import AND, PDDLProblem
 
 from world_builder.entities import Space
 from world_builder.loaders import create_gripper_robot, create_pr2_robot
@@ -67,6 +69,8 @@ class World():
         self.handles.extend(handles)
 
     def add_body(self, body, name):
+        if body is None:
+            print('lisdf_loader.body = None')
         self.body_to_name[body] = name
         self.name_to_body[name] = body
 
@@ -368,11 +372,29 @@ def make_sdf_world(sdf_model):
 
 #######################
 
+def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
+
+    world = problem.world
+
+    domain_pddl = read(join(exp_dir, 'domain_full.pddl'))
+    stream_pddl = read(join(exp_dir, 'stream.pddl'))
+    planning_config = json.load(open(join(exp_dir, 'planning_config.json')))
+
+    init, goal, constant_map = pddl_to_init_goal(exp_dir, world)
+    goal = [AND] + goal
+    problem.add_init(init)
+
+    custom_limits = planning_config['base_limits']
+    stream_map = world.robot.get_stream_map(problem, collisions, custom_limits, teleport)
+
+    return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
+
+#######################
+
 def get_depth_images(exp_dir, width=1280, height=960,  ## , width=720, height=560)
                      EXIT=True, verbose=False,
                      camera_pose=((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5)),
                      img_dir=join('visualizations', 'camera_images')):
-
     os.makedirs(img_dir, exist_ok=True)
     world = load_lisdf_pybullet(exp_dir, width=width, height=height, verbose=verbose)
     init = pddl_to_init_goal(exp_dir, world)[0]
