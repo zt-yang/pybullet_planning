@@ -349,7 +349,7 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     config = {
         'base_limits': state.world.robot.custom_limits,  ## state.world.args.base_limits,
         'obs_camera_pose': nice(state.world.camera.pose),
-        'body_to_name': body_to_name
+        # 'body_to_name': body_to_name
     }
 
     ## --- domain and stream copied over  ## shutil.copy()

@@ -2794,10 +2794,15 @@ def clone_collision_shape(body, link, client=None):
     # assert (len(collision_data) == 1)
     # TODO: can do CollisionArray
     if len(collision_data) > 1:
-        for c in collision_data:
-            if len(c.filename) > 0 and not is_unknown_file(c.filename):
-                return collision_shape_from_data(c, body, link, client)
+        c = [collision_shape_from_data(c, body, link, client) \
+             for c in collision_data \
+             if len(c.filename) > 0 and not is_unknown_file(c.filename)]
+        return c[1]
+        # for c in collision_data:
+        #     if len(c.filename) > 0 and not is_unknown_file(c.filename):
+        #         return collision_shape_from_data(c, body, link, client)
     return collision_shape_from_data(collision_data[0], body, link, client)
+
 
 def clone_body(body, links=None, collision=True, visual=True, client=None):
     # TODO: names are not retained
@@ -2829,14 +2834,20 @@ def clone_body(body, links=None, collision=True, visual=True, client=None):
         joint_info = get_joint_info(body, link)
         dynamics_info = get_dynamics_info(body, link)
         masses.append(dynamics_info.mass)
+
         collision_shapes.append(clone_collision_shape(body, link, client) if collision else NULL_ID)
         visual_shapes.append(clone_visual_shape(body, link, client) if visual else NULL_ID)
+
+        # c, v = clone_visual_collision_shapes(body, link, client) if collision else NULL_ID
+        # collision_shapes.extend(c)
+        # visual_shapes.extend(v)
+
         point, quat = get_local_link_pose(body, link)
         positions.append(point)
         orientations.append(quat)
         inertial_positions.append(dynamics_info.local_inertial_pos)
         inertial_orientations.append(dynamics_info.local_inertial_orn)
-        parent_indices.append(new_from_original[joint_info.parentIndex] + 1) # TODO: need the increment to work
+        parent_indices.append(new_from_original[joint_info.parentIndex] + 1)  # TODO: need the increment to work
         joint_types.append(joint_info.jointType)
         joint_axes.append(joint_info.jointAxis)
     # https://github.com/bulletphysics/bullet3/blob/9c9ac6cba8118544808889664326fd6f06d9eeba/examples/pybullet/gym/pybullet_utils/urdfEditor.py#L169

@@ -1426,3 +1426,103 @@ def get_datetime():
 #     for body in get_bodies():
 #         remove_body(body)
 #     remove_all_debug()
+
+
+from pybullet_tools.utils import get_link_parent, NULL_ID, get_joint_info, get_dynamics_info, \
+    clone_collision_shape, clone_visual_shape, get_local_link_pose, get_joint_positions, \
+    collision_shape_from_data, visual_shape_from_data, is_unknown_file
+
+
+def clone_visual_collision_shapes(body, link, client=None):
+    client = get_client(client)
+    visual_data = get_visual_data(body, link)
+    collision_data = get_collision_data(body, link)
+    if not visual_data and not collision_data:
+        return [NULL_ID], [NULL_ID]
+    collisions = [collision_shape_from_data(c, body, link, client) \
+            for c in collision_data \
+            if len(c.filename) > 0 and not is_unknown_file(c.filename)]
+    visuals = [visual_shape_from_data(v, client) \
+            for v in visual_data \
+            if len(v.filename) > 0 and not is_unknown_file(v.filename)]
+    if len(collisions) > len(visuals):
+        visuals.extend([NULL_ID] * (len(collisions) - len(visuals)))
+    return visuals, collisions
+
+
+def clone_body_link(body, link, collision=True, visual=True, client=None):
+    ## modified from pybullet_tools.utils.clone_body()
+    ## problem is unable to handle multiple collision shapes in one link
+
+    client = get_client(client)  # client is the new client for the body
+    v, c = clone_visual_collision_shapes(body, link, client)
+
+    for j in range(len(c)):
+        new_from_original = {}
+        base_link = get_link_parent(body, link)
+        new_from_original[base_link] = NULL_ID
+
+        masses = []
+        collision_shapes = []
+        visual_shapes = []
+        positions = [] # list of local link positions, with respect to parent
+        orientations = [] # list of local link orientations, w.r.t. parent
+        inertial_positions = [] # list of local inertial frame pos. in link frame
+        inertial_orientations = [] # list of local inertial frame orn. in link frame
+        parent_indices = []
+        joint_types = []
+        joint_axes = []
+
+        new_from_original[link] = 0
+        joint_info = get_joint_info(body, link)
+        dynamics_info = get_dynamics_info(body, link)
+        masses.append(dynamics_info.mass)
+
+        # collision_shapes.append(clone_collision_shape(body, link, client) if collision else NULL_ID)
+        # visual_shapes.append(clone_visual_shape(body, link, client) if visual else NULL_ID)
+
+        collision_shapes.append(c[j])
+        visual_shapes.append(v[j])
+
+        point, quat = get_local_link_pose(body, link)
+        positions.append(point)
+        orientations.append(quat)
+        inertial_positions.append(dynamics_info.local_inertial_pos)
+        inertial_orientations.append(dynamics_info.local_inertial_orn)
+        parent_indices.append(new_from_original[joint_info.parentIndex] + 1) # TODO: need the increment to work
+        joint_types.append(joint_info.jointType)
+        joint_axes.append(joint_info.jointAxis)
+
+        base_dynamics_info = get_dynamics_info(body, base_link)
+        base_point, base_quat = get_link_pose(body, base_link)
+
+        ## added by Yang
+        baseCollisionShapeIndex = clone_collision_shape(body, base_link, client) if collision else NULL_ID
+        baseVisualShapeIndex = clone_visual_shape(body, base_link, client) if visual else NULL_ID
+        if len(collision_shapes) > 0: baseCollisionShapeIndex = NULL_ID  ## collision_shapes[0]
+        if len(visual_shapes) > 0: baseVisualShapeIndex = visual_shapes[0]
+
+        new_body = p.createMultiBody(baseMass=base_dynamics_info.mass,
+                                     baseCollisionShapeIndex=baseCollisionShapeIndex,
+                                     baseVisualShapeIndex=baseVisualShapeIndex,
+                                     basePosition=base_point,
+                                     baseOrientation=base_quat,
+                                     baseInertialFramePosition=base_dynamics_info.local_inertial_pos,
+                                     baseInertialFrameOrientation=base_dynamics_info.local_inertial_orn,
+                                     linkMasses=masses,
+                                     linkCollisionShapeIndices=collision_shapes,
+                                     linkVisualShapeIndices=visual_shapes,
+                                     linkPositions=positions,
+                                     linkOrientations=orientations,
+                                     linkInertialFramePositions=inertial_positions,
+                                     linkInertialFrameOrientations=inertial_orientations,
+                                     linkParentIndices=parent_indices,
+                                     linkJointTypes=joint_types,
+                                     linkJointAxis=joint_axes,
+                                     physicsClientId=client)
+
+        links = [link]
+        for joint, value in zip(range(len(links)), get_joint_positions(body, links)):
+            # TODO: check if movable?
+            p.resetJointState(new_body, joint, value, targetVelocity=0, physicsClientId=client)
+    return new_body

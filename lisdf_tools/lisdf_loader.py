@@ -21,7 +21,7 @@ from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove
     set_joint_positions, get_links, get_joints, get_joint_name, get_body_name, link_from_name, \
     parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK, read, get_client, \
     reset_simulation
-from pybullet_tools.bullet_utils import nice, sort_body_parts, equal
+from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link
 from pybullet_tools.pr2_streams import get_handle_link
 from pybullet_tools.flying_gripper_utils import set_se3_conf
 
@@ -284,7 +284,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
     if isfile(config_path):
         planning_config = json.load(open(config_path))
         custom_limits = planning_config['base_limits']
-        body_to_name = planning_config['body_to_name']
+        # body_to_name = planning_config['body_to_name']
         lisdf_path = join(lisdf_path, 'scene.lisdf')
 
     ## --- the floor and pose will become extra bodies
@@ -427,7 +427,6 @@ def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width
         world.visualize_image(index=index)
         reset_simulation()
         world = load_lisdf_pybullet(exp_dir, width=width, height=height)
-        print('world.name_to_body', world.name_to_body)
         world.add_camera(camera_pose, img_dir)
         return world
 
@@ -440,7 +439,11 @@ def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width
     for bo in body_links + body_joints:
         index = get_index(bo)
         all_bodies = get_bodies()
-        clone_body(bo[0], links=links_to_show[bo], visual=True, collision=True)
+
+        # clone_body(bo[0], links=links_to_show[bo], visual=True, collision=True)
+        for l in links_to_show[bo]:
+            clone_body_link(bo[0], l, visual=True, collision=True)
+
         for b in all_bodies:
             remove_body(b)
         get_image_and_reset(world, index)
