@@ -326,6 +326,29 @@ def save_to_exp_folder(state, init, goal, out_path):
     generate_problem_pddl(state, init, goal, world_name=world_name,
                           out_path=out_path+'_problem.pddl')
 
+
+def save_to_outputs_folder(outpath, exp_path):
+    exp_path = exp_path.replace('.mp4', '')
+
+    original = 'visualizations'
+    if isfile(join(original, 'log.json')):
+        for subdir in ['constraint_networks', 'stream_plans', 'log.json']:
+            shutil.move(join(original, subdir), join(outpath, subdir))
+        # os.remove(join(original, 'log.json'))
+    else:
+        new_outpath = f"{outpath}_failed"
+        shutil.move(outpath, new_outpath)
+        outpath = new_outpath
+
+    """ =========== move to data collection folder =========== """
+    data_path = outpath.replace('test_cases', join('outputs', 'one_fridge_pick'))
+    shutil.move(outpath, data_path)
+
+    """ =========== move the log and plan =========== """
+    shutil.move(f"{exp_path}_log.txt", join(data_path, 'log.txt'))
+    shutil.move(f"{exp_path}_time.json", join(data_path, 'plan.json'))
+
+
 def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXIT=True,
                            floorplan=None, world_name=None, root_path=None, DEPTH_IMAGES=False):
     exp_path = EXP_PATH
@@ -339,6 +362,7 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     ## --- scene in scene.lisdf
     to_lisdf(state.world, pddlstream_problem.init, floorplan=floorplan, exp_name=exp_name,
              world_name=world_name, root_path=root_path)
+    state.world.outpath = outpath
 
     ## --- init and goal in problem.pddl
     all_pred_names = generate_problem_pddl(state, pddlstream_problem.init, pddlstream_problem.goal,

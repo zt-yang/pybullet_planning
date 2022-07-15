@@ -1418,9 +1418,11 @@ def get_partnet_spaces(path, body):
     return space_links
 
 
-def get_datetime():
+def get_datetime(TO_LISDF=False):
     from datetime import datetime
-    return datetime.now().strftime("%m%d_%H:%M")
+    str = datetime.now().strftime("%m%d_%H:%M")
+    if TO_LISDF: str = str.replace(':', '')
+    return str
 
 # def remove_all_bodies():
 #     for body in get_bodies():

@@ -53,6 +53,7 @@ class World(object):
         ## for visualization
         self.handles = []
         self.path = None
+        self.outpath = None
 
     def clear_viz(self):
         self.remove_handles()

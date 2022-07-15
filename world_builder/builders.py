@@ -26,7 +26,7 @@ from pybullet_tools.pr2_streams import get_marker_grasp_gen, Position, \
     sample_points_along_line, get_bconf_in_region_test, get_bconf_in_region_gen, get_pull_marker_to_bconf_motion_gen, \
     get_pull_marker_to_pose_motion_gen, get_pull_marker_random_motion_gen, get_parent_new_pose, get_bqs_given_p2
 from pybullet_tools.bullet_utils import set_camera_target_body, set_camera_target_robot, draw_collision_shapes, \
-    open_joint
+    open_joint, collided
 
 def test_pick(world, w=.5, h=.9, mass=1):
 
@@ -204,9 +204,9 @@ def sample_one_fridge_scene(world, verbose=True):
     def sample_robot_conf():
         x = random.uniform(2.5, 3.8)
         y = random.uniform(2, 3.5)
-        z = random.uniform(0.5, 3.5)
-        yaw = random.uniform(0, math.pi)
-        return [x, y, z, 0, -math.pi / 2, yaw]
+        z = random.uniform(0.5, 1.9)
+        # yaw = random.uniform(0, math.pi)
+        return [x, y, z, 0, -math.pi / 2, 0]
 
     custom_limits = {0: (0, 6), 1: (0, 6), 2: (0, 2)}
     robot = create_gripper_robot(world, custom_limits, initial_q=sample_robot_conf())
@@ -220,6 +220,11 @@ def sample_one_fridge_scene(world, verbose=True):
         if random.random() < epsilon:
             open_joint(door[0], door[1], extent=random.random())
 
+    """ ============== Check collisions ================ """
+    obstacles = [o for o in get_bodies() if o != robot]
+    while collided(robot, obstacles, verbose=True):
+        robot.set_positions(sample_robot_conf())
+
     return None
 
 def sample_one_fridge_goal(world, verbose=True):
@@ -229,8 +234,8 @@ def sample_one_fridge_goal(world, verbose=True):
 
     goal_candidates = [
         [('Holding', 'hand', cabbage)],
-        [('On', cabbage, fridge)],
-        [('On', cabbage, counter)],
+        # [('On', cabbage, fridge)],
+        # [('On', cabbage, counter)],
     ]
     return random.choice(goal_candidates)
 
