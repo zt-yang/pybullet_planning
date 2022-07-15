@@ -29,7 +29,7 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, Point, get_camera_matrix, \
     YELLOW, add_line, draw_point, RED, BROWN, BLACK, BLUE, GREY, remove_handles, apply_affine, vertices_from_rigid, \
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
-    parent_joint_from_link, draw_aabb, wait_for_user
+    parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug
 
 
 OBJ = '?obj'
@@ -1421,3 +1421,8 @@ def get_partnet_spaces(path, body):
 def get_datetime():
     from datetime import datetime
     return datetime.now().strftime("%m%d_%H:%M")
+
+# def remove_all_bodies():
+#     for body in get_bodies():
+#         remove_body(body)
+#     remove_all_debug()

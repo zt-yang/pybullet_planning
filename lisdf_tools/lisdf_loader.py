@@ -19,7 +19,8 @@ from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove
     disconnect, set_pose, set_joint_position, joint_from_name, quat_from_euler, draw_pose, unit_pose, \
     set_camera_pose, set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
     set_joint_positions, get_links, get_joints, get_joint_name, get_body_name, link_from_name, \
-    parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK, read
+    parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK, read, get_client, \
+    reset_simulation
 from pybullet_tools.bullet_utils import nice, sort_body_parts, equal
 from pybullet_tools.pr2_streams import get_handle_link
 from pybullet_tools.flying_gripper_utils import set_se3_conf
@@ -283,7 +284,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
     if isfile(config_path):
         planning_config = json.load(open(config_path))
         custom_limits = planning_config['base_limits']
-        # body_to_name = planning_config['body_to_name']
+        body_to_name = planning_config['body_to_name']
         lisdf_path = join(lisdf_path, 'scene.lisdf')
 
     ## --- the floor and pose will become extra bodies
@@ -391,12 +392,13 @@ def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
 
 #######################
 
-def get_depth_images(exp_dir, width=1280, height=960,  ## , width=720, height=560)
-                     EXIT=True, verbose=False,
+def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width=720, height=560)
                      camera_pose=((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5)),
                      img_dir=join('visualizations', 'camera_images')):
+
     os.makedirs(img_dir, exist_ok=True)
     world = load_lisdf_pybullet(exp_dir, width=width, height=height, verbose=verbose)
+    print('world.name_to_body', world.name_to_body)
     init = pddl_to_init_goal(exp_dir, world)[0]
 
     world.add_camera(camera_pose, img_dir)
@@ -423,8 +425,9 @@ def get_depth_images(exp_dir, width=1280, height=960,  ## , width=720, height=56
 
     def get_image_and_reset(world, index):
         world.visualize_image(index=index)
-        disconnect()
+        reset_simulation()
         world = load_lisdf_pybullet(exp_dir, width=width, height=height)
+        print('world.name_to_body', world.name_to_body)
         world.add_camera(camera_pose, img_dir)
         return world
 
@@ -442,8 +445,6 @@ def get_depth_images(exp_dir, width=1280, height=960,  ## , width=720, height=56
             remove_body(b)
         get_image_and_reset(world, index)
 
-    if EXIT:
-        disconnect()
 
 
 #######################
@@ -454,4 +455,4 @@ if __name__ == "__main__":
         lisdf_path = join(ASSET_PATH, 'scenes', f'{lisdf_test}.lisdf')
         world = load_lisdf_pybullet(lisdf_path, verbose=True)
         wait_if_gui('load next test scene?')
-        disconnect()
+        reset_simulation()
