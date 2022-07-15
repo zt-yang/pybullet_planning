@@ -197,18 +197,42 @@ def test_one_fridge(world, verbose=True):
 
 def sample_one_fridge_scene(world, verbose=True):
 
-    """ ============== [State Space] Add world objects (Don't change) ================ """
-
+    ## later we may want to automatically add irrelevant objects and joints
     world.set_skip_joints()
-    load_random_mini_kitchen_counter(world)
 
-    """ ============== [Init] Sample an initial conf for robot ==================== """
+    """ ============== Sample an initial conf for robot ==================== """
+    def sample_robot_conf():
+        x = random.uniform(2.5, 3.8)
+        y = random.uniform(2, 3.5)
+        z = random.uniform(0.5, 3.5)
+        yaw = random.uniform(0, math.pi)
+        return [x, y, z, 0, -math.pi / 2, yaw]
 
+    custom_limits = {0: (0, 6), 1: (0, 6), 2: (0, 2)}
+    robot = create_gripper_robot(world, custom_limits, initial_q=sample_robot_conf())
+
+    """ ============== Add world objects ================ """
+    minifridge_doors = load_random_mini_kitchen_counter(world)
+
+    """ ============== Change joint positions ================ """
+    epsilon = 0.3
+    for door in minifridge_doors:
+        if random.random() < epsilon:
+            open_joint(door[0], door[1], extent=random.random())
 
     return None
-
 
 def sample_one_fridge_goal(world, verbose=True):
-    return None
+    cabbage = world.name_to_body('cabbage')
+    fridge = world.name_to_body('minifridge')
+    counter = world.name_to_body('counter')
+
+    goal_candidates = [
+        [('Holding', 'hand', cabbage)],
+        [('On', cabbage, fridge)],
+        [('On', cabbage, counter)],
+    ]
+    return random.choice(goal_candidates)
+
 
 ############################################

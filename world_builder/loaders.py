@@ -963,11 +963,12 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     # set_renderer(True)
     # wait_for_user()
 
-    x += np.random.normal(3, 0.2)
+    x += np.random.normal(4, 0.2)
     y += np.random.normal(0, 0.2)
     camera_pose = ((x, y, 1.3), (0.5, 0.5, -0.5, -0.5))
     world.add_camera(camera_pose)
     world.visualize_image()
 
-    body_joint = random.choice(list(minifridge_doors.keys()))
-    return body_joint
+    # body_joint = random.choice(list(minifridge_doors.keys()))
+    # return body_joint
+    return list(minifridge_doors.keys())

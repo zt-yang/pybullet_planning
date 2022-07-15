@@ -370,7 +370,8 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     if EXIT: sys.exit()
 
 
-def save_to_test_cases(state, goal, template_name, floorplan, out_dir, root_path='..', verbose=True):
+def save_to_test_cases(state, goal, template_name, floorplan, out_dir, root_path='..',
+                       verbose=True, DEPTH_IMAGES=False):
 
     exp_path = EXP_PATH
     if root_path != None:
@@ -405,8 +406,13 @@ def save_to_test_cases(state, goal, template_name, floorplan, out_dir, root_path
     with open(join(outpath, 'planning_config.json'), 'w') as f:
         json.dump(config, f, indent=4)
 
-    ## --- save depth image
-    state.world.visualize_image(img_dir=outpath)
+    """ save depth image """
+    if DEPTH_IMAGES:
+        reset_simulation()
+        get_depth_images(outpath, camera_pose=state.world.camera.pose,
+                         img_dir=join(outpath, 'depth_maps'), verbose=True)
+    else:
+        state.world.visualize_image(img_dir=outpath)
 
 
 def get_pddl_from_list(fact, world):
