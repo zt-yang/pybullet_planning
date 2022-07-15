@@ -919,11 +919,11 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
 
     ## --- add cabage on an external table
     x, y = 1, 3
-    table = world.add_object(
-        Object(create_box(0.5, 0.5, h, color=(.75, .75, .75, 1)), category='supporter', name='table'),
-        Pose(point=Point(x=x, y=y, z=h / 2)))
+    # table = world.add_object(
+    #     Object(create_box(0.5, 0.5, h, color=(.75, .75, .75, 1)), category='supporter', name='table'),
+    #     Pose(point=Point(x=x, y=y, z=h / 2)))
     cat = 'VeggieCabbage'
-    cabbage = world.add_object(Object(load_asset(cat, x=x, y=y, yaw=0, floor=table), category=cat))
+    cabbage = world.add_object(Object(load_asset(cat, x=x, y=y, yaw=0, floor=floor), category=cat))
 
     if table_only:
         return None
@@ -953,9 +953,12 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     minifridge_spaces = get_partnet_spaces(minifridge.path, minifridge.body)
     for b, _, l in minifridge_spaces:
         fridgestorage = world.add_object(Space(b, l, name='fridgestorage'))
+
+        ## --- PICK FROM THE STORAGE
+        fridgestorage.place_obj(cabbage)
         break
 
-    world.open_all_doors_drawers()
+    # world.open_all_doors_drawers()
 
     # set_renderer(True)
     # wait_for_user()
