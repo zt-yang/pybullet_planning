@@ -429,6 +429,7 @@ def apply_actions(problem, actions, time_step=0.01):
                 state_event = a.transition(state_event.copy())
         wait_for_duration(time_step)
 
+
 def get_primitive_actions(action, world, teleport=False):
     def get_traj(t, sub=4):
         world.remove_handles()
@@ -451,6 +452,10 @@ def get_primitive_actions(action, world, teleport=False):
         if DoF == 3:
             t = [MoveBaseAction(conf) for conf in path]
             world.add_handles(draw_pose2d_path(confs, length=0.05))
+
+        elif DoF == 4:
+            t = [MoveBaseAction(conf) for conf in path]
+            world.add_handles(draw_pose3d_path(confs, length=0.05))
 
         elif DoF == 6:
             t = [MoveArmAction(conf) for conf in path]

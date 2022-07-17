@@ -12,7 +12,7 @@ from pybullet_tools.pr2_streams import get_stable_gen, get_position_gen, \
     get_pull_marker_random_motion_gen, get_ik_ungrasp_handle_gen, get_pose_in_region_test, \
     get_cfree_btraj_pose_test, get_joint_position_open_gen, get_ik_ungrasp_mark_gen, \
     sample_joint_position_open_list_gen, get_update_wconf_pst_gen, get_ik_ir_wconf_gen, \
-    get_update_wconf_p_gen, get_ik_ir_wconf_gen, get_pose_in_space_test, get_turn_knob_handle_motion_gen
+    get_update_wconf_p_gen, get_pose_in_space_test, get_turn_knob_handle_motion_gen
 from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
     get_ik_ir_gen, get_motion_gen, get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
     move_cost_fn, Attach, Detach, Clean, Cook, control_commands, \
@@ -60,8 +60,8 @@ def get_stream_map(p, c, l, t):
         'inverse-kinematics': from_gen_fn(get_ik_ir_gen(p, collisions=c, teleport=t, custom_limits=l,
                                                         learned=False, max_attempts=60, verbose=False)),
         'inverse-kinematics-wconf': from_gen_fn(get_ik_ir_wconf_gen(p, collisions=c, teleport=t, custom_limits=l,
-                                                                    learned=False, max_attempts=60, verbose=False,
-                                                                    visualize=False)),
+                                                                    learned=False, max_attempts=60, verbose=True,
+                                                                    visualize=True)),
         'plan-base-motion': from_fn(get_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
         'plan-base-motion-wconf': from_fn(get_motion_wconf_gen(p, collisions=c, teleport=t, custom_limits=l)),
 
@@ -525,7 +525,7 @@ def is_plan_abstract(plan):
             return True
     return False
 
-def solve_pddlstream(problem, state, domain_pddl=None):
+def solve_pddlstream(problem, state, domain_pddl=None, visualization=False):
     # from examples.pybullet.utils.pybullet_tools.utils import CLIENTS
     from pddlstream.algorithms.focused import solve_focused
     from pybullet_tools.logging import myprint as print
@@ -554,7 +554,7 @@ def solve_pddlstream(problem, state, domain_pddl=None):
             solution = solve_focused(pddlstream_problem, stream_info=stream_info,
                                      planner='ff-astar1', max_planner_time=10, debug=False,
                                      unit_costs=True, success_cost=INF,
-                                     max_time=INF, verbose=True, visualize=True,
+                                     max_time=INF, verbose=True, visualize=visualization,
                                      unit_efforts=True, effort_weight=1,
                                      bind=True, max_skeletons=INF,  # TODO: double check that max_skeletons=None is working
                                      search_sample_ratio=0)

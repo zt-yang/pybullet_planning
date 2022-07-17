@@ -120,6 +120,11 @@ class PR2Robot(RobotAPI):
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
     finger_link = 7  ## for detecting if a grasp is pointing upwards
 
+    def __init__(self, body, DUAL_ARM=False, USE_TORSO=False, **kwargs):
+        super(PR2Robot, self).__init__(body, **kwargs)
+        self.DUAL_ARM = DUAL_ARM
+        self.USE_TORSO = USE_TORSO
+
     def get_init(self, init_facts=[], conf_saver=None):
         from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints, \
             get_group_conf, get_top_grasps, get_side_grasps
@@ -139,6 +144,14 @@ class PR2Robot(RobotAPI):
                     return fact[1]
             return initial_bq
 
+        def get_base_torso_conf():
+            base_joints = get_group_joints(robot, 'base-torso')
+            initial_bq = Conf(robot, base_joints, get_conf(base_joints))
+            for fact in init_facts:
+                if fact[0] == 'btconf' and equal(fact[1].values, initial_bq.values):
+                    return fact[1]
+            return initial_bq
+
         def get_arm_conf(arm):
             arm_joints = get_arm_joints(robot, arm)
             conf = Conf(robot, arm_joints, get_conf(arm_joints))
@@ -147,7 +160,7 @@ class PR2Robot(RobotAPI):
                     return fact[2]
             return conf
 
-        initial_bq = get_base_conf()
+        initial_bq = get_base_torso_conf() if self.USE_TORSO else get_base_conf()
         init = [('BConf', initial_bq), ('AtBConf', initial_bq)]
 
         for arm in ARM_NAMES:
@@ -302,9 +315,17 @@ class PR2Robot(RobotAPI):
         from pybullet_tools.pr2_agent import get_stream_map
         return get_stream_map(problem, collisions, custom_limits, teleport)
 
-    def get_stream_info(self, **kwargs):
+    def get_stream_info(self):
         from pybullet_tools.pr2_agent import get_stream_info
-        return get_stream_info(**kwargs)
+        return get_stream_info()
+
+    @property
+    def base_group(self):
+        return 'base-torso' if self.USE_TORSO else 'base'
+
+    def get_base_joints(self):
+        from pybullet_tools.pr2_utils import get_group_joints
+        return get_group_joints(self.body, self.base_group)
 
 
 class FEGripper(RobotAPI):
@@ -484,6 +505,7 @@ class FEGripper(RobotAPI):
         from pybullet_tools.flying_gripper_agent import get_stream_map
         return get_stream_map(problem, collisions, custom_limits, teleport)
 
-    def get_stream_info(self, **kwargs):
-        from pybullet_tools.flying_gripper_agent import get_stream_info
-        return get_stream_info(**kwargs)
+    def get_stream_info(self):
+        # from pybullet_tools.flying_gripper_agent import get_stream_info
+        from pybullet_tools.pr2_agent import get_stream_info
+        return get_stream_info()

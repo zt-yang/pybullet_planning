@@ -327,21 +327,22 @@ def save_to_exp_folder(state, init, goal, out_path):
                           out_path=out_path+'_problem.pddl')
 
 
-def save_to_outputs_folder(outpath, exp_path):
+def save_to_outputs_folder(outpath, exp_path, data_generation=False):
     exp_path = exp_path.replace('.mp4', '')
 
-    original = 'visualizations'
-    if isfile(join(original, 'log.json')):
-        for subdir in ['constraint_networks', 'stream_plans', 'log.json']:
-            shutil.move(join(original, subdir), join(outpath, subdir))
-        # os.remove(join(original, 'log.json'))
-    else:
-        new_outpath = f"{outpath}_failed"
-        shutil.move(outpath, new_outpath)
-        outpath = new_outpath
+    if data_generation:
+        original = 'visualizations'
+        if isfile(join(original, 'log.json')):
+            for subdir in ['constraint_networks', 'stream_plans', 'log.json']:
+                shutil.move(join(original, subdir), join(outpath, subdir))
+            # os.remove(join(original, 'log.json'))
+        else:
+            new_outpath = f"{outpath}_failed"
+            shutil.move(outpath, new_outpath)
+            outpath = new_outpath
 
     """ =========== move to data collection folder =========== """
-    data_path = outpath.replace('test_cases', join('outputs', 'one_fridge_pick'))
+    data_path = outpath.replace('test_cases', join('outputs', 'reachability_check'))
     shutil.move(outpath, data_path)
 
     """ =========== move the log and plan =========== """
@@ -372,9 +373,10 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
     config = {
         'base_limits': state.world.robot.custom_limits,  ## state.world.args.base_limits,
-        'obs_camera_pose': nice(state.world.camera.pose),
         # 'body_to_name': body_to_name
     }
+    if DEPTH_IMAGES and state.world.camera != None:
+        config['obs_camera_pose'] = nice(state.world.camera.pose)
 
     ## --- domain and stream copied over  ## shutil.copy()
     with open(join(outpath, 'domain_full.pddl'), 'w') as f:
@@ -386,7 +388,7 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     with open(join(outpath, 'planning_config.json'), 'w') as f:
         json.dump(config, f)
 
-    if DEPTH_IMAGES:
+    if DEPTH_IMAGES and state.world.camera != None:
         reset_simulation()
         get_depth_images(outpath, camera_pose=state.world.camera.pose,
                          img_dir=join(outpath, 'depth_maps'), verbose=True)

@@ -117,9 +117,22 @@ def draw_pose2d_path(path, z=0., **kwargs):
     # return list(flatten(draw_point(np.append(pose2d[:2], [z]), **kwargs) for pose2d in path))
     return list(flatten(draw_pose2d(pose2d, z=z, **kwargs) for pose2d in path))
 
+
 def draw_pose3d_path(path, **kwargs):
-    from .flying_gripper_utils import pose_from_se3
-    return list(flatten(draw_pose(pose_from_se3(q), **kwargs) for q in path))
+    ## flying gripper
+    if len(path[0]) == 6:
+        from .flying_gripper_utils import pose_from_se3
+        return list(flatten(draw_pose(pose_from_se3(q), **kwargs) for q in path))
+
+    ## pr2
+    elif len(path[0]) == 4:
+        return list(flatten(draw_pose(pose_from_xyzyaw(q), **kwargs) for q in path))
+
+
+def pose_from_xyzyaw(q):
+    x, y, z, yaw = q
+    return Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
+
 
 def get_indices(sequence):
     return range(len(sequence))
@@ -1535,6 +1548,6 @@ def draw_base_limits(custom_limits, **kwargs):
         draw_aabb(AABB(custom_limits[0], custom_limits[1]), **kwargs)
     elif len(custom_limits[0]) == 2:
         (x1, y1), (x2, y2) = custom_limits
-        points = list(custom_limits)
-        points.extend([(x1, y2), (x2, y1)])
+        p1, p2, p3, p4 = [(x1, y1, 0), (x1, y2, 0), (x2, y2, 0), (x2, y1, 0)]
+        points = [(p1, p2), (p2, p3), (p3, p4), (p4, p1)]
         [add_line(p1, p2, **kwargs) for p1, p2 in points]

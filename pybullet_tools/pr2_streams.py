@@ -131,6 +131,7 @@ def get_handle_grasps(body_joint, tool_pose=TOOL_POSE, body_pose=unit_pose(),
 #         #     set_pose(body, multiply(tool_pose, grasp.value))
 #         yield
 
+
 def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
                    learned=True, verbose=False):
     robot = problem.robot
@@ -138,6 +139,7 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
     obstacles = [o for o in problem.fixed if o not in problem.floors] if collisions else []
     gripper = problem.get_gripper(visual=False)
     heading = f'   pr2_streams.get_ir_sampler | '
+
     def gen_fn(arm, obj, pose, grasp):
 
         pose.assign()
@@ -185,6 +187,7 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
             base_generator = learned_pose_generator(robot, gripper_pose, arm=arm, grasp_type=grasp.grasp_type)
         else:
             base_generator = uniform_pose_generator(robot, gripper_pose)
+
         lower_limits, upper_limits = get_custom_limits(robot, base_joints, custom_limits)
         aconf = nice(get_joint_positions(robot, arm_joints))
         while True:
@@ -193,6 +196,15 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
                 count += 1
                 if not all_between(lower_limits, base_conf, upper_limits):
                     continue
+
+                ## added by YANG for adding torso value
+                if robot.USE_TORSO:
+                    base_joints = robot.get_base_joints()
+                    z = gripper_pose[0][-1]
+                    z = random.uniform(z - 0.7, z - 0.3)
+                    x, y, yaw = base_conf
+                    base_conf = (x, y, z, yaw)
+
                 bq = Conf(robot, base_joints, base_conf)
                 pose.assign()
                 bq.assign()
@@ -376,8 +388,13 @@ def get_ik_ir_wconf_gen(problem, max_attempts=25, learned=True, teleport=False,
 
             if visualize:
                 samp = create_box(.1, .1, .1, mass=1, color=(1, 0, 1, 1))
-                x,y,_ = ir_outputs[0].values
-                set_point(samp, (x,y,0.2))
+                b_conf = ir_outputs[0].values
+                if len(b_conf) == 3:
+                    x,y,_ = b_conf
+                    z = 0.2
+                elif len(b_conf) == 4:
+                    x,y,z,_ = b_conf
+                set_point(samp, (x,y,z))
                 samples.append(samp)
 
             ik_outputs = ik_fn(*(inputs + ir_outputs))
@@ -1101,7 +1118,7 @@ def get_pull_marker_random_motion_gen(problem, custom_limits={}, collisions=True
             p2 = Pose(o, pose2)
             p4 = Pose(o2, get_parent_new_pose(p1.value, pose2, p3.value))
 
-            bpath = [Conf(robot, get_group_joints(robot, 'base'), bq) for bq in bqs]
+            bpath = [Conf(robot, robot.get_base_joints(), bq) for bq in bqs]
             collided = False
 
             ## TODO: do collision checking with other streams
@@ -1140,7 +1157,7 @@ def get_pull_marker_to_pose_motion_gen(problem, custom_limits={}, collisions=Tru
         bqs = get_bqs_given_p2(o, parent, bq1.values, p2.value, num_intervals)
         p4 = Pose(o2, get_parent_new_pose(p1.value, p2.value, p3.value))
 
-        bpath = [Conf(robot, get_group_joints(robot, 'base'), bq) for bq in bqs]
+        bpath = [Conf(robot, robot.get_base_joints(), bq) for bq in bqs]
         collided = False
 
         ## TODO: do collision checking with other streams
@@ -1237,7 +1254,7 @@ def get_bconf_in_region_gen(problem, collisions=True, max_attempts=10, verbose=F
             attempts += 1
             x = np.random.uniform(lower[0], upper[0])
             y = np.random.uniform(lower[1], upper[1])
-            bq = Conf(robot, get_group_joints(robot, 'base'), (x, y, yaw))
+            bq = Conf(robot, robot.get_base_joints(), (x, y, yaw))
             bq.assign()
             if not any(pairwise_collision(robot, obst) for obst in obstacles):
                 if visualize:
@@ -1254,12 +1271,12 @@ def get_bconf_in_region_gen(problem, collisions=True, max_attempts=10, verbose=F
             attempts += 1
             x = np.random.uniform(lower[0], upper[0])
             y = np.random.uniform(lower[1], upper[1])
-            bq = Conf(robot, get_group_joints(robot, 'base'), (x, y, yaw))
+            bq = Conf(robot, robot.get_base_joints(), (x, y, yaw))
             bq.assign()
             if not any(pairwise_collision(robot, obst) for obst in obstacles):
                 if visualize:
                     rbb = create_pr2()
-                    set_group_conf(rbb, 'base', bq.values)
+                    set_group_conf(rbb, robot.base_group, bq.values)
                 bqs.append((bq,))
         return bqs
     return list_fn ## gen
@@ -1319,7 +1336,7 @@ def get_motion_wconf_gen(problem, custom_limits={}, collisions=True, teleport=Fa
 
         ## the only thing added from get_motion_wconf
         w.assign()
-        bconf = get_joint_positions(robot, get_group_joints(robot, 'base'))
+        bconf = get_joint_positions(robot, robot.get_base_joints())
         aconf = get_joint_positions(robot, get_arm_joints(robot, 'left'))
 
         num_trials = 2  ## sometimes it can't find a path to get around the open door

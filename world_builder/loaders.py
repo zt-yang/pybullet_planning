@@ -71,23 +71,31 @@ def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
             set_arm_conf(pr2, a, initial_conf)
             open_arm(pr2, a)
 
-def create_pr2_robot(world, base_q=(0,0,0), DUAL_ARM=False, custom_limits=BASE_LIMITS,
-                 resolutions=BASE_RESOLUTIONS, max_velocities=BASE_VELOCITIES, robot=None):
+
+def create_pr2_robot(world, base_q=(0,0,0),
+                     DUAL_ARM=False, USE_TORSO=True,
+                     custom_limits=BASE_LIMITS,
+                     resolutions=BASE_RESOLUTIONS,
+                     max_velocities=BASE_VELOCITIES, robot=None):
 
     if robot is None:
         with LockRenderer(lock=True):
             with HideOutput(enable=True):
                 robot = create_pr2()
                 set_pr2_ready(robot, DUAL_ARM=DUAL_ARM)
-        set_group_conf(robot, 'base', base_q)
+        if len(base_q) == 3:
+            set_group_conf(robot, 'base', base_q)
+        elif len(base_q) == 4:
+            set_group_conf(robot, 'base-torso', base_q)
 
     with np.errstate(divide='ignore'):
         weights = np.reciprocal(resolutions)
 
     draw_base_limits(custom_limits)
     robot = PR2Robot(robot, base_link=BASE_LINK, joints=BASE_JOINTS,
-                  custom_limits=get_base_custom_limits(robot, custom_limits),
-                  resolutions=resolutions, weights=weights)
+                     DUAL_ARM=DUAL_ARM, USE_TORSO=USE_TORSO,
+                     custom_limits=get_base_custom_limits(robot, custom_limits),
+                     resolutions=resolutions, weights=weights)
     world.add_robot(robot, max_velocities=max_velocities)
 
     # print('initial base conf', get_group_conf(robot, 'base'))

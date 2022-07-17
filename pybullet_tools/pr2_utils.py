@@ -51,6 +51,7 @@ gripper_from_side = gripper_from_arm
 PR2_GROUPS = {
     'base': ['x', 'y', 'theta'],
     'torso': ['torso_lift_joint'],
+    'base-torso': ['x', 'y', 'torso_lift_joint', 'theta'],
     'head': ['head_pan_joint', 'head_tilt_joint'],
     arm_from_arm(LEFT_ARM): ['l_shoulder_pan_joint', 'l_shoulder_lift_joint', 'l_upper_arm_roll_joint',
                              'l_elbow_flex_joint', 'l_forearm_roll_joint', 'l_wrist_flex_joint', 'l_wrist_roll_joint'],

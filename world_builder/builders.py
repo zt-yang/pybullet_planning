@@ -190,6 +190,7 @@ def test_feg_pick(world, floorplan='counter.svg', verbose=True):
 
 ############################################
 
+
 def test_one_fridge(world, verbose=True):
     import numpy as np
     import time
@@ -199,6 +200,7 @@ def test_one_fridge(world, verbose=True):
     floorplan = sample_one_fridge_scene(world, verbose)
     goal = sample_one_fridge_goal(world, verbose)
     return floorplan, goal
+
 
 def sample_one_fridge_scene(world, verbose=True):
 

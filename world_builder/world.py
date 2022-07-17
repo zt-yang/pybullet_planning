@@ -54,6 +54,7 @@ class World(object):
         self.handles = []
         self.path = None
         self.outpath = None
+        self.camera = None
 
     def clear_viz(self):
         self.remove_handles()
