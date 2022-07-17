@@ -298,9 +298,9 @@ class PR2Robot(RobotAPI):
         custom_limits = get_base_custom_limits(self.body, self.custom_limits)
         return custom_limits
 
-    def get_stream_map(self, **kwargs):
+    def get_stream_map(self, problem, collisions, custom_limits, teleport):
         from pybullet_tools.pr2_agent import get_stream_map
-        return get_stream_map(**kwargs)
+        return get_stream_map(problem, collisions, custom_limits, teleport)
 
     def get_stream_info(self, **kwargs):
         from pybullet_tools.pr2_agent import get_stream_info

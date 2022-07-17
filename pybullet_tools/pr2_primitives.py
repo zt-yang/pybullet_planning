@@ -774,7 +774,11 @@ BASE_CONSTANT = 1
 BASE_VELOCITY = 0.25
 
 def get_base_custom_limits(robot, base_limits, yaw_limit=None):
-    x_limits, y_limits = zip(*base_limits)
+    if len(base_limits[0]) == 2:
+        x_limits, y_limits = zip(*base_limits)
+    if len(base_limits[0]) == 3:
+        x_limits, y_limits, z_limits = zip(*base_limits)
+
     custom_limits = {
         joint_from_name(robot, 'x'): x_limits,
         joint_from_name(robot, 'y'): y_limits,
@@ -783,6 +787,8 @@ def get_base_custom_limits(robot, base_limits, yaw_limit=None):
         custom_limits.update({
             joint_from_name(robot, 'theta'): yaw_limit,
         })
+    if len(base_limits[0]) == 3:
+        custom_limits[joint_from_name(robot, 'torso_lift_joint')] = z_limits
     return custom_limits
 
 def distance_fn(q1, q2):

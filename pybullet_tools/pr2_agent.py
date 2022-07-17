@@ -133,23 +133,42 @@ def get_stream_map(p, c, l, t):
     }
     return stream_map
 
-def get_stream_info(partial, defer):
+# def get_stream_info(partial, defer):
+#     stream_info = {
+#         # 'test-cfree-pose-pose': StreamInfo(p_success=1e-3, verbose=verbose),
+#         # 'test-cfree-approach-pose': StreamInfo(p_success=1e-2, verbose=verbose),
+#         # 'test-cfree-traj-pose': StreamInfo(p_success=1e-1, verbose=verbose),
+#
+#         'MoveCost': FunctionInfo(opt_move_cost_fn),
+#     }
+#     stream_info.update({
+#                            'sample-pose': StreamInfo(opt_gen_fn=PartialInputs('?r')),
+#                            'inverse-kinematics': StreamInfo(opt_gen_fn=PartialInputs('?p')),
+#                            'plan-base-motion': StreamInfo(opt_gen_fn=PartialInputs('?q1 ?q2'),
+#                                                           defer_fn=defer_shared if defer else never_defer),
+#                        } if partial else {
+#         'sample-pose': StreamInfo(opt_gen_fn=from_fn(opt_pose_fn)),
+#         'inverse-kinematics': StreamInfo(opt_gen_fn=from_fn(opt_ik_fn)),
+#         'plan-base-motion': StreamInfo(opt_gen_fn=from_fn(opt_motion_fn)),
+#     })
+#     return stream_info
+
+def get_stream_info():
     stream_info = {
         # 'test-cfree-pose-pose': StreamInfo(p_success=1e-3, verbose=verbose),
         # 'test-cfree-approach-pose': StreamInfo(p_success=1e-2, verbose=verbose),
         # 'test-cfree-traj-pose': StreamInfo(p_success=1e-1, verbose=verbose),
-
         'MoveCost': FunctionInfo(opt_move_cost_fn),
     }
     stream_info.update({
-                           'sample-pose': StreamInfo(opt_gen_fn=PartialInputs('?r')),
-                           'inverse-kinematics': StreamInfo(opt_gen_fn=PartialInputs('?p')),
-                           'plan-base-motion': StreamInfo(opt_gen_fn=PartialInputs('?q1 ?q2'),
-                                                          defer_fn=defer_shared if defer else never_defer),
-                       } if partial else {
         'sample-pose': StreamInfo(opt_gen_fn=from_fn(opt_pose_fn)),
+        'sample-pose-inside': StreamInfo(opt_gen_fn=from_fn(opt_pose_inside_fn)),
         'inverse-kinematics': StreamInfo(opt_gen_fn=from_fn(opt_ik_fn)),
+        # 'inverse-kinematics-wconf': StreamInfo(opt_gen_fn=from_fn(opt_ik_wconf_fn)),
         'plan-base-motion': StreamInfo(opt_gen_fn=from_fn(opt_motion_fn)),
+        # 'plan-base-motion-wconf': StreamInfo(opt_gen_fn=from_fn(opt_motion_wconf_fn)),
+        'sample-joint-position': StreamInfo(opt_gen_fn=from_fn(opt_position_fn)),
+        # 'inverse-kinematics-grasp-handle': StreamInfo(opt_gen_fn=from_fn(opt_ik_grasp_fn)),
     })
     return stream_info
 
@@ -347,23 +366,6 @@ def opt_motion_wconf_fn(q1, q2, w):
     t = CustomValue('t-pbm', (q1, q2))
     return t,
 
-stream_info = {
-    # 'test-cfree-pose-pose': StreamInfo(p_success=1e-3, verbose=verbose),
-    # 'test-cfree-approach-pose': StreamInfo(p_success=1e-2, verbose=verbose),
-    # 'test-cfree-traj-pose': StreamInfo(p_success=1e-1, verbose=verbose),
-    'MoveCost': FunctionInfo(opt_move_cost_fn),
-}
-stream_info.update({
-    'sample-pose': StreamInfo(opt_gen_fn=from_fn(opt_pose_fn)),
-    'sample-pose-inside': StreamInfo(opt_gen_fn=from_fn(opt_pose_inside_fn)),
-    'inverse-kinematics': StreamInfo(opt_gen_fn=from_fn(opt_ik_fn)),
-    # 'inverse-kinematics-wconf': StreamInfo(opt_gen_fn=from_fn(opt_ik_wconf_fn)),
-    'plan-base-motion': StreamInfo(opt_gen_fn=from_fn(opt_motion_fn)),
-    # 'plan-base-motion-wconf': StreamInfo(opt_gen_fn=from_fn(opt_motion_wconf_fn)),
-    'sample-joint-position': StreamInfo(opt_gen_fn=from_fn(opt_position_fn)),
-    # 'inverse-kinematics-grasp-handle': StreamInfo(opt_gen_fn=from_fn(opt_ik_grasp_fn)),
-})
-
 #######################################################
 
 class Problem(object):
@@ -535,6 +537,7 @@ def solve_pddlstream(problem, state, domain_pddl=None):
     pddlstream_problem = problem
     world = state.world
     objects = world.objects
+    stream_info = world.robot.get_stream_info()
 
     #########################
 

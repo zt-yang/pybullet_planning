@@ -1420,9 +1420,9 @@ def get_partnet_spaces(path, body):
 
 def get_datetime(TO_LISDF=False):
     from datetime import datetime
-    str = datetime.now().strftime("%m%d_%H:%M")
-    if TO_LISDF: str = str.replace(':', '')
-    return str
+    if TO_LISDF:
+        return datetime.now().strftime("%m%d_%H%M%S")
+    return datetime.now().strftime("%m%d_%H:%M")
 
 # def remove_all_bodies():
 #     for body in get_bodies():
@@ -1528,3 +1528,13 @@ def clone_body_link(body, link, collision=True, visual=True, client=None):
             # TODO: check if movable?
             p.resetJointState(new_body, joint, value, targetVelocity=0, physicsClientId=client)
     return new_body
+
+
+def draw_base_limits(custom_limits, **kwargs):
+    if len(custom_limits[0]) == 3:
+        draw_aabb(AABB(custom_limits[0], custom_limits[1]), **kwargs)
+    elif len(custom_limits[0]) == 2:
+        (x1, y1), (x2, y2) = custom_limits
+        points = list(custom_limits)
+        points.extend([(x1, y2), (x2, y1)])
+        [add_line(p1, p2, **kwargs) for p1, p2 in points]

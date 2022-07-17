@@ -28,11 +28,11 @@ from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, H
     aabb_overlap, get_links, get_collision_data, get_visual_data, link_from_name, body_collision, get_closest_points, \
     load_pybullet, FLOOR_URDF, get_aabb_center, AABB, INF, clip, aabb_union, get_aabb_center, Pose, Euler, get_box_geometry, \
     get_aabb_extent, multiply, GREY, create_shape_array, create_body, STATIC_MASS, set_renderer, quat_from_euler, \
-    get_joint_name, wait_for_user
+    get_joint_name, wait_for_user, draw_aabb
 from pybullet_tools.bullet_utils import place_body, add_body, Pose2d, nice, OBJ_YAWS, \
     sample_obj_on_body_link_surface, sample_obj_in_body_link_space, set_camera_target_body, \
     open_joint, close_joint, set_camera_target_robot, summarize_joints, get_partnet_doors, get_partnet_spaces, \
-    set_pr2_ready, BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, \
+    set_pr2_ready, BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, draw_base_limits, \
     BASE_LIMITS, CAMERA_FRAME, CAMERA_MATRIX, EYE_FRAME
 
 OBJ = '?obj'
@@ -83,6 +83,8 @@ def create_pr2_robot(world, base_q=(0,0,0), DUAL_ARM=False, custom_limits=BASE_L
 
     with np.errstate(divide='ignore'):
         weights = np.reciprocal(resolutions)
+
+    draw_base_limits(custom_limits)
     robot = PR2Robot(robot, base_link=BASE_LINK, joints=BASE_JOINTS,
                   custom_limits=get_base_custom_limits(robot, custom_limits),
                   resolutions=resolutions, weights=weights)
