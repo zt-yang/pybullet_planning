@@ -4075,6 +4075,7 @@ def base_aligned_z(body, z=0.):
 
 def stable_z_on_aabb(body, aabb):
     center, extent = get_center_extent(body)
+    if aabb is None: return 0
     _, upper = aabb
     return (upper + extent/2 + (get_point(body) - center))[2]
 

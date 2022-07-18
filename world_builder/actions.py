@@ -485,11 +485,7 @@ def get_primitive_actions(action, world, teleport=False):
         ## PR2
         else:
             a, o, p1, p2, g, q1, q2, bt, aq1, aq2, at = args[:11]
-            at = list(get_traj(at).path)
-            bt = list(get_traj(bt).path)
-            new_commands = []
-            for i in range(len(at)):
-                new_commands.extend([MoveBaseAction(bt[i]), MoveArmAction(at[i])])
+            new_commands = get_traj(bt)  ## list(get_traj(bt).path)
 
         ## for controlled event
         events = world.get_events(o)

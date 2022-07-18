@@ -108,18 +108,20 @@ class LinkPose(object):
         # return 'p{}'.format(index)
 
 class HandleGrasp(object):
-    def __init__(self, grasp_type, body, value, approach, carry):
+    def __init__(self, grasp_type, body, value, approach, carry, index=None):
         self.grasp_type = grasp_type
         self.body = body
         self.value = tuple(value) # gripper_from_object
         self.approach = tuple(approach)
         self.carry = tuple(carry)
+        if index == None: index = id(self)
+        self.index = index
     def get_attachment(self, robot, arm):
         return robot.get_attachment(self, arm)
         # tool_link = link_from_name(robot, PR2_TOOL_FRAMES[arm])
         # return Attachment(robot, tool_link, self.value, self.body)
     def __repr__(self):
-        return 'hg{}={}'.format(id(self) % 1000, nice(self.value))
+        return 'hg{}={}'.format(self.index % 1000, nice(self.value))
 
 class WConf(object):
     def __init__(self, poses, positions, index=None):

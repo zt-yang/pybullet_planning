@@ -342,7 +342,7 @@ def save_to_outputs_folder(outpath, exp_path, data_generation=False):
             outpath = new_outpath
 
     """ =========== move to data collection folder =========== """
-    data_path = outpath.replace('test_cases', join('outputs', 'reachability_check'))
+    data_path = outpath.replace('test_cases', join('outputs', 'one_fridge_pick_pr2'))
     shutil.move(outpath, data_path)
 
     """ =========== move the log and plan =========== """

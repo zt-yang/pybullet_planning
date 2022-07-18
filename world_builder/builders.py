@@ -208,15 +208,7 @@ def sample_one_fridge_scene(world, verbose=True):
     world.set_skip_joints()
 
     """ ============== Sample an initial conf for robot ==================== """
-    def sample_robot_conf():
-        x = random.uniform(2.5, 3.8)
-        y = random.uniform(2, 3.5)
-        z = random.uniform(0.5, 1.9)
-        # yaw = random.uniform(0, math.pi)
-        return [x, y, z, 0, -math.pi / 2, 0]
-
-    custom_limits = {0: (0, 6), 1: (0, 6), 2: (0, 2)}
-    robot = create_gripper_robot(world, custom_limits, initial_q=sample_robot_conf())
+    world.robot.randomly_spawn()
 
     """ ============== Add world objects ================ """
     minifridge_doors = load_random_mini_kitchen_counter(world)
@@ -228,19 +220,21 @@ def sample_one_fridge_scene(world, verbose=True):
             open_joint(door[0], door[1], extent=random.random())
 
     """ ============== Check collisions ================ """
-    obstacles = [o for o in get_bodies() if o != robot]
-    while collided(robot, obstacles, verbose=True):
-        robot.set_positions(sample_robot_conf())
+    obstacles = [o for o in get_bodies() if o != world.robot]
+    while collided(world.robot, obstacles, verbose=True):
+        world.robot.randomly_spawn()
 
     return None
+
 
 def sample_one_fridge_goal(world, verbose=True):
     cabbage = world.name_to_body('cabbage')
     fridge = world.name_to_body('minifridge')
     counter = world.name_to_body('counter')
 
+    arm = world.robot.arms[0]
     goal_candidates = [
-        [('Holding', 'hand', cabbage)],
+        [('Holding', arm, cabbage)],
         # [('On', cabbage, fridge)],
         # [('On', cabbage, counter)],
     ]

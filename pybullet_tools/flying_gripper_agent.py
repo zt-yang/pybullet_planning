@@ -4,12 +4,12 @@ import os
 import time
 
 from pybullet_planning.pybullet_tools.pr2_streams import get_handle_grasp_gen, get_ik_ir_grasp_handle_gen, \
-    get_pull_drawer_handle_motion_gen, get_joint_position_test, get_marker_grasp_gen, get_bconf_in_region_test, \
+    get_joint_position_test, get_marker_grasp_gen, get_bconf_in_region_test, \
     get_bconf_in_region_gen, get_pose_in_region_gen, get_motion_wconf_gen, get_update_wconf_p_two_gen, \
     get_marker_pose_gen, get_pull_marker_to_pose_motion_gen, get_pull_marker_to_bconf_motion_gen,  \
     get_pull_marker_random_motion_gen, get_ik_ungrasp_handle_gen, get_pose_in_region_test, \
     get_cfree_btraj_pose_test, get_joint_position_open_gen, get_ik_ungrasp_mark_gen, \
-    get_ik_ir_wconf_gen, get_ik_ir_wconf_gen, get_pose_in_space_test, get_turn_knob_handle_motion_gen
+    get_ik_ir_wconf_gen, get_ik_ir_wconf_gen, get_pose_in_space_test
 from pybullet_planning.pybullet_tools.pr2_primitives import get_stable_gen, get_group_joints, Conf, \
     get_base_custom_limits, Pose, Conf, \
     get_ik_ir_gen, get_motion_gen, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \

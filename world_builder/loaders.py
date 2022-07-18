@@ -91,6 +91,9 @@ def create_pr2_robot(world, base_q=(0,0,0),
     with np.errstate(divide='ignore'):
         weights = np.reciprocal(resolutions)
 
+    if isinstance(custom_limits, dict):
+        custom_limits = np.asarray(list(custom_limits.values())).T.tolist()
+
     draw_base_limits(custom_limits)
     robot = PR2Robot(robot, base_link=BASE_LINK, joints=BASE_JOINTS,
                      DUAL_ARM=DUAL_ARM, USE_TORSO=USE_TORSO,
@@ -925,7 +928,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
 
     counter = world.add_object(Object(
         load_asset('KitchenCounter', x=w/2, y=l/2, yaw=math.pi, floor=floor, h=h,
-                   RANDOM_INSTANCE=True, verbose=True), category='supporter', name='counter'))
+                   RANDOM_INSTANCE=True, verbose=False), category='supporter', name='counter'))
 
     ## --- add cabage on an external table
     x, y = 1, 3
@@ -966,11 +969,19 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
 
         ## --- PICK FROM THE STORAGE
         fridgestorage.place_obj(cabbage)
+        (x0, y0, z0), quat0 = get_pose(cabbage)
+        y0 = max(y0, get_aabb(minifridge).lower[0] + 0.5)
+        y0 = min(y0, get_aabb(minifridge).upper[0] - 0.5)
+        x0 = get_aabb(minifridge).upper[0] - 0.4
+        set_pose(cabbage, ((x0, y0, z0), quat0))
+        fridgestorage.include_and_attach(cabbage)
         break
 
     # world.open_all_doors_drawers()
 
-    # set_renderer(True)
+    set_renderer(True)
+    set_renderer(False)
+
     # wait_for_user()
 
     x += np.random.normal(4, 0.2)

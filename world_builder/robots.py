@@ -1,4 +1,5 @@
 import math
+import random
 from .entities import Robot
 
 from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color, TRANSPARENT, \
@@ -111,12 +112,15 @@ class RobotAPI(Robot):
         if verbose: print(f'{title} | multiply(body_pose, self.tool_from_hand) = {nice(new_body_pose)}')
         return new_body_pose
 
+    def set_spawn_range(self, limits):
+        self.spawn_range = limits
+
 
 class PR2Robot(RobotAPI):
 
     arms = ['left']
     grasp_types = ['top']
-    joint_groups = ['left', 'right', 'base']
+    joint_groups = ['left', 'right', 'base', 'base-torso']
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
     finger_link = 7  ## for detecting if a grasp is pointing upwards
 
@@ -204,23 +208,27 @@ class PR2Robot(RobotAPI):
         with PoseSaver(body):
             return compute_grasp_width(self.body, arm, body, grasp_pose, **kwargs)
 
+    def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
+        body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
+        tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
+        return multiply(body_pose, grasp, tool_from_root)
+
     def visualize_grasp(self, body_pose, grasp, arm='left', color=GREEN,
                         body=None, verbose=False, **kwargs):
         from pybullet_tools.pr2_utils import PR2_GRIPPER_ROOTS
         from pybullet_tools.pr2_primitives import get_tool_from_root
 
         robot = self.body
-        body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
 
         gripper_grasp = self.create_gripper(arm, visual=True)
         self.open_cloned_gripper(gripper_grasp)
         set_all_color(gripper_grasp, color)
 
-        if verbose:
-            handles = draw_pose(multiply(body_pose, grasp), length=0.05)
-        tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
-        grasp_pose = multiply(body_pose, grasp, tool_from_root)
+        grasp_pose = self.get_grasp_pose(body_pose, grasp, arm, body=body, verbose=verbose)
         set_pose(gripper_grasp, grasp_pose)
+
+        # if verbose:
+        #     handles = draw_pose(grasp_pose, length=0.05)
 
         ## ----------- old
         if False:
@@ -262,6 +270,7 @@ class PR2Robot(RobotAPI):
         #     return SIDE_HOLDING_LEFT_ARM
 
     def get_approach_vector(self, arm, grasp_type):
+        # return tuple(APPROACH_DISTANCE / 3 * get_unit_vector([0, 0, -1]))
         return tuple(APPROACH_DISTANCE / 3 * get_unit_vector([0, 0, -1]))
         # if grasp_type == 'top':
         #     return APPROACH_DISTANCE*get_unit_vector([1, 0, 0])
@@ -269,7 +278,7 @@ class PR2Robot(RobotAPI):
         #     return APPROACH_DISTANCE*get_unit_vector([2, 0, -1])
 
     def get_approach_pose(self, approach_vector, g):
-        return multiply((approach_vector, unit_quat()), g)
+        return multiply(g, (approach_vector, unit_quat()))
 
     def get_all_joints(self):
         return sum(PR2_GROUPS.values(), [])
@@ -283,9 +292,11 @@ class PR2Robot(RobotAPI):
 """
 
     def get_positions(self, joint_group='base', roundto=None):
-        from pybullet_tools.pr2_utils import get_arm_joints
+        from pybullet_tools.pr2_utils import get_arm_joints, get_group_joints
         if joint_group == 'base':
             joints = self.joints
+        elif joint_group == 'base-torso':
+            joints = get_group_joints(self.body, joint_group)
         else: ## if joint_group == 'left':
             joints = get_arm_joints(self.body, joint_group)
         positions = self.get_joint_positions(joints)
@@ -326,6 +337,21 @@ class PR2Robot(RobotAPI):
     def get_base_joints(self):
         from pybullet_tools.pr2_utils import get_group_joints
         return get_group_joints(self.body, self.base_group)
+
+    def randomly_spawn(self):
+        def sample_robot_conf():
+            (x1, y1, z1), (x2, y2, z2) = self.spawn_range
+            x = random.uniform(x1, x2)
+            y = random.uniform(y1, y2)
+            yaw = random.uniform(0, math.pi)
+            if self.USE_TORSO:
+                z1 = max(z1, 0)
+                z2 = min(z2, 0.35)
+                z = random.uniform(z1, z2)
+                return [x, y, z, yaw]
+            return [x, y, yaw]
+
+        self.set_positions(sample_robot_conf(), self.get_base_joints())
 
 
 class FEGripper(RobotAPI):
@@ -509,3 +535,18 @@ class FEGripper(RobotAPI):
         # from pybullet_tools.flying_gripper_agent import get_stream_info
         from pybullet_tools.pr2_agent import get_stream_info
         return get_stream_info()
+
+    def get_base_joints(self):
+        from pybullet_tools.flying_gripper_utils import get_se3_joints
+        return get_se3_joints(self.body)
+
+    def randomly_spawn(self):
+        def sample_robot_conf():
+            (x1, y1, z1), (x2, y2, z2) = self.spawn_range
+            x = random.uniform(x1, x2)
+            y = random.uniform(y1, y2)
+            z = random.uniform(z1, z2)
+            # yaw = random.uniform(0, math.pi)
+            return [x, y, z, 0, -math.pi / 2, 0]
+
+        self.set_positions(sample_robot_conf(), self.get_base_joints())
