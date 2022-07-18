@@ -327,6 +327,8 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
             category = model.links[0].name
 
         if verbose: print(f'..... loading {model.name} from {uri}', end="\r")
+        if not isdir(join(ASSET_PATH, 'scenes')):
+            os.mkdir(join(ASSET_PATH, 'scenes'))
         with HideOutput():
             body = load_pybullet(uri, scale=scale)
             if isinstance(body, tuple): body = body[0]
@@ -397,7 +399,7 @@ def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width
                      img_dir=join('visualizations', 'camera_images')):
 
     os.makedirs(img_dir, exist_ok=True)
-    world = load_lisdf_pybullet(exp_dir, width=width, height=height, verbose=verbose)
+    world = load_lisdf_pybullet(exp_dir, width=width, height=height, verbose=True)
     print('world.name_to_body', world.name_to_body)
     init = pddl_to_init_goal(exp_dir, world)[0]
 
