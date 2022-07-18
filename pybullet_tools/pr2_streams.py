@@ -30,7 +30,7 @@ from pybullet_tools.utils import invert, multiply, get_name, set_pose, get_link_
     uniform_pose_generator, sub_inverse_kinematics, add_fixed_constraint, remove_debug, remove_fixed_constraint, \
     disable_real_time, enable_gravity, joint_controller_hold, get_distance, Point, Euler, set_joint_position, \
     get_min_limit, user_input, step_simulation, get_body_name, get_bodies, BASE_LINK, get_joint_position, \
-    add_segments, get_max_limit, link_from_name, BodySaver, get_aabb, interpolate_poses, \
+    add_segments, get_max_limit, link_from_name, BodySaver, get_aabb, interpolate_poses, wait_for_user, \
     plan_direct_joint_motion, has_gui, create_attachment, wait_for_duration, get_extend_fn, set_renderer, \
     get_custom_limits, all_between, get_unit_vector, wait_if_gui, create_box, set_point, quat_from_euler, \
     set_base_values, euler_from_quat, INF, elapsed_time, get_moving_links, flatten_links, get_relative_pose, \
@@ -146,7 +146,7 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
         if isinstance(obj, tuple): ## may be a (body, joint) or a body with a marker
             obj = obj[0]
         if 'pstn' in str(pose): ## isinstance(pose, Position): ## path problem
-            pose_value = linkpose_from_position(pose, world)
+            pose_value = linkpose_from_position(pose)
         else:
             pose_value = pose.value
 
@@ -235,7 +235,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
             body = obj
 
         if 'pstn' in str(pose): ## isinstance(pose, Position):
-            pose_value = linkpose_from_position(pose, world)
+            pose_value = linkpose_from_position(pose)
         else:
             pose_value = pose.value
 
@@ -355,14 +355,34 @@ def get_ik_ir_wconf_gen(problem, max_attempts=25, learned=True, teleport=False,
 
         a, o, p, g, w = inputs
 
-        # ## --- make sure the bconf is cfree in default arm position ------
-        # arm_joints = get_arm_joints(robot, a)
-        # default_conf = arm_conf(a, g.carry)
-        # set_joint_positions(robot, arm_joints, default_conf)
-        # ## ---------------------------------------------------------------
-
         w.assign()
         # w.printout()
+
+        """ CALL IK CODES HERE
+        uncomment the following 12 lines of codes
+        FULL_BODY_IK is the placeholder to change, 
+        verify the solution by visualizing it
+        """
+
+        # tool_from_root = get_tool_from_root(robot, a)
+        # gripper_pose = multiply(robot.get_grasp_pose(p, g.value, a, body=g.body), invert(tool_from_root))
+        #
+        # custom_limits = robot.custom_limits
+        # joints = get_group_conf(robot, 'base-torso')  ## [0, 1, 17, 2]
+        # joints.extend(get_arm_joints(robot, a))
+        # conf = FULL_BODY_IK(robot, joints, target_pose=gripper_pose, custom_limits=custom_limits)
+        #
+        # set_renderer(True)
+        # Conf(robot, joints, conf).assign()
+        # wait_for_user()
+
+        """
+        ## ... compute arm traj, I'll do the rest ...
+        bconf = conf[:4]
+        aconf = conf[4:]
+        ## yield [bconf=(x, y, torso, theta), armtraj=(7, N)]
+        """
+
         inputs = a, o, p, g
         ir_generator = ir_sampler(*inputs)
         attempts = 0

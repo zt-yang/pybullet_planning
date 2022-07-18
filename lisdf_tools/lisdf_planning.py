@@ -110,7 +110,10 @@ def pddl_to_init_goal(exp_dir, world):
                 if isinstance(value, tuple): value = list(value)
                 if typ == 'q':
                     if 'pr2' in robot.name:
-                        elem = Conf(robot_body, get_group_joints(robot_body, 'base'), value, index=index)
+                        if len(value) == 3:
+                            elem = Conf(robot_body, get_group_joints(robot_body, 'base'), value, index=index)
+                        elif len(value) == 4:
+                            elem = Conf(robot_body, get_group_joints(robot_body, 'base-torso'), value, index=index)
                     elif 'feg' in robot.name:
                         elem = Conf(robot_body, get_se3_joints(robot_body), value, index=index)
                 elif typ == 'aq':

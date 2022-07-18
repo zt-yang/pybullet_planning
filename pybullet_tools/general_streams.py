@@ -370,10 +370,11 @@ def get_handle_grasp_gen(problem, collisions=False, randomize=False, visualize=F
         #    yield (g,)
     return fn
 
-def linkpose_from_position(pose, world):
+def linkpose_from_position(pose):
     pose.assign()
-    joint = world.BODY_TO_OBJECT[(pose.body, pose.joint)]
-    pose_value = get_link_pose(joint.body, joint.handle_link)
+    handle_link = get_handle_link((pose.body, pose.joint))
+    # joint = world.BODY_TO_OBJECT[(pose.body, pose.joint)]
+    pose_value = get_link_pose(pose.body, handle_link)
     return pose_value ## LinkPose(pose.body, joint, pose_value)
 
 

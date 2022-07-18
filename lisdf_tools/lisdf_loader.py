@@ -126,7 +126,7 @@ class World():
                         for collision in link.collisions:
                             if collision.shape.size[-1] < 0.05:
                                 floors.append(body)
-        self.fixed = fixed
+        self.fixed = [f for f in fixed if f not in floors]
         self.movable = movable
         self.floors = floors
 
@@ -283,7 +283,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
     # body_to_name = None
     if isfile(config_path):
         planning_config = json.load(open(config_path))
-        custom_limits = planning_config['base_limits']
+        custom_limits = {int(k):v for k,v in planning_config['base_limits'].items()}
         # body_to_name = planning_config['body_to_name']
         lisdf_path = join(lisdf_path, 'scene.lisdf')
 
@@ -387,7 +387,7 @@ def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
     goal = [AND] + goal
     problem.add_init(init)
 
-    custom_limits = planning_config['base_limits']
+    custom_limits = problem.world.robot.custom_limits ## planning_config['base_limits']
     stream_map = world.robot.get_stream_map(problem, collisions, custom_limits, teleport)
 
     return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)

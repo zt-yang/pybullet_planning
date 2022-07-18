@@ -3784,6 +3784,7 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
         from pybullet_tools.bullet_utils import set_camera_target_body
         ## set_camera_target_body(body, dx=0.2, dy=-0.2, dz=0.2)
         if limits_fn(q):
+            limits_fn(q)
             return True
         set_joint_positions(body, joints, q)
         for attachment in attachments:
@@ -3866,6 +3867,7 @@ def check_initial_end(start_conf, end_conf, collision_fn, verbose=True):
     # TODO: collision_fn might not accept kwargs
     if collision_fn(start_conf, verbose=verbose):
         print(f'bullet.Warning: initial configuration {nice(start_conf)} is in collision')
+        collision_fn(start_conf, verbose=True)
         return False
     if collision_fn(end_conf, verbose=verbose):
         print(f'bullet.Warning: end configuration {nice(end_conf)} is in collision')
