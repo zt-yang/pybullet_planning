@@ -1348,18 +1348,24 @@ def add_grasp_in_db(db, db_file, full_name, grasps):
     os.remove(db_file)
     dump_json(db, db_file)
 
-def visualize_camera_image(image, index=0, img_dir='.'):
-    import seaborn as sns
-    sns.set()
+
+def visualize_camera_image(image, index=0, img_dir='.', rgb=False):
     import matplotlib.pyplot as plt
 
     if not isdir(img_dir):
         os.makedirs(img_dir, exist_ok=True)
-    name = join(img_dir, f"depth_image_{index}.png")
 
-    ax = sns.heatmap(image.depthPixels, annot=False, fmt="d", vmin=2, vmax=5)
-
-    plt.title(f"Depth Image ({index})", fontsize=12)
+    if rgb:
+        name = join(img_dir, f"rgb_image_{index}.png")
+        plt.imshow(image.rgbPixels)
+        plt.axis('off')
+        plt.tight_layout()
+    else:
+        import seaborn as sns
+        sns.set()
+        name = join(img_dir, f"depth_image_{index}.png")
+        ax = sns.heatmap(image.depthPixels, annot=False, fmt="d", vmin=2, vmax=5)
+        plt.title(f"Depth Image ({index})", fontsize=12)
 
     plt.savefig(name, bbox_inches='tight', dpi=100)
     plt.close()

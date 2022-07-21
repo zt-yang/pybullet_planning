@@ -202,7 +202,8 @@ class World():
         self.camera = camera
         self.img_dir = img_dir
 
-    def visualize_image(self, pose=None, img_dir=None, index=None, image=None):
+    def visualize_image(self, pose=None, img_dir=None, index=None,
+                        image=None, rgb=False):
         from pybullet_tools.bullet_utils import visualize_camera_image
 
         if pose is not None:
@@ -213,7 +214,7 @@ class World():
             index = self.camera.index
         if image is None:
             image = self.camera.get_image(segment=False)
-        visualize_camera_image(image, index, img_dir=self.img_dir)
+        visualize_camera_image(image, index, img_dir=self.img_dir, rgb=rgb)
 
 
 def find_id(body, full_name):
@@ -382,6 +383,7 @@ def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
     domain_pddl = read(join(exp_dir, 'domain_full.pddl'))
     stream_pddl = read(join(exp_dir, 'stream.pddl'))
     planning_config = json.load(open(join(exp_dir, 'planning_config.json')))
+
 
     init, goal, constant_map = pddl_to_init_goal(exp_dir, world)
     goal = [AND] + goal
