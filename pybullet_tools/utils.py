@@ -1482,6 +1482,7 @@ def get_image(camera_pos, target_pos, width=640, height=480, vertical_fov=60.0, 
 
     return CameraImage(rgb, depth, segmented, view_pose, camera_matrix)
 
+
 def get_image_at_pose(camera_pose, camera_matrix, far=5.0, **kwargs):
     # far is the maximum depth value
     width, height = map(int, dimensions_from_camera_matrix(camera_matrix))
@@ -1490,6 +1491,7 @@ def get_image_at_pose(camera_pose, camera_matrix, far=5.0, **kwargs):
     target_point = tform_point(camera_pose, np.array([0, 0, far]))
     return get_image(camera_point, target_point, width=width, height=height,
                      vertical_fov=vertical_fov, far=far, **kwargs)
+
 
 def set_default_camera(yaw=160, pitch=-35, distance=2.5):
     # TODO: deprecate
