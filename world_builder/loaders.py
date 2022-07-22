@@ -57,6 +57,7 @@ GRASPABLES = [o.lower() for o in GRASPABLES]
 
 #######################################################
 
+
 def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
     other_arm = get_other_arm(arm)
     if not DUAL_ARM:
@@ -203,6 +204,7 @@ SHAPE_INDICES = {
     'y_walls': [[], [-1, +1], []],
 }
 
+
 def create_hollow_shapes(indices, width=1., length=1., height=1., thickness=0.01):
     assert len(indices) == 3
     dims = [width, length, height]
@@ -312,6 +314,7 @@ def studio(args):
     # enable_gravity()
     # enable_real_time()
     # run_thread(robot)
+
 
 def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, surfaces=None,
                     asset_path=ASSET_PATH, RANDOM_INSTANCE=False, verbose=True):

@@ -1366,7 +1366,7 @@ def set_camera_pose2(world_from_camera, distance=2):
 
 CameraImage = namedtuple('CameraImage', ['rgbPixels', 'depthPixels', 'segmentationMaskBuffer',
                                          'camera_pose', 'camera_matrix'])
-#CameraImage = namedtuple('CameraImage', ['rgb', 'depth', 'segmentation', 'camera_pose'])
+# CameraImage = namedtuple('CameraImage', ['rgb', 'depth', 'segmentation', 'camera_pose'])
 
 def demask_pixel(pixel):
     # https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/examples/segmask_linkindex.py

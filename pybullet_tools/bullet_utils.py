@@ -872,6 +872,7 @@ def print_plan(plan, world=None):
         step += 1
     print()
 
+
 def print_goal(goal, world=None):
     from pybullet_tools.logging import myprint as print
 
@@ -922,6 +923,7 @@ def pose_to_xyzyaw(pose):
 def xyzyaw_to_pose(xyzyaw):
     return tuple((tuple(xyzyaw[:3]), quat_from_euler(Euler(0, 0, xyzyaw[-1]))))
 
+
 def draw_collision_shapes(body, links=[]):
     """ not working """
     if isinstance(body, tuple):
@@ -951,6 +953,7 @@ def fit_dimensions(body, body_pose=unit_pose()):
     aabb = aabb_from_points(vertices)
     return aabb, get_aabb_center(aabb), get_aabb_extent(aabb)
 
+
 def get_model_points(body, link=None, verbose=False):
     if link == None:
         body_pose = multiply(get_pose(body), Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2)))  ##
@@ -967,6 +970,7 @@ def get_model_points(body, link=None, verbose=False):
         vertices.extend(new_vertices)
     return body_pose, vertices
 
+
 def draw_points(body, link=None):
     body_pose, vertices = get_model_points(body, link)
     vertices = apply_affine(body_pose, vertices)
@@ -979,10 +983,12 @@ def draw_points(body, link=None):
         handles.append(draw_point(v, size=0.02, color=RED))
     return handles
 
+
 def is_box_entity(body, link=-1):
     if link is None:  link = -1
     data = get_collision_data(body, link)
     return len(data) != 0 and data[0].geometry_type == p.GEOM_BOX
+
 
 def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False):
     body_pose, vertices = get_model_points(body, link=link, verbose=verbose)
@@ -997,12 +1003,14 @@ def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False):
         handles.extend(draw_face_points(aabb, body_pose, dist=0.04))
     return body_pose, aabb, handles
 
+
 def draw_bounding_box(aabb, body_pose):
     handles = []
     for a, b in get_aabb_edges(aabb):
         p1, p2 = apply_affine(body_pose, [a, b])
         handles.append(add_line(p1, p2))
     return handles
+
 
 def draw_face_points(aabb, body_pose, dist=0.08):
     c = get_aabb_center(aabb)
@@ -1016,6 +1024,7 @@ def draw_face_points(aabb, body_pose, dist=0.08):
         handles.append(draw_point(f, size=0.02, color=RED))
     return handles
 
+
 def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                     HANDLE_FILTER=False, LENGTH_VARIANTS=False,
                     visualize=False, RETAIN_ALL=False, verbose=False,
@@ -1023,7 +1032,11 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
     from pybullet_tools.flying_gripper_utils import set_se3_conf, create_fe_gripper, se3_from_pose
     body_name = (body, link) if link is not None else body
     title = f'bullet_utils.get_hand_grasps({body_name}) | '
-    parallel = True
+
+    instance_name = state.world.get_instance_name(body_name)
+    found, db, db_file = find_grasp_in_db('hand_grasps.json', instance_name,
+                                          LENGTH_VARIANTS=LENGTH_VARIANTS)
+    if found is not None: return found
 
     dist = grasp_length
     robot = state.robot
@@ -1152,11 +1165,15 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
     print(f"{title} ({len(grasps)}) {[nice(g) for g in grasps]}")
     if len(grasps) == 0:
         print(title, 'no grasps found')
-        return []
+
+    ## lastly store the newly sampled grasps
+    add_grasp_in_db(db, db_file, instance_name, grasps, name=state.world.get_name(body_name),
+                    LENGTH_VARIANTS=LENGTH_VARIANTS)
     # if len(grasps) > num_samples:
     #     random.shuffle(grasps)
     #     return grasps[:num_samples]
     return grasps  ##[:1]
+
 
 def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, color=GREEN, body=None,
                         min_num_pts=40, RETAIN_ALL=False, verbose=False, collisions=False):
@@ -1319,6 +1336,7 @@ def get_gripper_directions():
 
 GRIPPER_DIRECTIONS = get_gripper_directions()
 
+
 def get_gripper_direction(pose, epsilon=0.01):
     """ fuzzy match of euler values to gripper direction label """
     euler = euler_from_quat(pose[1])
@@ -1327,25 +1345,54 @@ def get_gripper_direction(pose, epsilon=0.01):
             return GRIPPER_DIRECTIONS[key]
     return None
 
-def find_grasp_in_db(db_file_name, full_name=None):
+
+def get_instance_name(path):
+    rows = open(path, 'r').readlines()
+    if len(rows) > 50: rows = rows[:50]
+    name = [r.replace('\n', '')[13:-2] for r in rows if '<robot name="' in r]
+    if len(name) == 1:
+        return name[0]
+    return None
+
+
+def find_grasp_in_db(db_file_name, instance_name, LENGTH_VARIANTS=False):
+    """ find saved json files, prioritize databases/ subdir """
     db_file = dirname(abspath(__file__))
+    db_file = join(db_file, '..', 'databases')
     db_file = join(db_file, db_file_name)
-    db = json.load(open(db_file, 'r'))
+    db = json.load(open(db_file, 'r')) if isfile(db_file) else {}
 
     found = None
-    if full_name != None and full_name in db and len(db[full_name]) > 0:
-        if len(db[full_name][0][1]) == 4:
-            found = [(tuple(e[0]), tuple(e[1])) for e in db[full_name]]
-        else:
-            found = [(tuple(e[0]), quat_from_euler(e[1])) for e in db[full_name]]
+    if instance_name in db:
+        data = db[instance_name]
+        ## the newest format has attr including 'name', 'grasps', 'grasps_length_variants'
+        if isinstance(data, dict):
+            data = data['grasps'] if not LENGTH_VARIANTS else data['grasps_l']
+        if len(data) > 0:
+            ## the newest format has poses written as (x, y, z, roll, pitch, row)
+            if len(data[0]) == 6:
+                found = [(tuple(e[:3]), quat_from_euler(e[3:])) for e in data]
+            elif len(data[0][1]) == 3:
+                found = [(tuple(e[0]), quat_from_euler(e[1])) for e in data]
+            elif len(data[0][1]) == 4:
+                found = [(tuple(e[0]), tuple(e[1])) for e in data]
+
     return found, db, db_file
 
-def add_grasp_in_db(db, db_file, full_name, grasps):
-    db[full_name] = []
+
+def add_grasp_in_db(db, db_file, instance_name, grasps, name=None, LENGTH_VARIANTS=False):
+    if instance_name is None: return
+    if name is None: name = 'None'
+    add_grasps = []
+    key = 'grasps' if not LENGTH_VARIANTS else 'grasps_l'
     for g in grasps:
-        g = nice(g, 4)
-        db[full_name].append([list(g[0]), list(g[1])])
-    os.remove(db_file)
+        add_grasps.append(list(nice(g, 4)))
+    db[instance_name] = {
+        'name': name,
+        key: add_grasps,
+        'datetime': get_datetime()
+    }
+    if isfile(db_file): os.remove(db_file)
     dump_json(db, db_file)
 
 

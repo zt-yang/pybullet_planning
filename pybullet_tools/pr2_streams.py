@@ -64,6 +64,7 @@ def pr2_grasp(body, value, grasp_type=None):
     return Grasp(grasp_type, body, value, multiply((approach_vector, unit_quat()), value),
                  TOP_HOLDING_LEFT_ARM)
 
+
 def get_handle_grasps(body_joint, tool_pose=TOOL_POSE, body_pose=unit_pose(),
                       max_width=MAX_GRASP_WIDTH, grasp_length=GRASP_LENGTH,
                       robot=None, obstacles=[], full_name=None, world=None):
@@ -77,7 +78,7 @@ def get_handle_grasps(body_joint, tool_pose=TOOL_POSE, body_pose=unit_pose(),
     handle_link = get_handle_link(body_joint)
 
     found, db, db_file = find_grasp_in_db('handle_grasps.json', full_name)
-    if found != None: return found
+    if found is not None: return found
 
     handle_pose = get_handle_pose(body_joint)
 

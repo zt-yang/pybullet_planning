@@ -92,13 +92,16 @@ class World(object):
     @property
     def objects(self):
         return [k for k in self.BODY_TO_OBJECT.keys() if k not in self.ROBOT_TO_OBJECT]
+
     @property
     def movable(self):  ## include steerables if want to exclude them when doing base motion plannig
         return [self.robot] + self.cat_to_bodies('moveable')  ## + self.cat_to_bodies('steerable')
         # return [obj for obj in self.objects if obj not in self.fixed]
+
     @property
     def floors(self):
         return self.cat_to_bodies('floor')
+
     @property
     def fixed(self):
         objs = [obj for obj in self.objects if not isinstance(obj, tuple)]
@@ -111,13 +114,21 @@ class World(object):
         return None
 
     def get_debug_name(self, body):
+        """ for viewing pleasure :) """
         if body in self.BODY_TO_OBJECT:
             return self.BODY_TO_OBJECT[body].debug_name
         return None
 
     def get_lisdf_name(self, body):
+        """ for recording objects in lisdf files generated """
         if body in self.BODY_TO_OBJECT:
             return self.BODY_TO_OBJECT[body].lisdf_name
+        return None
+
+    def get_instance_name(self, body):
+        """ for looking up objects in the grasp database """
+        if body in self.BODY_TO_OBJECT:
+            return self.BODY_TO_OBJECT[body].instance_name
         return None
 
     def get_events(self, body):
