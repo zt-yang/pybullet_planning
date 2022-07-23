@@ -1376,14 +1376,16 @@ def find_grasp_in_db(db_file_name, instance_name, LENGTH_VARIANTS=False):
                 found = [(tuple(e[0]), quat_from_euler(e[1])) for e in data]
             elif len(data[0][1]) == 4:
                 found = [(tuple(e[0]), tuple(e[1])) for e in data]
+            print(f'bullet_utils.find_grasp_in_db returned {len(found)} grasps for ({instance_name})')
 
     return found, db, db_file
 
 
 def add_grasp_in_db(db, db_file, instance_name, grasps, name=None, LENGTH_VARIANTS=False):
     if instance_name is None: return
-    if name is None: name = 'None'
     add_grasps = []
+    if name is not None:
+        name = 'None'
     key = 'grasps' if not LENGTH_VARIANTS else 'grasps_l'
     for g in grasps:
         add_grasps.append(list(nice(g, 4)))

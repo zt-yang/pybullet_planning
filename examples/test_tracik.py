@@ -4,13 +4,19 @@ from __future__ import print_function
 
 import argparse
 import numpy as np
+import os
+import sys
+from os.path import join, abspath, dirname
+sys.path.extend([
+    abspath(join(dirname(__file__), os.pardir)),
+])
 
 from pybullet_tools.pr2_utils import PR2_URDF, DRAKE_PR2_URDF, \
     SIDE_HOLDING_LEFT_ARM, PR2_GROUPS, open_arm, REST_LEFT_ARM, rightarm_from_leftarm, PR2_TOOL_FRAMES, LEFT_ARM
-from pybullet_tools.tracik import IKSolver
+from pybullet_tools.tracik import IKSolver, IKSolverPR2
 from pybullet_tools.utils import set_joint_positions, add_data_path, connect, dump_body, load_model, joints_from_names, \
     disconnect, HideOutput, load_pybullet, base_aligned_z, Point, set_point, get_aabb, \
-    FLOOR_URDF, wait_unlocked, multiply, Pose, Point
+    FLOOR_URDF, wait_unlocked, multiply, Pose, Point, draw_pose, unit_pose
 
 
 def main(arm=LEFT_ARM):
@@ -18,13 +24,14 @@ def main(arm=LEFT_ARM):
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--first_joint', default=None, choices=[None, 'x', 'y', 'theta', 'torso_lift_joint', 'l_shoulder_pan_joint'])
-    parser.add_argument('--drake', action='store_true')
+    parser.add_argument('--drake', action='store_true', default=True)
     args = parser.parse_args()
     print('Args:', args)
 
     connect(use_gui=True)
     add_data_path()
     floor = load_pybullet(FLOOR_URDF)
+    draw_pose(unit_pose())
 
     urdf_path = DRAKE_PR2_URDF if args.drake else PR2_URDF
     with HideOutput():
@@ -53,8 +60,8 @@ def main(arm=LEFT_ARM):
     print(ik_solver)
 
     tool_pose = ik_solver.get_tool_pose()
-    #target_pose = tool_pose
-    target_pose = multiply(Pose(point=Point(z=0.05)), tool_pose)
+    point = Point(x=2, y=2, z=0.05)  ## Point(z=0.05)
+    target_pose = multiply(Pose(point=point), tool_pose)
     ik_solver.draw_pose(target_pose)
     print('Target pose:', target_pose)
     print('Lower:', ik_solver.lower_limits)

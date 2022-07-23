@@ -347,6 +347,7 @@ def get_ik_ir_wconf_gen(problem, max_attempts=25, learned=True, teleport=False,
     ir_sampler = get_ir_sampler(problem, learned=learned, max_attempts=ir_max_attempts, verbose=verbose, **kwargs)
     ik_fn = get_ik_fn(problem, teleport=teleport, verbose=False, **kwargs)
     robot = problem.robot
+    obstacles = problem.fixed
     heading = 'pr2_streams.get_ik_ir_wconf_gen | '
     def gen(*inputs):
         # set_renderer(enable=True)
@@ -360,7 +361,15 @@ def get_ik_ir_wconf_gen(problem, max_attempts=25, learned=True, teleport=False,
         # w.printout()
 
         """ check if hand pose is in collision """
-        
+        p.assign()
+        if 'pstn' in str(p):
+            pose_value = linkpose_from_position(p)
+        else:
+            pose_value = p.value
+        gripper_grasp = robot.visualize_grasp(pose_value, g.value, a, body=g.body)
+        if collided(gripper_grasp, obstacles):
+            print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
+            yield None
 
         """ CALL IK CODES HERE
         uncomment the following 12 lines of codes

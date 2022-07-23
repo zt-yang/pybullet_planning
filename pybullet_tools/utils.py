@@ -1012,12 +1012,22 @@ def wait_if_gui(*args, **kwargs):
     if has_gui():
         wait_for_user(*args, **kwargs)
 
+def get_renderer():
+    client = CLIENT
+    return CLIENTS[client]
+
 def is_unlocked():
-    return CLIENTS[CLIENT] is True
+    return get_renderer() is True
 
 def wait_if_unlocked(*args, **kwargs):
     if is_unlocked():
         wait_for_user(*args, **kwargs)
+
+def wait_unlocked(*args, **kwargs):
+    enable = get_renderer()
+    set_renderer(enable=True)
+    wait_for_user(*args, **kwargs)
+    set_renderer(enable)
 
 def wait_for_interrupt(max_time=np.inf):
     """

@@ -401,6 +401,7 @@ HACK_CAMERA_POSES = { ## scene_name : (camera_point, target_point)
     'kitchen_basics': ([3, 6, 3], [0, 6, 1])
 }
 
+
 def make_sdf_world(sdf_model):
     return f"""<?xml version="1.0" ?>
 <!-- tmp sdf file generated from LISDF -->
@@ -413,6 +414,7 @@ def make_sdf_world(sdf_model):
 </sdf>"""
 
 #######################
+
 
 def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
 
@@ -483,9 +485,9 @@ def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width
         index = get_index(bo)
         all_bodies = get_bodies()
 
-        # clone_body(bo[0], links=links_to_show[bo], visual=True, collision=True)
-        for l in links_to_show[bo]:
-            clone_body_link(bo[0], l, visual=True, collision=True)
+        with HideOutput():
+            for l in links_to_show[bo]:
+                clone_body_link(bo[0], l, visual=True, collision=True)
 
         for b in all_bodies:
             remove_body(b)
