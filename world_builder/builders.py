@@ -217,7 +217,8 @@ def sample_one_fridge_scene(world, verbose=True):
     epsilon = 0.5
     for door in minifridge_doors:
         if random.random() < epsilon:
-            open_joint(door[0], door[1], extent=random.random())
+            extent = random.random()
+            open_joint(door[0], door[1], extent=extent)
 
     """ ============== Check collisions ================ """
     obstacles = [o for o in get_bodies() if o != world.robot]

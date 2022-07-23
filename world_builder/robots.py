@@ -215,8 +215,6 @@ class PR2Robot(RobotAPI):
 
     def visualize_grasp(self, body_pose, grasp, arm='left', color=GREEN,
                         body=None, verbose=False, **kwargs):
-        from pybullet_tools.pr2_utils import PR2_GRIPPER_ROOTS
-        from pybullet_tools.pr2_primitives import get_tool_from_root
 
         robot = self.body
 
@@ -229,13 +227,6 @@ class PR2Robot(RobotAPI):
 
         # if verbose:
         #     handles = draw_pose(grasp_pose, length=0.05)
-
-        ## ----------- old
-        if False:
-            tool_from_root = get_tool_from_root(robot, arm)
-            # tool_from_root = multiply(tool_from_root, ((0, 0.02, 0), (0, 0, 0, 1)))  ## y adjustment for PR2
-            grasp_pose = multiply(multiply(body_pose, invert(grasp)), tool_from_root)
-            set_pose(gripper_grasp, grasp_pose)
 
         ## ---- identify the direction the gripper is pointing towards
         # direction = get_gripper_direction(grasp_pose)
@@ -307,9 +298,12 @@ class PR2Robot(RobotAPI):
     # def get_custom_limits(self):
     #     return get_base_custom_limits(self, BASE_LIMITS)
 
-    def iterate_approach_path(self, arm, gripper, pose_value, grasp, body=None):
+    def get_tool_from_root(self, a):
         from pybullet_tools.pr2_primitives import get_tool_from_root
-        tool_from_root = get_tool_from_root(self.body, arm)
+        return get_tool_from_root(self.body, a)
+
+    def iterate_approach_path(self, arm, gripper, pose_value, grasp, body=None):
+        tool_from_root = self.get_tool_from_root(arm)
         grasp_pose = multiply(pose_value, invert(grasp.value))
         approach_pose = multiply(pose_value, invert(grasp.approach))
         for tool_pose in interpolate_poses(grasp_pose, approach_pose):
@@ -353,6 +347,9 @@ class PR2Robot(RobotAPI):
 
         self.set_positions(sample_robot_conf(), self.get_base_joints())
 
+    def get_tool_link(self, a):
+        from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES
+        return PR2_TOOL_FRAMES[a]
 
 class FEGripper(RobotAPI):
 

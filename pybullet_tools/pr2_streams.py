@@ -37,10 +37,12 @@ from pybullet_tools.utils import invert, multiply, get_name, set_pose, get_link_
     get_joint_limits, unit_pose, point_from_pose, clone_body, set_all_color, GREEN, BROWN, get_link_subtree, \
     RED, remove_body, aabb2d_from_aabb, aabb_overlap, aabb_contains_point, get_aabb_center, get_link_name, \
     get_links, check_initial_end, get_collision_fn, BLUE, WHITE, TAN, GREY, YELLOW, aabb_contains_aabb, \
-    get_joints, is_movable, pairwise_link_collision, get_closest_points
+    get_joints, is_movable, pairwise_link_collision, get_closest_points, ConfSaver
+from pybullet_tools.tracik import IKSolver
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, set_camera_target_body, is_contained, \
-    visualize_point, collided, GRIPPER_DIRECTIONS, get_gripper_direction, check_cfree_gripper, Attachment
+    visualize_point, collided, GRIPPER_DIRECTIONS, get_gripper_direction, check_cfree_gripper, Attachment, \
+    has_tracik, visualize_bconf
 from pybullet_tools.logging import dump_json
 
 from .general_streams import *
@@ -340,15 +342,18 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
 
 ##################################################
 
+
+
 def get_ik_ir_wconf_gen(problem, max_attempts=25, learned=True, teleport=False,
                         verbose=False, visualize=False, **kwargs):
-    # TODO: compose using general fn
+    """ given grasp of target object p, return base conf and arm traj """
     ir_max_attempts = 40
     ir_sampler = get_ir_sampler(problem, learned=learned, max_attempts=ir_max_attempts, verbose=verbose, **kwargs)
     ik_fn = get_ik_fn(problem, teleport=teleport, verbose=False, **kwargs)
     robot = problem.robot
     obstacles = problem.fixed
     heading = 'pr2_streams.get_ik_ir_wconf_gen | '
+
     def gen(*inputs):
         # set_renderer(enable=True)
         if visualize:
@@ -368,85 +373,99 @@ def get_ik_ir_wconf_gen(problem, max_attempts=25, learned=True, teleport=False,
             pose_value = p.value
         gripper_grasp = robot.visualize_grasp(pose_value, g.value, a, body=g.body)
         if collided(gripper_grasp, obstacles):
-            print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
+            remove_body(gripper_grasp)
+            # print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
             yield None
 
-        """ CALL IK CODES HERE
-        uncomment the following 12 lines of codes
-        FULL_BODY_IK is the placeholder to change, 
-        verify the solution by visualizing it
-        """
+        ## solve IK for all 13 joints
+        if robot.USE_TORSO and has_tracik():
+            tool_from_root = get_tool_from_root(robot, a)
+            tool_pose = robot.get_grasp_pose(pose_value, g.value, a, body=g.body)
+            gripper_pose = multiply(tool_pose, invert(tool_from_root))
 
-        # tool_from_root = get_tool_from_root(robot, a)
-        # gripper_pose = multiply(robot.get_grasp_pose(p, g.value, a, body=g.body), invert(tool_from_root))
-        #
-        # custom_limits = robot.custom_limits
-        # joints = get_group_conf(robot, 'base-torso')  ## [0, 1, 17, 2]
-        # joints.extend(get_arm_joints(robot, a))
-        # conf = FULL_BODY_IK(robot, joints, target_pose=gripper_pose, custom_limits=custom_limits)
-        #
-        # set_renderer(True)
-        # Conf(robot, joints, conf).assign()
-        # wait_for_user()
+            custom_limits = robot.custom_limits
+            joints = list(get_group_conf(robot, 'base-torso'))  ## [0, 1, 17, 2]
+            joints.extend(get_arm_joints(robot, a))
 
-        """
-        ## ... compute arm traj, I'll do the rest ...
-        bconf = conf[:4]
-        aconf = conf[4:]
-        ## yield [bconf=(x, y, torso, theta), armtraj=(7, N)]
-        """
-
-        inputs = a, o, p, g
-        ir_generator = ir_sampler(*inputs)
-        attempts = 0
-        while True:
-            if max_attempts <= attempts:
-                if not p.init:
+            tool_link = PR2_TOOL_FRAMES[a]
+            ik_solver = IKSolver(robot, tool_link=tool_link, first_joint=None,
+                                 custom_limits=custom_limits)  ## using all 13 joints
+            attempts = 0
+            for i, conf in enumerate(ik_solver.generate(gripper_pose)):
+                if max_attempts <= attempts:
                     return
-                attempts = 0
-                print(f'{heading} exceeding max_attempts = {max_attempts}')
-                yield None
 
-            attempts += 1
-            if verbose: print(f'   {attempts} | get_ik_ir_wconf_gen | inputs = {inputs}')
+                bconf = list(conf[:2]) + list([conf[3], conf[2]])  ## ik solution is (x, y, theta, torso), switch last two
+                base_joints = robot.get_base_joints()
+                bq = Conf(robot, base_joints, bconf)
+                bq.assign()
+                if collided(robot, obstacles):
+                    continue
+                attempts += 1
 
-            try:
-                ir_outputs = next(ir_generator)
-            except StopIteration:
-                if verbose: print('    stopped ir_generator in', attempts, 'attempts')
-                print(f'{heading} exceeding ir_generator ir_max_attempts = {ir_max_attempts}')
-                return
+                if visualize:
+                    samples.append(visualize_bconf(bconf))
+                    # set_renderer(True)
+                    # Conf(robot, joints, conf).assign()
+                    # wait_for_user()
 
-            if ir_outputs is None:
-                continue
-            inp = ir_generator.gi_frame.f_locals
-            inp = [inp[k] for k in ['pose', 'grasp', 'custom_limits']]
-            if verbose:
-                print(f'           ir_generator  |  inputs = {inp}  |  ir_outputs = {ir_outputs}')
+                ir_outputs = (bq,)
+                inputs = a, o, p, g
+                ik_outputs = ik_fn(*(inputs + ir_outputs))
+                if ik_outputs is None:
+                    continue
+                if verbose: print('succeed after TracIK solutions:', i)
 
-            if visualize:
-                samp = create_box(.1, .1, .1, mass=1, color=(1, 0, 1, 1))
-                b_conf = ir_outputs[0].values
-                if len(b_conf) == 3:
-                    x,y,_ = b_conf
-                    z = 0.2
-                elif len(b_conf) == 4:
-                    x,y,z,_ = b_conf
-                set_point(samp, (x,y,z))
-                samples.append(samp)
-
-            ik_outputs = ik_fn(*(inputs + ir_outputs))
-            if ik_outputs is None:
-                continue
-            if verbose: print('succeed after IK attempts:', attempts)
-
-            if visualize:
-                for samp in samples:
-                    remove_body(samp)
-            yield ir_outputs + ik_outputs
+                if visualize:
+                    [remove_body(samp) for samp in samples]
+                yield ir_outputs + ik_outputs
             return
-            #if not p.init:
-            #    return
+
+        ## do ir sampling of x, y, theta, torso, then solve ik for arm
+        else:
+            inputs = a, o, p, g
+            ir_generator = ir_sampler(*inputs)
+            attempts = 0
+            while True:
+                if max_attempts <= attempts:
+                    if not p.init:
+                        return
+                    attempts = 0
+                    print(f'{heading} exceeding max_attempts = {max_attempts}')
+                    yield None
+
+                attempts += 1
+                if verbose: print(f'   {attempts} | get_ik_ir_wconf_gen | inputs = {inputs}')
+
+                try:
+                    ir_outputs = next(ir_generator)
+                except StopIteration:
+                    if verbose: print('    stopped ir_generator in', attempts, 'attempts')
+                    print(f'{heading} exceeding ir_generator ir_max_attempts = {ir_max_attempts}')
+                    return
+
+                if ir_outputs is None:
+                    continue
+                inp = ir_generator.gi_frame.f_locals
+                inp = [inp[k] for k in ['pose', 'grasp', 'custom_limits']]
+                if verbose:
+                    print(f'           ir_generator  |  inputs = {inp}  |  ir_outputs = {ir_outputs}')
+
+                if visualize:
+                    bconf = ir_outputs[0].values
+                    samples.append(visualize_bconf(bconf))
+
+                ik_outputs = ik_fn(*(inputs + ir_outputs))
+                if ik_outputs is None:
+                    continue
+                if verbose: print('succeed after IK attempts:', attempts)
+
+                if visualize:
+                    [remove_body(samp) for samp in samples]
+                yield ir_outputs + ik_outputs
+                return
+                #if not p.init:
+                #    return
     return gen
 
 ##################################################
@@ -460,11 +479,11 @@ def get_ik_ir_grasp_handle_gen(problem, max_attempts=40, learned=True, teleport=
     def gen(*inputs):
         set_renderer(enable=verbose)
         if WCONF:
-            b, a, p, g, w = inputs
+            a, o, p, g, w = inputs
             w.assign()
-            inputs = b, a, p, g
+            inputs = a, o, p, g
         else:
-            b, a, p, g = inputs
+            a, o, p, g = inputs
 
         ir_generator = ir_sampler(*inputs)
         attempts = 0
@@ -519,7 +538,7 @@ def get_arm_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, ve
             body = obj
 
         if 'pstn' in str(pose): ## isinstance(pose, Position):
-            pose_value = linkpose_from_position(pose, world)
+            pose_value = linkpose_from_position(pose)
         else:
             pose_value = pose.value
 
@@ -1101,11 +1120,13 @@ def get_marker_pose_gen(problem, num_samples=70, collisions=False, visualize=Fal
         return poses
     return fn
 
+
 def get_parent_new_pose(p1, p2, p3):
     x1, y1, _ = p1[0]
     x2, y2, _ = p2[0]
     (x3, y3, z3), quat = p3
     return ((x3+x2-x1, y3+y2-y1, z3), quat)
+
 
 def get_pull_marker_random_motion_gen(problem, custom_limits={}, collisions=True, max_attempts=30,
                                teleport=False, num_intervals=30, learned=False):
@@ -1189,6 +1210,7 @@ def get_pull_marker_to_pose_motion_gen(problem, custom_limits={}, collisions=Tru
 
     return fn
 
+
 def get_pull_marker_to_bconf_motion_gen(problem, custom_limits={}, collisions=True,
                                teleport=False, num_intervals=30):
     from pybullet_tools.pr2_primitives import Pose
@@ -1257,6 +1279,7 @@ def get_bconf_in_region_test(robot):
         rob_center = get_aabb_center(rob_aabb)
         return aabb_contains_point(rob_center, region_aabb)
     return test
+
 
 def get_bconf_in_region_gen(problem, collisions=True, max_attempts=10, verbose=False, visualize=False):
     obstacles = problem.fixed if collisions else []
@@ -1442,3 +1465,130 @@ def get_cfree_btraj_pose_test(robot, collisions=True, verbose=True):
 #             return None
 #         return paths
 #     return list_fn
+
+
+def get_ik_gen(problem, max_attempts=25, learned=True, teleport=False,
+                        verbose=False, visualize=False, ACONF=False, WCONF=True, **kwargs):
+    """ given grasp of target object p, return base conf and arm traj """
+    ir_max_attempts = 40
+    ir_sampler = get_ir_sampler(problem, learned=learned, max_attempts=ir_max_attempts, verbose=verbose, **kwargs)
+    ik_fn = get_ik_fn(problem, teleport=teleport, verbose=False, ACONF=ACONF, **kwargs)
+    robot = problem.robot
+    obstacles = problem.fixed
+    heading = 'pr2_streams.get_ik_ir_wconf_gen | '
+
+    def gen(*inputs):
+        # set_renderer(enable=True)
+        if visualize:
+            set_renderer(enable=True)
+            samples = []
+
+        if WCONF or len(inputs) == 5:
+            a, o, p, g, w = inputs
+            w.assign()
+            # w.printout()
+            inputs = a, o, p, g
+        else:
+            a, o, p, g = inputs
+
+        """ check if hand pose is in collision """
+        p.assign()
+        if 'pstn' in str(p):
+            pose_value = linkpose_from_position(p)
+        else:
+            pose_value = p.value
+        gripper_grasp = robot.visualize_grasp(pose_value, g.value, a, body=g.body)
+        if collided(gripper_grasp, obstacles):
+            remove_body(gripper_grasp)
+            # print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
+            yield None
+        remove_body(gripper_grasp)
+
+        ## solve IK for all 13 joints
+        if robot.USE_TORSO and has_tracik():
+            tool_from_root = robot.get_tool_from_root(a)
+            tool_pose = robot.get_grasp_pose(pose_value, g.value, a, body=g.body)
+            gripper_pose = multiply(tool_pose, invert(tool_from_root))
+
+            custom_limits = robot.custom_limits
+
+            tool_link = robot.get_tool_link(a)
+            ik_solver = IKSolver(robot, tool_link=tool_link, first_joint=None,
+                                 custom_limits=custom_limits)  ## using all 13 joints
+            attempts = 0
+            for i, conf in enumerate(ik_solver.generate(gripper_pose)):
+                if max_attempts <= attempts:
+                    return
+
+                bconf = list(conf[:2]) + list([conf[3], conf[2]])  ## ik solution is (x, y, theta, torso), switch last two
+                base_joints = robot.get_base_joints()
+                bq = Conf(robot, base_joints, bconf)
+                bq.assign()
+                if collided(robot, obstacles):
+                    continue
+                attempts += 1
+
+                if visualize:
+                    samples.append(visualize_bconf(bconf))
+                    # set_renderer(True)
+                    # Conf(robot, joints, conf).assign()
+                    # wait_for_user()
+
+                ir_outputs = (bq,)
+                inputs = a, o, p, g
+                ik_outputs = ik_fn(*(inputs + ir_outputs))
+                if ik_outputs is None:
+                    continue
+                if verbose: print('succeed after TracIK solutions:', i)
+
+                if visualize:
+                    [remove_body(samp) for samp in samples]
+                yield ir_outputs + ik_outputs
+            return
+
+        ## do ir sampling of x, y, theta, torso, then solve ik for arm
+        else:
+            inputs = a, o, p, g
+            ir_generator = ir_sampler(*inputs)
+            attempts = 0
+            while True:
+                if max_attempts <= attempts:
+                    if not p.init:
+                        return
+                    attempts = 0
+                    print(f'{heading} exceeding max_attempts = {max_attempts}')
+                    yield None
+
+                attempts += 1
+                if verbose: print(f'   {attempts} | get_ik_ir_wconf_gen | inputs = {inputs}')
+
+                try:
+                    ir_outputs = next(ir_generator)
+                except StopIteration:
+                    if verbose: print('    stopped ir_generator in', attempts, 'attempts')
+                    print(f'{heading} exceeding ir_generator ir_max_attempts = {ir_max_attempts}')
+                    return
+
+                if ir_outputs is None:
+                    continue
+                inp = ir_generator.gi_frame.f_locals
+                inp = [inp[k] for k in ['pose', 'grasp', 'custom_limits']]
+                if verbose:
+                    print(f'           ir_generator  |  inputs = {inp}  |  ir_outputs = {ir_outputs}')
+
+                if visualize:
+                    bconf = ir_outputs[0].values
+                    samples.append(visualize_bconf(bconf))
+
+                ik_outputs = ik_fn(*(inputs + ir_outputs))
+                if ik_outputs is None:
+                    continue
+                if verbose: print('succeed after IK attempts:', attempts)
+
+                if visualize:
+                    [remove_body(samp) for samp in samples]
+                yield ir_outputs + ik_outputs
+                return
+                #if not p.init:
+                #    return
+    return gen

@@ -10,9 +10,8 @@ from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, g
     CameraImage, get_joint_positions, euler_from_quat, get_link_name, get_joint_position, \
     BodySaver, set_pose, INF, add_parameter, irange, wait_for_duration, get_bodies, remove_body, \
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
-    get_joints, multiply, invert, is_movable, remove_handles, set_renderer
-from pybullet_tools.pr2_streams import get_position_gen, \
-    Position, get_handle_grasp_gen, LinkPose, pr2_grasp, WConf
+    get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput
+from pybullet_tools.pr2_streams import Position, get_handle_grasp_gen, pr2_grasp, WConf
 from pybullet_tools.general_streams import get_stable_list_gen, get_grasp_list_gen, get_contain_list_gen
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
     is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
@@ -61,9 +60,10 @@ class World(object):
         self.remove_redundant_bodies()
 
     def remove_redundant_bodies(self):
-        for b in get_bodies():
-            if b not in self.BODY_TO_OBJECT and b not in self.ROBOT_TO_OBJECT:
-                remove_body(b)
+        with HideOutput():
+            for b in get_bodies():
+                if b not in self.BODY_TO_OBJECT and b not in self.ROBOT_TO_OBJECT:
+                    remove_body(b)
 
     def remove_handles(self):
         remove_handles(self.handles)
@@ -765,13 +765,6 @@ class State(object):
                     return fact[2]
             return position
 
-        def get_link_pose(body):
-            pose = LinkPose(body, BODY_TO_OBJECT[body])
-            for fact in init_facts:
-                if fact[0] == 'linkpose' and fact[1] == body and equal(fact[2].value, pose.value):
-                    return fact[2]
-            return pose
-
         def get_grasp(body, attachment):
             grasp = pr2_grasp(body, attachment.grasp_pose)
             for fact in init_facts:
@@ -841,9 +834,7 @@ class State(object):
                 continue
             ## initial position
             position = get_link_position(body)  ## Position(body)
-            pose = get_link_pose(body)  ## LinkPose(body)
             init += [ ('Joint', body),
-                     # ('LinkPose', body, pose), ('AtLinkPose', body, pose),
                       ('Position', body, position), ('AtPosition', body, position),
                       ('IsClosedPosition', body, position),
                       ('IsJointTo', body, body[0])

@@ -6,7 +6,7 @@ from lisdf.parsing import load_all
 
 from pddlstream.language.constants import Equal, AND
 
-from pybullet_tools.pr2_streams import WConf, HandleGrasp, Position, LinkPose ##, MarkerGrasp
+from pybullet_tools.pr2_streams import WConf, HandleGrasp, Position  ##, MarkerGrasp
 from pybullet_tools.pr2_primitives import Pose, Conf, APPROACH_DISTANCE, Grasp, \
     TOP_HOLDING_LEFT_ARM
 from pybullet_tools.pr2_utils import get_arm_joints, get_group_joints, create_gripper

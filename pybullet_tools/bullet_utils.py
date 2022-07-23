@@ -29,7 +29,7 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, Point, get_camera_matrix, \
     YELLOW, add_line, draw_point, RED, BROWN, BLACK, BLUE, GREY, remove_handles, apply_affine, vertices_from_rigid, \
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
-    parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug
+    parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug, set_point
 
 
 OBJ = '?obj'
@@ -1271,16 +1271,6 @@ def draw_bounding_lines(pose, dimensions):
     return handles
 
 
-def visualize_point(point, world=None):
-    z = 0
-    if len(point) == 3:
-        x, y, z = point
-    else:
-        x, y = point
-    body = create_box(.05, .05, .05, mass=1, color=(1, 0, 0, 1))
-    set_pose(body, Pose(point=Point(x, y, z)))
-    return body
-
 def get_file_short_name(path):
     return path[path.rfind('/')+1:]
 
@@ -1606,3 +1596,35 @@ def draw_base_limits(custom_limits, **kwargs):
         p1, p2, p3, p4 = [(x1, y1, 0), (x1, y2, 0), (x2, y2, 0), (x2, y1, 0)]
         points = [(p1, p2), (p2, p3), (p3, p4), (p4, p1)]
         [add_line(p1, p2, **kwargs) for p1, p2 in points]
+
+
+def has_tracik():
+    try:
+        import tracikpy
+    except ImportError:
+        return False
+    return True
+
+#############################################
+
+
+def visualize_bconf(bconf):
+    samp = create_box(.1, .1, .1, mass=1, color=(1, 0, 1, 1))
+    if len(bconf) == 3:
+        x, y, _ = bconf
+        z = 0.2
+    elif len(bconf) == 4:
+        x, y, z, _ = bconf
+    set_point(samp, (x, y, z))
+    return samp
+
+
+def visualize_point(point):
+    z = 0
+    if len(point) == 3:
+        x, y, z = point
+    else:
+        x, y = point
+    body = create_box(.05, .05, .05, mass=1, color=(1, 0, 0, 1))
+    set_pose(body, Pose(point=Point(x, y, z)))
+    return body

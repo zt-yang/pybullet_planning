@@ -61,9 +61,10 @@ class World():
         self.remove_redundant_bodies()
 
     def remove_redundant_bodies(self):
-        for b in get_bodies():
-            if b not in self.body_to_name:
-                remove_body(b)
+        with HideOutput():
+            for b in get_bodies():
+                if b not in self.body_to_name:
+                    remove_body(b)
 
     def remove_handles(self):
         pass
