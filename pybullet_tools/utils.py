@@ -3877,6 +3877,7 @@ def check_initial_end(start_conf, end_conf, collision_fn, verbose=True):
         return False
     return True
 
+
 def plan_joint_motion(body, joints, end_conf, obstacles=[], attachments=[],
                       self_collisions=True, disabled_collisions=set(),
                       weights=None, resolutions=None, max_distance=MAX_DISTANCE,

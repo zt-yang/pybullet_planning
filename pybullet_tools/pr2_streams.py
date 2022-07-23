@@ -359,6 +359,9 @@ def get_ik_ir_wconf_gen(problem, max_attempts=25, learned=True, teleport=False,
         w.assign()
         # w.printout()
 
+        """ check if hand pose is in collision """
+        
+
         """ CALL IK CODES HERE
         uncomment the following 12 lines of codes
         FULL_BODY_IK is the placeholder to change, 
