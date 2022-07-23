@@ -222,7 +222,7 @@ def sample_one_fridge_scene(world, verbose=True):
 
     """ ============== Check collisions ================ """
     obstacles = [o for o in get_bodies() if o != world.robot]
-    while collided(world.robot, obstacles, verbose=True):
+    while collided(world.robot, obstacles, verbose=verbose):
         world.robot.randomly_spawn()
 
     return None

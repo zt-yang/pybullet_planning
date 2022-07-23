@@ -436,7 +436,8 @@ def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_t
     return maybe
 
 
-def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False, XY_ONLY=False, verbose=False):
+def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
+                                  XY_ONLY=False, verbose=False):
     set_renderer(verbose)
     if verbose:
         print(f'sample_obj_in_body_link_space(obj={obj}, body={body}, link={link})')

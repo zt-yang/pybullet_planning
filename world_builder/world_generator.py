@@ -395,7 +395,10 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     if DEPTH_IMAGES and state.world.camera != None:
         reset_simulation()
         get_depth_images(outpath, camera_pose=state.world.camera.pose,
-                         img_dir=join(outpath, 'depth_maps'), verbose=True)
+                         img_dir=join(outpath, 'depth_maps'))
+        reset_simulation()
+        get_depth_images(outpath, camera_pose=state.world.camera.pose,
+                         img_dir=join(outpath, 'rgb_images'), rgb=True)
 
     if EXIT: sys.exit()
 
