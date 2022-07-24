@@ -142,10 +142,11 @@ def get_file_by_category(category, RANDOM_INSTANCE=False):
     if isdir(asset_root):
         asset_root = join(ASSET_PATH, 'models', category)
 
-        paths = [join(asset_root, f) for f in listdir(join(asset_root)) if isdir(join(asset_root, f))]
+        paths = [f for f in listdir(join(asset_root)) if isdir(join(asset_root, f))]
         files = [join(asset_root, f) for f in listdir(join(asset_root)) if 'DS_Store' not in f]
 
         if len(paths) == len(files):  ## mobility objects
+            paths = [join(asset_root, p) for p in paths if not p.startswith('_')]
             paths.sort()
             if RANDOM_INSTANCE:
                 random.shuffle(paths)

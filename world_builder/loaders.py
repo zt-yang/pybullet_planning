@@ -479,6 +479,7 @@ def load_rooms(world, DOOR_GAP = 1.9):
 
     return kitchen
 
+
 def load_cart(world, cart_x=-0.25, cart_y=0, marker_name='marker'):
     floor = world.add_object(
         Floor(create_box(w=10, l=10, h=FLOOR_HEIGHT, color=BLACK, collision=True)),
@@ -586,6 +587,7 @@ def load_blocked_stove(world, w=.5, h=.9, mass=1, DOOR_GAP=1.9):
 
 #######################################################
 
+
 def load_pot_lid(world):
     name_to_body = world.name_to_body
     name_to_object = world.name_to_object
@@ -603,6 +605,7 @@ def load_pot_lid(world):
     world.add_to_cat(lid, 'moveable')
 
     return bottom, lid
+
 
 def load_basin_faucet(world):
     from .actions import ChangeLinkColorEvent, CreateCylinderEvent, RemoveBodyEvent
@@ -742,6 +745,7 @@ def load_cabinet_test_scene(world, RANDOM_INSTANCE=False, MORE_MOVABLE=False, ve
 
     return pot, lid, turkey, counter, oil, vinegar
 
+
 def load_cabinet_rearrange_scene(world):
     surfaces = {
         'counter': {
@@ -787,6 +791,7 @@ def load_cabinet_rearrange_scene(world):
     world.add_joints_by_keyword('counter', 'dagger_door')
 
     return pot, lid, turkey, veggie, counter, oil, vinegar
+
 
 def load_feg_kitchen_dishwasher(world):
     surfaces = {
