@@ -88,9 +88,9 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
 
 def get_model_scale(file, l=None, w=None, h=None, scale=1, category=None):
     scale_db = {}
-    if isfile(SCALE_DB):
-        with open(SCALE_DB, "r") as read_file:
-            scale_db = json.loads(read_file.read())
+    # if isfile(SCALE_DB):
+    #     with open(SCALE_DB, "r") as read_file:
+    #         scale_db = json.loads(read_file.read())
         # if file in scale_db:
         #     return scale_db[file]
 
@@ -126,9 +126,9 @@ def get_model_scale(file, l=None, w=None, h=None, scale=1, category=None):
         if 'door' == category.lower():
             scale = (l / length + w / width) / 2
 
-    scale_db[file] = scale
-    with open(SCALE_DB, 'w') as f:
-        json.dump(scale_db, f)
+    # scale_db[file] = scale
+    # with open(SCALE_DB, 'w') as f:
+    #     json.dump(scale_db, f)
     remove_body(body)
 
     return scale

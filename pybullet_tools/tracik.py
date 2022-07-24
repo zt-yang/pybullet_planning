@@ -115,14 +115,19 @@ class IKSolver(object):
     def sample_conf(self):
         return self.random_generator.uniform(*self.joint_limits)
 
-    def solve(self, tool_pose, seed_conf=None, pos_tolerance=1e-5, ori_tolerance=math.radians(5e-2)):
+    def solve(self, tool_pose, seed_conf=None, pos_tolerance=1e-5,
+              ori_tolerance=math.radians(5e-2), verbose=False):
+        import time
         pose = self.base_from_world(tool_pose)
         tform = tform_from_pose(pose)
         #if seed_conf is None: # TODO: will use np.random.default_rng()
         #    seed_conf = self.reference_conf
         bx, by, bz = pos_tolerance * np.ones(3)
         brx, bry, brz = ori_tolerance * np.ones(3)
+        start_time = time.time()
+        if verbose: print(f'---------- started ik')
         conf = self.ik_solver.ik(tform, qinit=seed_conf, bx=bx, by=by, bz=bz, brx=brx, bry=bry, brz=brz)
+        if verbose: print(f'---------- solved ik in {round(time.time()-start_time, 3)} sec')
         self.solutions.append((pose, conf))
         return conf
     def solve_current(self, tool_pose, **kwargs): # solve_closest

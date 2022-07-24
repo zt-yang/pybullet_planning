@@ -15,6 +15,7 @@ from pybullet_tools.utils import quat_from_euler, remove_body, get_unit_vector, 
 from pybullet_tools.bullet_utils import xyzyaw_to_pose
 from pybullet_tools.flying_gripper_utils import get_se3_joints
 
+
 class Problem():
     def __init__(self, world):
         self.world = world
@@ -63,6 +64,7 @@ class Problem():
         if self.gripper is not None:
             remove_body(self.gripper)
             self.gripper = None
+
 
 def pddl_to_init_goal(exp_dir, world):
 

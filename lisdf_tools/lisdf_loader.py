@@ -1,5 +1,3 @@
-LINK_STR = '::'
-
 import os
 import sys
 from os.path import join, abspath, dirname, isdir, isfile
@@ -21,7 +19,7 @@ from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove
     set_joint_positions, get_links, get_joints, get_joint_name, get_body_name, link_from_name, \
     parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK, read, get_client, \
     reset_simulation
-from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link
+from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link, get_instance_name
 from pybullet_tools.pr2_streams import get_handle_link
 from pybullet_tools.flying_gripper_utils import set_se3_conf
 
@@ -29,6 +27,7 @@ from pddlstream.language.constants import AND, PDDLProblem
 
 from world_builder.entities import Space
 from world_builder.loaders import create_gripper_robot, create_pr2_robot
+from world_builder.robots import RobotAPI
 
 from lisdf_tools.lisdf_planning import pddl_to_init_goal
 
@@ -37,10 +36,14 @@ LINK_COLORS = ['#c0392b', '#d35400', '#f39c12', '#16a085', '#27ae60',
                '#2980b9', '#8e44ad', '#2c3e50', '#95a5a6']
 LINK_COLORS = [RED, YELLOW, GREEN, BLUE, GREY, BLACK]
 
+LINK_STR = '::'
+PART_INSTANCE_NAME = "{body_instance_name}" + LINK_STR + "{part_name}"
+
 class World():
     def __init__(self, lisdf):
         self.lisdf = lisdf
         self.body_to_name = {}
+        self.instance_names = {}
         self.name_to_body = {}
         self.ATTACHMENTS = {}
         self.camera = None
@@ -69,11 +72,20 @@ class World():
     def add_handles(self, handles):
         self.handles.extend(handles)
 
-    def add_body(self, body, name):
+    def add_body(self, body, name, instance_name=None):
         if body is None:
             print('lisdf_loader.body = None')
-        self.body_to_name[body] = name
+        if instance_name is None and isinstance(body, tuple):
+            instance_name = self.get_part_instance_name(body)
         self.name_to_body[name] = body
+        self.body_to_name[body] = name
+        id = body
+        if isinstance(body, tuple) and len(body) == 2:
+            id = (body[0], get_handle_link(body))
+        elif isinstance(id, RobotAPI):
+            id = body.body
+        ## the id is here is either body or (body, link)
+        self.instance_names[id] = instance_name
 
     def add_robot(self, body, name='robot', **kwargs):
         if not isinstance(body, int):
@@ -95,6 +107,15 @@ class World():
             self.add_body(body_link, link_name)
             set_color(body, color=LINK_COLORS[idx], link=body_link[-1])
             idx += 1
+
+    def get_part_instance_name(self, id):
+        n = self.get_instance_name(id[0])
+        if len(id) == 2:
+            l = get_handle_link(id)
+            part_name = get_link_name(id[0], l)
+        else:  ## if len(id) == 3:
+            part_name = get_link_name(id[0], id[-1])
+        return PART_INSTANCE_NAME.format(body_instance_name=n, part_name=part_name)
 
     def update_objects(self, objects):
         for o in objects.values():
@@ -177,6 +198,11 @@ class World():
 
     def get_debug_name(self, body):
         return f"{self.get_name(body)}|{body}"
+
+    def get_instance_name(self, body):
+        if body in self.instance_names:
+            return self.instance_names[body]
+        return None
 
     # def get_full_name(self, body_id):
     #     """ concatenated string for links and joints,
@@ -274,6 +300,7 @@ def change_world_state(world, test_case):
                     print(f'{title} change {model.name}::{js.name} joint position from {nice(old)} to {nice(position)}')
     print('-------------------')
 
+
 def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
     # scenes_path = dirname(os.path.abspath(lisdf_path))
     tmp_path = join(ASSET_PATH, 'tmp')
@@ -327,12 +354,19 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
                 f.write(make_sdf_world(model.to_sdf()))
             category = model.links[0].name
 
-        if verbose: print(f'..... loading {model.name} from {uri}', end="\r")
+        if verbose:
+            print(f'..... loading {model.name} from {abspath(uri)}', end="\r")
         if not isdir(join(ASSET_PATH, 'scenes')):
             os.mkdir(join(ASSET_PATH, 'scenes'))
         with HideOutput():
             body = load_pybullet(uri, scale=scale)
             if isinstance(body, tuple): body = body[0]
+
+        ## instance names are unique strings used to identify object models
+        instance_name = get_instance_name(abspath(uri))
+        if category == 'box' and instance_name is None:
+            size = ','.join([str(n) for n in model.links[0].collisions[0].shape.size.round(4)])
+            instance_name = f"box({size})"
 
         ## set pose of body using PyBullet tools' data structure
         if category in ['pr2', 'feg']:
@@ -344,7 +378,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
         else:
             pose = (tuple(model.pose.pos), quat_from_euler(model.pose.rpy))
             set_pose(body, pose)
-            bullet_world.add_body(body, model.name)
+            bullet_world.add_body(body, model.name, instance_name)
 
         if model.name in model_states:
             for js in model_states[model.name].joint_states:
@@ -357,11 +391,13 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
         # wait_if_gui('load next model?')
     return bullet_world
 
+
 ## will be replaced later will <world><gui><camera> tag
 HACK_CAMERA_POSES = { ## scene_name : (camera_point, target_point)
     'kitchen_counter': ([3, 8, 3], [0, 8, 1]),
     'kitchen_basics': ([3, 6, 3], [0, 6, 1])
 }
+
 
 def make_sdf_world(sdf_model):
     return f"""<?xml version="1.0" ?>
@@ -376,6 +412,7 @@ def make_sdf_world(sdf_model):
 
 #######################
 
+
 def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
 
     world = problem.world
@@ -383,7 +420,6 @@ def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
     domain_pddl = read(join(exp_dir, 'domain_full.pddl'))
     stream_pddl = read(join(exp_dir, 'stream.pddl'))
     planning_config = json.load(open(join(exp_dir, 'planning_config.json')))
-
 
     init, goal, constant_map = pddl_to_init_goal(exp_dir, world)
     goal = [AND] + goal
@@ -396,6 +432,7 @@ def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
 
 #######################
 
+
 def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width=720, height=560)
                      camera_pose=((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5)),
                      img_dir=join('visualizations', 'camera_images'), rgb=False):
@@ -406,7 +443,7 @@ def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width
     init = pddl_to_init_goal(exp_dir, world)[0]
 
     world.add_camera(camera_pose, img_dir)
-    world.visualize_image(index='scene')
+    world.visualize_image(index='scene', rgb=rgb)
 
     b2n = world.body_to_name
     c2b = world.cat_to_bodies
@@ -455,6 +492,7 @@ def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width
 
 
 #######################
+
 
 if __name__ == "__main__":
 
