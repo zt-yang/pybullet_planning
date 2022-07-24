@@ -376,6 +376,7 @@ def get_ik_ir_wconf_gen(problem, max_attempts=25, learned=True, teleport=False,
             remove_body(gripper_grasp)
             # print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
             yield None
+        remove_body(gripper_grasp)
 
         ## solve IK for all 13 joints
         if robot.USE_TORSO and has_tracik():

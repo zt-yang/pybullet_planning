@@ -407,7 +407,7 @@ def save_to_test_cases(state, goal, template_name, floorplan, out_dir, root_path
                        verbose=True, DEPTH_IMAGES=False):
 
     exp_path = EXP_PATH
-    if root_path != None:
+    if root_path is not None:
         exp_path = join(root_path, exp_path)
 
     outpath = join(exp_path, out_dir)
