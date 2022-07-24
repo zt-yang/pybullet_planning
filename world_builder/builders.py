@@ -214,7 +214,7 @@ def sample_one_fridge_scene(world, verbose=True):
     minifridge_doors = load_random_mini_kitchen_counter(world)
 
     """ ============== Change joint positions ================ """
-    epsilon = 0.5
+    epsilon = 0
     for door in minifridge_doors:
         if random.random() < epsilon:
             open_joint(door[0], door[1], extent=random.random())

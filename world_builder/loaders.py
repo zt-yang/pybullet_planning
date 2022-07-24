@@ -954,6 +954,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     else:
         y = random.uniform(y_min, y_max)
     (_, _, z), quat = get_pose(minifridge)
+    z += 0.05
     set_pose(minifridge, ((x, y, z), quat))
     set_camera_target_body(minifridge, dx=2, dy=0, dz=2)
 

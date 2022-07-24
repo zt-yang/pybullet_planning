@@ -506,7 +506,7 @@ def get_arm_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, ve
             body = obj
 
         if 'pstn' in str(pose): ## isinstance(pose, Position):
-            pose_value = linkpose_from_position(pose, world)
+            pose_value = linkpose_from_position(pose)
         else:
             pose_value = pose.value
 
