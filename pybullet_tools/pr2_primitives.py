@@ -618,7 +618,7 @@ def get_motion_gen(problem, custom_limits={}, collisions=True, teleport=False):
         elif is_drake_pr2(robot):
             raw_path = plan_joint_motion(robot, bq2.joints, bq2.values, attachments=[],
                                          obstacles=obstacles, custom_limits=custom_limits, self_collisions=SELF_COLLISIONS,
-                                         restarts=4, max_iterations=50, smooth=50)
+                                         restarts=1, max_iterations=50, smooth=50)
             if raw_path is None:
                 print('Failed motion plan!')
                 #set_renderer(True)

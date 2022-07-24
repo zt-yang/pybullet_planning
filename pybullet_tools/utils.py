@@ -1012,12 +1012,22 @@ def wait_if_gui(*args, **kwargs):
     if has_gui():
         wait_for_user(*args, **kwargs)
 
+def get_renderer():
+    client = CLIENT
+    return CLIENTS[client]
+
 def is_unlocked():
-    return CLIENTS[CLIENT] is True
+    return get_renderer() is True
 
 def wait_if_unlocked(*args, **kwargs):
     if is_unlocked():
         wait_for_user(*args, **kwargs)
+
+def wait_unlocked(*args, **kwargs):
+    enable = get_renderer()
+    set_renderer(enable=True)
+    wait_for_user(*args, **kwargs)
+    set_renderer(enable)
 
 def wait_for_interrupt(max_time=np.inf):
     """
@@ -1366,7 +1376,7 @@ def set_camera_pose2(world_from_camera, distance=2):
 
 CameraImage = namedtuple('CameraImage', ['rgbPixels', 'depthPixels', 'segmentationMaskBuffer',
                                          'camera_pose', 'camera_matrix'])
-#CameraImage = namedtuple('CameraImage', ['rgb', 'depth', 'segmentation', 'camera_pose'])
+# CameraImage = namedtuple('CameraImage', ['rgb', 'depth', 'segmentation', 'camera_pose'])
 
 def demask_pixel(pixel):
     # https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/examples/segmask_linkindex.py
@@ -1482,6 +1492,7 @@ def get_image(camera_pos, target_pos, width=640, height=480, vertical_fov=60.0, 
 
     return CameraImage(rgb, depth, segmented, view_pose, camera_matrix)
 
+
 def get_image_at_pose(camera_pose, camera_matrix, far=5.0, **kwargs):
     # far is the maximum depth value
     width, height = map(int, dimensions_from_camera_matrix(camera_matrix))
@@ -1490,6 +1501,7 @@ def get_image_at_pose(camera_pose, camera_matrix, far=5.0, **kwargs):
     target_point = tform_point(camera_pose, np.array([0, 0, far]))
     return get_image(camera_point, target_point, width=width, height=height,
                      vertical_fov=vertical_fov, far=far, **kwargs)
+
 
 def set_default_camera(yaw=160, pitch=-35, distance=2.5):
     # TODO: deprecate
@@ -2174,13 +2186,15 @@ def link_from_name(body, name):
             return link
     raise ValueError(body, name)
 
-
 def has_link(body, name):
     try:
         link_from_name(body, name)
     except ValueError:
         return False
     return True
+
+def links_from_names(body, names):
+    return tuple(link_from_name(body, name) for name in names)
 
 LinkState = namedtuple('LinkState', ['linkWorldPosition', 'linkWorldOrientation',
                                      'localInertialFramePosition', 'localInertialFrameOrientation',
@@ -3862,7 +3876,7 @@ def plan_waypoints_joint_motion(body, joints, waypoints, start_conf=None, obstac
 def plan_direct_joint_motion(body, joints, end_conf, **kwargs):
     return plan_waypoints_joint_motion(body, joints, [end_conf], **kwargs)
 
-def check_initial_end(start_conf, end_conf, collision_fn, verbose=True):
+def check_initial_end(start_conf, end_conf, collision_fn, verbose=False):
     from pybullet_tools.bullet_utils import nice  ## YANG
     # TODO: collision_fn might not accept kwargs
     if collision_fn(start_conf, verbose=verbose):
@@ -3874,6 +3888,7 @@ def check_initial_end(start_conf, end_conf, collision_fn, verbose=True):
         collision_fn(end_conf, verbose=True)
         return False
     return True
+
 
 def plan_joint_motion(body, joints, end_conf, obstacles=[], attachments=[],
                       self_collisions=True, disabled_collisions=set(),

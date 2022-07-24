@@ -202,7 +202,8 @@ class World():
         self.camera = camera
         self.img_dir = img_dir
 
-    def visualize_image(self, pose=None, img_dir=None, index=None, image=None):
+    def visualize_image(self, pose=None, img_dir=None, index=None,
+                        image=None, rgb=False):
         from pybullet_tools.bullet_utils import visualize_camera_image
 
         if pose is not None:
@@ -213,7 +214,7 @@ class World():
             index = self.camera.index
         if image is None:
             image = self.camera.get_image(segment=False)
-        visualize_camera_image(image, index, img_dir=self.img_dir)
+        visualize_camera_image(image, index, img_dir=self.img_dir, rgb=rgb)
 
 
 def find_id(body, full_name):
@@ -383,6 +384,7 @@ def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
     stream_pddl = read(join(exp_dir, 'stream.pddl'))
     planning_config = json.load(open(join(exp_dir, 'planning_config.json')))
 
+
     init, goal, constant_map = pddl_to_init_goal(exp_dir, world)
     goal = [AND] + goal
     problem.add_init(init)
@@ -396,11 +398,11 @@ def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
 
 def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width=720, height=560)
                      camera_pose=((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5)),
-                     img_dir=join('visualizations', 'camera_images')):
+                     img_dir=join('visualizations', 'camera_images'), rgb=False):
 
     os.makedirs(img_dir, exist_ok=True)
     world = load_lisdf_pybullet(exp_dir, width=width, height=height, verbose=True)
-    print('world.name_to_body', world.name_to_body)
+    # print('world.name_to_body', world.name_to_body)
     init = pddl_to_init_goal(exp_dir, world)[0]
 
     world.add_camera(camera_pose, img_dir)
@@ -426,7 +428,7 @@ def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width
         return f"[{body_index}]_{b2n[body_index]}"
 
     def get_image_and_reset(world, index):
-        world.visualize_image(index=index)
+        world.visualize_image(index=index, rgb=rgb)
         reset_simulation()
         world = load_lisdf_pybullet(exp_dir, width=width, height=height)
         world.add_camera(camera_pose, img_dir)

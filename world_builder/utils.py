@@ -32,6 +32,7 @@ GRASPABLES = [o.lower() for o in GRASPABLES]
 
 SCALE_DB = abspath(join(dirname(__file__), 'model_scales.json'))
 
+
 def read_xml(plan_name, asset_path=ASSET_PATH):
     X_OFFSET, Y_OFFSET, SCALING = None, None, None
     FLOOR_X_MIN, FLOOR_X_MAX = inf, -inf
@@ -84,6 +85,7 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
 
     return objects, X_OFFSET, Y_OFFSET, SCALING, FLOOR_X_MIN, FLOOR_X_MAX, FLOOR_Y_MIN, FLOOR_Y_MAX
 
+
 def get_model_scale(file, l=None, w=None, h=None, scale=1, category=None):
     scale_db = {}
     if isfile(SCALE_DB):
@@ -131,6 +133,7 @@ def get_model_scale(file, l=None, w=None, h=None, scale=1, category=None):
 
     return scale
 
+
 def get_file_by_category(category, RANDOM_INSTANCE=False):
     ## correct the capitalization because Ubuntu cares about it
     category = [c for c in listdir(join(ASSET_PATH, 'models')) if c.lower() == category.lower()][0]
@@ -157,6 +160,7 @@ def get_file_by_category(category, RANDOM_INSTANCE=False):
                 file = join(asset_root, f'{category}.sdf')
         return file
     return None
+
 
 def adjust_scale(body, category, file, w, l):
     """ reload with the correct scale """
@@ -190,7 +194,7 @@ def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=
     file = get_file_by_category(category, RANDOM_INSTANCE=RANDOM_INSTANCE)
     scale = get_scale_by_category(file=file, category=category, scale=scale)
     if file != None:
-        if verbose: print(f"Loading ...... {file}")
+        if verbose: print(f"Loading ...... {abspath(file)}")
         scale = get_model_scale(file, l, w, h, scale, category)
         with HideOutput():
             body = load_model(file, scale=scale, fixed_base=True)
@@ -352,6 +356,7 @@ def find_point_for_single_push(body):
 
     return max_pt
 
+
 def visualize_point(point, world):
     z = 0
     if len(point) == 3:
@@ -361,3 +366,20 @@ def visualize_point(point, world):
     world.add_object(
         Moveable(create_box(.05, .05, .05, mass=1, color=(1, 0, 0, 1)), category='marker'),
         Pose(point=Point(x, y, z)))
+
+
+def get_instances(category):
+    from world_builder.partnet_scales import MODEL_SCALES, MODEL_HEIGHTS, OBJ_SCALES
+    if category in MODEL_SCALES:
+        return MODEL_SCALES[category]
+    elif category in MODEL_HEIGHTS:
+        return MODEL_HEIGHTS[category]['models']
+    elif category.lower() in OBJ_SCALES:
+        scale = OBJ_SCALES[category.lower()]
+        category = [c for c in listdir(join(ASSET_PATH, 'models')) if c.lower() == category.lower()][0]
+        asset_root = join(ASSET_PATH, 'models', category)
+        indices = [f for f in listdir(join(asset_root)) if isdir(join(asset_root, f))]
+        return {k : scale for k in indices}
+    else:
+        print(f'world_builder.utils.get_instances({category}) didnt find any models')
+        assert NotImplementedError()

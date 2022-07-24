@@ -1,28 +1,12 @@
 from __future__ import print_function
 
 import copy
-import pybullet as p
 import random
-import time
-import os
 from itertools import islice, count
 import math
-import json
 
 import numpy as np
 
-from pybullet_tools.pr2_problems import get_fixed_bodies, create_pr2
-from pybullet_tools.pr2_utils import TOP_HOLDING_LEFT_ARM, SIDE_HOLDING_LEFT_ARM, GET_GRASPS, get_gripper_joints, \
-    get_carry_conf, get_top_grasps, get_side_grasps, open_arm, arm_conf, get_gripper_link, get_arm_joints, \
-    learned_pose_generator, PR2_TOOL_FRAMES, get_x_presses, PR2_GROUPS, joints_from_names, \
-    is_drake_pr2, get_group_joints, get_group_conf, compute_grasp_width, PR2_GRIPPER_ROOTS, \
-    TOOL_POSE, MAX_GRASP_WIDTH, GRASP_LENGTH, SIDE_HEIGHT_OFFSET, approximate_as_prism, set_group_conf
-from pybullet_tools.pr2_primitives import control_commands, apply_commands, Grasp, \
-    APPROACH_DISTANCE, TOP_HOLDING_LEFT_ARM, get_tool_from_root, Conf, Commands, State, create_trajectory, \
-    Trajectory, get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
-    move_cost_fn, get_ik_ir_gen, get_motion_gen, Attach, Detach, Clean, \
-    Cook, control_commands, get_gripper_joints, GripperCommand, apply_commands, State
-from pybullet_tools.ikfast.pr2.ik import is_ik_compiled, pr2_inverse_kinematics
 from pybullet_tools.utils import invert, multiply, get_name, set_pose, get_link_pose, is_placement, \
     pairwise_collision, set_joint_positions, get_joint_positions, sample_placement, get_pose, waypoints_from_path, \
     unit_quat, plan_base_motion, plan_joint_motion, base_values_from_pose, pose_from_base_values, \
@@ -40,8 +24,11 @@ from pybullet_tools.utils import invert, multiply, get_name, set_pose, get_link_
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, set_camera_target_body, is_contained, \
     visualize_point, collided, GRIPPER_DIRECTIONS, get_gripper_direction, Attachment, dist, sample_pose, \
-    xyzyaw_to_pose
-from pybullet_tools.logging import dump_json
+    xyzyaw_to_pose, has_tracik, visualize_bconf
+
+from pybullet_tools.pr2_primitives import Conf
+
+from pybullet_tools.tracik import IKSolver
 
 
 class Position(object):
@@ -78,34 +65,36 @@ class Position(object):
         #index = id(self) % 1000
         return 'pstn{}={}'.format(index, nice(self.value))
 
-class LinkPose(object):
-    num = count()
-    def __init__(self, body, obj, value=None, support=None, init=False):
-        self.obj = obj
-        self.link = self.obj.handle_link
-        self.body, self.joint = body
-        if value is None:
-            value = get_link_pose(self.body, self.link)
-        self.value = tuple(value)
-        self.body_pose = get_pose(self.body)
-        self.support = support
-        self.init = init
-        self.index = next(self.num)
-    @property
-    def bodies(self):
-        return flatten_links(self.body)
-    def assign(self):
-        pass
-    def iterate(self):
-        yield self
-    # def to_base_conf(self):
-    #     values = base_values_from_pose(self.value)
-    #     return Conf(self.body, range(len(values)), values)
-    def __repr__(self):
-        index = self.index
-        #index = id(self) % 1000
-        return 'lp{}={}'.format(index, nice(self.value))
-        # return 'p{}'.format(index)
+
+# class LinkPose(object):
+#     num = count()
+#     def __init__(self, body, obj, value=None, support=None, init=False):
+#         self.obj = obj
+#         self.link = self.obj.handle_link
+#         self.body, self.joint = body
+#         if value is None:
+#             value = get_link_pose(self.body, self.link)
+#         self.value = tuple(value)
+#         self.body_pose = get_pose(self.body)
+#         self.support = support
+#         self.init = init
+#         self.index = next(self.num)
+#     @property
+#     def bodies(self):
+#         return flatten_links(self.body)
+#     def assign(self):
+#         pass
+#     def iterate(self):
+#         yield self
+#     # def to_base_conf(self):
+#     #     values = base_values_from_pose(self.value)
+#     #     return Conf(self.body, range(len(values)), values)
+#     def __repr__(self):
+#         index = self.index
+#         #index = id(self) % 1000
+#         return 'lp{}={}'.format(index, nice(self.value))
+#         # return 'p{}'.format(index)
+
 
 class HandleGrasp(object):
     def __init__(self, grasp_type, body, value, approach, carry, index=None):
@@ -122,6 +111,7 @@ class HandleGrasp(object):
         # return Attachment(robot, tool_link, self.value, self.body)
     def __repr__(self):
         return 'hg{}={}'.format(self.index % 1000, nice(self.value))
+
 
 class WConf(object):
     def __init__(self, poses, positions, index=None):
@@ -156,7 +146,13 @@ class WConf(object):
     def __repr__(self):
         return 'wconf{}'.format(self.index % 1000)
 
-##################################################
+""" ==============================================================
+
+            Sampling placement ?p
+
+    ==============================================================
+"""
+
 
 def get_stable_gen(problem, collisions=True, num_trials=20, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
@@ -187,6 +183,7 @@ def get_stable_gen(problem, collisions=True, num_trials=20, **kwargs):
                 yield (p,)
     return gen
 
+
 def learned_pose_sampler(world, body, surface, body_pose):
     ## hack to reduce planning time
     if 'eggblock' in world.get_name(body) and 'braiser_bottom' in world.get_name(surface):
@@ -195,9 +192,84 @@ def learned_pose_sampler(world, body, surface, body_pose):
         body_pose = (x, y, z), quat
     return body_pose
 
+
+def get_stable_list_gen(problem, num_samples=3, collisions=True, **kwargs):
+    from pybullet_tools.pr2_primitives import Pose
+    obstacles = problem.fixed if collisions else []
+    def gen(body, surface):
+        # TODO: surface poses are being sampled in pr2_belief
+        if surface is None:
+            surfaces = problem.surfaces
+        else:
+            surfaces = [surface]
+        poses = []
+
+        ## --------- Special case for plates -------------
+        result = check_plate_placement(body, surfaces, obstacles, num_samples)
+        if result is not None:
+            return result
+        ## ------------------------------------------------
+
+        while True:
+            surface = random.choice(surfaces) # TODO: weight by area
+            body_pose = sample_placement(body, surface, **kwargs)
+            if body_pose is None:
+                break
+            p = Pose(body, body_pose, surface)
+            p.assign()
+            if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, surface}):
+                # yield (p,)
+                poses.append(p)
+                if len(poses) >= num_samples:
+                    return [(p,) for p in poses]
+        return []
+    return gen
+
+
+def check_plate_placement(body, surfaces, obstacles, num_samples, num_trials=30):
+    from pybullet_tools.pr2_primitives import Pose
+    surface = random.choice(surfaces)
+    poses = []
+    trials = 0
+
+    if 'plate-fat' in get_name(body):
+        while trials < num_trials:
+            y = random.uniform(8.58, 9)
+            body_pose = ((0.84, y, 0.88), quat_from_euler((0, math.pi / 2, 0)))
+            p = Pose(body, body_pose, surface)
+            p.assign()
+            if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, surface}):
+                poses.append(p)
+                # for roll in [-math.pi/2, math.pi/2, math.pi]:
+                #     body_pose = (p.value[0], quat_from_euler((roll, math.pi / 2, 0)))
+                #     poses.append(Pose(body, body_pose, surface))
+
+                if len(poses) >= num_samples:
+                    return [(p,) for p in poses]
+            trials += 1
+        return []
+
+    if isinstance(surface, int) and 'plate-fat' in get_name(surface):
+        aabb = get_aabb(surface)
+        while trials < num_trials:
+            body_pose = xyzyaw_to_pose(sample_pose(body, aabb))
+            p = Pose(body, body_pose, surface)
+            p.assign()
+            if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, surface}):
+                poses.append(p)
+                if len(poses) >= num_samples:
+                    return [(p,) for p in poses]
+            trials += 1
+        return []
+
+    return None
+
+
+
 def get_mod_pose(pose):
     (x,y,z), quat = pose
     return ((x,y,z+0.01), quat)
+
 
 def get_contain_list_gen(problem, collisions=True, max_attempts=20, num_samples=3, verbose=False, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
@@ -237,6 +309,7 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=20, num_samples=
         return poses
     return gen
 
+
 def get_pose_in_space_test():
     def test(o, p, r):
         p.assign()
@@ -245,7 +318,14 @@ def get_pose_in_space_test():
         return answer
     return test
 
-########################################################################
+
+""" ==============================================================
+
+            Sampling joint position ?pstn
+
+    ==============================================================
+"""
+
 
 def get_joint_position_open_gen(problem):
     def fn(o, psn1, fluents=[]):  ## ps1,
@@ -255,6 +335,7 @@ def get_joint_position_open_gen(problem):
             psn2 = Position(o, 'max')
         return (psn2,)
     return fn
+
 
 def sample_joint_position_open_list_gen(problem, num_samples = 3):
     def fn(o, psn1, fluents=[]):
@@ -290,24 +371,59 @@ def sample_joint_position_open_list_gen(problem, num_samples = 3):
         return positions
     return fn
 
-## discarded
-def get_position_gen(problem, collisions=True, extent=None):
-    obstacles = problem.fixed if collisions else []
-    def fn(o, fluents=[]):  ## ps1,
-        ps2 = Position(o, extent)
-        return (ps2,)
+
+# ## discarded
+# def get_position_gen(problem, collisions=True, extent=None):
+#     obstacles = problem.fixed if collisions else []
+#     def fn(o, fluents=[]):  ## ps1,
+#         ps2 = Position(o, extent)
+#         return (ps2,)
+#     return fn
+#
+#
+# ## discarded
+# def get_joint_position_test(extent='max'):
+#     def test(o, pst):
+#         pst_max = Position(o, extent)
+#         if pst_max.value == pst.value:
+#             return True
+#         return False
+#     return test
+
+
+""" ==============================================================
+
+            Sampling grasps ?g
+
+    ==============================================================
+"""
+
+def get_grasp_list_gen(problem, collisions=True, randomize=True, visualize=False, RETAIN_ALL=False):
+    robot = problem.robot
+
+    def fn(body):
+        arm = 'left'
+        def get_grasps(g_type, grasps_O):
+            return robot.make_grasps(g_type, arm, body, grasps_O, collisions=collisions)
+
+        from .bullet_utils import get_hand_grasps
+        grasps = get_grasps('hand', get_hand_grasps(problem, body, visualize=visualize, RETAIN_ALL=RETAIN_ALL))
+
+        if randomize:
+            random.shuffle(grasps)
+        return [(g,) for g in grasps]
+        #for g in grasps:
+        #    yield (g,)
     return fn
 
-## discarded
-def get_joint_position_test(extent='max'):
-    def test(o, pst):
-        pst_max = Position(o, extent)
-        if pst_max.value == pst.value:
-            return True
-        return False
-    return test
 
-################# HANDLE GRASPS #############
+""" ==============================================================
+
+            Sampling handle grasps ?hg
+
+    ==============================================================
+"""
+
 
 def get_handle_link(body_joint):
     from world_builder.entities import ArticulatedObjectPart
@@ -315,11 +431,13 @@ def get_handle_link(body_joint):
     j = ArticulatedObjectPart(body, joint)
     return j.handle_link
 
+
 def get_handle_pose(body_joint):
     from world_builder.entities import ArticulatedObjectPart
     body, joint = body_joint
     j = ArticulatedObjectPart(body, joint)
     return j.get_handle_pose()
+
 
 def get_handle_width(body_joint):
     from world_builder.entities import ArticulatedObjectPart
@@ -370,6 +488,7 @@ def get_handle_grasp_gen(problem, collisions=False, randomize=False, visualize=F
         #    yield (g,)
     return fn
 
+
 def linkpose_from_position(pose):
     pose.assign()
     handle_link = get_handle_link((pose.body, pose.joint))
@@ -378,9 +497,13 @@ def linkpose_from_position(pose):
     return pose_value ## LinkPose(pose.body, joint, pose_value)
 
 
-from pybullet_tools.utils import vertices_from_rigid, apply_affine
+""" ==============================================================
 
-################# GRASPS #############
+            Generating world configuration ?wconf
+
+    ==============================================================
+"""
+
 
 def get_update_wconf_p_gen(verbose=True):
     def fn(w1, o, p):
@@ -399,6 +522,7 @@ def get_update_wconf_p_gen(verbose=True):
         return (w2,)
     return fn
 
+
 def get_update_wconf_p_two_gen(verbose=False):
     title = 'general_streams.get_update_wconf_p_two_gen'
     def fn(w1, o, p, o2, p2):
@@ -413,6 +537,7 @@ def get_update_wconf_p_two_gen(verbose=False):
         return (w2,)
     return fn
 
+
 def get_update_wconf_pst_gen(verbose=False):
     title = 'general_streams.get_update_wconf_pst_gen'
     def fn(w1, o, pstn):
@@ -425,6 +550,7 @@ def get_update_wconf_pst_gen(verbose=False):
             print(f'{title}\t after:', {o0: nice(p0.value) for o0,p0 in w2.positions.items()})
         return (w2,)
     return fn
+
 
 def get_pose_from_attachment(problem):
     from pybullet_tools.pr2_primitives import Pose
@@ -440,6 +566,7 @@ def get_pose_from_attachment(problem):
             return (p,)
         return None
     return fn
+
 
 def get_sample_wconf_list_gen(problem, verbose=True):
     from pybullet_tools.flying_gripper_utils import get_reachable_test
@@ -484,7 +611,14 @@ def get_sample_wconf_list_gen(problem, verbose=True):
         return wconfs
     return fn
 
-##################################################
+
+""" ==============================================================
+
+            Checking collisions
+
+    ==============================================================
+"""
+
 
 def get_cfree_approach_pose_test(problem, collisions=True):
     # TODO: apply this before inverse kinematics as well
@@ -504,93 +638,3 @@ def get_cfree_approach_pose_test(problem, collisions=True):
         return result
     return test
 
-
-##################################################
-
-def get_grasp_list_gen(problem, collisions=True, randomize=True, visualize=False, RETAIN_ALL=False):
-    robot = problem.robot
-
-    def fn(body):
-        arm = 'left'
-        def get_grasps(g_type, grasps_O):
-            return robot.make_grasps(g_type, arm, body, grasps_O, collisions=collisions)
-
-        from .bullet_utils import get_hand_grasps
-        grasps = get_grasps('hand', get_hand_grasps(problem, body, visualize=visualize, RETAIN_ALL=RETAIN_ALL))
-
-        if randomize:
-            random.shuffle(grasps)
-        return [(g,) for g in grasps]
-        #for g in grasps:
-        #    yield (g,)
-    return fn
-
-def get_stable_list_gen(problem, num_samples=3, collisions=True, **kwargs):
-    from pybullet_tools.pr2_primitives import Pose
-    obstacles = problem.fixed if collisions else []
-    def gen(body, surface):
-        # TODO: surface poses are being sampled in pr2_belief
-        if surface is None:
-            surfaces = problem.surfaces
-        else:
-            surfaces = [surface]
-        poses = []
-
-        ## --------- Special case for plates -------------
-        result = check_plate_placement(body, surfaces, obstacles, num_samples)
-        if result is not None:
-            return result
-        ## ------------------------------------------------
-
-        while True:
-            surface = random.choice(surfaces) # TODO: weight by area
-            body_pose = sample_placement(body, surface, **kwargs)
-            if body_pose is None:
-                break
-            p = Pose(body, body_pose, surface)
-            p.assign()
-            if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, surface}):
-                # yield (p,)
-                poses.append(p)
-                if len(poses) >= num_samples:
-                    return [(p,) for p in poses]
-        return []
-    return gen
-
-def check_plate_placement(body, surfaces, obstacles, num_samples, num_trials=30):
-    from pybullet_tools.pr2_primitives import Pose
-    surface = random.choice(surfaces)
-    poses = []
-    trials = 0
-
-    if 'plate-fat' in get_name(body):
-        while trials < num_trials:
-            y = random.uniform(8.58, 9)
-            body_pose = ((0.84, y, 0.88), quat_from_euler((0, math.pi / 2, 0)))
-            p = Pose(body, body_pose, surface)
-            p.assign()
-            if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, surface}):
-                poses.append(p)
-                # for roll in [-math.pi/2, math.pi/2, math.pi]:
-                #     body_pose = (p.value[0], quat_from_euler((roll, math.pi / 2, 0)))
-                #     poses.append(Pose(body, body_pose, surface))
-
-                if len(poses) >= num_samples:
-                    return [(p,) for p in poses]
-            trials += 1
-        return []
-
-    if isinstance(surface, int) and 'plate-fat' in get_name(surface):
-        aabb = get_aabb(surface)
-        while trials < num_trials:
-            body_pose = xyzyaw_to_pose(sample_pose(body, aabb))
-            p = Pose(body, body_pose, surface)
-            p.assign()
-            if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, surface}):
-                poses.append(p)
-                if len(poses) >= num_samples:
-                    return [(p,) for p in poses]
-            trials += 1
-        return []
-
-    return None

@@ -93,6 +93,7 @@ def to_pose_xml(pose):
     euler = euler_from_quat(quat)
     return f"<pose>{list_to_xml(xyz)} {list_to_xml(euler)}</pose>"
 
+
 def get_camera_spec():
     import math
     _, _, _, _, _, _, _, _, yaw, pitch, dist, target = get_camera()
@@ -104,6 +105,7 @@ def get_camera_spec():
     dy = -l * math.cos(yaw_rad)
     camera = [target[0]+dx, target[1]+dy, target[2]+dz]
     return camera, list(target)
+
 
 def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None,
              root_path=None, out_path=None, verbose=True):
@@ -256,6 +258,7 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None,
 
     return LISDF_PATH
 
+
 def test_get_camera_spec():
     from pybullet_tools.utils import connect, disconnect, set_camera_pose, get_camera, \
         create_box, set_pose, quat_from_euler, set_renderer, wait_if_gui, unit_pose
@@ -377,7 +380,7 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
         # 'body_to_name': body_to_name
     }
     if DEPTH_IMAGES and state.world.camera != None:
-        config['obs_camera_pose'] = nice(state.world.camera.pose)
+        config['obs_camera_pose'] = state.world.camera.pose
 
     ## --- domain and stream copied over  ## shutil.copy()
     with open(join(outpath, 'domain_full.pddl'), 'w') as f:
@@ -392,7 +395,10 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     if DEPTH_IMAGES and state.world.camera != None:
         reset_simulation()
         get_depth_images(outpath, camera_pose=state.world.camera.pose,
-                         img_dir=join(outpath, 'depth_maps'), verbose=True)
+                         img_dir=join(outpath, 'depth_maps'))
+        reset_simulation()
+        get_depth_images(outpath, camera_pose=state.world.camera.pose,
+                         img_dir=join(outpath, 'rgb_images'), rgb=True)
 
     if EXIT: sys.exit()
 

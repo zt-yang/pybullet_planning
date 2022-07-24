@@ -6,15 +6,15 @@ import time
 
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_pull_drawer_handle_motion_gen
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_turn_knob_handle_motion_gen
-from pybullet_tools.pr2_streams import get_stable_gen, get_position_gen, \
-    Position, get_handle_grasp_gen, LinkPose, get_ik_ir_grasp_handle_gen, \
-    get_joint_position_test, get_marker_grasp_gen, get_bconf_in_region_test, get_pull_door_handle_motion_gen, \
+from pybullet_tools.pr2_streams import get_stable_gen, Position, get_handle_grasp_gen, \
+    get_ik_ir_grasp_handle_gen, get_update_wconf_p_gen, get_pose_in_space_test, \
+    get_marker_grasp_gen, get_bconf_in_region_test, get_pull_door_handle_motion_gen, \
     get_bconf_in_region_gen, get_pose_in_region_gen, get_motion_wconf_gen, get_update_wconf_p_two_gen, \
     get_marker_pose_gen, get_pull_marker_to_pose_motion_gen, get_pull_marker_to_bconf_motion_gen,  \
     get_pull_marker_random_motion_gen, get_ik_ungrasp_handle_gen, get_pose_in_region_test, \
     get_cfree_btraj_pose_test, get_joint_position_open_gen, get_ik_ungrasp_mark_gen, \
-    sample_joint_position_open_list_gen, get_update_wconf_pst_gen, get_ik_ir_wconf_gen, \
-    get_update_wconf_p_gen, get_pose_in_space_test
+    sample_joint_position_open_list_gen, get_update_wconf_pst_gen, get_ik_ir_wconf_gen, get_ik_gen
+
 from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
     get_ik_ir_gen, get_motion_gen, get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
     move_cost_fn, Attach, Detach, Clean, Cook, control_commands, \
@@ -61,9 +61,9 @@ def get_stream_map(p, c, l, t):
         'sample-grasp': from_list_fn(get_grasp_list_gen(p, collisions=True, visualize=False)),
         'inverse-kinematics': from_gen_fn(get_ik_ir_gen(p, collisions=c, teleport=t, custom_limits=l,
                                                         learned=False, max_attempts=60, verbose=False)),
-        'inverse-kinematics-wconf': from_gen_fn(get_ik_ir_wconf_gen(p, collisions=c, teleport=t, custom_limits=l,
-                                                                    learned=False, max_attempts=60, verbose=False,
-                                                                    visualize=False)),
+        'inverse-kinematics-wconf': from_gen_fn(  ## get_ik_ir_wconf_gen
+            get_ik_gen(p, collisions=c, teleport=t, custom_limits=l, WCONF=True,
+                        learned=False, max_attempts=6, verbose=False, visualize=False)),
         'plan-base-motion': from_fn(get_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
         'plan-base-motion-wconf': from_fn(get_motion_wconf_gen(p, collisions=c, teleport=t, custom_limits=l)),
 
@@ -75,16 +75,12 @@ def get_stream_map(p, c, l, t):
 
         # 'get-joint-position-open': from_fn(get_joint_position_open_gen(p)),
         'get-joint-position-open': from_list_fn(sample_joint_position_open_list_gen(p)),
-        # 'sample-joint-position-open': from_fn(get_position_gen(p, collisions=c, extent='max')),
-        # 'sample-joint-position-closed': from_fn(get_position_gen(p, collisions=c, extent='min')),
-        # 'test-joint-position-open': from_test(get_joint_position_test(extent='max')),
-        # 'test-joint-position-closed': from_test(get_joint_position_test(extent='min')),
 
         'sample-handle-grasp': from_list_fn(get_handle_grasp_gen(p, collisions=c)),
 
-        'inverse-kinematics-grasp-handle': from_gen_fn(
-            get_ik_ir_grasp_handle_gen(p, collisions=c, teleport=t, custom_limits=l,
-                                       learned=False, verbose=False, ACONF=True, WCONF=False)),
+        'inverse-kinematics-grasp-handle': from_gen_fn(  ## get_ik_ir_grasp_handle_gen
+            get_ik_gen(p, collisions=c, teleport=t, custom_limits=l,
+                        learned=False, verbose=False, ACONF=True, WCONF=False)),
         'inverse-kinematics-ungrasp-handle': from_gen_fn(
             get_ik_ungrasp_handle_gen(p, collisions=c, teleport=t, custom_limits=l,
                                       verbose=False, WCONF=False)),
@@ -799,19 +795,6 @@ def test_pulling_handle_ik(problem):
         bq1 = Conf(robot, get_group_joints(robot, 'base'), bq)
         t = funk('left', drawer, grasp, bq1)
         break
-
-def test_drawer_open(problem, goals):
-    name_to_body = problem.name_to_body
-
-    # -------- test joint position closed
-    drawer = name_to_body('hitman_drawer_top_joint')
-    get_open = get_position_gen(problem, extent='max')
-    test_closed = get_joint_position_test(extent='min')
-    test_open = get_joint_position_test(extent='max')
-    position_open = get_open(drawer)[0]
-    print('test-joint-position-closed', test_closed(drawer, Position(drawer)), not test_open(drawer, Position(drawer)))
-    print('test-joint-position-open', test_open(drawer, goals[0][-1]), not test_closed(drawer, goals[0][-1]))
-    print('get-joint-position-open', test_open(drawer, position_open), not test_closed(drawer, position_open))
 
 def test_pose_gen(problem, init, o, s):
     pose = [i for i in init if i[0].lower() == "AtPose".lower() and i[1] == o][0][-1]
