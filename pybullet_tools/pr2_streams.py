@@ -393,13 +393,14 @@ def get_ik_ir_wconf_gen(problem, max_attempts=25, learned=True, teleport=False,
                                  custom_limits=custom_limits)  ## using all 13 joints
             attempts = 0
             for i, conf in enumerate(ik_solver.generate(gripper_pose)):
-                if max_attempts <= attempts:
+                if max_attempts*2 <= attempts:
                     return
 
                 bconf = list(conf[:2]) + list([conf[3], conf[2]])  ## ik solution is (x, y, theta, torso), switch last two
                 base_joints = robot.get_base_joints()
                 bq = Conf(robot, base_joints, bconf)
                 bq.assign()
+                attempts += 1
                 if collided(robot, obstacles):
                     continue
                 attempts += 1
