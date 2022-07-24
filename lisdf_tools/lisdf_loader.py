@@ -398,7 +398,7 @@ def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
 
 def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width=720, height=560)
                      camera_pose=((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5)),
-                     img_dir=join('visualizations', 'camera_images')):
+                     img_dir=join('visualizations', 'camera_images'), rgb=False):
 
     os.makedirs(img_dir, exist_ok=True)
     world = load_lisdf_pybullet(exp_dir, width=width, height=height, verbose=True)
@@ -428,7 +428,7 @@ def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width
         return f"[{body_index}]_{b2n[body_index]}"
 
     def get_image_and_reset(world, index):
-        world.visualize_image(index=index)
+        world.visualize_image(index=index, rgb=rgb)
         reset_simulation()
         world = load_lisdf_pybullet(exp_dir, width=width, height=height)
         world.add_camera(camera_pose, img_dir)
