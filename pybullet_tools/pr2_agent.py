@@ -49,6 +49,7 @@ from collections import namedtuple
 
 from world_builder.entities import Object
 from world_builder.actions import get_primitive_actions
+from world_builder.world_generator import get_pddl_from_list
 
 def get_stream_map(p, c, l, t):
     # p = problem
@@ -596,6 +597,7 @@ def solve_pddlstream(problem, state, domain_pddl=None, visualization=False):
     time_log['goal'] = [f'{g[0]}({g[1:]})' for g in problem.goal[1:]]
     time_log['plan'] = plan_str
     time_log['plan_len'] = len(plan) if plan != None else 0
+    time_log['init'] = [get_pddl_from_list(f, problem.world) for f in preimage]
 
     reset_globals()  ## reset PDDLStream solutions
 
