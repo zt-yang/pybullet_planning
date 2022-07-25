@@ -1,3 +1,5 @@
+import json
+import os
 from os.path import join, isfile, isdir, abspath, dirname
 from os import mkdir
 from datetime import datetime
@@ -5,6 +7,8 @@ import csv
 import pprint
 
 TXT_FILE = abspath('txt_file.txt')
+COMMANDS_FILE = abspath('commands.json')
+
 
 def myprint(text='', *kwargs):
     string = [str(text)]
@@ -17,6 +21,45 @@ def myprint(text='', *kwargs):
     string = string.replace('\t', '    ')
     with open(TXT_FILE, 'a+') as f:
         f.writelines(string)
+
+
+def record_command(action):
+    from pybullet_tools.pr2_primitives import Commands
+    from world_builder.robots import RobotAPI
+
+    # def print_value(value):
+    #     values = {}
+    #     for f, v in value.__dict__.items():
+    #         if isinstance(v, Commands):
+    #             values[f] = [print_value(vv) for vv in v.commands]
+    #         else:
+    #             values[f] = [str(vv) for vv in v]
+
+    commands = []
+    if isfile(COMMANDS_FILE):
+        with open(COMMANDS_FILE, 'r') as f:
+            commands = json.load(f)
+        os.remove(COMMANDS_FILE)
+    step = len(commands)
+
+    command = {'timestamp': step, 'name': action.__class__.__name__, 'args': {}}
+    for field, value in action.__dict__.items():
+        values = {}
+        if hasattr(value, '__dict__'):
+            for k, v in value.__dict__.items():
+                if isinstance(v, tuple):
+                    values[k] = list(v)
+                elif isinstance(v, RobotAPI):
+                    values[k] = v.name
+            command['args'] = values
+        # elif value is None:
+        #
+
+    commands.append(command)
+
+    with open(COMMANDS_FILE, 'w') as f:
+        json.dump(commands, f, indent=2)
+
 
 def record_results(goal, plan, planning_time, exp_name='default'):
 

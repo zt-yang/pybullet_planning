@@ -217,6 +217,7 @@ def opt_ik_wconf_fn(a, o, p, g, w):
     t = CustomValue('t-ik', tuple())
     return q, t
 
+
 def opt_motion_wconf_fn(q1, q2, w):
     t = CustomValue('t-pbm', (q1, q2))
     return t,
@@ -234,6 +235,7 @@ def post_process(problem, plan, teleport=False):
         commands += new_commands
         print(i, action)
     return commands
+
 
 def get_primitive_commands(action, robot, teleport=False):
     name, args = action
