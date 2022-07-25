@@ -28,6 +28,7 @@ from pybullet_tools.pr2_streams import get_marker_grasp_gen, Position, \
 from pybullet_tools.bullet_utils import set_camera_target_body, set_camera_target_robot, draw_collision_shapes, \
     open_joint, collided
 
+
 def test_pick(world, w=.5, h=.9, mass=1):
 
     table = world.add_box(
@@ -41,6 +42,7 @@ def test_pick(world, w=.5, h=.9, mass=1):
     robot = create_pr2_robot(world, base_q=(0, 2, -PI / 2))
 
     return None, []
+
 
 def test_exist_omelette(world, w=.5, h=.9, mass=1):
 
@@ -214,7 +216,7 @@ def sample_one_fridge_scene(world, verbose=True):
     minifridge_doors = load_random_mini_kitchen_counter(world)
 
     """ ============== Change joint positions ================ """
-    epsilon = 0
+    epsilon = 0.5
     for door in minifridge_doors:
         if random.random() < epsilon:
             extent = random.random()

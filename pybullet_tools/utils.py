@@ -1762,6 +1762,8 @@ def body_from_name(name):
 def remove_body(body):
     if (CLIENT, body) in INFO_FROM_BODY:
         del INFO_FROM_BODY[CLIENT, body]
+    if body not in get_bodies():
+        return
     return p.removeBody(body, physicsClientId=CLIENT)
 
 def get_pose(body):

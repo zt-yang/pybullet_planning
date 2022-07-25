@@ -49,6 +49,7 @@ from collections import namedtuple
 
 from world_builder.entities import Object
 from world_builder.actions import get_primitive_actions
+from world_builder.world_generator import get_pddl_from_list
 
 def get_stream_map(p, c, l, t):
     # p = problem
@@ -63,7 +64,7 @@ def get_stream_map(p, c, l, t):
                                                         learned=False, max_attempts=60, verbose=False)),
         'inverse-kinematics-wconf': from_gen_fn(  ## get_ik_ir_wconf_gen
             get_ik_gen(p, collisions=c, teleport=t, custom_limits=l, WCONF=True,
-                        learned=False, max_attempts=6, verbose=False, visualize=False)),
+                        learned=False, max_attempts=20, verbose=False, visualize=False)),
         'plan-base-motion': from_fn(get_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
         'plan-base-motion-wconf': from_fn(get_motion_wconf_gen(p, collisions=c, teleport=t, custom_limits=l)),
 
@@ -596,6 +597,10 @@ def solve_pddlstream(problem, state, domain_pddl=None, visualization=False):
     time_log['goal'] = [f'{g[0]}({g[1:]})' for g in problem.goal[1:]]
     time_log['plan'] = plan_str
     time_log['plan_len'] = len(plan) if plan != None else 0
+
+    ## for collecting data
+    if visualization:
+        time_log['init'] = [[str(a) for a in f] for f in preimage]
 
     reset_globals()  ## reset PDDLStream solutions
 

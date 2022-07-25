@@ -545,8 +545,8 @@ def get_arm_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, ve
             pose_value = pose.value
 
         addons = [body]
-        if world.BODY_TO_OBJECT[body].grasp_parent != None:
-            addons.append(world.BODY_TO_OBJECT[body].grasp_parent)
+        # if world.BODY_TO_OBJECT[body].grasp_parent != None:
+        #     addons.append(world.BODY_TO_OBJECT[body].grasp_parent)
 
         # approach_obstacles = {obst for obst in obstacles if not is_placement(obj, obst)}
         approach_obstacles = {o for o in obstacles if o not in addons}
@@ -711,9 +711,11 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         arm_joints = get_arm_joints(robot, a)
         resolutions = 0.05 ** np.ones(len(arm_joints))
 
-        BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
-        joint_object = BODY_TO_OBJECT[o]
-        old_pose = get_link_pose(joint_object.body, joint_object.handle_link)
+        # BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
+        # joint_object = BODY_TO_OBJECT[o]
+        # old_pose = get_link_pose(joint_object.body, joint_object.handle_link)
+        handle_link = get_handle_link(o)
+        old_pose = get_link_pose(o[0], handle_link)
         tool_from_root = get_tool_from_root(robot, a)
         if visualize:
             set_renderer(enable=True)
@@ -742,7 +744,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
             value = (i + 1) / num_intervals * (pst2.value - pst1.value) + pst1.value
             pst_after = Position((pst1.body, pst1.joint), value)
             pst_after.assign()
-            new_pose = get_link_pose(joint_object.body, joint_object.handle_link)
+            new_pose = get_link_pose(o[0], handle_link)
             if visualize:
                 gripper_after = robot.visualize_grasp(new_pose, g.value, color=BROWN)
                 set_camera_target_body(gripper_after, dx=0.2, dy=0, dz=1) ## look top down
