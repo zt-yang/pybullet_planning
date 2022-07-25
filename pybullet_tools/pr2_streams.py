@@ -1524,7 +1524,8 @@ def get_ik_gen(problem, max_attempts=25, learned=True, teleport=False,
                 if max_attempts*2 <= attempts:
                     return
 
-                bconf = list(conf[:2]) + list([conf[3], conf[2]])  ## ik solution is (x, y, theta, torso), switch last two
+                ## ik solution is (x, y, theta, torso), switch last two
+                bconf = list(conf[:2]) + list([conf[3], conf[2]])
                 base_joints = robot.get_base_joints()
                 bq = Conf(robot, base_joints, bconf)
                 bq.assign()

@@ -490,6 +490,7 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=25, collisions=True, 
 
 ##################################################
 
+
 def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False):
     robot = problem.robot
     obstacles = problem.fixed if collisions else []
