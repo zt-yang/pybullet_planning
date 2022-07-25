@@ -40,21 +40,27 @@ def record_command(action):
         with open(COMMANDS_FILE, 'r') as f:
             commands = json.load(f)
         os.remove(COMMANDS_FILE)
+
+    commands.append(action)
+
+    with open('file.pkl', 'wb') as file:
+        # A new file will be created
+        pickle.dump(myvar, file)
+
     step = len(commands)
 
-    command = {'timestamp': step, 'name': action.__class__.__name__, 'args': {}}
-    for field, value in action.__dict__.items():
-        values = {}
-        if hasattr(value, '__dict__'):
-            for k, v in value.__dict__.items():
-                if isinstance(v, tuple):
-                    values[k] = list(v)
-                elif isinstance(v, RobotAPI):
-                    values[k] = v.name
-            command['args'] = values
-        # elif value is None:
-        #
-
+    # command = {'timestamp': step, 'name': action.__class__.__name__, 'args': {}}
+    # for field, value in action.__dict__.items():
+    #     values = {}
+    #     if hasattr(value, '__dict__'):
+    #         for k, v in value.__dict__.items():
+    #             if isinstance(v, tuple):
+    #                 values[k] = list(v)
+    #             elif isinstance(v, RobotAPI):
+    #                 values[k] = v.name
+    #         command['args'] = values
+    #     # elif value is None:
+    #     #
     commands.append(command)
 
     with open(COMMANDS_FILE, 'w') as f:

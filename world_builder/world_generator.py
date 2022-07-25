@@ -352,6 +352,7 @@ def save_to_outputs_folder(outpath, exp_path, data_generation=False):
     """ =========== move the log and plan =========== """
     shutil.move(f"{exp_path}_log.txt", join(data_path, 'log.txt'))
     shutil.move(f"{exp_path}_time.json", join(data_path, 'plan.json'))
+    shutil.move(f"{exp_path}_commands.pkl", join(data_path, 'commands.pkl'))
 
 
 def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXIT=True,
