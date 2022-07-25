@@ -26,10 +26,6 @@ from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, set
     visualize_point, collided, GRIPPER_DIRECTIONS, get_gripper_direction, Attachment, dist, sample_pose, \
     xyzyaw_to_pose, has_tracik, visualize_bconf
 
-from pybullet_tools.pr2_primitives import Conf
-
-from pybullet_tools.tracik import IKSolver
-
 
 class Position(object):
     num = count()

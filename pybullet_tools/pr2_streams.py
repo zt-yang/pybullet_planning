@@ -38,7 +38,6 @@ from pybullet_tools.utils import invert, multiply, get_name, set_pose, get_link_
     RED, remove_body, aabb2d_from_aabb, aabb_overlap, aabb_contains_point, get_aabb_center, get_link_name, \
     get_links, check_initial_end, get_collision_fn, BLUE, WHITE, TAN, GREY, YELLOW, aabb_contains_aabb, \
     get_joints, is_movable, pairwise_link_collision, get_closest_points, ConfSaver
-from pybullet_tools.tracik import IKSolver
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, set_camera_target_body, is_contained, \
     visualize_point, collided, GRIPPER_DIRECTIONS, get_gripper_direction, check_cfree_gripper, Attachment, \
@@ -380,6 +379,7 @@ def get_ik_ir_wconf_gen(problem, max_attempts=25, learned=True, teleport=False,
 
         ## solve IK for all 13 joints
         if robot.USE_TORSO and has_tracik():
+            from pybullet_tools.tracik import IKSolver
             tool_from_root = get_tool_from_root(robot, a)
             tool_pose = robot.get_grasp_pose(pose_value, g.value, a, body=g.body)
             gripper_pose = multiply(tool_pose, invert(tool_from_root))
@@ -1510,6 +1510,7 @@ def get_ik_gen(problem, max_attempts=25, learned=True, teleport=False,
 
         ## solve IK for all 13 joints
         if robot.USE_TORSO and has_tracik():
+            from pybullet_tools.tracik import IKSolver
             tool_from_root = robot.get_tool_from_root(a)
             tool_pose = robot.get_grasp_pose(pose_value, g.value, a, body=g.body)
             gripper_pose = multiply(tool_pose, invert(tool_from_root))
