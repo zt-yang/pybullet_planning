@@ -124,7 +124,8 @@ class Object(Index):
 
     def attach_obj(self, obj):
         from pybullet_tools.bullet_utils import create_attachment
-        self.world.ATTACHMENTS[obj] = create_attachment(self, self.link, obj, OBJ=True)
+        link = self.link if self.link is not None else 0
+        self.world.ATTACHMENTS[obj] = create_attachment(self, link, obj, OBJ=True)
         self.support_obj(obj)
 
     def place_new_obj(self, obj_name, max_trial=8):
