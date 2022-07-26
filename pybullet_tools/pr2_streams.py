@@ -55,6 +55,7 @@ LINK_POSE_TO_JOINT_POSITION = {}
 
 ########################################################################
 
+
 def pr2_grasp(body, value, grasp_type=None):
     if grasp_type == None:
         euler = euler_from_quat(value[1])

@@ -350,8 +350,10 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
             category = model.content.name
         else:
             uri = join(tmp_path, f'{model.name}.sdf')
-            with open(uri, 'w') as f:
-                f.write(make_sdf_world(model.to_sdf()))
+            ## TODO: when solving in parallel causes problems
+            if not isfile(uri):
+                with open(uri, 'w') as f:
+                    f.write(make_sdf_world(model.to_sdf()))
             category = model.links[0].name
 
         if verbose:
@@ -385,8 +387,9 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
                 position = js.axis_states[0].value
                 set_joint_position(body, joint_from_name(body, js.name), position)
 
-        if not isinstance(model, URDFInclude):
-            os.remove(uri)
+        ## TODO - became a problem for parallel processing
+        # if not isinstance(model, URDFInclude):
+        #     os.remove(uri)
 
         # wait_if_gui('load next model?')
     return bullet_world

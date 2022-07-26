@@ -325,9 +325,9 @@ def collided(obj, obstacles, world=None, tag='', verbose=False, visualize=False,
         if total <= min_num_pts:
             result = False
         else:
-            prefix = 'pr2_streams.collided '
+            prefix = 'bullet_utils.collided '
             if len(tag) > 0: prefix += f'( {tag} )'
-            print(f'{prefix} | {obj} with {body_links}')
+            # print(f'{prefix} | {obj} with {body_links}')
     else:
         if any(pairwise_collision(obj, b) for b in obstacles):
             result = True
@@ -1338,6 +1338,7 @@ def get_gripper_direction(pose, epsilon=0.01):
 
 
 def get_instance_name(path):
+    if not isfile(path): return None
     rows = open(path, 'r').readlines()
     if len(rows) > 50: rows = rows[:50]
     name = [r.replace('\n', '')[13:-2] for r in rows if '<robot name="' in r]
