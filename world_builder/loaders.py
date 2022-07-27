@@ -999,7 +999,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     #     if trials <= 0:
     #         sys.exit()
 
-    world.open_all_doors_drawers()
+    # world.open_all_doors_drawers()
     # set_camera_target_body(cabbage, dx=0.4, dy=0, dz=0)
 
     set_renderer(True)
