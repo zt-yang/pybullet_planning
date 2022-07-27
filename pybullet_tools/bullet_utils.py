@@ -1375,12 +1375,18 @@ def find_grasp_in_db(db_file_name, instance_name, LENGTH_VARIANTS=False):
 
 def add_grasp_in_db(db, db_file, instance_name, grasps, name=None, LENGTH_VARIANTS=False):
     if instance_name is None: return
-    add_grasps = []
-    if name is not None:
-        name = 'None'
+
     key = 'grasps' if not LENGTH_VARIANTS else 'grasps_l'
+    add_grasps = []
     for g in grasps:
         add_grasps.append(list(nice(g, 4)))
+    if len(add_grasps) == 0:
+        return
+
+    ## -------- save to json
+    if name is None:
+        name = 'None'
+
     db[instance_name] = {
         'name': name,
         key: add_grasps,
