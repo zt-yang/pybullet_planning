@@ -49,15 +49,27 @@ MODEL_SCALES = {
         '103307': 0.1,
     },
     'MiniFridge': {
-        # '10797': 1,
-        # '10849': 1,
-        # '11178': 1,
-        # '11231': 1,
-        # '11709': 1,
+        '10797': 1,
+        '10849': 1,
+        '11178': 1,
+        '11231': 1,
+        '11709': 1,
         '12249': 1,
         '12252': 1
+    },
+    'Food': {
+        'VeggieCabbage': 0.005,
+        'MeatTurkeyLeg': 0.0007,
+        'VeggieTomato': 0.005,
+        'VeggieZucchini': 0.01,
+        'VeggiePotato': 0.015,
+        'VeggieCauliflower': 0.008,
+        'VeggieGreenPepper': 0.0003,
+        'VeggieArtichoke': 0.017
     }
 }
+MODEL_SCALES.update({k.lower(): v for k, v in MODEL_SCALES.items()})
+MODEL_SCALES['Food'].update({k.lower(): v for k, v in MODEL_SCALES['Food'].items()})
 
 MODEL_HEIGHTS = {
     'KitchenCounter': {
@@ -70,6 +82,7 @@ MODEL_HEIGHTS = {
         'models': ['7310', '7320', '7221', '7167', '7263', '7119']
     }
 }
+MODEL_HEIGHTS.update({k.lower(): v for k, v in MODEL_HEIGHTS.items()})
 
 OBJ_SCALES = {
     'OilBottle': 0.25, 'VinegarBottle': 0.25, 'Salter': 0.1, 'Knife': 0.1, 'Fork': 0.2,

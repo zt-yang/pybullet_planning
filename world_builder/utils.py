@@ -229,6 +229,11 @@ def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=
     """ ============= create an Object ============= """
     if moveable:
         object = Moveable(body, category=category)
+    elif category.lower() == 'food':
+        index = file.replace('/mobility.urdf', '')
+        index = index[index.index('models/')+7:]
+        index = index[index.index('/')+1:]
+        return body, file, scale, index
     else:
         object = Object(body, category=category)
 
