@@ -49,13 +49,23 @@ MODEL_SCALES = {
         '103307': 0.1,
     },
     'MiniFridge': {
-        # '10797': 1,
-        # '10849': 1,
-        # '11178': 1,
-        # '11231': 1,
-        # '11709': 1,
+        '10797': 1,
+        '10849': 1,
+        '11178': 1,
+        '11231': 1,
+        '11709': 1,
         '12249': 1,
         '12252': 1
+    },
+    'Food': {
+        'VeggieCabbage': 0.005,
+        'MeatTurkeyLeg': 0.0007,
+        'VeggieTomato': 0.005,
+        'VeggieZucchini': 0.01,
+        'VeggiePotato': 0.015,
+        'VeggieCauliflower': 0.008,
+        'VeggieGreenPepper': 0.0003,
+        'VeggieArtichoke': 0.017
     }
 }
 

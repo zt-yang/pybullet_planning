@@ -946,7 +946,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     # table = world.add_object(
     #     Object(create_box(0.5, 0.5, h, color=(.75, .75, .75, 1)), category='supporter', name='table'),
     #     Pose(point=Point(x=x, y=y, z=h / 2)))
-    cat = 'VeggieCabbage'
+    cat = 'Food' ## 'VeggieCabbage'
     cabbage = world.add_object(Object(load_asset(cat, x=x, y=y, yaw=0, floor=floor), category=cat))
 
     if table_only:
