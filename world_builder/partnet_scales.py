@@ -68,6 +68,8 @@ MODEL_SCALES = {
         'VeggieArtichoke': 0.017
     }
 }
+MODEL_SCALES.update({k.lower(): v for k, v in MODEL_SCALES.items()})
+MODEL_SCALES['Food'].update({k.lower(): v for k, v in MODEL_SCALES['Food'].items()})
 
 MODEL_HEIGHTS = {
     'KitchenCounter': {
@@ -80,6 +82,7 @@ MODEL_HEIGHTS = {
         'models': ['7310', '7320', '7221', '7167', '7263', '7119']
     }
 }
+MODEL_HEIGHTS.update({k.lower(): v for k, v in MODEL_HEIGHTS.items()})
 
 OBJ_SCALES = {
     'OilBottle': 0.25, 'VinegarBottle': 0.25, 'Salter': 0.1, 'Knife': 0.1, 'Fork': 0.2,

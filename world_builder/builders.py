@@ -231,7 +231,7 @@ def sample_one_fridge_scene(world, verbose=True):
 
 
 def sample_one_fridge_goal(world, verbose=True):
-    cabbage = world.name_to_body('cabbage')
+    cabbage = world.cat_to_bodies('food')[0]  ## world.name_to_body('cabbage')
     fridge = world.name_to_body('minifridge')
     counter = world.name_to_body('counter')
 

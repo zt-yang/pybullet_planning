@@ -77,7 +77,9 @@ class Object(Index):
 
         self.is_box = False
         if isinstance(body, tuple) and isinstance(body[1], str):
-            body, path, scale = body
+            if len(body) == 4:
+                name = body[-1]
+            body, path, scale = body[:3]
             self.path = path
             self.scale = scale
             self.instance_name = get_instance_name(path)
