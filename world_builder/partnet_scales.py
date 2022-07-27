@@ -62,6 +62,7 @@ MODEL_SCALES = {
         'MeatTurkeyLeg': 0.0007,
         'VeggieTomato': 0.005,
         'VeggieZucchini': 0.01,
+        'VeggieSweetPotato': 0.015,
         'VeggiePotato': 0.015,
         'VeggieCauliflower': 0.008,
         'VeggieGreenPepper': 0.0003,
