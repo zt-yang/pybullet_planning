@@ -54,6 +54,7 @@ class World(object):
         self.path = None
         self.outpath = None
         self.camera = None
+        self.instance_names = {}
 
     def clear_viz(self):
         self.remove_handles()
@@ -127,7 +128,9 @@ class World(object):
 
     def get_instance_name(self, body):
         """ for looking up objects in the grasp database """
-        if body in self.BODY_TO_OBJECT:
+        if isinstance(body, tuple) and body in self.instance_names:
+            return self.instance_names[body]
+        elif body in self.BODY_TO_OBJECT:
             return self.BODY_TO_OBJECT[body].instance_name
         return None
 
@@ -173,6 +176,11 @@ class World(object):
         if joint != None:
             BODY_TO_OBJECT[(body, joint)] = object
             object.name = f"{BODY_TO_OBJECT[body].name}{LINK_STR}{object.name}"
+            from lisdf_tools.lisdf_loader import PART_INSTANCE_NAME
+            n = self.get_instance_name(body)
+            part_name = get_link_name(body, object.handle_link)
+            n = PART_INSTANCE_NAME.format(body_instance_name=n, part_name=part_name)
+            self.instance_names[(body, object.handle_link)] = n
 
         ## object parts: surface, space
         elif link != None:

@@ -1561,10 +1561,7 @@ def get_ik_gen(problem, max_attempts=25, learned=True, teleport=False,
             attempts = 0
             while True:
                 if max_attempts <= attempts:
-                    if not p.init:
-                        return
-                    attempts = 0
-                    print(f'{heading} exceeding max_attempts = {max_attempts}')
+                    # print(f'{heading} exceeding max_attempts = {max_attempts}')
                     yield None
 
                 attempts += 1
