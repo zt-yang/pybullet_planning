@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 import untangle
 from numpy import inf
@@ -149,6 +151,7 @@ def get_file_by_category(category, RANDOM_INSTANCE=False):
             paths = [join(asset_root, p) for p in paths if not p.startswith('_')]
             paths.sort()
             if RANDOM_INSTANCE:
+                random.seed(time.time())
                 random.shuffle(paths)
             file = join(paths[0], 'mobility.urdf')
 
@@ -239,78 +242,6 @@ def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=
 
     return body, file, scale
 
-# def load_asset(category, x, y, yaw, floor=None, z=None, w=None, l=None, scale=1,
-#                verbose=False, maybe=False, moveable=False):
-#
-#     if verbose: print(f"\nLoading ... {category}")
-#     height = 0
-#
-#     # ROOT_DIR = abspath(join(dirname(__file__), os.pardir))
-#     asset_root = join(ASSET_PATH, 'models', category)  ## ROOT_DIR
-#     if isdir(asset_root):
-#         paths = [join(asset_root, f) for f in listdir(join(asset_root)) if isdir(join(asset_root, f))]
-#         files = [join(asset_root, f) for f in listdir(join(asset_root)) if 'DS_Store' not in f]
-#         with HideOutput(enable=True):
-#             if len(paths) == len(files):  ## mobility objects
-#                 paths.sort()
-#                 file = join(paths[0], 'mobility.urdf')
-#
-#             elif category == 'counter':
-#                 file = join(ASSET_PATH, 'models', 'counter', 'urdf', 'kitchen_part_right_gen_convex.urdf')
-#
-#             else:  ## bookshelf
-#                 file = join(asset_root, 'model.sdf')
-#                 if not isfile(file):
-#                     file = join(asset_root, f'{category}.sdf')
-#
-#             if verbose: print(f"Loading ...... {file}")
-#             body = load_model(file, scale=scale, fixed_base=True)
-#             aabb = get_aabb(body)
-#             width = aabb.upper[0] - aabb.lower[0]
-#             length = aabb.upper[1] - aabb.lower[1]
-#             height = aabb.upper[2] - aabb.lower[2]
-#
-#             ## reload with the correct scale
-#             if w != None:
-#                 if 'door' == category.lower():
-#                     set_joint_position(body, get_joints(body)[1], -0.8)
-#                 if 'dishwasher' == category.lower():
-#                     set_joint_position(body, get_joints(body)[3], -0.66)
-#
-#                 if 'door' == category.lower():
-#                     scale = (l / length + w / width) / 2  ##
-#                 else:
-#                     scale = min(l/length, w/width)  ##
-#                 remove_body(body)
-#                 body = load_model(file, scale=scale, fixed_base=True)
-#
-#     else:
-#         body = create_box(w=w, l=l, h=1, color=BROWN, collision=True)
-#
-#     ## PLACE OBJECT
-#     if z == None:
-#         if category.lower() in ['oven']:
-#             z = height / 2
-#         elif isinstance(floor, tuple):
-#             z = stable_z(body, floor[0], floor[1])
-#         else:
-#             z = stable_z(body, floor)
-#     pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
-#     set_pose(body, pose)
-#     if not maybe:
-#         if category.lower() == 'veggieleaf':
-#             set_color(body, DARK_GREEN, 0)
-#         elif category.lower() == 'veggiestem':
-#             set_color(body, WHITE, 0)
-#         elif category.lower() == 'facetbase':
-#             from pybullet_tools.bullet_utils import open_doors_drawers
-#             open_doors_drawers(body)
-#
-#         if moveable:
-#             object = Moveable(body, category=category)
-#         else:
-#             object = Object(body, category=category)
-#     return body
 
 def world_of_models(floor_width=5, floor_length = 5):
     from pybullet_tools.bullet_utils import add_body
