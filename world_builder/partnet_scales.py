@@ -70,7 +70,7 @@ MODEL_SCALES = {
     }
 }
 MODEL_SCALES.update({k.lower(): v for k, v in MODEL_SCALES.items()})
-# MODEL_SCALES['Food'].update({k.lower(): v for k, v in MODEL_SCALES['Food'].items()})
+MODEL_SCALES['Food'].update({k.lower(): v for k, v in MODEL_SCALES['Food'].items()})
 
 MODEL_HEIGHTS = {
     'KitchenCounter': {
