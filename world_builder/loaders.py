@@ -959,7 +959,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     minifridge = world.add_object(Object(
         load_asset('MiniFridge', x=w/2, y=l/2, yaw=math.pi, floor=counter,
                    RANDOM_INSTANCE=True), name='minifridge'))
-    x = get_aabb(counter).upper[0] - get_aabb_extent(get_aabb(minifridge))[0]/2 + 0.1
+    x = get_aabb(counter).upper[0] - get_aabb_extent(get_aabb(minifridge))[0]/2 + 0.2
     y_min = get_aabb(counter).lower[1] + get_aabb_extent(get_aabb(minifridge))[1]/2
     y_max = get_aabb_center(get_aabb(counter))[1]
     if y_min > y_max:
@@ -985,9 +985,9 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
         ## --- PICK FROM THE STORAGE
         fridgestorage.place_obj(cabbage)
         (x0, y0, z0), quat0 = get_pose(cabbage)
-        y0 = max(y0, get_aabb(minifridge).lower[0] + 0.5)
-        y0 = min(y0, get_aabb(minifridge).upper[0] - 0.5)
-        x0 = get_aabb(minifridge).upper[0] - 0.6 ## 0.2 ## 0.4
+        y0 = max(y0, get_aabb(b, link=l).lower[0] + 0.5)
+        y0 = min(y0, get_aabb(b, link=l).upper[0] - 0.5)
+        x0 = get_aabb(b, link=l).upper[0] - random.uniform(0.1, 0.4)
         set_pose(cabbage, ((x0, y0, z0), quat0))
         fridgestorage.include_and_attach(cabbage)
         break
