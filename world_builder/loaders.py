@@ -987,7 +987,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
         (x0, y0, z0), quat0 = get_pose(cabbage)
         y0 = max(y0, get_aabb(b, link=l).lower[0] + 0.5)
         y0 = min(y0, get_aabb(b, link=l).upper[0] - 0.5)
-        x0 = get_aabb(b, link=l).upper[0] - random.uniform(0.1, 0.4)
+        x0 = get_aabb(b, link=l).upper[0] - random.uniform(0.1, 0.2)
         set_pose(cabbage, ((x0, y0, z0), quat0))
         fridgestorage.include_and_attach(cabbage)
         break
