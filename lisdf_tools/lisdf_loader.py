@@ -19,7 +19,7 @@ from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove
     set_camera_pose, set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
     set_joint_positions, get_links, get_joints, get_joint_name, get_body_name, link_from_name, \
     parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK, read, get_client, \
-    reset_simulation, dump_joint, JOINT_TYPES, get_joint_type
+    reset_simulation, dump_joint, JOINT_TYPES, get_joint_type, is_movable
 from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link, get_instance_name, \
     toggle_joint
 from pybullet_tools.pr2_streams import get_handle_link
@@ -243,6 +243,15 @@ class World():
         if image is None:
             image = self.camera.get_image(segment=False)
         visualize_camera_image(image, index, img_dir=self.img_dir, rgb=rgb)
+
+    def add_joints_by_keyword(self, body_name, joint_name=None):
+        body = self.name_to_body[body_name]
+        joints = [j for j in get_joints(body) if is_movable(body, j)]
+        if joint_name is not None:
+            joints = [j for j in joints if joint_name in get_joint_name(body, j)]
+        for j in joints:
+            self.add_body((body, j), get_joint_name(body, j))
+        return [(body, j) for j in joints]
 
     def open_all_doors(self):
         for body in self.body_to_name:
