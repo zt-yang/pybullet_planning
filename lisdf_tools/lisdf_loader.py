@@ -1,7 +1,7 @@
 import os
 import sys
 from os.path import join, abspath, dirname, isdir, isfile
-sys.path.append('lisdf')
+sys.path.extend(['lisdf'])
 from lisdf.parsing.sdf_j import load_sdf
 from lisdf.components.model import URDFInclude
 import numpy as np
@@ -9,6 +9,7 @@ import json
 
 import warnings
 warnings.filterwarnings('ignore')
+import pybullet as p
 
 from pybullet_tools.pr2_problems import create_floor
 from pybullet_tools.pr2_utils import set_group_conf, get_group_joints, get_viewcone_base
@@ -18,8 +19,9 @@ from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove
     set_camera_pose, set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
     set_joint_positions, get_links, get_joints, get_joint_name, get_body_name, link_from_name, \
     parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK, read, get_client, \
-    reset_simulation
-from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link, get_instance_name
+    reset_simulation, dump_joint, JOINT_TYPES, get_joint_type
+from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link, get_instance_name, \
+    toggle_joint
 from pybullet_tools.pr2_streams import get_handle_link
 from pybullet_tools.flying_gripper_utils import set_se3_conf
 
@@ -242,6 +244,11 @@ class World():
             image = self.camera.get_image(segment=False)
         visualize_camera_image(image, index, img_dir=self.img_dir, rgb=rgb)
 
+    def open_all_doors(self):
+        for body in self.body_to_name:
+            if isinstance(body, tuple) and len(body) == 2:
+                body, joint = body
+                toggle_joint(body, joint)
 
 def find_id(body, full_name):
     name = full_name.split(LINK_STR)[1]
@@ -491,7 +498,6 @@ def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width
         for b in all_bodies:
             remove_body(b)
         get_image_and_reset(world, index)
-
 
 
 #######################
