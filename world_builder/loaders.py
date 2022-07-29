@@ -949,7 +949,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     cat = 'Food' ## 'VeggieCabbage'
     yaw = random.uniform(-math.pi, math.pi)
     cabbage = world.add_object(Moveable(
-        load_asset(cat, x=x, y=y, yaw=yaw, floor=floor, RANDOM_INSTANCE=True), category=cat
+        load_asset(cat, x=x, y=y, yaw=yaw, floor=floor, RANDOM_INSTANCE=True, SAMPLING=True), category=cat
     ))
 
     if table_only:
@@ -958,7 +958,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     ## --- ADD A FRIDGE TO BE PUT INTO OR ONTO, ALIGN TO ONE SIDE
     minifridge = world.add_object(Object(
         load_asset('MiniFridge', x=w/2, y=l/2, yaw=math.pi, floor=counter,
-                   RANDOM_INSTANCE=True), name='minifridge'))
+                   RANDOM_INSTANCE=True, SAMPLING=cabbage), name='minifridge'))
     x = get_aabb(counter).upper[0] - get_aabb_extent(get_aabb(minifridge))[0]/2 + 0.2
     y_min = get_aabb(counter).lower[1] + get_aabb_extent(get_aabb(minifridge))[1]/2
     y_max = get_aabb_center(get_aabb(counter))[1]
@@ -987,7 +987,9 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
         (x0, y0, z0), quat0 = get_pose(cabbage)
         y0 = max(y0, get_aabb(b, link=l).lower[0] + 0.5)
         y0 = min(y0, get_aabb(b, link=l).upper[0] - 0.5)
-        x0 = get_aabb(b, link=l).upper[0] - random.uniform(0.1, 0.2)
+        # x0 = get_aabb(b, link=l).upper[0] - random.uniform(0.1, 0.2)
+        offset = get_aabb_extent(get_aabb(cabbage))[0] / 2 - 0.05  ## random.uniform(0.1, 0.2)
+        x0 = get_aabb(b, link=l).upper[0] - offset
         set_pose(cabbage, ((x0, y0, z0), quat0))
         fridgestorage.include_and_attach(cabbage)
         break
