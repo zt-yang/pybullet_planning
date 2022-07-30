@@ -58,7 +58,7 @@ MODEL_SCALES = {
         '12252': 1
     },
     'Food': {
-        'VeggieCabbage': 0.005,
+        'VeggieCabbage': 0.0047,
         'MeatTurkeyLeg': 0.0007,
         'VeggieZucchini': 0.01,
         'VeggieSweetPotato': 0.015,
