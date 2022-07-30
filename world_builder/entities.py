@@ -116,7 +116,6 @@ class Object(Index):
         self.events = []
         self.categories = [category] ## for added categories like moveable
 
-
     ## =============== put other object on top of object =============
     ##
     def support_obj(self, obj):

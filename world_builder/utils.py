@@ -34,6 +34,8 @@ GRASPABLES = [o.lower() for o in GRASPABLES]
 
 SCALE_DB = abspath(join(dirname(__file__), 'model_scales.json'))
 
+SAMPLER_DB = abspath(join(dirname(__file__), 'sampling_distributions.json'))
+SAMPLER_KEY = "{x}&{y}"
 
 def read_xml(plan_name, asset_path=ASSET_PATH):
     X_OFFSET, Y_OFFSET, SCALING = None, None, None
@@ -136,7 +138,32 @@ def get_model_scale(file, l=None, w=None, h=None, scale=1, category=None):
     return scale
 
 
-def get_file_by_category(category, RANDOM_INSTANCE=False):
+def partnet_id_from_path(path):
+    id = path.replace('/mobility.urdf', '')
+    return id[id.rfind('/') + 1:]
+
+
+def get_sampled_file(SAMPLING, category, ids):
+    dists = json.load(open(SAMPLER_DB, 'r'))
+    dist = None
+    if isinstance(SAMPLING, Object):
+        key = SAMPLER_KEY.format(x=SAMPLING.category.lower(), y=category.lower())
+        id = partnet_id_from_path(SAMPLING.path)
+        if id in dists[key]:
+            dist = dists[key][id]
+    elif category.lower() in dists:
+        key = category.lower()
+        dist = dists[category.lower()]
+
+    if dist is not None:
+        p = [dist[i] for i in ids]
+        id = np.random.choice(ids, p=p)
+        print(f'world_builder.utils.get_sampled_file({key}, {category}) chose {id}')
+        return str(id)
+    return None
+
+
+def get_file_by_category(category, RANDOM_INSTANCE=False, SAMPLING=False):
     ## correct the capitalization because Ubuntu cares about it
     category = [c for c in listdir(join(ASSET_PATH, 'models')) if c.lower() == category.lower()][0]
 
@@ -144,15 +171,25 @@ def get_file_by_category(category, RANDOM_INSTANCE=False):
     if isdir(asset_root):
         asset_root = join(ASSET_PATH, 'models', category)
 
-        paths = [f for f in listdir(join(asset_root)) if isdir(join(asset_root, f))]
-        files = [join(asset_root, f) for f in listdir(join(asset_root)) if 'DS_Store' not in f]
+        ids = [f for f in listdir(join(asset_root))
+               if isdir(join(asset_root, f)) and not f.startswith('_')]
+        files = [join(asset_root, f) for f in listdir(join(asset_root))
+                 if 'DS_Store' not in f and not f.startswith('_')]
 
-        if len(paths) == len(files):  ## mobility objects
-            paths = [join(asset_root, p) for p in paths if not p.startswith('_')]
+        if len(ids) == len(files):  ## mobility objects
+            paths = [join(asset_root, p) for p in ids]
             paths.sort()
             if RANDOM_INSTANCE:
+                np.random.seed(int(time.time()))
                 random.seed(time.time())
-                random.shuffle(paths)
+                sampled = False
+                if SAMPLING:
+                    result = get_sampled_file(SAMPLING, category, ids)
+                    if isinstance(result, str):
+                        paths = [join(asset_root, result)]
+                        sampled = True
+                if not sampled:
+                    random.shuffle(paths)
             file = join(paths[0], 'mobility.urdf')
 
         elif category == 'counter':
@@ -190,12 +227,13 @@ def adjust_scale(body, category, file, w, l):
 
 
 def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=None, scale=1,
-               verbose=False, maybe=False, moveable=False, RANDOM_INSTANCE=False):
+               verbose=False, maybe=False, moveable=False,
+               RANDOM_INSTANCE=False, SAMPLING=False):
 
     if verbose: print(f"\nLoading ... {category}", end='\r')
 
     """ ============= load body by category ============= """
-    file = get_file_by_category(category, RANDOM_INSTANCE=RANDOM_INSTANCE)
+    file = get_file_by_category(category, RANDOM_INSTANCE=RANDOM_INSTANCE, SAMPLING=SAMPLING)
     scale = get_scale_by_category(file=file, category=category, scale=scale)
     if file != None:
         if verbose: print(f"Loading ...... {abspath(file)}")
@@ -233,9 +271,10 @@ def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=
     if moveable:
         object = Moveable(body, category=category)
     elif category.lower() == 'food':
-        index = file.replace('/mobility.urdf', '')
-        index = index[index.index('models/')+7:]
-        index = index[index.index('/')+1:]
+        # index = file.replace('/mobility.urdf', '')
+        # index = index[index.index('models/')+7:]
+        # index = index[index.index('/')+1:]
+        index = partnet_id_from_path(file)
         return body, file, scale, index
     else:
         object = Object(body, category=category)
