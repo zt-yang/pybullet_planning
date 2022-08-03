@@ -4,6 +4,8 @@ import random
 from itertools import product
 from os.path import isfile, dirname, abspath, join, isdir
 from os import mkdir
+
+import PIL.Image
 import numpy as np
 import math
 import pybullet as p
@@ -1396,13 +1398,31 @@ def add_grasp_in_db(db, db_file, instance_name, grasps, name=None, LENGTH_VARIAN
     dump_json(db, db_file)
 
 
-def visualize_camera_image(image, index=0, img_dir='.', rgb=False, d=False, depth_map=True):
+def process_depth_pixels(pixels):
+    """ scale float values 2-5 to int values 225-0 """
+    n = (5 - pixels) / (5 - 2) * 225
+    return n.astype('uint8')
+
+
+def visualize_camera_image(image, index=0, img_dir='.', rgb=False, rgbd=False):
     import matplotlib.pyplot as plt
 
     if not isdir(img_dir):
         os.makedirs(img_dir, exist_ok=True)
 
-    if rgb:
+    if rgbd:
+        from PIL import Image
+
+        depth_pixels = process_depth_pixels(image.depthPixels)
+
+        for key, pixels in [('depth', depth_pixels), ('rgb', image.rgbPixels)]:
+            sub_dir = join(img_dir, f"{key}s")
+            if not isdir(sub_dir):
+                os.makedirs(sub_dir, exist_ok=True)
+            im = Image.fromarray(pixels)  ##.convert("RGB")
+            im.save(join(sub_dir, f"{key}_{index}.png"))
+
+    elif rgb:
         name = join(img_dir, f"rgb_image_{index}.png")
         plt.imshow(image.rgbPixels)
         plt.axis('off')
@@ -1410,15 +1430,7 @@ def visualize_camera_image(image, index=0, img_dir='.', rgb=False, d=False, dept
         plt.savefig(name, bbox_inches='tight', dpi=100)
         plt.close()
 
-    if depth:
-        name = join(img_dir, f"depth_image_{index}.png")
-        plt.imshow(image.depthPixels)
-        plt.axis('off')
-        plt.tight_layout()
-        plt.savefig(name, bbox_inches='tight', dpi=100)
-        plt.close()
-
-    if depth_map:
+    else:
         import seaborn as sns
         sns.set()
         name = join(img_dir, f"depth_map_{index}.png")

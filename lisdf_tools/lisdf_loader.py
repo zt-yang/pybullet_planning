@@ -453,13 +453,18 @@ def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
 
 
 def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width=720, height=560)
-<<<<<<< HEAD
-                     camera_pose=((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5)),
-                     img_dir=join('visualizations', 'camera_images'), **kwargs):
-=======
                      camera_pose=((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5)), robot=True,
-                     img_dir=join('visualizations', 'camera_images'), rgb=False):
->>>>>>> d7b62e1d32eb2d0c2ed5325c953ac470eb723fe8
+                     img_dir=join('visualizations', 'camera_images'), **kwargs):
+
+    def get_index(body_index):
+        return f"[{body_index}]_{b2n[body_index]}"
+
+    def get_image_and_reset(world, index):
+        world.visualize_image(index=index, **kwargs)
+        reset_simulation()
+        world = load_lisdf_pybullet(exp_dir, width=width, height=height)
+        world.add_camera(camera_pose, img_dir)
+        return world
 
     os.makedirs(img_dir, exist_ok=True)
     world = load_lisdf_pybullet(exp_dir, width=width, height=height, verbose=True)
@@ -467,12 +472,13 @@ def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width
     init = pddl_to_init_goal(exp_dir, world)[0]
 
     world.add_camera(camera_pose, img_dir)
-    world.visualize_image(index='scene', **kwargs)
+    if not robot: remove_body(world.robot.body)
+    # world.visualize_image(index='scene', **kwargs)
+    get_image_and_reset(world, 'scene')
 
     b2n = world.body_to_name
     c2b = world.cat_to_bodies
-    bodies = c2b('graspable', init)
-    if robot: bodies += [world.robot.body]
+    bodies = c2b('graspable', init) + [world.robot.body]
     body_links = c2b('surface', init) + c2b('space', init)
     body_joints = c2b('door', init) + c2b('drawer', init)
 
@@ -485,16 +491,6 @@ def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width
             lps = [get_link_pose(body, l) for l in get_links(body)]
             set_joint_position(body, joint, max_pstn)
             links_to_show[body_joint] = [i for i in range(len(lps)) if lps[i] != get_link_pose(body, i)]
-
-    def get_index(body_index):
-        return f"[{body_index}]_{b2n[body_index]}"
-
-    def get_image_and_reset(world, index):
-        world.visualize_image(index=index, **kwargs)
-        reset_simulation()
-        world = load_lisdf_pybullet(exp_dir, width=width, height=height)
-        world.add_camera(camera_pose, img_dir)
-        return world
 
     for body in bodies:
         for b in get_bodies():
