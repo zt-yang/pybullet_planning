@@ -1396,7 +1396,7 @@ def add_grasp_in_db(db, db_file, instance_name, grasps, name=None, LENGTH_VARIAN
     dump_json(db, db_file)
 
 
-def visualize_camera_image(image, index=0, img_dir='.', rgb=False):
+def visualize_camera_image(image, index=0, img_dir='.', rgb=False, d=False, depth_map=True):
     import matplotlib.pyplot as plt
 
     if not isdir(img_dir):
@@ -1407,15 +1407,25 @@ def visualize_camera_image(image, index=0, img_dir='.', rgb=False):
         plt.imshow(image.rgbPixels)
         plt.axis('off')
         plt.tight_layout()
-    else:
+        plt.savefig(name, bbox_inches='tight', dpi=100)
+        plt.close()
+
+    if depth:
+        name = join(img_dir, f"depth_image_{index}.png")
+        plt.imshow(image.depthPixels)
+        plt.axis('off')
+        plt.tight_layout()
+        plt.savefig(name, bbox_inches='tight', dpi=100)
+        plt.close()
+
+    if depth_map:
         import seaborn as sns
         sns.set()
-        name = join(img_dir, f"depth_image_{index}.png")
+        name = join(img_dir, f"depth_map_{index}.png")
         ax = sns.heatmap(image.depthPixels, annot=False, fmt="d", vmin=2, vmax=5)
         plt.title(f"Depth Image ({index})", fontsize=12)
-
-    plt.savefig(name, bbox_inches='tight', dpi=100)
-    plt.close()
+        plt.savefig(name, bbox_inches='tight', dpi=100)
+        plt.close()
 
     # plt.show()
 

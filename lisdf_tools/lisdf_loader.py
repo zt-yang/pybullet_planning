@@ -231,7 +231,7 @@ class World():
         self.img_dir = img_dir
 
     def visualize_image(self, pose=None, img_dir=None, index=None,
-                        image=None, rgb=False):
+                        image=None, **kwargs):
         from pybullet_tools.bullet_utils import visualize_camera_image
 
         if pose is not None:
@@ -242,7 +242,7 @@ class World():
             index = self.camera.index
         if image is None:
             image = self.camera.get_image(segment=False)
-        visualize_camera_image(image, index, img_dir=self.img_dir, rgb=rgb)
+        visualize_camera_image(image, index, img_dir=self.img_dir, **kwargs)
 
     def add_joints_by_keyword(self, body_name, joint_name=None):
         body = self.name_to_body[body_name]
@@ -454,7 +454,7 @@ def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
 
 def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width=720, height=560)
                      camera_pose=((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5)),
-                     img_dir=join('visualizations', 'camera_images'), rgb=False):
+                     img_dir=join('visualizations', 'camera_images'), **kwargs):
 
     os.makedirs(img_dir, exist_ok=True)
     world = load_lisdf_pybullet(exp_dir, width=width, height=height, verbose=True)
@@ -462,7 +462,7 @@ def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width
     init = pddl_to_init_goal(exp_dir, world)[0]
 
     world.add_camera(camera_pose, img_dir)
-    world.visualize_image(index='scene', rgb=rgb)
+    world.visualize_image(index='scene', **kwargs)
 
     b2n = world.body_to_name
     c2b = world.cat_to_bodies
@@ -484,7 +484,7 @@ def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width
         return f"[{body_index}]_{b2n[body_index]}"
 
     def get_image_and_reset(world, index):
-        world.visualize_image(index=index, rgb=rgb)
+        world.visualize_image(index=index, **kwargs)
         reset_simulation()
         world = load_lisdf_pybullet(exp_dir, width=width, height=height)
         world.add_camera(camera_pose, img_dir)
