@@ -453,7 +453,7 @@ def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
 
 
 def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width=720, height=560)
-                     camera_pose=((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5)),
+                     camera_pose=((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5)), robot=True,
                      img_dir=join('visualizations', 'camera_images'), rgb=False):
 
     os.makedirs(img_dir, exist_ok=True)
@@ -466,7 +466,8 @@ def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width
 
     b2n = world.body_to_name
     c2b = world.cat_to_bodies
-    bodies = c2b('graspable', init) + [world.robot.body]
+    bodies = c2b('graspable', init)
+    if robot: bodies += [world.robot.body]
     body_links = c2b('surface', init) + c2b('space', init)
     body_joints = c2b('door', init) + c2b('drawer', init)
 
