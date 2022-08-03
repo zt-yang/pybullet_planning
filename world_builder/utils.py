@@ -157,6 +157,8 @@ def get_sampled_file(SAMPLING, category, ids):
 
     if dist is not None:
         p = [dist[i] for i in ids]
+        if sum(p) != 1:
+            p[-1] = 1-sum(p[:-1])
         id = np.random.choice(ids, p=p)
         print(f'world_builder.utils.get_sampled_file({key}, {category}) chose {id}')
         return str(id)
