@@ -597,11 +597,11 @@ def solve_pddlstream(problem, state, domain_pddl=None, visualization=False):
                                      search_sample_ratio=0)
             saver.restore()
 
-    PARALLEL = True
-    if PARALLEL:
-        solution = solve_multiple(pddlstream_problem, stream_info)
-    else:
-        solution = solve_one(pddlstream_problem, stream_info)
+    # PARALLEL = True
+    # if PARALLEL:
+    #     solution = solve_multiple(pddlstream_problem, stream_info)
+    # else:
+    #     solution = solve_one(pddlstream_problem, stream_info)
 
     knowledge = parse_problem(pddlstream_problem, stream_info=stream_info,
                               constraints=PlanConstraints(), unit_costs=True, unit_efforts=True)

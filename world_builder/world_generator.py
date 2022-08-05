@@ -382,7 +382,7 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
         'body_to_name': body_to_name,
         'system': platform.system()
     }
-    if DEPTH_IMAGES and state.world.camera != None:
+    if state.world.camera != None:
         config['obs_camera_pose'] = state.world.camera.pose
 
     ## --- domain and stream copied over  ## shutil.copy()
