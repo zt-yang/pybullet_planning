@@ -21,7 +21,7 @@ from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove
     parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK, read, get_client, \
     reset_simulation, dump_joint, JOINT_TYPES, get_joint_type, is_movable
 from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link, get_instance_name, \
-    toggle_joint
+    toggle_joint, get_door_links
 from pybullet_tools.pr2_streams import get_handle_link
 from pybullet_tools.flying_gripper_utils import set_se3_conf
 
@@ -231,7 +231,7 @@ class World():
         self.img_dir = img_dir
 
     def visualize_image(self, pose=None, img_dir=None, index=None,
-                        image=None, **kwargs):
+                        image=None, segment=False, segment_links=False, **kwargs):
         from pybullet_tools.bullet_utils import visualize_camera_image
 
         if pose is not None:
@@ -241,7 +241,7 @@ class World():
         if index is None:
             index = self.camera.index
         if image is None:
-            image = self.camera.get_image(segment=False)
+            image = self.camera.get_image(segment=segment, segment_links=segment_links)
         visualize_camera_image(image, index, img_dir=self.img_dir, **kwargs)
 
     def add_joints_by_keyword(self, body_name, joint_name=None):
@@ -485,12 +485,7 @@ def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width
     links_to_show = {b: [b[2]] for b in body_links}
     for body_joint in body_joints:
         body, joint = body_joint
-        with ConfSaver(body):
-            min_pstn, max_pstn = get_joint_limits(body, joint)
-            set_joint_position(body, joint, min_pstn)
-            lps = [get_link_pose(body, l) for l in get_links(body)]
-            set_joint_position(body, joint, max_pstn)
-            links_to_show[body_joint] = [i for i in range(len(lps)) if lps[i] != get_link_pose(body, i)]
+        links_to_show[body_joint] = get_door_links(body, joint)
 
     for body in bodies:
         for b in get_bodies():
