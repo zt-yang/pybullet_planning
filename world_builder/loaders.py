@@ -949,7 +949,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     cat = 'Food' ## 'VeggieCabbage'
     yaw = random.uniform(-math.pi, math.pi)
     cabbage = world.add_object(Moveable(
-        load_asset(cat, x=x, y=y, yaw=yaw, floor=floor, RANDOM_INSTANCE=True, SAMPLING=True), ##
+        load_asset(cat, x=x, y=y, yaw=yaw, floor=floor, RANDOM_INSTANCE=True), ## , SAMPLING=True
         category=cat
     ))
 
@@ -958,7 +958,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
 
     ## --- ADD A FRIDGE TO BE PUT INTO OR ONTO, ALIGN TO ONE SIDE
     minifridge = world.add_object(Object(
-        load_asset('MiniFridge', x=w/2, y=l/2, yaw=math.pi, floor=counter, SAMPLING=cabbage,
+        load_asset('MiniFridge', x=w/2, y=l/2, yaw=math.pi, floor=counter, ## SAMPLING=cabbage,
                    RANDOM_INSTANCE=True), name='minifridge'))
     x = get_aabb(counter).upper[0] - get_aabb_extent(get_aabb(minifridge))[0]/2 + 0.2
     y_min = get_aabb(counter).lower[1] + get_aabb_extent(get_aabb(minifridge))[1]/2
