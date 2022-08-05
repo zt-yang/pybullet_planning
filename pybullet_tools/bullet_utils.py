@@ -1443,6 +1443,31 @@ def visualize_camera_image(image, index=0, img_dir='.', rgb=False, rgbd=False):
     # plt.show()
 
 
+def get_segmask(seg):
+    unique = {}
+    for row in range(seg.shape[0]):
+        for col in range(seg.shape[1]):
+            pixel = seg[row, col]
+            if pixel == -1: continue
+            obUid = pixel & ((1 << 24) - 1)
+            linkIndex = (pixel >> 24) - 1
+            if (obUid, linkIndex) not in unique:
+                unique[(obUid, linkIndex)] = []
+                # print("obUid=", obUid, "linkIndex=", linkIndex)
+            unique[(obUid, linkIndex)].append((row, col))
+    return unique
+
+
+def get_door_links(body, joint):
+    from pybullet_tools.utils import ConfSaver, get_joint_limits
+    with ConfSaver(body):
+        min_pstn, max_pstn = get_joint_limits(body, joint)
+        set_joint_position(body, joint, min_pstn)
+        lps = [get_link_pose(body, l) for l in get_links(body)]
+        set_joint_position(body, joint, max_pstn)
+        links = [i for i in range(len(lps)) if lps[i] != get_link_pose(body, i)]
+    return links
+
 def sort_body_parts(bodies):
     indices = []
     links = {}

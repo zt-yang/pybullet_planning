@@ -1444,6 +1444,7 @@ def get_image_flags(segment=False, segment_links=False):
         return 0 # TODO: adjust output dimension when not segmenting links
     return p.ER_NO_SEGMENTATION_MASK
 
+
 def extract_segmented(seg_image):
     segmented = np.zeros(seg_image.shape + (2,))
     for r in range(segmented.shape[0]):
@@ -1479,9 +1480,11 @@ def get_image(camera_pos, target_pos, width=640, height=480, vertical_fov=60.0, 
     depth = far * near / (far - (far - near) * d)
     # https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/examples/pointCloudFromCameraImage.py
     # https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/examples/getCameraImageTest.py
-    segmented = None
-    if segment:
-        segmented = extract_segmented(seg)
+
+    segmented = seg
+    # segmented = None
+    # if segment:
+    #     segmented = extract_segmented(seg)
 
     camera_tform = np.reshape(view_matrix, [4, 4])
     camera_tform[:3, 3] = camera_pos
