@@ -378,7 +378,7 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
     config = {
         'base_limits': state.world.robot.custom_limits,  ## state.world.args.base_limits,
-        # 'body_to_name': body_to_name
+        'body_to_name': body_to_name
     }
     if DEPTH_IMAGES and state.world.camera != None:
         config['obs_camera_pose'] = state.world.camera.pose
@@ -394,12 +394,15 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
         json.dump(config, f)
 
     if DEPTH_IMAGES and state.world.camera != None:
-        reset_simulation()
-        get_depth_images(outpath, camera_pose=state.world.camera.pose,
-                         img_dir=join(outpath, 'depth_maps'))
+        # reset_simulation()
+        # get_depth_images(outpath, camera_pose=state.world.camera.pose,
+        #                  img_dir=join(outpath, 'depth_maps'))
         reset_simulation()
         get_depth_images(outpath, camera_pose=state.world.camera.pose,
                          img_dir=join(outpath, 'rgb_images'), rgb=True)
+        # reset_simulation()
+        # get_depth_images(outpath, camera_pose=state.world.camera.pose,
+        #                  rgbd=True, robot=False, img_dir=outpath)
 
     if EXIT: sys.exit()
 

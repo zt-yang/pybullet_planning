@@ -474,7 +474,7 @@ def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width
     world.add_camera(camera_pose, img_dir)
     if not robot: remove_body(world.robot.body)
     # world.visualize_image(index='scene', **kwargs)
-    get_image_and_reset(world, 'scene')
+    get_image_and_reset(world, index='scene')
 
     b2n = world.body_to_name
     c2b = world.cat_to_bodies

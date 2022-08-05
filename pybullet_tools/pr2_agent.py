@@ -526,6 +526,46 @@ def is_plan_abstract(plan):
             return True
     return False
 
+
+from pddlstream.algorithms.meta import solve, DEFAULT_ALGORITHM
+from pybullet_tools.utils import disconnect, LockRenderer, has_gui, WorldSaver, wait_if_gui, \
+    SEPARATOR, get_aabb, wait_for_duration, safe_remove, ensure_dir, reset_simulation
+from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, str_from_object, TmpCWD
+
+def solve_one(pddlstream_problem, stream_info, fc):
+    with Profiler():
+        with LockRenderer(lock=True):
+            solution = solve(pddlstream_problem, algorithm=DEFAULT_ALGORITHM, unit_costs=False,
+                             stream_info=stream_info, success_cost=INF, verbose=True, debug=False,
+                             feasibility_checker=fc)
+    return solution
+
+
+def solve_multiple(problem, stream_info={}, lock=True):
+    reset_globals()
+    profiler = Profiler(field='tottime', num=25) ## , enable=profile # cumtime | tottime
+    profiler.save()
+
+    temp_dir = '/tmp/pddlstream-{}/'.format(os.getpid())
+    print(f'\n\n\n\nsolve_multiple at temp dir {temp_dir} \n\n\n\n')
+    safe_remove(temp_dir)
+    ensure_dir(temp_dir)
+    cwd_saver = TmpCWD(temp_cwd=temp_dir)  # TODO: multithread
+    cwd_saver.save()  # TODO: move to the constructor
+    lock_saver = LockRenderer(lock=lock)
+
+    try:
+        solution = solve(problem, algorithm=DEFAULT_ALGORITHM, unit_costs=False, visualize=False,
+                         stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
+    finally:
+        lock_saver.restore()
+        cwd_saver.restore()
+        safe_remove(temp_dir)
+
+    profiler.restore()
+    return solution
+
+
 def solve_pddlstream(problem, state, domain_pddl=None, visualization=False):
     # from examples.pybullet.utils.pybullet_tools.utils import CLIENTS
     from pddlstream.algorithms.focused import solve_focused
@@ -542,24 +582,26 @@ def solve_pddlstream(problem, state, domain_pddl=None, visualization=False):
 
     #########################
 
-    # _, _, _, stream_map, init, goal = pddlstream_problem
-    # print(f'Init ({len(init)}):', init)
-    # print_goal(goal)
-    # print('Streams:', [str(s) for s in set(stream_map)])
     print(SEPARATOR)
 
-    with Profiler(): ##field='tottime', num=10):
-        with LockRenderer(lock=True):
-            # solution = solve(pddlstream_problem, algorithm='adaptive', unit_costs=True, visualize=False,
-            #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
-            solution = solve_focused(pddlstream_problem, stream_info=stream_info,
-                                     planner='ff-astar1', max_planner_time=10, debug=False,
-                                     unit_costs=True, success_cost=INF,
-                                     max_time=INF, verbose=True, visualize=visualization,
-                                     unit_efforts=True, effort_weight=1,
-                                     bind=True, max_skeletons=INF,  # TODO: double check that max_skeletons=None is working
-                                     search_sample_ratio=0)
-            saver.restore()
+    # with Profiler(): ##field='tottime', num=10):
+    #     with LockRenderer(lock=True):
+    #         # solution = solve(pddlstream_problem, algorithm='adaptive', unit_costs=True, visualize=False,
+    #         #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
+    #         solution = solve_focused(pddlstream_problem, stream_info=stream_info,
+    #                                  planner='ff-astar1', max_planner_time=10, debug=False,
+    #                                  unit_costs=True, success_cost=INF,
+    #                                  max_time=INF, verbose=True, visualize=visualization,
+    #                                  unit_efforts=True, effort_weight=1,
+    #                                  bind=True, max_skeletons=INF,  # TODO: double check that max_skeletons=None is working
+    #                                  search_sample_ratio=0)
+    #         saver.restore()
+
+    PARALLEL = True
+    if PARALLEL:
+        solution = solve_multiple(pddlstream_problem, stream_info)
+    else:
+        solution = solve_one(pddlstream_problem, stream_info, fc)
 
     knowledge = parse_problem(pddlstream_problem, stream_info=stream_info,
                               constraints=PlanConstraints(), unit_costs=True, unit_efforts=True)

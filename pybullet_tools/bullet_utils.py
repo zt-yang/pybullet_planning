@@ -1415,11 +1415,12 @@ def visualize_camera_image(image, index=0, img_dir='.', rgb=False, rgbd=False):
 
         depth_pixels = process_depth_pixels(image.depthPixels)
 
-        for key, pixels in [('depth', depth_pixels), ('rgb', image.rgbPixels)]:
+        for key, pixels in [('depth', depth_pixels),
+                            ('rgb', image.rgbPixels[:,:,:3])]:
             sub_dir = join(img_dir, f"{key}s")
             if not isdir(sub_dir):
                 os.makedirs(sub_dir, exist_ok=True)
-            im = Image.fromarray(pixels)  ##.convert("RGB")
+            im = Image.fromarray(pixels)  ##
             im.save(join(sub_dir, f"{key}_{index}.png"))
 
     elif rgb:
