@@ -7,7 +7,8 @@ from .entities import Object, Region, Environment, Robot, Camera, Floor, Stove,\
     Surface, Moveable, Supporter, Steerable, Door
 from .loaders import create_pr2_robot, load_rooms, load_cart, load_cart_regions, load_blocked_kitchen, \
     load_blocked_sink, load_blocked_stove, load_floor_plan, load_experiment_objects, load_pot_lid, load_basin_faucet, \
-    load_kitchen_mechanism, create_gripper_robot, load_cabinet_test_scene, load_random_mini_kitchen_counter
+    load_kitchen_mechanism, create_gripper_robot, load_cabinet_test_scene, load_random_mini_kitchen_counter, \
+    load_another_mini_kitchen_counter
 from .utils import load_asset, FLOOR_HEIGHT, WALL_HEIGHT, visualize_point
 from .world_generator import to_lisdf, save_to_kitchen_worlds
 
@@ -232,16 +233,46 @@ def sample_one_fridge_scene(world, verbose=True):
 
 def sample_one_fridge_goal(world, verbose=True):
     cabbage = world.cat_to_bodies('food')[0]  ## world.name_to_body('cabbage')
-    fridge = world.name_to_body('minifridge')
+    fridge = world.name_to_body('fridgestorage')
     counter = world.name_to_body('counter')
 
     arm = world.robot.arms[0]
     goal_candidates = [
         [('Holding', arm, cabbage)],
-        # [('On', cabbage, fridge)],
         # [('On', cabbage, counter)],
+        # [('In', cabbage, fridge)],
     ]
     return random.choice(goal_candidates)
 
 
 ############################################
+
+
+def test_fridge_table(world, verbose=True):
+    import numpy as np
+    import time
+    seed = int(time.time())
+    np.random.seed(seed)
+    random.seed(seed)
+    floorplan = sample_fridge_table_scene(world, verbose)
+    goal = sample_fridge_table_goal(world, verbose)
+    return floorplan, goal
+
+
+def sample_fridge_table_scene(world, verbose=True):
+    sample_one_fridge_scene(world, verbose=verbose)
+    load_another_mini_kitchen_counter(world)
+    return None
+
+
+def sample_fridge_table_goal(world, verbose=True):
+    cabbage = world.cat_to_bodies('food')[0]  ## world.name_to_body('cabbage')
+    fridge = world.name_to_body('fridgestorage')
+    counter = world.name_to_body('counter')
+
+    arm = world.robot.arms[0]
+    goal_candidates = [
+        # [('Holding', arm, cabbage)],
+        [('In', cabbage, fridge)],
+    ]
+    return random.choice(goal_candidates)

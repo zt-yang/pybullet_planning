@@ -1483,7 +1483,7 @@ def get_ik_gen(problem, max_attempts=25, learned=True, teleport=False,
     heading = 'pr2_streams.get_ik_ir_wconf_gen | '
 
     def gen(*inputs):
-        # set_renderer(enable=True)
+        set_renderer(enable=False)
         if visualize:
             set_renderer(enable=True)
             samples = []

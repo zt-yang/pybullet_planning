@@ -988,8 +988,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
         (x0, y0, z0), quat0 = get_pose(cabbage)
         y0 = max(y0, get_aabb(b, link=l).lower[0] + 0.5)
         y0 = min(y0, get_aabb(b, link=l).upper[0] - 0.5)
-        # x0 = get_aabb(b, link=l).upper[0] - random.uniform(0.1, 0.2)
-        offset = get_aabb_extent(get_aabb(cabbage))[0] / 2 + 0.05  ## random.uniform(0.1, 0.2)
+        offset = get_aabb_extent(get_aabb(cabbage))[0] / 2 + random.uniform(0.05, 0.15) ## 0.05
         x0 = get_aabb(b, link=l).upper[0] - offset
         set_pose(cabbage, ((x0, y0, z0), quat0))
         fridgestorage.include_and_attach(cabbage)
@@ -1022,3 +1021,31 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     # body_joint = random.choice(list(minifridge_doors.keys()))
     # return body_joint
     return list(minifridge_doors.keys())
+
+
+def load_another_mini_kitchen_counter(world, w=6, l=6):
+    counter = world.name_to_body('counter')
+    floor = world.name_to_body('floor')
+    cabbage = world.cat_to_objects('food')[0]
+
+    h = random.uniform(0.3, 0.9)
+    table = world.add_object(Object(
+        load_asset('KitchenCounter', x=w/2, y=0, yaw=math.pi, floor=floor, h=h,
+                   RANDOM_INSTANCE=True, verbose=False), category='supporter', name='table'))
+
+    (x, y, z), quat = get_pose(table)
+    ## half of time on the left, half on the right
+    if random.random() < 0.5:
+        y = get_aabb(counter).lower[1] - get_aabb_extent(get_aabb(table))[1]/2 - 0.05
+    else:
+        y = get_aabb(counter).upper[1] + get_aabb_extent(get_aabb(table))[1] / 2 + 0.05
+    x = get_pose(counter)[0][0]
+    set_pose(table, ((x, y, z), quat))
+
+    set_camera_target_body(table, dx=1.6, dy=1.2, dz=1.6)
+    set_renderer(True)
+
+    table.place_obj(cabbage)
+
+    # set_renderer(False)
+

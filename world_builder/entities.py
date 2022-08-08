@@ -171,7 +171,7 @@ class Object(Index):
         if self.verbose:
             supporter_name = f"{self.__class__.__name__.capitalize()} {self.name}"
             print(f'entities.place_obj.placed {obj.name} on {supporter_name} at point {nice((x, y, z))}')
-        self.support_obj(obj)
+        self.attach_obj(obj)
         # set_renderer(True)
         return obj
     ##
