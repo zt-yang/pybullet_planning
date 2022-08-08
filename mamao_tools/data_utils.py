@@ -3,11 +3,34 @@ from os import listdir
 from os.path import join, isfile, isdir, abspath
 
 
-def get_indices(run_dir):
+def get_indices_from_log(run_dir):
     indices = {}
-    sub_dir = join(run_dir, 'depth_maps')
+    with open(join(run_dir, 'log.txt'), 'r') as f:
+        lines = [l.replace('\n', '') for l in f.readlines()[3:40]]
+        lines = lines[:lines.index('----------------')]
+    for line in lines:
+        elems = line.split('|')
+        body = elems[0].rstrip()
+        name = elems[1].strip()
+        name = name[name.index(':')+2:]
+        if 'pr2' in body:
+            body = body.replace('pr2', '')
+        indices[body] = name
+    return indices
+
+
+def get_indices(run_dir):
+    return get_indices_from_log(run_dir)
+    indices = {}
+    sub_dir = join(run_dir, 'seg_images')
     if not isdir(sub_dir):
         sub_dir = join(run_dir, 'rgb_images')
+    if not isdir(sub_dir):
+        sub_dir = join(run_dir, 'depth_maps')
+    if not isdir(sub_dir):
+        return get_indices_from_log(run_dir)
+
+    ## get from the name of images
     for f in listdir(sub_dir):
         if '[' in f:
             name = f[f.index(']_')+2: f.index('.png')].replace('::', '%')
