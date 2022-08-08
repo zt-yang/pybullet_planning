@@ -336,9 +336,11 @@ def save_to_outputs_folder(outpath, exp_path, data_generation=False):
     if data_generation:
         original = 'visualizations'
         if isfile(join(original, 'log.json')):
-            for subdir in ['constraint_networks', 'stream_plans', 'log.json']:
+            for subdir in ['constraint_networks', 'stream_plans']:
+                if len(listdir(join(original, subdir))) < 1: continue
                 shutil.move(join(original, subdir), join(outpath, subdir))
-            # os.remove(join(original, 'log.json'))
+            for subfile in ['log.json']:
+                shutil.move(join(original, subfile), join(outpath, subfile))
         else:
             new_outpath = f"{outpath}_failed"
             shutil.move(outpath, new_outpath)
@@ -375,8 +377,10 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
                              world_name=world_name, out_path=join(outpath, 'problem.pddl'))
 
     import platform
+    robot = state.world.robot
     # body_to_name = {i: state.world.body_to_name(i) for i in get_bodies()}
     body_to_name = {str(k): v.name for k, v in state.world.BODY_TO_OBJECT.items()}
+    body_to_name[str(robot.body)] = robot.name
     body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
     config = {
         'base_limits': state.world.robot.custom_limits,  ## state.world.args.base_limits,
