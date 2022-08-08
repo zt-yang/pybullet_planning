@@ -29,7 +29,7 @@ from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, H
     aabb_overlap, get_links, get_collision_data, get_visual_data, link_from_name, body_collision, get_closest_points, \
     load_pybullet, FLOOR_URDF, get_aabb_center, AABB, INF, clip, aabb_union, get_aabb_center, Pose, Euler, get_box_geometry, \
     get_aabb_extent, multiply, GREY, create_shape_array, create_body, STATIC_MASS, set_renderer, quat_from_euler, \
-    get_joint_name, wait_for_user, draw_aabb, get_bodies
+    get_joint_name, wait_for_user, draw_aabb, get_bodies, euler_from_quat
 from pybullet_tools.bullet_utils import place_body, add_body, Pose2d, nice, OBJ_YAWS, \
     sample_obj_on_body_link_surface, sample_obj_in_body_link_space, set_camera_target_body, \
     open_joint, close_joint, set_camera_target_robot, summarize_joints, get_partnet_doors, get_partnet_spaces, \
@@ -1034,18 +1034,40 @@ def load_another_mini_kitchen_counter(world, w=6, l=6):
                    RANDOM_INSTANCE=True, verbose=False), category='supporter', name='table'))
 
     (x, y, z), quat = get_pose(table)
-    ## half of time on the left, half on the right
-    if random.random() < 0.5:
-        y = get_aabb(counter).lower[1] - get_aabb_extent(get_aabb(table))[1]/2 - 0.05
+    offset = random.uniform(0.05, 0.25)
+    case = random.choice(range(4))
+
+    if case == 0:  ## on the left of the counter
+        y = get_aabb(counter).lower[1] - get_aabb_extent(get_aabb(table))[1]/2 - offset
+        x = get_pose(counter)[0][0]
+
+    elif case == 1:  ## on the right of the counter
+        y = get_aabb(counter).upper[1] + get_aabb_extent(get_aabb(table))[1] / 2 + offset
+        x = get_pose(counter)[0][0]
+
+    elif case == 2:  ## on the left of the counter, rotated 90 degrees
+        y = get_aabb(counter).lower[1] - get_aabb_extent(get_aabb(table))[0] / 2 - offset
+        x = get_aabb(counter).upper[0] + get_aabb_extent(get_aabb(table))[1] / 2 + offset
+        r, p, yaw = euler_from_quat(quat)
+        quat = quat_from_euler((r, p, yaw + math.pi/2))
+
+    elif case == 3:  ## on the right of the counter, rotated 90 degrees
+        y = get_aabb(counter).upper[1] + get_aabb_extent(get_aabb(table))[0] / 2 + offset
+        x = get_aabb(counter).upper[0] + get_aabb_extent(get_aabb(table))[1] / 2 + offset
+        r, p, yaw = euler_from_quat(quat)
+        quat = quat_from_euler((r, p, yaw + math.pi / 2))
+
     else:
-        y = get_aabb(counter).upper[1] + get_aabb_extent(get_aabb(table))[1] / 2 + 0.05
-    x = get_pose(counter)[0][0]
+        print('\n\nloaders.py whats this placement')
+        sys.exit()
+
     set_pose(table, ((x, y, z), quat))
 
-    set_camera_target_body(table, dx=1.6, dy=1.2, dz=1.6)
     set_renderer(True)
+    set_renderer(False)
 
-    table.place_obj(cabbage)
-
+    # set_camera_target_body(table, dx=1.6, dy=1.2, dz=1.6)
+    # set_renderer(True)
+    # table.place_obj(cabbage)
     # set_renderer(False)
 

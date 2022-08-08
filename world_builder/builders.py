@@ -269,10 +269,20 @@ def sample_fridge_table_goal(world, verbose=True):
     cabbage = world.cat_to_bodies('food')[0]  ## world.name_to_body('cabbage')
     fridge = world.name_to_body('fridgestorage')
     counter = world.name_to_body('counter')
+    table = world.name_to_object('table')
 
     arm = world.robot.arms[0]
-    goal_candidates = [
-        # [('Holding', arm, cabbage)],
-        [('In', cabbage, fridge)],
-    ]
+
+    if random.random() < 0.5:
+        goal_candidates = [
+            [('Holding', arm, cabbage)],
+            [('On', cabbage, table.body)],
+        ]
+    else:
+        table.place_obj(cabbage)
+        goal_candidates = [
+            [('Holding', arm, cabbage)],
+            [('In', cabbage, fridge)],
+        ]
+
     return random.choice(goal_candidates)
