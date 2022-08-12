@@ -36,6 +36,7 @@ from pybullet_tools.utils import connect, disconnect, wait_if_gui, LockRenderer,
 from pybullet_tools.flying_gripper_utils import get_se3_joints
 
 from os.path import join, isfile
+from pddlstream.algorithms.focused import solve_focused
 from pddlstream.algorithms.algorithm import parse_problem, reset_globals
 from pddlstream.algorithms.constraints import PlanConstraints
 from pddlstream.language.generator import from_gen_fn, from_list_fn, from_fn, fn_from_constant, empty_gen, from_test
@@ -532,16 +533,24 @@ from pybullet_tools.utils import disconnect, LockRenderer, has_gui, WorldSaver, 
     SEPARATOR, get_aabb, wait_for_duration, safe_remove, ensure_dir, reset_simulation
 from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, str_from_object, TmpCWD
 
-def solve_one(pddlstream_problem, stream_info, fc):
+
+def solve_one(pddlstream_problem, stream_info, fc, visualize=False):
     with Profiler():
         with LockRenderer(lock=True):
-            solution = solve(pddlstream_problem, algorithm=DEFAULT_ALGORITHM, unit_costs=False,
-                             stream_info=stream_info, success_cost=INF, verbose=True, debug=False,
-                             feasibility_checker=fc)
+            solution = solve_focused(pddlstream_problem, stream_info=stream_info,
+                                     planner='ff-astar1', max_planner_time=10, debug=False,
+                                     unit_costs=True, success_cost=INF,
+                                     max_time=INF, verbose=True, visualize=visualize,
+                                     unit_efforts=True, effort_weight=1,
+                                     bind=True, max_skeletons=INF,
+                                     search_sample_ratio=0)
+            # solution = solve(pddlstream_problem, algorithm=DEFAULT_ALGORITHM, unit_costs=False,
+            #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False,
+            #                  visualize=visualize, feasibility_checker=fc)
     return solution
 
 
-def solve_multiple(problem, stream_info={}, lock=True):
+def solve_multiple(problem, stream_info={}, visualize=False, lock=True):
     reset_globals()
     profiler = Profiler(field='tottime', num=25) ## , enable=profile # cumtime | tottime
     profiler.save()
@@ -555,20 +564,26 @@ def solve_multiple(problem, stream_info={}, lock=True):
     lock_saver = LockRenderer(lock=lock)
 
     try:
-        solution = solve(problem, algorithm=DEFAULT_ALGORITHM, unit_costs=False, visualize=False,
-                         stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
+        solution = solve_focused(problem, stream_info=stream_info,
+                                  planner='ff-astar1', max_planner_time=10, debug=False,
+                                  unit_costs=True, success_cost=INF,
+                                  max_time=INF, verbose=True, visualize=visualize,
+                                  unit_efforts=True, effort_weight=1,
+                                  bind=True, max_skeletons=INF,
+                                  search_sample_ratio=0)
+        # solution = solve(problem, algorithm=DEFAULT_ALGORITHM, unit_costs=False, visualize=visualize,
+        #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
     finally:
         lock_saver.restore()
         cwd_saver.restore()
         safe_remove(temp_dir)
 
     profiler.restore()
-    return solution
+    return solution, join(cwd_saver.tmp_cwd, 'visualizations')
 
 
 def solve_pddlstream(problem, state, domain_pddl=None, visualization=False):
     # from examples.pybullet.utils.pybullet_tools.utils import CLIENTS
-    from pddlstream.algorithms.focused import solve_focused
     from pybullet_tools.logging import myprint as print
 
     start_time = time.time()
@@ -593,15 +608,17 @@ def solve_pddlstream(problem, state, domain_pddl=None, visualization=False):
                                      unit_costs=True, success_cost=INF,
                                      max_time=INF, verbose=True, visualize=visualization,
                                      unit_efforts=True, effort_weight=1,
-                                     bind=True, max_skeletons=INF,  # TODO: double check that max_skeletons=None is working
+                                     bind=True, max_skeletons=INF,
                                      search_sample_ratio=0)
             saver.restore()
 
     # PARALLEL = True
+    #
     # if PARALLEL:
-    #     solution = solve_multiple(pddlstream_problem, stream_info)
+    #     solution, log_dir = solve_multiple(pddlstream_problem, stream_info, visualization)
     # else:
-    #     solution = solve_one(pddlstream_problem, stream_info)
+    #     solution = solve_one(pddlstream_problem, stream_info, visualization)
+    #     log_dir = 'visualizations'
 
     knowledge = parse_problem(pddlstream_problem, stream_info=stream_info,
                               constraints=PlanConstraints(), unit_costs=True, unit_efforts=True)
@@ -648,7 +665,8 @@ def solve_pddlstream(problem, state, domain_pddl=None, visualization=False):
 
     reset_globals()  ## reset PDDLStream solutions
 
-    return plan, env, knowledge, time_log, preimage
+    return plan, env, knowledge, time_log, preimage ##, log_dir
+
 
 def test_initial_region(state, init):
     world = state.world
