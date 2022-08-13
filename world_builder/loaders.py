@@ -985,8 +985,8 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     # world.open_all_doors_drawers()
     # set_camera_target_body(cabbage, dx=0.4, dy=0, dz=0)
 
-    set_renderer(True)
-    set_renderer(False)
+    # set_renderer(True)
+    # set_renderer(False)
 
     # wait_for_user()
 
@@ -1099,8 +1099,8 @@ def load_another_table(world, w=6, l=6, four_ways=True):
 
     set_pose(table, ((x, y, z), quat))
 
-    set_renderer(True)
-    set_renderer(False)
+    # set_renderer(True)
+    # set_renderer(False)
 
     # set_camera_target_body(table, dx=1.6, dy=1.2, dz=1.6)
     # set_renderer(True)
@@ -1133,7 +1133,6 @@ def load_another_fridge_food(world, verbose=True):
             y = y_min - 0.5 - width
         set_pose(cabinet, ((x, y, z), quat))
         print(f'!!! moved cabinet from {r(y_ori)} to {r(y)} (y0 = {r(y0)})')
-    random_set_doors(doors, extent_max=0.5)
 
     ## place another food in one of the fridges
     new_food = world.add_object(Moveable(
@@ -1143,12 +1142,18 @@ def load_another_fridge_food(world, verbose=True):
     ))
     space = random.choice(world.cat_to_objects('space'))
     place_in_cabinet(space, new_food)
-
+    max_trial = 20
     while collided(new_food, [food], verbose=verbose):
         space = random.choice(world.cat_to_objects('space'))
         place_in_cabinet(space, new_food)
+        max_trial -= 1
+        if max_trial == 0:
+            food = world.BODY_TO_OBJECT[food].name
+            print(f'... unable to put {new_food} along with {food}')
+            sys.exit()
 
     placement[new_food] = space.pybullet_name
 
+    random_set_doors(doors, extent_max=0.5)
     ## the goal will be to pick one object and put in the other fridge
     return placement

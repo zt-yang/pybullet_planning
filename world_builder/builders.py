@@ -205,7 +205,7 @@ def test_one_fridge(world, verbose=True):
     return None, goal
 
 
-def sample_one_fridge_scene(world, verbose=True):
+def sample_one_fridge_scene(world, verbose=True, open_doors=True):
 
     ## later we may want to automatically add irrelevant objects and joints
     world.set_skip_joints()
@@ -217,14 +217,16 @@ def sample_one_fridge_scene(world, verbose=True):
     minifridge_doors = load_random_mini_kitchen_counter(world)
 
     """ ============== Change joint positions ================ """
-    random_set_doors(minifridge_doors)
+    ## only after all objects have been placed inside
+    if open_doors:
+        random_set_doors(minifridge_doors)
 
     """ ============== Check collisions ================ """
     obstacles = [o for o in get_bodies() if o != world.robot]
     while collided(world.robot, obstacles, verbose=verbose):
         world.robot.randomly_spawn()
 
-    return None
+    return minifridge_doors
 
 
 def sample_one_fridge_goal(world):
@@ -298,9 +300,10 @@ def test_fridges_tables(world, verbose=True):
 
 
 def sample_fridges_tables_scene(world, verbose=True):
-    sample_one_fridge_scene(world, verbose=verbose)
+    minifridge_doors = sample_one_fridge_scene(world, open_doors=False)
     load_another_table(world, four_ways=False)
     placement = load_another_fridge_food(world)
+    random_set_doors(minifridge_doors, extent_max=0.5)
     return placement
 
 
