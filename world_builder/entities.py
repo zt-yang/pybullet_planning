@@ -445,8 +445,6 @@ class ArticulatedObjectPart(Object):
         self.handle_horizontal, self.handle_width = self.get_handle_orientation(body)
 
     def find_handle_link(self, body, joint):
-        if (body, joint) in [(6, 1)]:
-            print('debug find_handle_link')
         link = get_joint_info(body, joint).linkName.decode("utf-8")
         children_link = get_link_children(body, link_from_name(body, link))
 

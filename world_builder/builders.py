@@ -8,7 +8,7 @@ from .entities import Object, Region, Environment, Robot, Camera, Floor, Stove,\
 from .loaders import create_pr2_robot, load_rooms, load_cart, load_cart_regions, load_blocked_kitchen, \
     load_blocked_sink, load_blocked_stove, load_floor_plan, load_experiment_objects, load_pot_lid, load_basin_faucet, \
     load_kitchen_mechanism, create_gripper_robot, load_cabinet_test_scene, load_random_mini_kitchen_counter, \
-    load_another_mini_kitchen_counter
+    load_another_table, load_another_fridge_food, random_set_doors
 from .utils import load_asset, FLOOR_HEIGHT, WALL_HEIGHT, visualize_point
 from .world_generator import to_lisdf, save_to_kitchen_worlds
 
@@ -200,9 +200,9 @@ def test_one_fridge(world, verbose=True):
     seed = int(time.time())
     np.random.seed(seed)
     random.seed(seed)
-    floorplan = sample_one_fridge_scene(world, verbose)
-    goal = sample_one_fridge_goal(world, verbose)
-    return floorplan, goal
+    sample_one_fridge_scene(world, verbose)
+    goal = sample_one_fridge_goal(world)
+    return None, goal
 
 
 def sample_one_fridge_scene(world, verbose=True):
@@ -217,11 +217,7 @@ def sample_one_fridge_scene(world, verbose=True):
     minifridge_doors = load_random_mini_kitchen_counter(world)
 
     """ ============== Change joint positions ================ """
-    epsilon = 0.5
-    for door in minifridge_doors:
-        if random.random() < epsilon:
-            extent = random.random()
-            open_joint(door[0], door[1], extent=extent)
+    random_set_doors(minifridge_doors)
 
     """ ============== Check collisions ================ """
     obstacles = [o for o in get_bodies() if o != world.robot]
@@ -231,7 +227,7 @@ def sample_one_fridge_scene(world, verbose=True):
     return None
 
 
-def sample_one_fridge_goal(world, verbose=True):
+def sample_one_fridge_goal(world):
     cabbage = world.cat_to_bodies('food')[0]  ## world.name_to_body('cabbage')
     fridge = world.name_to_body('fridgestorage')
     counter = world.name_to_body('counter')
@@ -254,18 +250,17 @@ def test_fridge_table(world, verbose=True):
     seed = int(time.time())
     np.random.seed(seed)
     random.seed(seed)
-    floorplan = sample_fridge_table_scene(world, verbose)
-    goal = sample_fridge_table_goal(world, verbose)
-    return floorplan, goal
+    sample_fridge_table_scene(world, verbose)
+    goal = sample_fridge_table_goal(world)
+    return None, goal
 
 
 def sample_fridge_table_scene(world, verbose=True):
     sample_one_fridge_scene(world, verbose=verbose)
-    load_another_mini_kitchen_counter(world)
-    return None
+    load_another_table(world)
 
 
-def sample_fridge_table_goal(world, verbose=True):
+def sample_fridge_table_goal(world):
     cabbage = world.cat_to_objects('food')[0]  ## world.name_to_body('cabbage')
     fridge = world.name_to_body('fridgestorage')
     counter = world.name_to_body('counter')
@@ -284,5 +279,42 @@ def sample_fridge_table_goal(world, verbose=True):
             [('Holding', arm, cabbage.body)],
             [('In', cabbage.body, fridge)],
         ]
+
+    return random.choice(goal_candidates)
+
+
+############################################
+
+
+def test_fridges_tables(world, verbose=True):
+    import numpy as np
+    import time
+    seed = int(time.time())
+    np.random.seed(seed)
+    random.seed(seed)
+    placement = sample_fridges_tables_scene(world, verbose)
+    goal = sample_fridges_tables_goal(world, placement)
+    return None, goal
+
+
+def sample_fridges_tables_scene(world, verbose=True):
+    sample_one_fridge_scene(world, verbose=verbose)
+    load_another_table(world, four_ways=False)
+    placement = load_another_fridge_food(world)
+    return placement
+
+
+def sample_fridges_tables_goal(world, placement):
+    food = random.choice(world.cat_to_bodies('food'))
+    spaces = world.cat_to_bodies('space')
+    other = [s for s in spaces if s != placement[food]][0]
+
+    arm = world.robot.arms[0]
+
+    ## the goal will be to pick one object and put in the other fridge
+    goal_candidates = [
+        [('Holding', arm, food)],
+        [('In', food, other)],
+    ]
 
     return random.choice(goal_candidates)
