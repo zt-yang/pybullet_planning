@@ -4,6 +4,7 @@ import numpy as np
 import math
 import os
 import string
+import time
 
 import pybullet as p
 from .utils import LIGHT_GREY, read_xml, load_asset, FLOOR_HEIGHT, WALL_HEIGHT, \
@@ -929,14 +930,16 @@ def load_feg_kitchen(world):
 
 
 def place_in_cabinet(fridgestorage, cabbage):
+    random.seed(time.time())
     b = fridgestorage.body
     l = fridgestorage.link
 
     fridgestorage.place_obj(cabbage)
     (x0, y0, z0), quat0 = get_pose(cabbage)
-    y0 = max(y0, get_aabb(b, link=l).lower[0] + 0.5)
-    y0 = min(y0, get_aabb(b, link=l).upper[0] - 0.5)
+    y0 = max(y0, get_aabb(b, link=l).lower[1] + 0.1)
+    y0 = min(y0, get_aabb(b, link=l).upper[1] - 0.1)
     offset = get_aabb_extent(get_aabb(cabbage))[0] / 2 + random.uniform(0.05, 0.15)  ## 0.05
+
     x0 = get_aabb(b, link=l).upper[0] - offset
     set_pose(cabbage, ((x0, y0, z0), quat0))
     fridgestorage.include_and_attach(cabbage)
@@ -1110,6 +1113,16 @@ def load_another_table(world, w=6, l=6, four_ways=True):
 
 def load_another_fridge_food(world, verbose=True):
     from pybullet_tools.bullet_utils import nice as r
+
+    def random_space():
+        spaces = world.cat_to_bodies('space')
+        random.shuffle(spaces)
+        space = random.choice(world.cat_to_objects('space'))
+        # print('load_another_fridge_food:', space.name)
+        # for i in range(20):
+        #     print(i, random.choice(world.cat_to_objects('space')))
+        return space
+
     floor = world.name_to_body('floor')
     food = world.cat_to_bodies('food')[0]
     space = world.cat_to_bodies('space')[0]
@@ -1140,16 +1153,21 @@ def load_another_fridge_food(world, verbose=True):
                    floor=floor, RANDOM_INSTANCE=True), ## , SAMPLING=True
         category='Food'
     ))
-    space = random.choice(world.cat_to_objects('space'))
+
+    space = random_space()
     place_in_cabinet(space, new_food)
     max_trial = 20
+    # print(f'\nfood ({max_trial})\t', new_food.name, nice(get_pose(new_food.body)))
+    # print(f'first food\t', world.body_to_name(food), nice(get_pose(food)))
     while collided(new_food, [food], verbose=verbose):
-        space = random.choice(world.cat_to_objects('space'))
-        place_in_cabinet(space, new_food)
+        space = random_space()
         max_trial -= 1
+        place_in_cabinet(space, new_food)
+        # print(f'\nfood ({max_trial})\t', new_food.name, nice(get_pose(new_food.body)))
+        # print(f'first food\t', world.body_to_name(food), nice(get_pose(food)))
         if max_trial == 0:
             food = world.BODY_TO_OBJECT[food].name
-            print(f'... unable to put {new_food} along with {food}')
+            print(f'\n... unable to put {new_food} along with {food}')
             sys.exit()
 
     placement[new_food] = space.pybullet_name

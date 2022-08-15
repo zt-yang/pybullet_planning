@@ -517,11 +517,11 @@ class World(object):
         for body, joint in doors + drawers:
             self.close_joint(body, joint)
 
-    def open_all_doors_drawers(self):
+    def open_all_doors_drawers(self, extent=1):
         doors = [(o.body, o.joint) for o in self.cat_to_objects('door')]
         drawers = [(o.body, o.joint) for o in self.cat_to_objects('drawer')]
         for body, joint in doors + drawers:
-            self.open_joint(body, joint)
+            self.open_joint(body, joint, extent=extent)
 
     def open_joint_by_name(self, name, pstn=None):
         body, joint = self.name_to_body(name)
