@@ -1,4 +1,4 @@
-import os
+import json
 from os import listdir
 from os.path import join, isfile, isdir, abspath
 
@@ -19,8 +19,19 @@ def get_indices_from_log(run_dir):
     return indices
 
 
+def get_indices_from_config(run_dir):
+    config = json.load(open(join(run_dir, 'planning_config.json'), 'r'))
+    if 'body_to_name' in config:
+        return config['body_to_name']
+    return False
+
+
 def get_indices(run_dir):
-    return get_indices_from_log(run_dir)
+    result = get_indices_from_config(run_dir)
+    if not result:
+        return get_indices_from_log(run_dir)
+    return result
+
     indices = {}
     sub_dir = join(run_dir, 'seg_images')
     if not isdir(sub_dir):
