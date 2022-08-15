@@ -205,6 +205,11 @@ def test_one_fridge(world, verbose=True):
     return None, goal
 
 
+def ensure_robot_cfree(world, verbose=True):
+    obstacles = [o for o in get_bodies() if o != world.robot]
+    while collided(world.robot, obstacles, verbose=verbose):
+        world.robot.randomly_spawn()
+
 def sample_one_fridge_scene(world, verbose=True, open_doors=True):
 
     ## later we may want to automatically add irrelevant objects and joints
@@ -222,9 +227,7 @@ def sample_one_fridge_scene(world, verbose=True, open_doors=True):
         random_set_doors(minifridge_doors)
 
     """ ============== Check collisions ================ """
-    obstacles = [o for o in get_bodies() if o != world.robot]
-    while collided(world.robot, obstacles, verbose=verbose):
-        world.robot.randomly_spawn()
+    ensure_robot_cfree(world, verbose=verbose)
 
     return minifridge_doors
 
@@ -299,16 +302,22 @@ def test_fridges_tables(world, verbose=True):
     return None, goal
 
 
-def sample_fridges_tables_scene(world):
+def sample_fridges_tables_scene(world, verbose=True):
     minifridge_doors = sample_one_fridge_scene(world, open_doors=False)
     load_another_table(world, four_ways=False)
     placement = load_another_fridge_food(world)
     random_set_doors(minifridge_doors, extent_max=0.5)
+    ensure_robot_cfree(world, verbose=verbose)
     return placement
 
 
 def sample_fridges_tables_goal(world, placement):
-    food = random.choice(world.cat_to_bodies('food'))
+    foods = world.cat_to_bodies('food')
+    if random.random() < 0.5:
+        food = foods[0]
+    else:
+        food = foods[1]
+    # food = random.choice(world.cat_to_bodies('food'))
     spaces = world.cat_to_bodies('space')
     other = [s for s in spaces if s != placement[food]][0]
 

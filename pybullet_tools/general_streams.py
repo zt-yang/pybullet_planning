@@ -267,9 +267,10 @@ def get_mod_pose(pose):
     return ((x,y,z+0.01), quat)
 
 
-def get_contain_list_gen(problem, collisions=True, max_attempts=20, num_samples=3, verbose=False, **kwargs):
+def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=10, verbose=False, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
     obstacles = problem.fixed if collisions else []
+    world = problem.world
 
     def gen(body, space):
         set_renderer(verbose)
@@ -283,6 +284,7 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=20, num_samples=
         while attempts < max_attempts and len(poses) < num_samples:
             attempts += 1
             space = random.choice(spaces)  # TODO: weight by area
+
             if isinstance(space, tuple):
                 x, y, z, yaw = sample_obj_in_body_link_space(body, space[0], space[-1],
                                         PLACEMENT_ONLY=True, verbose=verbose, **kwargs)
@@ -291,10 +293,17 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=20, num_samples=
                 body_pose = None
             if body_pose is None:
                 break
+
+            ## special sampler for data collection
+            if 'storage' in world.get_name(space):
+                from world_builder.loaders import place_in_cabinet
+                body_pose = place_in_cabinet(space, body, place=False)
+
             ## there will be collision between body and that link because of how pose is sampled
             p_mod = p = Pose(body, get_mod_pose(body_pose), space)
             p_mod.assign()
-            if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, space}):
+            obs = [obst for obst in obstacles if obst not in {body, space}]
+            if not collided(body, obs, verbose=True):
                 p = Pose(body, body_pose, space)
                 poses.append((p,))
                 # yield (p,)

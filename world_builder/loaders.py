@@ -929,20 +929,31 @@ def load_feg_kitchen(world):
     world.add_to_cat(chicken, 'cleaned')
 
 
-def place_in_cabinet(fridgestorage, cabbage):
+def place_in_cabinet(fridgestorage, cabbage, place=True):
     random.seed(time.time())
-    b = fridgestorage.body
-    l = fridgestorage.link
+    if not isinstance(fridgestorage, tuple):
+        b = fridgestorage.body
+        l = fridgestorage.link
+        fridgestorage.place_obj(cabbage)
+    else:
+        b, _, l = fridgestorage
 
-    fridgestorage.place_obj(cabbage)
     (x0, y0, z0), quat0 = get_pose(cabbage)
+    old_pose = (x0, y0, z0), quat0
     y0 = max(y0, get_aabb(b, link=l).lower[1] + 0.1)
     y0 = min(y0, get_aabb(b, link=l).upper[1] - 0.1)
-    offset = get_aabb_extent(get_aabb(cabbage))[0] / 2 + random.uniform(0.05, 0.15)  ## 0.05
+    offset = get_aabb_extent(get_aabb(cabbage))[0] / 2 + random.uniform(0.05, 0.13)  ## 0.05
 
     x0 = get_aabb(b, link=l).upper[0] - offset
-    set_pose(cabbage, ((x0, y0, z0), quat0))
-    fridgestorage.include_and_attach(cabbage)
+    pose = ((x0, y0, z0), quat0)
+    # print(f'loaders.place_in_cabinet from {nice(old_pose)} to {nice(pose)}')
+
+    if place:
+        set_pose(cabbage, pose)
+        fridgestorage.include_and_attach(cabbage)
+    else:
+        return pose
+
 
 
 def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, table_only=False):
@@ -1051,7 +1062,7 @@ def load_fridge_with_food_on_surface(world, counter, name='minifridge', cabbage=
     return list(minifridge_doors.keys())
 
 
-def random_set_doors(doors, extent_max=1):
+def random_set_doors(doors, extent_max=1.0):
     epsilon = 0.5
     for door in doors:
         if random.random() < epsilon:
@@ -1114,21 +1125,29 @@ def load_another_table(world, w=6, l=6, four_ways=True):
 def load_another_fridge_food(world, verbose=True):
     from pybullet_tools.bullet_utils import nice as r
 
-    def random_space():
-        spaces = world.cat_to_bodies('space')
-        random.shuffle(spaces)
-        space = random.choice(world.cat_to_objects('space'))
-        # print('load_another_fridge_food:', space.name)
-        # for i in range(20):
-        #     print(i, random.choice(world.cat_to_objects('space')))
-        return space
-
     floor = world.name_to_body('floor')
     food = world.cat_to_bodies('food')[0]
     space = world.cat_to_bodies('space')[0]
     fridge = world.name_to_body('minifridge')
     table = world.name_to_object('table')
     placement = { food: space }
+
+    def random_space():
+        spaces = world.cat_to_objects('space')
+        if random.random() < 0.5:
+            s = spaces[0]
+        else:
+            s = spaces[1]
+        return s
+
+        # return [s for s in spaces if s.body != space[0]][0]
+
+        # random.shuffle(spaces)
+        # s = random.choice(world.cat_to_objects('space'))
+        # # print('load_another_fridge_food:', space.name)
+        # # for i in range(20):
+        # #     print(i, random.choice(world.cat_to_objects('space')))
+        # return s
 
     ## place another fridge on the table
     doors = load_fridge_with_food_on_surface(world, table.body, 'cabinet')
@@ -1154,15 +1173,15 @@ def load_another_fridge_food(world, verbose=True):
         category='Food'
     ))
 
-    space = random_space()
-    place_in_cabinet(space, new_food)
+    s = random_space()
+    place_in_cabinet(s, new_food)
     max_trial = 20
     # print(f'\nfood ({max_trial})\t', new_food.name, nice(get_pose(new_food.body)))
     # print(f'first food\t', world.body_to_name(food), nice(get_pose(food)))
     while collided(new_food, [food], verbose=verbose):
-        space = random_space()
+        s = random_space()
         max_trial -= 1
-        place_in_cabinet(space, new_food)
+        place_in_cabinet(s, new_food)
         # print(f'\nfood ({max_trial})\t', new_food.name, nice(get_pose(new_food.body)))
         # print(f'first food\t', world.body_to_name(food), nice(get_pose(food)))
         if max_trial == 0:
@@ -1170,7 +1189,7 @@ def load_another_fridge_food(world, verbose=True):
             print(f'\n... unable to put {new_food} along with {food}')
             sys.exit()
 
-    placement[new_food] = space.pybullet_name
+    placement[new_food] = s.pybullet_name
 
     random_set_doors(doors, extent_max=0.5)
     ## the goal will be to pick one object and put in the other fridge
