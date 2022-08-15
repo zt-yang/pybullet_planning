@@ -1,5 +1,6 @@
 import os
 import sys
+from os import listdir
 from os.path import join, abspath, dirname, isdir, isfile
 sys.path.extend(['lisdf'])
 from lisdf.parsing.sdf_j import load_sdf
@@ -19,9 +20,9 @@ from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove
     set_camera_pose, set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
     set_joint_positions, get_links, get_joints, get_joint_name, get_body_name, link_from_name, \
     parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK, read, get_client, \
-    reset_simulation, dump_joint, JOINT_TYPES, get_joint_type, is_movable
+    reset_simulation, dump_joint, JOINT_TYPES, get_joint_type, is_movable, get_camera_matrix
 from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link, get_instance_name, \
-    toggle_joint, get_door_links
+    toggle_joint, get_door_links, set_camera_target_body
 from pybullet_tools.pr2_streams import get_handle_link
 from pybullet_tools.flying_gripper_utils import set_se3_conf
 
@@ -221,11 +222,12 @@ class World():
     def get_events(self, body):
         pass
 
-    def add_camera(self, pose, img_dir=join('visualizations', 'camera_images')):
+    def add_camera(self, pose, img_dir=join('visualizations', 'camera_images'),
+                   width=640, height=480):
         from world_builder.entities import StaticCamera
-        from pybullet_tools.bullet_utils import CAMERA_MATRIX
 
-        camera = StaticCamera(pose, camera_matrix=CAMERA_MATRIX, max_depth=6)
+        camera_matrix = get_camera_matrix(width=width, height=height, fx=525., fy=525.)
+        camera = StaticCamera(pose, camera_matrix=camera_matrix, max_depth=6)
         self.cameras.append(camera)
         self.camera = camera
         self.img_dir = img_dir
@@ -258,6 +260,7 @@ class World():
             if isinstance(body, tuple) and len(body) == 2:
                 body, joint = body
                 toggle_joint(body, joint)
+
 
 def find_id(body, full_name):
     name = full_name.split(LINK_STR)[1]
@@ -331,6 +334,11 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
         # body_to_name = planning_config['body_to_name']
         lisdf_path = join(lisdf_path, 'scene.lisdf')
 
+    # if '4763' in lisdf_path:
+    #     with open(lisdf_path, 'r') as f:
+    #         lines = f.readlines()
+    #         print(len(lines))
+
     ## --- the floor and pose will become extra bodies
     connect(use_gui=True, shadows=False, width=width, height=height)
     # draw_pose(unit_pose(), length=1.)
@@ -343,14 +351,6 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
 
     world = load_sdf(lisdf_path).worlds[0]
     bullet_world = World(world)
-
-    # if world.name in HACK_CAMERA_POSES:
-    #     cp, tp = HACK_CAMERA_POSES[world.name]
-    #     set_camera_pose(camera_point=cp, target_point=tp)
-
-    if world.gui != None:
-        camera_pose = world.gui.camera.pose
-        set_camera_pose2((camera_pose.pos, camera_pose.quat_xyzw))
 
     ## may be changes in joint positions
     model_states = {}
@@ -408,6 +408,19 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
         #     os.remove(uri)
 
         # wait_if_gui('load next model?')
+
+    # if world.name in HACK_CAMERA_POSES:
+    #     cp, tp = HACK_CAMERA_POSES[world.name]
+    #     set_camera_pose(camera_point=cp, target_point=tp)
+    if world.gui is not None:
+        camera_pose = world.gui.camera.pose
+
+        ## when camera pose is not saved for generating training data
+        if np.all(camera_pose.pos == 0):
+            fridge = bullet_world.name_to_body['minifridge']
+            set_camera_target_body(fridge, dx=2, dy=0, dz=2)
+        else:
+            set_camera_pose2((camera_pose.pos, camera_pose.quat_xyzw))
     return bullet_world
 
 
@@ -473,14 +486,19 @@ def get_depth_images(exp_dir, width=1280, height=960,  verbose=False, ## , width
 
     world.add_camera(camera_pose, img_dir)
     if not robot: remove_body(world.robot.body)
-    # world.visualize_image(index='scene', **kwargs)
-    get_image_and_reset(world, index='scene')
 
     b2n = world.body_to_name
     c2b = world.cat_to_bodies
     bodies = c2b('graspable', init) + [world.robot.body]
     body_links = c2b('surface', init) + c2b('space', init)
     body_joints = c2b('door', init) + c2b('drawer', init)
+
+    ## skip if already all exist
+    if len(listdir(world.img_dir)) == 1 + len(bodies+body_links+body_joints):
+        return
+
+    # world.visualize_image(index='scene', **kwargs)
+    get_image_and_reset(world, index='scene')
 
     links_to_show = {b: [b[2]] for b in body_links}
     for body_joint in body_joints:
