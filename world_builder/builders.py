@@ -294,12 +294,12 @@ def test_fridges_tables(world, verbose=True):
     seed = int(time.time())
     np.random.seed(seed)
     random.seed(seed)
-    placement = sample_fridges_tables_scene(world, verbose)
+    placement = sample_fridges_tables_scene(world)
     goal = sample_fridges_tables_goal(world, placement)
     return None, goal
 
 
-def sample_fridges_tables_scene(world, verbose=True):
+def sample_fridges_tables_scene(world):
     minifridge_doors = sample_one_fridge_scene(world, open_doors=False)
     load_another_table(world, four_ways=False)
     placement = load_another_fridge_food(world)
