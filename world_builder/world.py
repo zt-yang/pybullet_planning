@@ -168,7 +168,17 @@ class World(object):
         if name is None:
             next = len([o.name for o in OBJECTS_BY_CATEGORY[category] if '#' in o.name])
             name = '{}#{}'.format(category, next + 1)
-        object.name = name.lower()
+        ## TODO: better deal with the same instance of unnamed objects
+        name = name.lower()
+        if joint is None and link is None:
+            count = 1
+            while self.name_to_body(name) is not None:
+                if '#' in name:
+                    name = name[:name.index('#')]
+                name = '{}#{}'.format(name, count)
+                count += 1
+        object.name = name
+
         OBJECTS_BY_CATEGORY[category].append(object)
 
         ## -------------- different types of object --------------

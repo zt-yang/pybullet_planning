@@ -599,18 +599,18 @@ def solve_pddlstream(problem, state, domain_pddl=None, visualization=False):
 
     print(SEPARATOR)
 
-    with Profiler(): ##field='tottime', num=10):
-        with LockRenderer(lock=True):
-            # solution = solve(pddlstream_problem, algorithm='adaptive', unit_costs=True, visualize=False,
-            #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
-            solution = solve_focused(pddlstream_problem, stream_info=stream_info,
-                                     planner='ff-astar1', max_planner_time=10, debug=False,
-                                     unit_costs=True, success_cost=INF,
-                                     max_time=INF, verbose=True, visualize=visualization,
-                                     unit_efforts=True, effort_weight=1,
-                                     bind=True, max_skeletons=INF,
-                                     search_sample_ratio=0)
-            saver.restore()
+    # with Profiler(): ##field='tottime', num=10):
+    with LockRenderer(lock=True):
+        # solution = solve(pddlstream_problem, algorithm='adaptive', unit_costs=True, visualize=False,
+        #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
+        solution = solve_focused(pddlstream_problem, stream_info=stream_info,
+                                 planner='ff-astar1', max_planner_time=10, debug=False,
+                                 unit_costs=True, success_cost=INF,
+                                 max_time=INF, verbose=True, visualize=visualization,
+                                 unit_efforts=True, effort_weight=1,
+                                 bind=True, max_skeletons=INF,
+                                 search_sample_ratio=0)
+        saver.restore()
 
     # PARALLEL = True
     #
