@@ -241,7 +241,7 @@ def is_above(robot, aabb):
 #######################################################
 
 def nice_float(ele, round_to=3):
-    if isinstance(ele, int) or ele.is_integer():
+    if isinstance(ele, int) and '.' not in str(ele):
         return int(ele)
     else:
         return round(ele, round_to)
@@ -263,7 +263,8 @@ def nice(tuple_of_tuples, round_to=3, one_tuple=True):
         return []
 
     ## position, pose
-    elif isinstance(tuple_of_tuples[0], tuple) or isinstance(tuple_of_tuples[0], np.ndarray):
+    elif isinstance(tuple_of_tuples[0], tuple) or isinstance(tuple_of_tuples[0], list) \
+            or isinstance(tuple_of_tuples[0], np.ndarray):
 
         ## pose = (point, quat) -> (point, euler)
         if len(tuple_of_tuples[0]) == 3 and len(tuple_of_tuples[1]) == 4:

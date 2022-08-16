@@ -413,7 +413,7 @@ class MoveInSE3Action(Action):
 
 #######################################################
 
-def apply_actions(problem, actions, time_step=0.01):
+def apply_actions(problem, actions, time_step=0.5):
     """ act out the whole plan and event in the world without observation/replanning """
     state_event = State(problem.world)
     for i, action in enumerate(actions):

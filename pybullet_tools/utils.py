@@ -1344,6 +1344,68 @@ CameraInfo = namedtuple('CameraInfo', ['width', 'height', 'viewMatrix', 'project
 def get_camera():
     return CameraInfo(*p.getDebugVisualizerCamera(physicsClientId=CLIENT))
 
+## from Caelan's SRLStream version
+def get_camera_pose():
+    if not has_gui():
+        return None
+    # TODO: does not seem to update as the camera moves
+    info = get_camera()
+    # view_matrix = np.reshape(info.viewMatrix, [4, 4]).T
+    # return pose_from_tform(view_matrix)
+
+    # TODO: why are both view_matrix and pitch+yaw included then?
+    target_point = info.target
+    pitch = math.radians(info.pitch)
+    yaw = math.radians(info.yaw)
+    # yaw = yaw + np.pi/2
+    dist = info.dist
+    # dist = get_length(info.cameraForward)
+    # dist = 1.
+
+    # euler = Euler(roll=0, pitch=pitch, yaw=yaw)
+    # target_pose = Pose(target_point, euler)
+    # camera_pose = multiply(target_pose, Pose(point=Point(x=-dist)))
+
+    view_matrix = compute_view_matrix(target_point, dist, yaw, pitch, roll=0., z_up=True)
+    # get_ray_from_to
+    camera_pose = pose_from_tform(view_matrix)
+    camera_quat = quat_from_pose(camera_pose)
+    camera_point = np.array(target_point) - dist * np.array(info.cameraForward)
+    camera_pose = (camera_point, camera_quat)
+    # TODO: need to doublecheck
+    return camera_pose
+
+## from Caelan's SRLStream version
+def compute_view_matrix(target_position, distance, yaw, pitch, roll=0., z_up=True):
+    view_matrix = p.computeViewMatrixFromYawPitchRoll(target_position, distance,
+                                                      math.degrees(yaw), math.degrees(pitch), math.degrees(roll),
+                                                      upAxisIndex=2 if z_up else 1, physicsClientId=CLIENT)
+
+    view_matrix = np.reshape(view_matrix, [4, 4]) #.T
+    view_matrix[:3, 3] = view_matrix[3, :3]
+    view_matrix[3, :3] = 0 # TODO: make a separate method
+    #view_matrix[3, :3], view_matrix[:3, 3] = view_matrix[:3, 3], view_matrix[3, :3]
+    return view_matrix
+
+## from Caelan's SRLStream version
+def from_8_bit(color):
+    return (np.array(color).astype(float) / MAX_RGB).tolist()
+## from Caelan's SRLStream version
+def join_paths(*paths):
+    return os.path.abspath(os.path.join(*paths))
+NULL_ID = -1
+BASE_LINK = -1
+def add_line(start, end, color=BLACK, width=1, lifetime=None, parent=NULL_ID, parent_link=BASE_LINK):
+    assert (len(start) == 3) and (len(end) == 3)
+    #time.sleep(1e-3) # When too many lines are added within a short period of time, the following error can occur
+    return p.addUserDebugLine(start, end, lineColorRGB=remove_alpha(color), lineWidth=width,
+                              lifeTime=get_lifetime(lifetime), parentObjectUniqueId=parent, parentLinkIndex=parent_link,
+                              physicsClientId=CLIENT)
+draw_line = add_line
+def to_8_bit(color):
+    return (MAX_RGB*np.array(color)).astype(int).tolist()
+def get_link_depth(body, link):
+    return len(get_link_ancestors(body, link))
 def set_camera(yaw, pitch, distance, target_position=np.zeros(3)):
     # TODO: in degrees
     p.resetDebugVisualizerCamera(distance, yaw, pitch, target_position, physicsClientId=CLIENT)
