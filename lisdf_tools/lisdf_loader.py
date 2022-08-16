@@ -223,11 +223,11 @@ class World():
         pass
 
     def add_camera(self, pose, img_dir=join('visualizations', 'camera_images'),
-                   width=640, height=480, max_depth=8):
+                   width=640, height=480, fx=400, max_depth=8):
         from world_builder.entities import StaticCamera
 
         # camera_matrix = get_camera_matrix(width=width, height=height, fx=525., fy=525.)
-        camera_matrix = get_camera_matrix(width=width, height=height, fx=400)
+        camera_matrix = get_camera_matrix(width=width, height=height, fx=fx)
         camera = StaticCamera(pose, camera_matrix=camera_matrix, max_depth=max_depth)
         self.cameras.append(camera)
         self.camera = camera
