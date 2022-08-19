@@ -535,25 +535,25 @@ from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, st
 
 
 def solve_one(pddlstream_problem, stream_info, fc, visualize=False):
-    with Profiler():
-        with LockRenderer(lock=True):
-            solution = solve_focused(pddlstream_problem, stream_info=stream_info,
-                                     planner='ff-astar1', max_planner_time=10, debug=False,
-                                     unit_costs=True, success_cost=INF,
-                                     max_time=INF, verbose=True, visualize=visualize,
-                                     unit_efforts=True, effort_weight=1,
-                                     bind=True, max_skeletons=INF,
-                                     search_sample_ratio=0)
-            # solution = solve(pddlstream_problem, algorithm=DEFAULT_ALGORITHM, unit_costs=False,
-            #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False,
-            #                  visualize=visualize, feasibility_checker=fc)
+    # with Profiler():
+    with LockRenderer(lock=True):
+        solution = solve_focused(pddlstream_problem, stream_info=stream_info,
+                                 planner='ff-astar1', max_planner_time=10, debug=False,
+                                 unit_costs=True, success_cost=INF,
+                                 max_time=INF, verbose=True, visualize=visualize,
+                                 unit_efforts=True, effort_weight=1,
+                                 bind=True, max_skeletons=INF,
+                                 search_sample_ratio=0)
+        # solution = solve(pddlstream_problem, algorithm=DEFAULT_ALGORITHM, unit_costs=False,
+        #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False,
+        #                  visualize=visualize, feasibility_checker=fc)
     return solution
 
 
 def solve_multiple(problem, stream_info={}, visualize=False, lock=True):
     reset_globals()
-    profiler = Profiler(field='tottime', num=25) ## , enable=profile # cumtime | tottime
-    profiler.save()
+    # profiler = Profiler(field='tottime', num=25) ## , enable=profile # cumtime | tottime
+    # profiler.save()
 
     temp_dir = '/tmp/pddlstream-{}/'.format(os.getpid())
     print(f'\n\n\n\nsolve_multiple at temp dir {temp_dir} \n\n\n\n')
@@ -578,7 +578,7 @@ def solve_multiple(problem, stream_info={}, visualize=False, lock=True):
         cwd_saver.restore()
         safe_remove(temp_dir)
 
-    profiler.restore()
+    # profiler.restore()
     return solution, join(cwd_saver.tmp_cwd, 'visualizations')
 
 
