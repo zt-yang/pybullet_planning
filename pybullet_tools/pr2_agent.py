@@ -59,8 +59,8 @@ def get_stream_map(p, c, l, t):
     # t = teleport
     stream_map = {
         'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c)),
-        'sample-pose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c)),  ##
-        'sample-grasp': from_list_fn(get_grasp_list_gen(p, collisions=True, visualize=False)),
+        'sample-pose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, verbose=False)),  ##
+        'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False)),
         'inverse-kinematics': from_gen_fn(get_ik_ir_gen(p, collisions=c, teleport=t, custom_limits=l,
                                                         learned=False, max_attempts=60, verbose=False)),
         'inverse-kinematics-wconf': from_gen_fn(  ## get_ik_ir_wconf_gen
@@ -76,9 +76,9 @@ def get_stream_map(p, c, l, t):
         'test-cfree-btraj-pose': from_test(get_cfree_btraj_pose_test(p.robot, collisions=c)),
 
         # 'get-joint-position-open': from_fn(get_joint_position_open_gen(p)),
-        'get-joint-position-open': from_list_fn(sample_joint_position_open_list_gen(p)),
+        'get-joint-position-open': from_gen_fn(sample_joint_position_open_list_gen(p)),
 
-        'sample-handle-grasp': from_list_fn(get_handle_grasp_gen(p, collisions=c)),
+        'sample-handle-grasp': from_gen_fn(get_handle_grasp_gen(p, collisions=c)),
 
         'inverse-kinematics-grasp-handle': from_gen_fn(  ## get_ik_ir_grasp_handle_gen
             get_ik_gen(p, collisions=c, teleport=t, custom_limits=l,

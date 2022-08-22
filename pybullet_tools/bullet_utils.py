@@ -368,21 +368,33 @@ def get_scale_by_category(file=None, category=None, scale = 1):
 
     return scale
 
+
 def sample_pose(obj, aabb, obj_aabb=None, yaws=OBJ_YAWS):
     ## sample a pose in aabb that can fit an object in
-    if obj_aabb != None:
+    if obj_aabb is not None:
+        ori = aabb
         lower, upper = obj_aabb
         diff = [(upper[i] - lower[i]) / 2 for i in range(3)]
 
-        ## if the surface is large enough, give more space
-        dx1, dy1 = get_aabb_extent(aabb2d_from_aabb(aabb))
-        dx2, dy2 = get_aabb_extent(aabb2d_from_aabb(obj_aabb))
-        if dx1 > 2*dx2 and dy1 > 2*dy2:
-            diff = [(upper[i] - lower[i]) / 2 * 3 for i in range(3)]
+        # ## if the surface is large enough, give more space
+        # dx1, dy1 = get_aabb_extent(aabb2d_from_aabb(aabb))
+        # dx2, dy2 = get_aabb_extent(aabb2d_from_aabb(obj_aabb))
+        # if dx1 > 2*dx2 and dy1 > 2*dy2:
+        #     diff = [(upper[i] - lower[i]) / 2 * 3 for i in range(3)]
 
         lower = [aabb[0][i] + diff[i] for i in range(3)]
         upper = [aabb[1][i] - diff[i] for i in range(3)]
         aabb = AABB(lower=lower, upper=upper)
+        # print('bullet_utils.sample_pose\tadjusted aabb for obj', nice(ori), '->', nice(aabb))
+
+    ## adjust z to be lower
+    height = get_aabb_extent(aabb)[2]
+    if (obj_aabb is not None and height > 5 * get_aabb_extent(obj_aabb)[2]) or height > 1:
+        x, y, _ = aabb.upper
+        z = aabb.lower[2] + height / 4
+        aabb = AABB(lower=aabb.lower, upper=[x, y, z])
+        # print('bullet_utils.sample_pose\t!adjusted z to be lower')
+
     x, y, z = sample_aabb(aabb)
 
     ## use pre-defined yaws for appliances like microwave
@@ -449,7 +461,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
     aabb = get_aabb(body, link)
     # draw_aabb(aabb)
 
-    x, y, z, yaw = sample_pose(obj, aabb)
+    x, y, z, yaw = sample_pose(obj, aabb, obj_aabb=get_aabb(obj))
     if isinstance(obj, str):
         obj = obj.lower()
         maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, maybe=True)

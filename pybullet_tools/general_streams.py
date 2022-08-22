@@ -267,7 +267,8 @@ def get_mod_pose(pose):
     return ((x,y,z+0.01), quat)
 
 
-def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=10, verbose=False, **kwargs):
+def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=10,
+                         verbose=False, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
     obstacles = problem.fixed if collisions else []
     world = problem.world
@@ -287,7 +288,7 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=
 
             if isinstance(space, tuple):
                 x, y, z, yaw = sample_obj_in_body_link_space(body, space[0], space[-1],
-                                        PLACEMENT_ONLY=True, verbose=verbose, **kwargs)
+                                                             PLACEMENT_ONLY=True, verbose=verbose, **kwargs)
                 body_pose = ((x, y, z), quat_from_euler(Euler(yaw=yaw)))
             else:
                 body_pose = None
@@ -297,6 +298,8 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=
             ## special sampler for data collection
             if 'storage' in world.get_name(space):
                 from world_builder.loaders import place_in_cabinet
+                if verbose:
+                    print('use special pose sampler')
                 body_pose = place_in_cabinet(space, body, place=False)
 
             ## there will be collision between body and that link because of how pose is sampled
@@ -305,13 +308,13 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=
             obs = [obst for obst in obstacles if obst not in {body, space}]
             if not collided(body, obs, verbose=True):
                 p = Pose(body, body_pose, space)
-                poses.append((p,))
-                # yield (p,)
+                # poses.append((p,))
+                yield (p,)
         if verbose:
             print(f'{title} reached max_attempts = {max_attempts}')
-        # yield None
-        print(f'{title} return {len(poses)} poses = {poses}')
-        return poses
+        yield None
+        # print(f'{title} return {len(poses)} poses = {poses}')
+        # return poses
     return gen
 
 
@@ -373,7 +376,9 @@ def sample_joint_position_open_list_gen(problem, num_samples = 3):
         else:
             positions.append((psn2,))
 
-        return positions
+        for pstn in positions:
+            yield pstn
+        # return positions
     return fn
 
 
@@ -416,9 +421,9 @@ def get_grasp_list_gen(problem, collisions=True, randomize=True, visualize=False
 
         if randomize:
             random.shuffle(grasps)
-        return [(g,) for g in grasps]
-        #for g in grasps:
-        #    yield (g,)
+        # return [(g,) for g in grasps]
+        for g in grasps:
+           yield (g,)
     return fn
 
 
@@ -488,9 +493,9 @@ def get_handle_grasp_gen(problem, collisions=False, randomize=False, visualize=F
 
         if randomize:
             random.shuffle(grasps)
-        return [(g,) for g in grasps]
-        #for g in grasps:
-        #    yield (g,)
+        # return [(g,) for g in grasps]
+        for g in grasps:
+           yield (g,)
     return fn
 
 

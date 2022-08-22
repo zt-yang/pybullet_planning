@@ -940,8 +940,8 @@ def place_in_cabinet(fridgestorage, cabbage, place=True):
 
     (x0, y0, z0), quat0 = get_pose(cabbage)
     old_pose = (x0, y0, z0), quat0
-    y0 = max(y0, get_aabb(b, link=l).lower[1] + 0.1)
-    y0 = min(y0, get_aabb(b, link=l).upper[1] - 0.1)
+    y0 = max(y0, get_aabb(b, link=l).lower[1] + 0.05)
+    y0 = min(y0, get_aabb(b, link=l).upper[1] - 0.05)
     offset = get_aabb_extent(get_aabb(cabbage))[0] / 2 + random.uniform(0.05, 0.13)  ## 0.05
 
     x0 = get_aabb(b, link=l).upper[0] - offset
@@ -953,7 +953,6 @@ def place_in_cabinet(fridgestorage, cabbage, place=True):
         fridgestorage.include_and_attach(cabbage)
     else:
         return pose
-
 
 
 def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, table_only=False):
@@ -1004,6 +1003,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
 
     # wait_for_user()
 
+    x, y = 3, 3
     x += np.random.normal(4, 0.2)
     y += np.random.normal(0, 0.2)
     camera_pose = ((x, y, 1.3), (0.5, 0.5, -0.5, -0.5))
