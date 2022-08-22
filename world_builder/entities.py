@@ -667,11 +667,11 @@ class StaticCamera(object):
     def set_pose(self, pose):
         self.pose = pose
 
-    def get_image(self, segment=True, segment_links=False, **kwargs):
+    def get_image(self, segment=True, segment_links=False, far=8, **kwargs):
         # TODO: apply maximum depth
         self.index += 1
         #image = get_image(self.get_pose(), target_pos=[0, 0, 1])
-        return get_image_at_pose(self.get_pose(), self.camera_matrix,
+        return get_image_at_pose(self.get_pose(), self.camera_matrix, far=far,
                                  tiny=False, segment=segment, segment_links=segment_links, **kwargs)
 
     def draw(self):
