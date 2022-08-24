@@ -7,7 +7,7 @@ from pybullet_tools.bullet_utils import clip_delta, multiply2d, is_above, nice, 
     draw_pose3d_path
 from pybullet_tools.pr2_streams import Position
 
-from pybullet_planning.pybullet_tools.utils import str_from_object, get_closest_points, INF, create_attachment, wait_if_gui, \
+from pybullet_tools.utils import str_from_object, get_closest_points, INF, create_attachment, wait_if_gui, \
     get_aabb, get_joint_position, get_joint_name, get_link_pose, link_from_name, PI, Pose, Euler, \
     get_extend_fn, get_joint_positions, set_joint_positions, get_max_limit, get_pose, set_pose, set_color, \
     remove_body, create_cylinder, set_all_static, wait_for_duration, remove_handles, set_renderer

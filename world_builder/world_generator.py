@@ -331,8 +331,6 @@ def save_to_exp_folder(state, init, goal, out_path):
 
 
 def save_to_outputs_folder(outpath, exp_path, data_generation=False):
-    exp_path = exp_path.replace('.mp4', '')
-
     if data_generation:
         original = 'visualizations'
         if isfile(join(original, 'log.json')):
@@ -352,6 +350,9 @@ def save_to_outputs_folder(outpath, exp_path, data_generation=False):
     shutil.move(outpath, data_path)
 
     """ =========== move the log and plan =========== """
+    if exp_path is None:
+        return # TODO(caelan): happens when an empty plan
+    exp_path = exp_path.replace('.mp4', '')
     shutil.move(f"{exp_path}_log.txt", join(data_path, 'log.txt'))
     shutil.move(f"{exp_path}_time.json", join(data_path, 'plan.json'))
     shutil.move(f"{exp_path}_commands.pkl", join(data_path, 'commands.pkl'))

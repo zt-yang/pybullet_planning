@@ -563,7 +563,7 @@ def get_ik_ir_gen(problem, max_attempts=25, learned=True, teleport=False, verbos
     ir_sampler = get_ir_sampler(problem, learned=learned, max_attempts=40, verbose=verbose, **kwargs)
     ik_fn = get_ik_fn(problem, teleport=teleport, **kwargs)
     def gen(*inputs):
-        set_renderer(enable=verbose)
+        #set_renderer(enable=verbose)
         a, o, p, g = inputs
         ir_generator = ir_sampler(*inputs)
         attempts = 0

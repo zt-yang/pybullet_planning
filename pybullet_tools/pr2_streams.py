@@ -45,6 +45,7 @@ from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, set
 from pybullet_tools.logging import dump_json
 
 from .general_streams import *
+from pybullet_tools.ikfast.utils import USE_CURRENT
 
 BASE_EXTENT = 3.5 # 2.5
 BASE_LIMITS = (-BASE_EXTENT*np.ones(2), BASE_EXTENT*np.ones(2))
@@ -267,9 +268,11 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
         base_conf.assign()
         open_arm(robot, arm)
         set_joint_positions(robot, arm_joints, default_conf) # default_conf | sample_fn()
+
+        # TODO(caelan): use tracik here
         grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose, custom_limits=custom_limits) #, upper_limits=USE_CURRENT)
                                             #nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
-        if (grasp_conf is None) or any(pairwise_collision(robot, b) for b in obstacles+addons): ## approach_obstacles): # [obj]
+        if (grasp_conf is None) or collided(robot, obstacles+addons): ## approach_obstacles): # [obj]
             if verbose:
                 if grasp_conf != None:
                     grasp_conf = nice(grasp_conf)
@@ -284,10 +287,12 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
             return None
         elif verbose:
             print(f'{title}Grasp IK success | {nice(grasp_conf)} = pr2_inverse_kinematics({robot} at {nice(base_conf.values)}, {arm}, {nice(gripper_pose[0])}) | pose = {pose}, grasp = {grasp}')
-        #approach_conf = pr2_inverse_kinematics(robot, arm, approach_pose, custom_limits=custom_limits,
-        #                                       upper_limits=USE_CURRENT, nearby_conf=USE_CURRENT)
-        approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits)
-        if (approach_conf is None) or any(pairwise_collision(robot, b) for b in obstacles + addons): ##
+
+        # TODO(caelan): sub_inverse_kinematics's clone_body has large overhead
+        approach_conf = pr2_inverse_kinematics(robot, arm, approach_pose, custom_limits=custom_limits,
+                                               upper_limits=USE_CURRENT, nearby_conf=USE_CURRENT)
+        #approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits)
+        if (approach_conf is None) or collided(robot, obstacles+addons): ##
             if verbose:
                 if approach_conf != None:
                     approach_conf = nice(approach_conf)
@@ -357,7 +362,7 @@ def get_ik_ir_wconf_gen(problem, max_attempts=25, learned=True, teleport=False,
     def gen(*inputs):
         # set_renderer(enable=True)
         if visualize:
-            set_renderer(enable=True)
+            #set_renderer(enable=True)
             samples = []
 
         a, o, p, g, w = inputs
@@ -481,7 +486,7 @@ def get_ik_ir_grasp_handle_gen(problem, max_attempts=40, learned=True, teleport=
     ir_sampler = get_ir_sampler(problem, learned=learned, max_attempts=40, **kwargs)
     ik_fn = get_ik_fn(problem, teleport=teleport, ACONF=ACONF, **kwargs)
     def gen(*inputs):
-        set_renderer(enable=verbose)
+        #set_renderer(enable=verbose)
         if WCONF:
             a, o, p, g, w = inputs
             w.assign()
@@ -720,7 +725,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         old_pose = get_link_pose(o[0], handle_link)
         tool_from_root = get_tool_from_root(robot, a)
         if visualize:
-            set_renderer(enable=True)
+            #set_renderer(enable=True)
             gripper_before = robot.visualize_grasp(old_pose, g.value)
 
         # gripper_before = multiply(old_pose, invert(g.value))
@@ -1473,20 +1478,21 @@ def get_cfree_btraj_pose_test(robot, collisions=True, verbose=True):
 #     return list_fn
 
 
-def get_ik_gen(problem, max_attempts=25, learned=True, teleport=False,
+def get_ik_gen(problem, max_attempts=25, collisions=True, learned=True, teleport=False,
                         verbose=False, visualize=False, ACONF=False, WCONF=True, **kwargs):
     """ given grasp of target object p, return base conf and arm traj """
     ir_max_attempts = 40
-    ir_sampler = get_ir_sampler(problem, learned=learned, max_attempts=ir_max_attempts, verbose=verbose, **kwargs)
-    ik_fn = get_ik_fn(problem, teleport=teleport, verbose=False, ACONF=ACONF, **kwargs)
+    ir_sampler = get_ir_sampler(problem, collisions=collisions, learned=learned,
+                                max_attempts=ir_max_attempts, verbose=verbose, **kwargs)
+    ik_fn = get_ik_fn(problem, collisions=collisions, teleport=teleport, verbose=False, ACONF=ACONF, **kwargs)
     robot = problem.robot
-    obstacles = problem.fixed
+    obstacles = problem.fixed if collisions else []
     heading = 'pr2_streams.get_ik_ir_wconf_gen | '
 
     def gen(*inputs):
-        set_renderer(enable=False)
+        #set_renderer(enable=False)
         if visualize:
-            set_renderer(enable=True)
+            #set_renderer(enable=True)
             samples = []
 
         if WCONF or len(inputs) == 5:

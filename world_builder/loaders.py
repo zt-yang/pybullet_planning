@@ -930,7 +930,7 @@ def load_feg_kitchen(world):
 
 
 def place_in_cabinet(fridgestorage, cabbage, place=True):
-    random.seed(time.time())
+    #random.seed(time.time())
     if not isinstance(fridgestorage, tuple):
         b = fridgestorage.body
         l = fridgestorage.link

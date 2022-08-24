@@ -31,7 +31,8 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, Point, get_camera_matrix, \
     YELLOW, add_line, draw_point, RED, BROWN, BLACK, BLUE, GREY, remove_handles, apply_affine, vertices_from_rigid, \
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
-    parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug, set_point
+    parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug, set_point, has_gui, get_rigid_clusters, \
+    BASE_LINK as ROOT_LINK, link_pairs_collision
 
 
 OBJ = '?obj'
@@ -290,50 +291,60 @@ def nice(tuple_of_tuples, round_to=3, one_tuple=True):
 
 #######################################################
 
+def articulated_collisions(obj, obstacles):
+    for obstacle in obstacles:
+        # dump_body(obstacle)
+        # joints = get_movable_joints(obstacle)
+        [fixed_links] = get_rigid_clusters(obstacle, links=[ROOT_LINK])
+        if link_pairs_collision(body1=obstacle, links1=fixed_links, body2=obj):
+            return True
+    return False
+
 def collided(obj, obstacles, world=None, tag='', verbose=False, visualize=False, min_num_pts=0):
+    #return False
+    if not verbose:
+        #return articulated_collisions(obj, obstacles)
+        return any(pairwise_collision(obj, b) for b in obstacles)
+
     result = False
-
-    if verbose:
-        ## first find the bodies that collides with obj
-        bodies = []
-        for b in obstacles:
-            if pairwise_collision(obj, b):
-                result = True
-                bodies.append(b)
-        ## then find the exact links
-        body_links = {}
-        total = 0
-        for b in bodies:
-            key = world.get_debug_name(b) if (world != None) else b
-            d = {}
-            for l in get_links(b):
-                pts = get_closest_points(b, obj, link1=l, link2=None)
-                if len(pts) > 0:
-                    link = get_link_name(b, l)
-                    d[link] = len(pts)
-
-                    if visualize:  ## visualize collision points for debugging
-                        points = []
-                        for point in pts:
-                            points.append(visualize_point(point.positionOnA))
-                        print(f'visualized {len(pts)} collision points')
-                        for point in points:
-                            remove_body(point)
-
-                total += len(pts)
-            d = {k: v for k, v in sorted(d.items(), key=lambda item: item[1], reverse=True)}
-            body_links[key] = d
-
-        ## when debugging, give a threshold for oven
-        if total <= min_num_pts:
-            result = False
-        else:
-            prefix = 'bullet_utils.collided '
-            if len(tag) > 0: prefix += f'( {tag} )'
-            # print(f'{prefix} | {obj} with {body_links}')
-    else:
-        if any(pairwise_collision(obj, b) for b in obstacles):
+    ## first find the bodies that collides with obj
+    bodies = []
+    for b in obstacles:
+        if pairwise_collision(obj, b):
             result = True
+            bodies.append(b)
+
+    ## then find the exact links
+    body_links = {}
+    total = 0
+    for b in bodies:
+        key = world.get_debug_name(b) if (world != None) else b
+        d = {}
+        for l in get_links(b):
+            pts = get_closest_points(b, obj, link1=l, link2=None)
+            if len(pts) > 0:
+                link = get_link_name(b, l)
+                d[link] = len(pts)
+
+                if visualize:  ## visualize collision points for debugging
+                    points = []
+                    for point in pts:
+                        points.append(visualize_point(point.positionOnA))
+                    print(f'visualized {len(pts)} collision points')
+                    for point in points:
+                        remove_body(point)
+
+            total += len(pts)
+        d = {k: v for k, v in sorted(d.items(), key=lambda item: item[1], reverse=True)}
+        body_links[key] = d
+
+    ## when debugging, give a threshold for oven
+    if total <= min_num_pts:
+        result = False
+    else:
+        prefix = 'bullet_utils.collided '
+        if len(tag) > 0: prefix += f'( {tag} )'
+        # print(f'{prefix} | {obj} with {body_links}')
     return result
 
 #######################################################
@@ -452,8 +463,9 @@ def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_t
 
 
 def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
-                                  XY_ONLY=False, verbose=False):
+                                  XY_ONLY=False, draw=False, verbose=False):
     set_renderer(verbose)
+    draw &= has_gui()
     if verbose:
         print(f'sample_obj_in_body_link_space(obj={obj}, body={body}, link={link})')
         # wait_for_user()
@@ -467,7 +479,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
         maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, maybe=True)
     else:
         maybe = obj
-    handles = draw_fitted_box(maybe)[-1]
+    handles = draw_fitted_box(maybe)[-1] if draw else []
 
     # def contained(maybe):
     #     if not XY_ONLY:
@@ -485,7 +497,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
             set_pose(maybe, pose)
 
         remove_handles(handles)
-        handles = draw_fitted_box(maybe)[-1]
+        handles = draw_fitted_box(maybe)[-1] if draw else []
         return maybe, (x, y, z, yaw), handles
 
     def sample_maybe(body, maybe, pose, handles):
@@ -519,7 +531,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
                 pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
                 set_pose(maybe, pose)
                 remove_handles(handles)
-                handles = draw_fitted_box(maybe)[-1]
+                handles = draw_fitted_box(maybe)[-1] if draw else []
                 if verbose:
                     print(f'trying pose for {obj}: z - interval = {nice(z + interval)} - {interval}) = {nice(z)}')
             if just_added:
@@ -530,7 +542,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
             pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
             set_pose(maybe, pose)
             remove_handles(handles)
-            handles = draw_fitted_box(maybe)[-1]
+            handles = draw_fitted_box(maybe)[-1] if draw else []
             if verbose:
                 print(f'reset pose for {obj}: z + interval = {nice(z - interval)} + {interval}) = {nice(z)} | {reason}')
         z -= interval
@@ -1014,6 +1026,7 @@ def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False):
         aabb = aabb_from_points(vertices)
     else: ## if data.geometry_typep == p.GEOM_BOX:
         aabb = get_aabb(body)
+    # TODO(caelan): global DRAW variable that disables
     handles = draw_bounding_box(aabb, body_pose)
     if draw_centroid:
         handles.extend(draw_face_points(aabb, body_pose, dist=0.04))

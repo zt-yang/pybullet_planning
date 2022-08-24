@@ -10,6 +10,9 @@ class FeasibilityChecker(object):
     def __init__(self, **kwargs):
         raise NotImplementedError('should implement this for FeasibilityChecker')
 
+    def __call__(self, *args, **kwargs):
+        return self.check(*args, **kwargs)
+
     def check(self, input):
         raise NotImplementedError('should implement this for FeasibilityChecker')
 

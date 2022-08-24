@@ -193,13 +193,17 @@ def test_feg_pick(world, floorplan='counter.svg', verbose=True):
 
 ############################################
 
-
-def test_one_fridge(world, verbose=True):
+def set_time_seed():
     import numpy as np
     import time
     seed = int(time.time())
     np.random.seed(seed)
     random.seed(seed)
+    return seed
+
+
+def test_one_fridge(world, verbose=True):
+    #set_time_seed()
     sample_one_fridge_scene(world, verbose)
     goal = sample_one_fridge_goal(world)
     return None, goal
@@ -250,11 +254,7 @@ def sample_one_fridge_goal(world):
 
 
 def test_fridge_table(world, verbose=True):
-    import numpy as np
-    import time
-    seed = int(time.time())
-    np.random.seed(seed)
-    random.seed(seed)
+    #set_time_seed()
     sample_fridge_table_scene(world, verbose)
     goal = sample_fridge_table_goal(world)
     return None, goal
@@ -293,11 +293,7 @@ def sample_fridge_table_goal(world):
 
 
 def test_fridges_tables(world, verbose=True):
-    import numpy as np
-    import time
-    seed = int(time.time())
-    np.random.seed(seed)
-    random.seed(seed)
+    #set_time_seed()
     placement = sample_fridges_tables_scene(world)
     goal = sample_fridges_tables_goal(world, placement)
     return None, goal

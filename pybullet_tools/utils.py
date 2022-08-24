@@ -19,6 +19,7 @@ import shutil
 import cProfile
 import pstats
 
+from functools import lru_cache
 from collections import defaultdict, deque, namedtuple
 from itertools import product, combinations, count, cycle, islice
 from multiprocessing import TimeoutError
@@ -2368,9 +2369,10 @@ def get_adjacent_fixed_links(body):
     return list(filter(lambda item: not is_movable(body, item[0]),
                        get_adjacent_links(body)))
 
-def get_rigid_clusters(body):
-    return get_connected_components(vertices=get_all_links(body),
-                                    edges=get_adjacent_fixed_links(body))
+def get_rigid_clusters(body, links=None):
+    if links is None:
+        links = get_all_links(body)
+    return get_connected_components(vertices=links, edges=get_adjacent_fixed_links(body))
 
 def assign_link_colors(body, max_colors=3, alpha=1., s=0.5, **kwargs):
     # TODO: graph coloring
@@ -5133,7 +5135,10 @@ def tform_point(affine, point):
     return point_from_pose(multiply(affine, Pose(point=point)))
 
 def tform_points(affine, points):
-    return [tform_point(affine, p) for p in points]
+    #return [tform_point(affine, p) for p in points]
+    tform = tform_from_pose(affine)
+    points_homogenous = np.vstack([np.vstack(points).T, np.ones(len(points))])
+    return tform.dot(points_homogenous)[:3,:].T
 
 apply_affine = tform_points
 
@@ -5347,6 +5352,7 @@ def get_connected_components(vertices, edges):
     return clusters
 
 
+@lru_cache(maxsize=None)
 def read_obj(path, decompose=True):
     mesh = Mesh([], [])
     meshes = {}

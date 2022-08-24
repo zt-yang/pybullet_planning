@@ -5,6 +5,7 @@ import copy
 from os.path import join
 
 from pddlstream.language.constants import Equal, AND
+from pddlstream.algorithms.downward import set_cost_scale
 
 from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, get_pose, LockRenderer, \
     CameraImage, get_joint_positions, euler_from_quat, get_link_name, get_joint_position, \
@@ -790,6 +791,7 @@ class State(object):
                     return fact[2]
             return grasp
 
+        set_cost_scale(cost_scale=1)
         init = [Equal(('PickCost',), 1), Equal(('PlaceCost',), 1),
                 ('CanMove',), ('CanPull',)]
 

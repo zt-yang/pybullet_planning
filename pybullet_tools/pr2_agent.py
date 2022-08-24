@@ -32,7 +32,7 @@ from pybullet_tools.utils import connect, disconnect, wait_if_gui, LockRenderer,
     pairwise_collision, connect, get_pose, point_from_pose, set_renderer, \
     disconnect, get_joint_positions, enable_gravity, save_state, restore_state, HideOutput, remove_body, \
     get_distance, LockRenderer, get_min_limit, get_max_limit, has_gui, WorldSaver, wait_if_gui, add_line, SEPARATOR, \
-    BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS
+    BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS, wait_unlocked
 from pybullet_tools.flying_gripper_utils import get_se3_joints
 
 from os.path import join, isfile
@@ -43,7 +43,7 @@ from pddlstream.language.generator import from_gen_fn, from_list_fn, from_fn, fn
 from pddlstream.language.constants import Equal, AND, PDDLProblem, is_plan
 from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler
 from pddlstream.language.function import FunctionInfo
-from pddlstream.language.stream import StreamInfo, PartialInputs
+from pddlstream.language.stream import StreamInfo, PartialInputs, universe_test
 from pddlstream.language.object import SharedOptValue
 from pddlstream.language.external import defer_shared, never_defer
 from collections import namedtuple
@@ -52,7 +52,7 @@ from world_builder.entities import Object
 from world_builder.actions import get_primitive_actions
 from world_builder.world_generator import get_pddl_from_list
 
-def get_stream_map(p, c, l, t):
+def get_stream_map(p, c, l, t, movable_collisions=True):
     # p = problem
     # c = collisions
     # l = custom_limits
@@ -131,6 +131,20 @@ def get_stream_map(p, c, l, t):
         # 'TrajArmCollision': fn_from_constant(False),
         # 'TrajGraspCollision': fn_from_constant(False),
     }
+
+    if not movable_collisions:
+        # TODO(caelan): predicate disabling in domain.pddl
+        stream_map.update({
+            'test-cfree-pose-pose': from_test(universe_test),
+            'test-cfree-approach-pose': from_test(universe_test),
+            'test-cfree-traj-pose': from_test(universe_test),
+            'test-cfree-btraj-pose': from_test(universe_test),
+
+            #'test-bconf-in-region': from_test(universe_test),
+            #'test-pose-in-region': from_test(universe_test),
+            #'test-pose-in-space': from_test(universe_test),
+        })
+
     return stream_map
 
 # def get_stream_info(partial, defer):
@@ -170,6 +184,8 @@ def get_stream_info():
         'sample-joint-position': StreamInfo(opt_gen_fn=from_fn(opt_position_fn)),
         # 'inverse-kinematics-grasp-handle': StreamInfo(opt_gen_fn=from_fn(opt_ik_grasp_fn)),
     })
+    # TODO(caelan): limited depth for update-wconf-p
+
     return stream_info
 
 
@@ -604,11 +620,17 @@ def solve_pddlstream(problem, state, domain_pddl=None, visualization=False):
         # solution = solve(pddlstream_problem, algorithm='adaptive', unit_costs=True, visualize=False,
         #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
         solution = solve_focused(pddlstream_problem, stream_info=stream_info,
-                                 planner='ff-astar1', max_planner_time=10, debug=False,
+                                 planner='ff-astar1', max_planner_time=10,
+                                 debug=False,
+                                 initial_complexity=5,
                                  unit_costs=True, success_cost=INF,
                                  max_time=INF, verbose=True, visualize=visualization,
-                                 unit_efforts=True, effort_weight=1,
+                                 #unit_efforts=True, effort_weight=1,
+                                 unit_efforts=True, effort_weight=None,
                                  bind=True, max_skeletons=INF,
+                                 unique_optimistic=True,
+                                 forbid=True, max_plans=1,
+                                 fc=lambda *args, **kwargs: False,
                                  search_sample_ratio=0)
         saver.restore()
 
