@@ -882,8 +882,8 @@ class State(object):
         ## --- world configuration
         wconf = self.get_wconf(init)
         init += [('WConf', wconf), ('InWConf', wconf)]
-        if verbose: print('world.get_facts | initial wconf', wconf.printout())
-
+        if verbose and (wconf is not None):
+            print('world.get_facts | initial wconf', wconf.printout())
         # ## ---- add multiple world conf for joints
         # from pybullet_tools.general_streams import sample_joint_position_open_list_gen, get_pose_from_attachment
         # joint_opener = sample_joint_position_open_list_gen(self, num_samples=1)

@@ -1374,18 +1374,41 @@ def get_pose_in_region_gen(problem, collisions=True, max_attempts=40, verbose=Fa
 
 ##################################################
 
+def process_fluents(fluents, robot):
+    attachments = []
+    for atom in fluents:
+        predicate, args = atom[0], atom[1:]
+        if predicate == 'atpose':
+            o, p = args
+            p.assign()
+        elif predicate == 'atgrasp':
+            a, o, g = args
+            attachments.append(g.get_attachment(robot, a))
+        elif predicate == 'atposition':
+            o, p = args
+            p.assign()
+        elif predicate == 'ataconf':
+            a, q = args
+            q.assign()
+        else:
+            raise NotImplementedError(atom)
+    return attachments
+
 def get_motion_wconf_gen(problem, custom_limits={}, collisions=True, teleport=False):
     from pybullet_tools.pr2_primitives import Pose
     # TODO: include fluents
     robot = problem.robot
     saver = BodySaver(robot)
     obstacles = problem.fixed if collisions else []
-    def fn(bq1, bq2, w, fluents=[]):
+    def fn(bq1, bq2, w=None, fluents=[], context=None):
+        #print(context) # NOTE(caelan): should be None
         saver.restore()
+        attachments = process_fluents(fluents, robot) # TODO(caelan): use attachments
         bq1.assign()
 
         ## the only thing added from get_motion_wconf
-        w.assign()
+        if w is not None:
+            w.assign()
         bconf = get_joint_positions(robot, robot.get_base_joints())
         aconf = get_joint_positions(robot, get_arm_joints(robot, 'left'))
 
@@ -1477,6 +1500,43 @@ def get_cfree_btraj_pose_test(robot, collisions=True, verbose=True):
 #         return paths
 #     return list_fn
 
+def process_context(context):
+    if context is None:
+        return
+    current_stream = context[0]
+    print(current_stream)
+    print(current_stream.output_objects)
+    for i, stream in enumerate(context[1:]):
+        if stream.output_objects:
+            continue
+        if not set(current_stream.output_objects) & set(stream.input_objects):
+            continue
+        # TODO: skip if any unbound parameters not covered by current_stream
+        print(i, stream)
+        # TODO: sort
+        inputs = stream.instance.get_input_values()
+        if stream.name == 'inverse-kinematics-wconf':
+            pass
+        elif stream.name == 'sample-pose':
+            pass
+        elif stream.name == 'sample-pose-inside':
+            pass
+        elif stream.name == 'sample-grasp':
+            pass
+        elif stream.name == 'test-cfree-pose-pose':
+            pass
+        elif stream.name == 'test-cfree-approach-pose':
+            pass
+        elif stream.name == 'test-cfree-traj-pose':
+            _, o, p = inputs
+            p.assign()
+        elif stream.name == 'test-cfree-traj-position':
+            _, o, p = inputs
+            p.assign()
+        elif stream.name == 'plan-base-motion-wconf':
+            pass
+        else:
+            raise ValueError(stream.name)
 
 def get_ik_gen(problem, max_attempts=25, collisions=True, learned=True, teleport=False,
                         verbose=False, visualize=False, ACONF=False, WCONF=True, **kwargs):
@@ -1489,7 +1549,7 @@ def get_ik_gen(problem, max_attempts=25, collisions=True, learned=True, teleport
     obstacles = problem.fixed if collisions else []
     heading = 'pr2_streams.get_ik_ir_wconf_gen | '
 
-    def gen(*inputs):
+    def gen(*inputs, context=None):
         #set_renderer(enable=False)
         if visualize:
             #set_renderer(enable=True)
@@ -1497,8 +1557,9 @@ def get_ik_gen(problem, max_attempts=25, collisions=True, learned=True, teleport
 
         if WCONF or len(inputs) == 5:
             a, o, p, g, w = inputs
-            w.assign()
-            # w.printout()
+            if w is not None:
+                w.assign()
+                # w.printout()
             inputs = a, o, p, g
         else:
             a, o, p, g = inputs
