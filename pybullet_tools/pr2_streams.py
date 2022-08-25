@@ -232,7 +232,11 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
     world = problem.world
     title = 'pr2_streams.get_ik_fn:\t'
 
-    def fn(arm, obj, pose, grasp, base_conf):
+    def fn(arm, obj, pose, grasp, base_conf, wconf=None, fluents=[]):
+        if wconf is not None:
+            wconf.assign()
+        attachments = process_motion_fluents(fluents, robot) # TODO(caelan): use attachments
+
         if isinstance(obj, tuple): ## may be a (body, joint) or a body with a marker
             body = obj[0]
         else:
@@ -247,6 +251,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
         addons = [body]
         if hasattr(world, 'BODY_TO_OBJECT') and world.BODY_TO_OBJECT[body].grasp_parent != None:
             addons.append(world.BODY_TO_OBJECT[body].grasp_parent)
+        addon_obstacles = obstacles + addons if collisions else []
 
         approach_obstacles = {obst for obst in obstacles if not is_placement(body, obst)}
         # approach_obstacles = problem.world.refine_marker_obstacles(obj, approach_obstacles)  ## for steerables
@@ -272,12 +277,13 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
         # TODO(caelan): use tracik here
         grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose, custom_limits=custom_limits) #, upper_limits=USE_CURRENT)
                                             #nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
-        if (grasp_conf is None) or collided(robot, obstacles+addons): ## approach_obstacles): # [obj]
+        if (grasp_conf is None) or collided(robot, addon_obstacles): ## approach_obstacles): # [obj]
             if verbose:
                 if grasp_conf != None:
                     grasp_conf = nice(grasp_conf)
-                print(f'{title}Grasp IK failure | {grasp_conf} = pr2_inverse_kinematics({robot} at {nice(base_conf.values)}, {arm}, {nice(gripper_pose[0])}) | pose = {pose}, grasp = {grasp}')
-                for b in obstacles+addons:
+                print(f'{title}Grasp IK failure | {grasp_conf} = pr2_inverse_kinematics({robot} at {nice(base_conf.values)}, '
+                      f'{arm}, {nice(gripper_pose[0])}) | pose = {pose}, grasp = {grasp}')
+                for b in addon_obstacles:
                     if pairwise_collision(robot, b):
                         # set_renderer(True)
                         print(f'                        robot at {nice(base_conf.values)} colliding with {b} at {nice(get_pose(b))}')
@@ -286,24 +292,26 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
             #    #wait_if_gui()
             return None
         elif verbose:
-            print(f'{title}Grasp IK success | {nice(grasp_conf)} = pr2_inverse_kinematics({robot} at {nice(base_conf.values)}, {arm}, {nice(gripper_pose[0])}) | pose = {pose}, grasp = {grasp}')
+            print(f'{title}Grasp IK success | {nice(grasp_conf)} = pr2_inverse_kinematics({robot} at {nice(base_conf.values)}, '
+                  f'{arm}, {nice(gripper_pose[0])}) | pose = {pose}, grasp = {grasp}')
 
         # TODO(caelan): sub_inverse_kinematics's clone_body has large overhead
         approach_conf = pr2_inverse_kinematics(robot, arm, approach_pose, custom_limits=custom_limits,
                                                upper_limits=USE_CURRENT, nearby_conf=USE_CURRENT)
         #approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits)
-        if (approach_conf is None) or collided(robot, obstacles+addons): ##
+        if (approach_conf is None) or collided(robot, addon_obstacles): ##
             if verbose:
                 if approach_conf != None:
                     approach_conf = nice(approach_conf)
                 print(f'{title}Approach IK failure', approach_conf)
-                for b in obstacles + addons:
+                for b in addon_obstacles:
                     if pairwise_collision(robot, b):
                         print(f'                        robot at {nice(base_conf.values)} colliding with {b} at {nice(get_pose(b))}')
             # wait_if_gui()
             return None
         elif verbose:
-            print(f'{title}Approach IK success | sub_inverse_kinematics({robot} at {nice(base_conf.values)}, {arm}, {nice(approach_pose[0])}) | pose = {pose}, grasp = {nice(grasp.approach)} -> {nice(approach_conf)}')
+            print(f'{title}Approach IK success | sub_inverse_kinematics({robot} at {nice(base_conf.values)}, '
+                  f'{arm}, {nice(approach_pose[0])}) | pose = {pose}, grasp = {nice(grasp.approach)} -> {nice(approach_conf)}')
 
         # ## -------------------------------------------
         # arm_joints = get_arm_joints(robot, 'left')
@@ -1374,7 +1382,7 @@ def get_pose_in_region_gen(problem, collisions=True, max_attempts=40, verbose=Fa
 
 ##################################################
 
-def process_fluents(fluents, robot):
+def process_motion_fluents(fluents, robot):
     attachments = []
     for atom in fluents:
         predicate, args = atom[0], atom[1:]
@@ -1395,20 +1403,18 @@ def process_fluents(fluents, robot):
     return attachments
 
 def get_motion_wconf_gen(problem, custom_limits={}, collisions=True, teleport=False):
-    from pybullet_tools.pr2_primitives import Pose
-    # TODO: include fluents
     robot = problem.robot
     saver = BodySaver(robot)
     obstacles = problem.fixed if collisions else []
     def fn(bq1, bq2, w=None, fluents=[], context=None):
         #print(context) # NOTE(caelan): should be None
         saver.restore()
-        attachments = process_fluents(fluents, robot) # TODO(caelan): use attachments
-        bq1.assign()
-
         ## the only thing added from get_motion_wconf
         if w is not None:
             w.assign()
+        attachments = process_motion_fluents(fluents, robot) # TODO(caelan): use attachments
+        bq1.assign()
+
         bconf = get_joint_positions(robot, robot.get_base_joints())
         aconf = get_joint_positions(robot, get_arm_joints(robot, 'left'))
 
@@ -1500,32 +1506,25 @@ def get_cfree_btraj_pose_test(robot, collisions=True, verbose=True):
 #         return paths
 #     return list_fn
 
-def process_context(context):
+def process_ik_context(context, verbose=False):
     if context is None:
         return
+    from pddlstream.language.object import OptimisticObject
     current_stream = context[0]
-    print(current_stream)
-    print(current_stream.output_objects)
+    if verbose:
+        print('Stream:', current_stream)
     for i, stream in enumerate(context[1:]):
         if stream.output_objects:
             continue
         if not set(current_stream.output_objects) & set(stream.input_objects):
             continue
-        # TODO: skip if any unbound parameters not covered by current_stream
-        print(i, stream)
-        # TODO: sort
+        if any(isinstance(obj, OptimisticObject) for obj in set(stream.input_objects) - set(current_stream.output_objects)):
+            continue
+        if verbose:
+            print('{}/{}) {}'.format(i, len(context), stream))
         inputs = stream.instance.get_input_values()
-        if stream.name == 'inverse-kinematics-wconf':
-            pass
-        elif stream.name == 'sample-pose':
-            pass
-        elif stream.name == 'sample-pose-inside':
-            pass
-        elif stream.name == 'sample-grasp':
-            pass
-        elif stream.name == 'test-cfree-pose-pose':
-            pass
-        elif stream.name == 'test-cfree-approach-pose':
+        if stream.name in ['inverse-kinematics-wconf', 'sample-pose', 'sample-pose-inside', 'sample-grasp',
+                           'test-cfree-pose-pose', 'test-cfree-approach-pose', 'plan-base-motion-wconf']:
             pass
         elif stream.name == 'test-cfree-traj-pose':
             _, o, p = inputs
@@ -1533,13 +1532,11 @@ def process_context(context):
         elif stream.name == 'test-cfree-traj-position':
             _, o, p = inputs
             p.assign()
-        elif stream.name == 'plan-base-motion-wconf':
-            pass
         else:
             raise ValueError(stream.name)
 
-def get_ik_gen(problem, max_attempts=25, collisions=True, learned=True, teleport=False,
-                        verbose=False, visualize=False, ACONF=False, WCONF=True, **kwargs):
+def get_ik_gen(problem, max_attempts=25, collisions=True, learned=True, teleport=False, ir_only=False,
+               verbose=False, visualize=False, ACONF=False, WCONF=True, **kwargs):
     """ given grasp of target object p, return base conf and arm traj """
     ir_max_attempts = 40
     ir_sampler = get_ir_sampler(problem, collisions=collisions, learned=learned,
@@ -1549,20 +1546,16 @@ def get_ik_gen(problem, max_attempts=25, collisions=True, learned=True, teleport
     obstacles = problem.fixed if collisions else []
     heading = 'pr2_streams.get_ik_ir_wconf_gen | '
 
-    def gen(*inputs, context=None):
+    def gen(a, o, p, g, w=None, context=None):
         #set_renderer(enable=False)
         if visualize:
             #set_renderer(enable=True)
             samples = []
 
-        if WCONF or len(inputs) == 5:
-            a, o, p, g, w = inputs
-            if w is not None:
-                w.assign()
-                # w.printout()
-            inputs = a, o, p, g
-        else:
-            a, o, p, g = inputs
+        process_ik_context(context)
+        if WCONF and (w is not None):
+            w.assign() # TODO(caelan): skip moving bodies/links
+            # w.printout()
 
         """ check if hand pose is in collision """
         p.assign()
@@ -1570,7 +1563,7 @@ def get_ik_gen(problem, max_attempts=25, collisions=True, learned=True, teleport
             pose_value = linkpose_from_position(p)
         else:
             pose_value = p.value
-        gripper_grasp = robot.visualize_grasp(pose_value, g.value, a, body=g.body)
+        gripper_grasp = robot.visualize_grasp(pose_value, g.value, a, body=g.body) # TODO(caelan): cache
         if collided(gripper_grasp, obstacles):
             remove_body(gripper_grasp)
             # print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
@@ -1611,6 +1604,10 @@ def get_ik_gen(problem, max_attempts=25, collisions=True, learned=True, teleport
                     # wait_for_user()
 
                 ir_outputs = (bq,)
+                if ir_only:
+                    yield ir_outputs
+                    continue
+
                 inputs = a, o, p, g
                 ik_outputs = ik_fn(*(inputs + ir_outputs))
                 if ik_outputs is None:
@@ -1620,7 +1617,6 @@ def get_ik_gen(problem, max_attempts=25, collisions=True, learned=True, teleport
                 if visualize:
                     [remove_body(samp) for samp in samples]
                 yield ir_outputs + ik_outputs
-            return
 
         ## do ir sampling of x, y, theta, torso, then solve ik for arm
         else:

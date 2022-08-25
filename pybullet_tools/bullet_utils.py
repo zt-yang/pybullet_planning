@@ -464,7 +464,7 @@ def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_t
 
 def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
                                   XY_ONLY=False, draw=False, verbose=False):
-    set_renderer(verbose)
+    #set_renderer(verbose)
     draw &= has_gui()
     if verbose:
         print(f'sample_obj_in_body_link_space(obj={obj}, body={body}, link={link})')
@@ -569,7 +569,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
         # maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, z=round(z, 1), scale=scales[obj], moveable=True)
 
     remove_handles(handles)
-    set_renderer(True)
+    #set_renderer(True)
     if PLACEMENT_ONLY: return x, y, z, yaw
     # print(nice(aabb2d_from_aabb(aabb)))
     # print(nice(aabb2d_from_aabb(get_aabb(maybe))))
@@ -1154,7 +1154,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
         (0, 0, 1): [(P, 0, P/2), (P, 0, -P/2), (P, 0, 0), (P, 0, P)],
         (0, 0, -1): [(0, 0, -P/2), (0, 0, P/2), (0, 0, 0), (0, 0, P)],
     }
-    set_renderer(visualize)
+    #set_renderer(visualize)
     grasps = []
     # aabbs = []
     for f in faces:

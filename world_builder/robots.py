@@ -128,6 +128,7 @@ class PR2Robot(RobotAPI):
         super(PR2Robot, self).__init__(body, **kwargs)
         self.DUAL_ARM = DUAL_ARM
         self.USE_TORSO = USE_TORSO
+        self.grippers = {}
 
     def get_init(self, init_facts=[], conf_saver=None):
         from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints, \
@@ -186,7 +187,8 @@ class PR2Robot(RobotAPI):
 
     def create_gripper(self, arm='left', visual=True):
         from pybullet_tools.pr2_utils import create_gripper
-        return create_gripper(self.body, arm=arm, visual=visual)
+        self.grippers[arm] = create_gripper(self.body, arm=arm, visual=visual)
+        return self.grippers[arm]
 
     def get_cloned_gripper_joints(self, gripper_grasp):
         return [joint for joint in get_joints(gripper_grasp) if is_movable(gripper_grasp, joint)]

@@ -759,7 +759,7 @@ class State(object):
         return Observation(self, robot_conf=robot_conf, obj_poses=obj_poses,
                            facts=facts, variables=variables, image=image)
 
-    def get_facts(self, init_facts=[], conf_saver=None, obj_poses=None, verbose=True):
+    def get_facts(self, init_facts=[], conf_saver=None, obj_poses=None, use_wconf=False, verbose=True):
         robot = self.world.robot.body
         cat_to_bodies = self.world.cat_to_bodies
         cat_to_objects = self.world.cat_to_objects
@@ -880,7 +880,10 @@ class State(object):
             init += [(k[0], k[1])]
 
         ## --- world configuration
-        wconf = self.get_wconf(init)
+        if use_wconf:
+            wconf = self.get_wconf(init)
+        else:
+            wconf = None
         init += [('WConf', wconf), ('InWConf', wconf)]
         if verbose and (wconf is not None):
             print('world.get_facts | initial wconf', wconf.printout())

@@ -536,6 +536,8 @@ def get_update_wconf_p_gen(verbose=True):
 def get_update_wconf_p_two_gen(verbose=False):
     title = 'general_streams.get_update_wconf_p_two_gen'
     def fn(w1, o, p, o2, p2):
+        if w1 is None:
+            return None
         poses = copy.deepcopy(w1.poses)
         if verbose:
             print(f'{title}\tbefore:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})

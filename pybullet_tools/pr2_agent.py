@@ -13,7 +13,7 @@ from pybullet_tools.pr2_streams import get_stable_gen, Position, get_handle_gras
     get_marker_pose_gen, get_pull_marker_to_pose_motion_gen, get_pull_marker_to_bconf_motion_gen,  \
     get_pull_marker_random_motion_gen, get_ik_ungrasp_handle_gen, get_pose_in_region_test, \
     get_cfree_btraj_pose_test, get_joint_position_open_gen, get_ik_ungrasp_mark_gen, \
-    sample_joint_position_open_list_gen, get_update_wconf_pst_gen, get_ik_ir_wconf_gen, get_ik_gen
+    sample_joint_position_open_list_gen, get_update_wconf_pst_gen, get_ik_ir_wconf_gen, get_ik_gen, get_ik_fn
 
 from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
     get_ik_ir_gen, get_motion_gen, get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
@@ -61,11 +61,14 @@ def get_stream_map(p, c, l, t, movable_collisions=True):
         'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c)),
         'sample-pose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, verbose=False)),  ##
         'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False)), # TODO: collisions
+
         'inverse-kinematics': from_gen_fn(get_ik_ir_gen(p, collisions=c, teleport=t, custom_limits=l,
                                                         learned=False, max_attempts=60, verbose=False)),
-        'inverse-kinematics-wconf': from_gen_fn(  ## get_ik_ir_wconf_gen
-            get_ik_gen(p, collisions=c, teleport=t, custom_limits=l, WCONF=True,
+        'inverse-reachability-wconf': from_gen_fn(  ## get_ik_ir_wconf_gen
+            get_ik_gen(p, collisions=c, teleport=t, ir_only=True, custom_limits=l, WCONF=True,
                         learned=False, max_attempts=20, verbose=False, visualize=False)),
+        'inverse-kinematics-wconf': from_fn(get_ik_fn(p, collisions=c, teleport=t, verbose=False, ACONF=False)),
+
         'plan-base-motion': from_fn(get_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
         'plan-base-motion-wconf': from_fn(get_motion_wconf_gen(p, collisions=c, teleport=t, custom_limits=l)),
 
@@ -169,7 +172,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True):
 #     })
 #     return stream_info
 
-def get_stream_info():
+def get_stream_info(unique=False):
     stream_info = {
         # 'test-cfree-pose-pose': StreamInfo(p_success=1e-3, verbose=verbose),
         # 'test-cfree-approach-pose': StreamInfo(p_success=1e-2, verbose=verbose),
@@ -186,7 +189,38 @@ def get_stream_info():
         'sample-joint-position': StreamInfo(opt_gen_fn=from_fn(opt_position_fn)),
         # 'inverse-kinematics-grasp-handle': StreamInfo(opt_gen_fn=from_fn(opt_ik_grasp_fn)),
     })
-    # TODO(caelan): limited depth for update-wconf-p
+
+    # TODO: automatically populate using stream_map
+    opt_gen_fn = PartialInputs(unique=unique)
+    stream_info = {
+        'MoveCost': FunctionInfo(opt_fn=opt_move_cost_fn),
+
+        # 'test-cfree-pose-pose': StreamInfo(p_success=1e-3, verbose=verbose),
+        # 'test-cfree-approach-pose': StreamInfo(p_success=1e-2, verbose=verbose),
+        #'test-cfree-traj-pose': StreamInfo(p_success=1e-1),
+        #'test-cfree-approach-pose': StreamInfo(p_success=1e-1),
+
+        'sample-grasp': StreamInfo(opt_gen_fn=opt_gen_fn),
+        'sample-handle-grasp': StreamInfo(opt_gen_fn=opt_gen_fn),
+
+        'get-joint-position-open': StreamInfo(opt_gen_fn=opt_gen_fn),
+        'sample-joint-position': StreamInfo(opt_gen_fn=opt_gen_fn),
+        'update-wconf-pst': StreamInfo(opt_gen_fn=PartialInputs(unique=False)), # TODO(caelan): limited depth
+
+        # TODO: still not reording quite right
+        'sample-pose': StreamInfo(opt_gen_fn=opt_gen_fn, p_success=1e-1),
+        'sample-pose-inside': StreamInfo(opt_gen_fn=opt_gen_fn, p_success=1e-1),
+
+        'inverse-kinematics': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
+        'inverse-kinematics-wconf': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
+
+        'inverse-kinematics-grasp-handle': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
+        'inverse-kinematics-ungrasp-handle': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
+        'plan-base-pull-door-handle': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
+
+        'plan-base-motion': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e1),
+        'plan-base-motion-wconf': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e1),
+    }
 
     return stream_info
 
@@ -437,9 +471,9 @@ class Problem(object):
 def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
                                stream_pddl='pr2_stream.pddl',
                                custom_limits=BASE_LIMITS,
-                                init_facts=[], ## avoid duplicates
-                                facts=[],  ## completely overwrite
-                                collisions=True, teleport=False, PRINT=True):
+                               init_facts=[], ## avoid duplicates
+                               facts=[],  ## completely overwrite
+                               collisions=True, teleport=False, PRINT=True):
     from pybullet_tools.logging import myprint as print
 
     robot = state.robot
@@ -600,7 +634,7 @@ def solve_multiple(problem, stream_info={}, visualize=False, lock=True):
     return solution, join(cwd_saver.tmp_cwd, 'visualizations')
 
 
-def solve_pddlstream(problem, state, domain_pddl=None, visualization=False):
+def solve_pddlstream(problem, state, domain_pddl=None, visualization=False, profile=True, lock=False):
     # from examples.pybullet.utils.pybullet_tools.utils import CLIENTS
     from pybullet_tools.logging import myprint as print
 
@@ -617,8 +651,9 @@ def solve_pddlstream(problem, state, domain_pddl=None, visualization=False):
 
     print(SEPARATOR)
 
-    # with Profiler(): ##field='tottime', num=10):
-    with LockRenderer(lock=True):
+    profiler = Profiler(field='cumtime' if profile else None, num=25) # cumtime | tottime
+    profiler.save()
+    with LockRenderer(lock=lock):
         # solution = solve(pddlstream_problem, algorithm='adaptive', unit_costs=True, visualize=False,
         #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
         solution = solve_focused(pddlstream_problem, stream_info=stream_info,
@@ -630,11 +665,12 @@ def solve_pddlstream(problem, state, domain_pddl=None, visualization=False):
                                  #unit_efforts=True, effort_weight=1,
                                  unit_efforts=True, effort_weight=None,
                                  bind=True, max_skeletons=INF,
-                                 unique_optimistic=True,
+                                 unique_optimistic=True, # NOTE(caelan): cannot use update-wconf-pst
                                  forbid=True, max_plans=1,
                                  fc=lambda *args, **kwargs: False,
                                  search_sample_ratio=0)
         saver.restore()
+    profiler.restore()
 
     # PARALLEL = True
     #
