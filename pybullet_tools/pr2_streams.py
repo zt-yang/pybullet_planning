@@ -274,9 +274,13 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
         open_arm(robot, arm)
         set_joint_positions(robot, arm_joints, default_conf) # default_conf | sample_fn()
 
-        # TODO(caelan): use tracik here
-        grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose, custom_limits=custom_limits) #, upper_limits=USE_CURRENT)
-                                            #nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
+        if base_conf.joint_state is None:
+            # TODO(caelan): use tracik here
+            grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose, custom_limits=custom_limits) #, upper_limits=USE_CURRENT)
+                                                #nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
+        else:
+            grasp_conf = list(map(base_conf.joint_state.get, arm_joints))
+            set_joint_positions(robot, arm_joints, grasp_conf)
         if (grasp_conf is None) or collided(robot, addon_obstacles): ## approach_obstacles): # [obj]
             if verbose:
                 if grasp_conf != None:
@@ -1584,13 +1588,13 @@ def get_ik_gen(problem, max_attempts=25, collisions=True, learned=True, teleport
                                  custom_limits=custom_limits)  ## using all 13 joints
             attempts = 0
             for i, conf in enumerate(ik_solver.generate(gripper_pose)):
+                joint_state = dict(zip(ik_solver.joints, conf))
                 if max_attempts*2 <= attempts:
                     return
 
-                ## ik solution is (x, y, theta, torso), switch last two
-                bconf = list(conf[:2]) + list([conf[3], conf[2]])
                 base_joints = robot.get_base_joints()
-                bq = Conf(robot, base_joints, bconf)
+                bconf = list(map(joint_state.get, base_joints))
+                bq = Conf(robot, base_joints, bconf, joint_state=joint_state)
                 bq.assign()
                 attempts += 1
                 if collided(robot, obstacles):

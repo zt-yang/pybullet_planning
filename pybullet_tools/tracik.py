@@ -17,7 +17,7 @@ class IKSolver(object):
         if first_joint is None:
             self.base_link = BASE_LINK
         else:
-            first_joint = joint_from_name(body, first_joint)
+            first_joint = joint_from_name(body, first_joint) if isinstance(first_joint, str) else first_joint
             self.base_link = parent_link_from_joint(body, first_joint)
         # joints = get_joint_ancestors(body, self.tool_link)[1:] # get_link_ancestors
         # movable_joints = prune_fixed_joints(body, joints)

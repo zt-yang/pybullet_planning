@@ -94,7 +94,7 @@ class Grasp(object):
         # return 'g{}'.format(id(self) % 1000)
 
 class Conf(object):
-    def __init__(self, body, joints, values=None, init=False, index=None):
+    def __init__(self, body, joints, values=None, init=False, index=None, joint_state=None):
         self.body = body
         self.joints = joints
         if values is None:
@@ -104,6 +104,7 @@ class Conf(object):
         if index == None:
             index = id(self)
         self.index = index
+        self.joint_state = joint_state
     @property
     def bodies(self): # TODO: misnomer
         return flatten_links(self.body, get_moving_links(self.body, self.joints))
