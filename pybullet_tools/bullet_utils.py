@@ -291,19 +291,24 @@ def nice(tuple_of_tuples, round_to=3, one_tuple=True):
 
 #######################################################
 
-def articulated_collisions(obj, obstacles):
+def get_root_links(body):
+    [fixed_links] = get_rigid_clusters(body, links=[ROOT_LINK])
+    return fixed_links
+
+def articulated_collisions(obj, obstacles): # TODO: articulated_collision?
     for obstacle in obstacles:
         # dump_body(obstacle)
         # joints = get_movable_joints(obstacle)
-        [fixed_links] = get_rigid_clusters(obstacle, links=[ROOT_LINK])
-        if link_pairs_collision(body1=obstacle, links1=fixed_links, body2=obj):
+        root_links = get_root_links(obstacle)
+        if link_pairs_collision(body1=obstacle, links1=root_links, body2=obj):
             return True
     return False
 
-def collided(obj, obstacles, world=None, tag='', verbose=False, visualize=False, min_num_pts=0):
+def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=False, visualize=False, min_num_pts=0):
     #return False
     if not verbose:
-        #return articulated_collisions(obj, obstacles)
+        if articulated:
+            return articulated_collisions(obj, obstacles)
         return any(pairwise_collision(obj, b) for b in obstacles)
 
     result = False

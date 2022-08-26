@@ -181,9 +181,9 @@ class PR2Robot(RobotAPI):
 
         return init
 
-    def get_stream_map(self, problem, collisions, custom_limits, teleport):
+    def get_stream_map(self, problem, collisions, custom_limits, teleport, **kwargs):
         from pybullet_tools.pr2_agent import get_stream_map
-        return get_stream_map(problem, collisions, custom_limits, teleport)
+        return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
 
     def create_gripper(self, arm='left', visual=True):
         from pybullet_tools.pr2_utils import create_gripper
@@ -318,9 +318,9 @@ class PR2Robot(RobotAPI):
         custom_limits = get_base_custom_limits(self.body, self.custom_limits)
         return custom_limits
 
-    def get_stream_map(self, problem, collisions, custom_limits, teleport):
+    def get_stream_map(self, problem, collisions, custom_limits, teleport, **kwargs):
         from pybullet_tools.pr2_agent import get_stream_map
-        return get_stream_map(problem, collisions, custom_limits, teleport)
+        return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
 
     def get_stream_info(self, partial=False, defer=False):
         from pybullet_tools.pr2_agent import get_stream_info
@@ -479,9 +479,9 @@ class FEGripper(RobotAPI):
         return [('SEConf', initial_q), ('AtSEConf', initial_q), ('OriginalSEConf', initial_q),
                 ('Arm', arm), ('Controllable', arm), ('HandEmpty', arm)]
 
-    def get_stream_map(self, problem, collisions, custom_limits, teleport):
+    def get_stream_map(self, problem, collisions, custom_limits, teleport, **kwargs):
         from pybullet_tools.flying_gripper_agent import get_stream_map
-        return get_stream_map(problem, collisions, custom_limits, teleport)
+        return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
 
     def get_attachment(self, grasp, arm=None):
         tool_link = link_from_name(self.body, 'panda_hand')
@@ -526,9 +526,9 @@ class FEGripper(RobotAPI):
             set_cloned_se3_conf(self.body, gripper, conf.values)
             yield
 
-    def get_stream_map(self, problem, collisions, custom_limits, teleport):
+    def get_stream_map(self, problem, collisions, custom_limits, teleport, **kwargs):
         from pybullet_tools.flying_gripper_agent import get_stream_map
-        return get_stream_map(problem, collisions, custom_limits, teleport)
+        return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
 
     def get_stream_info(self):
         # from pybullet_tools.flying_gripper_agent import get_stream_info

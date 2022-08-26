@@ -446,7 +446,7 @@ def make_sdf_world(sdf_model):
 #######################
 
 
-def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
+def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False, **kwargs):
 
     world = problem.world
 
@@ -459,7 +459,7 @@ def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
     problem.add_init(init)
 
     custom_limits = problem.world.robot.custom_limits ## planning_config['base_limits']
-    stream_map = world.robot.get_stream_map(problem, collisions, custom_limits, teleport)
+    stream_map = world.robot.get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
 
     return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
 

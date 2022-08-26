@@ -1,8 +1,10 @@
 from __future__ import print_function
 
 import os
+import random
 import sys
 import time
+import numpy as np
 
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_pull_drawer_handle_motion_gen
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_turn_knob_handle_motion_gen
@@ -21,7 +23,7 @@ from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custo
     get_gripper_joints, GripperCommand, apply_commands, State, Trajectory
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
-    set_camera_target_robot, nice, BASE_LIMITS, get_file_short_name
+    set_camera_target_robot, nice, BASE_LIMITS, get_file_short_name, get_root_links
 from pybullet_tools.pr2_problems import create_pr2
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, create_gripper, set_group_conf
 from pybullet_tools.utils import connect, disconnect, wait_if_gui, LockRenderer, HideOutput, get_client, \
@@ -32,7 +34,8 @@ from pybullet_tools.utils import connect, disconnect, wait_if_gui, LockRenderer,
     pairwise_collision, connect, get_pose, point_from_pose, set_renderer, \
     disconnect, get_joint_positions, enable_gravity, save_state, restore_state, HideOutput, remove_body, \
     get_distance, LockRenderer, get_min_limit, get_max_limit, has_gui, WorldSaver, wait_if_gui, add_line, SEPARATOR, \
-    BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS, wait_unlocked
+    BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS, wait_unlocked, get_movable_joints, set_all_color, \
+    TRANSPARENT, apply_alpha, get_all_links, get_color, get_texture, dump_body, clear_texture
 from pybullet_tools.flying_gripper_utils import get_se3_joints
 
 from os.path import join, isfile
@@ -52,11 +55,14 @@ from world_builder.entities import Object
 from world_builder.actions import get_primitive_actions
 from world_builder.world_generator import get_pddl_from_list
 
-def get_stream_map(p, c, l, t, movable_collisions=True):
+def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True):
     # p = problem
     # c = collisions
     # l = custom_limits
     # t = teleport
+    movable_collisions &= c
+    motion_collisions &= c
+
     stream_map = {
         'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c)),
         'sample-pose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, verbose=False)),  ##
@@ -66,11 +72,11 @@ def get_stream_map(p, c, l, t, movable_collisions=True):
                                                         learned=False, max_attempts=60, verbose=False)),
         'inverse-reachability-wconf': from_gen_fn(  ## get_ik_ir_wconf_gen
             get_ik_gen(p, collisions=c, teleport=t, ir_only=True, custom_limits=l, WCONF=True,
-                        learned=False, max_attempts=20, verbose=False, visualize=False)),
-        'inverse-kinematics-wconf': from_fn(get_ik_fn(p, collisions=c, teleport=t, verbose=False, ACONF=False)),
+                       learned=False, verbose=False, visualize=False)),
+        'inverse-kinematics-wconf': from_fn(get_ik_fn(p, collisions=motion_collisions, teleport=t, verbose=False, ACONF=False)),
 
-        'plan-base-motion': from_fn(get_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
-        'plan-base-motion-wconf': from_fn(get_motion_wconf_gen(p, collisions=c, teleport=t, custom_limits=l)),
+        'plan-base-motion': from_fn(get_motion_gen(p, collisions=motion_collisions, teleport=t, custom_limits=l)),
+        'plan-base-motion-wconf': from_fn(get_motion_wconf_gen(p, collisions=motion_collisions, teleport=t, custom_limits=l)),
 
         'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(collisions=c)),
         'test-cfree-approach-pose': from_test(get_cfree_approach_pose_test(p, collisions=c)),
@@ -84,6 +90,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True):
 
         'sample-handle-grasp': from_gen_fn(get_handle_grasp_gen(p, collisions=c)),
 
+        # TODO: apply motion_collisions to pulling?
         'inverse-kinematics-grasp-handle': from_gen_fn(  ## get_ik_ir_grasp_handle_gen
             get_ik_gen(p, collisions=c, teleport=t, custom_limits=l,
                         learned=False, verbose=False, ACONF=True, WCONF=False)),
@@ -278,13 +285,15 @@ def opt_motion_wconf_fn(q1, q2, w):
 
 #######################################################
 
-def post_process(problem, plan, teleport=False):
+def post_process(problem, plan, teleport=False, use_commands=False):
     if plan is None:
         return None
     commands = []
     for i, action in enumerate(plan):
-        # new_commands = get_primitive_commands(action, problem.robot, teleport)
-        new_commands = get_primitive_actions(action, problem.world, teleport)
+        if use_commands:
+            new_commands = get_primitive_commands(action, problem.robot, teleport)
+        else:
+            new_commands = get_primitive_actions(action, problem.world, teleport)
         commands += new_commands
         print(i, action)
     return commands
@@ -292,7 +301,7 @@ def post_process(problem, plan, teleport=False):
 
 def get_primitive_commands(action, robot, teleport=False):
     name, args = action
-    if name == 'move_base':
+    if name in ['move_base', 'move_base_wconf']:
         c = args[-1]
         new_commands = c.commands
     elif name == 'pick':
@@ -473,7 +482,7 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
                                custom_limits=BASE_LIMITS,
                                init_facts=[], ## avoid duplicates
                                facts=[],  ## completely overwrite
-                               collisions=True, teleport=False, PRINT=True):
+                               collisions=True, teleport=False, PRINT=True, **kwargs):
     from pybullet_tools.logging import myprint as print
 
     robot = state.robot
@@ -489,8 +498,9 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     init = facts
 
     print(f'pr2_agent.pddlstream_from_state_goal(\n'
-          f'\tdomain = {get_file_short_name(domain_pddl)}, \n'
-          f'\tstream = {get_file_short_name(stream_pddl)}, custom_limits = {custom_limits}')
+          f'\tdomain = {domain_pddl}, \n'
+          f'\tstream = {stream_pddl}, \n'
+          f'\tcustom_limits = {custom_limits}')
 
     if isinstance(goals, tuple): ## debugging
         test, name = goals
@@ -569,7 +579,7 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     if PRINT:
         print_goal(goal, world=world)
 
-    stream_map = robot.get_stream_map(problem, collisions, custom_limits, teleport)
+    stream_map = robot.get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
     # get_press_gen(problem, teleport=teleport)
     return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
 
@@ -633,8 +643,53 @@ def solve_multiple(problem, stream_info={}, visualize=False, lock=True):
     # profiler.restore()
     return solution, join(cwd_saver.tmp_cwd, 'visualizations')
 
+def get_named_colors(kind='tablaeu', alpha=1.):
+    # from matplotlib._color_data import BASE_COLORS, TABLEAU_COLORS, XKCD_COLORS, CSS4_COLORS
+    # from pybullet_planning.pybullet_tools.utils import CHROMATIC_COLORS, COLOR_FROM_NAME
+    # TODO: colors.py from past projects
+    from matplotlib.colors import BASE_COLORS, TABLEAU_COLORS, XKCD_COLORS, CSS4_COLORS, to_rgba
+    from pybullet_planning.pybullet_tools.utils import RGBA, apply_alpha
+    if kind == 'base':
+        return {name: apply_alpha(rgb, alpha=alpha) for name, rgb in BASE_COLORS.items()} # TODO: single character
+    elif kind == 'tablaeu':
+        colors = TABLEAU_COLORS
+    elif kind == 'xkcd':
+        colors = XKCD_COLORS
+    elif kind == 'css4':
+        colors = CSS4_COLORS
+    else:
+        raise NotImplementedError(kind)
+    return {name.split(':')[-1].replace(' ', '-').lower(): RGBA(*to_rgba(hex, alpha=alpha))
+            for name, hex in colors.items()}
 
-def solve_pddlstream(problem, state, domain_pddl=None, visualization=False, profile=True, lock=False):
+def colorize_world(world, color_types=['brown', 'tan'], transparency=0.5):
+    named_colors = get_named_colors(kind='xkcd')
+    colors = [color for name, color in named_colors.items()
+              if any(color_type in name for color_type in color_types)] # TODO: convex combination
+    for body in world.fixed:
+        joints = get_movable_joints(body)
+        if not joints:
+            continue
+        dump_body(body)
+        #body_color = apply_alpha(WHITE, alpha=0.5)
+        #body_color = random.choice(colors)
+        body_color = apply_alpha(0.9*np.ones(3))
+        links = get_all_links(body)
+        rigid = get_root_links(body)
+
+        #links = set(links) - set(rigid)
+        for link in links:
+            #print('Body: {} | Link: {} | Joints: {}'.format(body, link, joints))
+            #print(get_color(body, link=link))
+            #print(get_texture(body, link=link))
+            #clear_texture(body, link=link)
+            #link_color = body_color
+            link_color = np.array(body_color) + np.random.normal(0, 1e-2, 4) # TODO: clip
+            link_color = apply_alpha(link_color, alpha=1.0 if link in rigid else transparency)
+            set_color(body, link=link, color=link_color)
+
+def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=False, collect_dataset=False,
+                     profile=True, lock=False, max_time=5*50, preview=False, **kwargs):
     # from examples.pybullet.utils.pybullet_tools.utils import CLIENTS
     from pybullet_tools.logging import myprint as print
 
@@ -642,14 +697,26 @@ def solve_pddlstream(problem, state, domain_pddl=None, visualization=False, prof
 
     CLIENTS[get_client()] = True # TODO: hack
     saver = WorldSaver()
-    pddlstream_problem = problem
     world = state.world
     objects = world.objects
+    print(f'Robot: {world.robot} | Objects: {world.objects}\n'
+          f'Movable: {world.movable} | Fixed: {world.fixed} | Floor: {world.floors}')
     stream_info = world.robot.get_stream_info()
+
+    colorize_world(world)
+    #wait_unlocked()
 
     #########################
 
     print(SEPARATOR)
+
+    plan_dataset = None
+    if collect_dataset:
+        #plan_dataset = PlanDataset()
+        plan_dataset = []
+
+    feasibility_checker = None
+    #feasibility_checker = lambda *args: False
 
     profiler = Profiler(field='cumtime' if profile else None, num=25) # cumtime | tottime
     profiler.save()
@@ -661,16 +728,27 @@ def solve_pddlstream(problem, state, domain_pddl=None, visualization=False, prof
                                  debug=False,
                                  initial_complexity=5,
                                  unit_costs=True, success_cost=INF,
-                                 max_time=INF, verbose=True, visualize=visualization,
+                                 max_time=max_time, verbose=True, visualize=visualization,
                                  #unit_efforts=True, effort_weight=1,
                                  unit_efforts=True, effort_weight=None,
                                  bind=True, max_skeletons=INF,
                                  unique_optimistic=True, # NOTE(caelan): cannot use update-wconf-pst
+                                 use_feedback=True,
                                  forbid=True, max_plans=1,
-                                 fc=lambda *args, **kwargs: False,
-                                 search_sample_ratio=0)
+                                 fc=feasibility_checker,
+                                 plan_dataset=plan_dataset, evaluate_plans=True,
+                                 search_sample_ratio=0, **kwargs)
         saver.restore()
     profiler.restore()
+
+    if plan_dataset is not None:
+        for i, (opt_solution, solution) in enumerate(plan_dataset):
+            stream_plan, (opt_plan, preimage), opt_cost = opt_solution
+            plan = None
+            if solution is not None:
+                plan, cost, certificate = solution
+            print(f'\n{i+1}/{len(plan_dataset)}) Optimistic Plan: {opt_plan}\n'
+                  f'Plan: {plan}')
 
     # PARALLEL = True
     #
@@ -704,7 +782,7 @@ def solve_pddlstream(problem, state, domain_pddl=None, visualization=False, prof
 
         if is_plan_abstract(plan):
             from bullet.leap.hierarchical import check_preimage
-            env = check_preimage(pddlstream_problem, plan, preimage, init=problem.init,
+            env = check_preimage(pddlstream_problem, plan, preimage, init=pddlstream_problem.init,
                                  objects=objects, domain_pddl=domain_pddl)
         else:
             env = None  ## preimage
@@ -715,13 +793,28 @@ def solve_pddlstream(problem, state, domain_pddl=None, visualization=False, prof
         preimage = []
 
     time_log['preimage'] = round(time.time() - start_time, 4)
-    time_log['goal'] = [f'{g[0]}({g[1:]})' for g in problem.goal[1:]]
+    time_log['goal'] = [f'{g[0]}({g[1:]})' for g in pddlstream_problem.goal[1:]]
     time_log['plan'] = plan_str
     time_log['plan_len'] = len(plan) if plan != None else 0
 
     ## for collecting data
     if visualization:
         time_log['init'] = [[str(a) for a in f] for f in preimage]
+
+
+    if preview:
+        from lisdf_tools.lisdf_planning import Problem as LISDFProblem
+        state.assign()
+        lisdf_problem = LISDFProblem(world)
+        commands = post_process(lisdf_problem, plan, use_commands=False)
+
+        state.assign()
+        wait_if_gui('Begin?')
+        from world_builder.actions import apply_actions
+        apply_actions(lisdf_problem, commands, time_step=5e-2)
+        wait_if_gui('Finish?')
+        state.assign()
+
 
     reset_globals()  ## reset PDDLStream solutions
 

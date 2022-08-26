@@ -415,6 +415,8 @@ class MoveInSE3Action(Action):
 
 def apply_actions(problem, actions, time_step=0.5):
     """ act out the whole plan and event in the world without observation/replanning """
+    if actions is None:
+        return
     state_event = State(problem.world)
     for i, action in enumerate(actions):
         print(i, action)
@@ -427,7 +429,10 @@ def apply_actions(problem, actions, time_step=0.5):
         elif isinstance(action, list):
             for a in action:
                 state_event = a.transition(state_event.copy())
-        wait_for_duration(time_step)
+        if time_step is None:
+            wait_if_gui()
+        else:
+            wait_for_duration(time_step)
 
 
 def get_primitive_actions(action, world, teleport=False):

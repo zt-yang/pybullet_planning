@@ -3128,11 +3128,21 @@ def set_all_color(body, color):
     for link in get_all_links(body):
         set_color(body, color, link)
 
+def get_texture(body, **kwargs):
+    # TODO: doesn't work
+    visual_data = get_visual_data(body, **kwargs)
+    if not visual_data:
+        return None
+    return visual_data[0].textureUniqueId
+
 def set_texture(body, texture=None, link=BASE_LINK, shape_index=NULL_ID):
     if texture is None:
         texture = NULL_ID
     return p.changeVisualShape(body, link, shapeIndex=shape_index, textureUniqueId=texture,
                                physicsClientId=CLIENT)
+
+def clear_texture(body, **kwargs):
+    return set_texture(body, texture=NULL_ID, **kwargs)
 
 #####################################
 
