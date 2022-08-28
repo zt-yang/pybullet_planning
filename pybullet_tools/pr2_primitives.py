@@ -495,10 +495,10 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=25, collisions=True, 
 def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False):
     robot = problem.robot
     obstacles = problem.fixed if collisions else []
-    # if is_ik_compiled():
-    #     print('Using ikfast for inverse kinematics')
-    # else:
-    #     print('Using pybullet for inverse kinematics')
+    if is_ik_compiled():
+        print('Using ikfast for inverse kinematics')
+    else:
+        print('Using pybullet for inverse kinematics')
 
     def fn(arm, obj, pose, grasp, base_conf):
         approach_obstacles = {obst for obst in obstacles if not is_placement(obj, obst)}
