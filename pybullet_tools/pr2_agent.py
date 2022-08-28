@@ -802,7 +802,6 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
     if visualization:
         time_log['init'] = [[str(a) for a in f] for f in preimage]
 
-
     if preview:
         from lisdf_tools.lisdf_planning import Problem as LISDFProblem
         state.assign()

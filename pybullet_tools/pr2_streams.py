@@ -1563,7 +1563,7 @@ def process_ik_context(context, verbose=False):
         else:
             raise ValueError(stream.name)
 
-def get_ik_gen(problem, max_attempts=200, collisions=True, learned=True, teleport=False, ir_only=False,
+def get_ik_gen(problem, max_attempts=50, collisions=True, learned=True, teleport=False, ir_only=False,
                verbose=False, visualize=False, ACONF=False, WCONF=True, **kwargs):
     """ given grasp of target object p, return base conf and arm traj """
     ir_max_attempts = 40
@@ -1624,7 +1624,7 @@ def get_ik_gen(problem, max_attempts=200, collisions=True, learned=True, telepor
                 bq = Conf(robot, base_joints, bconf, joint_state=joint_state)
                 bq.assign()
                 if collided(robot, obstacles, articulated=True):
-                    #wait_unlocked()
+                    # wait_unlocked()
                     continue
 
                 if visualize:

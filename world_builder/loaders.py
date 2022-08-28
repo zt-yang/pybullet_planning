@@ -1062,12 +1062,11 @@ def load_fridge_with_food_on_surface(world, counter, name='minifridge', cabbage=
     return list(minifridge_doors.keys())
 
 
-def random_set_doors(doors, extent_max=1.0):
-    epsilon = 0.5
+def random_set_doors(doors, extent_max=1.0, epsilon=0.1):
     for door in doors:
         if random.random() < epsilon:
             extent = random.random()
-            open_joint(door[0], door[1], extent=extent_max)
+            open_joint(door[0], door[1], extent=extent)
 
 
 def load_another_table(world, w=6, l=6, four_ways=True):
