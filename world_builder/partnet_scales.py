@@ -62,7 +62,7 @@ MODEL_SCALES = {
         'MeatTurkeyLeg': 0.0007,
         'VeggieZucchini': 0.01,
         'VeggieSweetPotato': 0.015,
-        'VeggiePotato': 0.015,
+        'VeggiePotato': 0.013,
         'VeggieCauliflower': 0.008,
         'VeggieArtichoke': 0.014,
         'VeggieGreenPepper': 0.0005,
@@ -70,7 +70,7 @@ MODEL_SCALES = {
     }
 }
 MODEL_SCALES.update({k.lower(): v for k, v in MODEL_SCALES.items()})
-MODEL_SCALES['Food'].update({k.lower(): v for k, v in MODEL_SCALES['Food'].items()})
+# MODEL_SCALES['Food'].update({k.lower(): v for k, v in MODEL_SCALES['Food'].items()})
 
 MODEL_HEIGHTS = {
     'KitchenCounter': {

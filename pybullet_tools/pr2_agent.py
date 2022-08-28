@@ -5,6 +5,7 @@ import random
 import sys
 import time
 import numpy as np
+import types
 
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_pull_drawer_handle_motion_gen
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_turn_knob_handle_motion_gen
@@ -920,8 +921,8 @@ def test_grasps(state, name='cabbage', visualize=True):
 def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False):
     robot = state.robot
     colors = [BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED]
-    for i in range(len(outputs)):
-        grasp = outputs[i][0]
+
+    def visualize_grasp(grasp, index=0):
         w = grasp.grasp_width
         if RETAIN_ALL:
             gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, body=grasp.body,
@@ -933,6 +934,18 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False):
             # set_camera_target_body(gripper_approach, dx=0, dy=-1, dz=0)
             remove_body(gripper_grasp)
             remove_body(gripper_approach)
+
+    # if not isinstance(outputs, types.GeneratorType):
+    #     for i in range(len(outputs)):
+    #         visualize_grasp(outputs[i][0], index=i)
+    # else:
+
+    i = 0
+    for grasp in outputs:
+        visualize_grasp(grasp[0], index=i)
+        i += 1
+
+
     # if RETAIN_ALL:
     #     wait_if_gui()
 
