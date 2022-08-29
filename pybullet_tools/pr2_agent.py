@@ -719,8 +719,8 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
     feasibility_checker = None
     #feasibility_checker = lambda *args: False
 
-    profiler = Profiler(field='cumtime' if profile else None, num=25) # cumtime | tottime
-    profiler.save()
+    # profiler = Profiler(field='cumtime' if profile else None, num=25) # cumtime | tottime
+    # profiler.save()
     with LockRenderer(lock=lock):
         # solution = solve(pddlstream_problem, algorithm='adaptive', unit_costs=True, visualize=False,
         #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
@@ -740,7 +740,7 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
                                  plan_dataset=plan_dataset, evaluate_plans=True,
                                  search_sample_ratio=0, **kwargs)
         saver.restore()
-    profiler.restore()
+    # profiler.restore()
 
     if plan_dataset is not None:
         for i, (opt_solution, solution) in enumerate(plan_dataset):
@@ -814,7 +814,6 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
         apply_actions(lisdf_problem, commands, time_step=5e-2)
         wait_if_gui('Finish?')
         state.assign()
-
 
     reset_globals()  ## reset PDDLStream solutions
 
