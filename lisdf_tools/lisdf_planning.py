@@ -151,27 +151,31 @@ def pddl_to_init_goal(exp_dir, world):
 
     ## just create a new one, if there aren't any in the (:objects
     inwconf = [i[1] for i in init if i[0].lower() == 'inwconf']
-    if len(inwconf) > 0:
-        to_remove = []
-        inwconf = inwconf[0]
-        index = int(''.join([i for i in inwconf if i.isdigit()]))
-        wconf = WConf(poses, positions, index=index)
-        init += [('wconf', wconf), ('inwconf', wconf)]
-        to_remove += [('wconf', inwconf), ('inwconf', inwconf)]
+    if inwconf != ['None']:  ## no more wconf for the new planner
+        if len(inwconf) > 0:
+            to_remove = []
+            inwconf = inwconf[0]
+            # import ipdb; ipdb.set_trace()
+            index = int(''.join([i for i in inwconf if i.isdigit()]))
+            wconf = WConf(poses, positions, index=index)
+            init += [('wconf', wconf), ('inwconf', wconf)]
+            to_remove += [('wconf', inwconf), ('inwconf', inwconf)]
 
-        newwconfpst = [i for i in init if i[0].lower() == 'newwconfpst']
-        for n in newwconfpst:
-            index = int(''.join([i for i in n[-1] if i.isdigit()]))
-            new_positions = copy.deepcopy(positions)
-            new_positions[n[2]] = n[3]
-            new_wconf = WConf(poses, new_positions, index=index)
-            init += [('wconf', new_wconf), ('newwconfpst', wconf, n[2], n[3], new_wconf)]
-            to_remove += [('wconf', n[-1])]
-        to_remove += newwconfpst
-        init = [i for i in init if i not in to_remove]
+            newwconfpst = [i for i in init if i[0].lower() == 'newwconfpst']
+            for n in newwconfpst:
+                index = int(''.join([i for i in n[-1] if i.isdigit()]))
+                new_positions = copy.deepcopy(positions)
+                new_positions[n[2]] = n[3]
+                new_wconf = WConf(poses, new_positions, index=index)
+                init += [('wconf', new_wconf), ('newwconfpst', wconf, n[2], n[3], new_wconf)]
+                to_remove += [('wconf', n[-1])]
+            to_remove += newwconfpst
+            init = [i for i in init if i not in to_remove]
+        else:
+            wconf = WConf(poses, positions)
+            init += [('WConf', wconf), ('InWConf', wconf)]
     else:
-        wconf = WConf(poses, positions)
-        init += [('WConf', wconf), ('InWConf', wconf)]
+        init = [i for i in init if 'wconf' not in i[0].lower()]
 
     # ## ----------- debugging
     # new_init = []

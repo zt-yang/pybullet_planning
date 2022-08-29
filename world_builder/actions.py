@@ -413,13 +413,15 @@ class MoveInSE3Action(Action):
 
 #######################################################
 
-def apply_actions(problem, actions, time_step=0.5):
+def apply_actions(problem, actions, time_step=0.5, verbose=False):
     """ act out the whole plan and event in the world without observation/replanning """
     if actions is None:
         return
     state_event = State(problem.world)
     for i, action in enumerate(actions):
-        print(i, action)
+        if verbose:
+            print(i, action)
+        
         if isinstance(action, Command):
             print('\n\n\napply_actions found Command', action)
             import sys
@@ -429,6 +431,7 @@ def apply_actions(problem, actions, time_step=0.5):
         elif isinstance(action, list):
             for a in action:
                 state_event = a.transition(state_event.copy())
+        
         if time_step is None:
             wait_if_gui()
         else:
