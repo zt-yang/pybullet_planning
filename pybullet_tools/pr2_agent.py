@@ -602,10 +602,13 @@ def solve_one(pddlstream_problem, stream_info, fc, visualize=False):
     with LockRenderer(lock=True):
         solution = solve_focused(pddlstream_problem, stream_info=stream_info,
                                  planner='ff-astar1', max_planner_time=10, debug=False,
-                                 unit_costs=True, success_cost=INF,
+                                 unit_costs=True, success_cost=INF, initial_complexity=5,
                                  max_time=INF, verbose=True, visualize=visualize,
-                                 unit_efforts=True, effort_weight=1,
+                                 unit_efforts=True, effort_weight=None,
+                                 unique_optimistic=True, use_feedback=True,
+                                 forbid=True, max_plans=1, fc=fc,
                                  bind=True, max_skeletons=INF,
+                                 plan_dataset=False, evaluate_plans=True,
                                  search_sample_ratio=0)
         # solution = solve(pddlstream_problem, algorithm=DEFAULT_ALGORITHM, unit_costs=False,
         #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False,
