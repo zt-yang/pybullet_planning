@@ -1563,7 +1563,7 @@ def process_ik_context(context, verbose=False):
         else:
             raise ValueError(stream.name)
 
-def get_ik_gen(problem, max_attempts=50, collisions=True, learned=True, teleport=False, ir_only=False,
+def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, teleport=False, ir_only=False,
                verbose=False, visualize=False, ACONF=False, WCONF=True, **kwargs):
     """ given grasp of target object p, return base conf and arm traj """
     ir_max_attempts = 40

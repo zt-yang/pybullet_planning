@@ -228,7 +228,7 @@ def sample_one_fridge_scene(world, verbose=True, open_doors=True):
     """ ============== Change joint positions ================ """
     ## only after all objects have been placed inside
     if open_doors:
-        random_set_doors(minifridge_doors)
+        random_set_doors(minifridge_doors, epsilon=0.5)
 
     """ ============== Check collisions ================ """
     ensure_robot_cfree(world, verbose=verbose)
