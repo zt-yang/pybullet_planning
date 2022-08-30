@@ -15,6 +15,7 @@ from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, close_until_co
     SIDE_HOLDING_LEFT_ARM
 from pybullet_tools.general_streams import get_handle_link
 
+
 class RobotAPI(Robot):
     tool_from_hand = unit_pose()
 
@@ -129,6 +130,10 @@ class PR2Robot(RobotAPI):
         self.DUAL_ARM = DUAL_ARM
         self.USE_TORSO = USE_TORSO
         self.grippers = {}
+
+    def get_arm_joints(self, arm):
+        from pybullet_tools.pr2_utils import get_arm_joints
+        return get_arm_joints(self.body, arm)
 
     def get_init(self, init_facts=[], conf_saver=None):
         from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints, \
