@@ -56,13 +56,14 @@ from world_builder.entities import Object
 from world_builder.actions import get_primitive_actions
 from world_builder.world_generator import get_pddl_from_list
 
-def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True):
+def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True, base_collisions=True):
     # p = problem
     # c = collisions
     # l = custom_limits
     # t = teleport
     movable_collisions &= c
     motion_collisions &= c
+    base_collisions &= c
 
     stream_map = {
         'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c)),
@@ -76,8 +77,8 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True):
                        learned=False, verbose=False, visualize=False)),
         'inverse-kinematics-wconf': from_fn(get_ik_fn(p, collisions=motion_collisions, teleport=t, verbose=False, ACONF=False)),
 
-        'plan-base-motion': from_fn(get_motion_gen(p, collisions=motion_collisions, teleport=t, custom_limits=l)),
-        'plan-base-motion-wconf': from_fn(get_motion_wconf_gen(p, collisions=motion_collisions, teleport=t, custom_limits=l)),
+        'plan-base-motion': from_fn(get_motion_gen(p, collisions=base_collisions, teleport=t, custom_limits=l)),
+        'plan-base-motion-wconf': from_fn(get_motion_wconf_gen(p, collisions=base_collisions, teleport=t, custom_limits=l)),
 
         'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(collisions=c)),
         'test-cfree-approach-pose': from_test(get_cfree_approach_pose_test(p, collisions=c)),
@@ -98,12 +99,12 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True):
         'inverse-kinematics-ungrasp-handle': from_gen_fn(
             get_ik_ungrasp_handle_gen(p, collisions=c, teleport=t, custom_limits=l,
                                       verbose=False, WCONF=False)),
-        'inverse-kinematics-grasp-handle-wconf': from_gen_fn(
-            get_ik_ir_grasp_handle_gen(p, collisions=c, teleport=t, custom_limits=l,
-                                       learned=False, verbose=False, ACONF=True, WCONF=True)),
-        'inverse-kinematics-ungrasp-handle-wconf': from_gen_fn(
-            get_ik_ungrasp_handle_gen(p, collisions=c, teleport=t, custom_limits=l,
-                                      verbose=False, WCONF=True)),
+        # 'inverse-kinematics-grasp-handle-wconf': from_gen_fn(
+        #     get_ik_ir_grasp_handle_gen(p, collisions=c, teleport=t, custom_limits=l,
+        #                                learned=False, verbose=False, ACONF=True, WCONF=True)),
+        # 'inverse-kinematics-ungrasp-handle-wconf': from_gen_fn(
+        #     get_ik_ungrasp_handle_gen(p, collisions=c, teleport=t, custom_limits=l,
+        #                               verbose=False, WCONF=True)),
 
         'plan-base-pull-drawer-handle': from_fn(  ## get_pull_drawer_handle_motion_gen
             get_pull_door_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
@@ -692,7 +693,8 @@ def colorize_world(world, color_types=['brown', 'tan'], transparency=0.5):
             link_color = apply_alpha(link_color, alpha=1.0 if link in rigid else transparency)
             set_color(body, link=link, color=link_color)
 
-def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=False, collect_dataset=False,
+def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=False,
+                     collect_dataset=False, evaluate_plans=True,
                      profile=True, lock=False, max_time=5*50, preview=False, **kwargs):
     # from examples.pybullet.utils.pybullet_tools.utils import CLIENTS
     from pybullet_tools.logging import myprint as print
@@ -740,7 +742,7 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
                                  use_feedback=True,
                                  forbid=True, max_plans=1,
                                  fc=feasibility_checker,
-                                 plan_dataset=plan_dataset, evaluate_plans=True,
+                                 plan_dataset=plan_dataset, evaluate_plans=evaluate_plans,
                                  search_sample_ratio=0, **kwargs)
         saver.restore()
     # profiler.restore()

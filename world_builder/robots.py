@@ -186,6 +186,8 @@ class PR2Robot(RobotAPI):
         return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
 
     def create_gripper(self, arm='left', visual=True):
+        # TODO(caelan): gripper bodies are removed
+        #if arm not in self.grippers:
         from pybullet_tools.pr2_utils import create_gripper
         self.grippers[arm] = create_gripper(self.body, arm=arm, visual=visual)
         return self.grippers[arm]

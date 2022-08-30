@@ -20,7 +20,7 @@ from pybullet_tools.utils import invert, multiply, get_name, set_pose, get_link_
     get_joint_limits, unit_pose, point_from_pose, clone_body, set_all_color, GREEN, BROWN, get_link_subtree, \
     RED, remove_body, aabb2d_from_aabb, aabb_overlap, aabb_contains_point, get_aabb_center, get_link_name, \
     get_links, check_initial_end, get_collision_fn, BLUE, WHITE, TAN, GREY, YELLOW, aabb_contains_aabb, \
-    get_joints, is_movable, pairwise_link_collision, get_closest_points, Pose
+    get_joints, is_movable, pairwise_link_collision, get_closest_points, Pose, PI, quat_from_pose, angle_between, tform_point
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, set_camera_target_body, is_contained, \
     visualize_point, collided, GRIPPER_DIRECTIONS, get_gripper_direction, Attachment, dist, sample_pose, \
@@ -408,17 +408,20 @@ def sample_joint_position_open_list_gen(problem, num_samples = 3):
     ==============================================================
 """
 
-def get_grasp_list_gen(problem, collisions=True, randomize=True, visualize=False, RETAIN_ALL=False):
+def get_grasp_list_gen(problem, collisions=True, top_grasp_tolerance=None, # None | PI/4 | INF
+                       randomize=True, visualize=False, RETAIN_ALL=False):
     robot = problem.robot
+    grasp_type = 'hand'
+    arm = 'left'
 
     def fn(body):
-        arm = 'left'
-        def get_grasps(g_type, grasps_O):
-            return robot.make_grasps(g_type, arm, body, grasps_O, collisions=collisions)
-
         from .bullet_utils import get_hand_grasps
-        grasps = get_grasps('hand', get_hand_grasps(problem, body, visualize=visualize, RETAIN_ALL=RETAIN_ALL))
-
+        grasps_O = get_hand_grasps(problem, body, visualize=visualize, RETAIN_ALL=RETAIN_ALL)
+        grasps = robot.make_grasps(grasp_type, arm, body, grasps_O, collisions=collisions)
+        if top_grasp_tolerance is not None:
+            grasps = [grasp for grasp in grasps if angle_between(tform_point(
+                (Point(), quat_from_pose(robot.get_grasp_pose(unit_pose(), grasp.value, arm, body=body))),
+                Point(x=+1)), Point(z=-1)) <= top_grasp_tolerance]
         if randomize:
             random.shuffle(grasps)
         # return [(g,) for g in grasps]
