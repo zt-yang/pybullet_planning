@@ -408,7 +408,7 @@ def sample_joint_position_open_list_gen(problem, num_samples = 3):
     ==============================================================
 """
 
-def get_grasp_list_gen(problem, collisions=True, top_grasp_tolerance=None, # None | PI/4 | INF
+def get_grasp_list_gen(problem, collisions=True, top_grasp_tolerance=PI/4, # None | PI/4 | INF
                        randomize=True, visualize=False, RETAIN_ALL=False):
     robot = problem.robot
     grasp_type = 'hand'
