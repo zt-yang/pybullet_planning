@@ -417,6 +417,8 @@ class MoveInSE3Action(Action):
 
 
 def adapt_action(a, problem, plan):
+    if plan is None:
+        return a
     if a.__class__.__name__ == 'AttachObjectAction' and isinstance(a.object, tuple):
         robot = problem.world.robot
         plan, continuous = plan
