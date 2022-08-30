@@ -841,6 +841,10 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
             aq2 = aq1
         step_str = f"pr2_streams.get_pull_door_handle_motion_gen | step {len(bpath)}/{num_intervals}\t"
         if not verbose: print(f'{step_str} : {nice(bq2.values)}\t{nice(aq2.values)}')
+
+        pst1.assign()
+        bq1.assign()
+        aq1.assign()
         return (bq2, base_cmd, aq2, arm_cmd)
 
     return fn

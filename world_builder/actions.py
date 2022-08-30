@@ -5,14 +5,16 @@ import copy
 from pybullet_tools.bullet_utils import clip_delta, multiply2d, is_above, nice, open_joint, set_camera_target_robot, \
     toggle_joint, add_attachment, remove_attachment, draw_pose2d_path, \
     draw_pose3d_path
-from pybullet_tools.pr2_streams import Position
+from pybullet_tools.pr2_streams import Position, get_pull_door_handle_motion_gen, \
+    LINK_POSE_TO_JOINT_POSITION
 
 from pybullet_tools.utils import str_from_object, get_closest_points, INF, create_attachment, wait_if_gui, \
     get_aabb, get_joint_position, get_joint_name, get_link_pose, link_from_name, PI, Pose, Euler, \
     get_extend_fn, get_joint_positions, set_joint_positions, get_max_limit, get_pose, set_pose, set_color, \
-    remove_body, create_cylinder, set_all_static, wait_for_duration, remove_handles, set_renderer
+    remove_body, create_cylinder, set_all_static, wait_for_duration, remove_handles, set_renderer, \
+    LockRenderer
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, get_gripper_joints
-from pybullet_tools.pr2_primitives import Trajectory, Command
+from pybullet_tools.pr2_primitives import Trajectory, Command, Conf
 from pybullet_tools.flying_gripper_utils import set_se3_conf
 
 from .world import State
@@ -413,7 +415,26 @@ class MoveInSE3Action(Action):
 
 #######################################################
 
-def apply_actions(problem, actions, time_step=0.5, verbose=False):
+
+def adapt_action(a, problem, plan):
+    if a.__class__.__name__ == 'AttachObjectAction' and isinstance(a.object, tuple):
+        robot = problem.world.robot
+        plan, continuous = plan
+        act = [aa for aa in plan if aa[0] == 'pull_door_handle' and aa[2] == str(a.object)][0]
+        pstn1 = Position(a.object, continuous[act[3].split('=')[0]][0])
+        pstn2 = Position(a.object, continuous[act[4].split('=')[0]][0])
+        bq1 = continuous[act[6].split('=')[0]]
+        bq1 = Conf(robot.body, robot.get_base_joints(), bq1)
+        aq1 = continuous[act[9].split('=')[0]]
+        aq1 = Conf(robot.body, robot.get_arm_joints(a.arm), aq1)
+        funk = get_pull_door_handle_motion_gen(problem)
+        with LockRenderer(True):
+            funk(a.arm, a.object, pstn1, pstn2, a.grasp, bq1, aq1)
+        # print(LINK_POSE_TO_JOINT_POSITION)
+    return a
+
+
+def apply_actions(problem, actions, time_step=0.5, verbose=False, plan=None):
     """ act out the whole plan and event in the world without observation/replanning """
     if actions is None:
         return
@@ -421,7 +442,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=False):
     for i, action in enumerate(actions):
         if verbose:
             print(i, action)
-        
+        action = adapt_action(action, problem, plan)
         if isinstance(action, Command):
             print('\n\n\napply_actions found Command', action)
             import sys
