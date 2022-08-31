@@ -1084,14 +1084,16 @@ class LockRenderer(Saver):
         if self.state != CLIENTS[self.client]:
            set_renderer(enable=self.state)
 
-CONNECTED = False
+# CONNECTED = False
 
 def connect(use_gui=True, shadows=True, color=None, width=None, height=None, mp4=None, fps=120):
     # do not connect if already connected
-    global CONNECTED
-    if CONNECTED:
+    # global CONNECTED
+    # if CONNECTED:
+    #     return
+    # CONNECTED = True
+    if len(CLIENTS) != 0:
         return
-    CONNECTED = True
 
     # Shared Memory: execute the physics simulation and rendering in a separate process
     # https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/examples/vrminitaur.py#L7
