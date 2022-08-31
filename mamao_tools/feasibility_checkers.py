@@ -19,11 +19,23 @@ class FeasibilityChecker(object):
 
 class Oracle(FeasibilityChecker):
 
-    def __init__(self, label):
-        self.answer = not label
+    def __init__(self, correct):
+        self.correct = correct
 
-    def check(self):
-        return self.answer
+    def check(self, input):
+        if len(input) != len(self.correct):
+            return False
+        for i in range(len(input)):
+            action = [input[i].name] + list(input[i].args)
+            for j in range(len(self.correct[i])):
+                if '=' not in self.correct[i][j]:
+                    # if len(action) != len(self.correct[i]):
+                    #     print('len(input[i]) != len(self.correct[i])', action, self.correct[i])
+                    if str(action[j]) != self.correct[i][j]:
+                        print(f'\n\nOracle feasibility checker | correct', self.correct[i],
+                              'input', action, '\n\n')
+                        return False
+        return True
 
 
 class Random(FeasibilityChecker):
