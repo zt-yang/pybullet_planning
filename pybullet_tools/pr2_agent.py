@@ -64,6 +64,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True, 
     movable_collisions &= c
     motion_collisions &= c
     base_collisions &= c
+    pull_collisions = c
 
     stream_map = {
         'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c)),
@@ -94,10 +95,10 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True, 
 
         # TODO: apply motion_collisions to pulling?
         'inverse-kinematics-grasp-handle': from_gen_fn(  ## get_ik_ir_grasp_handle_gen
-            get_ik_gen(p, collisions=c, teleport=t, custom_limits=l,
+            get_ik_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l,
                         learned=False, verbose=False, ACONF=True, WCONF=False)),
         'inverse-kinematics-ungrasp-handle': from_gen_fn(
-            get_ik_ungrasp_handle_gen(p, collisions=c, teleport=t, custom_limits=l,
+            get_ik_ungrasp_handle_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l,
                                       verbose=False, WCONF=False)),
         # 'inverse-kinematics-grasp-handle-wconf': from_gen_fn(
         #     get_ik_ir_grasp_handle_gen(p, collisions=c, teleport=t, custom_limits=l,
@@ -109,16 +110,16 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True, 
         'plan-base-pull-drawer-handle': from_fn(  ## get_pull_drawer_handle_motion_gen
             get_pull_door_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
         'plan-base-pull-door-handle': from_fn(
-            get_pull_door_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
+            get_pull_door_handle_motion_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l)),
         'plan-arm-turn-knob-handle': from_fn(  ## get_turn_knob_handle_motion_gen
             get_pull_door_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
 
         'sample-marker-grasp': from_list_fn(get_marker_grasp_gen(p, collisions=c)),
         'inverse-kinematics-grasp-marker': from_gen_fn(
-            get_ik_ir_grasp_handle_gen(p, collisions=True, teleport=t, custom_limits=l,
+            get_ik_ir_grasp_handle_gen(p, collisions=c, teleport=t, custom_limits=l,
                                        learned=False, verbose=False)),
         'inverse-kinematics-ungrasp-marker': from_fn(
-            get_ik_ungrasp_mark_gen(p, collisions=True, teleport=t, custom_limits=l)),
+            get_ik_ungrasp_mark_gen(p, collisions=c, teleport=t, custom_limits=l)),
         'plan-base-pull-marker-random': from_gen_fn(
             get_pull_marker_random_motion_gen(p, collisions=c, teleport=t, custom_limits=l,
                                               learned=False)),
@@ -739,20 +740,21 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
                                  unit_efforts=True, effort_weight=None,
                                  bind=True, max_skeletons=INF,
                                  unique_optimistic=True, # NOTE(caelan): cannot use update-wconf-pst
-                                 use_feedback=True,
+                                 use_feedback=True, # plan_dataset
                                  forbid=True, max_plans=1,
                                  fc=feasibility_checker,
-                                 plan_dataset=plan_dataset, evaluate_plans=evaluate_plans,
+                                 plan_dataset=plan_dataset, evaluation_time=10, max_solutions=1,
                                  search_sample_ratio=0, **kwargs)
         saver.restore()
     # profiler.restore()
 
     if plan_dataset is not None:
-        for i, (opt_solution, solution) in enumerate(plan_dataset):
+        for i, (opt_solution, real_solution) in enumerate(plan_dataset):
             stream_plan, (opt_plan, preimage), opt_cost = opt_solution
             plan = None
-            if solution is not None:
-                plan, cost, certificate = solution
+            if real_solution is not None:
+                plan, cost, certificate = real_solution
+                solution = real_solution # TODO: first solution
             print(f'\n{i+1}/{len(plan_dataset)}) Optimistic Plan: {opt_plan}\n'
                   f'Plan: {plan}')
 

@@ -821,6 +821,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
             remove_body(gripper_before)
 
         if len(apath) < num_intervals: ## * 0.75:
+            #wait_unlocked()
             return None
 
         body, joint = o

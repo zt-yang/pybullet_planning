@@ -408,6 +408,16 @@ def sample_joint_position_open_list_gen(problem, num_samples = 3):
     ==============================================================
 """
 
+
+def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=PI/4): # None | PI/4 | INF
+    if top_grasp_tolerance is None:
+        return True
+    grasp_pose = robot.get_grasp_pose(pose, grasp.value, arm, body=body)
+    grasp_orientation = (Point(), quat_from_pose(grasp_pose))
+    grasp_direction = tform_point(grasp_orientation, Point(x=+1))
+    return angle_between(grasp_direction, Point(z=-1)) <= top_grasp_tolerance # TODO: direction parameter
+
+
 def get_grasp_list_gen(problem, collisions=True, top_grasp_tolerance=PI/4, # None | PI/4 | INF
                        randomize=True, visualize=False, RETAIN_ALL=False):
     robot = problem.robot
@@ -419,9 +429,8 @@ def get_grasp_list_gen(problem, collisions=True, top_grasp_tolerance=PI/4, # Non
         grasps_O = get_hand_grasps(problem, body, visualize=visualize, RETAIN_ALL=RETAIN_ALL)
         grasps = robot.make_grasps(grasp_type, arm, body, grasps_O, collisions=collisions)
         if top_grasp_tolerance is not None:
-            grasps = [grasp for grasp in grasps if angle_between(tform_point(
-                (Point(), quat_from_pose(robot.get_grasp_pose(unit_pose(), grasp.value, arm, body=body))),
-                Point(x=+1)), Point(z=-1)) <= top_grasp_tolerance]
+            grasps = [grasp for grasp in grasps if is_top_grasp(
+                robot, arm, body, grasp, top_grasp_tolerance=top_grasp_tolerance)]
         if randomize:
             random.shuffle(grasps)
         # return [(g,) for g in grasps]
