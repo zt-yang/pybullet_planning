@@ -418,7 +418,7 @@ def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=
     return angle_between(grasp_direction, Point(z=-1)) <= top_grasp_tolerance # TODO: direction parameter
 
 
-def get_grasp_list_gen(problem, collisions=True, top_grasp_tolerance=PI/4, # None | PI/4 | INF
+def get_grasp_list_gen(problem, collisions=True, top_grasp_tolerance=None, # None | PI/4 | INF
                        randomize=True, visualize=False, RETAIN_ALL=False):
     robot = problem.robot
     grasp_type = 'hand'
