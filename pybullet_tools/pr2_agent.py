@@ -610,7 +610,7 @@ def solve_one(pddlstream_problem, stream_info, fc, visualize=False):
                                  unique_optimistic=True, use_feedback=True,
                                  forbid=True, max_plans=1, fc=fc,
                                  bind=True, max_skeletons=INF,
-                                 plan_dataset=False, evaluate_plans=True,
+                                 plan_dataset=None, ## evaluate_plans=True,
                                  search_sample_ratio=0)
         # solution = solve(pddlstream_problem, algorithm=DEFAULT_ALGORITHM, unit_costs=False,
         #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False,
