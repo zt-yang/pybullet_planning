@@ -1597,6 +1597,7 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
             pose_value = linkpose_from_position(p)
         else:
             pose_value = p.value
+        open_arm(robot, a)
         gripper_grasp = robot.visualize_grasp(pose_value, g.value, a, body=g.body) # TODO(caelan): cache
         if collided(gripper_grasp, obstacles, articulated=True): # w is not None
             #wait_unlocked()
@@ -1623,6 +1624,7 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
             for conf in ik_solver.generate(gripper_pose): # TODO: islice
                 joint_state = dict(zip(ik_solver.joints, conf))
                 if max_attempts <= attempts:
+                    print(f'{get_ik_gen.__name__} timed out after {attempts} attempts!')
                     #wait_unlocked()
                     if soft_failures:
                         attempts = 0

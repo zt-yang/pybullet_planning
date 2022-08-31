@@ -56,7 +56,7 @@ from world_builder.entities import Object
 from world_builder.actions import get_primitive_actions
 from world_builder.world_generator import get_pddl_from_list
 
-def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True, base_collisions=True):
+def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True, pull_collisions=True, base_collisions=True):
     # p = problem
     # c = collisions
     # l = custom_limits
@@ -64,7 +64,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True, 
     movable_collisions &= c
     motion_collisions &= c
     base_collisions &= c
-    pull_collisions = c
+    pull_collisions &= c
 
     stream_map = {
         'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c)),
@@ -84,6 +84,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True, 
         'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(collisions=c)),
         'test-cfree-approach-pose': from_test(get_cfree_approach_pose_test(p, collisions=c)),
         'test-cfree-traj-pose': from_test(get_cfree_traj_pose_test(p.robot, collisions=c)),
+
         'test-cfree-traj-position': from_test(universe_test),
 
         'test-cfree-btraj-pose': from_test(get_cfree_btraj_pose_test(p.robot, collisions=c)),
@@ -217,9 +218,9 @@ def get_stream_info(unique=False):
         'sample-joint-position': StreamInfo(opt_gen_fn=opt_gen_fn),
         'update-wconf-pst': StreamInfo(opt_gen_fn=PartialInputs(unique=False)), # TODO(caelan): limited depth
 
-        # TODO: still not reording quite right
-        'sample-pose': StreamInfo(opt_gen_fn=opt_gen_fn, p_success=1e-1),
-        'sample-pose-inside': StreamInfo(opt_gen_fn=opt_gen_fn, p_success=1e-1),
+        # TODO: still not re-ordering quite right
+        'sample-pose': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e-1),
+        'sample-pose-inside': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e-1),
 
         'inverse-kinematics': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
         'inverse-kinematics-wconf': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
@@ -738,10 +739,12 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
                                  max_time=max_time, verbose=True, visualize=visualization,
                                  #unit_efforts=True, effort_weight=1,
                                  unit_efforts=True, effort_weight=None,
-                                 bind=True, max_skeletons=INF,
+                                 bind=True,
                                  unique_optimistic=True, # NOTE(caelan): cannot use update-wconf-pst
                                  use_feedback=True, # plan_dataset
-                                 forbid=True, max_plans=1,
+                                 forbid=True,
+                                 max_plans=1, max_skeletons=INF,
+                                 #max_plans=100, max_skeletons=1,
                                  fc=feasibility_checker,
                                  plan_dataset=plan_dataset, evaluation_time=10, max_solutions=1,
                                  search_sample_ratio=0, **kwargs)

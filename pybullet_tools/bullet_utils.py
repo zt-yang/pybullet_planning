@@ -32,7 +32,7 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     YELLOW, add_line, draw_point, RED, BROWN, BLACK, BLUE, GREY, remove_handles, apply_affine, vertices_from_rigid, \
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
     parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug, set_point, has_gui, get_rigid_clusters, \
-    BASE_LINK as ROOT_LINK, link_pairs_collision
+    BASE_LINK as ROOT_LINK, link_pairs_collision, draw_collision_info
 
 
 OBJ = '?obj'
@@ -301,6 +301,14 @@ def articulated_collisions(obj, obstacles): # TODO: articulated_collision?
         # joints = get_movable_joints(obstacle)
         root_links = get_root_links(obstacle)
         if link_pairs_collision(body1=obstacle, links1=root_links, body2=obj):
+            # print(obj, obstacle, root_links)
+            # dump_body(obj)
+            # dump_body(obstacle)
+            # for link in root_links:
+            #     collision_infos = get_closest_points(body1=obj, body2=obstacle, link2=link)
+            #     for i, collision_info in enumerate(collision_infos):
+            #         print(i, len(collision_infos), collision_info)
+            #         draw_collision_info(collision_info)
             return True
     return False
 
