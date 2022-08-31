@@ -1448,6 +1448,8 @@ def get_motion_wconf_gen(problem, custom_limits={}, collisions=True, teleport=Fa
             w.assign()
         attachments = process_motion_fluents(fluents, robot) # TODO(caelan): use attachments
         bq1.assign()
+        # TODO: did base motion planning fail?
+        # TODO: add objects to obstacles
 
         bconf = get_joint_positions(robot, robot.get_base_joints())
         aconf = get_joint_positions(robot, get_arm_joints(robot, 'left'))
@@ -1605,6 +1607,9 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
             # print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
             return
         remove_body(gripper_grasp)
+        # Fix grasps
+        # Fix negation
+        # Open gripper
 
         arm_joints = get_arm_joints(robot, a)
         default_conf = arm_conf(a, g.carry)

@@ -42,7 +42,7 @@ from pybullet_tools.flying_gripper_utils import get_se3_joints
 from os.path import join, isfile
 from pddlstream.algorithms.focused import solve_focused
 from pddlstream.algorithms.algorithm import parse_problem, reset_globals
-from pddlstream.algorithms.constraints import PlanConstraints
+from pddlstream.algorithms.constraints import PlanConstraints, WILD
 from pddlstream.language.generator import from_gen_fn, from_list_fn, from_fn, fn_from_constant, empty_gen, from_test
 from pddlstream.language.constants import Equal, AND, PDDLProblem, is_plan
 from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler
@@ -611,7 +611,7 @@ def solve_one(pddlstream_problem, stream_info, fc, visualize=False):
                                  unique_optimistic=True, use_feedback=True,
                                  forbid=True, max_plans=1, fc=fc,
                                  bind=True, max_skeletons=INF,
-                                 plan_dataset=None, ## evaluate_plans=True,
+                                 plan_dataset=None,
                                  search_sample_ratio=0)
         # solution = solve(pddlstream_problem, algorithm=DEFAULT_ALGORITHM, unit_costs=False,
         #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False,
@@ -696,7 +696,7 @@ def colorize_world(world, color_types=['brown', 'tan'], transparency=0.5):
             set_color(body, link=link, color=link_color)
 
 def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=False,
-                     collect_dataset=False, evaluate_plans=True,
+                     collect_dataset=False, max_cost=INF,
                      profile=True, lock=False, max_time=5*50, preview=False, **kwargs):
     # from examples.pybullet.utils.pybullet_tools.utils import CLIENTS
     from pybullet_tools.logging import myprint as print
@@ -726,16 +726,29 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
     feasibility_checker = None
     #feasibility_checker = lambda *args: False
 
+    skeleton = [
+        ('grasp_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
+        ('pull_door_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
+        ('ungrasp_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
+        ('pick', [WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
+        ('place', [WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
+    ]
+    #constraints = PlanConstraints(skeletons=[skeleton], exact=False, max_cost=max_cost + 1)
+    constraints = PlanConstraints(max_cost=max_cost + 1) # TODO: plus 1 in action costs?
+
+    max_plans, max_skeletons = 1, INF
+    #max_plans, max_skeletons = 100, 1
+
     # profiler = Profiler(field='cumtime' if profile else None, num=25) # cumtime | tottime
     # profiler.save()
     with LockRenderer(lock=lock):
         # solution = solve(pddlstream_problem, algorithm='adaptive', unit_costs=True, visualize=False,
         #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
-        solution = solve_focused(pddlstream_problem, stream_info=stream_info,
+        solution = solve_focused(pddlstream_problem, stream_info=stream_info, constraints=constraints,
                                  planner='ff-astar1', max_planner_time=10,
                                  debug=False,
                                  initial_complexity=5,
-                                 unit_costs=True, success_cost=INF,
+                                 unit_costs=False, success_cost=INF,
                                  max_time=max_time, verbose=True, visualize=visualization,
                                  #unit_efforts=True, effort_weight=1,
                                  unit_efforts=True, effort_weight=None,
@@ -743,8 +756,7 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
                                  unique_optimistic=True, # NOTE(caelan): cannot use update-wconf-pst
                                  use_feedback=True, # plan_dataset
                                  forbid=True,
-                                 max_plans=1, max_skeletons=INF,
-                                 #max_plans=100, max_skeletons=1,
+                                 max_plans=max_plans, max_skeletons=max_skeletons,
                                  fc=feasibility_checker,
                                  plan_dataset=plan_dataset, evaluation_time=10, max_solutions=1,
                                  search_sample_ratio=0, **kwargs)
