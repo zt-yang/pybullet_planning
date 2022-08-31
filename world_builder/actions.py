@@ -445,6 +445,8 @@ def apply_actions(problem, actions, time_step=0.5, verbose=False, plan=None):
         if verbose:
             print(i, action)
         action = adapt_action(action, problem, plan)
+        if action is None:
+            continue
         if isinstance(action, Command):
             print('\n\n\napply_actions found Command', action)
             import sys

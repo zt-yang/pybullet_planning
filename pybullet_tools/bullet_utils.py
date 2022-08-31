@@ -645,13 +645,17 @@ class Attachment(object):
         if self.child_link == None:
             set_pose(self.child, child_pose)
         elif self.child in LINK_POSE_TO_JOINT_POSITION:  ## pull drawer handle
-            # for key in [robot_base_pose, robot_arm_pose]:
+            ls = LINK_POSE_TO_JOINT_POSITION[self.child][self.child_joint]
             for group in self.parent.joint_groups: ## ['base', 'left', 'hand']:
                 key = self.parent.get_positions(joint_group=group, roundto=3)
-                if key in LINK_POSE_TO_JOINT_POSITION[self.child][self.child_joint]:
-                    position = LINK_POSE_TO_JOINT_POSITION[self.child][self.child_joint][key]
+                result = in_list(key, ls)
+                if result is not None:
+                    position = ls[result]
                     set_joint_position(self.child, self.child_joint, position)
                     # print(f'bullet.utils | Attachment | robot {key} @ {key} -> position @ {position}')
+                elif len(key) == 4:
+                    print('key', key)
+                    print(ls)
         return child_pose
 
     def apply_mapping(self, mapping):
@@ -1308,8 +1312,19 @@ def draw_bounding_lines(pose, dimensions):
 def get_file_short_name(path):
     return path[path.rfind('/')+1:]
 
-def equal_float(a, b, epsilon=0):
+
+def in_list(elem, ls, epsilon=3e-3):
+    for e in ls:
+        if len(e) != len(elem):
+            return None
+        if equal(e, elem, epsilon=epsilon):
+            return e
+    return None
+
+
+def equal_float(a, b, epsilon=0.0):
     return abs(a - b) <= epsilon
+
 
 def equal(tup_a, tup_b, epsilon=0.001):
     if isinstance(tup_a, float) or isinstance(tup_a, int):
