@@ -32,7 +32,7 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     YELLOW, add_line, draw_point, RED, BROWN, BLACK, BLUE, GREY, remove_handles, apply_affine, vertices_from_rigid, \
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
     parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug, set_point, has_gui, get_rigid_clusters, \
-    BASE_LINK as ROOT_LINK, link_pairs_collision
+    BASE_LINK as ROOT_LINK, link_pairs_collision, draw_collision_info
 
 
 OBJ = '?obj'
@@ -301,6 +301,14 @@ def articulated_collisions(obj, obstacles): # TODO: articulated_collision?
         # joints = get_movable_joints(obstacle)
         root_links = get_root_links(obstacle)
         if link_pairs_collision(body1=obstacle, links1=root_links, body2=obj):
+            # print(obj, obstacle, root_links)
+            # dump_body(obj)
+            # dump_body(obstacle)
+            # for link in root_links:
+            #     collision_infos = get_closest_points(body1=obj, body2=obstacle, link2=link)
+            #     for i, collision_info in enumerate(collision_infos):
+            #         print(i, len(collision_infos), collision_info)
+            #         draw_collision_info(collision_info)
             return True
     return False
 
@@ -645,13 +653,17 @@ class Attachment(object):
         if self.child_link == None:
             set_pose(self.child, child_pose)
         elif self.child in LINK_POSE_TO_JOINT_POSITION:  ## pull drawer handle
-            # for key in [robot_base_pose, robot_arm_pose]:
+            ls = LINK_POSE_TO_JOINT_POSITION[self.child][self.child_joint]
             for group in self.parent.joint_groups: ## ['base', 'left', 'hand']:
                 key = self.parent.get_positions(joint_group=group, roundto=3)
-                if key in LINK_POSE_TO_JOINT_POSITION[self.child][self.child_joint]:
-                    position = LINK_POSE_TO_JOINT_POSITION[self.child][self.child_joint][key]
+                result = in_list(key, ls)
+                if result is not None:
+                    position = ls[result]
                     set_joint_position(self.child, self.child_joint, position)
                     # print(f'bullet.utils | Attachment | robot {key} @ {key} -> position @ {position}')
+                elif len(key) == 4:
+                    print('key', key)
+                    print(ls)
         return child_pose
 
     def apply_mapping(self, mapping):
@@ -1308,8 +1320,19 @@ def draw_bounding_lines(pose, dimensions):
 def get_file_short_name(path):
     return path[path.rfind('/')+1:]
 
-def equal_float(a, b, epsilon=0):
+
+def in_list(elem, ls, epsilon=3e-3):
+    for e in ls:
+        if len(e) != len(elem):
+            return None
+        if equal(e, elem, epsilon=epsilon):
+            return e
+    return None
+
+
+def equal_float(a, b, epsilon=0.0):
     return abs(a - b) <= epsilon
+
 
 def equal(tup_a, tup_b, epsilon=0.001):
     if isinstance(tup_a, float) or isinstance(tup_a, int):

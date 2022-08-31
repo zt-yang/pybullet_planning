@@ -589,8 +589,9 @@ class Camera(object):
         self.kwargs = dict(kwargs)
         #self.__dict__.update(**kwargs)
         # self.handles = []
-        self.handles = self.draw()
-        self.get_boundaries()
+
+        # self.handles = self.draw()
+        # self.get_boundaries()
 
     def get_pose(self):
         pose = get_link_pose(self.body, self.camera_link)

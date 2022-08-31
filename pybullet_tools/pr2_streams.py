@@ -1448,6 +1448,8 @@ def get_motion_wconf_gen(problem, custom_limits={}, collisions=True, teleport=Fa
             w.assign()
         attachments = process_motion_fluents(fluents, robot) # TODO(caelan): use attachments
         bq1.assign()
+        # TODO: did base motion planning fail?
+        # TODO: add objects to obstacles
 
         bconf = get_joint_positions(robot, robot.get_base_joints())
         aconf = get_joint_positions(robot, get_arm_joints(robot, 'left'))
@@ -1597,6 +1599,7 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
             pose_value = linkpose_from_position(p)
         else:
             pose_value = p.value
+        open_arm(robot, a)
         gripper_grasp = robot.visualize_grasp(pose_value, g.value, a, body=g.body) # TODO(caelan): cache
         if collided(gripper_grasp, obstacles, articulated=True): # w is not None
             #wait_unlocked()
@@ -1604,6 +1607,9 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
             # print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
             return
         remove_body(gripper_grasp)
+        # Fix grasps
+        # Fix negation
+        # Open gripper
 
         arm_joints = get_arm_joints(robot, a)
         default_conf = arm_conf(a, g.carry)
@@ -1623,6 +1629,7 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
             for conf in ik_solver.generate(gripper_pose): # TODO: islice
                 joint_state = dict(zip(ik_solver.joints, conf))
                 if max_attempts <= attempts:
+                    print(f'{get_ik_gen.__name__} timed out after {attempts} attempts!')
                     #wait_unlocked()
                     if soft_failures:
                         attempts = 0

@@ -24,7 +24,8 @@ from .utils import invert, multiply, get_name, set_pose, get_link_pose, is_place
     add_segments, get_max_limit, link_from_name, BodySaver, get_aabb, interpolate_poses, \
     plan_direct_joint_motion, has_gui, create_attachment, wait_for_duration, get_extend_fn, set_renderer, \
     get_custom_limits, all_between, get_unit_vector, wait_if_gui, joint_from_name, create_box, set_point, \
-    set_base_values, euler_from_quat, INF, elapsed_time, get_moving_links, flatten_links, get_relative_pose
+    set_base_values, euler_from_quat, INF, elapsed_time, get_moving_links, flatten_links, get_relative_pose, \
+    wait_unlocked, child_link_from_joint, get_rigid_clusters, link_pairs_collision
 
 from .bullet_utils import nice, set_camera_target_robot, set_camera_target_body, Attachment
 
@@ -808,6 +809,26 @@ def get_cfree_pose_pose_test(collisions=True, **kwargs):
         p1.assign()
         p2.assign()
         return not pairwise_collision(b1, b2, **kwargs) #, max_distance=0.001)
+    return test
+
+
+def get_cfree_conf_position_test(collisions=True, **kwargs):
+    def test(q, b2, p2):
+        if not collisions:
+            return True
+        q.assign()
+        p2.assign()
+        robot = q.body
+        assert q.joint_state is not None
+        joints, positions = zip(*q.joint_state.items())
+        set_joint_positions(robot, joints, positions)
+
+        #body2, joint2 = b2
+        body2, joint2 = p2.body, p2.joint
+        link2 = child_link_from_joint(joint2)
+        [links2] = get_rigid_clusters(body2, links=[link2])
+        #wait_unlocked()
+        return not link_pairs_collision(body2, links2, robot)
     return test
 
 
