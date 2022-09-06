@@ -1,18 +1,20 @@
 import json
 import shutil
 from os.path import join, isdir, abspath, isfile
-from os import listdir
+from os import listdir, getcwd
 import copy
 
-from .feasibility_checkers import Oracle
 
-from pybullet_tools.utils import quat_from_euler
-
-
-DATASET_PATH = '/home/zhutiany/Documents/mamao-data'
+if 'zhutiany' in getcwd():
+    DATASET_PATH = '/home/zhutiany/Documents/mamao-data'
+elif 'yang' in getcwd():
+    DATASET_PATH = '/home/yang/Documents/mamao-data'
+else: ## not tested
+    DATASET_PATH = '../../mamao-data'
 
 
 def get_feasibility_checker(run_dir, mode):
+    from .feasibility_checkers import Oracle
     if mode == 'oracle':
         plan = get_successful_plan(run_dir)
         return Oracle(correct=plan)
@@ -50,6 +52,7 @@ def get_indices_from_config(run_dir):
 
 
 def process_value(vv, training=True):
+    from pybullet_tools.utils import quat_from_euler
     vv = list(vv)
     ## convert quaternion to euler angles
     if len(vv) == 6:

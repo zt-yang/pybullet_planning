@@ -2,16 +2,19 @@
 Bar chart demo with pairs of bars grouped for easy comparison.
 """
 import json
+import time
+import os
 from scipy.stats import gaussian_kde
 import numpy as np
 import matplotlib.pyplot as plt
 from os.path import join, isfile, isdir
 from os import listdir
 
+from utils import DATASET_PATH
 
-DATASET_PATH = '/home/zhutiany/Documents/mamao-data'
 GROUPS = ['tt_one_fridge_pick', 'tt_one_fridge_table_in', 'tt_two_fridge_in']  ##
 METHODS = ['None', 'oracle']  ## , 'random' , 'piginet'
+
 
 def get_rundirs(task_name):
     data_dir = join(DATASET_PATH, task_name)
@@ -28,6 +31,8 @@ def get_time_data():
             for method in METHODS:
                 file = join(run_dir, f"plan_rerun_fc={method}.json")
                 if not isfile(file):
+                    print(f"File not found: {file}")
+                    continue
                     if method == 'None':
                         file = join(run_dir, f"plan.json")
                     else:
@@ -42,6 +47,14 @@ def get_time_data():
                         t = d[0]["planning"]
                     else:
                         t = d["planning_time"]
+                    if t > 600:
+                        print(f"Planning time too long: {t} s", file)
+                    if t == 300:
+                        print(f"Planning timeout: {t} s", file)
+                    last_modified = os.path.getmtime(file)
+                    if time.time() - last_modified > 60 * 60 * 24:
+                        print('skipping old result', file)
+                        continue
                     data[group][method].append(t)
                     if run_dir not in data[group]['run_dir']:
                         data[group]['run_dir'].append(run_dir)
