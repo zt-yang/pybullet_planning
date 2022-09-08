@@ -29,9 +29,6 @@ git clone https://github.com/mjd3/tracikpy.git
 pip install tracikpy/
 ```
 
-download the weights and config files for using the models:
-1. download [models.zip](https://drive.google.com/file/d/1bfwjqha-M_xP-a98fyB4E2UrPdhsXXEk/view?usp=sharing)
-2. unzip to extract `models` and `wandb` folders; put them inside `fastamp` folder 
 
 (optional) other packages for kitchen-worlds 
 
@@ -42,9 +39,18 @@ pip install pandas
 
 # Planner performance experiments
 
+download the weights and config files for using the models:
+1. download [models.zip](https://drive.google.com/file/d/1bfwjqha-M_xP-a98fyB4E2UrPdhsXXEk/view?usp=sharing)
+2. unzip to extract `models` and `wandb` folders; put them inside `{WORKSPACE_DIR}/kitchen-worlds/pybullet_planning/fastamp` folder 
+
+download test data
+1. download [tt.zip](https://drive.google.com/file/d/1Qv7226n8SwvAnLcgZWPIkeko7Iaw_Gak/view?usp=sharing)
+2. unzip to extract five folders; put them inside a `{WORKSPACE_DIR}/fastamp-data` folder that's in the same parent folder as `kitchen-worlds` folder
+
+run the script without any arguments (can't use argparse while using model-based feasibility checkers because it conflicts with that in other scripts. Fixable but I haven't looked into it).
+
 ```shell
 (fastamp_kitchen) ➜  kitchen-worlds git:(fastamp) $ (cd tests; python test_rerun.py)
-
 ```
 
 # Visualize planner performance
