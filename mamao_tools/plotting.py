@@ -13,7 +13,7 @@ from os import listdir
 from utils import DATASET_PATH
 
 GROUPS = ['tt_one_fridge_pick', 'tt_one_fridge_table_in', 'tt_two_fridge_in']  ##
-METHODS = ['None', 'oracle']  ## , 'random' , 'piginet'
+METHODS = ['None', 'oracle', 'pvt']  ## , 'random' , 'piginet'
 
 
 def get_rundirs(task_name):
@@ -107,7 +107,12 @@ def plot_bar_chart(data, save_path=None):
     fig, ax = plt.subplots()
 
     index = np.arange(n_groups)
-    bar_width = 0.35
+    if len(METHODS) == 2:
+        bar_width = 0.35
+        x_ticks_offset = bar_width/2
+    elif len(METHODS) == 3:
+        bar_width = 0.25
+        x_ticks_offset = bar_width
 
     error_config = {'ecolor': '0.3'}
 
@@ -130,7 +135,7 @@ def plot_bar_chart(data, save_path=None):
     plt.xlabel('Tasks')
     plt.ylabel('Planning time')
     plt.title('Planning time with feasibility checkers')
-    plt.xticks(index + bar_width/2, tuple([g.replace('tt_', '') for g in groups]))
+    plt.xticks(index + x_ticks_offset, tuple([g.replace('tt_', '') for g in groups]))
     plt.legend()
 
     plt.tight_layout()

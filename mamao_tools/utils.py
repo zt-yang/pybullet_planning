@@ -14,10 +14,12 @@ else: ## not tested
 
 
 def get_feasibility_checker(run_dir, mode):
-    from .feasibility_checkers import Oracle
+    from .feasibility_checkers import Oracle, PVT
     if mode == 'oracle':
         plan = get_successful_plan(run_dir)
         return Oracle(correct=plan)
+    elif mode == 'pvt':
+        return PVT(run_dir)
     return None
 
 
