@@ -47,10 +47,19 @@ class Random(FeasibilityChecker):
         return np.random.rand() > 0.5
 
 
+class PVT(FeasibilityChecker):
+
+    def __init__(self):
+        np.random.seed(time.time())
+
+    def check(self):
+        return np.random.rand() > 0.5
+
+
 class ModelClassifier(FeasibilityChecker):
 
-    def __init__(self, model):
-        self.model = model
+    def __init__(self, checkpoint):
+        self.checkpoint = checkpoint
 
     def check(self, input):
         input = input.to(device)
