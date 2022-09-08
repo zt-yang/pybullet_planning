@@ -11,6 +11,10 @@ if 'zhutiany' in current_dir or 'mamao' in current_dir:
     PARTNET_PATH = abs_join('..', '..', 'data', 'partnet_mobility_v0', 'dataset')
     # ASSET_PATH = absjoin('..', '..', '..', 'kitchen-worlds', 'assets')
     ASSET_PATH = abs_join('..', 'assets')
+elif 'yang' in current_dir or 'mamao' in current_dir:
+    KITCHEN_WORLD = abs_join('..', '..', '..', 'kitchen-worlds')
+    ASSET_PATH = abs_join('..', '..', '..', 'kitchen-worlds', 'assets')
+    ASSET_PATH = abs_join('..', 'assets')
 ## Caelan
 elif socket.gethostname() == 'cgarrett-dt':
     KITCHEN_WORLD = abs_join(os.pardir, os.pardir, os.pardir, 'kitchen-worlds')
