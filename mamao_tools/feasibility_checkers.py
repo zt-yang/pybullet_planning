@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import torch
+import json
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -8,21 +9,46 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 class FeasibilityChecker(object):
 
     def __init__(self, **kwargs):
-        raise NotImplementedError('should implement this for FeasibilityChecker')
+        self._log = {k: [] for k in ['checks', 'run_time']}
 
     def __call__(self, *args, **kwargs):
         return self.check(*args, **kwargs)
 
-    def check(self, input):
+    def _check(self, input):
         raise NotImplementedError('should implement this for FeasibilityChecker')
+
+    def check(self, input):
+        start = time.time()
+        prediction = self._check(input)
+        self._log['checks'].append((get_plan_from_input(input), prediction))
+        self._log['run_time'].append(round(time.time() - start, 4))
+        return prediction
+
+    def dump_log(self, json_path):
+        with open(json_path, 'w') as f:
+            config = {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
+            if 'args' in config:
+                config['args'] = config['args'].__dict__
+            self._log['config'] = config
+            json.dump(self._log, f, indent=3)
+
+
+class PassAll(FeasibilityChecker):
+
+    def __init__(self):
+        super().__init__()
+
+    def _check(self, input):
+        return True
 
 
 class Oracle(FeasibilityChecker):
 
     def __init__(self, correct):
+        super().__init__()
         self.correct = correct
 
-    def check(self, input):
+    def _check(self, input):
         if len(input) != len(self.correct):
             return False
         for i in range(len(input)):
@@ -41,20 +67,22 @@ class Oracle(FeasibilityChecker):
 class Random(FeasibilityChecker):
 
     def __init__(self):
+        super().__init__()
         np.random.seed(time.time())
 
-    def check(self):
+    def _check(self, input):
         return np.random.rand() > 0.5
 
 
 class PVT(FeasibilityChecker):
 
-    def __init__(self, run_dir, pt_path=None):
+    def __init__(self, run_dir, pt_path=None, task_name=None):
+        super().__init__()
         import sys
         from os.path import join, abspath, dirname, isdir, isfile
         sys.path.append(join('..', 'pybullet_planning', 'fastamp'))
         print('\nsys.path', sys.path)
-        from fastamp.test_piginet import get_model, DAFAULT_PT_NAME, args
+        from fastamp.test_piginet import get_model, DAFAULT_PT_NAME, args, TASK_PT_NAMES
         from fastamp.fastamp_utils import get_facts_goals_visuals, get_successful_plan, \
             get_action_elems, get_plans
         args.input_mode = 'pigi'
@@ -71,12 +99,15 @@ class PVT(FeasibilityChecker):
 
         """ get model """
         if pt_path is None:
-            pt_path = join(dirname(abspath(__file__)), '..', 'fastamp', 'models', DAFAULT_PT_NAME)
-        self.pt_path = pt_path
-        self.model = get_model(pt_path)
+            pt_name = DAFAULT_PT_NAME
+            if task_name is not None and task_name in TASK_PT_NAMES:
+                pt_path = TASK_PT_NAMES[task_name]
+        pt_path = join(dirname(abspath(__file__)), '..', 'fastamp', 'models', DAFAULT_PT_NAME)
+        self.pt_path = abspath(pt_path)
+        self._model = get_model(pt_path)
         print('PVT model loaded from', pt_path)
 
-    def check(self, input):
+    def _check(self, input):
         from fastamp.text_utils import ACTION_NAMES
         from fastamp.datasets import get_dataset, collate
         from fastamp.fastamp_utils import get_action_elems
@@ -100,9 +131,15 @@ class PVT(FeasibilityChecker):
         prediction = True
         for inputs, labels in data_loader:
             with torch.set_grad_enabled(False):
-                outputs = self.model(inputs)
+                outputs = self._model(inputs)
                 labels = labels.flatten(0).to(device, non_blocking=True)
                 prediction = nn.Sigmoid()(outputs).round().cpu().squeeze().bool().numpy().item()
         # import ipdb; ipdb.set_trace()
         return prediction
 
+
+def get_plan_from_input(input):
+    plan = []
+    for action in input:
+        plan.append([action.name] + [str(e) for e in action.args])
+    return plan

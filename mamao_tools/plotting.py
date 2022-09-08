@@ -7,13 +7,14 @@ import os
 from scipy.stats import gaussian_kde
 import numpy as np
 import matplotlib.pyplot as plt
-from os.path import join, isfile, isdir
+from os.path import join, isfile, isdir, abspath
 from os import listdir
 
 from utils import DATASET_PATH
 
-GROUPS = ['tt_one_fridge_pick', 'tt_one_fridge_table_in', 'tt_two_fridge_in']  ##
-METHODS = ['None', 'oracle', 'pvt']  ## , 'random' , 'piginet'
+GROUPS = ['tt_one_fridge_pick', \
+    'tt_one_fridge_table_pick', 'tt_one_fridge_table_in', 'tt_two_fridge_in']  ## 'tt_one_fridge_table_on', \
+METHODS = ['None', 'oracle', 'pvt', 'pvt-task'] ## ## , 'random' , 'piginet'
 
 
 def get_rundirs(task_name):
@@ -27,7 +28,10 @@ def get_time_data():
     data = {}
     for group in GROUPS:
         data[group] = {}
-        for run_dir in get_rundirs(group):
+        run_dirs = get_rundirs(group)
+
+        data[group]['count'] = len([f for f in run_dirs if isdir(join(f, 'crop_images'))])
+        for run_dir in run_dirs:
             for method in METHODS:
                 file = join(run_dir, f"plan_rerun_fc={method}.json")
                 if not isfile(file):
@@ -46,18 +50,22 @@ def get_time_data():
                     if len(d) == 2:
                         t = d[0]["planning"]
                     else:
+                        if d["plan"] is None:
+                            continue
                         t = d["planning_time"]
-                    if t > 600:
+                    if t > 500:
                         print(f"Planning time too long: {t} s", file)
-                    if t == 300:
-                        print(f"Planning timeout: {t} s", file)
-                    last_modified = os.path.getmtime(file)
-                    if time.time() - last_modified > 60 * 60 * 24:
-                        print('skipping old result', file)
-                        continue
-                    data[group][method].append(t)
+                        # t = 500
+
                     if run_dir not in data[group]['run_dir']:
                         data[group]['run_dir'].append(run_dir)
+
+                    last_modified = os.path.getmtime(file)
+                    if time.time() - last_modified > 60 * 60 * 5:
+                        print('skipping old result', file)
+                        continue
+
+                    data[group][method].append(t)
     return data
 
 
@@ -69,6 +77,7 @@ def plot_bar_chart(data, save_path=None):
                 "oracle": [t1, t2, t3, t4, t5],
                 "random": [t1, t2, t3, t4, t5],
                 "piginet": [t1, t2, t3, t4, t5],
+                "run_dir": [s1, s2, s3, s4, s5],
             }
         }
     """
@@ -77,6 +86,9 @@ def plot_bar_chart(data, save_path=None):
     n_groups = len(data)
     means = {}
     stds = {}
+    maxs = {}
+    argmaxs = {}
+    counts = {}
     points_x = {}
     points_y = {}
     for i in range(n_groups):
@@ -86,33 +98,40 @@ def plot_bar_chart(data, save_path=None):
             if method not in means:
                 means[method] = []
                 stds[method] = []
+                maxs[method] = []
+                argmaxs[method] = []
+                counts[method] = []
                 points_x[method] = []
                 points_y[method] = []
 
-            if method in data[group]:
+            if method in data[group] and len(data[group][method]) > 0:
                 means[method].append(np.mean(data[group][method]))
                 stds[method].append(np.std(data[group][method]))
+                maxs[method].append(np.max(data[group][method]))
+                label = data[group]['run_dir'][np.argmax(data[group][method])]
+                label = label.replace(abspath(DATASET_PATH), '').replace('/', '').replace(group, '')
+                argmaxs[method].append(f"#{label}")
+                counts[method].append(len(data[group][method]))
                 points_x[method].extend([i] * len(data[group][method]))
                 points_y[method].extend(data[group][method])
             else:
                 means[method].append(0)
                 stds[method].append(0)
+                maxs[method].append(0)
+                argmaxs[method].append("")
+                counts[method].append(0)
 
-    # means_men = (20, 35, 30, 35, 27)
-    # std_men = (2, 3, 4, 1, 2)
-    #
-    # means_women = (25, 32, 34, 20, 25)
-    # std_women = (3, 5, 2, 3, 3)
-
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(9,6))
 
     index = np.arange(n_groups)
+    bar_width = 0.1
     if len(METHODS) == 2:
         bar_width = 0.35
-        x_ticks_offset = bar_width/2
     elif len(METHODS) == 3:
         bar_width = 0.25
-        x_ticks_offset = bar_width
+    elif len(METHODS) == 4:
+        bar_width = 0.2
+    x_ticks_offset = bar_width * (len(METHODS)-1)/2
 
     error_config = {'ecolor': '0.3'}
 
@@ -120,23 +139,47 @@ def plot_bar_chart(data, save_path=None):
 
     for i in range(len(means)):
         method = METHODS[i]
-        plt.bar(index + bar_width * i, means[method], bar_width,
+
+        """ mean & average of all rerun planning time """
+        x = index + bar_width * i
+        plt.bar(x, means[method], bar_width,
                 alpha=0.4,
                 color=colors[i],
                 yerr=stds[method],
                 error_kw=error_config,
                 label=METHODS[i])
+        
+        """ max & count of rerun planning time """
+        for j in range(len(x)):
+            plt.annotate(counts[method][j],  # text
+                        (x[j], 0),  # points location to label
+                        textcoords="offset points",
+                        xytext=(0, -12),  # distance between the points and label
+                        ha='center',
+                        fontsize=10)
+            plt.annotate(argmaxs[method][j],  # text
+                        (x[j], maxs[method][j]),  # points location to label
+                        textcoords="offset points",
+                        xytext=(0, 6),  # distance between the points and label
+                        ha='center',
+                        fontsize=10)
+
+        """ median value of rerun planning time """
         x = np.asarray(points_x[method]) + bar_width * i
         y = points_y[method]
+
         # xy = np.vstack([x, y])  # Calculate the point density
         # z = gaussian_kde(xy)(xy)
-        plt.scatter(x, y, alpha=1, color=colors[i])  ## c=z,
+        plt.scatter(x, y, alpha=1, color=colors[i], s=20)  ## c=z,
 
-    plt.xlabel('Tasks')
-    plt.ylabel('Planning time')
-    plt.title('Planning time with feasibility checkers')
-    plt.xticks(index + x_ticks_offset, tuple([g.replace('tt_', '') for g in groups]))
-    plt.legend()
+    plt.xlabel('Tasks (run count)', fontsize=12)
+    plt.ylabel('Planning time', fontsize=12)
+    plt.title('Planning time with feasibility checkers', fontsize=16)
+    labels = tuple([f"{g.replace('tt_', '')}\n({data[g]['count']})" for g in groups])
+    plt.xticks(index + x_ticks_offset, labels, fontsize=10)
+    plt.ylim([0, 500])
+    plt.legend(ncol=4, fontsize=11)
+    ax.tick_params(axis='x', which='major', pad=15)
 
     plt.tight_layout()
     plt.show()

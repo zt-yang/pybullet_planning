@@ -31,3 +31,4 @@ def get_indices(run_dir):
     if not result:
         return get_indices_from_log(run_dir)
     return result
+
