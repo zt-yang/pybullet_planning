@@ -15,6 +15,7 @@ from utils import DATASET_PATH
 GROUPS = ['tt_one_fridge_pick', \
     'tt_one_fridge_table_pick', 'tt_one_fridge_table_in', 'tt_two_fridge_in']  ## 'tt_one_fridge_table_on', \
 METHODS = ['None', 'oracle', 'pvt', 'pvt-task'] ## ## , 'random' , 'piginet'
+check_time = 1662647476.5
 
 
 def get_rundirs(task_name):
@@ -31,18 +32,24 @@ def get_time_data():
         run_dirs = get_rundirs(group)
 
         data[group]['count'] = len([f for f in run_dirs if isdir(join(f, 'crop_images'))])
+        data[group]['missing'] = {}
         for run_dir in run_dirs:
             for method in METHODS:
                 file = join(run_dir, f"plan_rerun_fc={method}.json")
+                if method not in data[group]:
+                    data[group][method] = []
+                if method not in data[group]['missing']:
+                    data[group]['missing'][method] = []
+
                 if not isfile(file):
                     print(f"File not found: {file}")
+                    data[group]['missing'][method].append(run_dir)
                     continue
                     if method == 'None':
                         file = join(run_dir, f"plan.json")
                     else:
                         continue
-                if method not in data[group]:
-                    data[group][method] = []
+
                 if 'run_dir' not in data[group]:
                     data[group]['run_dir'] = []
                 with open(file, 'r') as f:
@@ -61,8 +68,9 @@ def get_time_data():
                         data[group]['run_dir'].append(run_dir)
 
                     last_modified = os.path.getmtime(file)
-                    if time.time() - last_modified > 60 * 60 * 5:
+                    if last_modified < check_time:
                         print('skipping old result', file)
+                        data[group]['missing'][method].append(run_dir)
                         continue
 
                     data[group][method].append(t)
@@ -89,6 +97,7 @@ def plot_bar_chart(data, save_path=None):
     maxs = {}
     argmaxs = {}
     counts = {}
+    missing = {}
     points_x = {}
     points_y = {}
     for i in range(n_groups):
@@ -101,6 +110,7 @@ def plot_bar_chart(data, save_path=None):
                 maxs[method] = []
                 argmaxs[method] = []
                 counts[method] = []
+                missing[method] = []
                 points_x[method] = []
                 points_y[method] = []
 
@@ -120,8 +130,9 @@ def plot_bar_chart(data, save_path=None):
                 maxs[method].append(0)
                 argmaxs[method].append("")
                 counts[method].append(0)
+            missing[method].append(len(data[group]['missing'][method]))
 
-    fig, ax = plt.subplots(figsize=(9,6))
+    fig, ax = plt.subplots(figsize=(9, 6))
 
     index = np.arange(n_groups)
     bar_width = 0.1
@@ -151,10 +162,13 @@ def plot_bar_chart(data, save_path=None):
         
         """ max & count of rerun planning time """
         for j in range(len(x)):
-            plt.annotate(counts[method][j],  # text
+            bar_label = f"{counts[method][j]} \n"
+            if missing[method][j] > 0:
+                bar_label += f"{missing[method][j]}"
+            plt.annotate(bar_label,  # text
                         (x[j], 0),  # points location to label
                         textcoords="offset points",
-                        xytext=(0, -12),  # distance between the points and label
+                        xytext=(0, -24),  # distance between the points and label
                         ha='center',
                         fontsize=10)
             plt.annotate(argmaxs[method][j],  # text
@@ -174,12 +188,12 @@ def plot_bar_chart(data, save_path=None):
 
     plt.xlabel('Tasks (run count)', fontsize=12)
     plt.ylabel('Planning time', fontsize=12)
-    plt.title('Planning time with feasibility checkers', fontsize=16)
+    plt.title('Planning time with feasibility checkers', fontsize=16, pad=35)
     labels = tuple([f"{g.replace('tt_', '')}\n({data[g]['count']})" for g in groups])
     plt.xticks(index + x_ticks_offset, labels, fontsize=10)
     plt.ylim([0, 500])
-    plt.legend(ncol=4, fontsize=11)
-    ax.tick_params(axis='x', which='major', pad=15)
+    plt.legend(ncol=4, fontsize=11, loc='upper center', bbox_to_anchor=(0.5, 1.1))
+    ax.tick_params(axis='x', which='major', pad=28)
 
     plt.tight_layout()
     plt.show()
