@@ -724,7 +724,9 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
         plan_dataset = []
 
     feasibility_checker = None
-    #feasibility_checker = lambda *args: False
+    # feasibility_checker = lambda *args: False # Reject all
+    # feasibility_checker = lambda *args: True # Accept all
+    # feasibility_checker = lambda *args: np.random.random() # Randomize
 
     skeleton = [
         ('grasp_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
@@ -736,8 +738,10 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
     #constraints = PlanConstraints(skeletons=[skeleton], exact=False, max_cost=max_cost + 1)
     constraints = PlanConstraints(max_cost=max_cost + 1) # TODO: plus 1 in action costs?
 
-    max_plans, max_skeletons = 1, INF
-    #max_plans, max_skeletons = 100, 1
+    if collect_dataset:
+        max_plans, max_planner_time, max_skeletons = 100, 10, 1
+    else:
+        max_plans, max_planner_time, max_skeletons = 1, 10, INF
 
     # profiler = Profiler(field='cumtime' if profile else None, num=25) # cumtime | tottime
     # profiler.save()
@@ -745,7 +749,7 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
         # solution = solve(pddlstream_problem, algorithm='adaptive', unit_costs=True, visualize=False,
         #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
         solution = solve_focused(pddlstream_problem, stream_info=stream_info, constraints=constraints,
-                                 planner='ff-astar1', max_planner_time=10,
+                                 planner='ff-astar1', max_planner_time=max_planner_time,
                                  debug=False,
                                  initial_complexity=5,
                                  unit_costs=False, success_cost=INF,
