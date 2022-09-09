@@ -273,7 +273,7 @@ def sample_fridge_table_goal(world):
 
     arm = world.robot.arms[0]
 
-    if random.random() < 0: ## 0.5
+    if random.random() < 0.5: ## 0.5
         goal_candidates = [
             [('Holding', arm, cabbage.body)],
             [('On', cabbage, table.body)],
@@ -303,7 +303,7 @@ def sample_fridges_tables_scene(world, verbose=True):
     minifridge_doors = sample_one_fridge_scene(world, open_doors=False)
     load_another_table(world, four_ways=False)
     placement = load_another_fridge_food(world)
-    random_set_doors(minifridge_doors, extent_max=0.5)
+    random_set_doors(minifridge_doors, epsilon=0.5)
     ensure_robot_cfree(world, verbose=verbose)
     return placement
 

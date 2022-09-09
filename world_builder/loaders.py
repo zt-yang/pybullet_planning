@@ -975,7 +975,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     #     Pose(point=Point(x=x, y=y, z=h / 2)))
     cabbage = world.add_object(Moveable(
         load_asset('Food', x=x, y=y, yaw=random.uniform(-math.pi, math.pi),
-                   floor=floor, RANDOM_INSTANCE=True), ## , SAMPLING=True
+                   floor=floor, RANDOM_INSTANCE=True, SAMPLING=True), ## , SAMPLING=True
         category='Food'
     ))
 
@@ -1168,7 +1168,7 @@ def load_another_fridge_food(world, verbose=True):
     ## place another food in one of the fridges
     new_food = world.add_object(Moveable(
         load_asset('Food', x=0, y=0, yaw=random.uniform(-math.pi, math.pi),
-                   floor=floor, RANDOM_INSTANCE=True), ## , SAMPLING=True
+                   floor=floor, RANDOM_INSTANCE=True, SAMPLING=True), ## , SAMPLING=True
         category='Food'
     ))
 
@@ -1190,6 +1190,6 @@ def load_another_fridge_food(world, verbose=True):
 
     placement[new_food] = s.pybullet_name
 
-    random_set_doors(doors, extent_max=0.5)
+    random_set_doors(doors, epsilon=0.5)
     ## the goal will be to pick one object and put in the other fridge
     return placement
