@@ -66,12 +66,13 @@ class Oracle(FeasibilityChecker):
 
 class Random(FeasibilityChecker):
 
-    def __init__(self):
+    def __init__(self, p_feasible=0.5):
         super().__init__()
         np.random.seed(time.time())
+        self.p_feasible = p_feasible
 
     def _check(self, input):
-        return np.random.rand() > 0.5
+        return np.random.rand() > self.p_feasible
 
 
 class PVT(FeasibilityChecker):
@@ -132,11 +133,26 @@ class PVT(FeasibilityChecker):
         for inputs, labels in data_loader:
             with torch.set_grad_enabled(False):
                 outputs = self._model(inputs)
-                labels = labels.flatten(0).to(device, non_blocking=True)
+                labels = labels.flatten(0).to(device, non_blocking=True) # TODO: unused
                 prediction = nn.Sigmoid()(outputs).round().cpu().squeeze().bool().numpy().item()
         # import ipdb; ipdb.set_trace()
         return prediction
 
+##################################################
+
+# TODO: FeasibilityScorer interface
+
+class Shuffler(FeasibilityChecker):
+    def _check(self, optimistic_plan):
+        score = np.random.rand()
+        return score
+
+class Sorter(FeasibilityChecker):
+    def _check(self, optimistic_plan):
+        score = 1. / (1 + len(optimistic_plan))
+        return score # Larger has higher priority
+
+##################################################
 
 def get_plan_from_input(input):
     plan = []
