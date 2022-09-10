@@ -2,13 +2,17 @@
 Bar chart demo with pairs of bars grouped for easy comparison.
 """
 import json
+import shutil
 import time
+from datetime import datetime
 import os
 from scipy.stats import gaussian_kde
 import numpy as np
 import matplotlib.pyplot as plt
 from os.path import join, isfile, isdir, abspath
 from os import listdir
+import seaborn as sns
+sns.set_style("darkgrid", {"axes.facecolor": ".9"})
 
 from utils import DATASET_PATH
 
@@ -25,7 +29,34 @@ def get_rundirs(task_name):
     return dirs
 
 
-def get_time_data():
+def check_run_dirs():
+    for group in GROUPS:
+        run_dirs = get_rundirs(group)
+        for run_dir in run_dirs:
+
+            domain_file = join(run_dir, f"domain_full.pddl")
+            correct_file = '/home/yang/Documents/cognitive-architectures/bullet/assets/pddl/domains/pr2_mamao.pddl'
+            num_lines = len(open(domain_file, 'r').readlines())
+
+            # last_modified = os.path.getmtime(domain_file)
+            # if last_modified > time.time() - 60 * 60:
+            #     print('just modified domain', run_dir)
+            #     if not isdir(run_dir.replace('/tt_', '/ss_')):
+            #         shutil.copytree(run_dir, run_dir.replace('/tt_', '/ss_'))
+            #
+            # if num_lines != len(open(correct_file, 'r').readlines()): ## in [378, 379]:
+            #     print('wrong domain', run_dir)
+            #     os.remove(domain_file)
+            #     shutil.copyfile(correct_file, domain_file)
+            #     if 'tt_two_fridge_in' in run_dir:
+            #         records = [join(run_dir, f) for f in listdir(run_dir) if 'plan_rerun_fc=' in f]
+            #         [os.remove(f) for f in records]
+            #         # print('   copying to', run_dir.replace('/tt_', '/ss_'))
+            #         # print('   to remove\n', records)
+
+
+def get_time_data(diverse=False):
+    prefix = "diverse_" if diverse else ""
     data = {}
     for group in GROUPS:
         data[group] = {}
@@ -33,13 +64,17 @@ def get_time_data():
 
         data[group]['count'] = len([f for f in run_dirs if isdir(join(f, 'crop_images'))])
         data[group]['missing'] = {}
+        data[group]['run_dir'] = {}
         for run_dir in run_dirs:
+
             for method in METHODS:
-                file = join(run_dir, f"plan_rerun_fc={method}.json")
+                file = join(run_dir, f"{prefix}plan_rerun_fc={method}.json")
                 if method not in data[group]:
                     data[group][method] = []
                 if method not in data[group]['missing']:
                     data[group]['missing'][method] = []
+                if method not in data[group]['run_dir']:
+                    data[group]['run_dir'][method] = []
 
                 if not isfile(file):
                     print(f"File not found: {file}")
@@ -64,9 +99,6 @@ def get_time_data():
                         print(f"Planning time too long: {t} s", file)
                         # t = 500
 
-                    if run_dir not in data[group]['run_dir']:
-                        data[group]['run_dir'].append(run_dir)
-
                     last_modified = os.path.getmtime(file)
                     if last_modified < check_time:
                         print('skipping old result', file)
@@ -74,10 +106,12 @@ def get_time_data():
                         continue
 
                     data[group][method].append(t)
+                    if run_dir not in data[group]['run_dir']:
+                        data[group]['run_dir'][method].append(run_dir)
     return data
 
 
-def plot_bar_chart(data, save_path=None):
+def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     """
         {
             "tt_one_fridge_pick": {
@@ -118,7 +152,7 @@ def plot_bar_chart(data, save_path=None):
                 means[method].append(np.mean(data[group][method]))
                 stds[method].append(np.std(data[group][method]))
                 maxs[method].append(np.max(data[group][method]))
-                label = data[group]['run_dir'][np.argmax(data[group][method])]
+                label = data[group]['run_dir'][method][np.argmax(data[group][method])]
                 label = label.replace(abspath(DATASET_PATH), '').replace('/', '').replace(group, '')
                 argmaxs[method].append(f"#{label}")
                 counts[method].append(len(data[group][method]))
@@ -145,8 +179,9 @@ def plot_bar_chart(data, save_path=None):
     x_ticks_offset = bar_width * (len(METHODS)-1)/2
 
     error_config = {'ecolor': '0.3'}
-
     colors = ['b', 'r', 'g', 'y']
+    colors = ['#3498db', '#e74c3c', '#2ecc71', '#f1c40f']
+    colors_darker = ['#2980b9', '#c0392b', '#27ae60', '#f39c12']
 
     for i in range(len(means)):
         method = METHODS[i]
@@ -157,7 +192,7 @@ def plot_bar_chart(data, save_path=None):
                 alpha=0.4,
                 color=colors[i],
                 yerr=stds[method],
-                error_kw=error_config,
+                error_kw={'ecolor': colors_darker[i]},
                 label=METHODS[i])
         
         """ max & count of rerun planning time """
@@ -184,11 +219,14 @@ def plot_bar_chart(data, save_path=None):
 
         # xy = np.vstack([x, y])  # Calculate the point density
         # z = gaussian_kde(xy)(xy)
-        plt.scatter(x, y, alpha=1, color=colors[i], s=20)  ## c=z,
+        plt.scatter(x, y, s=20, color=colors[i], alpha=0.7)  ## c=z,
 
     plt.xlabel('Tasks (run count)', fontsize=12)
     plt.ylabel('Planning time', fontsize=12)
-    plt.title('Planning time with feasibility checkers', fontsize=16, pad=35)
+    dt = datetime.now().strftime("%m%d_%H%M%S")
+    title = 'Planning time comparison '
+    title += '(diverse planning mode) ' if diverse else ''
+    plt.title(title + dt, fontsize=16, pad=35)
     labels = tuple([f"{g.replace('tt_', '')}\n({data[g]['count']})" for g in groups])
     plt.xticks(index + x_ticks_offset, labels, fontsize=10)
     plt.ylim([0, 500])
@@ -196,8 +234,29 @@ def plot_bar_chart(data, save_path=None):
     ax.tick_params(axis='x', which='major', pad=28)
 
     plt.tight_layout()
-    plt.show()
+    if update:
+        plt.draw()
+    else:
+        plt.show()
 
 
 if __name__ == '__main__':
     plot_bar_chart(get_time_data())
+    plot_bar_chart(get_time_data(diverse=True), diverse=True)
+
+    # while True:
+    #     plot_bar_chart(get_time_data(), update=True)
+    #     print('waiting for new data...')
+    #     plt.pause(30)
+    #     plt.close('all')
+
+    # duration = 4
+    # while True:
+    #     plot_bar_chart(get_time_data(diverse=True), update=True)
+    #     print('waiting for new data...')
+    #     plt.pause(duration)
+    #     plt.close('all')
+    #     plot_bar_chart(get_time_data(), update=True)
+    #     print('waiting for new data...')
+    #     plt.pause(duration)
+    #     plt.close('all')

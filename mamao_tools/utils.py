@@ -20,8 +20,8 @@ def get_feasibility_checker(run_dir, mode):
     elif mode == 'oracle':
         plan = get_successful_plan(run_dir)
         return Oracle(correct=plan)
-    elif mode == 'pvt':
-        return PVT(run_dir)
+    elif mode.startswith('pvt'):
+        return PVT(run_dir, mode=mode)
     elif mode == 'pvt-task':
         task_name = abspath(run_dir).replace(DATASET_PATH, '').split('/')[1]
         return PVT(run_dir, task_name=task_name)

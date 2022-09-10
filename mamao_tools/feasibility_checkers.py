@@ -77,13 +77,14 @@ class Random(FeasibilityChecker):
 
 class PVT(FeasibilityChecker):
 
-    def __init__(self, run_dir, pt_path=None, task_name=None):
+    def __init__(self, run_dir, pt_path=None, task_name=None, mode='pvt'):
         super().__init__()
         import sys
         from os.path import join, abspath, dirname, isdir, isfile
         sys.path.append(join('..', 'pybullet_planning', 'fastamp'))
         print('\nsys.path', sys.path)
-        from fastamp.test_piginet import get_model, DAFAULT_PT_NAME, args, TASK_PT_NAMES
+        from fastamp.test_piginet import get_model, DAFAULT_PT_NAME, args, TASK_PT_NAMES, \
+            PT_NEWER
         from fastamp.fastamp_utils import get_facts_goals_visuals, get_successful_plan, \
             get_action_elems, get_plans
         args.input_mode = 'pigi'
@@ -102,8 +103,11 @@ class PVT(FeasibilityChecker):
         if pt_path is None:
             pt_name = DAFAULT_PT_NAME
             if task_name is not None and task_name in TASK_PT_NAMES:
-                pt_path = TASK_PT_NAMES[task_name]
-        pt_path = join(dirname(abspath(__file__)), '..', 'fastamp', 'models', DAFAULT_PT_NAME)
+                pt_name = TASK_PT_NAMES[task_name]
+            elif mode in PT_NEWER:
+                pt_name = PT_NEWER[mode]
+            pt_path = join(dirname(abspath(__file__)), '..', 'fastamp', 'models', pt_name)
+
         self.pt_path = abspath(pt_path)
         self._model = get_model(pt_path)
         print('PVT model loaded from', pt_path)

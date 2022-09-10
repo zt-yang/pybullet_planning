@@ -7,6 +7,7 @@ cd kitchen-world
 git checkout fastamp
 
 cd pybullet_planning
+git checkout fastamp --
 git pull --recurse-submodules
 ```
     
@@ -14,6 +15,7 @@ then run the following command
 
 ```shell
 cd fastamp
+git checkout master
 conda env create -f environment_kitchen.yml
 conda activate fastamp_kitchen
 pip install git+https://github.com/openai/CLIP.git
