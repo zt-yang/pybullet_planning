@@ -600,18 +600,30 @@ from pybullet_tools.utils import disconnect, LockRenderer, has_gui, WorldSaver, 
 from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, str_from_object, TmpCWD
 
 
-def solve_one(pddlstream_problem, stream_info, fc, visualize=False):
+def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False,
+              max_time=INF, downward_time=10, evaluation_time=10, visualize=False):
+    if diverse:
+        max_plans = 100
+        plan_dataset = []
+        max_skeletons = 1
+        use_feedback = False
+    else:
+        max_plans = 1
+        plan_dataset = None
+        max_skeletons = INF
+        use_feedback = True
+
     # with Profiler():
     with LockRenderer(lock=True):
         solution = solve_focused(pddlstream_problem, stream_info=stream_info,
-                                 planner='ff-astar1', max_planner_time=10, debug=False,
-                                 unit_costs=True, success_cost=INF, initial_complexity=5,
-                                 max_time=INF, verbose=True, visualize=visualize,
+                                 planner='ff-astar1', max_planner_time=downward_time, debug=False,
+                                 unit_costs=False, success_cost=INF, initial_complexity=5,
+                                 max_time=max_time, verbose=True, visualize=visualize,
                                  unit_efforts=True, effort_weight=None,
-                                 unique_optimistic=True, use_feedback=True,
-                                 forbid=True, max_plans=1, fc=fc,
-                                 bind=True, max_skeletons=INF,
-                                 plan_dataset=None,
+                                 unique_optimistic=True, use_feedback=use_feedback,
+                                 forbid=True, max_plans=max_plans, fc=fc,
+                                 bind=True, max_skeletons=max_skeletons,
+                                 plan_dataset=plan_dataset, evaluation_time=evaluation_time, max_solutions=1,
                                  search_sample_ratio=0)
         # solution = solve(pddlstream_problem, algorithm=DEFAULT_ALGORITHM, unit_costs=False,
         #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False,
@@ -745,26 +757,30 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
 
     # profiler = Profiler(field='cumtime' if profile else None, num=25) # cumtime | tottime
     # profiler.save()
-    with LockRenderer(lock=lock):
-        # solution = solve(pddlstream_problem, algorithm='adaptive', unit_costs=True, visualize=False,
-        #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
-        solution = solve_focused(pddlstream_problem, stream_info=stream_info, constraints=constraints,
-                                 planner='ff-astar1', max_planner_time=max_planner_time,
-                                 debug=False,
-                                 initial_complexity=5,
-                                 unit_costs=False, success_cost=INF,
-                                 max_time=max_time, verbose=True, visualize=visualization,
-                                 #unit_efforts=True, effort_weight=1,
-                                 unit_efforts=True, effort_weight=None,
-                                 bind=True,
-                                 unique_optimistic=True, # NOTE(caelan): cannot use update-wconf-pst
-                                 use_feedback=True, # plan_dataset
-                                 forbid=True,
-                                 max_plans=max_plans, max_skeletons=max_skeletons,
-                                 fc=feasibility_checker,
-                                 plan_dataset=plan_dataset, evaluation_time=10, max_solutions=1,
-                                 search_sample_ratio=0, **kwargs)
-        saver.restore()
+    if True:
+        with LockRenderer(lock=lock):
+            # solution = solve(pddlstream_problem, algorithm='adaptive', unit_costs=True, visualize=False,
+            #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
+            solution = solve_focused(pddlstream_problem, stream_info=stream_info, constraints=constraints,
+                                     planner='ff-astar1', max_planner_time=max_planner_time,
+                                     debug=False,
+                                     initial_complexity=5,
+                                     unit_costs=False, success_cost=INF,
+                                     max_time=max_time, verbose=True, visualize=visualization,
+                                     #unit_efforts=True, effort_weight=1,
+                                     unit_efforts=True, effort_weight=None,
+                                     bind=True,
+                                     unique_optimistic=True, # NOTE(caelan): cannot use update-wconf-pst
+                                     use_feedback=True, # plan_dataset
+                                     forbid=True,
+                                     max_plans=max_plans, max_skeletons=max_skeletons,
+                                     fc=feasibility_checker,
+                                     plan_dataset=plan_dataset, evaluation_time=10, max_solutions=1,
+                                     search_sample_ratio=0, **kwargs)
+
+    else:
+        solution = solve_one(pddlstream_problem, stream_info, fc=feasibility_checker, visualize=visualization)
+    saver.restore()
     # profiler.restore()
 
     if plan_dataset is not None:
