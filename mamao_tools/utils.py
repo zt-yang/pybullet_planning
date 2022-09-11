@@ -8,16 +8,23 @@ import copy
 if 'zhutiany' in getcwd():
     DATASET_PATH = '/home/zhutiany/Documents/mamao-data'
 elif 'yang' in getcwd():
-    DATASET_PATH = '/home/yang/Documents/mamao-data'
+    DATASET_PATH = '/home/yang/Documents/fastamp-data'
 else: ## not tested
-    DATASET_PATH = '../../mamao-data'
+    DATASET_PATH = '../../fastamp-data'
 
 
-def get_feasibility_checker(run_dir, mode):
-    from .feasibility_checkers import Oracle
-    if mode == 'oracle':
+def get_feasibility_checker(run_dir, mode, diverse=False):
+    from .feasibility_checkers import PassAll, Oracle, PVT
+    if mode == 'None':
+        return PassAll()
+    elif mode == 'oracle':
         plan = get_successful_plan(run_dir)
         return Oracle(correct=plan)
+    elif 'pvt-task' in mode:
+        task_name = abspath(run_dir).replace(DATASET_PATH, '').split('/')[1]
+        return PVT(run_dir, task_name=task_name, scoring=diverse)
+    elif mode.startswith('pvt'):
+        return PVT(run_dir, mode=mode, scoring=diverse)
     return None
 
 

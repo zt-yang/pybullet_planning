@@ -1571,7 +1571,7 @@ def process_ik_context(context, verbose=False):
         else:
             raise ValueError(stream.name)
 
-def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, teleport=False, ir_only=False,
+def get_ik_gen(problem, max_attempts=200, collisions=True, learned=True, teleport=False, ir_only=False,
                soft_failures=False, verbose=False, visualize=False, ACONF=False, WCONF=True, **kwargs):
     """ given grasp of target object p, return base conf and arm traj """
     ir_max_attempts = 40
@@ -1604,7 +1604,7 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
         if collided(gripper_grasp, obstacles, articulated=True): # w is not None
             #wait_unlocked()
             remove_body(gripper_grasp)
-            # print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
+            print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
             return
         remove_body(gripper_grasp)
         # Fix grasps

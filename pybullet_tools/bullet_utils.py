@@ -661,9 +661,9 @@ class Attachment(object):
                     position = ls[result]
                     set_joint_position(self.child, self.child_joint, position)
                     # print(f'bullet.utils | Attachment | robot {key} @ {key} -> position @ {position}')
-                elif len(key) == 4:
-                    print('key', key)
-                    print(ls)
+                # elif len(key) == 4:
+                #     print('key', key)
+                #     print(ls)
         return child_pose
 
     def apply_mapping(self, mapping):

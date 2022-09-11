@@ -321,7 +321,7 @@ def change_world_state(world, test_case):
     print('-------------------')
 
 
-def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
+def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238, use_gui=True):
     # scenes_path = dirname(os.path.abspath(lisdf_path))
     tmp_path = join(ASSET_PATH, 'tmp')
     if not isdir(tmp_path): os.mkdir(tmp_path)
@@ -341,7 +341,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
     #         print(len(lines))
 
     ## --- the floor and pose will become extra bodies
-    connect(use_gui=True, shadows=False, width=width, height=height)
+    connect(use_gui=use_gui, shadows=False, width=width, height=height)
     # draw_pose(unit_pose(), length=1.)
     # create_floor()
 
