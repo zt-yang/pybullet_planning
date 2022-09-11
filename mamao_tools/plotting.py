@@ -17,8 +17,8 @@ sns.set_style("darkgrid", {"axes.facecolor": ".9"})
 from utils import DATASET_PATH
 
 GROUPS = ['tt_one_fridge_pick', \
-    'tt_one_fridge_table_pick', 'tt_one_fridge_table_in', 'tt_two_fridge_in']  ## 'tt_one_fridge_table_on', \
-METHODS = ['None', 'oracle', 'pvt', 'pvt-task'] ## ## , 'random' , 'piginet'
+    'tt_one_fridge_table_pick', 'tt_one_fridge_table_in', 'tt_two_fridge_in']  ## ## 'tt_one_fridge_table_on', \
+METHODS = ['None', 'pvt*', 'oracle'] ## ## , 'random' , 'piginet', 'pvt-task'
 check_time = 1662647476.5
 
 
@@ -229,7 +229,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     plt.title(title + dt, fontsize=16, pad=35)
     labels = tuple([f"{g.replace('tt_', '')}\n({data[g]['count']})" for g in groups])
     plt.xticks(index + x_ticks_offset, labels, fontsize=10)
-    plt.ylim([0, 500])
+    plt.ylim([0, 2000]) if diverse else plt.ylim([0, 500])
     plt.legend(ncol=4, fontsize=11, loc='upper center', bbox_to_anchor=(0.5, 1.1))
     ax.tick_params(axis='x', which='major', pad=28)
 
