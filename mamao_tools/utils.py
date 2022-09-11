@@ -16,10 +16,10 @@ else: ## not tested
 def get_feasibility_checker(run_dir, mode, diverse=False):
     from .feasibility_checkers import PassAll, Oracle, PVT
     if mode == 'None':
-        return PassAll()
+        return PassAll(run_dir)
     elif mode == 'oracle':
         plan = get_successful_plan(run_dir)
-        return Oracle(correct=plan)
+        return Oracle(run_dir, plan)
     elif 'pvt-task' in mode:
         task_name = abspath(run_dir).replace(DATASET_PATH, '').split('/')[1]
         return PVT(run_dir, task_name=task_name, scoring=diverse)
