@@ -107,7 +107,7 @@ class PVT(FeasibilityChecker):
             elif mode in PT_NEWER:
                 pt_name = PT_NEWER[mode]
             pt_path = join(dirname(abspath(__file__)), '..', 'fastamp', 'models', pt_name)
-
+        print('\n\nPVT with', pt_path, '\n\n')
         self.pt_path = abspath(pt_path)
         self._model = get_model(pt_path)
         print('PVT model loaded from', pt_path)

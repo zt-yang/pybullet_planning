@@ -18,7 +18,7 @@ from utils import DATASET_PATH
 
 GROUPS = ['tt_one_fridge_pick', \
     'tt_one_fridge_table_pick', 'tt_one_fridge_table_in', 'tt_two_fridge_in']  ## ## 'tt_one_fridge_table_on', \
-METHODS = ['None', 'pvt*', 'oracle'] ## ## , 'random' , 'piginet', 'pvt-task'
+METHODS = ['None', 'pvt*', 'pvt+', 'oracle'] ## ## , 'random' , 'piginet', 'pvt-task'
 check_time = 1662647476.5
 
 
