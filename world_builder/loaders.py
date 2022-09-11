@@ -1190,6 +1190,6 @@ def load_another_fridge_food(world, verbose=True):
 
     placement[new_food] = s.pybullet_name
 
-    random_set_doors(doors, extent_max=0)
+    random_set_doors(doors, epsilon=0)
     ## the goal will be to pick one object and put in the other fridge
     return placement
