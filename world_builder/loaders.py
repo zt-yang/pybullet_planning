@@ -1062,7 +1062,7 @@ def load_fridge_with_food_on_surface(world, counter, name='minifridge', cabbage=
     return list(minifridge_doors.keys())
 
 
-def random_set_doors(doors, extent_max=1.0, epsilon=0.1):
+def random_set_doors(doors, extent_max=1.0, epsilon=0.7):
     for door in doors:
         if random.random() < epsilon:
             extent = random.random()
@@ -1190,6 +1190,6 @@ def load_another_fridge_food(world, verbose=True):
 
     placement[new_food] = s.pybullet_name
 
-    random_set_doors(doors, epsilon=0.5)
+    random_set_doors(doors, epsilon=0.7)
     ## the goal will be to pick one object and put in the other fridge
     return placement

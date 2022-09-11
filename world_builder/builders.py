@@ -303,7 +303,7 @@ def sample_fridges_tables_scene(world, verbose=True):
     minifridge_doors = sample_one_fridge_scene(world, open_doors=False)
     load_another_table(world, four_ways=False)
     placement = load_another_fridge_food(world)
-    random_set_doors(minifridge_doors, epsilon=0.5)
+    random_set_doors(minifridge_doors, epsilon=0)
     ensure_robot_cfree(world, verbose=verbose)
     return placement
 
