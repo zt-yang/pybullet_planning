@@ -3,6 +3,10 @@ import time
 import torch
 import json
 import copy
+import sys
+from os.path import join, abspath, dirname
+sys.path.append(join('..', 'pybullet_planning', 'fastamp'))
+# print('\nsys.path', sys.path)
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -77,7 +81,6 @@ class Oracle(FeasibilityChecker):
 
     def __init__(self, run_dir, correct):
         super().__init__(run_dir)
-
         self.correct = correct
 
     def _check(self, input):
@@ -90,8 +93,8 @@ class Oracle(FeasibilityChecker):
                     # if len(action) != len(self.correct[i]):
                     #     print('len(input[i]) != len(self.correct[i])', action, self.correct[i])
                     if str(action[j]) != self.correct[i][j]:
-                        print(f'\n\nOracle feasibility checker | correct', self.correct[i],
-                              'input', action, '\n\n')
+                        print(f'\nOracle feasibility checker | correct', self.correct[i],
+                              'input', action, '\n')
                         return False
         return True
 
@@ -111,10 +114,6 @@ class PVT(FeasibilityChecker):
 
     def __init__(self, run_dir, pt_path=None, task_name=None, mode='pvt', scoring=False):
         super().__init__(run_dir)
-        import sys
-        from os.path import join, abspath, dirname, isdir, isfile
-        sys.path.append(join('..', 'pybullet_planning', 'fastamp'))
-        print('\nsys.path', sys.path)
         from fastamp.test_piginet import get_model, DAFAULT_PT_NAME, args, TASK_PT_NAMES, \
             PT_NEWER
         from fastamp.fastamp_utils import get_facts_goals_visuals, get_successful_plan, \
