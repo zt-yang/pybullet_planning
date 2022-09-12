@@ -181,8 +181,8 @@ class PVT(FeasibilityChecker):
                 else:
                     predictions = nn.Sigmoid()(outputs).round().cpu().bool().numpy()
         if len(inputs) == 1:
-            return predictions[0]
-        return predictions
+            return predictions[0].item()
+        return [p.item() for p in predictions]
 
 
 ##################################################
