@@ -1,57 +1,24 @@
 from __future__ import print_function
 
-import copy
-import pybullet as p
-import random
-import time
-import os
-from itertools import islice, count
-import math
-import json
-
-import numpy as np
-
-from pybullet_tools.pr2_problems import get_fixed_bodies, create_pr2
-from pybullet_tools.pr2_utils import GET_GRASPS, get_gripper_joints, \
-    get_carry_conf, get_top_grasps, get_side_grasps, open_arm, arm_conf, get_gripper_link, get_arm_joints, \
-    learned_pose_generator, PR2_TOOL_FRAMES, get_x_presses, PR2_GROUPS, joints_from_names, \
-    is_drake_pr2, get_group_joints, get_group_conf, compute_grasp_width, PR2_GRIPPER_ROOTS, \
-    TOOL_POSE, MAX_GRASP_WIDTH, GRASP_LENGTH, SIDE_HEIGHT_OFFSET, approximate_as_prism, set_group_conf
-from pybullet_tools.pr2_primitives import control_commands, apply_commands, Grasp, \
-    APPROACH_DISTANCE, TOP_HOLDING_LEFT_ARM, get_tool_from_root, Conf, Commands, State, create_trajectory, \
-    Trajectory, get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
-    move_cost_fn, get_ik_ir_gen, get_motion_gen, Attach, Detach, Clean, \
-    Cook, control_commands, get_gripper_joints, GripperCommand, apply_commands, State
-
-from pybullet_tools.ikfast.pr2.ik import is_ik_compiled, pr2_inverse_kinematics
-from pybullet_tools.utils import invert, multiply, get_name, set_pose, get_link_pose, is_placement, \
-    pairwise_collision, set_joint_positions, get_joint_positions, sample_placement, get_pose, waypoints_from_path, \
-    unit_quat, plan_base_motion, plan_joint_motion, base_values_from_pose, pose_from_base_values, \
-    uniform_pose_generator, sub_inverse_kinematics, add_fixed_constraint, remove_debug, remove_fixed_constraint, \
-    disable_real_time, enable_gravity, joint_controller_hold, get_distance, Point, Euler, set_joint_position, \
-    get_min_limit, user_input, step_simulation, get_body_name, get_bodies, BASE_LINK, get_joint_position, \
-    add_segments, get_max_limit, link_from_name, BodySaver, get_aabb, interpolate_poses, wait_for_user, \
-    plan_direct_joint_motion, has_gui, create_attachment, wait_for_duration, get_extend_fn, set_renderer, \
-    get_custom_limits, all_between, get_unit_vector, wait_if_gui, create_box, set_point, quat_from_euler, \
-    set_base_values, euler_from_quat, INF, elapsed_time, get_moving_links, flatten_links, get_relative_pose, \
-    get_joint_limits, unit_pose, point_from_pose, clone_body, set_all_color, GREEN, BROWN, get_link_subtree, \
-    RED, remove_body, aabb2d_from_aabb, aabb_overlap, aabb_contains_point, get_aabb_center, get_link_name, \
-    get_links, check_initial_end, get_collision_fn, BLUE, WHITE, TAN, GREY, YELLOW, aabb_contains_aabb, \
-    get_joints, is_movable, pairwise_link_collision, get_closest_points, ConfSaver, wait_unlocked, get_joint_names, dump_body
-
-from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, set_camera_target_body, is_contained, \
-    visualize_point, collided, GRIPPER_DIRECTIONS, get_gripper_direction, check_cfree_gripper, Attachment, \
-    has_tracik, visualize_bconf
-from pybullet_tools.logging import dump_json
-
-from .general_streams import *
+from pybullet_tools.bullet_utils import check_cfree_gripper
+from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics
 from pybullet_tools.ikfast.utils import USE_CURRENT
+from pybullet_tools.pr2_primitives import Grasp, \
+    APPROACH_DISTANCE, TOP_HOLDING_LEFT_ARM, get_tool_from_root, Conf, Commands, create_trajectory, \
+    Trajectory, State
+from pybullet_tools.pr2_problems import create_pr2
+from pybullet_tools.pr2_utils import open_arm, arm_conf, get_gripper_link, get_arm_joints, \
+    learned_pose_generator, PR2_TOOL_FRAMES, get_group_joints, get_group_conf, TOOL_POSE, MAX_GRASP_WIDTH, GRASP_LENGTH, \
+    SIDE_HEIGHT_OFFSET, approximate_as_prism, set_group_conf
+from pybullet_tools.utils import wait_unlocked, WorldSaver
+from .general_streams import *
 
 BASE_EXTENT = 3.5 # 2.5
 BASE_LIMITS = (-BASE_EXTENT*np.ones(2), BASE_EXTENT*np.ones(2))
 GRASP_LENGTH = 0.03
 APPROACH_DISTANCE = 0.1 + GRASP_LENGTH
 SELF_COLLISIONS = False
+DEFAULT_RESOLUTION = math.radians(3) # 0.05
 LINK_POSE_TO_JOINT_POSITION = {}
 
 ########################################################################
@@ -246,12 +213,16 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
     robot = problem.robot
     obstacles = problem.fixed if collisions else []
     world = problem.world
+    world_saver = WorldSaver()
     title = 'pr2_streams.get_ik_fn:\t'
 
     def fn(arm, obj, pose, grasp, base_conf, wconf=None, fluents=[]):
         if wconf is not None:
             wconf.assign()
-        attachments = process_motion_fluents(fluents, robot) # TODO(caelan): use attachments
+        if fluents:
+            attachments = process_motion_fluents(fluents, robot) # TODO(caelan): use attachments
+        else:
+            world_saver.restore()
 
         if isinstance(obj, tuple): ## may be a (body, joint) or a body with a marker
             body = obj[0]
@@ -290,13 +261,13 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
         open_arm(robot, arm)
         set_joint_positions(robot, arm_joints, default_conf) # default_conf | sample_fn()
 
-        if base_conf.joint_state is None:
-            # TODO(caelan): use tracik here
-            grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose, custom_limits=custom_limits) #, upper_limits=USE_CURRENT)
-                                                #nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
-        else:
+        if base_conf.joint_state is not None:
             grasp_conf = list(map(base_conf.joint_state.get, arm_joints))
             set_joint_positions(robot, arm_joints, grasp_conf)
+        else:
+            grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose, custom_limits=custom_limits) #, upper_limits=USE_CURRENT)
+                                                #nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
+
         if (grasp_conf is None) or collided(robot, addon_obstacles, articulated=False): ## approach_obstacles): # [obj]
             #wait_unlocked()
             if verbose:
@@ -353,7 +324,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
         if teleport:
             path = [default_conf, approach_conf, grasp_conf]
         else:
-            resolutions = 0.05*np.ones(len(arm_joints))
+            resolutions = DEFAULT_RESOLUTION * np.ones(len(arm_joints))
             grasp_path = plan_direct_joint_motion(robot, arm_joints, grasp_conf, attachments=attachments.values(),
                                                   obstacles=approach_obstacles, self_collisions=SELF_COLLISIONS,
                                                   custom_limits=custom_limits, resolutions=resolutions/2.)
@@ -574,13 +545,18 @@ def get_arm_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, ve
     robot = problem.robot
     obstacles = problem.fixed if collisions else []
     world = problem.world
+    world_saver = WorldSaver()
     title = 'pr2_streams.get_arm_ik_fn:\t'
 
-    def fn(arm, obj, pose, grasp, base_conf, grasp_conf):
+    def fn(arm, obj, pose, grasp, base_conf, grasp_conf, fluents=[]):
         if isinstance(obj, tuple): ## may be a (body, joint) or a body with a marker
             body = obj[0]
         else:
             body = obj
+        if fluents:
+            attachments = process_motion_fluents(fluents, robot) # TODO(caelan): use attachments
+        else:
+            world_saver.restore()
 
         if 'pstn' in str(pose): ## isinstance(pose, Position):
             pose_value = linkpose_from_position(pose)
@@ -654,7 +630,7 @@ def get_arm_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, ve
         if teleport:
             path = [default_conf, approach_conf, grasp_conf]
         else:
-            resolutions = 0.05*np.ones(len(arm_joints))
+            resolutions = DEFAULT_RESOLUTION * np.ones(len(arm_joints))
             grasp_path = plan_direct_joint_motion(robot, arm_joints, grasp_conf, attachments=attachments.values(),
                                                   obstacles=approach_obstacles, self_collisions=SELF_COLLISIONS,
                                                   custom_limits=custom_limits, resolutions=resolutions/2.)
@@ -758,7 +734,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         aq1.assign()
 
         arm_joints = get_arm_joints(robot, a)
-        resolutions = 0.05 * np.ones(len(arm_joints))
+        resolutions = DEFAULT_RESOLUTION * np.ones(len(arm_joints))
 
         # BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
         # joint_object = BODY_TO_OBJECT[o]
@@ -872,7 +848,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
 #         aq1.assign()
 #
 #         arm_joints = get_arm_joints(robot, a)
-#         resolutions = 0.05 ** np.ones(len(arm_joints))
+#         resolutions = DEFAULT_RESOLUTION * np.ones(len(arm_joints))
 #
 #         BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
 #         joint_object = BODY_TO_OBJECT[o]
@@ -1433,14 +1409,15 @@ def process_motion_fluents(fluents, robot, verbose=True):
         elif predicate == 'atposition':
             o, p = args
             p.assign()
-        elif predicate == 'ataconf':
-            a, q = args
-            q.assign()
+        elif predicate == 'ataconf': # TODO: the arm conf isn't being set pre/post moves correctly
+            # a, q = args
+            # q.assign()
+            pass
         else:
             raise NotImplementedError(atom)
     return attachments
 
-def get_motion_wconf_gen(problem, custom_limits={}, collisions=True, teleport=False):
+def get_motion_wconf_gen(problem, custom_limits={}, collisions=True, teleport=False, debug=False):
     robot = problem.robot
     saver = BodySaver(robot)
     obstacles = problem.fixed if collisions else []
@@ -1458,13 +1435,17 @@ def get_motion_wconf_gen(problem, custom_limits={}, collisions=True, teleport=Fa
         bconf = get_joint_positions(robot, robot.get_base_joints())
         aconf = get_joint_positions(robot, get_arm_joints(robot, 'left'))
 
+        # arm_joints = get_arm_joints(robot, arm) # TODO(caelan): should set the arms conf
+        # default_conf = arm_conf(arm, grasp.carry)
+        # set_joint_positions(robot, arm_joints, default_conf)
+
         num_trials = 2  ## sometimes it can't find a path to get around the open door
-        params = [(4, 50), (6, 75)] ## , (10, 100)
+        params = [(6, 75)] ## (4, 50), (10, 100)
         while num_trials > 0:
             param = params[-num_trials]
             raw_path = plan_joint_motion(robot, bq2.joints, bq2.values, attachments=[],
                                          obstacles=obstacles, custom_limits=custom_limits, self_collisions=SELF_COLLISIONS,
-                                         restarts=param[0], iterations=param[1], smooth=50)
+                                         restarts=param[0], iterations=param[1]) #, smooth=50)
                                          # restarts=4, iterations=50, smooth=50)
             # break
             num_trials -= 1
@@ -1475,12 +1456,12 @@ def get_motion_wconf_gen(problem, custom_limits={}, collisions=True, teleport=Fa
         # print(f'pr2_streams.get_motion_wconf_gen\t under {w.printout(obstacles)}, '
         #       f'from bconf = {nice(bconf)}, aconf = {nice(aconf)}, num_trials = {2-num_trials}')
         if raw_path is None:
-            print('Failed motion plan (with world config)!', get_bodies())
-            # set_renderer(True)
-            # for bq in [bq1, bq2]:
-            #     bq.assign()
-            #     wait_if_gui()
-            # set_renderer(False)
+            print('Failed motion plan (with world config)!', obstacles)
+            if debug:
+                for i, bq in enumerate([bq1, bq2]):
+                    bq.assign()
+                    print('{}) Base conf: {}'.format(i, bq))
+                    wait_unlocked()
             return None
         path = [Conf(robot, bq2.joints, q) for q in raw_path]
         bt = Trajectory(path)

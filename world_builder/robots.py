@@ -329,9 +329,9 @@ class PR2Robot(RobotAPI):
         from pybullet_tools.pr2_agent import get_stream_map
         return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
 
-    def get_stream_info(self, partial=False, defer=False):
+    def get_stream_info(self, partial=False, defer=False, **kwargs):
         from pybullet_tools.pr2_agent import get_stream_info
-        return get_stream_info() ## partial=partial, defer=defer
+        return get_stream_info(**kwargs) ## partial=partial, defer=defer
 
     @property
     def base_group(self):
