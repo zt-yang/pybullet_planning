@@ -601,7 +601,7 @@ from pybullet_tools.utils import disconnect, LockRenderer, has_gui, WorldSaver, 
 from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, str_from_object, TmpCWD
 
 
-def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False,
+def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False, lock=False,
               max_time=INF, downward_time=10, evaluation_time=10, visualize=False):
     if diverse:
         max_plans = 100
@@ -615,7 +615,7 @@ def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False,
         use_feedback = True
 
     # with Profiler():
-    with LockRenderer(lock=True):
+    with LockRenderer(lock=lock):
         solution = solve_focused(pddlstream_problem, stream_info=stream_info,
                                  planner='ff-astar1', max_planner_time=downward_time, debug=False,
                                  unit_costs=False, success_cost=INF, initial_complexity=5,
