@@ -36,7 +36,7 @@ from pybullet_tools.utils import connect, disconnect, wait_if_gui, LockRenderer,
     disconnect, get_joint_positions, enable_gravity, save_state, restore_state, HideOutput, remove_body, \
     get_distance, LockRenderer, get_min_limit, get_max_limit, has_gui, WorldSaver, wait_if_gui, add_line, SEPARATOR, \
     BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS, wait_unlocked, get_movable_joints, set_all_color, \
-    TRANSPARENT, apply_alpha, get_all_links, get_color, get_texture, dump_body, clear_texture
+    TRANSPARENT, apply_alpha, get_all_links, get_color, get_texture, dump_body, clear_texture, get_link_name, get_joint_name
 from pybullet_tools.flying_gripper_utils import get_se3_joints
 
 from os.path import join, isfile
@@ -50,6 +50,7 @@ from pddlstream.language.function import FunctionInfo
 from pddlstream.language.stream import StreamInfo, PartialInputs, universe_test
 from pddlstream.language.object import SharedOptValue
 from pddlstream.language.external import defer_shared, never_defer
+from pddlstream.language.conversion import params_from_objects
 from collections import namedtuple
 
 from world_builder.entities import Object
@@ -707,6 +708,48 @@ def colorize_world(world, color_types=['brown', 'tan'], transparency=0.5):
             link_color = apply_alpha(link_color, alpha=1.0 if link in rigid else transparency)
             set_color(body, link=link, color=link_color)
 
+def serial_checker(checker):
+    return lambda plans: list(map(checker, plans))
+
+def get_debug_checker(world):
+    def debug_checker(plans):
+        for i, plan in enumerate(plans):
+            renamed_plan = []
+            for action in plan:
+                action_name, args = action
+                args = params_from_objects(args)
+                body, joint = None, None
+                if action_name == 'move_base_wconf':
+                    continue
+                elif action_name == 'pick':
+                    arm, body = args[:2]
+                elif action_name == 'place':
+                    arm, body = args[:2]
+                elif action_name == 'grasp_handle':
+                    arm, (body, joint) = args[:2]
+                    continue
+                elif action_name == 'pull_door_handle':
+                    arm, (body, joint) = args[:2]
+                elif action_name == 'ungrasp_handle':
+                    arm, (body, joint) = args[:2]
+                    continue
+                else:
+                    raise NotImplementedError(action_name)
+                action_name = action_name.split('_')[0]
+                obj = world.get_object(body)
+                obj_name = obj.name
+                if joint is None:
+                    instance_name = f'{action_name}({obj_name})'
+                else:
+                    joint_name = get_joint_name(body, joint) if joint is not None else None
+                    instance_name = f'{action_name}({obj_name}, {joint_name})'
+                renamed_plan.append(instance_name)
+            plan_name = f'[{", ".join(renamed_plan)}]'
+            print(f'{i+1}/{len(plans)}) {plan_name} ({len(renamed_plan)})')
+        wait_unlocked()
+        return [True]*len(plans)
+    return debug_checker
+
 def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=False,
                      collect_dataset=False, max_cost=INF,
                      profile=True, lock=False, max_time=5*50, preview=False, **kwargs):
@@ -735,6 +778,7 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
         #plan_dataset = PlanDataset()
         plan_dataset = []
 
+    # TODO: more general version will just sort and return a subset the plans
     feasibility_checker = None
     # feasibility_checker = lambda *args: False # Reject all
     # feasibility_checker = lambda *args: True # Accept all
