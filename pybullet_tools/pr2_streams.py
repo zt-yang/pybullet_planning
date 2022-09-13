@@ -1439,8 +1439,8 @@ def get_motion_wconf_gen(problem, custom_limits={}, collisions=True, teleport=Fa
         # default_conf = arm_conf(arm, grasp.carry)
         # set_joint_positions(robot, arm_joints, default_conf)
 
-        num_trials = 2  ## sometimes it can't find a path to get around the open door
         params = [(6, 75)] ## (4, 50), (10, 100)
+        num_trials = len(params)  ## sometimes it can't find a path to get around the open door
         while num_trials > 0:
             param = params[-num_trials]
             raw_path = plan_joint_motion(robot, bq2.joints, bq2.values, attachments=[],
