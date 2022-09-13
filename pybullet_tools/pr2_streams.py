@@ -335,7 +335,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
             approach_path = plan_joint_motion(robot, arm_joints, approach_conf, attachments=attachments.values(),
                                               obstacles=obstacles, self_collisions=SELF_COLLISIONS,
                                               custom_limits=custom_limits, resolutions=resolutions,
-                                              restarts=2, iterations=25, smooth=25)
+                                              restarts=2, iterations=25, smooth=0) # smooth=25
             if approach_path is None:
                 if verbose: print(f'{title}\tApproach path failure')
                 return None
@@ -641,7 +641,7 @@ def get_arm_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, ve
             approach_path = plan_joint_motion(robot, arm_joints, approach_conf, attachments=attachments.values(),
                                               obstacles=obstacles, self_collisions=SELF_COLLISIONS,
                                               custom_limits=custom_limits, resolutions=resolutions,
-                                              restarts=2, iterations=25, smooth=25)
+                                              restarts=2, iterations=25, smooth=0) # smooth=25
             if approach_path is None:
                 if verbose: print(f'{title}Approach path failure')
                 return None
@@ -1444,8 +1444,10 @@ def get_motion_wconf_gen(problem, custom_limits={}, collisions=True, teleport=Fa
         while num_trials > 0:
             param = params[-num_trials]
             raw_path = plan_joint_motion(robot, bq2.joints, bq2.values, attachments=[],
-                                         obstacles=obstacles, custom_limits=custom_limits, self_collisions=SELF_COLLISIONS,
-                                         restarts=param[0], iterations=param[1]) #, smooth=50)
+                                         obstacles=obstacles, self_collisions=SELF_COLLISIONS,
+                                         custom_limits=custom_limits, resolutions=None, # TODO: base resolutions
+                                         use_aabb=True, cache=True,
+                                         restarts=param[0], iterations=param[1], smooth=0) # smooth=50
                                          # restarts=4, iterations=50, smooth=50)
             # break
             num_trials -= 1
