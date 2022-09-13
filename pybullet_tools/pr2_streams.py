@@ -346,13 +346,14 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
         # print(f'@ pr2_streams.get_ik_fn() -> aconf = {aconf} | bconf = {base_conf}')
         # ## -------------------------------------------
 
-        approach_conf = get_joint_positions(robot, arm_joints)
+        set_joint_positions(robot, arm_joints, approach_conf)
+        #approach_conf = get_joint_positions(robot, arm_joints)
         attachment = grasp.get_attachment(problem.robot, arm)
         attachments = {}  ## {attachment.child: attachment} TODO: problem with having (body, joint) tuple
         if teleport:
             path = [default_conf, approach_conf, grasp_conf]
         else:
-            resolutions = 0.05**np.ones(len(arm_joints))
+            resolutions = 0.05*np.ones(len(arm_joints))
             grasp_path = plan_direct_joint_motion(robot, arm_joints, grasp_conf, attachments=attachments.values(),
                                                   obstacles=approach_obstacles, self_collisions=SELF_COLLISIONS,
                                                   custom_limits=custom_limits, resolutions=resolutions/2.)
@@ -612,7 +613,7 @@ def get_arm_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, ve
         set_joint_positions(robot, arm_joints, grasp_conf) # default_conf | sample_fn()
         # grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose, custom_limits=custom_limits) #, upper_limits=USE_CURRENT)
         #                                     #nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
-        if (grasp_conf is None) or any(pairwise_collision(robot, b) for b in obstacles): ## approach_obstacles): # [obj]
+        if (grasp_conf is None) or collided(robot, obstacles, articulated=False): ## approach_obstacles): # [obj]
             if verbose:
                 if grasp_conf != None:
                     grasp_conf = nice(grasp_conf)
@@ -630,7 +631,7 @@ def get_arm_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, ve
 
         #approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits) ##, max_iterations=500
         approach_conf = solve_nearby_ik(robot, arm, approach_pose, custom_limits=custom_limits)
-        if (approach_conf is None) or any(pairwise_collision(robot, b) for b in obstacles): ##
+        if (approach_conf is None) or collided(robot, obstacles, articulated=False): ##
             if verbose:
                 if approach_conf != None:
                     approach_conf = nice(approach_conf)
@@ -646,13 +647,14 @@ def get_arm_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, ve
                 print(f'{title}Approach IK success | sub_inverse_kinematics({robot} at {nice(base_conf.values)}, '
                       f'{arm}, {nice(approach_pose[0])}) | pose = {pose}, grasp = {nice(grasp.approach)} -> {nice(approach_conf)}')
 
-        approach_conf = get_joint_positions(robot, arm_joints)
+        set_joint_positions(robot, arm_joints, approach_conf)
+        #approach_conf = get_joint_positions(robot, arm_joints)
         attachment = grasp.get_attachment(problem.robot, arm)
         attachments = {}  ## {attachment.child: attachment} TODO: problem with having (body, joint) tuple
         if teleport:
             path = [default_conf, approach_conf, grasp_conf]
         else:
-            resolutions = 0.05**np.ones(len(arm_joints))
+            resolutions = 0.05*np.ones(len(arm_joints))
             grasp_path = plan_direct_joint_motion(robot, arm_joints, grasp_conf, attachments=attachments.values(),
                                                   obstacles=approach_obstacles, self_collisions=SELF_COLLISIONS,
                                                   custom_limits=custom_limits, resolutions=resolutions/2.)
@@ -756,7 +758,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         aq1.assign()
 
         arm_joints = get_arm_joints(robot, a)
-        resolutions = 0.05 ** np.ones(len(arm_joints))
+        resolutions = 0.05 * np.ones(len(arm_joints))
 
         # BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
         # joint_object = BODY_TO_OBJECT[o]
@@ -1416,7 +1418,9 @@ def get_pose_in_region_gen(problem, collisions=True, max_attempts=40, verbose=Fa
 
 ##################################################
 
-def process_motion_fluents(fluents, robot):
+def process_motion_fluents(fluents, robot, verbose=True):
+    if verbose:
+        print('Fluents:', fluents)
     attachments = []
     for atom in fluents:
         predicate, args = atom[0], atom[1:]

@@ -43,6 +43,7 @@ from os.path import join, isfile
 from pddlstream.algorithms.focused import solve_focused
 from pddlstream.algorithms.algorithm import parse_problem, reset_globals
 from pddlstream.algorithms.constraints import PlanConstraints, WILD
+from pddlstream.algorithms.downward import set_cost_scale
 from pddlstream.language.generator import from_gen_fn, from_list_fn, from_fn, fn_from_constant, empty_gen, from_test
 from pddlstream.language.constants import Equal, AND, PDDLProblem, is_plan
 from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler
@@ -615,6 +616,7 @@ def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False, lock=Fals
         use_feedback = True
 
     # with Profiler():
+    set_cost_scale(cost_scale=1)
     with LockRenderer(lock=lock):
         solution = solve_focused(pddlstream_problem, stream_info=stream_info,
                                  planner='ff-astar1', max_planner_time=downward_time, debug=False,
