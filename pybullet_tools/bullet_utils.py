@@ -1035,7 +1035,7 @@ def is_box_entity(body, link=-1):
     return len(data) != 0 and data[0].geometry_type == p.GEOM_BOX
 
 
-def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False):
+def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False, **kwargs):
     body_pose, vertices = get_model_points(body, link=link, verbose=verbose)
     if link is None:  link = -1
     data = get_collision_data(body, link)
@@ -1044,17 +1044,17 @@ def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False):
     else: ## if data.geometry_typep == p.GEOM_BOX:
         aabb = get_aabb(body)
     # TODO(caelan): global DRAW variable that disables
-    handles = draw_bounding_box(aabb, body_pose)
+    handles = draw_bounding_box(aabb, body_pose, **kwargs)
     if draw_centroid:
         handles.extend(draw_face_points(aabb, body_pose, dist=0.04))
     return body_pose, aabb, handles
 
 
-def draw_bounding_box(aabb, body_pose):
+def draw_bounding_box(aabb, body_pose, **kwargs):
     handles = []
     for a, b in get_aabb_edges(aabb):
         p1, p2 = apply_affine(body_pose, [a, b])
-        handles.append(add_line(p1, p2))
+        handles.append(add_line(p1, p2, **kwargs))
     return handles
 
 

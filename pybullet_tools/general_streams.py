@@ -287,7 +287,7 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=
             space = random.choice(spaces)  # TODO: weight by area
 
             if isinstance(space, tuple):
-                x, y, z, yaw = sample_obj_in_body_link_space(body, space[0], space[-1],
+                x, y, z, yaw = sample_obj_in_body_link_space(body, body=space[0], link=space[-1],
                                                              PLACEMENT_ONLY=True, verbose=verbose, **kwargs)
                 body_pose = ((x, y, z), quat_from_euler(Euler(yaw=yaw)))
             else:
