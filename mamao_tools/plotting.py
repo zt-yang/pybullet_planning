@@ -16,11 +16,14 @@ sns.set_style("darkgrid", {"axes.facecolor": ".9"})
 
 from utils import DATASET_PATH
 
-GROUPS = ['tt_one_fridge_pick', \
-    'tt_one_fridge_table_pick', 'tt_one_fridge_table_in', 'tt_two_fridge_in']  ## ## 'tt_one_fridge_table_on', \
-METHODS = ['None', 'pvt*', 'pvt+', 'oracle'] ## ## , 'random' , 'piginet', 'pvt-task'
-check_time = 1663038025.0359402
+GROUPS = ['tt_one_fridge_table_pick', 'tt_one_fridge_table_in',
+          'tt_two_fridge_pick', 'tt_two_fridge_in']  ## ## 'tt_one_fridge_table_on', 'tt_one_fridge_pick'
+METHODS = ['None', 'pvt', 'oracle'] ## ## , 'random' , 'piginet', 'pvt-task'
+check_time = 1663139616 ## after relabeling
 
+## see which files are missing
+GROUPS = ['tt_one_fridge_table_pick', 'tt_two_fridge_pick', 'tt_two_fridge_in']
+METHODS = ['None', 'pvt', 'oracle']
 
 def get_rundirs(task_name):
     data_dir = join(DATASET_PATH, task_name)
@@ -247,11 +250,12 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
 
 
 if __name__ == '__main__':
+    print('time.time()', int(time.time()))
     # plot_bar_chart(get_time_data())
     plot_bar_chart(get_time_data(diverse=True), diverse=True)
 
     # while True:
-    #     plot_bar_chart(get_time_data(), update=True)
+    #     plot_bar_chart(get_time_data(diverse=True), diverse=True, update=True)
     #     print('waiting for new data...')
     #     plt.pause(30)
     #     plt.close('all')

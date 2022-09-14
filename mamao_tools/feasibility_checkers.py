@@ -55,8 +55,8 @@ class FeasibilityChecker(object):
                 printout.append((round(prediction, 3), skeleton))
             [print(p) for p in printout]
 
-        if len(predictions) == 1:
-            return predictions[0]
+        # if len(predictions) == 1:
+        #     return predictions[0]
         return predictions
 
     def dump_log(self, json_path):
