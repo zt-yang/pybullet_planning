@@ -23,7 +23,8 @@ check_time = 1663139616 ## after relabeling
 
 ## see which files are missing
 GROUPS = ['tt_one_fridge_table_pick', 'tt_two_fridge_pick', 'tt_two_fridge_in']
-METHODS = ['None', 'pvt', 'oracle']
+METHODS = ['None', 'oracle'] ## , 'pvt'
+SAME_Y_AXES = False
 
 def get_rundirs(task_name):
     data_dir = join(DATASET_PATH, task_name)
@@ -138,10 +139,14 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     argmaxs = {}
     counts = {}
     missing = {}
-    points_x = {}
+    points_x = {} 
     points_y = {}
     for i in range(n_groups):
         group = groups[i]
+        if not SAME_Y_AXES:
+            points_x[i] = []
+            points_y[i] = []
+
         for j in range(len(METHODS)):
             method = METHODS[j]
             if method not in means:
@@ -151,8 +156,9 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                 argmaxs[method] = []
                 counts[method] = []
                 missing[method] = []
-                points_x[method] = []
-                points_y[method] = []
+                if SAME_Y_AXES:
+                    points_x[method] = []
+                    points_y[method] = []
 
             if method in data[group] and len(data[group][method]) > 0:
                 means[method].append(np.mean(data[group][method]))
@@ -162,8 +168,12 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                 label = label.replace(abspath(DATASET_PATH), '').replace('/', '').replace(group, '')
                 argmaxs[method].append(f"#{label}")
                 counts[method].append(len(data[group][method]))
-                points_x[method].extend([i] * len(data[group][method]))
-                points_y[method].extend(data[group][method])
+                if SAME_Y_AXES:
+                    points_x[method].extend([i] * len(data[group][method]))
+                    points_y[method].extend(data[group][method])
+                else:
+                    points_x[i].extend([j] * len(data[group][method]))
+                    points_y[i].extend(data[group][method])
             else:
                 means[method].append(0)
                 stds[method].append(0)
@@ -171,8 +181,6 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                 argmaxs[method].append("")
                 counts[method].append(0)
             missing[method].append(len(data[group]['missing'][method]))
-
-    fig, ax = plt.subplots(figsize=(9, 6))
 
     index = np.arange(n_groups)
     bar_width = 0.1
@@ -188,60 +196,114 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     colors = ['b', 'r', 'g', 'y']
     colors = ['#3498db', '#e74c3c', '#2ecc71', '#f1c40f']
     colors_darker = ['#2980b9', '#c0392b', '#27ae60', '#f39c12']
-
-    max_y = -1
-    for i in range(len(means)):
-        method = METHODS[i]
-
-        """ mean & average of all rerun planning time """
-        x = index + bar_width * i
-        plt.bar(x, means[method], bar_width,
-                alpha=0.4,
-                color=colors[i],
-                yerr=stds[method],
-                error_kw={'ecolor': colors_darker[i]},
-                label=METHODS[i])
-
-        """ max & count of rerun planning time """
-        for j in range(len(x)):
-            bar_label = f"{counts[method][j]} \n"
-            if missing[method][j] > 0:
-                bar_label += f"{missing[method][j]}"
-            plt.annotate(bar_label,  # text
-                        (x[j], 0),  # points location to label
-                        textcoords="offset points",
-                        xytext=(0, -24),  # distance between the points and label
-                        ha='center',
-                        fontsize=10)
-            plt.annotate(argmaxs[method][j],  # text
-                        (x[j], maxs[method][j]),  # points location to label
-                        textcoords="offset points",
-                        xytext=(0, 6),  # distance between the points and label
-                        ha='center',
-                        fontsize=10)
-            if maxs[method][j] > max_y:
-                max_y = maxs[method][j]
-
-        """ median value of rerun planning time """
-        x = np.asarray(points_x[method]) + bar_width * i
-        y = points_y[method]
-
-        # xy = np.vstack([x, y])  # Calculate the point density
-        # z = gaussian_kde(xy)(xy)
-        plt.scatter(x, y, s=20, color=colors[i], alpha=0.7)  ## c=z,
-
-    plt.xlabel('Tasks (run count)', fontsize=12)
-    plt.ylabel('Planning time', fontsize=12)
+    
+    figsize = (9, 6)
     dt = datetime.now().strftime("%m%d_%H%M%S")
     title = 'Planning time comparison '
     title += '(diverse planning mode) ' if diverse else ''
-    plt.title(title + dt, fontsize=16, pad=35)
     labels = tuple([f"{g.replace('tt_', '')}\n({data[g]['count']})" for g in groups])
-    plt.xticks(index + x_ticks_offset, labels, fontsize=10)
-    plt.ylim([0, max_y+100]) if diverse else plt.ylim([0, 500])
-    plt.legend(ncol=4, fontsize=11, loc='upper center', bbox_to_anchor=(0.5, 1.1))
-    ax.tick_params(axis='x', which='major', pad=28)
 
+    if SAME_Y_AXES:
+        fig, ax = plt.subplots(figsize=figsize)
+        max_y = -1
+        for i in range(len(means)):
+            method = METHODS[i]
+
+            """ mean & average of all rerun planning time """
+            x = index + bar_width * i
+            plt.bar(x, means[method], bar_width,
+                    alpha=0.4,
+                    color=colors[i],
+                    yerr=stds[method],
+                    error_kw={'ecolor': colors_darker[i]},
+                    label=METHODS[i])
+
+            """ max & count of rerun planning time """
+            for j in range(len(x)):
+                bar_label = f"{counts[method][j]} \n"
+                if missing[method][j] > 0:
+                    bar_label += f"{missing[method][j]}"
+                plt.annotate(bar_label,  # text
+                            (x[j], 0),  # points location to label
+                            textcoords="offset points",
+                            xytext=(0, -24),  # distance between the points and label
+                            ha='center',
+                            fontsize=10)
+                plt.annotate(argmaxs[method][j],  # text
+                            (x[j], maxs[method][j]),  # points location to label
+                            textcoords="offset points",
+                            xytext=(0, 6),  # distance between the points and label
+                            ha='center',
+                            fontsize=10)
+                if maxs[method][j] > max_y:
+                    max_y = maxs[method][j]
+
+            """ actual value of rerun planning time """
+            x = np.asarray(points_x[method]) + bar_width * i
+            y = points_y[method]
+            # xy = np.vstack([x, y])  # Calculate the point density
+            # z = gaussian_kde(xy)(xy)
+            plt.scatter(x, y, s=20, color=colors[i], alpha=0.7)  ## c=z,
+
+        plt.title(title + dt, fontsize=16, pad=35)
+        plt.ylim([0, max_y+100]) if diverse else plt.ylim([0, 500])
+        plt.legend(ncol=4, fontsize=11, loc='upper center', bbox_to_anchor=(0.5, 1.1))
+        plt.xlabel('Tasks (run count)', fontsize=12)
+        plt.ylabel('Planning time', fontsize=12)
+        plt.xticks(index + x_ticks_offset, labels, fontsize=10)
+        ax.tick_params(axis='x', which='major', pad=28)
+    
+    ## ------------- different y axis to amplify improvements ------------ ##
+    else:
+        fig, axs = plt.subplots(1, len(groups), figsize=figsize)
+        
+        ll = range(len(METHODS))
+        for i in range(len(groups)):
+            mean = [means[method][i] for method in METHODS]
+            std = [stds[method][i] for method in METHODS]
+            count = [counts[method][i] for method in METHODS]
+            miss = [missing[method][i] for method in METHODS]
+            agm = [argmaxs[method][i] for method in METHODS]
+            mx = [maxs[method][i] for method in METHODS]
+            xx = points_x[i]
+            yy = points_y[i]
+            axs[i].bar(ll, mean, bar_width,
+                    alpha=0.4,
+                    color=colors,
+                    yerr=std,
+                    error_kw={'ecolor': colors_darker},
+                    label=METHODS)
+            
+            for j in range(len(METHODS)):
+                bar_label = f"{count[j]} \n"
+                if miss[j] > 0:
+                    bar_label += str(miss[j])
+                axs[i].annotate(bar_label,  # text
+                            (j, 0),  # points location to label
+                            textcoords="offset points",
+                            xytext=(0, -24),  # distance between the points and label
+                            ha='center',
+                            fontsize=10)
+                axs[i].annotate(agm[j],  # text
+                            (j, mx[j]),  # points location to label
+                            textcoords="offset points",
+                            xytext=(0, 6),  # distance between the points and label
+                            ha='center',
+                            fontsize=10)
+                            
+                cc = [colors[k] for k in xx]
+                axs[i].scatter(xx, yy, s=20, color=cc, alpha=0.7)
+
+
+            axs[i].set_ylim([0, max(mx)+50]) 
+            axs[i].tick_params(axis='x', which='major', pad=28)
+            axs[i].set_title(labels[i], fontsize=12, y=-0.25)
+            axs[i].set_xticks(ll)
+            axs[i].set_xticklabels(METHODS, fontsize=10)
+        
+        fig.suptitle(title + dt, fontsize=16) ## , pad=35
+        axs[0].set_ylabel('Planning time', fontsize=12)
+    
     plt.tight_layout()
     if update:
         plt.draw()
@@ -251,7 +313,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
 
 if __name__ == '__main__':
     print('time.time()', int(time.time()))
-    # plot_bar_chart(get_time_data())
+    plot_bar_chart(get_time_data())
     plot_bar_chart(get_time_data(diverse=True), diverse=True)
 
     # while True:
