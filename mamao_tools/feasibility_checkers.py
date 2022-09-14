@@ -82,6 +82,7 @@ class Oracle(FeasibilityChecker):
     def __init__(self, run_dir, correct):
         super().__init__(run_dir)
         self.correct = correct
+        print(f'\nOracle feasibility checker\n', '\n'.join([str(c) for c in correct]))
 
     def _check(self, input):
         if len(input) != len(self.correct):
@@ -93,9 +94,9 @@ class Oracle(FeasibilityChecker):
                     # if len(action) != len(self.correct[i]):
                     #     print('len(input[i]) != len(self.correct[i])', action, self.correct[i])
                     if str(action[j]) != self.correct[i][j]:
-                        print(f'\nOracle feasibility checker | correct', self.correct[i],
-                              'input', action, '\n')
+                        # print(i, self.correct[i], '\n', action, '\n')
                         return False
+        print('pass', input)
         return True
 
 
