@@ -327,6 +327,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
             resolutions = DEFAULT_RESOLUTION * np.ones(len(arm_joints))
             grasp_path = plan_direct_joint_motion(robot, arm_joints, grasp_conf, attachments=attachments.values(),
                                                   obstacles=approach_obstacles, self_collisions=SELF_COLLISIONS,
+                                                  use_aabb=True, cache=True,
                                                   custom_limits=custom_limits, resolutions=resolutions/2.)
             if grasp_path is None:
                 if verbose: print(f'{title}Grasp path failure')
@@ -335,6 +336,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
             approach_path = plan_joint_motion(robot, arm_joints, approach_conf, attachments=attachments.values(),
                                               obstacles=obstacles, self_collisions=SELF_COLLISIONS,
                                               custom_limits=custom_limits, resolutions=resolutions,
+                                              use_aabb=True, cache=True,
                                               restarts=2, iterations=25, smooth=0) # smooth=25
             if approach_path is None:
                 if verbose: print(f'{title}\tApproach path failure')
@@ -633,6 +635,7 @@ def get_arm_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, ve
             resolutions = DEFAULT_RESOLUTION * np.ones(len(arm_joints))
             grasp_path = plan_direct_joint_motion(robot, arm_joints, grasp_conf, attachments=attachments.values(),
                                                   obstacles=approach_obstacles, self_collisions=SELF_COLLISIONS,
+                                                  use_aabb=True, cache=True,
                                                   custom_limits=custom_limits, resolutions=resolutions/2.)
             if grasp_path is None:
                 if verbose: print(f'{title}Grasp path failure')
@@ -641,6 +644,7 @@ def get_arm_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, ve
             approach_path = plan_joint_motion(robot, arm_joints, approach_conf, attachments=attachments.values(),
                                               obstacles=obstacles, self_collisions=SELF_COLLISIONS,
                                               custom_limits=custom_limits, resolutions=resolutions,
+                                              use_aabb=True, cache=True,
                                               restarts=2, iterations=25, smooth=0) # smooth=25
             if approach_path is None:
                 if verbose: print(f'{title}Approach path failure')
@@ -717,16 +721,22 @@ def sample_new_bconf(bq1):
 
 def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, teleport=False,
                                     num_intervals=30, max_ir_trial=30, visualize=False, verbose=False):
+    visualize &= has_gui()
     if teleport:
         num_intervals = 1
     robot = problem.robot
     world = problem.world
     saver = BodySaver(robot)
+    world_saver = WorldSaver()
     obstacles = problem.fixed if collisions else []
 
     def fn(a, o, pst1, pst2, g, bq1, aq1, fluents=[]):
         if pst1.value == pst2.value:
             return None
+        if fluents:
+            process_motion_fluents(fluents, robot)
+        else:
+            world_saver.restore()
 
         saver.restore()
         pst1.assign()
@@ -752,8 +762,6 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         gripper_from_base = multiply(invert(gripper_before), world_from_base)
         # print('gripper_before', nice(gripper_before))
         # print('invert(gripper_before)', nice(invert(gripper_before)))
-
-        MOVE_BASE = True
 
         ## saving the mapping between robot bconf to object pst for execution
         mapping = {}
@@ -1587,13 +1595,16 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
         else:
             pose_value = p.value
         open_arm(robot, a)
-        gripper_grasp = robot.visualize_grasp(pose_value, g.value, a, body=g.body) # TODO(caelan): cache
+        context_saver = WorldSaver(bodies=[robot, o])
+
+        #gripper_grasp = robot.visualize_grasp(pose_value, g.value, arm=a, body=g.body)
+        gripper_grasp = robot.set_gripper_pose(pose_value, g.value, arm=a, body=g.body)
         if collided(gripper_grasp, obstacles, articulated=True): # w is not None
             #wait_unlocked()
-            remove_body(gripper_grasp)
+            #robot.remove_gripper(gripper_grasp)
             print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
             return
-        remove_body(gripper_grasp)
+        #robot.remove_gripper(gripper_grasp)
         # Fix grasps
         # Fix negation
         # Open gripper
@@ -1621,6 +1632,7 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
                     if soft_failures:
                         attempts = 0
                         yield None
+                        context_saver.restore()
                         continue
                     else:
                         break
@@ -1661,6 +1673,7 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
                 if visualize:
                     [remove_body(samp) for samp in samples]
                 yield ir_outputs + ik_outputs
+                context_saver.restore()
 
         ## do ir sampling of x, y, theta, torso, then solve ik for arm
         else:

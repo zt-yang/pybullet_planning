@@ -306,7 +306,7 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=
             p_mod = p = Pose(body, get_mod_pose(body_pose), space)
             p_mod.assign()
             obs = [obst for obst in obstacles if obst not in {body, space}]
-            if not collided(body, obs, verbose=True):
+            if not collided(body, obs, articulated=False, verbose=True):
                 p = Pose(body, body_pose, space)
                 # poses.append((p,))
                 yield (p,)

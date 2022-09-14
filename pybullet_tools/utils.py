@@ -780,12 +780,21 @@ class BodySaver(Saver):
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, self.body)
 
-class WorldSaver(Saver):
+class MultiSaver(Saver):
+    def __init__(self, savers):
+        self.savers = []
+
+    def restore(self):
+        for savers in self.savers:
+            savers.restore()
+
+class WorldSaver(MultiSaver):
     def __init__(self, bodies=None):
         if bodies is None:
             bodies = get_bodies()
         self.bodies = bodies
         self.body_savers = [BodySaver(body) for body in self.bodies if body in get_bodies()]
+        super(WorldSaver, self).__init__(self.body_savers)
         # TODO: add/remove new bodies
         # TODO: save the camera pose
 
@@ -3311,7 +3320,7 @@ def scale_aabb(aabb, scale):
     return aabb_from_extent_center(new_extent, center)
 
 def buffer_aabb(aabb, buffer):
-    if (aabb is None) or (np.isscalar(buffer) and (buffer == 0.)):
+    if (aabb is None) or (buffer is None) or (np.isscalar(buffer) and (buffer == 0.)):
         return aabb
     extent = get_aabb_extent(aabb)
     if np.isscalar(buffer):
@@ -3463,7 +3472,10 @@ def set_collision_pair_mask(body1, body2, link1=BASE_LINK, link2=BASE_LINK, enab
     return p.setCollisionFilterPair(body1, link1, body2, link2, enableCollision=enable)
 
 def get_buffered_aabb(body, link=None, max_distance=MAX_DISTANCE, **kwargs):
-    body, links = parse_body(body, link=link)
+    if link is None:
+        body, links = parse_body(body, link=link)
+    else:
+        links = [link]
     return buffer_aabb(aabb_union(get_aabbs(body, links=links, **kwargs)), buffer=max_distance)
 
 def get_unbuffered_aabb(body, **kwargs):
