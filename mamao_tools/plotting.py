@@ -22,7 +22,6 @@ METHODS = ['None', 'pvt', 'oracle'] ## ## , 'random' , 'piginet', 'pvt-task'
 check_time = 1663139616 ## after relabeling
 
 ## see which files are missing
-GROUPS = ['tt_one_fridge_table_pick', 'tt_two_fridge_pick', 'tt_two_fridge_in']
 METHODS = ['None', 'oracle'] ## , 'pvt'
 SAME_Y_AXES = False
 
@@ -252,9 +251,11 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
         plt.ylabel('Planning time', fontsize=12)
         plt.xticks(index + x_ticks_offset, labels, fontsize=10)
         ax.tick_params(axis='x', which='major', pad=28)
+        plt.tight_layout()
     
     ## ------------- different y axis to amplify improvements ------------ ##
     else:
+        bar_width = 0.2
         fig, axs = plt.subplots(1, len(groups), figsize=figsize)
         
         ll = range(len(METHODS))
@@ -281,8 +282,8 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                 axs[i].annotate(bar_label,  # text
                             (j, 0),  # points location to label
                             textcoords="offset points",
-                            xytext=(0, -24),  # distance between the points and label
-                            ha='center',
+                            xytext=(0, -80),  # distance between the points and label
+                            ha='center', color='gray',
                             fontsize=10)
                 axs[i].annotate(agm[j],  # text
                             (j, mx[j]),  # points location to label
@@ -294,17 +295,20 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                 cc = [colors[k] for k in xx]
                 axs[i].scatter(xx, yy, s=20, color=cc, alpha=0.7)
 
-
-            axs[i].set_ylim([0, max(mx)+50]) 
-            axs[i].tick_params(axis='x', which='major', pad=28)
-            axs[i].set_title(labels[i], fontsize=12, y=-0.25)
+            axs[i].set_ylim([0, max(mx)*1.1]) 
+            axs[i].tick_params(axis='x', which='major') ## , pad=28
+            axs[i].tick_params(axis='y', which='major', pad=-4, rotation=45)
+            axs[i].set_title(labels[i], fontsize=11, y=-0.24) ## , y=-0.35
             axs[i].set_xticks(ll)
-            axs[i].set_xticklabels(METHODS, fontsize=10)
+            axs[i].set_xticklabels(METHODS, fontsize=10) ## , y=-0.25
         
-        fig.suptitle(title + dt, fontsize=16) ## , pad=35
+        plt.subplots_adjust(hspace=0.55, left=0.1, right=0.95, top=0.8, bottom=0.2)
+        fig.suptitle(title + dt, fontsize=16, y=0.96) ## 
         axs[0].set_ylabel('Planning time', fontsize=12)
+        handles = [plt.Rectangle((0,0),1,1, color=colors[i]) for i in range(len(METHODS))]
+        fig.legend(handles, METHODS, ncol=4, fontsize=11, loc='upper center', bbox_to_anchor=(0.5, 0.9))
+        
     
-    plt.tight_layout()
     if update:
         plt.draw()
     else:
@@ -313,7 +317,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
 
 if __name__ == '__main__':
     print('time.time()', int(time.time()))
-    plot_bar_chart(get_time_data())
+    # plot_bar_chart(get_time_data())
     plot_bar_chart(get_time_data(diverse=True), diverse=True)
 
     # while True:
