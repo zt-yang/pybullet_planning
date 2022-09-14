@@ -822,7 +822,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         bt = Trajectory(bpath)
         at = Trajectory(apath) ## create_trajectory(robot, get_arm_joints(robot, a), apath)
         base_cmd = Commands(State(), savers=[BodySaver(robot)], commands=[bt])
-        arm_cmd =  Commands(State(), savers=[BodySaver(robot)], commands=[at])
+        arm_cmd =  Commands(State(), savers=[BodySaver(robot)], commands=[at]) # TODO: Simultaneous
         bq2 = bt.path[-1]
         aq2 = at.path[-1]
         if aq2.values == aq1.values:

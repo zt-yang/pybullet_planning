@@ -21,7 +21,7 @@ from pybullet_tools.pr2_streams import get_stable_gen, Position, get_handle_gras
 from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
     get_ik_ir_gen, get_motion_gen, get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
     move_cost_fn, Attach, Detach, Clean, Cook, control_commands, \
-    get_gripper_joints, GripperCommand, apply_commands, State, Trajectory
+    get_gripper_joints, GripperCommand, apply_commands, State, Trajectory, Simultaneous, create_trajectory
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
     set_camera_target_robot, nice, BASE_LIMITS, get_file_short_name, get_root_links
@@ -291,7 +291,7 @@ def opt_motion_wconf_fn(q1, q2, w):
 
 #######################################################
 
-def post_process(problem, plan, teleport=False, use_commands=False):
+def post_process(problem, plan, teleport=False, use_commands=False, verbose=False):
     if plan is None:
         return None
     commands = []
@@ -301,29 +301,53 @@ def post_process(problem, plan, teleport=False, use_commands=False):
         else:
             new_commands = get_primitive_actions(action, problem.world, teleport)
         commands += new_commands
-        print(i, action)
+        if verbose:
+            print(i, action)
     return commands
 
+def get_close_command(robot, arm, grasp, teleport=False):
+    return GripperCommand(robot, arm, grasp.grasp_width, teleport=teleport)
+
+def get_open_command(robot, arm, teleport=False):
+    gripper_joint = get_gripper_joints(robot, arm)[0]
+    position = get_max_limit(robot, gripper_joint)
+    return GripperCommand(robot, arm, position, teleport=teleport)
 
 def get_primitive_commands(action, robot, teleport=False):
     name, args = action
-    if name in ['move_base', 'move_base_wconf']:
+    if name in ['move_base']: #, 'move_base_wconf']:
         c = args[-1]
         new_commands = c.commands
+    elif name == 'move_base_wconf':
+        q1, q2, c, w = args
+        new_commands = c.commands
     elif name == 'pick':
-        a, b, p, g, _, c = args
+        a, b, p, g, _, c = args[:6]
         [t] = c.commands
-        close_gripper = GripperCommand(robot, a, g.grasp_width, teleport=teleport)
+        close_gripper = get_close_command(robot, a, g, teleport=teleport)
         attach = Attach(robot, a, g, b)
         new_commands = [t, close_gripper, attach, t.reverse()]
     elif name == 'place':
-        a, b, p, g, _, c = args
+        a, b, p, g, _, c = args[:6]
         [t] = c.commands
-        gripper_joint = get_gripper_joints(robot, a)[0]
-        position = get_max_limit(robot, gripper_joint)
-        open_gripper = GripperCommand(robot, a, position, teleport=teleport)
+        open_gripper = get_open_command(robot, a, teleport=teleport)
         detach = Detach(robot, a, b)
         new_commands = [t, detach, open_gripper, t.reverse()]
+    elif name in 'grasp_handle':
+        a, o, p, g, q, aq1, aq2, c = args
+        close_gripper = get_close_command(robot, a, g, teleport=teleport)
+        new_commands = list(c.commands) + [close_gripper]
+    elif name in 'ungrasp_handle':
+        a, o, p, g, q, aq1, aq2, c = args
+        open_gripper = get_open_command(robot, a, teleport=teleport)
+        new_commands = list(c.reverse().commands) + [open_gripper]
+    elif name == 'pull_door_handle':
+        a, o, p1, p2, g, q1, q2, bt, aq1, aq2, at = args
+        #new_commands = at.commands
+        #new_commands = bt.commands
+        dt = create_trajectory(robot=p1.body, joints=[p1.joint],
+                               path=np.linspace([p1.value], [p2.value], num=len(bt.commands[0].path), endpoint=True))
+        new_commands = [Simultaneous(commands=[bt, at, dt])]
     elif name == 'clean':  # TODO: add text or change color?
         body, sink = args
         new_commands = [Clean(body)]
