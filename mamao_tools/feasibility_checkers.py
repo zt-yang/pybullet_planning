@@ -45,6 +45,9 @@ class FeasibilityChecker(object):
             predictions = self._check(inputs)
             run_time = round(time.time() - start, 4)
             ave_time = (run_time, len(inputs), round(run_time / len(inputs), 4))
+            if len(predictions) != len(inputs):
+                print('len predictions', len(predictions), '\nlen inputs', len(inputs))
+                # import ipdb; ipdb.set_trace()
             p = {i: predictions[i] for i in range(len(inputs))}
             sorted_predictions = {k: v for k, v in sorted(p.items(), key=lambda item: item[1], reverse=True)}
             for i, prediction in sorted_predictions.items():
@@ -164,8 +167,10 @@ class PVT(FeasibilityChecker):
             label = 1 if plan == self.plan_gt else 0
             dataset.append((data, label))
 
-        base_2 = np.ceil(np.square(len(inputs)))
-        bs = min(2 ** int(base_2), 64)
+        # import ipdb; ipdb.set_trace()
+
+        base_2 = np.ceil(np.log2(len(inputs)))
+        bs = min(2 ** int(base_2), 128)
         Dataset = get_dataset(args.input_mode)
         data_loader = torch.utils.data.DataLoader(
             Dataset(dataset),
