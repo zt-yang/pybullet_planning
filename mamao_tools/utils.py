@@ -15,6 +15,9 @@ else: ## not tested
 
 def get_feasibility_checker(run_dir, mode, diverse=False):
     from .feasibility_checkers import PassAll, ShuffleAll, Oracle, PVT
+    if mode == 'binary':
+        mode = 'pvt'
+        diverse = False
     if mode == 'None':
         return PassAll(run_dir)
     elif mode == 'shuffle':

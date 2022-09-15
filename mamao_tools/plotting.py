@@ -18,11 +18,11 @@ from utils import DATASET_PATH
 
 GROUPS = ['tt_one_fridge_table_pick', 'tt_one_fridge_table_in',
           'tt_two_fridge_pick', 'tt_two_fridge_in']  ## ## 'tt_one_fridge_table_on', 'tt_one_fridge_pick'
-METHODS = ['None', 'pvt', 'oracle'] ## ## , 'random' , 'piginet', 'pvt-task'
+METHODS = ['None', 'shuffle', 'binary', 'pvt', 'oracle'] ## ## , 'random' , 'piginet', 'pvt-task', 'pvt-2',
 check_time = 1663139616 ## after relabeling
 
 ## see which files are missing
-METHODS = ['None', 'oracle'] ## , 'pvt'
+# METHODS = ['None', 'oracle'] ## , 'pvt'
 SAME_Y_AXES = False
 
 def get_rundirs(task_name):
@@ -98,6 +98,7 @@ def get_time_data(diverse=False):
                         t = d[0]["planning"]
                     else:
                         if d["plan"] is None:
+                            print('Failed old result', file)
                             if last_modified < check_time:
                                 data[group]['missing'][method].append(run_dir)
                             continue
@@ -192,17 +193,17 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     x_ticks_offset = bar_width * (len(METHODS)-1)/2
 
     error_config = {'ecolor': '0.3'}
-    colors = ['b', 'r', 'g', 'y']
-    colors = ['#3498db', '#e74c3c', '#2ecc71', '#f1c40f']
-    colors_darker = ['#2980b9', '#c0392b', '#27ae60', '#f39c12']
-    
-    figsize = (9, 6)
+    colors = ['b', 'r', 'g', 'y', 'gray']
+    colors = ['#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#95a5a6']
+    colors_darker = ['#2980b9', '#c0392b', '#27ae60', '#f39c12', '#7f8c8d']
+
     dt = datetime.now().strftime("%m%d_%H%M%S")
     title = 'Planning time comparison '
     title += '(diverse planning mode) ' if diverse else ''
     labels = tuple([f"{g.replace('tt_', '')}\n({data[g]['count']})" for g in groups])
 
     if SAME_Y_AXES:
+        figsize = (9, 6)
         fig, ax = plt.subplots(figsize=figsize)
         max_y = -1
         for i in range(len(means)):
@@ -246,7 +247,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
 
         plt.title(title + dt, fontsize=16, pad=35)
         plt.ylim([0, max_y+100]) if diverse else plt.ylim([0, 500])
-        plt.legend(ncol=4, fontsize=11, loc='upper center', bbox_to_anchor=(0.5, 1.1))
+        plt.legend(ncol=5, fontsize=11, loc='upper center', bbox_to_anchor=(0.5, 1.1))
         plt.xlabel('Tasks (run count)', fontsize=12)
         plt.ylabel('Planning time', fontsize=12)
         plt.xticks(index + x_ticks_offset, labels, fontsize=10)
@@ -255,10 +256,12 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     
     ## ------------- different y axis to amplify improvements ------------ ##
     else:
-        bar_width = 0.2
+        figsize = (15, 6)
+        bar_width = 0.3
         fig, axs = plt.subplots(1, len(groups), figsize=figsize)
         
-        ll = range(len(METHODS))
+        scale = 0.4
+        ll = [x*scale for x in range(len(METHODS))] 
         for i in range(len(groups)):
             mean = [means[method][i] for method in METHODS]
             std = [stds[method][i] for method in METHODS]
@@ -280,20 +283,21 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                 if miss[j] > 0:
                     bar_label += str(miss[j])
                 axs[i].annotate(bar_label,  # text
-                            (j, 0),  # points location to label
+                            (j*scale, 0),  # points location to label
                             textcoords="offset points",
                             xytext=(0, -80),  # distance between the points and label
                             ha='center', color='gray',
                             fontsize=10)
                 axs[i].annotate(agm[j],  # text
-                            (j, mx[j]),  # points location to label
+                            (j*scale, mx[j]),  # points location to label
                             textcoords="offset points",
                             xytext=(0, 6),  # distance between the points and label
                             ha='center',
                             fontsize=10)
                             
                 cc = [colors[k] for k in xx]
-                axs[i].scatter(xx, yy, s=20, color=cc, alpha=0.7)
+                xxx = [x*scale for x in xx]
+                axs[i].scatter(xxx, yy, s=20, color=cc, alpha=0.7)
 
             axs[i].set_ylim([0, max(mx)*1.1]) 
             axs[i].tick_params(axis='x', which='major') ## , pad=28
@@ -306,7 +310,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
         fig.suptitle(title + dt, fontsize=16, y=0.96) ## 
         axs[0].set_ylabel('Planning time', fontsize=12)
         handles = [plt.Rectangle((0,0),1,1, color=colors[i]) for i in range(len(METHODS))]
-        fig.legend(handles, METHODS, ncol=4, fontsize=11, loc='upper center', bbox_to_anchor=(0.5, 0.9))
+        fig.legend(handles, METHODS, ncol=5, fontsize=11, loc='upper center', bbox_to_anchor=(0.5, 0.9))
         
     
     if update:
