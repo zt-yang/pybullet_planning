@@ -14,9 +14,11 @@ else: ## not tested
 
 
 def get_feasibility_checker(run_dir, mode, diverse=False):
-    from .feasibility_checkers import PassAll, Oracle, PVT
+    from .feasibility_checkers import PassAll, ShuffleAll, Oracle, PVT
     if mode == 'None':
         return PassAll(run_dir)
+    elif mode == 'shuffle':
+        return ShuffleAll(run_dir)
     elif mode == 'oracle':
         plan = get_successful_plan(run_dir)
         return Oracle(run_dir, plan)

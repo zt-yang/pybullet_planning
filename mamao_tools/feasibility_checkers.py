@@ -1,3 +1,5 @@
+import random
+
 import numpy as np
 import time
 import torch
@@ -70,11 +72,20 @@ class FeasibilityChecker(object):
 
 class PassAll(FeasibilityChecker):
 
-    def __init__(self, run_dir):
+    def __init__(self, run_dir, shuffle=False):
         super().__init__(run_dir)
 
     def _check(self, input):
         return True
+
+
+class ShuffleAll(FeasibilityChecker):
+    def __init__(self, run_dir):
+        super().__init__(run_dir)
+        random.seed(int(time.time()))
+
+    def _check(self, input):
+        return random.uniform(0.5, 1)
 
 
 class Oracle(FeasibilityChecker):
