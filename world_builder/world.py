@@ -5,6 +5,7 @@ import copy
 from os.path import join
 
 from pddlstream.language.constants import Equal, AND
+from pddlstream.algorithms.downward import set_cost_scale
 
 from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, get_pose, LockRenderer, \
     CameraImage, get_joint_positions, euler_from_quat, get_link_name, get_joint_position, \
@@ -758,7 +759,7 @@ class State(object):
         return Observation(self, robot_conf=robot_conf, obj_poses=obj_poses,
                            facts=facts, variables=variables, image=image)
 
-    def get_facts(self, init_facts=[], conf_saver=None, obj_poses=None, verbose=True):
+    def get_facts(self, init_facts=[], conf_saver=None, obj_poses=None, use_wconf=False, verbose=True):
         robot = self.world.robot.body
         cat_to_bodies = self.world.cat_to_bodies
         cat_to_objects = self.world.cat_to_objects
@@ -790,6 +791,7 @@ class State(object):
                     return fact[2]
             return grasp
 
+        set_cost_scale(cost_scale=1)
         init = [Equal(('PickCost',), 1), Equal(('PlaceCost',), 1),
                 ('CanMove',), ('CanPull',)]
 
@@ -878,10 +880,13 @@ class State(object):
             init += [(k[0], k[1])]
 
         ## --- world configuration
-        wconf = self.get_wconf(init)
+        if use_wconf:
+            wconf = self.get_wconf(init)
+        else:
+            wconf = None
         init += [('WConf', wconf), ('InWConf', wconf)]
-        if verbose: print('world.get_facts | initial wconf', wconf.printout())
-
+        if verbose and (wconf is not None):
+            print('world.get_facts | initial wconf', wconf.printout())
         # ## ---- add multiple world conf for joints
         # from pybullet_tools.general_streams import sample_joint_position_open_list_gen, get_pose_from_attachment
         # joint_opener = sample_joint_position_open_list_gen(self, num_samples=1)

@@ -19,6 +19,7 @@ import shutil
 import cProfile
 import pstats
 
+from functools import lru_cache
 from collections import defaultdict, deque, namedtuple
 from itertools import product, combinations, count, cycle, islice
 from multiprocessing import TimeoutError
@@ -779,12 +780,21 @@ class BodySaver(Saver):
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, self.body)
 
-class WorldSaver(Saver):
+class MultiSaver(Saver):
+    def __init__(self, savers):
+        self.savers = []
+
+    def restore(self):
+        for savers in self.savers:
+            savers.restore()
+
+class WorldSaver(MultiSaver):
     def __init__(self, bodies=None):
         if bodies is None:
             bodies = get_bodies()
         self.bodies = bodies
         self.body_savers = [BodySaver(body) for body in self.bodies if body in get_bodies()]
+        super(WorldSaver, self).__init__(self.body_savers)
         # TODO: add/remove new bodies
         # TODO: save the camera pose
 
@@ -1083,14 +1093,16 @@ class LockRenderer(Saver):
         if self.state != CLIENTS[self.client]:
            set_renderer(enable=self.state)
 
-CONNECTED = False
+# CONNECTED = False
 
 def connect(use_gui=True, shadows=True, color=None, width=None, height=None, mp4=None, fps=120):
     # do not connect if already connected
-    global CONNECTED
-    if CONNECTED:
+    # global CONNECTED
+    # if CONNECTED:
+    #     return
+    # CONNECTED = True
+    if len(CLIENTS) != 0:
         return
-    CONNECTED = True
 
     # Shared Memory: execute the physics simulation and rendering in a separate process
     # https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/examples/vrminitaur.py#L7
@@ -2368,9 +2380,10 @@ def get_adjacent_fixed_links(body):
     return list(filter(lambda item: not is_movable(body, item[0]),
                        get_adjacent_links(body)))
 
-def get_rigid_clusters(body):
-    return get_connected_components(vertices=get_all_links(body),
-                                    edges=get_adjacent_fixed_links(body))
+def get_rigid_clusters(body, links=None):
+    if links is None:
+        links = get_all_links(body)
+    return get_connected_components(vertices=links, edges=get_adjacent_fixed_links(body))
 
 def assign_link_colors(body, max_colors=3, alpha=1., s=0.5, **kwargs):
     # TODO: graph coloring
@@ -3126,11 +3139,21 @@ def set_all_color(body, color):
     for link in get_all_links(body):
         set_color(body, color, link)
 
+def get_texture(body, **kwargs):
+    # TODO: doesn't work
+    visual_data = get_visual_data(body, **kwargs)
+    if not visual_data:
+        return None
+    return visual_data[0].textureUniqueId
+
 def set_texture(body, texture=None, link=BASE_LINK, shape_index=NULL_ID):
     if texture is None:
         texture = NULL_ID
     return p.changeVisualShape(body, link, shapeIndex=shape_index, textureUniqueId=texture,
                                physicsClientId=CLIENT)
+
+def clear_texture(body, **kwargs):
+    return set_texture(body, texture=NULL_ID, **kwargs)
 
 #####################################
 
@@ -3297,7 +3320,7 @@ def scale_aabb(aabb, scale):
     return aabb_from_extent_center(new_extent, center)
 
 def buffer_aabb(aabb, buffer):
-    if (aabb is None) or (np.isscalar(buffer) and (buffer == 0.)):
+    if (aabb is None) or (buffer is None) or (np.isscalar(buffer) and (buffer == 0.)):
         return aabb
     extent = get_aabb_extent(aabb)
     if np.isscalar(buffer):
@@ -3449,7 +3472,10 @@ def set_collision_pair_mask(body1, body2, link1=BASE_LINK, link2=BASE_LINK, enab
     return p.setCollisionFilterPair(body1, link1, body2, link2, enableCollision=enable)
 
 def get_buffered_aabb(body, link=None, max_distance=MAX_DISTANCE, **kwargs):
-    body, links = parse_body(body, link=link)
+    if link is None:
+        body, links = parse_body(body, link=link)
+    else:
+        links = [link]
     return buffer_aabb(aabb_union(get_aabbs(body, links=links, **kwargs)), buffer=max_distance)
 
 def get_unbuffered_aabb(body, **kwargs):
@@ -5133,7 +5159,10 @@ def tform_point(affine, point):
     return point_from_pose(multiply(affine, Pose(point=point)))
 
 def tform_points(affine, points):
-    return [tform_point(affine, p) for p in points]
+    #return [tform_point(affine, p) for p in points]
+    tform = tform_from_pose(affine)
+    points_homogenous = np.vstack([np.vstack(points).T, np.ones(len(points))])
+    return tform.dot(points_homogenous)[:3,:].T
 
 apply_affine = tform_points
 
@@ -5347,6 +5376,7 @@ def get_connected_components(vertices, edges):
     return clusters
 
 
+@lru_cache(maxsize=None)
 def read_obj(path, decompose=True):
     mesh = Mesh([], [])
     meshes = {}

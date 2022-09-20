@@ -24,7 +24,8 @@ from .utils import invert, multiply, get_name, set_pose, get_link_pose, is_place
     add_segments, get_max_limit, link_from_name, BodySaver, get_aabb, interpolate_poses, \
     plan_direct_joint_motion, has_gui, create_attachment, wait_for_duration, get_extend_fn, set_renderer, \
     get_custom_limits, all_between, get_unit_vector, wait_if_gui, joint_from_name, create_box, set_point, \
-    set_base_values, euler_from_quat, INF, elapsed_time, get_moving_links, flatten_links, get_relative_pose
+    set_base_values, euler_from_quat, INF, elapsed_time, get_moving_links, flatten_links, get_relative_pose, \
+    wait_unlocked, child_link_from_joint, get_rigid_clusters, link_pairs_collision
 
 from .bullet_utils import nice, set_camera_target_robot, set_camera_target_body, Attachment
 
@@ -94,7 +95,7 @@ class Grasp(object):
         # return 'g{}'.format(id(self) % 1000)
 
 class Conf(object):
-    def __init__(self, body, joints, values=None, init=False, index=None):
+    def __init__(self, body, joints, values=None, init=False, index=None, joint_state=None):
         self.body = body
         self.joints = joints
         if values is None:
@@ -104,6 +105,7 @@ class Conf(object):
         if index == None:
             index = id(self)
         self.index = index
+        self.joint_state = joint_state
     @property
     def bodies(self): # TODO: misnomer
         return flatten_links(self.body, get_moving_links(self.body, self.joints))
@@ -127,7 +129,7 @@ class Command(object):
     def iterate(self):
         raise NotImplementedError()
 
-class Commands(object):
+class Commands(Command):
     def __init__(self, state, savers=[], commands=[], index=None):
         self.state = state
         self.savers = tuple(savers)
@@ -143,12 +145,36 @@ class Commands(object):
         for command in self.commands:
             for result in command.apply(state, **kwargs):
                 yield result
+    def reverse(self):
+        return self.__class__(self.state, savers=self.savers, index=self.index,
+                              commands=[command.reverse() for command in reversed(self.commands)])
     def __repr__(self):
         commands = self.commands
         if len(commands) == 1:
             commands = commands[0]  ## YANG: to prevent error in prolog inference
         return 'c{}={}'.format(self.index % 1000, commands)
         # return 'c{}'.format(id(self) % 1000)
+
+class Simultaneous(Command): # Parallel
+    def __init__(self, commands=[]):
+        self.commands = tuple(commands)
+    def apply(self, state, **kwargs):
+        iterators = [command.apply(state, **kwargs) for command in self.commands]
+        while iterators:
+            remaining_iterators = []
+            outputs = []
+            for iterator in iterators:
+                try:
+                    outputs.append(next(iterator)) # TODO: return False for the rest
+                    remaining_iterators.append(iterator)
+                except StopIteration:
+                    pass
+            yield outputs
+            iterators = remaining_iterators
+    def reverse(self):
+        return self.__class__([command.reverse() for command in reversed(self.commands)])
+    def __repr__(self):
+        return '{{{}}}'.format(', '.join(map(repr, self.commands)))
 
 #####################################
 
@@ -494,10 +520,10 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=25, collisions=True, 
 def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False):
     robot = problem.robot
     obstacles = problem.fixed if collisions else []
-    # if is_ik_compiled():
-    #     print('Using ikfast for inverse kinematics')
-    # else:
-    #     print('Using pybullet for inverse kinematics')
+    if is_ik_compiled():
+        print('Using ikfast for inverse kinematics')
+    else:
+        print('Using pybullet for inverse kinematics')
 
     def fn(arm, obj, pose, grasp, base_conf):
         approach_obstacles = {obst for obst in obstacles if not is_placement(obj, obst)}
@@ -563,7 +589,7 @@ def get_ik_ir_gen(problem, max_attempts=25, learned=True, teleport=False, verbos
     ir_sampler = get_ir_sampler(problem, learned=learned, max_attempts=40, verbose=verbose, **kwargs)
     ik_fn = get_ik_fn(problem, teleport=teleport, **kwargs)
     def gen(*inputs):
-        set_renderer(enable=verbose)
+        #set_renderer(enable=verbose)
         a, o, p, g = inputs
         ir_generator = ir_sampler(*inputs)
         attempts = 0
@@ -807,6 +833,26 @@ def get_cfree_pose_pose_test(collisions=True, **kwargs):
         p1.assign()
         p2.assign()
         return not pairwise_collision(b1, b2, **kwargs) #, max_distance=0.001)
+    return test
+
+
+def get_cfree_conf_position_test(collisions=True, **kwargs):
+    def test(q, b2, p2):
+        if not collisions:
+            return True
+        q.assign()
+        p2.assign()
+        robot = q.body
+        assert q.joint_state is not None
+        joints, positions = zip(*q.joint_state.items())
+        set_joint_positions(robot, joints, positions)
+
+        #body2, joint2 = b2
+        body2, joint2 = p2.body, p2.joint
+        link2 = child_link_from_joint(joint2)
+        [links2] = get_rigid_clusters(body2, links=[link2])
+        #wait_unlocked()
+        return not link_pairs_collision(body2, links2, robot)
     return test
 
 

@@ -151,9 +151,15 @@ def pddl_to_init_goal(exp_dir, world):
 
     ## just create a new one, if there aren't any in the (:objects
     inwconf = [i[1] for i in init if i[0].lower() == 'inwconf']
-    if len(inwconf) > 0:
+    if inwconf == ['None']: # no more wconf for the new planner
+        to_remove = [('wconf', inwconf[0]), ('inwconf', inwconf[0])]
+        to_add = [('wconf', None), ('inwconf', None)]
+        init = [i for i in init if i not in to_remove] + to_add
+
+    elif len(inwconf) > 0:
         to_remove = []
         inwconf = inwconf[0]
+        # import ipdb; ipdb.set_trace()
         index = int(''.join([i for i in inwconf if i.isdigit()]))
         wconf = WConf(poses, positions, index=index)
         init += [('wconf', wconf), ('inwconf', wconf)]
@@ -169,6 +175,7 @@ def pddl_to_init_goal(exp_dir, world):
             to_remove += [('wconf', n[-1])]
         to_remove += newwconfpst
         init = [i for i in init if i not in to_remove]
+
     else:
         wconf = WConf(poses, positions)
         init += [('WConf', wconf), ('InWConf', wconf)]

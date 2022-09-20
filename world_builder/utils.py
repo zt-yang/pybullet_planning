@@ -182,8 +182,8 @@ def get_file_by_category(category, RANDOM_INSTANCE=False, SAMPLING=False):
             paths = [join(asset_root, p) for p in ids]
             paths.sort()
             if RANDOM_INSTANCE:
-                np.random.seed(int(time.time()))
-                random.seed(time.time())
+                # np.random.seed(int(time.time()))
+                # random.seed(time.time())
                 sampled = False
                 if SAMPLING:
                     result = get_sampled_file(SAMPLING, category, ids)

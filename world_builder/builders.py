@@ -193,13 +193,17 @@ def test_feg_pick(world, floorplan='counter.svg', verbose=True):
 
 ############################################
 
-
-def test_one_fridge(world, verbose=True):
+def set_time_seed():
     import numpy as np
     import time
     seed = int(time.time())
     np.random.seed(seed)
     random.seed(seed)
+    return seed
+
+
+def test_one_fridge(world, verbose=True):
+    #set_time_seed()
     sample_one_fridge_scene(world, verbose)
     goal = sample_one_fridge_goal(world)
     return None, goal
@@ -224,7 +228,7 @@ def sample_one_fridge_scene(world, verbose=True, open_doors=True):
     """ ============== Change joint positions ================ """
     ## only after all objects have been placed inside
     if open_doors:
-        random_set_doors(minifridge_doors)
+        random_set_doors(minifridge_doors, epsilon=0.5)
 
     """ ============== Check collisions ================ """
     ensure_robot_cfree(world, verbose=verbose)
@@ -250,11 +254,7 @@ def sample_one_fridge_goal(world):
 
 
 def test_fridge_table(world, verbose=True):
-    import numpy as np
-    import time
-    seed = int(time.time())
-    np.random.seed(seed)
-    random.seed(seed)
+    #set_time_seed()
     sample_fridge_table_scene(world, verbose)
     goal = sample_fridge_table_goal(world)
     return None, goal
@@ -273,7 +273,7 @@ def sample_fridge_table_goal(world):
 
     arm = world.robot.arms[0]
 
-    if random.random() < 0: ## 0.5
+    if random.random() < 0.5: ## 0.5
         goal_candidates = [
             [('Holding', arm, cabbage.body)],
             [('On', cabbage, table.body)],
@@ -293,11 +293,7 @@ def sample_fridge_table_goal(world):
 
 
 def test_fridges_tables(world, verbose=True):
-    import numpy as np
-    import time
-    seed = int(time.time())
-    np.random.seed(seed)
-    random.seed(seed)
+    #set_time_seed()
     placement = sample_fridges_tables_scene(world)
     goal = sample_fridges_tables_goal(world, placement)
     return None, goal
@@ -307,7 +303,7 @@ def sample_fridges_tables_scene(world, verbose=True):
     minifridge_doors = sample_one_fridge_scene(world, open_doors=False)
     load_another_table(world, four_ways=False)
     placement = load_another_fridge_food(world)
-    random_set_doors(minifridge_doors, extent_max=0.5)
+    random_set_doors(minifridge_doors, epsilon=0, extent_max=0.5)
     ensure_robot_cfree(world, verbose=verbose)
     return placement
 
@@ -326,8 +322,8 @@ def sample_fridges_tables_goal(world, placement):
 
     ## the goal will be to pick one object and put in the other fridge
     goal_candidates = [
-        # [('Holding', arm, food)],
-        [('In', food, other)],
+        [('Holding', arm, food)],
+        # [('In', food, other)],
     ]
 
     return random.choice(goal_candidates)

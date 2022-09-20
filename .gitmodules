@@ -1,3 +1,6 @@
 [submodule "motion"]
 	path = motion
 	url = https://github.com/caelan/motion-planners.git
+[submodule "fastamp"]
+	path = fastamp
+	url = git@github.com:zt-yang/fastamp.git

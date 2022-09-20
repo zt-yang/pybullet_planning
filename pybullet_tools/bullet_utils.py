@@ -31,7 +31,8 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, Point, get_camera_matrix, \
     YELLOW, add_line, draw_point, RED, BROWN, BLACK, BLUE, GREY, remove_handles, apply_affine, vertices_from_rigid, \
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
-    parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug, set_point
+    parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug, set_point, has_gui, get_rigid_clusters, \
+    BASE_LINK as ROOT_LINK, link_pairs_collision, draw_collision_info
 
 
 OBJ = '?obj'
@@ -290,50 +291,75 @@ def nice(tuple_of_tuples, round_to=3, one_tuple=True):
 
 #######################################################
 
-def collided(obj, obstacles, world=None, tag='', verbose=False, visualize=False, min_num_pts=0):
+def get_root_links(body):
+    [fixed_links] = get_rigid_clusters(body, links=[ROOT_LINK])
+    return fixed_links
+
+def articulated_collisions(obj, obstacles, **kwargs): # TODO: articulated_collision?
+    # TODO: cache & compare aabbs
+    for obstacle in obstacles:
+        # dump_body(obstacle)
+        # joints = get_movable_joints(obstacle)
+        root_links = get_root_links(obstacle)
+        if link_pairs_collision(body1=obstacle, links1=root_links, body2=obj, **kwargs):
+            # print(obj, obstacle, root_links)
+            # dump_body(obj)
+            # dump_body(obstacle)
+            # for link in root_links:
+            #     collision_infos = get_closest_points(body1=obj, body2=obstacle, link2=link, **kwargs)
+            #     for i, collision_info in enumerate(collision_infos):
+            #         print(i, len(collision_infos), collision_info)
+            #         draw_collision_info(collision_info)
+            return True
+    return False
+
+def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=False, visualize=False, min_num_pts=0,
+             use_aabb=True, **kwargs):
+    #return False
+    if not verbose:
+        if articulated:
+            return articulated_collisions(obj, obstacles, use_aabb=use_aabb, **kwargs)
+        return any(pairwise_collision(obj, b, use_aabb=use_aabb, **kwargs) for b in obstacles)
+
     result = False
-
-    if verbose:
-        ## first find the bodies that collides with obj
-        bodies = []
-        for b in obstacles:
-            if pairwise_collision(obj, b):
-                result = True
-                bodies.append(b)
-        ## then find the exact links
-        body_links = {}
-        total = 0
-        for b in bodies:
-            key = world.get_debug_name(b) if (world != None) else b
-            d = {}
-            for l in get_links(b):
-                pts = get_closest_points(b, obj, link1=l, link2=None)
-                if len(pts) > 0:
-                    link = get_link_name(b, l)
-                    d[link] = len(pts)
-
-                    if visualize:  ## visualize collision points for debugging
-                        points = []
-                        for point in pts:
-                            points.append(visualize_point(point.positionOnA))
-                        print(f'visualized {len(pts)} collision points')
-                        for point in points:
-                            remove_body(point)
-
-                total += len(pts)
-            d = {k: v for k, v in sorted(d.items(), key=lambda item: item[1], reverse=True)}
-            body_links[key] = d
-
-        ## when debugging, give a threshold for oven
-        if total <= min_num_pts:
-            result = False
-        else:
-            prefix = 'bullet_utils.collided '
-            if len(tag) > 0: prefix += f'( {tag} )'
-            # print(f'{prefix} | {obj} with {body_links}')
-    else:
-        if any(pairwise_collision(obj, b) for b in obstacles):
+    ## first find the bodies that collides with obj
+    bodies = []
+    for b in obstacles:
+        if pairwise_collision(obj, b):
             result = True
+            bodies.append(b)
+
+    ## then find the exact links
+    body_links = {}
+    total = 0
+    for b in bodies:
+        key = world.get_debug_name(b) if (world != None) else b
+        d = {}
+        for l in get_links(b):
+            pts = get_closest_points(b, obj, link1=l, link2=None)
+            if len(pts) > 0:
+                link = get_link_name(b, l)
+                d[link] = len(pts)
+
+                if visualize:  ## visualize collision points for debugging
+                    points = []
+                    for point in pts:
+                        points.append(visualize_point(point.positionOnA))
+                    print(f'visualized {len(pts)} collision points')
+                    for point in points:
+                        remove_body(point)
+
+            total += len(pts)
+        d = {k: v for k, v in sorted(d.items(), key=lambda item: item[1], reverse=True)}
+        body_links[key] = d
+
+    ## when debugging, give a threshold for oven
+    if total <= min_num_pts:
+        result = False
+    else:
+        prefix = 'bullet_utils.collided '
+        if len(tag) > 0: prefix += f'( {tag} )'
+        # print(f'{prefix} | {obj} with {body_links}')
     return result
 
 #######################################################
@@ -452,8 +478,9 @@ def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_t
 
 
 def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
-                                  XY_ONLY=False, verbose=False):
-    set_renderer(verbose)
+                                  XY_ONLY=False, draw=False, verbose=False):
+    #set_renderer(verbose)
+    draw &= has_gui()
     if verbose:
         print(f'sample_obj_in_body_link_space(obj={obj}, body={body}, link={link})')
         # wait_for_user()
@@ -467,7 +494,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
         maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, maybe=True)
     else:
         maybe = obj
-    handles = draw_fitted_box(maybe)[-1]
+    handles = draw_fitted_box(maybe)[-1] if draw else []
 
     # def contained(maybe):
     #     if not XY_ONLY:
@@ -485,7 +512,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
             set_pose(maybe, pose)
 
         remove_handles(handles)
-        handles = draw_fitted_box(maybe)[-1]
+        handles = draw_fitted_box(maybe)[-1] if draw else []
         return maybe, (x, y, z, yaw), handles
 
     def sample_maybe(body, maybe, pose, handles):
@@ -519,7 +546,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
                 pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
                 set_pose(maybe, pose)
                 remove_handles(handles)
-                handles = draw_fitted_box(maybe)[-1]
+                handles = draw_fitted_box(maybe)[-1] if draw else []
                 if verbose:
                     print(f'trying pose for {obj}: z - interval = {nice(z + interval)} - {interval}) = {nice(z)}')
             if just_added:
@@ -530,7 +557,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
             pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
             set_pose(maybe, pose)
             remove_handles(handles)
-            handles = draw_fitted_box(maybe)[-1]
+            handles = draw_fitted_box(maybe)[-1] if draw else []
             if verbose:
                 print(f'reset pose for {obj}: z + interval = {nice(z - interval)} + {interval}) = {nice(z)} | {reason}')
         z -= interval
@@ -557,7 +584,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
         # maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, z=round(z, 1), scale=scales[obj], moveable=True)
 
     remove_handles(handles)
-    set_renderer(True)
+    #set_renderer(True)
     if PLACEMENT_ONLY: return x, y, z, yaw
     # print(nice(aabb2d_from_aabb(aabb)))
     # print(nice(aabb2d_from_aabb(get_aabb(maybe))))
@@ -628,13 +655,17 @@ class Attachment(object):
         if self.child_link == None:
             set_pose(self.child, child_pose)
         elif self.child in LINK_POSE_TO_JOINT_POSITION:  ## pull drawer handle
-            # for key in [robot_base_pose, robot_arm_pose]:
+            ls = LINK_POSE_TO_JOINT_POSITION[self.child][self.child_joint]
             for group in self.parent.joint_groups: ## ['base', 'left', 'hand']:
                 key = self.parent.get_positions(joint_group=group, roundto=3)
-                if key in LINK_POSE_TO_JOINT_POSITION[self.child][self.child_joint]:
-                    position = LINK_POSE_TO_JOINT_POSITION[self.child][self.child_joint][key]
+                result = in_list(key, ls)
+                if result is not None:
+                    position = ls[result]
                     set_joint_position(self.child, self.child_joint, position)
                     # print(f'bullet.utils | Attachment | robot {key} @ {key} -> position @ {position}')
+                # elif len(key) == 4:
+                #     print('key', key)
+                #     print(ls)
         return child_pose
 
     def apply_mapping(self, mapping):
@@ -1006,7 +1037,7 @@ def is_box_entity(body, link=-1):
     return len(data) != 0 and data[0].geometry_type == p.GEOM_BOX
 
 
-def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False):
+def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False, **kwargs):
     body_pose, vertices = get_model_points(body, link=link, verbose=verbose)
     if link is None:  link = -1
     data = get_collision_data(body, link)
@@ -1014,17 +1045,18 @@ def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False):
         aabb = aabb_from_points(vertices)
     else: ## if data.geometry_typep == p.GEOM_BOX:
         aabb = get_aabb(body)
-    handles = draw_bounding_box(aabb, body_pose)
+    # TODO(caelan): global DRAW variable that disables
+    handles = draw_bounding_box(aabb, body_pose, **kwargs)
     if draw_centroid:
         handles.extend(draw_face_points(aabb, body_pose, dist=0.04))
     return body_pose, aabb, handles
 
 
-def draw_bounding_box(aabb, body_pose):
+def draw_bounding_box(aabb, body_pose, **kwargs):
     handles = []
     for a, b in get_aabb_edges(aabb):
         p1, p2 = apply_affine(body_pose, [a, b])
-        handles.append(add_line(p1, p2))
+        handles.append(add_line(p1, p2, **kwargs))
     return handles
 
 
@@ -1141,7 +1173,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
         (0, 0, 1): [(P, 0, P/2), (P, 0, -P/2), (P, 0, 0), (P, 0, P)],
         (0, 0, -1): [(0, 0, -P/2), (0, 0, P/2), (0, 0, 0), (0, 0, P)],
     }
-    set_renderer(visualize)
+    #set_renderer(visualize)
     grasps = []
     # aabbs = []
     for f in faces:
@@ -1290,8 +1322,19 @@ def draw_bounding_lines(pose, dimensions):
 def get_file_short_name(path):
     return path[path.rfind('/')+1:]
 
-def equal_float(a, b, epsilon=0):
+
+def in_list(elem, ls, epsilon=3e-3):
+    for e in ls:
+        if len(e) != len(elem):
+            return None
+        if equal(e, elem, epsilon=epsilon):
+            return e
+    return None
+
+
+def equal_float(a, b, epsilon=0.0):
     return abs(a - b) <= epsilon
+
 
 def equal(tup_a, tup_b, epsilon=0.001):
     if isinstance(tup_a, float) or isinstance(tup_a, int):

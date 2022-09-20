@@ -321,7 +321,7 @@ def change_world_state(world, test_case):
     print('-------------------')
 
 
-def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
+def load_lisdf_pybullet(lisdf_path, verbose=True, use_gui=True, width=1980, height=1238):
     # scenes_path = dirname(os.path.abspath(lisdf_path))
     tmp_path = join(ASSET_PATH, 'tmp')
     if not isdir(tmp_path): os.mkdir(tmp_path)
@@ -341,7 +341,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
     #         print(len(lines))
 
     ## --- the floor and pose will become extra bodies
-    connect(use_gui=True, shadows=False, width=width, height=height)
+    connect(use_gui=use_gui, shadows=False, width=width, height=height)
     # draw_pose(unit_pose(), length=1.)
     # create_floor()
 
@@ -446,20 +446,34 @@ def make_sdf_world(sdf_model):
 #######################
 
 
-def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
+def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True, teleport=False, **kwargs):
+    exp_dir = abspath(exp_dir)
+    if replace_pddl:
+        root_dir = abspath(join(__file__, *[os.pardir]*4))
+        cognitive_dir = join(root_dir, 'cognitive-architectures')
+        pddl_dir = join(cognitive_dir, 'bullet', 'assets', 'pddl')
+        domain_path = join(pddl_dir, 'domains', 'pr2_mamao.pddl')
+        stream_path = join(pddl_dir, 'streams', 'pr2_stream_mamao.pddl')
+    else:
+        domain_path = join(exp_dir, 'domain_full.pddl')
+        stream_path = join(exp_dir, 'stream.pddl')
+    config_path = join(exp_dir, 'planning_config.json')
+    print(f'Experiment: {exp_dir}\n'
+          f'Domain PDDL: {domain_path}\n'
+          f'Stream PDDL: {stream_path}\n'
+          f'Config: {config_path}')
+
+    domain_pddl = read(domain_path)
+    stream_pddl = read(stream_path)
+    planning_config = json.load(open(config_path))
 
     world = problem.world
-
-    domain_pddl = read(join(exp_dir, 'domain_full.pddl'))
-    stream_pddl = read(join(exp_dir, 'stream.pddl'))
-    planning_config = json.load(open(join(exp_dir, 'planning_config.json')))
-
     init, goal, constant_map = pddl_to_init_goal(exp_dir, world)
     goal = [AND] + goal
     problem.add_init(init)
 
     custom_limits = problem.world.robot.custom_limits ## planning_config['base_limits']
-    stream_map = world.robot.get_stream_map(problem, collisions, custom_limits, teleport)
+    stream_map = world.robot.get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
 
     return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
 
