@@ -21,7 +21,7 @@ from pybullet_tools.pr2_streams import get_stable_gen, Position, get_handle_gras
 from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
     get_ik_ir_gen, get_motion_gen, get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
     move_cost_fn, Attach, Detach, Clean, Cook, control_commands, \
-    get_gripper_joints, GripperCommand, apply_commands, State, Trajectory
+    get_gripper_joints, GripperCommand, apply_commands, State, Trajectory, Simultaneous, create_trajectory
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
     set_camera_target_robot, nice, BASE_LIMITS, get_file_short_name, get_root_links
@@ -36,13 +36,14 @@ from pybullet_tools.utils import connect, disconnect, wait_if_gui, LockRenderer,
     disconnect, get_joint_positions, enable_gravity, save_state, restore_state, HideOutput, remove_body, \
     get_distance, LockRenderer, get_min_limit, get_max_limit, has_gui, WorldSaver, wait_if_gui, add_line, SEPARATOR, \
     BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS, wait_unlocked, get_movable_joints, set_all_color, \
-    TRANSPARENT, apply_alpha, get_all_links, get_color, get_texture, dump_body, clear_texture
+    TRANSPARENT, apply_alpha, get_all_links, get_color, get_texture, dump_body, clear_texture, get_link_name, get_joint_name
 from pybullet_tools.flying_gripper_utils import get_se3_joints
 
 from os.path import join, isfile
 from pddlstream.algorithms.focused import solve_focused
 from pddlstream.algorithms.algorithm import parse_problem, reset_globals
 from pddlstream.algorithms.constraints import PlanConstraints, WILD
+from pddlstream.algorithms.downward import set_cost_scale
 from pddlstream.language.generator import from_gen_fn, from_list_fn, from_fn, fn_from_constant, empty_gen, from_test
 from pddlstream.language.constants import Equal, AND, PDDLProblem, is_plan
 from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler
@@ -50,6 +51,7 @@ from pddlstream.language.function import FunctionInfo
 from pddlstream.language.stream import StreamInfo, PartialInputs, universe_test
 from pddlstream.language.object import SharedOptValue
 from pddlstream.language.external import defer_shared, never_defer
+from pddlstream.language.conversion import params_from_objects
 from collections import namedtuple
 
 from world_builder.entities import Object
@@ -289,7 +291,7 @@ def opt_motion_wconf_fn(q1, q2, w):
 
 #######################################################
 
-def post_process(problem, plan, teleport=False, use_commands=False):
+def post_process(problem, plan, teleport=False, use_commands=False, verbose=False):
     if plan is None:
         return None
     commands = []
@@ -299,29 +301,53 @@ def post_process(problem, plan, teleport=False, use_commands=False):
         else:
             new_commands = get_primitive_actions(action, problem.world, teleport)
         commands += new_commands
-        print(i, action)
+        if verbose:
+            print(i, action)
     return commands
 
+def get_close_command(robot, arm, grasp, teleport=False):
+    return GripperCommand(robot, arm, grasp.grasp_width, teleport=teleport)
+
+def get_open_command(robot, arm, teleport=False):
+    gripper_joint = get_gripper_joints(robot, arm)[0]
+    position = get_max_limit(robot, gripper_joint)
+    return GripperCommand(robot, arm, position, teleport=teleport)
 
 def get_primitive_commands(action, robot, teleport=False):
     name, args = action
-    if name in ['move_base', 'move_base_wconf']:
+    if name in ['move_base']: #, 'move_base_wconf']:
         c = args[-1]
         new_commands = c.commands
+    elif name == 'move_base_wconf':
+        q1, q2, c, w = args
+        new_commands = c.commands
     elif name == 'pick':
-        a, b, p, g, _, c = args
+        a, b, p, g, _, c = args[:6]
         [t] = c.commands
-        close_gripper = GripperCommand(robot, a, g.grasp_width, teleport=teleport)
+        close_gripper = get_close_command(robot, a, g, teleport=teleport)
         attach = Attach(robot, a, g, b)
         new_commands = [t, close_gripper, attach, t.reverse()]
     elif name == 'place':
-        a, b, p, g, _, c = args
+        a, b, p, g, _, c = args[:6]
         [t] = c.commands
-        gripper_joint = get_gripper_joints(robot, a)[0]
-        position = get_max_limit(robot, gripper_joint)
-        open_gripper = GripperCommand(robot, a, position, teleport=teleport)
+        open_gripper = get_open_command(robot, a, teleport=teleport)
         detach = Detach(robot, a, b)
         new_commands = [t, detach, open_gripper, t.reverse()]
+    elif name in 'grasp_handle':
+        a, o, p, g, q, aq1, aq2, c = args
+        close_gripper = get_close_command(robot, a, g, teleport=teleport)
+        new_commands = list(c.commands) + [close_gripper]
+    elif name in 'ungrasp_handle':
+        a, o, p, g, q, aq1, aq2, c = args
+        open_gripper = get_open_command(robot, a, teleport=teleport)
+        new_commands = list(c.reverse().commands) + [open_gripper]
+    elif name == 'pull_door_handle':
+        a, o, p1, p2, g, q1, q2, bt, aq1, aq2, at = args
+        #new_commands = at.commands
+        #new_commands = bt.commands
+        dt = create_trajectory(robot=p1.body, joints=[p1.joint],
+                               path=np.linspace([p1.value], [p2.value], num=len(bt.commands[0].path), endpoint=True))
+        new_commands = [Simultaneous(commands=[bt, at, dt])]
     elif name == 'clean':  # TODO: add text or change color?
         body, sink = args
         new_commands = [Clean(body)]
@@ -600,18 +626,31 @@ from pybullet_tools.utils import disconnect, LockRenderer, has_gui, WorldSaver, 
 from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, str_from_object, TmpCWD
 
 
-def solve_one(pddlstream_problem, stream_info, fc, visualize=False):
+def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False, lock=False,
+              max_time=INF, downward_time=10, evaluation_time=10, visualize=False):
+    if diverse:
+        max_plans = 100
+        plan_dataset = []
+        max_skeletons = 1
+        use_feedback = False
+    else:
+        max_plans = 1
+        plan_dataset = None
+        max_skeletons = INF
+        use_feedback = True
+
     # with Profiler():
-    with LockRenderer(lock=True):
+    set_cost_scale(cost_scale=1)
+    with LockRenderer(lock=lock):
         solution = solve_focused(pddlstream_problem, stream_info=stream_info,
-                                 planner='ff-astar1', max_planner_time=10, debug=False,
-                                 unit_costs=True, success_cost=INF, initial_complexity=5,
-                                 max_time=INF, verbose=True, visualize=visualize,
+                                 planner='ff-astar1', max_planner_time=downward_time, debug=False,
+                                 unit_costs=False, success_cost=INF, initial_complexity=5,
+                                 max_time=max_time, verbose=True, visualize=visualize,
                                  unit_efforts=True, effort_weight=None,
-                                 unique_optimistic=True, use_feedback=True,
-                                 forbid=True, max_plans=1, fc=fc,
-                                 bind=True, max_skeletons=INF,
-                                 plan_dataset=None,
+                                 unique_optimistic=True, use_feedback=use_feedback,
+                                 forbid=True, max_plans=max_plans, fc=fc,
+                                 bind=True, max_skeletons=max_skeletons,
+                                 plan_dataset=plan_dataset, evaluation_time=evaluation_time, max_solutions=1,
                                  search_sample_ratio=0)
         # solution = solve(pddlstream_problem, algorithm=DEFAULT_ALGORITHM, unit_costs=False,
         #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False,
@@ -695,6 +734,48 @@ def colorize_world(world, color_types=['brown', 'tan'], transparency=0.5):
             link_color = apply_alpha(link_color, alpha=1.0 if link in rigid else transparency)
             set_color(body, link=link, color=link_color)
 
+def serial_checker(checker):
+    return lambda plans: list(map(checker, plans))
+
+def get_debug_checker(world):
+    def debug_checker(plans):
+        for i, plan in enumerate(plans):
+            renamed_plan = []
+            for action in plan:
+                action_name, args = action
+                args = params_from_objects(args)
+                body, joint = None, None
+                if action_name == 'move_base_wconf':
+                    continue
+                elif action_name == 'pick':
+                    arm, body = args[:2]
+                elif action_name == 'place':
+                    arm, body = args[:2]
+                elif action_name == 'grasp_handle':
+                    arm, (body, joint) = args[:2]
+                    continue
+                elif action_name == 'pull_door_handle':
+                    arm, (body, joint) = args[:2]
+                elif action_name == 'ungrasp_handle':
+                    arm, (body, joint) = args[:2]
+                    continue
+                else:
+                    raise NotImplementedError(action_name)
+                action_name = action_name.split('_')[0]
+                obj = world.get_object(body)
+                obj_name = obj.name
+                if joint is None:
+                    instance_name = f'{action_name}({obj_name})'
+                else:
+                    joint_name = get_joint_name(body, joint) if joint is not None else None
+                    instance_name = f'{action_name}({obj_name}, {joint_name})'
+                renamed_plan.append(instance_name)
+            plan_name = f'[{", ".join(renamed_plan)}]'
+            print(f'{i+1}/{len(plans)}) {plan_name} ({len(renamed_plan)})')
+        wait_unlocked()
+        return [True]*len(plans)
+    return debug_checker
+
 def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=False,
                      collect_dataset=False, max_cost=INF,
                      profile=True, lock=False, max_time=5*50, preview=False, **kwargs):
@@ -723,8 +804,11 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
         #plan_dataset = PlanDataset()
         plan_dataset = []
 
+    # TODO: more general version will just sort and return a subset the plans
     feasibility_checker = None
-    #feasibility_checker = lambda *args: False
+    # feasibility_checker = lambda *args: False # Reject all
+    # feasibility_checker = lambda *args: True # Accept all
+    # feasibility_checker = lambda *args: np.random.random() # Randomize
 
     skeleton = [
         ('grasp_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
@@ -736,31 +820,37 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
     #constraints = PlanConstraints(skeletons=[skeleton], exact=False, max_cost=max_cost + 1)
     constraints = PlanConstraints(max_cost=max_cost + 1) # TODO: plus 1 in action costs?
 
-    max_plans, max_skeletons = 1, INF
-    #max_plans, max_skeletons = 100, 1
+    if collect_dataset:
+        max_plans, max_planner_time, max_skeletons = 100, 10, 1
+    else:
+        max_plans, max_planner_time, max_skeletons = 1, 10, INF
 
     # profiler = Profiler(field='cumtime' if profile else None, num=25) # cumtime | tottime
     # profiler.save()
-    with LockRenderer(lock=lock):
-        # solution = solve(pddlstream_problem, algorithm='adaptive', unit_costs=True, visualize=False,
-        #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
-        solution = solve_focused(pddlstream_problem, stream_info=stream_info, constraints=constraints,
-                                 planner='ff-astar1', max_planner_time=10,
-                                 debug=False,
-                                 initial_complexity=5,
-                                 unit_costs=False, success_cost=INF,
-                                 max_time=max_time, verbose=True, visualize=visualization,
-                                 #unit_efforts=True, effort_weight=1,
-                                 unit_efforts=True, effort_weight=None,
-                                 bind=True,
-                                 unique_optimistic=True, # NOTE(caelan): cannot use update-wconf-pst
-                                 use_feedback=True, # plan_dataset
-                                 forbid=True,
-                                 max_plans=max_plans, max_skeletons=max_skeletons,
-                                 fc=feasibility_checker,
-                                 plan_dataset=plan_dataset, evaluation_time=10, max_solutions=1,
-                                 search_sample_ratio=0, **kwargs)
-        saver.restore()
+    if True:
+        with LockRenderer(lock=lock):
+            # solution = solve(pddlstream_problem, algorithm='adaptive', unit_costs=True, visualize=False,
+            #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
+            solution = solve_focused(pddlstream_problem, stream_info=stream_info, constraints=constraints,
+                                     planner='ff-astar1', max_planner_time=max_planner_time,
+                                     debug=False,
+                                     initial_complexity=5,
+                                     unit_costs=False, success_cost=INF,
+                                     max_time=max_time, verbose=True, visualize=visualization,
+                                     #unit_efforts=True, effort_weight=1,
+                                     unit_efforts=True, effort_weight=None,
+                                     bind=True,
+                                     unique_optimistic=True, # NOTE(caelan): cannot use update-wconf-pst
+                                     use_feedback=True, # plan_dataset
+                                     forbid=True,
+                                     max_plans=max_plans, max_skeletons=max_skeletons,
+                                     fc=feasibility_checker,
+                                     plan_dataset=plan_dataset, evaluation_time=10, max_solutions=1,
+                                     search_sample_ratio=0, **kwargs)
+
+    else:
+        solution = solve_one(pddlstream_problem, stream_info, fc=feasibility_checker, visualize=visualization)
+    saver.restore()
     # profiler.restore()
 
     if plan_dataset is not None:

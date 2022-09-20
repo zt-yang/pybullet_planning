@@ -13,18 +13,23 @@ else: ## not tested
     DATASET_PATH = '../../fastamp-data'
 
 
-def get_feasibility_checker(run_dir, mode):
-    from .feasibility_checkers import PassAll, Oracle, PVT
+def get_feasibility_checker(run_dir, mode, diverse=False):
+    from .feasibility_checkers import PassAll, ShuffleAll, Oracle, PVT
+    if mode == 'binary':
+        mode = 'pvt'
+        diverse = False
     if mode == 'None':
-        return PassAll()
+        return PassAll(run_dir)
+    elif mode == 'shuffle':
+        return ShuffleAll(run_dir)
     elif mode == 'oracle':
         plan = get_successful_plan(run_dir)
-        return Oracle(correct=plan)
+        return Oracle(run_dir, plan)
     elif 'pvt-task' in mode:
         task_name = abspath(run_dir).replace(DATASET_PATH, '').split('/')[1]
-        return PVT(run_dir, task_name=task_name)
+        return PVT(run_dir, task_name=task_name, scoring=diverse)
     elif mode.startswith('pvt'):
-        return PVT(run_dir, mode=mode)
+        return PVT(run_dir, mode=mode, scoring=diverse)
     return None
 
 
@@ -172,5 +177,3 @@ def get_plan(run_dir, indices={}, continuous={}):
                     if len(v) != 2:  ## sampled trajectory
                         new_continuous[name] = process_value(v)
     return plan, new_continuous
-
-

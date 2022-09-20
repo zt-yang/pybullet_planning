@@ -446,14 +446,28 @@ def make_sdf_world(sdf_model):
 #######################
 
 
-def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False, **kwargs):
+def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True, teleport=False, **kwargs):
+    exp_dir = abspath(exp_dir)
+    if replace_pddl:
+        root_dir = abspath(join(__file__, *[os.pardir]*4))
+        cognitive_dir = join(root_dir, 'cognitive-architectures')
+        pddl_dir = join(cognitive_dir, 'bullet', 'assets', 'pddl')
+        domain_path = join(pddl_dir, 'domains', 'pr2_mamao.pddl')
+        stream_path = join(pddl_dir, 'streams', 'pr2_stream_mamao.pddl')
+    else:
+        domain_path = join(exp_dir, 'domain_full.pddl')
+        stream_path = join(exp_dir, 'stream.pddl')
+    config_path = join(exp_dir, 'planning_config.json')
+    print(f'Experiment: {exp_dir}\n'
+          f'Domain PDDL: {domain_path}\n'
+          f'Stream PDDL: {stream_path}\n'
+          f'Config: {config_path}')
+
+    domain_pddl = read(domain_path)
+    stream_pddl = read(stream_path)
+    planning_config = json.load(open(config_path))
 
     world = problem.world
-
-    domain_pddl = read(join(exp_dir, 'domain_full.pddl'))
-    stream_pddl = read(join(exp_dir, 'stream.pddl'))
-    planning_config = json.load(open(join(exp_dir, 'planning_config.json')))
-
     init, goal, constant_map = pddl_to_init_goal(exp_dir, world)
     goal = [AND] + goal
     problem.add_init(init)

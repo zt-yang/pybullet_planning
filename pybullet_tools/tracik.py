@@ -13,6 +13,7 @@ from pybullet_tools.utils import Pose, multiply, invert, tform_from_pose, get_mo
 class IKSolver(object):
     def __init__(self, body, tool_link, first_joint=None, tool_offset=Pose(), custom_limits={},
                  seed=None, max_time=5e-3, error=1e-5): #, **kwargs):
+        self.body = body
         self.tool_link = link_from_name(body, tool_link)
         if first_joint is None:
             self.base_link = BASE_LINK
@@ -23,7 +24,6 @@ class IKSolver(object):
         # movable_joints = prune_fixed_joints(body, joints)
         # print([get_joint_name(body, joint) for joint in movable_joints])
 
-        self.body = body
         urdf_info = get_model_info(body)
         self.urdf_path = os.path.abspath(urdf_info.path)
         self.ik_solver = TracIKSolver(
@@ -33,6 +33,9 @@ class IKSolver(object):
             timeout=max_time, epsilon=error,
             solve_type='Speed', # Speed | Distance | Manipulation1 | Manipulation2
         )
+
+        self.links = links_from_names(self.body, self.link_names)
+        self.joints = joints_from_names(self.body, self.joint_names)
         self.ik_solver.joint_limits = list(get_custom_limits(
             self.body, self.joints, custom_limits=custom_limits, circular_limits=CIRCULAR_LIMITS))
 
@@ -40,6 +43,7 @@ class IKSolver(object):
         self.random_generator = np.random.RandomState(seed)
         self.solutions = []
         self.handles = []
+
     @property
     def robot(self):
         return self.body
@@ -55,12 +59,12 @@ class IKSolver(object):
     @property
     def joint_names(self):
         return self.ik_solver.joint_names
-    @property
-    def links(self):
-        return links_from_names(self.body, self.link_names)
-    @property
-    def joints(self):
-        return joints_from_names(self.body, self.joint_names)
+    # @property
+    # def links(self):
+    #     return links_from_names(self.body, self.link_names)
+    # @property
+    # def joints(self):
+    #     return joints_from_names(self.body, self.joint_names)
     @property
     def joint_limits(self):
         return self.ik_solver.joint_limits

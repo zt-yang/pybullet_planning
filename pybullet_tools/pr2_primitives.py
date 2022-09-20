@@ -129,7 +129,7 @@ class Command(object):
     def iterate(self):
         raise NotImplementedError()
 
-class Commands(object):
+class Commands(Command):
     def __init__(self, state, savers=[], commands=[], index=None):
         self.state = state
         self.savers = tuple(savers)
@@ -145,12 +145,36 @@ class Commands(object):
         for command in self.commands:
             for result in command.apply(state, **kwargs):
                 yield result
+    def reverse(self):
+        return self.__class__(self.state, savers=self.savers, index=self.index,
+                              commands=[command.reverse() for command in reversed(self.commands)])
     def __repr__(self):
         commands = self.commands
         if len(commands) == 1:
             commands = commands[0]  ## YANG: to prevent error in prolog inference
         return 'c{}={}'.format(self.index % 1000, commands)
         # return 'c{}'.format(id(self) % 1000)
+
+class Simultaneous(Command): # Parallel
+    def __init__(self, commands=[]):
+        self.commands = tuple(commands)
+    def apply(self, state, **kwargs):
+        iterators = [command.apply(state, **kwargs) for command in self.commands]
+        while iterators:
+            remaining_iterators = []
+            outputs = []
+            for iterator in iterators:
+                try:
+                    outputs.append(next(iterator)) # TODO: return False for the rest
+                    remaining_iterators.append(iterator)
+                except StopIteration:
+                    pass
+            yield outputs
+            iterators = remaining_iterators
+    def reverse(self):
+        return self.__class__([command.reverse() for command in reversed(self.commands)])
+    def __repr__(self):
+        return '{{{}}}'.format(', '.join(map(repr, self.commands)))
 
 #####################################
 

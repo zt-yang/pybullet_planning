@@ -295,29 +295,31 @@ def get_root_links(body):
     [fixed_links] = get_rigid_clusters(body, links=[ROOT_LINK])
     return fixed_links
 
-def articulated_collisions(obj, obstacles): # TODO: articulated_collision?
+def articulated_collisions(obj, obstacles, **kwargs): # TODO: articulated_collision?
+    # TODO: cache & compare aabbs
     for obstacle in obstacles:
         # dump_body(obstacle)
         # joints = get_movable_joints(obstacle)
         root_links = get_root_links(obstacle)
-        if link_pairs_collision(body1=obstacle, links1=root_links, body2=obj):
+        if link_pairs_collision(body1=obstacle, links1=root_links, body2=obj, **kwargs):
             # print(obj, obstacle, root_links)
             # dump_body(obj)
             # dump_body(obstacle)
             # for link in root_links:
-            #     collision_infos = get_closest_points(body1=obj, body2=obstacle, link2=link)
+            #     collision_infos = get_closest_points(body1=obj, body2=obstacle, link2=link, **kwargs)
             #     for i, collision_info in enumerate(collision_infos):
             #         print(i, len(collision_infos), collision_info)
             #         draw_collision_info(collision_info)
             return True
     return False
 
-def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=False, visualize=False, min_num_pts=0):
+def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=False, visualize=False, min_num_pts=0,
+             use_aabb=True, **kwargs):
     #return False
     if not verbose:
         if articulated:
-            return articulated_collisions(obj, obstacles)
-        return any(pairwise_collision(obj, b) for b in obstacles)
+            return articulated_collisions(obj, obstacles, use_aabb=use_aabb, **kwargs)
+        return any(pairwise_collision(obj, b, use_aabb=use_aabb, **kwargs) for b in obstacles)
 
     result = False
     ## first find the bodies that collides with obj
@@ -1035,7 +1037,7 @@ def is_box_entity(body, link=-1):
     return len(data) != 0 and data[0].geometry_type == p.GEOM_BOX
 
 
-def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False):
+def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False, **kwargs):
     body_pose, vertices = get_model_points(body, link=link, verbose=verbose)
     if link is None:  link = -1
     data = get_collision_data(body, link)
@@ -1044,17 +1046,17 @@ def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False):
     else: ## if data.geometry_typep == p.GEOM_BOX:
         aabb = get_aabb(body)
     # TODO(caelan): global DRAW variable that disables
-    handles = draw_bounding_box(aabb, body_pose)
+    handles = draw_bounding_box(aabb, body_pose, **kwargs)
     if draw_centroid:
         handles.extend(draw_face_points(aabb, body_pose, dist=0.04))
     return body_pose, aabb, handles
 
 
-def draw_bounding_box(aabb, body_pose):
+def draw_bounding_box(aabb, body_pose, **kwargs):
     handles = []
     for a, b in get_aabb_edges(aabb):
         p1, p2 = apply_affine(body_pose, [a, b])
-        handles.append(add_line(p1, p2))
+        handles.append(add_line(p1, p2, **kwargs))
     return handles
 
 

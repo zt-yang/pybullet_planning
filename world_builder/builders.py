@@ -273,7 +273,7 @@ def sample_fridge_table_goal(world):
 
     arm = world.robot.arms[0]
 
-    if random.random() < 0: ## 0.5
+    if random.random() < 0.5: ## 0.5
         goal_candidates = [
             [('Holding', arm, cabbage.body)],
             [('On', cabbage, table.body)],
