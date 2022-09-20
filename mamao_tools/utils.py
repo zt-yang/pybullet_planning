@@ -177,5 +177,3 @@ def get_plan(run_dir, indices={}, continuous={}):
                     if len(v) != 2:  ## sampled trajectory
                         new_continuous[name] = process_value(v)
     return plan, new_continuous
-
-

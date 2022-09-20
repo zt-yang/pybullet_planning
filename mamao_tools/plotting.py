@@ -139,7 +139,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     argmaxs = {}
     counts = {}
     missing = {}
-    points_x = {} 
+    points_x = {}
     points_y = {}
     for i in range(n_groups):
         group = groups[i]
@@ -253,15 +253,15 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
         plt.xticks(index + x_ticks_offset, labels, fontsize=10)
         ax.tick_params(axis='x', which='major', pad=28)
         plt.tight_layout()
-    
+
     ## ------------- different y axis to amplify improvements ------------ ##
     else:
         figsize = (15, 6)
         bar_width = 0.3
         fig, axs = plt.subplots(1, len(groups), figsize=figsize)
-        
+
         scale = 0.4
-        ll = [x*scale for x in range(len(METHODS))] 
+        ll = [x*scale for x in range(len(METHODS))]
         for i in range(len(groups)):
             mean = [means[method][i] for method in METHODS]
             std = [stds[method][i] for method in METHODS]
@@ -277,7 +277,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                     yerr=std,
                     error_kw={'ecolor': colors_darker},
                     label=METHODS)
-            
+
             for j in range(len(METHODS)):
                 bar_label = f"{count[j]} \n"
                 if miss[j] > 0:
@@ -294,25 +294,25 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                             xytext=(0, 6),  # distance between the points and label
                             ha='center',
                             fontsize=10)
-                            
+
                 cc = [colors[k] for k in xx]
                 xxx = [x*scale for x in xx]
                 axs[i].scatter(xxx, yy, s=20, color=cc, alpha=0.7)
 
-            axs[i].set_ylim([0, max(mx)*1.1]) 
+            axs[i].set_ylim([0, max(mx)*1.1])
             axs[i].tick_params(axis='x', which='major') ## , pad=28
             axs[i].tick_params(axis='y', which='major', pad=-4, rotation=45)
             axs[i].set_title(labels[i], fontsize=11, y=-0.24) ## , y=-0.35
             axs[i].set_xticks(ll)
             axs[i].set_xticklabels(METHODS, fontsize=10) ## , y=-0.25
-        
+
         plt.subplots_adjust(hspace=0.55, left=0.1, right=0.95, top=0.8, bottom=0.2)
-        fig.suptitle(title + dt, fontsize=16, y=0.96) ## 
+        fig.suptitle(title + dt, fontsize=16, y=0.96) ##
         axs[0].set_ylabel('Planning time', fontsize=12)
         handles = [plt.Rectangle((0,0),1,1, color=colors[i]) for i in range(len(METHODS))]
         fig.legend(handles, METHODS, ncol=5, fontsize=11, loc='upper center', bbox_to_anchor=(0.5, 0.9))
-        
-    
+
+
     if update:
         plt.draw()
     else:

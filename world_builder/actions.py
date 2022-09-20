@@ -453,6 +453,8 @@ def apply_actions(problem, actions, time_step=0.5, verbose=False, plan=None):
             sys.exit()
         elif isinstance(action, Action):
             state_event = action.transition(state_event.copy())
+            if isinstance(action, AttachObjectAction):
+                print(action.grasp)
         elif isinstance(action, list):
             for a in action:
                 state_event = a.transition(state_event.copy())

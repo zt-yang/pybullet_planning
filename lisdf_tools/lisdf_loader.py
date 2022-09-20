@@ -321,8 +321,8 @@ def change_world_state(world, test_case):
     print('-------------------')
 
 
-def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238, use_gui=True):
-    # scenes_path = dirname(abspath(lisdf_path))
+def load_lisdf_pybullet(lisdf_path, verbose=True, use_gui=True, width=1980, height=1238):
+    # scenes_path = dirname(os.path.abspath(lisdf_path))
     tmp_path = join(ASSET_PATH, 'tmp')
     if not isdir(tmp_path): os.mkdir(tmp_path)
 
