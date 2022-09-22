@@ -208,7 +208,8 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None,
             if not hasattr(obj, 'path'):
                 print('world_generator.file', obj)
             file = obj.path
-            scale = get_scale_by_category(file, obj.category)
+            # scale = get_scale_by_category(file, obj.category)
+            scale = obj.scale
             # if obj.category in OBJ_SCALES:
             #     scale = OBJ_SCALES[obj.category]
             #     file = get_file_by_category(obj.category)
