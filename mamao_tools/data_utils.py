@@ -1,6 +1,7 @@
 import json
 from os import listdir
 from os.path import join, isfile, isdir, abspath
+import untangle
 
 
 def get_indices_from_log(run_dir):
@@ -31,3 +32,27 @@ def get_indices(run_dir):
     if not result:
         return get_indices_from_log(run_dir)
     return result
+
+
+def get_instance_info(run_dir, world=None):
+    if world is None:
+        world = get_lisdf_xml(run_dir)
+    instances = {}
+    for m in world.include:
+        if 'mobility.urdf' in m.uri.cdata:
+            uri = m.uri.cdata.replace('/mobility.urdf', '')
+            uri = uri[uri.index('models/') + 7:]
+            index = uri[uri.index('/') + 1:]
+            if index == '00001':
+                index = 'VeggieCabbage'
+            instances[m['name']] = index
+    return instances
+
+
+def exist_instance(run_dir, instance):
+    instances = get_instance_info(run_dir)
+    return list(instances.values()).count(instance) > 0
+
+
+def get_lisdf_xml(run_dir):
+    return untangle.parse(join(run_dir, 'scene.lisdf')).sdf.world

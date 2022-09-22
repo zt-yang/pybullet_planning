@@ -16,18 +16,51 @@ sns.set_style("darkgrid", {"axes.facecolor": ".9"})
 
 from utils import DATASET_PATH
 
+VIOLIN = False
+FPC = True
+
+PAPER_VERSION = False
+SAVE_PDF = True
+
+from matplotlib import rc
+rc('font', **{'family':'serif', 'serif':['Times']})
+# rc('text', usetex=True)
+
 GROUPS = ['tt_one_fridge_table_pick', 'tt_one_fridge_table_in',
-          'tt_two_fridge_pick', 'tt_two_fridge_in']  ## ## 'tt_one_fridge_table_on', 'tt_one_fridge_pick'
-METHODS = ['None', 'shuffle', 'binary', 'pvt', 'oracle'] ## ## , 'random' , 'piginet', 'pvt-task', 'pvt-2',
-check_time = 1663139616 ## after relabeling
+          'tt_two_fridge_in']  ## ## 'tt_one_fridge_table_on', 'tt_one_fridge_pick', 'tt_two_fridge_pick',
+METHODS = ['None', 'shuffle', 'binary', 'pvt', 'oracle'] ## 'pvt*',
+METHOD_NAMES = ['Baseline', 'Shuffle', 'PST-0/1', 'PST', 'Oracle']
+## ## , 'random' , 'piginet', 'pvt-task', 'pvt-2', 'pvt|rel=all'
+check_time = 1663221059  ## first done  |
+check_time = 1663139616 if PAPER_VERSION else check_time ## after relabeling
+
+color_dict = {
+    'b': ('#3498db', '#2980b9'),
+    'g': ('#2ecc71', '#27ae60'),
+    'r': ('#e74c3c', '#c0392b'),
+    'y': ('#f1c40f', '#f39c12'),
+    'p': ('#9b59b6', '#8e44ad'),
+    'gray': ('#95a5a6', '#7f8c8d'),
+}
+colors = ['b', 'r', 'g', 'y', 'gray'] ## , 'p'
+colors = ['#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#95a5a6'] ## , '#9b59b6'
+colors_darker = ['#2980b9', '#c0392b', '#27ae60', '#f39c12', '#7f8c8d'] ## , '#8e44ad'
+colors = [color_dict[k][0] for k in ['b', 'r', 'g', 'y', 'gray']]
+colors_darker = [color_dict[k][0] for k in ['b', 'r', 'g', 'y', 'gray']]
 
 ## see which files are missing
 # METHODS = ['None', 'oracle'] ## , 'pvt'
 SAME_Y_AXES = False
 
+
 def get_rundirs(task_name):
     data_dir = join(DATASET_PATH, task_name)
+    # data_dir = join(DATASET_PATH, 'tt1', task_name)
     dirs = [join(data_dir, f) for f in listdir(data_dir) if isdir(join(data_dir, f))]
+    # dirs = []
+    if PAPER_VERSION:
+        data_dir = join(DATASET_PATH, 'tt1', task_name)
+        dirs.extend([join(data_dir, f) for f in listdir(data_dir) if isdir(join(data_dir, f))])
     dirs.sort()
     return dirs
 
@@ -71,46 +104,56 @@ def get_time_data(diverse=False):
         for run_dir in run_dirs:
 
             for method in METHODS:
-                file = join(run_dir, f"{prefix}plan_rerun_fc={method}.json")
                 if method not in data[group]:
                     data[group][method] = []
                 if method not in data[group]['missing']:
                     data[group]['missing'][method] = []
                 if method not in data[group]['run_dir']:
                     data[group]['run_dir'][method] = []
+                if 'run_dir' not in data[group]:
+                    data[group]['run_dir'] = []
+
+                if FPC: ## False positive count
+                    file = join(run_dir, f"{prefix}fc_log={method}.json")
+                else: ## planning time
+                    file = join(run_dir, f"{prefix}plan_rerun_fc={method}.json")
 
                 if not isfile(file):
                     print(f"File not found: {file}")
                     data[group]['missing'][method].append(run_dir)
                     continue
-                    if method == 'None':
-                        file = join(run_dir, f"plan.json")
-                    else:
-                        continue
+                    # if method == 'None':
+                    #     file = join(run_dir, f"plan.json")
+                    # else:
+                    #     continue
 
-                if 'run_dir' not in data[group]:
-                    data[group]['run_dir'] = []
                 with open(file, 'r') as f:
                     last_modified = os.path.getmtime(file)
-
-                    d = json.load(f)
-                    if len(d) == 2:
-                        t = d[0]["planning"]
-                    else:
-                        if d["plan"] is None:
-                            print('Failed old result', file)
-                            if last_modified < check_time:
-                                data[group]['missing'][method].append(run_dir)
-                            continue
-                        t = d["planning_time"]
-                    if t > 500:
-                        print(f"Planning time too long: {t} s", file)
-                        # t = 500
-
                     if last_modified < check_time:
                         print('skipping old result', file)
                         data[group]['missing'][method].append(run_dir)
                         continue
+
+                    d = json.load(f)
+
+                    if FPC:
+                        print(d['checks'])
+                    else:
+                        ## original planning time
+                        if len(d) == 2:
+                            t = d[0]["planning"]
+
+                        ## replanning time
+                        else:
+                            if d["plan"] is None:
+                                print('Failed old result', file)
+                                if last_modified < check_time:
+                                    data[group]['missing'][method].append(run_dir)
+                                continue
+                            t = d["planning_time"]
+                        if t > 500:
+                            print(f"Planning time too long: {t} s", file)
+                            # t = 500
 
                     data[group][method].append(t)
                     if run_dir not in data[group]['run_dir']:
@@ -165,7 +208,8 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                 stds[method].append(np.std(data[group][method]))
                 maxs[method].append(np.max(data[group][method]))
                 label = data[group]['run_dir'][method][np.argmax(data[group][method])]
-                label = label.replace(abspath(DATASET_PATH), '').replace('/', '').replace(group, '')
+                label = label.replace(abspath(DATASET_PATH), '')
+                label = label.replace('/', '').replace(group, '').replace('tt1', '-')
                 argmaxs[method].append(f"#{label}")
                 counts[method].append(len(data[group][method]))
                 if SAME_Y_AXES:
@@ -193,14 +237,12 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     x_ticks_offset = bar_width * (len(METHODS)-1)/2
 
     error_config = {'ecolor': '0.3'}
-    colors = ['b', 'r', 'g', 'y', 'gray']
-    colors = ['#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#95a5a6']
-    colors_darker = ['#2980b9', '#c0392b', '#27ae60', '#f39c12', '#7f8c8d']
 
     dt = datetime.now().strftime("%m%d_%H%M%S")
     title = 'Planning time comparison '
     title += '(diverse planning mode) ' if diverse else ''
     labels = tuple([f"{g.replace('tt_', '')}\n({data[g]['count']})" for g in groups])
+    labels = tuple([f"{g.replace('tt_', '')}" for g in groups])
 
     if SAME_Y_AXES:
         figsize = (9, 6)
@@ -247,21 +289,22 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
 
         plt.title(title + dt, fontsize=16, pad=35)
         plt.ylim([0, max_y+100]) if diverse else plt.ylim([0, 500])
-        plt.legend(ncol=5, fontsize=11, loc='upper center', bbox_to_anchor=(0.5, 1.1))
-        plt.xlabel('Tasks (run count)', fontsize=12)
-        plt.ylabel('Planning time', fontsize=12)
+        plt.legend(ncol=len(METHODS), fontsize=11, loc='upper center', bbox_to_anchor=(0.5, 1.1), fontname='Times')
+        plt.xlabel('Tasks (run count)', fontsize=12, fontname='Times')
+        plt.ylabel('Planning time', fontsize=12, fontname='Times')
         plt.xticks(index + x_ticks_offset, labels, fontsize=10)
         ax.tick_params(axis='x', which='major', pad=28)
         plt.tight_layout()
     
     ## ------------- different y axis to amplify improvements ------------ ##
     else:
-        figsize = (15, 6)
+        figsize = (15, 6) if not PAPER_VERSION else (15, 4)
+        figsize = (12, 4) if len(groups) == 3 else figsize
         bar_width = 0.3
         fig, axs = plt.subplots(1, len(groups), figsize=figsize)
         
         scale = 0.4
-        ll = [x*scale for x in range(len(METHODS))] 
+        ll = [x for x in range(len(METHODS))]
         for i in range(len(groups)):
             mean = [means[method][i] for method in METHODS]
             std = [stds[method][i] for method in METHODS]
@@ -271,52 +314,82 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
             mx = [maxs[method][i] for method in METHODS]
             xx = points_x[i]
             yy = points_y[i]
-            axs[i].bar(ll, mean, bar_width,
-                    alpha=0.4,
-                    color=colors,
-                    yerr=std,
-                    error_kw={'ecolor': colors_darker},
-                    label=METHODS)
-            
-            for j in range(len(METHODS)):
-                bar_label = f"{count[j]} \n"
-                if miss[j] > 0:
-                    bar_label += str(miss[j])
-                axs[i].annotate(bar_label,  # text
-                            (j*scale, 0),  # points location to label
-                            textcoords="offset points",
-                            xytext=(0, -80),  # distance between the points and label
-                            ha='center', color='gray',
-                            fontsize=10)
-                axs[i].annotate(agm[j],  # text
-                            (j*scale, mx[j]),  # points location to label
-                            textcoords="offset points",
-                            xytext=(0, 6),  # distance between the points and label
-                            ha='center',
-                            fontsize=10)
-                            
-                cc = [colors[k] for k in xx]
-                xxx = [x*scale for x in xx]
-                axs[i].scatter(xxx, yy, s=20, color=cc, alpha=0.7)
 
-            axs[i].set_ylim([0, max(mx)*1.1]) 
-            axs[i].tick_params(axis='x', which='major') ## , pad=28
-            axs[i].tick_params(axis='y', which='major', pad=-4, rotation=45)
-            axs[i].set_title(labels[i], fontsize=11, y=-0.24) ## , y=-0.35
+            if VIOLIN:
+                import pandas as pd
+                from matplotlib.collections import PolyCollection
+
+                df = pd.DataFrame({'x': xx, 'y': yy})
+                my_pal = {i: colors[i] for i in range(len(METHODS))}
+                sns.violinplot(data=df, x="x", y="y", bw=.4, ax=axs[i], scale="width", palette=my_pal)
+                axs[i].set(xlabel=None, ylabel=None)
+                # for art in axs[i].get_children():
+                #     if isinstance(art, PolyCollection):
+                #         art.set_edgecolor((1, 1, 1, 1))
+
+            else:
+                ll = [x * scale for x in range(len(METHODS))]
+                axs[i].bar(ll, mean, bar_width,
+                        alpha=0.4,
+                        color=colors,
+                        yerr=std,
+                        error_kw={'ecolor': colors_darker},
+                        label=METHODS)
+
+                for j in range(len(METHODS)):
+                    cc = [colors[k] for k in xx]
+                    xxx = [x*scale for x in xx]
+                    axs[i].scatter(xxx, yy, s=20, color=cc, alpha=0.7)
+
+                    if not PAPER_VERSION:
+                        bar_label = f"{count[j]} \n"
+                        if miss[j] > 0:
+                            bar_label += str(miss[j])
+                        axs[i].annotate(bar_label,  # text
+                                    (j*scale, 0),  # points location to label
+                                    textcoords="offset points",
+                                    xytext=(0, -80),  # distance between the points and label
+                                    ha='center', color='gray',
+                                    fontsize=10)
+                        axs[i].annotate(agm[j],  # text
+                                    (j*scale, mx[j]),  # points location to label
+                                    textcoords="offset points",
+                                    xytext=(0, 6),  # distance between the points and label
+                                    ha='center',
+                                    fontsize=10)
+
+                axs[i].set_ylim([0, max(mx)*1.1])
+                axs[i].tick_params(axis='x', which='major') ## , pad=28
+                axs[i].tick_params(axis='y', which='major', pad=-4, rotation=45)
+
+            if PAPER_VERSION:
+                axs[i].set_title(labels[i], fontsize=11, y=-0.2)
+            else:
+                axs[i].set_title(labels[i], fontsize=11, y=-0.24)
+
             axs[i].set_xticks(ll)
-            axs[i].set_xticklabels(METHODS, fontsize=10) ## , y=-0.25
-        
-        plt.subplots_adjust(hspace=0.55, left=0.1, right=0.95, top=0.8, bottom=0.2)
-        fig.suptitle(title + dt, fontsize=16, y=0.96) ## 
+            axs[i].set_xticklabels(METHOD_NAMES, fontsize=10) ## , y=-0.25 , rotation=45
+
         axs[0].set_ylabel('Planning time', fontsize=12)
-        handles = [plt.Rectangle((0,0),1,1, color=colors[i]) for i in range(len(METHODS))]
-        fig.legend(handles, METHODS, ncol=5, fontsize=11, loc='upper center', bbox_to_anchor=(0.5, 0.9))
-        
-    
-    if update:
-        plt.draw()
+        handles = [plt.Rectangle((0, 0), 1, 1, color=colors[i]) for i in range(len(METHODS))]
+
+        if not PAPER_VERSION:
+            plt.subplots_adjust(hspace=0.55, left=0.1, right=0.95, top=0.8, bottom=0.2)
+            fig.suptitle(title + dt, fontsize=16, y=0.96) ##
+            fig.legend(handles, METHOD_NAMES, ncol=len(METHODS), fontsize=11,
+                       loc='upper center', bbox_to_anchor=(0.5, 0.9))
+        else:
+            plt.subplots_adjust(hspace=0.55, left=0.05, right=0.99, top=0.85, bottom=0.15)
+            fig.legend(handles, METHOD_NAMES, ncol=len(METHODS), fontsize=11,
+                       loc='upper center', bbox_to_anchor=(0.5, 0.97))
+
+    if PAPER_VERSION: ##  and False
+        plt.savefig('/home/yang/evaluation.pdf', bbox_inches='tight')
     else:
-        plt.show()
+        if update:
+            plt.draw()
+        else:
+            plt.show()
 
 
 if __name__ == '__main__':

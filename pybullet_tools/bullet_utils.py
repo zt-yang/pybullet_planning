@@ -417,8 +417,9 @@ def sample_pose(obj, aabb, obj_aabb=None, yaws=OBJ_YAWS):
     height = get_aabb_extent(aabb)[2]
     if (obj_aabb is not None and height > 5 * get_aabb_extent(obj_aabb)[2]) or height > 1:
         x, y, _ = aabb.upper
-        z = aabb.lower[2] + height / 4
-        aabb = AABB(lower=aabb.lower, upper=[x, y, z])
+        z = aabb.lower[2] + height / 3
+        xl, yl, zl = aabb.lower
+        aabb = AABB(lower=[xl, yl, zl+height / 4], upper=[x, y, z])
         # print('bullet_utils.sample_pose\t!adjusted z to be lower')
 
     x, y, z = sample_aabb(aabb)
