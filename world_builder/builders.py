@@ -282,7 +282,7 @@ def sample_fridges_tables_scene(world, verbose=True):
     minifridge_doors = sample_one_fridge_scene(world, open_doors=False)
     load_another_table(world, four_ways=False)
     placement = load_another_fridge_food(world)
-    random_set_doors(minifridge_doors, epsilon=0, extent_max=0.5)
+    random_set_doors(minifridge_doors, epsilon=0.3, extent_max=0.5)
     ensure_robot_cfree(world, verbose=verbose)
     return placement
 
@@ -302,7 +302,7 @@ def sample_fridges_tables_goal(world, placement):
     ## the goal will be to pick one object and put in the other fridge
     goal_candidates = [
         [('Holding', arm, food)],
-        # [('In', food, other)],
+        [('In', food, other)],
     ]
 
     return random.choice(goal_candidates)

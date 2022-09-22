@@ -156,7 +156,14 @@ def get_sampled_file(SAMPLING, category, ids):
         dist = dists[category.lower()]
 
     if dist is not None:
-        p = [dist[i] for i in ids]
+        p = []
+        for i in ids:
+            if i in dist:
+                p.append(dist[i])
+            else:
+                p.append(0.25)
+        if sum(p) > 1.2:
+            p = [x / sum(p) for x in p]
         if sum(p) != 1:
             p[-1] = 1-sum(p[:-1])
         id = np.random.choice(ids, p=p)

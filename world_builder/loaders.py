@@ -1022,7 +1022,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
 def load_fridge_with_food_on_surface(world, counter, name='minifridge', cabbage=None):
     (x, y, _), _ = get_pose(counter)
     minifridge = world.add_object(Object(
-        load_asset('MiniFridge', x=x, y=y, yaw=math.pi, floor=counter,  ## SAMPLING=cabbage,
+        load_asset('MiniFridge', x=x, y=y, yaw=math.pi, floor=counter, SAMPLING=cabbage,
                    RANDOM_INSTANCE=True), name=name))
 
     x = get_aabb(counter).upper[0] - get_aabb_extent(get_aabb(minifridge))[0] / 2 + 0.2
@@ -1094,9 +1094,9 @@ def random_set_table_by_counter(table, counter, four_ways=True):
     offset = random.uniform(0.1, 0.35)
     if four_ways:
         case = random.choice(range(4))
+        # case = 3  ## debug base collision
     else:
         case = random.choice(range(2))
-    case = 3  ## debug base collision
 
     if case == 0:  ## on the left of the counter
         y = get_aabb(counter).lower[1] - get_aabb_extent(get_aabb(table))[1] / 2 - offset
@@ -1217,6 +1217,6 @@ def load_another_fridge_food(world, verbose=True):
 
     placement[new_food] = s.pybullet_name
 
-    random_set_doors(doors, epsilon=0.5)
+    random_set_doors(doors, epsilon=0.3)
     ## the goal will be to pick one object and put in the other fridge
     return placement

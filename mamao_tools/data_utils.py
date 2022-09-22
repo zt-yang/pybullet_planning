@@ -68,6 +68,8 @@ def get_plan_skeleton(plan, indices={}):
         else:
             if a[0] in ACTION_ABV:
                 skeleton = ACTION_ABV[a[0]]
+                if hasattr(a, 'args'):
+                    a = a.args
             else:
                 ABV = {ACTION_NAMES[k]: v for k, v in ACTION_ABV.items()}
                 skeleton = ABV[a[0]]
