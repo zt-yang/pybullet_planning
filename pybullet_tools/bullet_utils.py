@@ -315,6 +315,9 @@ def articulated_collisions(obj, obstacles, **kwargs): # TODO: articulated_collis
 
 def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=False, visualize=False, min_num_pts=0,
              use_aabb=True, **kwargs):
+    prefix = 'bullet_utils.collided '
+    if len(tag) > 0: prefix += f'( {tag} )'
+
     #return False
     if not verbose:
         if articulated:
@@ -326,6 +329,8 @@ def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=Fals
     bodies = []
     for b in obstacles:
         if pairwise_collision(obj, b):
+            if verbose:
+                print(prefix, f'obj {obj} collides with {b}')
             result = True
             bodies.append(b)
 
@@ -357,9 +362,8 @@ def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=Fals
     if total <= min_num_pts:
         result = False
     else:
-        prefix = 'bullet_utils.collided '
-        if len(tag) > 0: prefix += f'( {tag} )'
-        # print(f'{prefix} | {obj} with {body_links}')
+        if verbose:
+            print(f'{prefix} | {obj} with {body_links}')
     return result
 
 #######################################################

@@ -378,15 +378,9 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
                              world_name=world_name, out_path=join(outpath, 'problem.pddl'))
 
     import platform
-    robot = state.world.robot
-    # body_to_name = {i: state.world.body_to_name(i) for i in get_bodies()}
-    # body_to_name = {str(k): v.name for k, v in state.world.BODY_TO_OBJECT.items()}
-    body_to_name = {str(k): v.lisdf_name for k, v in state.world.BODY_TO_OBJECT.items()}
-    body_to_name[str(robot.body)] = robot.name
-    body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
     config = {
         'base_limits': state.world.robot.custom_limits,  ## state.world.args.base_limits,
-        'body_to_name': body_to_name,
+        'body_to_name': state.world.get_indices(),
         'system': platform.system()
     }
     if state.world.camera != None:
