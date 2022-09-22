@@ -1089,26 +1089,17 @@ def random_set_doors(doors, extent_max=1.0, epsilon=0.7):
     ensure_doors_cfree(doors, epsilon=epsilon, extent_max=extent_max)
 
 
-def load_another_table(world, w=6, l=6, four_ways=True):
-    counter = world.name_to_body('counter')
-    floor = world.name_to_body('floor')
-    cabbage = world.cat_to_objects('food')[0]
-
-    h = random.uniform(0.3, 0.9)
-    table = world.add_object(Object(
-        load_asset('KitchenCounter', x=w/2, y=0, yaw=math.pi, floor=floor, h=h,
-                   RANDOM_INSTANCE=True, verbose=False), category='supporter', name='table'))
-
+def random_set_table_by_counter(table, counter, four_ways=True):
     (x, y, z), quat = get_pose(table)
     offset = random.uniform(0.1, 0.35)
     if four_ways:
         case = random.choice(range(4))
     else:
         case = random.choice(range(2))
-    case = 3 ## debug base collision
+    case = 3  ## debug base collision
 
     if case == 0:  ## on the left of the counter
-        y = get_aabb(counter).lower[1] - get_aabb_extent(get_aabb(table))[1]/2 - offset
+        y = get_aabb(counter).lower[1] - get_aabb_extent(get_aabb(table))[1] / 2 - offset
         x = get_pose(counter)[0][0]
 
     elif case == 1:  ## on the right of the counter
@@ -1119,7 +1110,7 @@ def load_another_table(world, w=6, l=6, four_ways=True):
         y = get_aabb(counter).lower[1] - get_aabb_extent(get_aabb(table))[0] / 2 - offset
         x = get_aabb(counter).upper[0] + get_aabb_extent(get_aabb(table))[1] / 2 + offset
         r, p, yaw = euler_from_quat(quat)
-        quat = quat_from_euler((r, p, yaw + math.pi/2))
+        quat = quat_from_euler((r, p, yaw + math.pi / 2))
 
     elif case == 3:  ## on the right of the counter, rotated 90 degrees
         y = get_aabb(counter).upper[1] + get_aabb_extent(get_aabb(table))[0] / 2 + offset
@@ -1132,6 +1123,21 @@ def load_another_table(world, w=6, l=6, four_ways=True):
         sys.exit()
 
     set_pose(table, ((x, y, z), quat))
+
+
+def load_another_table(world, w=6, l=6, four_ways=True):
+    counter = world.name_to_body('counter')
+    floor = world.name_to_body('floor')
+    cabbage = world.cat_to_objects('food')[0]
+
+    h = random.uniform(0.3, 0.9)
+    table = world.add_object(Object(
+        load_asset('KitchenCounter', x=w/2, y=0, yaw=math.pi, floor=floor, h=h,
+                   RANDOM_INSTANCE=True, verbose=False), category='supporter', name='table'))
+    random_set_table_by_counter(table, counter, four_ways=four_ways)
+    obstacles = [o for o in get_bodies() if o != table]
+    while collided(table, obstacles, verbose=True):
+        random_set_table_by_counter(table, counter, four_ways=four_ways)
 
     # set_renderer(True)
     # set_renderer(False)

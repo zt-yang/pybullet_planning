@@ -866,14 +866,17 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
     # profiler.restore()
 
     if plan_dataset is not None:
+        from mamao_tools.data_utils import get_plan_skeleton
+        indices = world.get_indices()
         for i, (opt_solution, real_solution) in enumerate(plan_dataset):
             stream_plan, (opt_plan, preimage), opt_cost = opt_solution
             plan = None
             if real_solution is not None:
                 plan, cost, certificate = real_solution
                 solution = real_solution # TODO: first solution
+            skeleton = get_plan_skeleton(opt_plan, indices=indices)
             print(f'\n{i+1}/{len(plan_dataset)}) Optimistic Plan: {opt_plan}\n'
-                  f'Plan: {plan}')
+                  f'Skeleton: {skeleton}\nPlan: {plan}')
 
     # PARALLEL = True
     #

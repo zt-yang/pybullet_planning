@@ -628,6 +628,13 @@ class World(object):
         image = self.camera.get_image(segment=self.args.segment)
         visualize_camera_image(image, self.camera.index, img_dir=self.img_dir)
 
+    def get_indices(self):
+        """ for fastamp project """
+        body_to_name = {str(k): v.lisdf_name for k, v in self.BODY_TO_OBJECT.items()}
+        body_to_name[str(self.robot.body)] = self.robot.name
+        body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
+        return body_to_name
+
     @property
     def max_delta(self):
         return self.max_velocities * self.time_step

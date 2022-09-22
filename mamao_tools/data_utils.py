@@ -2,6 +2,7 @@ import json
 from os import listdir
 from os.path import join, isfile, isdir, abspath
 import untangle
+import copy
 
 
 def get_indices_from_log(run_dir):
@@ -56,3 +57,24 @@ def exist_instance(run_dir, instance):
 
 def get_lisdf_xml(run_dir):
     return untangle.parse(join(run_dir, 'scene.lisdf')).sdf.world
+
+
+def get_plan_skeleton(plan, indices={}):
+    from fastamp.text_utils import ACTION_ABV, ACTION_NAMES
+    def get_action_abv(a):
+        if isinstance(a, str):
+            name = a[a.index("name='")+6: a.index("', args=(")]
+            return ACTION_ABV[name]
+        else:
+            if a[0] in ACTION_ABV:
+                skeleton = ACTION_ABV[a[0]]
+            else:
+                ABV = {ACTION_NAMES[k]: v for k, v in ACTION_ABV.items()}
+                skeleton = ABV[a[0]]
+            aa = []
+            for e in a:
+                aa.append(indices[str(e)] if str(e) in indices else str(e))
+            if len(skeleton) > 0:
+                skeleton += ''.join([f"({o[0]}{o[-1]})" for o in aa[1:] if '::' in o])
+            return skeleton
+    return ''.join([get_action_abv(a) for a in plan])
