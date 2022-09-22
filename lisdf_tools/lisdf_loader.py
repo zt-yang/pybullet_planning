@@ -374,7 +374,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, use_gui=True, width=1980, heig
             category = model.links[0].name
 
         if verbose:
-            print(f'..... loading {model.name} from {abspath(uri)}', end="\r")
+            print(f'..... loading {model.name} from {abspath(uri)}') ## , end="\r"
         if not isdir(join(ASSET_PATH, 'scenes')):
             os.mkdir(join(ASSET_PATH, 'scenes'))
         with HideOutput():

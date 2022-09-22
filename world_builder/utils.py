@@ -107,6 +107,8 @@ def get_model_scale(file, l=None, w=None, h=None, scale=1, category=None):
 
     ## --- load and adjust
     with HideOutput():
+        if isdir(file):
+            file = join(file, 'mobility.urdf')
         body = load_model(file, scale=scale, fixed_base=True)
     aabb = get_aabb(body)
     extent = get_aabb_extent(aabb)
@@ -358,7 +360,8 @@ def get_instances(category):
     if category in MODEL_SCALES:
         return MODEL_SCALES[category]
     elif category in MODEL_HEIGHTS:
-        return MODEL_HEIGHTS[category]['models']
+        instances = MODEL_HEIGHTS[category]['models']
+        return {k: 1 for k in instances}
     elif category.lower() in OBJ_SCALES:
         scale = OBJ_SCALES[category.lower()]
         category = [c for c in listdir(join(ASSET_PATH, 'models')) if c.lower() == category.lower()][0]
