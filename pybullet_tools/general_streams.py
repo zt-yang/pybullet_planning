@@ -261,14 +261,13 @@ def check_plate_placement(body, surfaces, obstacles, num_samples, num_trials=30)
     return None
 
 
-
 def get_mod_pose(pose):
-    (x,y,z), quat = pose
-    return ((x,y,z+0.01), quat)
+    (x, y, z), quat = pose
+    return ((x, y, z+0.01), quat)
 
 
 def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=10,
-                         verbose=False, **kwargs):
+                         verbose=False, force_storage=False, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
     obstacles = problem.fixed if collisions else []
     world = problem.world
@@ -296,7 +295,7 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=
                 break
 
             ## special sampler for data collection
-            if 'storage' in world.get_name(space):
+            if 'storage' in world.get_name(space) or force_storage:
                 from world_builder.loaders import place_in_cabinet
                 if verbose:
                     print('use special pose sampler')
@@ -308,13 +307,16 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=
             obs = [obst for obst in obstacles if obst not in {body, space}]
             if not collided(body, obs, articulated=False, verbose=True):
                 p = Pose(body, body_pose, space)
-                # poses.append((p,))
+                # if return_all:
+                #     poses.append((p,))
                 yield (p,)
         if verbose:
             print(f'{title} reached max_attempts = {max_attempts}')
+
+        # if return_all:
+        #     print(f'{title} return {len(poses)} poses = {poses}')
+        #     return poses
         yield None
-        # print(f'{title} return {len(poses)} poses = {poses}')
-        # return poses
     return gen
 
 
