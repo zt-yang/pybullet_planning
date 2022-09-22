@@ -17,7 +17,7 @@ sns.set_style("darkgrid", {"axes.facecolor": ".9"})
 from utils import DATASET_PATH
 
 VIOLIN = False
-FPC = True
+FPC = False
 
 PAPER_VERSION = False
 SAVE_PDF = True
@@ -182,7 +182,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     argmaxs = {}
     counts = {}
     missing = {}
-    points_x = {} 
+    points_x = {}
     points_y = {}
     for i in range(n_groups):
         group = groups[i]
@@ -295,14 +295,14 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
         plt.xticks(index + x_ticks_offset, labels, fontsize=10)
         ax.tick_params(axis='x', which='major', pad=28)
         plt.tight_layout()
-    
+
     ## ------------- different y axis to amplify improvements ------------ ##
     else:
         figsize = (15, 6) if not PAPER_VERSION else (15, 4)
         figsize = (12, 4) if len(groups) == 3 else figsize
         bar_width = 0.3
         fig, axs = plt.subplots(1, len(groups), figsize=figsize)
-        
+
         scale = 0.4
         ll = [x for x in range(len(METHODS))]
         for i in range(len(groups)):

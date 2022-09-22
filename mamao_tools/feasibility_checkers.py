@@ -4,11 +4,6 @@ import numpy as np
 import time
 import torch
 import json
-import copy
-import sys
-from os.path import join, abspath, dirname
-sys.path.append(join('..', 'pybullet_planning', 'fastamp'))
-# print('\nsys.path', sys.path)
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
