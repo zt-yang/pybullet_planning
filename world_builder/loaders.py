@@ -79,6 +79,7 @@ def create_pr2_robot(world, base_q=(0,0,0),
                      DUAL_ARM=False, USE_TORSO=True,
                      custom_limits=BASE_LIMITS,
                      resolutions=BASE_RESOLUTIONS,
+                     DRAW_BASE_LIMITS=False,
                      max_velocities=BASE_VELOCITIES, robot=None):
 
     if robot is None:
@@ -97,7 +98,8 @@ def create_pr2_robot(world, base_q=(0,0,0),
     if isinstance(custom_limits, dict):
         custom_limits = np.asarray(list(custom_limits.values())).T.tolist()
 
-    draw_base_limits(custom_limits)
+    if DRAW_BASE_LIMITS:
+        draw_base_limits(custom_limits)
     robot = PR2Robot(robot, base_link=BASE_LINK, joints=BASE_JOINTS,
                      DUAL_ARM=DUAL_ARM, USE_TORSO=USE_TORSO,
                      custom_limits=get_base_custom_limits(robot, custom_limits),
@@ -145,6 +147,7 @@ def Box(x1=0., x2=0.,
         z1=0., z2=0.):
     return AABB(lower=[x1, y1, z1],
                 upper=[x2, y2, z2])
+
 
 def get_room_boxes(width=1., length=None, height=None, thickness=0.01, gap=INF, yaw=0.):
     # TODO: interval of beams
@@ -194,6 +197,7 @@ def create_room(color=GREY, *args, **kwargs):
     return create_body(collision_id, visual_id, mass=STATIC_MASS)
 
 #######################################################
+
 
 SHAPE_INDICES = {
     # TODO: add doorways

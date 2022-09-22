@@ -848,6 +848,8 @@ def load_pybullet(filename, fixed_base=False, scale=1., **kwargs):
     # fixed_base=False implies infinite base mass
     with LockRenderer():
         if filename.endswith('.urdf'):
+            # if 'pr2_description' in filename:
+            #     filename = '/home/yang/Documents/kitchen-worlds/assets/models/drake/pr2_description/urdf/pr2_simplified.urdf'
             flags = get_urdf_flags(**kwargs)
             body = p.loadURDF(filename, useFixedBase=fixed_base, flags=flags,
                               globalScaling=scale, physicsClientId=CLIENT)
@@ -912,6 +914,7 @@ def load_model(rel_path, pose=None, **kwargs):
     abs_path = get_model_path(rel_path)
     add_data_path()
     #with LockRenderer():
+    print('pybullet_planning.load_model:', abs_path)
     body = load_pybullet(abs_path, **kwargs)
     if pose is not None:
         set_pose(body, pose)

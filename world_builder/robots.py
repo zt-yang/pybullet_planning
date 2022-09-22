@@ -307,7 +307,7 @@ class PR2Robot(RobotAPI):
     </include>
 """
 
-    def get_positions(self, joint_group='base', roundto=None):
+    def get_joints_from_group(self, joint_group):
         from pybullet_tools.pr2_utils import get_arm_joints, get_group_joints
         if joint_group == 'base':
             joints = self.joints
@@ -315,10 +315,19 @@ class PR2Robot(RobotAPI):
             joints = get_group_joints(self.body, joint_group)
         else: ## if joint_group == 'left':
             joints = get_arm_joints(self.body, joint_group)
+        return joints
+
+    def get_positions(self, joint_group='base', roundto=None):
+        joints = self.get_joints_from_group(joint_group)
         positions = self.get_joint_positions(joints)
         if roundto == None:
             return positions
         return tuple([round(n, roundto) for n in positions])
+
+    def set_group_positions(self, joint_group, positions):
+        joints = self.get_joints_from_group(joint_group)
+        assert len(joints) == len(positions)
+        self.set_joint_positions(joints, positions)
 
     # def get_custom_limits(self):
     #     return get_base_custom_limits(self, BASE_LIMITS)

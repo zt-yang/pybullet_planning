@@ -1,5 +1,6 @@
 import numpy as np
 from itertools import product
+from os.path import abspath
 
 from .pr2_utils import set_arm_conf, REST_LEFT_ARM, open_arm, \
     close_arm, get_carry_conf, arm_conf, get_other_arm, set_group_conf, PR2_URDF, DRAKE_PR2_URDF, create_gripper
