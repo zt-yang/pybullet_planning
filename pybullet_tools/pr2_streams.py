@@ -792,10 +792,10 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
             bq_after = pose_to_bconf(world_from_base, robot)
 
             bq_after.assign()
-            if collided(robot, obstacles, articulated=False, world=world, verbose=True, min_num_pts=10):
+            if collisions and collided(robot, obstacles, articulated=False, world=world, verbose=True, min_num_pts=10):
                 if len(bpath) > 1:
                     bpath[-1].assign()
-            elif collided(o[0], other_obstacles, articulated=False, world=world, verbose=True, min_num_pts=10):
+            elif collisions and collided(o[0], other_obstacles, articulated=False, world=world, verbose=True, min_num_pts=10):
                 import ipdb; ipdb.set_trace()
                 if len(bpath) > 1:
                     bpath[-1].assign()
