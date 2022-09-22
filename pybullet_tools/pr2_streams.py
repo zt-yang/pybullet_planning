@@ -745,6 +745,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
 
         arm_joints = get_arm_joints(robot, a)
         resolutions = DEFAULT_RESOLUTION * np.ones(len(arm_joints))
+        other_obstacles = [mm for mm in obstacles if mm != o[0]]
 
         # BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
         # joint_object = BODY_TO_OBJECT[o]
@@ -791,7 +792,8 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
             bq_after = pose_to_bconf(world_from_base, robot)
 
             bq_after.assign()
-            if collided(robot, obstacles, articulated=False, world=world, verbose=True, min_num_pts=10):
+            if collided(robot, obstacles, articulated=False, world=world, verbose=True, min_num_pts=10) or \
+                    collided(o[0], obstacles, articulated=False, world=world, verbose=True, min_num_pts=10):
                 if len(bpath) > 1:
                     bpath[-1].assign()
             else:

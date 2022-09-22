@@ -345,7 +345,7 @@ def get_joint_position_open_gen(problem):
     return fn
 
 
-def sample_joint_position_open_list_gen(problem, num_samples = 3):
+def sample_joint_position_open_list_gen(problem, num_samples = 6):
     def fn(o, psn1, fluents=[]):
         psn2 = None
         if psn1.extent == 'max':
@@ -368,7 +368,7 @@ def sample_joint_position_open_list_gen(problem, num_samples = 3):
         positions = []
         if psn2 == None or abs(psn1.value - psn2.value) > math.pi/2:
             # positions.append((Position(o, lower+math.pi/2), ))
-            lower += math.pi/2
+            lower += math.pi/2 - math.pi/8
             higher = lower + math.pi/8
             ptns = [np.random.uniform(lower, higher) for k in range(num_samples)]
             ptns.append(1.77)

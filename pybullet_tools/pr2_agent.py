@@ -58,7 +58,8 @@ from world_builder.entities import Object
 from world_builder.actions import get_primitive_actions
 from world_builder.world_generator import get_pddl_from_list
 
-def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True, pull_collisions=True, base_collisions=True):
+def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
+                   pull_collisions=True, base_collisions=True):
     # p = problem
     # c = collisions
     # l = custom_limits
@@ -67,6 +68,12 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True, 
     motion_collisions &= c
     base_collisions &= c
     pull_collisions &= c
+    print('\n------------ STREAM MAP -------------')
+    print('Movable collisions:', movable_collisions)
+    print('Motion collisions:', motion_collisions)
+    print('Pull collisions:', pull_collisions)
+    print('Base collisions:', base_collisions)
+    print('Teleport:', t)
 
     stream_map = {
         'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c)),
@@ -184,6 +191,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True, 
 #         'plan-base-motion': StreamInfo(opt_gen_fn=from_fn(opt_motion_fn)),
 #     })
 #     return stream_info
+
 
 def get_stream_info(unique=False):
     stream_info = {
@@ -708,6 +716,7 @@ def get_named_colors(kind='tablaeu', alpha=1.):
     return {name.split(':')[-1].replace(' ', '-').lower(): RGBA(*to_rgba(hex, alpha=alpha))
             for name, hex in colors.items()}
 
+
 def colorize_world(world, color_types=['brown', 'tan'], transparency=0.5):
     named_colors = get_named_colors(kind='xkcd')
     colors = [color for name, color in named_colors.items()
@@ -716,7 +725,7 @@ def colorize_world(world, color_types=['brown', 'tan'], transparency=0.5):
         joints = get_movable_joints(body)
         if not joints:
             continue
-        dump_body(body)
+        # dump_body(body)
         #body_color = apply_alpha(WHITE, alpha=0.5)
         #body_color = random.choice(colors)
         body_color = apply_alpha(0.9*np.ones(3))
@@ -734,8 +743,10 @@ def colorize_world(world, color_types=['brown', 'tan'], transparency=0.5):
             link_color = apply_alpha(link_color, alpha=1.0 if link in rigid else transparency)
             set_color(body, link=link, color=link_color)
 
+
 def serial_checker(checker):
     return lambda plans: list(map(checker, plans))
+
 
 def get_debug_checker(world):
     def debug_checker(plans):
@@ -775,6 +786,7 @@ def get_debug_checker(world):
         wait_unlocked()
         return [True]*len(plans)
     return debug_checker
+
 
 def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=False,
                      collect_dataset=False, max_cost=INF,

@@ -8,24 +8,8 @@ from .entities import Object, Region, Environment, Robot, Camera, Floor, Stove,\
 from .loaders import create_pr2_robot, load_rooms, load_cart, load_cart_regions, load_blocked_kitchen, \
     load_blocked_sink, load_blocked_stove, load_floor_plan, load_experiment_objects, load_pot_lid, load_basin_faucet, \
     load_kitchen_mechanism, create_gripper_robot, load_cabinet_test_scene, load_random_mini_kitchen_counter, \
-    load_another_table, load_another_fridge_food, random_set_doors
-from .utils import load_asset, FLOOR_HEIGHT, WALL_HEIGHT, visualize_point
-from .world_generator import to_lisdf, save_to_kitchen_worlds
-
-from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, HideOutput, load_model, TURTLEBOT_URDF, \
-    set_all_color, dump_body, draw_base_limits, multiply, Pose, Euler, PI, draw_pose, unit_pose, create_box, TAN, Point, \
-    GREEN, create_cylinder, INF, BLACK, WHITE, RGBA, GREY, YELLOW, BLUE, BROWN, RED, stable_z, set_point, set_camera_pose, \
-    set_all_static, get_model_info, load_pybullet, remove_body, get_aabb, set_pose, wait_if_gui, get_joint_names, \
-    get_min_limit, get_max_limit, set_joint_position, set_joint_position, get_joints, get_joint_info, get_moving_links, \
-    get_pose, get_joint_position, enable_gravity, enable_real_time, get_links, set_color, dump_link, draw_link_name, \
-    get_link_pose, get_aabb, get_link_name, sample_aabb, aabb_contains_aabb, aabb2d_from_aabb, sample_placement, \
-    aabb_overlap, get_links, get_collision_data, get_visual_data, link_from_name, body_collision, get_closest_points, \
-    load_pybullet, FLOOR_URDF, pairwise_collision, is_movable, get_bodies, get_aabb_center, draw_aabb, quat_from_euler
-from pybullet_tools.pr2_primitives import get_group_joints, Conf
-from pybullet_tools.pr2_agent import pddlstream_from_state_goal, test_marker_pull_grasps
-from pybullet_tools.pr2_streams import get_marker_grasp_gen, Position, \
-    sample_points_along_line, get_bconf_in_region_test, get_bconf_in_region_gen, get_pull_marker_to_bconf_motion_gen, \
-    get_pull_marker_to_pose_motion_gen, get_pull_marker_random_motion_gen, get_parent_new_pose, get_bqs_given_p2
+    load_another_table, load_another_fridge_food, random_set_doors, ensure_robot_cfree
+from pybullet_tools.utils import Pose, Euler, PI, create_box, TAN, Point, set_camera_pose, link_from_name
 from pybullet_tools.bullet_utils import set_camera_target_body, set_camera_target_robot, draw_collision_shapes, \
     open_joint, collided
 
@@ -209,11 +193,6 @@ def test_one_fridge(world, verbose=True):
     return None, goal
 
 
-def ensure_robot_cfree(world, verbose=True):
-    obstacles = [o for o in get_bodies() if o != world.robot]
-    while collided(world.robot, obstacles, verbose=verbose):
-        world.robot.randomly_spawn()
-
 def sample_one_fridge_scene(world, verbose=True, open_doors=True):
 
     ## later we may want to automatically add irrelevant objects and joints
@@ -273,7 +252,7 @@ def sample_fridge_table_goal(world):
 
     arm = world.robot.arms[0]
 
-    if random.random() < 0.5: ## 0.5
+    if random.random() < 0.5 and False: ## 0.5
         goal_candidates = [
             [('Holding', arm, cabbage.body)],
             [('On', cabbage, table.body)],

@@ -1029,7 +1029,7 @@ def load_fridge_with_food_on_surface(world, counter, name='minifridge', cabbage=
     else:
         y = random.uniform(y_min, y_max)
     (_, _, z), quat = get_pose(minifridge)
-    z += 0.05
+    z += 0.02
     set_pose(minifridge, ((x, y, z), quat))
     set_camera_target_body(minifridge, dx=2, dy=0, dz=2)
 
@@ -1062,11 +1062,27 @@ def load_fridge_with_food_on_surface(world, counter, name='minifridge', cabbage=
     return list(minifridge_doors.keys())
 
 
+def ensure_doors_cfree(doors, verbose=True, **kwargs):
+    containers = [d[0] for d in doors]
+    containers = list(set(containers))
+    for a in containers:
+        obstacles = [o for o in containers if o != a]
+        if collided(a, obstacles, verbose=verbose):
+            random_set_doors(doors, **kwargs)
+
+
+def ensure_robot_cfree(world, verbose=True):
+    obstacles = [o for o in get_bodies() if o != world.robot]
+    while collided(world.robot, obstacles, verbose=verbose):
+        world.robot.randomly_spawn()
+
+
 def random_set_doors(doors, extent_max=1.0, epsilon=0.7):
     for door in doors:
         if random.random() < epsilon:
             extent = random.random()
-            open_joint(door[0], door[1], extent=extent)
+            open_joint(door[0], door[1], extent=min(extent, extent_max))
+    ensure_doors_cfree(doors, epsilon=epsilon, extent_max=extent_max)
 
 
 def load_another_table(world, w=6, l=6, four_ways=True):
@@ -1080,11 +1096,12 @@ def load_another_table(world, w=6, l=6, four_ways=True):
                    RANDOM_INSTANCE=True, verbose=False), category='supporter', name='table'))
 
     (x, y, z), quat = get_pose(table)
-    offset = random.uniform(0.05, 0.15)
+    offset = random.uniform(0.1, 0.35)
     if four_ways:
         case = random.choice(range(4))
     else:
         case = random.choice(range(2))
+    case = 3 ## debug base collision
 
     if case == 0:  ## on the left of the counter
         y = get_aabb(counter).lower[1] - get_aabb_extent(get_aabb(table))[1]/2 - offset
@@ -1190,6 +1207,6 @@ def load_another_fridge_food(world, verbose=True):
 
     placement[new_food] = s.pybullet_name
 
-    random_set_doors(doors, epsilon=0)
+    random_set_doors(doors, epsilon=0.5)
     ## the goal will be to pick one object and put in the other fridge
     return placement
