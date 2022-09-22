@@ -430,9 +430,11 @@ def adapt_action(a, problem, plan):
         aq1 = continuous[act[9].split('=')[0]]
         aq1 = Conf(robot.body, robot.get_arm_joints(a.arm), aq1)
         funk = get_pull_door_handle_motion_gen(problem)
+        set_renderer(False)
         with LockRenderer(True):
             funk(a.arm, a.object, pstn1, pstn2, a.grasp, bq1, aq1)
         # print(LINK_POSE_TO_JOINT_POSITION)
+        set_renderer(True)
     return a
 
 
