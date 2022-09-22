@@ -799,7 +799,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
                 if len(bpath) > 1:
                     bpath[-1].assign()
             elif collisions and collided(o[0], other_obstacles, articulated=False, world=world, verbose=True):
-                import ipdb; ipdb.set_trace()
+                # import ipdb; ipdb.set_trace()
                 if len(bpath) > 1:
                     bpath[-1].assign()
             else:

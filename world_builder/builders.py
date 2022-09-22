@@ -207,7 +207,7 @@ def sample_one_fridge_scene(world, verbose=True, open_doors=True):
     """ ============== Change joint positions ================ """
     ## only after all objects have been placed inside
     if open_doors:
-        random_set_doors(minifridge_doors, epsilon=0.5)
+        random_set_doors(minifridge_doors, epsilon=0.2)
 
     """ ============== Check collisions ================ """
     ensure_robot_cfree(world, verbose=verbose)
@@ -272,7 +272,6 @@ def sample_fridge_table_goal(world):
 
 
 def test_fridges_tables(world, verbose=True):
-    #set_time_seed()
     placement = sample_fridges_tables_scene(world)
     goal = sample_fridges_tables_goal(world, placement)
     return None, goal
@@ -282,7 +281,7 @@ def sample_fridges_tables_scene(world, verbose=True):
     minifridge_doors = sample_one_fridge_scene(world, open_doors=False)
     load_another_table(world, four_ways=False)
     placement = load_another_fridge_food(world)
-    random_set_doors(minifridge_doors, epsilon=0.3, extent_max=0.5)
+    random_set_doors(minifridge_doors, epsilon=0.1, extent_max=0.5)
     ensure_robot_cfree(world, verbose=verbose)
     return placement
 

@@ -1175,22 +1175,30 @@ def load_another_fridge_food(world, verbose=True):
         # #     print(i, random.choice(world.cat_to_objects('space')))
         # return s
 
+    def place_by_space(cabinet, space):
+        width = get_aabb_extent(get_aabb(cabinet))[1] / 2
+        y_max = get_aabb(space[0], link=space[1]).upper[1]
+        y_min = get_aabb(space[0], link=space[1]).lower[1]
+        y0 = get_link_pose(space[0], space[-1])[0][1]
+        (x, y, z), quat = get_pose(cabinet)
+        offset = random.uniform(0.5, 1)
+        if y > y0:
+            y = y_max + offset + width
+        elif y < y0:
+            y = y_min - offset - width
+        set_pose(cabinet, ((x, y, z), quat))
+
     ## place another fridge on the table
     doors = load_fridge_with_food_on_surface(world, table.body, 'cabinet')
-    if random.random() < 0.5 or True:
-        cabinet = world.name_to_body('cabinet')
-        width = get_aabb_extent(get_aabb(cabinet))[1]/2
-        (x, y, z), quat = get_pose(cabinet)
-        y_ori = y
-        y0 = get_link_pose(space[0], space[-1])[0][1]
-        if y > y0:
-            y_max = get_aabb(fridge).upper[1]
-            y = y_max + 0.5 + width
-        elif y < y0:
-            y_min = get_aabb(fridge).lower[1]
-            y = y_min - 0.5 - width
-        set_pose(cabinet, ((x, y, z), quat))
-        print(f'!!! moved cabinet from {r(y_ori)} to {r(y)} (y0 = {r(y0)})')
+    cabinet = world.name_to_body('cabinet')
+    (x, y, z), quat = get_pose(cabinet)
+    y_ori = y
+    y0 = get_link_pose(space[0], space[-1])[0][1]
+    place_by_space(cabinet, space)
+    obstacles = [world.name_to_body('counter')]
+    while collided(cabinet, obstacles, verbose=True):
+        place_by_space(cabinet, space)
+    print(f'!!! moved cabinet from {r(y_ori)} to {r(y)} (y0 = {r(y0)})')
 
     ## place another food in one of the fridges
     new_food = world.add_object(Moveable(
@@ -1217,6 +1225,6 @@ def load_another_fridge_food(world, verbose=True):
 
     placement[new_food] = s.pybullet_name
 
-    random_set_doors(doors, epsilon=0.3)
+    random_set_doors(doors, epsilon=0.1)
     ## the goal will be to pick one object and put in the other fridge
     return placement
