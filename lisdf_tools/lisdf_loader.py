@@ -262,6 +262,11 @@ class World():
                 body, joint = body
                 toggle_joint(body, joint)
 
+    def remove_object(self, body):
+        name = self.body_to_name.pop(body)
+        self.name_to_body.pop(name)
+        remove_body(body)
+
 
 def find_id(body, full_name):
     name = full_name.split(LINK_STR)[1]
@@ -362,7 +367,8 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, use_gui=True, width=1980, heig
     for model in world.models:
         scale = 1
         if isinstance(model, URDFInclude):
-            uri = join(ASSET_PATH, 'scenes', model.uri)
+            # uri = model.uri.replace('/home/yang/Documents/cognitive-architectures/bullet/', '../../')
+            uri = join(ASSET_PATH, 'models', model.uri)
             scale = model.scale_1d
             category = model.content.name
         else:

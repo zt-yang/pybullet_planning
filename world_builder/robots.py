@@ -113,6 +113,11 @@ class RobotAPI(Robot):
         if verbose: print(f'{title} | multiply(body_pose, self.tool_from_hand) = {nice(new_body_pose)}')
         return new_body_pose
 
+    def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
+        body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
+        tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
+        return multiply(body_pose, grasp, tool_from_root)
+
     def set_spawn_range(self, limits):
         self.spawn_range = limits
 
@@ -224,10 +229,10 @@ class PR2Robot(RobotAPI):
         with PoseSaver(body):
             return compute_grasp_width(self.body, arm, body, grasp_pose, **kwargs)
 
-    def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
-        body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
-        tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
-        return multiply(body_pose, grasp, tool_from_root)
+    # def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
+    #     body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
+    #     tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
+    #     return multiply(body_pose, grasp, tool_from_root)
 
     def remove_gripper(self, gripper_handle):
         # TODO: update the cache

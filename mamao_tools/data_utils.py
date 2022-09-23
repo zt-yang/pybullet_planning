@@ -80,3 +80,12 @@ def get_plan_skeleton(plan, indices={}):
                 skeleton += ''.join([f"({o[0]}{o[-1]})" for o in aa[1:] if '::' in o])
             return skeleton
     return ''.join([get_action_abv(a) for a in plan])
+
+
+def get_init_tuples(run_dir):
+    from fastamp.fastamp_utils import get_init, get_objs
+    lines = open(join(run_dir, 'problem.pddl'), 'r').readlines()
+    objs = get_objs(lines)
+    init = get_init(lines, objs, get_all=True)
+    return init
+

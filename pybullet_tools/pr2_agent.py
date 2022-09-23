@@ -1052,7 +1052,7 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False):
         if RETAIN_ALL:
             gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, body=grasp.body,
                                                   color=colors[i%len(colors)], width=w)
-            set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.5)
+            # set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.5)
         else:
             gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, body=grasp.body, color=GREEN, width=w)
             gripper_approach = robot.visualize_grasp(body_pose, grasp.approach, color=BROWN)
@@ -1060,16 +1060,19 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False):
             remove_body(gripper_grasp)
             remove_body(gripper_approach)
 
+        return gripper_grasp
+
     # if not isinstance(outputs, types.GeneratorType):
     #     for i in range(len(outputs)):
     #         visualize_grasp(outputs[i][0], index=i)
     # else:
 
     i = 0
+    gripper_grasp = 0
     for grasp in outputs:
-        visualize_grasp(grasp[0], index=i)
+        gripper_grasp = visualize_grasp(grasp[0], index=i)
         i += 1
-
+    set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.5)
 
     # if RETAIN_ALL:
     #     wait_if_gui()
