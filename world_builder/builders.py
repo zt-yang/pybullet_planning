@@ -11,7 +11,7 @@ from .loaders import create_pr2_robot, load_rooms, load_cart, load_cart_regions,
     load_another_table, load_another_fridge_food, random_set_doors, ensure_robot_cfree
 from pybullet_tools.utils import Pose, Euler, PI, create_box, TAN, Point, set_camera_pose, link_from_name
 from pybullet_tools.bullet_utils import set_camera_target_body, set_camera_target_robot, draw_collision_shapes, \
-    open_joint, collided
+    open_joint
 
 
 def test_pick(world, w=.5, h=.9, mass=1):
@@ -186,14 +186,14 @@ def set_time_seed():
     return seed
 
 
-def test_one_fridge(world, verbose=True):
+def test_one_fridge(world, verbose=True, **kwargs):
     #set_time_seed()
-    sample_one_fridge_scene(world, verbose)
+    sample_one_fridge_scene(world, verbose, **kwargs)
     goal = sample_one_fridge_goal(world)
     return None, goal
 
 
-def sample_one_fridge_scene(world, verbose=True, open_doors=True):
+def sample_one_fridge_scene(world, verbose=True, open_doors=True, SAMPLING=False):
 
     ## later we may want to automatically add irrelevant objects and joints
     world.set_skip_joints()
@@ -202,7 +202,7 @@ def sample_one_fridge_scene(world, verbose=True, open_doors=True):
     world.robot.randomly_spawn()
 
     """ ============== Add world objects ================ """
-    minifridge_doors = load_random_mini_kitchen_counter(world)
+    minifridge_doors = load_random_mini_kitchen_counter(world, SAMPLING=SAMPLING)
 
     """ ============== Change joint positions ================ """
     ## only after all objects have been placed inside
@@ -232,15 +232,15 @@ def sample_one_fridge_goal(world):
 ############################################
 
 
-def test_fridge_table(world, verbose=True):
+def test_fridge_table(world, verbose=True, **kwargs):
     #set_time_seed()
-    sample_fridge_table_scene(world, verbose)
+    sample_fridge_table_scene(world, verbose, **kwargs)
     goal = sample_fridge_table_goal(world)
     return None, goal
 
 
-def sample_fridge_table_scene(world, verbose=True):
-    sample_one_fridge_scene(world, verbose=verbose)
+def sample_fridge_table_scene(world, verbose=True, **kwargs):
+    sample_one_fridge_scene(world, verbose=verbose, **kwargs)
     load_another_table(world)
 
 
@@ -271,16 +271,16 @@ def sample_fridge_table_goal(world):
 ############################################
 
 
-def test_fridges_tables(world, verbose=True):
-    placement = sample_fridges_tables_scene(world)
+def test_fridges_tables(world, verbose=True, **kwargs):
+    placement = sample_fridges_tables_scene(world, **kwargs)
     goal = sample_fridges_tables_goal(world, placement)
     return None, goal
 
 
-def sample_fridges_tables_scene(world, verbose=True):
+def sample_fridges_tables_scene(world, verbose=True, **kwargs):
     minifridge_doors = sample_one_fridge_scene(world, open_doors=False)
     load_another_table(world, four_ways=False)
-    placement = load_another_fridge_food(world)
+    placement = load_another_fridge_food(world, **kwargs)
     random_set_doors(minifridge_doors, epsilon=0.1, extent_max=0.5)
     ensure_robot_cfree(world, verbose=verbose)
     return placement

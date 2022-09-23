@@ -798,10 +798,12 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
                     collided(robot, obstacles, articulated=False, world=world, verbose=True)
                 if len(bpath) > 1:
                     bpath[-1].assign()
+                break
             elif collisions and collided(o[0], other_obstacles, articulated=False, world=world, verbose=True):
                 # import ipdb; ipdb.set_trace()
                 if len(bpath) > 1:
                     bpath[-1].assign()
+                break
             else:
                 bpath.append(bq_after)
                 apath.append(aq_after)
@@ -1410,7 +1412,7 @@ def get_pose_in_region_gen(problem, collisions=True, max_attempts=40, verbose=Fa
 
 ##################################################
 
-def process_motion_fluents(fluents, robot, verbose=True):
+def process_motion_fluents(fluents, robot, verbose=False):
     if verbose:
         print('Fluents:', fluents)
     attachments = []
@@ -1432,6 +1434,7 @@ def process_motion_fluents(fluents, robot, verbose=True):
         else:
             raise NotImplementedError(atom)
     return attachments
+
 
 def get_motion_wconf_gen(problem, custom_limits={}, collisions=True, teleport=False, debug=False):
     robot = problem.robot
