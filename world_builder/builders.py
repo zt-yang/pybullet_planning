@@ -252,7 +252,7 @@ def sample_fridge_table_goal(world):
 
     arm = world.robot.arms[0]
 
-    if random.random() < 0.5 and False: ## 0.5
+    if random.random() < 0.5: ## 0.5
         goal_candidates = [
             [('Holding', arm, cabbage.body)],
             [('On', cabbage, table.body)],
@@ -261,7 +261,7 @@ def sample_fridge_table_goal(world):
         table.place_obj(cabbage)
         table.attach_obj(cabbage)
         goal_candidates = [
-            # [('Holding', arm, cabbage.body)],
+            [('Holding', arm, cabbage.body)],
             [('In', cabbage.body, fridge)],
         ]
 

@@ -1,3 +1,4 @@
+import sys
 import time
 from itertools import product
 from collections import defaultdict
@@ -11,7 +12,7 @@ from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, g
     CameraImage, get_joint_positions, euler_from_quat, get_link_name, get_joint_position, \
     BodySaver, set_pose, INF, add_parameter, irange, wait_for_duration, get_bodies, remove_body, \
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
-    get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput
+    get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked
 from pybullet_tools.pr2_streams import Position, get_handle_grasp_gen, pr2_grasp, WConf
 from pybullet_tools.general_streams import get_stable_list_gen, get_grasp_list_gen, get_contain_list_gen
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
@@ -830,8 +831,11 @@ class State(object):
             ## potential places to put on
             for surface in cat_to_bodies('supporter') + cat_to_bodies('surface'):
                 init += [('Stackable', body, surface)]
-                if is_placement(body, surface):
-                    # print('   found supported', body, surface)
+                if is_placement(body, surface, below_epsilon=0.02) or \
+                        BODY_TO_OBJECT[surface].is_placement(body):
+                    if is_placement(body, surface, below_epsilon=0.02) != BODY_TO_OBJECT[surface].is_placement(body):
+                        print('   \n different conclusion about placement', body, surface)
+                        wait_unlocked()
                     init += [('Supported', body, pose, surface)]
 
             ## potential places to put in ## TODO: check size

@@ -118,6 +118,12 @@ class Object(Index):
 
     ## =============== put other object on top of object =============
     ##
+    def is_placement(self, body):
+        for o in self.supported_objects:
+            if o.body == body:
+                return True
+        return False
+
     def support_obj(self, obj):
         obj.supporting_surface = self
         if obj not in self.supported_objects:
