@@ -54,6 +54,7 @@ class World():
         self.movable = None
         self.fixed = None
         self.floors = None
+        self.body_types = {}
 
         ## for visualization
         self.handles = []
@@ -141,7 +142,7 @@ class World():
         floors = []
         for model in self.lisdf.models:
             body = self.name_to_body[model.name]
-            if model.name not in ['pr2', 'feg']:
+            if 'pr2' not in model.name and 'feg' not in model.name:
                 if model.static: fixed.append(body)
                 else: movable.append(body)
             if hasattr(model, 'links'):
@@ -175,12 +176,26 @@ class World():
         self.check_world_obstacles()
         ob = [n for n in self.fixed if n not in self.floors]
 
+        if init is not None:
+            for f in init:
+                if len(f) == 2 and f[1] in self.body_to_name:
+                    typ, body = f
+                    name = self.body_to_name[body]
+                    if body not in self.body_types:
+                        self.body_types[body] = []
+                        if 'cabinet::link' in name or 'minifridge::link' in name:
+                            self.body_types[body].append('storage')
+                    self.body_types[body].append(typ)
+
         print('----------------')
         print(f'PART I: world objects | {self.summarize_all_types(init)} | obstacles({len(ob)}) = {ob}')
         print('----------------')
 
         for body in sort_body_parts(self.body_to_name.keys()):
-            line = f'{body}\t  |  {self.body_to_name[body]}'
+            name = self.body_to_name[body]
+            line = f'{body}\t  |  {name}'
+            if body in self.body_types:
+                line += f'  |  Types: {self.body_types[body]}'
             if isinstance(body, tuple) and len(body) == 2:
                 body, joint = body
                 pose = get_joint_position(body, joint)
@@ -193,6 +208,11 @@ class World():
                 pose = get_pose(body)
             print(f"{line}\t|  Pose: {nice(pose)}")
         print('----------------')
+
+    def get_type(self, body):
+        if body in self.body_types:
+            return self.body_types[body]
+        return []
 
     def get_name(self, body):
         if body in self.body_to_name:
