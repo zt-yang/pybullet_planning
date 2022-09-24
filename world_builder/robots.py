@@ -202,7 +202,8 @@ class PR2Robot(RobotAPI):
     def create_gripper(self, arm='left', visual=True):
         # TODO(caelan): gripper bodies are removed
         from pybullet_tools.pr2_utils import create_gripper
-        return create_gripper(self.body, arm=arm, visual=visual)
+        g = self.grippers[arm] = create_gripper(self.body, arm=arm, visual=visual)
+        return g
 
     def get_gripper(self, arm='left', **kwargs):
         if arm not in self.grippers:
@@ -233,6 +234,10 @@ class PR2Robot(RobotAPI):
     #     body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
     #     tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
     #     return multiply(body_pose, grasp, tool_from_root)
+
+    def remove_grippers(self):
+        for body in self.grippers.values():
+            self.remove_gripper(body)
 
     def remove_gripper(self, gripper_handle):
         # TODO: update the cache

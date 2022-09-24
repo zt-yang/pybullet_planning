@@ -295,7 +295,7 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=
                 break
 
             ## special sampler for data collection
-            if 'storage' in world.get_name(space) or force_storage:
+            if 'storage' in world.get_name(space) or 'storage' in world.get_type(space):
                 from world_builder.loaders import place_in_cabinet
                 if verbose:
                     print('use special pose sampler')
@@ -347,7 +347,7 @@ def get_joint_position_open_gen(problem):
     return fn
 
 
-def sample_joint_position_open_list_gen(problem, num_samples = 6):
+def sample_joint_position_open_list_gen(problem, num_samples = 10):
     def fn(o, psn1, fluents=[]):
         psn2 = None
         if psn1.extent == 'max':
@@ -370,8 +370,8 @@ def sample_joint_position_open_list_gen(problem, num_samples = 6):
         positions = []
         if psn2 == None or abs(psn1.value - psn2.value) > math.pi/2:
             # positions.append((Position(o, lower+math.pi/2), ))
-            lower += math.pi/2 - math.pi/8
-            higher = lower + math.pi/8
+            lower += math.pi/2 ## - math.pi/8
+            higher = min(lower + math.pi/4, get_joint_limits(o[0], o[1])[1])
             ptns = [np.random.uniform(lower, higher) for k in range(num_samples)]
             ptns.append(1.77)
             positions.extend([(Position(o, p), ) for p in ptns])

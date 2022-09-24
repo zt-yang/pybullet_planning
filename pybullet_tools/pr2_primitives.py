@@ -22,12 +22,12 @@ from .utils import invert, multiply, get_name, set_pose, get_link_pose, is_place
     disable_real_time, enable_gravity, joint_controller_hold, get_distance, get_links, get_link_name, \
     get_min_limit, user_input, step_simulation, get_body_name, get_bodies, BASE_LINK, \
     add_segments, get_max_limit, link_from_name, BodySaver, get_aabb, interpolate_poses, \
-    plan_direct_joint_motion, has_gui, create_attachment, wait_for_duration, get_extend_fn, set_renderer, \
+    plan_direct_joint_motion, has_gui, wait_for_duration, get_extend_fn, set_renderer, \
     get_custom_limits, all_between, get_unit_vector, wait_if_gui, joint_from_name, create_box, set_point, \
     set_base_values, euler_from_quat, INF, elapsed_time, get_moving_links, flatten_links, get_relative_pose, \
     wait_unlocked, child_link_from_joint, get_rigid_clusters, link_pairs_collision
 
-from .bullet_utils import nice, set_camera_target_robot, set_camera_target_body, Attachment
+from .bullet_utils import nice, set_camera_target_robot, set_camera_target_body, Attachment, create_attachment
 
 BASE_EXTENT = 3.5 # 2.5
 BASE_LIMITS = (-BASE_EXTENT*np.ones(2), BASE_EXTENT*np.ones(2))
@@ -753,6 +753,7 @@ class State(object):
         for attachment in self.attachments.values():
             #attach.attachment.assign()
             attachment.assign()
+
 
 def apply_commands(state, commands, time_step=None, pause=False, **kwargs):
     #wait_if_gui('Apply?')

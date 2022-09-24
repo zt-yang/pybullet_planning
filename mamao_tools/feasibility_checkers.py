@@ -26,6 +26,7 @@ class FeasibilityChecker(object):
             inputs = [inputs]
 
         predictions = []
+        printout = []
         indices = get_indices(self.run_dir)
         if 'PVT' not in self.__class__.__name__:
             for input in inputs:
@@ -36,8 +37,8 @@ class FeasibilityChecker(object):
                 skeleton = get_plan_skeleton(plan, indices)
                 self._log['checks'].append((skeleton, plan, prediction))
                 self._log['run_time'].append(round(time.time() - start, 4))
+                printout.append((skeleton, 'pass' if prediction else f'x ({self.skeleton})'))
         else:
-            printout = []
             start = time.time()
             predictions = self._check(inputs)
             run_time = round(time.time() - start, 4)
@@ -53,7 +54,7 @@ class FeasibilityChecker(object):
                 self._log['checks'].append((skeleton, plan, prediction))
                 self._log['run_time'].append(ave_time)
                 printout.append((round(prediction, 3), skeleton))
-            [print(p) for p in printout]
+        [print(p) for p in printout]
 
         # if len(predictions) == 1:
         #     return predictions[0]
@@ -91,7 +92,10 @@ class Oracle(FeasibilityChecker):
     def __init__(self, run_dir, correct):
         super().__init__(run_dir)
         self.correct = correct
-        print(f'\nOracle feasibility checker\n', '\n'.join([str(c) for c in correct]))
+        from fastamp.fastamp_utils import get_plan_skeleton, get_indices
+        self.skeleton = get_plan_skeleton(correct, get_indices(run_dir))
+        print(f'\nOracle feasibility checker - {self.skeleton})\n'+
+              '\n'.join([str(c) for c in correct]))
 
     def _check(self, input):
         if len(input) != len(self.correct):
@@ -105,7 +109,7 @@ class Oracle(FeasibilityChecker):
                     if str(action[j]) != self.correct[i][j]:
                         # print(i, self.correct[i], '\n', action, '\n')
                         return False
-        print('pass', input)
+        # print('pass', input)
         return True
 
 
@@ -205,12 +209,14 @@ class Shuffler(FeasibilityChecker):
         score = np.random.rand()
         return score
 
+
 class Sorter(FeasibilityChecker):
     def _check(self, optimistic_plan):
         score = 1. / (1 + len(optimistic_plan))
         return score # Larger has higher priority
 
 ##################################################
+
 
 def get_plan_from_input(input):
     plan = []
