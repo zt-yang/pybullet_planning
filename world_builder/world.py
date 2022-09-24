@@ -833,15 +833,18 @@ class State(object):
                 init += [('Stackable', body, surface)]
                 if is_placement(body, surface, below_epsilon=0.02) or \
                         BODY_TO_OBJECT[surface].is_placement(body):
-                    if is_placement(body, surface, below_epsilon=0.02) != BODY_TO_OBJECT[surface].is_placement(body):
-                        print('   \n different conclusion about placement', body, surface)
-                        wait_unlocked()
+                    # if is_placement(body, surface, below_epsilon=0.02) != BODY_TO_OBJECT[surface].is_placement(body):
+                    #     print('   \n different conclusion about placement', body, surface)
+                    #     wait_unlocked()
                     init += [('Supported', body, pose, surface)]
 
             ## potential places to put in ## TODO: check size
             for space in cat_to_bodies('container') + cat_to_bodies('space'):
                 init += [('Containable', body, space)]
-                if is_contained(body, space):
+                if is_contained(body, space) or BODY_TO_OBJECT[space].is_contained(body):
+                    # if is_contained(body, space) != BODY_TO_OBJECT[space].is_contained(body):
+                    #     print('   \n different conclusion about containment', body, space)
+                    #     wait_unlocked()
                     if verbose: print('   found contained', body, space)
                     init += [('Contained', body, pose, space)]
 

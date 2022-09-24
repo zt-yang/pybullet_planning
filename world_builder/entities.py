@@ -406,6 +406,12 @@ class Space(Region):
             self.name = get_link_name(body, link)
         self.objects_inside = []
 
+    def is_contained(self, body):
+        for o in self.objects_inside:
+            if o.body == body:
+                return True
+        return False
+
     def include_and_attach(self, obj):
         from pybullet_tools.bullet_utils import create_attachment
         if obj not in self.objects_inside:

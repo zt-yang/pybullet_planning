@@ -215,10 +215,13 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None,
             #     file = get_file_by_category(obj.category)
             # else:
             #     file, scale = get_file_scale(obj.name)
-            if exp_name != None:
-                file = file.replace('../assets/', '../../assets/')
-            if out_path != None:
-                file = file.replace('../assets/', '../../')
+            if '/home/' in file:
+                file = '../..' + file[file.index('/assets'):]
+            else:
+                if exp_name != None:
+                    file = file.replace('../assets/', '../../assets/')
+                if out_path != None:
+                    file = file.replace('../assets/', '../../')
 
             models_sdf += MODEL_URDF_STR.format(
                 name=obj.lisdf_name, file=file,
