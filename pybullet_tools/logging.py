@@ -23,50 +23,6 @@ def myprint(text='', *kwargs):
         f.writelines(string)
 
 
-def record_command(action):
-    from pybullet_tools.pr2_primitives import Commands
-    from world_builder.robots import RobotAPI
-
-    # def print_value(value):
-    #     values = {}
-    #     for f, v in value.__dict__.items():
-    #         if isinstance(v, Commands):
-    #             values[f] = [print_value(vv) for vv in v.commands]
-    #         else:
-    #             values[f] = [str(vv) for vv in v]
-
-    commands = []
-    if isfile(COMMANDS_FILE):
-        with open(COMMANDS_FILE, 'r') as f:
-            commands = json.load(f)
-        os.remove(COMMANDS_FILE)
-
-    commands.append(action)
-
-    with open('file.pkl', 'wb') as file:
-        # A new file will be created
-        pickle.dump(myvar, file)
-
-    step = len(commands)
-
-    # command = {'timestamp': step, 'name': action.__class__.__name__, 'args': {}}
-    # for field, value in action.__dict__.items():
-    #     values = {}
-    #     if hasattr(value, '__dict__'):
-    #         for k, v in value.__dict__.items():
-    #             if isinstance(v, tuple):
-    #                 values[k] = list(v)
-    #             elif isinstance(v, RobotAPI):
-    #                 values[k] = v.name
-    #         command['args'] = values
-    #     # elif value is None:
-    #     #
-    commands.append(command)
-
-    with open(COMMANDS_FILE, 'w') as f:
-        json.dump(commands, f, indent=2)
-
-
 def record_results(goal, plan, planning_time, exp_name='default'):
 
     fieldnames = ['run name', 'planning time', 'plan length']
@@ -92,6 +48,7 @@ def record_results(goal, plan, planning_time, exp_name='default'):
     with open(join(results_dir, f'{name}.txt'), 'w') as f:
         f.writelines(f'Goal: {goal}\n\nPlan:\n')
         f.writelines('\n'.join([str(n) for n in plan]))
+
 
 def summarize_csv(csv_name):
     from tabulate import tabulate
@@ -137,6 +94,7 @@ def summarize_csv(csv_name):
     print()
     print(tabulate(data, headers=fieldnames, showindex='always')) ## , tablefmt='fancy_grid'
 
+
 def write_stream_statistics(externals, verbose=True):
     from pddlstream.language.statistics import dump_total_statistics, \
         dump_online_statistics, merge_data, get_data_path
@@ -159,6 +117,7 @@ def write_stream_statistics(externals, verbose=True):
     write_pickle(filename, data)
     if verbose:
         print('Wrote:', filename)
+
 
 def dump_json(db, db_file, indent=2, width=160, **kwargs):
     """ don't break lines for list elements """

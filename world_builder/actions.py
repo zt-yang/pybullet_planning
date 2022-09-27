@@ -419,18 +419,26 @@ class MoveInSE3Action(Action):
 def adapt_action(a, problem, plan):
     if plan is None:
         return a
+
     if a.__class__.__name__ == 'AttachObjectAction' and isinstance(a.object, tuple):
         robot = problem.world.robot
         plan, continuous = plan
+        def get_value(string):
+            name, tup = string.split('=')
+            # value = continuous[name]
+            # if name.startswith('pstn'):
+            #     value = value[0]
+            # return value
+            return eval(tup)
         act = [aa for aa in plan if aa[0] == 'pull_door_handle' and aa[2] == str(a.object)][0]
-        pstn1 = Position(a.object, continuous[act[3].split('=')[0]][0])
-        pstn2 = Position(a.object, continuous[act[4].split('=')[0]][0])
-        bq1 = continuous[act[6].split('=')[0]]
+        pstn1 = Position(a.object, get_value(act[3]))
+        pstn2 = Position(a.object, get_value(act[4]))
+        bq1 = get_value(act[6])  ## continuous[act[6].split('=')[0]]
         bq1 = Conf(robot.body, robot.get_base_joints(), bq1)
-        aq1 = continuous[act[9].split('=')[0]]
+        aq1 = get_value(act[9]) ## continuous[act[9].split('=')[0]]
         aq1 = Conf(robot.body, robot.get_arm_joints(a.arm), aq1)
         funk = get_pull_door_handle_motion_gen(problem, collisions=False)
-        set_renderer(False)
+        # set_renderer(False)
         with LockRenderer(True):
             funk(a.arm, a.object, pstn1, pstn2, a.grasp, bq1, aq1)
         # print(LINK_POSE_TO_JOINT_POSITION)

@@ -89,3 +89,25 @@ def get_init_tuples(run_dir):
     init = get_init(lines, objs, get_all=True)
     return init
 
+
+def get_lisdf_xml(run_dir):
+    return untangle.parse(join(run_dir, 'scene.lisdf')).sdf.world
+
+
+def get_instance_info(run_dir, world=None):
+    if world is None:
+        world = get_lisdf_xml(run_dir)
+    instances = {}
+    for m in world.include:
+        if 'mobility.urdf' in m.uri.cdata:
+            uri = m.uri.cdata.replace('/mobility.urdf', '')
+            uri = uri[uri.index('models/') + 7:]
+            index = uri[uri.index('/') + 1:]
+            if index == '00001':
+                index = 'VeggieCabbage'
+            instances[m['name']] = index
+    return instances
+
+
+def exist_instance(model_instances, instance):
+    return list(model_instances.values()).count(instance) > 0
