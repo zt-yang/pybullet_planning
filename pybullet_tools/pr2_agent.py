@@ -621,6 +621,7 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     # get_press_gen(problem, teleport=teleport)
     return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
 
+
 def is_plan_abstract(plan):
     for step in plan:
         if '--no-' in step.name:
@@ -637,7 +638,7 @@ from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, st
 def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False, lock=False,
               max_time=INF, downward_time=10, evaluation_time=10, visualize=False):
     if diverse:
-        max_plans = 300
+        max_plans = 100
         plan_dataset = []
         max_skeletons = 1
         use_feedback = False

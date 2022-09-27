@@ -1,5 +1,7 @@
 import random
 
+from os.path import join, isdir, abspath, isfile, abspath, dirname
+import copy
 import numpy as np
 import time
 import torch
@@ -132,12 +134,11 @@ class PVT(FeasibilityChecker):
             PT_NEWER
         from fastamp.fastamp_utils import get_facts_goals_visuals, get_successful_plan, \
             get_action_elems, get_plans
-        args.input_mode = 'pigi'
 
         """ get data """
         self.run_dir = run_dir
         self.args = args
-        self.data = get_facts_goals_visuals(run_dir, mode=args.image_mode, links_only=True)
+        self.data = get_facts_goals_visuals(run_dir, mode=args.input_mode, img_mode=args.image_mode, links_only=True)
         plan_gt = get_successful_plan(run_dir, self.data['indices'], self.data['continuous'])[0]
         self.plan_gt = [get_action_elems(a) for a in plan_gt]
         # plan_gt, continuous = get_plans(run_dir, self.data['indices'], self.data['continuous'])
@@ -165,7 +166,7 @@ class PVT(FeasibilityChecker):
         import torch.nn as nn
         args = self.args
 
-        dataset =[]
+        dataset = []
         for input in inputs:
             data = copy.deepcopy(self.data)
             plan = []
@@ -181,7 +182,7 @@ class PVT(FeasibilityChecker):
 
         base_2 = np.ceil(np.log2(len(inputs)))
         bs = min(2 ** int(base_2), 128)
-        Dataset = get_dataset(args.input_mode)
+        Dataset = get_dataset('pigi')
         data_loader = torch.utils.data.DataLoader(
             Dataset(dataset),
             batch_size=bs, shuffle=True,
