@@ -133,7 +133,7 @@ class Object(Index):
         from pybullet_tools.bullet_utils import create_attachment
         link = self.link if self.link is not None else 0
         self.world.ATTACHMENTS[obj] = create_attachment(self, link, obj, OBJ=True)
-        self.support_obj(obj)
+        obj.change_supporting_surface(self)
 
     def place_new_obj(self, obj_name, max_trial=8):
         from pybullet_tools.bullet_utils import sample_obj_on_body_link_surface
@@ -360,6 +360,12 @@ class Moveable(Object):
         super(Moveable, self).__init__(body, collision=False, **kwargs)
         self.supporting_surface = None
 
+    def change_supporting_surface(self, obj):
+        if self.supporting_surface is not None:
+            self.supporting_surface.supported_objects.remove(self)
+        obj.support_obj(self)
+
+
 class Steerable(Object):
     def __init__(self, body, **kwargs):
         super(Steerable, self).__init__(body, collision=False, **kwargs)
@@ -396,7 +402,7 @@ class Surface(Region):
         super(Region, self).__init__(body, link=link, **kwargs)
         if self.name is None:
             self.name = get_link_name(body, link)
-        self.supported_objects = []
+        # self.supported_objects = []
 
 class Space(Region):
     """ to support object inside, like cabinets and drawers """
@@ -404,18 +410,19 @@ class Space(Region):
         super(Region, self).__init__(body, link=link, **kwargs)
         if self.name is None:
             self.name = get_link_name(body, link)
-        self.objects_inside = []
+        # self.objects_inside = []
 
     def is_contained(self, body):
-        for o in self.objects_inside:
+        for o in self.supported_objects:
             if o.body == body:
                 return True
         return False
 
     def include_and_attach(self, obj):
         from pybullet_tools.bullet_utils import create_attachment
-        if obj not in self.objects_inside:
-            self.objects_inside.append(obj)
+        if obj not in self.supported_objects:
+            # self.supported_objects.append(obj)
+            obj.change_supporting_surface(self)
         attachment = create_attachment(self, self.link, obj, OBJ=True)
         self.world.ATTACHMENTS[obj] = attachment
 

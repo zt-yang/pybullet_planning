@@ -255,7 +255,7 @@ def sample_fridge_table_goal(world):
     if random.random() < 0.5: ## 0.5
         goal_candidates = [
             [('Holding', arm, cabbage.body)],
-            [('On', cabbage, table.body)],
+            # [('On', cabbage, table.body)],
         ]
     else:
         table.place_obj(cabbage)
@@ -281,7 +281,7 @@ def sample_fridges_tables_scene(world, verbose=True, **kwargs):
     minifridge_doors = sample_one_fridge_scene(world, open_doors=False)
     load_another_table(world, four_ways=False)
     placement = load_another_fridge_food(world, **kwargs)
-    random_set_doors(minifridge_doors, epsilon=0.5, extent_max=0.5)
+    random_set_doors(minifridge_doors, epsilon=0.25, extent_max=0.5)
     ensure_robot_cfree(world, verbose=verbose)
     return placement
 
@@ -300,8 +300,8 @@ def sample_fridges_tables_goal(world, placement):
 
     ## the goal will be to pick one object and put in the other fridge
     goal_candidates = [
-        # [('Holding', arm, food)],
-        [('In', food, other)],
+        [('Holding', arm, food)],
+        # [('In', food, other)],
     ]
 
     return random.choice(goal_candidates)

@@ -67,6 +67,7 @@ class World(object):
             for b in get_bodies():
                 if b not in self.BODY_TO_OBJECT and b not in self.ROBOT_TO_OBJECT:
                     remove_body(b)
+                    print('world.removed redundant body', b)
 
     def remove_handles(self):
         remove_handles(self.handles)
