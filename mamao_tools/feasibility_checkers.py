@@ -1,6 +1,6 @@
 import random
 
-from os.path import join, isdir, abspath, isfile, abspath, dirname
+from os.path import join, isdir, abspath, isfile, abspath, dirname, basename
 import copy
 import numpy as np
 import time
@@ -130,20 +130,13 @@ class PVT(FeasibilityChecker):
 
     def __init__(self, run_dir, pt_path=None, task_name=None, mode='pvt', scoring=False):
         super().__init__(run_dir)
-        from fastamp.test_piginet import get_model, DAFAULT_PT_NAME, args, TASK_PT_NAMES, \
-            PT_NEWER
+        from fastamp.test_piginet import get_model, DAFAULT_PT_NAME, TASK_PT_NAMES, \
+            PT_NEWER, get_args
         from fastamp.fastamp_utils import get_facts_goals_visuals, get_successful_plan, \
             get_action_elems, get_plans
 
         """ get data """
         self.run_dir = run_dir
-        self.args = args
-        self.data = get_facts_goals_visuals(run_dir, mode=args.input_mode, img_mode=args.image_mode, links_only=True)
-        plan_gt = get_successful_plan(run_dir, self.data['indices'], self.data['continuous'])[0]
-        self.plan_gt = [get_action_elems(a) for a in plan_gt]
-        # plan_gt, continuous = get_plans(run_dir, self.data['indices'], self.data['continuous'])
-        # self.data['continuous'].update(continuous)
-        # self.plan_gt = [get_action_elems(a) for a in plan_gt[0]]
 
         """ get model """
         if pt_path is None:
@@ -153,9 +146,17 @@ class PVT(FeasibilityChecker):
             elif mode in PT_NEWER:
                 pt_name = PT_NEWER[mode]
             pt_path = join(dirname(abspath(__file__)), '..', 'fastamp', 'models', pt_name)
-
         self.pt_path = abspath(pt_path)
-        self._model = get_model(pt_path)
+
+        self.args = args = get_args(basename(pt_path))
+        self.data = get_facts_goals_visuals(run_dir, mode=args.input_mode, img_mode=args.image_mode, links_only=True)
+        plan_gt = get_successful_plan(run_dir, self.data['indices'], self.data['continuous'])[0]
+        self.plan_gt = [get_action_elems(a) for a in plan_gt]
+        # plan_gt, continuous = get_plans(run_dir, self.data['indices'], self.data['continuous'])
+        # self.data['continuous'].update(continuous)
+        # self.plan_gt = [get_action_elems(a) for a in plan_gt[0]]
+
+        self._model = get_model(pt_path, args)
         self.scoring = scoring
         print('\n\nPVT model loaded from', pt_path, '\n\n')
 
