@@ -18,9 +18,7 @@ from utils import DATASET_PATH
 
 VIOLIN = False
 FPC = False
-
-PAPER_VERSION = False
-SAVE_PDF = True
+PAPER_VERSION = False ## no preview, just save pdf
 
 from matplotlib import rc
 rc('font', **{'family':'serif', 'serif':['Times']})
@@ -31,8 +29,7 @@ GROUPS = ['tt_one_fridge_table_pick', 'tt_one_fridge_table_in',
 METHODS = ['None', 'shuffle', 'binary', 'pvt', 'oracle'] ## 'pvt*',
 METHOD_NAMES = ['Baseline', 'Shuffle', 'PST-0/1', 'PST', 'Oracle']
 ## ## , 'random' , 'piginet', 'pvt-task', 'pvt-2', 'pvt|rel=all'
-check_time = 1663221059  ## first done  |
-check_time = 1663139616 if PAPER_VERSION else check_time ## after relabeling
+check_time = 1664255601.350403
 
 color_dict = {
     'b': ('#3498db', '#2980b9'),
@@ -51,16 +48,18 @@ colors_darker = [color_dict[k][0] for k in ['b', 'r', 'g', 'y', 'gray']]
 ## see which files are missing
 # METHODS = ['None', 'oracle'] ## , 'pvt'
 SAME_Y_AXES = False
+RERUN_SUBDIR = 'rerun_1'
+
 
 
 def get_rundirs(task_name):
     data_dir = join(DATASET_PATH, task_name)
-    # data_dir = join(DATASET_PATH, 'tt1', task_name)
-    dirs = [join(data_dir, f) for f in listdir(data_dir) if isdir(join(data_dir, f))]
+    # data_dir = join(DATASET_PATH, 'tt_0915', 'tt1', task_name)
+    dirs = [join(data_dir, f, RERUN_SUBDIR) for f in listdir(data_dir) if isdir(join(data_dir, f))]
     # dirs = []
-    if PAPER_VERSION:
-        data_dir = join(DATASET_PATH, 'tt1', task_name)
-        dirs.extend([join(data_dir, f) for f in listdir(data_dir) if isdir(join(data_dir, f))])
+    if PAPER_VERSION and False:
+        data_dir = join(DATASET_PATH, 'tt_0915', 'tt1', task_name)
+        dirs.extend([join(data_dir, f, RERUN_SUBDIR) for f in listdir(data_dir) if isdir(join(data_dir, f))])
     dirs.sort()
     return dirs
 
@@ -209,7 +208,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                 maxs[method].append(np.max(data[group][method]))
                 label = data[group]['run_dir'][method][np.argmax(data[group][method])]
                 label = label.replace(abspath(DATASET_PATH), '')
-                label = label.replace('/', '').replace(group, '').replace('tt1', '-')
+                label = label.replace('/', '').replace(group, '').replace('tt1', '-').replace(RERUN_SUBDIR, '')
                 argmaxs[method].append(f"#{label}")
                 counts[method].append(len(data[group][method]))
                 if SAME_Y_AXES:
@@ -348,7 +347,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                         axs[i].annotate(bar_label,  # text
                                     (j*scale, 0),  # points location to label
                                     textcoords="offset points",
-                                    xytext=(0, -80),  # distance between the points and label
+                                    xytext=(0, -40),  # distance between the points and label
                                     ha='center', color='gray',
                                     fontsize=10)
                         axs[i].annotate(agm[j],  # text

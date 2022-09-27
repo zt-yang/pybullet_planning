@@ -282,6 +282,8 @@ class Attach(Command):
     def apply(self, state, **kwargs):
         state.attachments[self.body] = create_attachment(self.robot, self.link, self.body)
         state.grasps[self.body] = self.grasp
+        if self.body not in state.poses:
+            print('Warning: attaching body without pose')
         del state.poses[self.body]
         yield
     def control(self, dt=0, **kwargs):
