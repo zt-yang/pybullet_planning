@@ -25,10 +25,16 @@ rc('font', **{'family':'serif', 'serif':['Times']})
 # rc('text', usetex=True)
 
 GROUPS = ['tt_one_fridge_table_pick', 'tt_one_fridge_table_in',
-          'tt_two_fridge_in']  ## ## 'tt_one_fridge_table_on', 'tt_one_fridge_pick', 'tt_two_fridge_pick',
-METHODS = ['None', 'shuffle', 'binary', 'pvt', 'oracle'] ## 'pvt*',
+          'tt_two_fridge_pick', 'tt_two_fridge_in']  ## ## 'tt_one_fridge_table_on', 'tt_one_fridge_pick',
+
+METHODS = ['None', 'shuffle', 'binary', 'pvt', 'oracle']
 METHOD_NAMES = ['Baseline', 'Shuffle', 'PST-0/1', 'PST', 'Oracle']
 ## ## , 'random' , 'piginet', 'pvt-task', 'pvt-2', 'pvt|rel=all'
+
+METHODS = ['None', 'pvt', 'pvt*', 'oracle'] ##
+METHOD_NAMES = ['Baseline', 'PST', 'PST+features', 'Oracle']
+## ## , 'random' , 'piginet', 'pvt-task', 'pvt-2', 'pvt|rel=all'
+
 check_time = 1664255601.350403
 
 color_dict = {
