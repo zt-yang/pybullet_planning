@@ -365,7 +365,6 @@ class Moveable(Object):
             self.supporting_surface.supported_objects.remove(self)
         obj.support_obj(self)
 
-
 class Steerable(Object):
     def __init__(self, body, **kwargs):
         super(Steerable, self).__init__(body, collision=False, **kwargs)

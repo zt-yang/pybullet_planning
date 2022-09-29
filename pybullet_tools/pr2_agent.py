@@ -6,6 +6,7 @@ import sys
 import time
 import numpy as np
 import types
+import json
 
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_pull_drawer_handle_motion_gen
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_turn_knob_handle_motion_gen
@@ -838,6 +839,8 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
     else:
         max_plans, max_planner_time, max_skeletons = 1, 10, INF
 
+    max_solutions = 6
+
     # profiler = Profiler(field='cumtime' if profile else None, num=25) # cumtime | tottime
     # profiler.save()
     if True:
@@ -858,7 +861,8 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
                                      forbid=True,
                                      max_plans=max_plans, max_skeletons=max_skeletons,
                                      fc=feasibility_checker,
-                                     plan_dataset=plan_dataset, evaluation_time=10, max_solutions=1,
+                                     plan_dataset=plan_dataset, evaluation_time=10,
+                                     max_solutions=max_solutions,
                                      search_sample_ratio=0, **kwargs)
 
     else:
@@ -869,6 +873,7 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
     if plan_dataset is not None:
         from mamao_tools.data_utils import get_plan_skeleton
         indices = world.get_indices()
+        solutions_log = []
         for i, (opt_solution, real_solution) in enumerate(plan_dataset):
             stream_plan, (opt_plan, preimage), opt_cost = opt_solution
             plan = None
@@ -878,6 +883,14 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
             skeleton = get_plan_skeleton(opt_plan, indices=indices)
             print(f'\n{i+1}/{len(plan_dataset)}) Optimistic Plan: {opt_plan}\n'
                   f'Skeleton: {skeleton}\nPlan: {plan}')
+            log = {
+                'optimistic_plan': str(opt_plan),
+                'skeleton': str(skeleton),
+                'plan': [str(a) for a in plan] if plan is not None else None,
+            }
+            solutions_log.append(log)
+        with open('multiple_solutions.json', 'w') as f:
+            json.dump(solutions_log, f, indent=3)
 
     # PARALLEL = True
     #
