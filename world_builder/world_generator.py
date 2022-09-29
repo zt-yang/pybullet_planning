@@ -334,7 +334,7 @@ def save_to_exp_folder(state, init, goal, out_path):
                           out_path=out_path+'_problem.pddl')
 
 
-def save_to_outputs_folder(outpath, exp_path, data_generation=False):
+def save_to_outputs_folder(outpath, exp_path, data_generation=False, multiple_solutions=False):
     if data_generation:
         original = 'visualizations'
         if isfile(join(original, 'log.json')):
@@ -360,6 +360,8 @@ def save_to_outputs_folder(outpath, exp_path, data_generation=False):
     shutil.move(f"{exp_path}_log.txt", join(data_path, 'log.txt'))
     shutil.move(f"{exp_path}_time.json", join(data_path, 'plan.json'))
     shutil.move(f"{exp_path}_commands.pkl", join(data_path, 'commands.pkl'))
+    if multiple_solutions:
+        shutil.move(f"multiple_solutions.json", join(data_path, 'multiple_solutions.json'))
 
 
 def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXIT=True,

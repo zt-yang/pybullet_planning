@@ -300,8 +300,8 @@ def sample_fridges_tables_goal(world, placement):
 
     ## the goal will be to pick one object and put in the other fridge
     goal_candidates = [
-        [('Holding', arm, food)],
-        # [('In', food, other)],
+        # [('Holding', arm, food)],
+        [('In', food, other)],
     ]
 
     return random.choice(goal_candidates)
