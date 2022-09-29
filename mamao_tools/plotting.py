@@ -21,18 +21,18 @@ FPC = False
 PAPER_VERSION = False ## no preview, just save pdf
 
 from matplotlib import rc
-rc('font', **{'family':'serif', 'serif':['Times']})
+rc('font', **{'family': 'serif', 'serif': ['Times']})
 # rc('text', usetex=True)
 
-GROUPS = ['tt_one_fridge_table_pick', 'tt_one_fridge_table_in',
-          'tt_two_fridge_pick', 'tt_two_fridge_in']  ## ## 'tt_one_fridge_table_on', 'tt_one_fridge_pick',
+GROUPS = ['tt_one_fridge_table_pick', 'tt_one_fridge_table_in', 'tt_two_fridge_pick',
+          'tt_two_fridge_in']  ## ## 'tt_one_fridge_table_on', 'tt_one_fridge_pick',
 
 METHODS = ['None', 'shuffle', 'binary', 'pvt', 'oracle']
 METHOD_NAMES = ['Baseline', 'Shuffle', 'PST-0/1', 'PST', 'Oracle']
 ## ## , 'random' , 'piginet', 'pvt-task', 'pvt-2', 'pvt|rel=all'
 
-METHODS = ['None', 'pvt', 'pvt*', 'oracle'] ##
-METHOD_NAMES = ['Baseline', 'PST', 'PST+features', 'Oracle']
+METHODS = ['None', 'pvt', 'pvt*', 'pvt-task', 'oracle'] ##
+METHOD_NAMES = ['Baseline', 'PST', 'PST*', 'PST-task', 'Oracle']
 ## ## , 'random' , 'piginet', 'pvt-task', 'pvt-2', 'pvt|rel=all'
 
 check_time = 1664255601.350403
@@ -370,7 +370,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
             if PAPER_VERSION:
                 axs[i].set_title(labels[i], fontsize=11, y=-0.2)
             else:
-                axs[i].set_title(labels[i], fontsize=11, y=-0.24)
+                axs[i].set_title(f"{labels[i]} ({len(get_rundirs(groups[i]))})", fontsize=11, y=-0.24)
 
             axs[i].set_xticks(ll)
             axs[i].set_xticklabels(METHOD_NAMES, fontsize=10) ## , y=-0.25 , rotation=45
@@ -398,15 +398,15 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
 
 
 if __name__ == '__main__':
-    print('time.time()', int(time.time()))
+    # print('time.time()', int(time.time()))
+    # plot_bar_chart(get_time_data(diverse=True), diverse=True)
     # plot_bar_chart(get_time_data())
-    plot_bar_chart(get_time_data(diverse=True), diverse=True)
 
-    # while True:
-    #     plot_bar_chart(get_time_data(diverse=True), diverse=True, update=True)
-    #     print('waiting for new data...')
-    #     plt.pause(30)
-    #     plt.close('all')
+    while True:
+        plot_bar_chart(get_time_data(diverse=True), diverse=True, update=True)
+        print('waiting for new data...')
+        plt.pause(30)
+        plt.close('all')
 
     # duration = 4
     # while True:
