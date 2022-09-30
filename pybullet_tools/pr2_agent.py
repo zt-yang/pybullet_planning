@@ -840,7 +840,7 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
         max_plans, max_planner_time, max_skeletons = 1, 10, INF
 
     max_solutions = 6
-    evaluation_time = 300
+    evaluation_time = 120
 
     # profiler = Profiler(field='cumtime' if profile else None, num=25) # cumtime | tottime
     # profiler.save()
