@@ -69,12 +69,12 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
     motion_collisions &= c
     base_collisions &= c
     pull_collisions &= c
-    print('\n------------ STREAM MAP -------------')
-    print('Movable collisions:', movable_collisions)
-    print('Motion collisions:', motion_collisions)
-    print('Pull collisions:', pull_collisions)
-    print('Base collisions:', base_collisions)
-    print('Teleport:', t)
+    # print('\n------------ STREAM MAP -------------')
+    # print('Movable collisions:', movable_collisions)
+    # print('Motion collisions:', motion_collisions)
+    # print('Pull collisions:', pull_collisions)
+    # print('Base collisions:', base_collisions)
+    # print('Teleport:', t)
 
     stream_map = {
         'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c)),
@@ -668,12 +668,12 @@ def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False, lock=Fals
     return solution
 
 
-def solve_multiple(problem, stream_info={}, visualize=False, lock=True):
+def solve_multiple(pddlstream_problem, stream_info, lock=True, **kwargs):
     reset_globals()
     # profiler = Profiler(field='tottime', num=25) ## , enable=profile # cumtime | tottime
     # profiler.save()
 
-    temp_dir = '/tmp/pddlstream-{}/'.format(os.getpid())
+    temp_dir = '/tmp/pddlstream-{}-{}/'.format(os.getpid(), int(time.time()))
     print(f'\n\n\n\nsolve_multiple at temp dir {temp_dir} \n\n\n\n')
     safe_remove(temp_dir)
     ensure_dir(temp_dir)
@@ -681,23 +681,11 @@ def solve_multiple(problem, stream_info={}, visualize=False, lock=True):
     cwd_saver.save()  # TODO: move to the constructor
     lock_saver = LockRenderer(lock=lock)
 
-    try:
-        solution = solve_focused(problem, stream_info=stream_info,
-                                  planner='ff-astar1', max_planner_time=10, debug=False,
-                                  unit_costs=True, success_cost=INF,
-                                  max_time=INF, verbose=True, visualize=visualize,
-                                  unit_efforts=True, effort_weight=1,
-                                  bind=True, max_skeletons=INF,
-                                  search_sample_ratio=0)
-        # solution = solve(problem, algorithm=DEFAULT_ALGORITHM, unit_costs=False, visualize=visualize,
-        #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
-    finally:
-        lock_saver.restore()
-        cwd_saver.restore()
-        safe_remove(temp_dir)
+    solution = solve_one(pddlstream_problem, stream_info, lock=lock, **kwargs)
 
     # profiler.restore()
     return solution, join(cwd_saver.tmp_cwd, 'visualizations')
+
 
 def get_named_colors(kind='tablaeu', alpha=1.):
     # from matplotlib._color_data import BASE_COLORS, TABLEAU_COLORS, XKCD_COLORS, CSS4_COLORS

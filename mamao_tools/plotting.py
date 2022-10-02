@@ -16,6 +16,7 @@ sns.set_style("darkgrid", {"axes.facecolor": ".9"})
 
 from utils import DATASET_PATH
 
+AUTO_REFRESH = False
 VIOLIN = False
 FPC = False
 PAPER_VERSION = False ## no preview, just save pdf
@@ -398,23 +399,25 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
 
 
 if __name__ == '__main__':
-    # print('time.time()', int(time.time()))
-    # plot_bar_chart(get_time_data(diverse=True), diverse=True)
-    # plot_bar_chart(get_time_data())
 
-    while True:
-        plot_bar_chart(get_time_data(diverse=True), diverse=True, update=True)
-        print('waiting for new data...')
-        plt.pause(30)
-        plt.close('all')
+    if not AUTO_REFRESH:
+        print('time.time()', int(time.time()))
+        plot_bar_chart(get_time_data(diverse=True), diverse=True)
+        # plot_bar_chart(get_time_data())
+    else:
+        while True:
+            plot_bar_chart(get_time_data(diverse=True), diverse=True, update=True)
+            print('waiting for new data...')
+            plt.pause(30)
+            plt.close('all')
 
-    # duration = 4
-    # while True:
-    #     plot_bar_chart(get_time_data(diverse=True), update=True)
-    #     print('waiting for new data...')
-    #     plt.pause(duration)
-    #     plt.close('all')
-    #     plot_bar_chart(get_time_data(), update=True)
-    #     print('waiting for new data...')
-    #     plt.pause(duration)
-    #     plt.close('all')
+        # duration = 4
+        # while True:
+        #     plot_bar_chart(get_time_data(diverse=True), update=True)
+        #     print('waiting for new data...')
+        #     plt.pause(duration)
+        #     plt.close('all')
+        #     plot_bar_chart(get_time_data(), update=True)
+        #     print('waiting for new data...')
+        #     plt.pause(duration)
+        #     plt.close('all')

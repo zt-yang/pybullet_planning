@@ -62,13 +62,16 @@ class FeasibilityChecker(object):
         #     return predictions[0]
         return predictions
 
-    def dump_log(self, json_path):
+    def dump_log(self, json_path, plans_only=False):
         with open(json_path, 'w') as f:
             config = {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
             if 'args' in config:
                 config['args'] = config['args'].__dict__
             self._log['config'] = config
-            json.dump(self._log, f, indent=3)
+            log = copy.deepcopy(self._log)
+            if plans_only:
+                log.pop('run_time')
+            json.dump(log, f, indent=3)
 
 
 class PassAll(FeasibilityChecker):
@@ -106,8 +109,9 @@ class Oracle(FeasibilityChecker):
             action = [input[i].name] + list(input[i].args)
             for j in range(len(self.correct[i])):
                 if '=' not in self.correct[i][j]:
-                    # if len(action) != len(self.correct[i]):
-                    #     print('len(input[i]) != len(self.correct[i])', action, self.correct[i])
+                    if len(action) != len(self.correct[i]):
+                        print('len(input[i]) != len(self.correct[i])', action, self.correct[i])
+                        return False
                     if str(action[j]) != self.correct[i][j]:
                         # print(i, self.correct[i], '\n', action, '\n')
                         return False
