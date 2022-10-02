@@ -55,8 +55,7 @@ colors_darker = [color_dict[k][0] for k in ['b', 'r', 'g', 'y', 'gray']]
 ## see which files are missing
 # METHODS = ['None', 'oracle'] ## , 'pvt'
 SAME_Y_AXES = False
-RERUN_SUBDIR = 'rerun_1'
-
+RERUN_SUBDIR = 'rerun_2'
 
 
 def get_rundirs(task_name):
