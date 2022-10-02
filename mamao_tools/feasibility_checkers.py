@@ -161,27 +161,35 @@ class PVT(FeasibilityChecker):
         # self.plan_gt = [get_action_elems(a) for a in plan_gt[0]]
 
         self._model = get_model(pt_path, args)
+        self._model.eval()
         self.scoring = scoring
         print('\n\nPVT model loaded from', pt_path, '\n\n')
 
     def _check(self, inputs):
         from fastamp.text_utils import ACTION_NAMES
         from fastamp.datasets import get_dataset, collate
-        from fastamp.fastamp_utils import get_action_elems
+        from fastamp.fastamp_utils import get_action_elems, get_plan_skeleton
         import torch.nn as nn
         args = self.args
 
+        indices = self.data['indices']
         dataset = []
+        index = 0
         for input in inputs:
             data = copy.deepcopy(self.data)
             plan = []
             for a in input:
                 elems = get_action_elems(a.args)
-                elems = [data['indices'][e] if e in data['indices'] else e for e in elems]
+                elems = [indices[e] if e in indices else e for e in elems]
+                if 'grasp' in ACTION_NAMES[a.name]:
+                    continue
                 plan.append([ACTION_NAMES[a.name]] + elems)
             data['plan'] = plan
+            data['index'] = index
+            data['skeleton'] = get_plan_skeleton(plan, indices)
             label = 1 if plan == self.plan_gt else 0
             dataset.append((data, label))
+            index += 1
 
         # import ipdb; ipdb.set_trace()
 
@@ -189,8 +197,8 @@ class PVT(FeasibilityChecker):
         bs = min(2 ** int(base_2), 128)
         Dataset = get_dataset('pigi')
         data_loader = torch.utils.data.DataLoader(
-            Dataset(dataset),
-            batch_size=bs, shuffle=True,
+            Dataset(dataset, test_time=True),
+            batch_size=bs, shuffle=False,
             num_workers=args.num_workers, collate_fn=collate
         )
         for inputs, labels in data_loader:
@@ -201,6 +209,9 @@ class PVT(FeasibilityChecker):
                     predictions = nn.Sigmoid()(outputs).cpu().numpy()
                 else:
                     predictions = nn.Sigmoid()(outputs).round().cpu().bool().numpy()
+
+                # skeletons = [d['skeleton'] for d in inputs[1]]
+                # scores = {i: (skeletons[i], predictions[i].item()) for i in range(len(predictions))}
         if len(inputs) == 1:
             return predictions[0].item()
         return [p.item() for p in predictions]
