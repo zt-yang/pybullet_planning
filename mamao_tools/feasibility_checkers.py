@@ -201,6 +201,7 @@ class PVT(FeasibilityChecker):
             batch_size=bs, shuffle=False,
             num_workers=args.num_workers, collate_fn=collate
         )
+        all_predictions = []
         for inputs, labels in data_loader:
             with torch.set_grad_enabled(False):
                 outputs = self._model(inputs)
@@ -209,12 +210,13 @@ class PVT(FeasibilityChecker):
                     predictions = nn.Sigmoid()(outputs).cpu().numpy()
                 else:
                     predictions = nn.Sigmoid()(outputs).round().cpu().bool().numpy()
+                all_predictions.extend([p.item() for p in predictions])
 
-                # skeletons = [d['skeleton'] for d in inputs[1]]
-                # scores = {i: (skeletons[i], predictions[i].item()) for i in range(len(predictions))}
         if len(inputs) == 1:
             return predictions[0].item()
-        return [p.item() for p in predictions]
+        # skeletons = [d['skeleton'] for d in inputs[1]]
+        # scores = {i: (skeletons[i], all_predictions[i]) for i in range(len(skeletons))}
+        return all_predictions
 
 
 ##################################################
