@@ -2,34 +2,20 @@ import math
 import random
 from os.path import join
 
+import pybullet as p
 from .world import World, State
 from .entities import Object, Region, Environment, Robot, Camera, Floor, Stove,\
     Surface, Moveable, Supporter, Steerable, Door
 from .loaders import create_pr2_robot, load_rooms, load_cart, load_cart_regions, load_blocked_kitchen, \
     load_blocked_sink, load_blocked_stove, load_floor_plan, load_experiment_objects, load_pot_lid, load_basin_faucet, \
     load_kitchen_mechanism, create_gripper_robot, load_cabinet_test_scene, load_random_mini_kitchen_counter, \
-    load_another_table, load_another_fridge_food, random_set_doors
-from .utils import load_asset, FLOOR_HEIGHT, WALL_HEIGHT, visualize_point
-from .world_generator import to_lisdf, save_to_kitchen_worlds, save_to_test_cases
+    load_another_table, load_another_fridge_food, random_set_doors, ensure_robot_cfree
+from pybullet_tools.utils import Pose, Euler, PI, create_box, TAN, Point, set_camera_pose, link_from_name, connect, \
+    enable_preview, draw_pose, unit_pose, set_all_static, wait_if_gui, reset_simulation
 
-import pybullet as p
-from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, HideOutput, load_model, TURTLEBOT_URDF, \
-    set_all_color, dump_body, draw_base_limits, multiply, Pose, Euler, PI, draw_pose, unit_pose, create_box, TAN, Point, \
-    GREEN, create_cylinder, INF, BLACK, WHITE, RGBA, GREY, YELLOW, BLUE, BROWN, RED, stable_z, set_point, set_camera_pose, \
-    set_all_static, get_model_info, load_pybullet, remove_body, get_aabb, set_pose, wait_if_gui, get_joint_names, \
-    get_min_limit, get_max_limit, set_joint_position, set_joint_position, get_joints, get_joint_info, get_moving_links, \
-    get_pose, get_joint_position, enable_gravity, enable_real_time, get_links, set_color, dump_link, draw_link_name, \
-    get_link_pose, get_aabb, get_link_name, sample_aabb, aabb_contains_aabb, aabb2d_from_aabb, sample_placement, \
-    aabb_overlap, get_links, get_collision_data, get_visual_data, link_from_name, body_collision, get_closest_points, \
-    load_pybullet, FLOOR_URDF, pairwise_collision, is_movable, get_bodies, get_aabb_center, draw_aabb, quat_from_euler, \
-    connect, enable_preview, reset_simulation
-from pybullet_tools.pr2_primitives import get_group_joints, Conf
-from pybullet_tools.pr2_agent import pddlstream_from_state_goal, test_marker_pull_grasps
-from pybullet_tools.pr2_streams import get_marker_grasp_gen, Position, \
-    sample_points_along_line, get_bconf_in_region_test, get_bconf_in_region_gen, get_pull_marker_to_bconf_motion_gen, \
-    get_pull_marker_to_pose_motion_gen, get_pull_marker_random_motion_gen, get_parent_new_pose, get_bqs_given_p2
 from pybullet_tools.bullet_utils import set_camera_target_body, set_camera_target_robot, draw_collision_shapes, \
-    open_joint, collided
+    open_joint
+from world_builder.world_generator import to_lisdf, save_to_test_cases
 
 
 def create_pybullet_world(args, builder, world_name='test_scene', SAVE_LISDF=False, EXIT=True, RESET=True,
@@ -54,9 +40,6 @@ def create_pybullet_world(args, builder, world_name='test_scene', SAVE_LISDF=Fal
     """ ============== sample world configuration ==================== """
 
     world = World(args, time_step=args.time_step)
-    if not hasattr(world, 'robot'):
-        robot = create_pr2_robot(world, custom_limits=custom_limits, base_q=(x, y, PI / 2 + PI / 2))
-        robot.set_spawn_range(((4.2, 2, 0.5), (5, 3.5, 1.9)))
     floorplan, goal = builder(world, verbose=verbose)
 
     ## no gravity once simulation starts
@@ -244,24 +227,23 @@ def test_feg_pick(world, floorplan='counter.svg', verbose=True):
 
 ############################################
 
-
-def test_one_fridge(world, verbose=True):
+def set_time_seed():
     import numpy as np
     import time
     seed = int(time.time())
     np.random.seed(seed)
     random.seed(seed)
-    sample_one_fridge_scene(world, verbose)
+    return seed
+
+
+def test_one_fridge(world, verbose=True, **kwargs):
+    #set_time_seed()
+    sample_one_fridge_scene(world, verbose, **kwargs)
     goal = sample_one_fridge_goal(world)
     return None, goal
 
 
-def ensure_robot_cfree(world, verbose=True):
-    obstacles = [o for o in get_bodies() if o != world.robot]
-    while collided(world.robot, obstacles, verbose=verbose):
-        world.robot.randomly_spawn()
-
-def sample_one_fridge_scene(world, verbose=True, open_doors=True):
+def sample_one_fridge_scene(world, verbose=True, open_doors=True, SAMPLING=False):
 
     ## later we may want to automatically add irrelevant objects and joints
     world.set_skip_joints()
@@ -270,12 +252,12 @@ def sample_one_fridge_scene(world, verbose=True, open_doors=True):
     world.robot.randomly_spawn()
 
     """ ============== Add world objects ================ """
-    minifridge_doors = load_random_mini_kitchen_counter(world)
+    minifridge_doors = load_random_mini_kitchen_counter(world, SAMPLING=SAMPLING)
 
     """ ============== Change joint positions ================ """
     ## only after all objects have been placed inside
     if open_doors:
-        random_set_doors(minifridge_doors)
+        random_set_doors(minifridge_doors, epsilon=0.2)
 
     """ ============== Check collisions ================ """
     ensure_robot_cfree(world, verbose=verbose)
@@ -300,19 +282,15 @@ def sample_one_fridge_goal(world):
 ############################################
 
 
-def test_fridge_table(world, verbose=True):
-    import numpy as np
-    import time
-    seed = int(time.time())
-    np.random.seed(seed)
-    random.seed(seed)
-    sample_fridge_table_scene(world, verbose)
+def test_fridge_table(world, verbose=True, **kwargs):
+    #set_time_seed()
+    sample_fridge_table_scene(world, verbose, **kwargs)
     goal = sample_fridge_table_goal(world)
     return None, goal
 
 
-def sample_fridge_table_scene(world, verbose=True):
-    sample_one_fridge_scene(world, verbose=verbose)
+def sample_fridge_table_scene(world, verbose=True, **kwargs):
+    sample_one_fridge_scene(world, verbose=verbose, **kwargs)
     load_another_table(world)
 
 
@@ -324,15 +302,16 @@ def sample_fridge_table_goal(world):
 
     arm = world.robot.arms[0]
 
-    if random.random() < 0.5:
+    if random.random() < 0.5: ## 0.5
         goal_candidates = [
             [('Holding', arm, cabbage.body)],
-            [('On', cabbage, table.body)],
+            # [('On', cabbage, table.body)],
         ]
     else:
         table.place_obj(cabbage)
+        table.attach_obj(cabbage)
         goal_candidates = [
-            [('Holding', arm, cabbage.body)],
+            # [('Holding', arm, cabbage.body)],
             [('In', cabbage.body, fridge)],
         ]
 
@@ -342,22 +321,17 @@ def sample_fridge_table_goal(world):
 ############################################
 
 
-def test_fridges_tables(world, verbose=True):
-    import numpy as np
-    import time
-    seed = int(time.time())
-    np.random.seed(seed)
-    random.seed(seed)
-    placement = sample_fridges_tables_scene(world)
+def test_fridges_tables(world, verbose=True, **kwargs):
+    placement = sample_fridges_tables_scene(world, **kwargs)
     goal = sample_fridges_tables_goal(world, placement)
     return None, goal
 
 
-def sample_fridges_tables_scene(world, verbose=True):
+def sample_fridges_tables_scene(world, verbose=True, **kwargs):
     minifridge_doors = sample_one_fridge_scene(world, open_doors=False)
     load_another_table(world, four_ways=False)
-    placement = load_another_fridge_food(world)
-    random_set_doors(minifridge_doors, extent_max=0.5)
+    placement = load_another_fridge_food(world, **kwargs)
+    random_set_doors(minifridge_doors, epsilon=0.25, extent_max=0.5)
     ensure_robot_cfree(world, verbose=verbose)
     return placement
 

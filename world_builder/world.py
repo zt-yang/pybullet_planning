@@ -1,3 +1,4 @@
+import sys
 import time
 from itertools import product
 from collections import defaultdict
@@ -5,12 +6,13 @@ import copy
 from os.path import join
 
 from pddlstream.language.constants import Equal, AND
+from pddlstream.algorithms.downward import set_cost_scale
 
 from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, get_pose, LockRenderer, \
     CameraImage, get_joint_positions, euler_from_quat, get_link_name, get_joint_position, \
     BodySaver, set_pose, INF, add_parameter, irange, wait_for_duration, get_bodies, remove_body, \
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
-    get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput
+    get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked
 from pybullet_tools.pr2_streams import Position, get_handle_grasp_gen, pr2_grasp, WConf
 from pybullet_tools.general_streams import get_stable_list_gen, get_grasp_list_gen, get_contain_list_gen
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
@@ -65,6 +67,7 @@ class World(object):
             for b in get_bodies():
                 if b not in self.BODY_TO_OBJECT and b not in self.ROBOT_TO_OBJECT:
                     remove_body(b)
+                    print('world.removed redundant body', b)
 
     def remove_handles(self):
         remove_handles(self.handles)
@@ -627,6 +630,13 @@ class World(object):
         image = self.camera.get_image(segment=self.args.segment)
         visualize_camera_image(image, self.camera.index, img_dir=self.img_dir)
 
+    def get_indices(self):
+        """ for fastamp project """
+        body_to_name = {str(k): v.lisdf_name for k, v in self.BODY_TO_OBJECT.items()}
+        body_to_name[str(self.robot.body)] = self.robot.name
+        body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
+        return body_to_name
+
     @property
     def max_delta(self):
         return self.max_velocities * self.time_step
@@ -758,7 +768,7 @@ class State(object):
         return Observation(self, robot_conf=robot_conf, obj_poses=obj_poses,
                            facts=facts, variables=variables, image=image)
 
-    def get_facts(self, init_facts=[], conf_saver=None, obj_poses=None, verbose=True):
+    def get_facts(self, init_facts=[], conf_saver=None, obj_poses=None, use_wconf=False, verbose=True):
         robot = self.world.robot.body
         cat_to_bodies = self.world.cat_to_bodies
         cat_to_objects = self.world.cat_to_objects
@@ -790,6 +800,7 @@ class State(object):
                     return fact[2]
             return grasp
 
+        set_cost_scale(cost_scale=1)
         init = [Equal(('PickCost',), 1), Equal(('PlaceCost',), 1),
                 ('CanMove',), ('CanPull',)]
 
@@ -821,14 +832,20 @@ class State(object):
             ## potential places to put on
             for surface in cat_to_bodies('supporter') + cat_to_bodies('surface'):
                 init += [('Stackable', body, surface)]
-                if is_placement(body, surface):
-                    # print('   found supported', body, surface)
+                if is_placement(body, surface, below_epsilon=0.02) or \
+                        BODY_TO_OBJECT[surface].is_placement(body):
+                    # if is_placement(body, surface, below_epsilon=0.02) != BODY_TO_OBJECT[surface].is_placement(body):
+                    #     print('   \n different conclusion about placement', body, surface)
+                    #     wait_unlocked()
                     init += [('Supported', body, pose, surface)]
 
             ## potential places to put in ## TODO: check size
             for space in cat_to_bodies('container') + cat_to_bodies('space'):
                 init += [('Containable', body, space)]
-                if is_contained(body, space):
+                if is_contained(body, space) or BODY_TO_OBJECT[space].is_contained(body):
+                    # if is_contained(body, space) != BODY_TO_OBJECT[space].is_contained(body):
+                    #     print('   \n different conclusion about containment', body, space)
+                    #     wait_unlocked()
                     if verbose: print('   found contained', body, space)
                     init += [('Contained', body, pose, space)]
 
@@ -878,10 +895,13 @@ class State(object):
             init += [(k[0], k[1])]
 
         ## --- world configuration
-        wconf = self.get_wconf(init)
+        if use_wconf:
+            wconf = self.get_wconf(init)
+        else:
+            wconf = None
         init += [('WConf', wconf), ('InWConf', wconf)]
-        if verbose: print('world.get_facts | initial wconf', wconf.printout())
-
+        if verbose and (wconf is not None):
+            print('world.get_facts | initial wconf', wconf.printout())
         # ## ---- add multiple world conf for joints
         # from pybullet_tools.general_streams import sample_joint_position_open_list_gen, get_pose_from_attachment
         # joint_opener = sample_joint_position_open_list_gen(self, num_samples=1)

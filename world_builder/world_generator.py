@@ -208,16 +208,20 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None,
             if not hasattr(obj, 'path'):
                 print('world_generator.file', obj)
             file = obj.path
-            scale = get_scale_by_category(file, obj.category)
+            # scale = get_scale_by_category(file, obj.category)
+            scale = obj.scale
             # if obj.category in OBJ_SCALES:
             #     scale = OBJ_SCALES[obj.category]
             #     file = get_file_by_category(obj.category)
             # else:
             #     file, scale = get_file_scale(obj.name)
-            if exp_name != None:
-                file = file.replace('../assets/', '../../assets/')
-            if out_path != None:
-                file = file.replace('../assets/', '../../')
+            if '/home/' in file:
+                file = '../..' + file[file.index('/assets'):]
+            else:
+                if exp_name != None:
+                    file = file.replace('../assets/', '../../assets/')
+                if out_path != None:
+                    file = file.replace('../assets/', '../../')
 
             models_sdf += MODEL_URDF_STR.format(
                 name=obj.lisdf_name, file=file,
@@ -330,9 +334,7 @@ def save_to_exp_folder(state, init, goal, out_path):
                           out_path=out_path+'_problem.pddl')
 
 
-def save_to_outputs_folder(outpath, exp_path, data_generation=False):
-    exp_path = exp_path.replace('.mp4', '')
-
+def save_to_outputs_folder(outpath, exp_path, data_generation=False, multiple_solutions=False):
     if data_generation:
         original = 'visualizations'
         if isfile(join(original, 'log.json')):
@@ -352,9 +354,14 @@ def save_to_outputs_folder(outpath, exp_path, data_generation=False):
     shutil.move(outpath, data_path)
 
     """ =========== move the log and plan =========== """
+    if exp_path is None:
+        return # TODO(caelan): happens when an empty plan
+    exp_path = exp_path.replace('.mp4', '')
     shutil.move(f"{exp_path}_log.txt", join(data_path, 'log.txt'))
     shutil.move(f"{exp_path}_time.json", join(data_path, 'plan.json'))
     shutil.move(f"{exp_path}_commands.pkl", join(data_path, 'commands.pkl'))
+    if multiple_solutions:
+        shutil.move(f"multiple_solutions.json", join(data_path, 'multiple_solutions.json'))
 
 
 def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXIT=True,
@@ -377,15 +384,9 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
                              world_name=world_name, out_path=join(outpath, 'problem.pddl'))
 
     import platform
-    robot = state.world.robot
-    # body_to_name = {i: state.world.body_to_name(i) for i in get_bodies()}
-    # body_to_name = {str(k): v.name for k, v in state.world.BODY_TO_OBJECT.items()}
-    body_to_name = {str(k): v.lisdf_name for k, v in state.world.BODY_TO_OBJECT.items()}
-    body_to_name[str(robot.body)] = robot.name
-    body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
     config = {
         'base_limits': state.world.robot.custom_limits,  ## state.world.args.base_limits,
-        'body_to_name': body_to_name,
+        'body_to_name': state.world.get_indices(),
         'system': platform.system()
     }
     if state.world.camera != None:

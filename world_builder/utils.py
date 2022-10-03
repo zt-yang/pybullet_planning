@@ -107,6 +107,8 @@ def get_model_scale(file, l=None, w=None, h=None, scale=1, category=None):
 
     ## --- load and adjust
     with HideOutput():
+        if isdir(file):
+            file = join(file, 'mobility.urdf')
         body = load_model(file, scale=scale, fixed_base=True)
     aabb = get_aabb(body)
     extent = get_aabb_extent(aabb)
@@ -156,7 +158,14 @@ def get_sampled_file(SAMPLING, category, ids):
         dist = dists[category.lower()]
 
     if dist is not None:
-        p = [dist[i] for i in ids]
+        p = []
+        for i in ids:
+            if i in dist:
+                p.append(dist[i])
+            else:
+                p.append(0.25)
+        if sum(p) > 1.2:
+            p = [x / sum(p) for x in p]
         if sum(p) != 1:
             p[-1] = 1-sum(p[:-1])
         id = np.random.choice(ids, p=p)
@@ -182,8 +191,8 @@ def get_file_by_category(category, RANDOM_INSTANCE=False, SAMPLING=False):
             paths = [join(asset_root, p) for p in ids]
             paths.sort()
             if RANDOM_INSTANCE:
-                np.random.seed(int(time.time()))
-                random.seed(time.time())
+                # np.random.seed(int(time.time()))
+                # random.seed(time.time())
                 sampled = False
                 if SAMPLING:
                     result = get_sampled_file(SAMPLING, category, ids)
@@ -351,7 +360,8 @@ def get_instances(category):
     if category in MODEL_SCALES:
         return MODEL_SCALES[category]
     elif category in MODEL_HEIGHTS:
-        return MODEL_HEIGHTS[category]['models']
+        instances = MODEL_HEIGHTS[category]['models']
+        return {k: 1 for k in instances}
     elif category.lower() in OBJ_SCALES:
         scale = OBJ_SCALES[category.lower()]
         category = [c for c in listdir(join(ASSET_PATH, 'models')) if c.lower() == category.lower()][0]

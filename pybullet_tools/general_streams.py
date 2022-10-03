@@ -20,7 +20,7 @@ from pybullet_tools.utils import invert, multiply, get_name, set_pose, get_link_
     get_joint_limits, unit_pose, point_from_pose, clone_body, set_all_color, GREEN, BROWN, get_link_subtree, \
     RED, remove_body, aabb2d_from_aabb, aabb_overlap, aabb_contains_point, get_aabb_center, get_link_name, \
     get_links, check_initial_end, get_collision_fn, BLUE, WHITE, TAN, GREY, YELLOW, aabb_contains_aabb, \
-    get_joints, is_movable, pairwise_link_collision, get_closest_points, Pose
+    get_joints, is_movable, pairwise_link_collision, get_closest_points, Pose, PI, quat_from_pose, angle_between, tform_point
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, set_camera_target_body, is_contained, \
     visualize_point, collided, GRIPPER_DIRECTIONS, get_gripper_direction, Attachment, dist, sample_pose, \
@@ -261,19 +261,19 @@ def check_plate_placement(body, surfaces, obstacles, num_samples, num_trials=30)
     return None
 
 
-
 def get_mod_pose(pose):
-    (x,y,z), quat = pose
-    return ((x,y,z+0.01), quat)
+    (x, y, z), quat = pose
+    return ((x, y, z+0.01), quat)
 
 
-def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=10, verbose=False, **kwargs):
+def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=10,
+                         verbose=False, force_storage=False, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
     obstacles = problem.fixed if collisions else []
     world = problem.world
 
     def gen(body, space):
-        set_renderer(verbose)
+        #set_renderer(verbose)
         title = f"  get_contain_gen({body}, {space}) |"
         if space is None:
             spaces = problem.spaces
@@ -286,8 +286,8 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=
             space = random.choice(spaces)  # TODO: weight by area
 
             if isinstance(space, tuple):
-                x, y, z, yaw = sample_obj_in_body_link_space(body, space[0], space[-1],
-                                        PLACEMENT_ONLY=True, verbose=verbose, **kwargs)
+                x, y, z, yaw = sample_obj_in_body_link_space(body, body=space[0], link=space[-1],
+                                                             PLACEMENT_ONLY=True, verbose=verbose, **kwargs)
                 body_pose = ((x, y, z), quat_from_euler(Euler(yaw=yaw)))
             else:
                 body_pose = None
@@ -295,23 +295,28 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=
                 break
 
             ## special sampler for data collection
-            if 'storage' in world.get_name(space):
+            if 'storage' in world.get_name(space) or 'storage' in world.get_type(space):
                 from world_builder.loaders import place_in_cabinet
+                if verbose:
+                    print('use special pose sampler')
                 body_pose = place_in_cabinet(space, body, place=False)
 
             ## there will be collision between body and that link because of how pose is sampled
             p_mod = p = Pose(body, get_mod_pose(body_pose), space)
             p_mod.assign()
             obs = [obst for obst in obstacles if obst not in {body, space}]
-            if not collided(body, obs, verbose=True):
+            if not collided(body, obs, articulated=False, verbose=True):
                 p = Pose(body, body_pose, space)
-                poses.append((p,))
-                # yield (p,)
+                # if return_all:
+                #     poses.append((p,))
+                yield (p,)
         if verbose:
             print(f'{title} reached max_attempts = {max_attempts}')
-        # yield None
-        print(f'{title} return {len(poses)} poses = {poses}')
-        return poses
+
+        # if return_all:
+        #     print(f'{title} return {len(poses)} poses = {poses}')
+        #     return poses
+        yield None
     return gen
 
 
@@ -342,7 +347,7 @@ def get_joint_position_open_gen(problem):
     return fn
 
 
-def sample_joint_position_open_list_gen(problem, num_samples = 3):
+def sample_joint_position_open_list_gen(problem, num_samples = 10):
     def fn(o, psn1, fluents=[]):
         psn2 = None
         if psn1.extent == 'max':
@@ -365,15 +370,17 @@ def sample_joint_position_open_list_gen(problem, num_samples = 3):
         positions = []
         if psn2 == None or abs(psn1.value - psn2.value) > math.pi/2:
             # positions.append((Position(o, lower+math.pi/2), ))
-            lower += math.pi/2
-            higher = lower + math.pi/8
+            lower += math.pi/2 ## - math.pi/8
+            higher = min(lower + math.pi/6, get_joint_limits(o[0], o[1])[1])
             ptns = [np.random.uniform(lower, higher) for k in range(num_samples)]
             ptns.append(1.77)
             positions.extend([(Position(o, p), ) for p in ptns])
         else:
             positions.append((psn2,))
 
-        return positions
+        for pstn in positions:
+            yield pstn
+        # return positions
     return fn
 
 
@@ -403,22 +410,34 @@ def sample_joint_position_open_list_gen(problem, num_samples = 3):
     ==============================================================
 """
 
-def get_grasp_list_gen(problem, collisions=True, randomize=True, visualize=False, RETAIN_ALL=False):
+
+def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=PI/4): # None | PI/4 | INF
+    if top_grasp_tolerance is None:
+        return True
+    grasp_pose = robot.get_grasp_pose(pose, grasp.value, arm, body=body)
+    grasp_orientation = (Point(), quat_from_pose(grasp_pose))
+    grasp_direction = tform_point(grasp_orientation, Point(x=+1))
+    return angle_between(grasp_direction, Point(z=-1)) <= top_grasp_tolerance # TODO: direction parameter
+
+
+def get_grasp_list_gen(problem, collisions=True, top_grasp_tolerance=None, # None | PI/4 | INF
+                       randomize=True, visualize=False, RETAIN_ALL=False):
     robot = problem.robot
+    grasp_type = 'hand'
+    arm = 'left'
 
     def fn(body):
-        arm = 'left'
-        def get_grasps(g_type, grasps_O):
-            return robot.make_grasps(g_type, arm, body, grasps_O, collisions=collisions)
-
         from .bullet_utils import get_hand_grasps
-        grasps = get_grasps('hand', get_hand_grasps(problem, body, visualize=visualize, RETAIN_ALL=RETAIN_ALL))
-
+        grasps_O = get_hand_grasps(problem, body, visualize=visualize, RETAIN_ALL=RETAIN_ALL)
+        grasps = robot.make_grasps(grasp_type, arm, body, grasps_O, collisions=collisions)
+        if top_grasp_tolerance is not None:
+            grasps = [grasp for grasp in grasps if is_top_grasp(
+                robot, arm, body, grasp, top_grasp_tolerance=top_grasp_tolerance)]
         if randomize:
             random.shuffle(grasps)
-        return [(g,) for g in grasps]
-        #for g in grasps:
-        #    yield (g,)
+        # return [(g,) for g in grasps]
+        for g in grasps:
+           yield (g,)
     return fn
 
 
@@ -488,9 +507,9 @@ def get_handle_grasp_gen(problem, collisions=False, randomize=False, visualize=F
 
         if randomize:
             random.shuffle(grasps)
-        return [(g,) for g in grasps]
-        #for g in grasps:
-        #    yield (g,)
+        # return [(g,) for g in grasps]
+        for g in grasps:
+           yield (g,)
     return fn
 
 
@@ -531,6 +550,8 @@ def get_update_wconf_p_gen(verbose=True):
 def get_update_wconf_p_two_gen(verbose=False):
     title = 'general_streams.get_update_wconf_p_two_gen'
     def fn(w1, o, p, o2, p2):
+        if w1 is None:
+            return None
         poses = copy.deepcopy(w1.poses)
         if verbose:
             print(f'{title}\tbefore:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})

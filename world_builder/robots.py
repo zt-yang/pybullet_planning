@@ -15,6 +15,7 @@ from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, close_until_co
     SIDE_HOLDING_LEFT_ARM
 from pybullet_tools.general_streams import get_handle_link
 
+
 class RobotAPI(Robot):
     tool_from_hand = unit_pose()
 
@@ -112,6 +113,11 @@ class RobotAPI(Robot):
         if verbose: print(f'{title} | multiply(body_pose, self.tool_from_hand) = {nice(new_body_pose)}')
         return new_body_pose
 
+    def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
+        body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
+        tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
+        return multiply(body_pose, grasp, tool_from_root)
+
     def set_spawn_range(self, limits):
         self.spawn_range = limits
 
@@ -128,6 +134,11 @@ class PR2Robot(RobotAPI):
         super(PR2Robot, self).__init__(body, **kwargs)
         self.DUAL_ARM = DUAL_ARM
         self.USE_TORSO = USE_TORSO
+        self.grippers = {}
+
+    def get_arm_joints(self, arm):
+        from pybullet_tools.pr2_utils import get_arm_joints
+        return get_arm_joints(self.body, arm)
 
     def get_init(self, init_facts=[], conf_saver=None):
         from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints, \
@@ -180,13 +191,24 @@ class PR2Robot(RobotAPI):
 
         return init
 
-    def get_stream_map(self, problem, collisions, custom_limits, teleport):
+    def get_stream_map(self, problem, collisions, custom_limits, teleport, **kwargs):
         from pybullet_tools.pr2_agent import get_stream_map
-        return get_stream_map(problem, collisions, custom_limits, teleport)
+        return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
+
+    def get_stream_info(self, partial=False, defer=False, **kwargs):
+        from pybullet_tools.pr2_agent import get_stream_info
+        return get_stream_info(**kwargs) ## partial=partial, defer=defer
 
     def create_gripper(self, arm='left', visual=True):
+        # TODO(caelan): gripper bodies are removed
         from pybullet_tools.pr2_utils import create_gripper
-        return create_gripper(self.body, arm=arm, visual=visual)
+        self.grippers[arm] = create_gripper(self.body, arm=arm, visual=visual)
+        return self.grippers[arm]
+
+    def get_gripper(self, arm='left', **kwargs):
+        if arm not in self.grippers:
+            self.grippers[arm] = self.create_gripper(arm=arm, **kwargs)
+        return self.grippers[arm]
 
     def get_cloned_gripper_joints(self, gripper_grasp):
         return [joint for joint in get_joints(gripper_grasp) if is_movable(gripper_grasp, joint)]
@@ -208,22 +230,35 @@ class PR2Robot(RobotAPI):
         with PoseSaver(body):
             return compute_grasp_width(self.body, arm, body, grasp_pose, **kwargs)
 
-    def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
-        body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
-        tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
-        return multiply(body_pose, grasp, tool_from_root)
+    # def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
+    #     body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
+    #     tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
+    #     return multiply(body_pose, grasp, tool_from_root)
 
-    def visualize_grasp(self, body_pose, grasp, arm='left', color=GREEN,
-                        body=None, verbose=False, **kwargs):
+    def remove_grippers(self):
+        for body in self.grippers.values():
+            self.remove_gripper(body)
 
-        robot = self.body
+    def remove_gripper(self, gripper_handle):
+        # TODO: update the cache
+        remove_body(gripper_handle)
 
-        gripper_grasp = self.create_gripper(arm, visual=True)
-        self.open_cloned_gripper(gripper_grasp)
-        set_all_color(gripper_grasp, color)
-
+    def set_gripper_pose(self, body_pose, grasp, gripper=None, arm='left', body=None, verbose=False, **kwargs):
+        if gripper is None:
+            #gripper = self.create_gripper(arm, **kwargs)
+            gripper = self.get_gripper(arm, **kwargs)
+        self.open_cloned_gripper(gripper)
         grasp_pose = self.get_grasp_pose(body_pose, grasp, arm, body=body, verbose=verbose)
-        set_pose(gripper_grasp, grasp_pose)
+        set_pose(gripper, grasp_pose)
+        #return grasp_pose
+        return gripper
+
+    def visualize_grasp(self, body_pose, grasp, arm='left', color=GREEN, cache=False,
+                        body=None, verbose=False, **kwargs):
+        gripper_grasp = self.create_gripper(arm, visual=True)
+        if color is not None:
+            set_all_color(gripper_grasp, color)
+        self.set_gripper_pose(body_pose, grasp, gripper=gripper_grasp, arm=arm, body=body, verbose=verbose)
 
         # if verbose:
         #     handles = draw_pose(grasp_pose, length=0.05)
@@ -282,7 +317,7 @@ class PR2Robot(RobotAPI):
     </include>
 """
 
-    def get_positions(self, joint_group='base', roundto=None):
+    def get_joints_from_group(self, joint_group):
         from pybullet_tools.pr2_utils import get_arm_joints, get_group_joints
         if joint_group == 'base':
             joints = self.joints
@@ -290,10 +325,19 @@ class PR2Robot(RobotAPI):
             joints = get_group_joints(self.body, joint_group)
         else: ## if joint_group == 'left':
             joints = get_arm_joints(self.body, joint_group)
+        return joints
+
+    def get_positions(self, joint_group='base', roundto=None):
+        joints = self.get_joints_from_group(joint_group)
         positions = self.get_joint_positions(joints)
         if roundto == None:
             return positions
         return tuple([round(n, roundto) for n in positions])
+
+    def set_group_positions(self, joint_group, positions):
+        joints = self.get_joints_from_group(joint_group)
+        assert len(joints) == len(positions)
+        self.set_joint_positions(joints, positions)
 
     # def get_custom_limits(self):
     #     return get_base_custom_limits(self, BASE_LIMITS)
@@ -315,14 +359,6 @@ class PR2Robot(RobotAPI):
     def get_custom_limits(self):  ## TODO: needs to test this
         custom_limits = get_base_custom_limits(self.body, self.custom_limits)
         return custom_limits
-
-    def get_stream_map(self, problem, collisions, custom_limits, teleport):
-        from pybullet_tools.pr2_agent import get_stream_map
-        return get_stream_map(problem, collisions, custom_limits, teleport)
-
-    def get_stream_info(self, partial=False, defer=False):
-        from pybullet_tools.pr2_agent import get_stream_info
-        return get_stream_info() ## partial=partial, defer=defer
 
     @property
     def base_group(self):
@@ -477,9 +513,9 @@ class FEGripper(RobotAPI):
         return [('SEConf', initial_q), ('AtSEConf', initial_q), ('OriginalSEConf', initial_q),
                 ('Arm', arm), ('Controllable', arm), ('HandEmpty', arm)]
 
-    def get_stream_map(self, problem, collisions, custom_limits, teleport):
+    def get_stream_map(self, problem, collisions, custom_limits, teleport, **kwargs):
         from pybullet_tools.flying_gripper_agent import get_stream_map
-        return get_stream_map(problem, collisions, custom_limits, teleport)
+        return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
 
     def get_attachment(self, grasp, arm=None):
         tool_link = link_from_name(self.body, 'panda_hand')
@@ -524,9 +560,9 @@ class FEGripper(RobotAPI):
             set_cloned_se3_conf(self.body, gripper, conf.values)
             yield
 
-    def get_stream_map(self, problem, collisions, custom_limits, teleport):
+    def get_stream_map(self, problem, collisions, custom_limits, teleport, **kwargs):
         from pybullet_tools.flying_gripper_agent import get_stream_map
-        return get_stream_map(problem, collisions, custom_limits, teleport)
+        return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
 
     def get_stream_info(self):
         # from pybullet_tools.flying_gripper_agent import get_stream_info

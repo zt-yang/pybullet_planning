@@ -54,6 +54,7 @@ class World():
         self.movable = None
         self.fixed = None
         self.floors = None
+        self.body_types = {}
 
         ## for visualization
         self.handles = []
@@ -141,7 +142,7 @@ class World():
         floors = []
         for model in self.lisdf.models:
             body = self.name_to_body[model.name]
-            if model.name not in ['pr2', 'feg']:
+            if 'pr2' not in model.name and 'feg' not in model.name:
                 if model.static: fixed.append(body)
                 else: movable.append(body)
             if hasattr(model, 'links'):
@@ -175,12 +176,26 @@ class World():
         self.check_world_obstacles()
         ob = [n for n in self.fixed if n not in self.floors]
 
+        if init is not None:
+            for f in init:
+                if len(f) == 2 and f[1] in self.body_to_name:
+                    typ, body = f
+                    name = self.body_to_name[body]
+                    if body not in self.body_types:
+                        self.body_types[body] = []
+                        if 'cabinet::link' in name or 'minifridge::link' in name:
+                            self.body_types[body].append('storage')
+                    self.body_types[body].append(typ)
+
         print('----------------')
         print(f'PART I: world objects | {self.summarize_all_types(init)} | obstacles({len(ob)}) = {ob}')
         print('----------------')
 
         for body in sort_body_parts(self.body_to_name.keys()):
-            line = f'{body}\t  |  {self.body_to_name[body]}'
+            name = self.body_to_name[body]
+            line = f'{body}\t  |  {name}'
+            if body in self.body_types:
+                line += f'  |  Types: {self.body_types[body]}'
             if isinstance(body, tuple) and len(body) == 2:
                 body, joint = body
                 pose = get_joint_position(body, joint)
@@ -193,6 +208,11 @@ class World():
                 pose = get_pose(body)
             print(f"{line}\t|  Pose: {nice(pose)}")
         print('----------------')
+
+    def get_type(self, body):
+        if body in self.body_types:
+            return self.body_types[body]
+        return []
 
     def get_name(self, body):
         if body in self.body_to_name:
@@ -262,6 +282,11 @@ class World():
                 body, joint = body
                 toggle_joint(body, joint)
 
+    def remove_object(self, body):
+        name = self.body_to_name.pop(body)
+        self.name_to_body.pop(name)
+        remove_body(body)
+
 
 def find_id(body, full_name):
     name = full_name.split(LINK_STR)[1]
@@ -321,7 +346,7 @@ def change_world_state(world, test_case):
     print('-------------------')
 
 
-def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
+def load_lisdf_pybullet(lisdf_path, verbose=True, use_gui=True, width=1980, height=1238):
     # scenes_path = dirname(os.path.abspath(lisdf_path))
     tmp_path = join(ASSET_PATH, 'tmp')
     if not isdir(tmp_path): os.mkdir(tmp_path)
@@ -341,7 +366,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
     #         print(len(lines))
 
     ## --- the floor and pose will become extra bodies
-    connect(use_gui=True, shadows=False, width=width, height=height)
+    connect(use_gui=use_gui, shadows=False, width=width, height=height)
     # draw_pose(unit_pose(), length=1.)
     # create_floor()
 
@@ -362,7 +387,8 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
     for model in world.models:
         scale = 1
         if isinstance(model, URDFInclude):
-            uri = join(ASSET_PATH, 'scenes', model.uri)
+            # uri = model.uri.replace('/home/yang/Documents/cognitive-architectures/bullet/', '../../')
+            uri = join(ASSET_PATH, 'models', model.uri)
             scale = model.scale_1d
             category = model.content.name
         else:
@@ -374,7 +400,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, width=1980, height=1238):
             category = model.links[0].name
 
         if verbose:
-            print(f'..... loading {model.name} from {abspath(uri)}', end="\r")
+            print(f'..... loading {model.name} from {abspath(uri)}') ## , end="\r"
         if not isdir(join(ASSET_PATH, 'scenes')):
             os.mkdir(join(ASSET_PATH, 'scenes'))
         with HideOutput():
@@ -446,20 +472,34 @@ def make_sdf_world(sdf_model):
 #######################
 
 
-def pddlstream_from_dir(problem, exp_dir, collisions=True, teleport=False):
+def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True, teleport=False, **kwargs):
+    exp_dir = abspath(exp_dir)
+    if replace_pddl:
+        root_dir = abspath(join(__file__, *[os.pardir]*4))
+        cognitive_dir = join(root_dir, 'cognitive-architectures')
+        pddl_dir = join(cognitive_dir, 'bullet', 'assets', 'pddl')
+        domain_path = join(pddl_dir, 'domains', 'pr2_mamao.pddl')
+        stream_path = join(pddl_dir, 'streams', 'pr2_stream_mamao.pddl')
+    else:
+        domain_path = join(exp_dir, 'domain_full.pddl')
+        stream_path = join(exp_dir, 'stream.pddl')
+    config_path = join(exp_dir, 'planning_config.json')
+    print(f'Experiment: {exp_dir}\n'
+          f'Domain PDDL: {domain_path}\n'
+          f'Stream PDDL: {stream_path}\n'
+          f'Config: {config_path}')
+
+    domain_pddl = read(domain_path)
+    stream_pddl = read(stream_path)
+    planning_config = json.load(open(config_path))
 
     world = problem.world
-
-    domain_pddl = read(join(exp_dir, 'domain_full.pddl'))
-    stream_pddl = read(join(exp_dir, 'stream.pddl'))
-    planning_config = json.load(open(join(exp_dir, 'planning_config.json')))
-
     init, goal, constant_map = pddl_to_init_goal(exp_dir, world)
     goal = [AND] + goal
     problem.add_init(init)
 
     custom_limits = problem.world.robot.custom_limits ## planning_config['base_limits']
-    stream_map = world.robot.get_stream_map(problem, collisions, custom_limits, teleport)
+    stream_map = world.robot.get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
 
     return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
 

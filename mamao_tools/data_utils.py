@@ -1,6 +1,8 @@
 import json
 from os import listdir
 from os.path import join, isfile, isdir, abspath
+import untangle
+import copy
 
 
 def get_indices_from_log(run_dir):
@@ -32,19 +34,80 @@ def get_indices(run_dir):
         return get_indices_from_log(run_dir)
     return result
 
-    indices = {}
-    sub_dir = join(run_dir, 'seg_images')
-    if not isdir(sub_dir):
-        sub_dir = join(run_dir, 'rgb_images')
-    if not isdir(sub_dir):
-        sub_dir = join(run_dir, 'depth_maps')
-    if not isdir(sub_dir):
-        return get_indices_from_log(run_dir)
 
-    ## get from the name of images
-    for f in listdir(sub_dir):
-        if '[' in f:
-            name = f[f.index(']_')+2: f.index('.png')].replace('::', '%')
-            id = f[f.index('[')+1: f.index(']_')]
-            indices[id] = name
-    return indices
+def get_instance_info(run_dir, world=None):
+    if world is None:
+        world = get_lisdf_xml(run_dir)
+    instances = {}
+    for m in world.include:
+        if 'mobility.urdf' in m.uri.cdata:
+            uri = m.uri.cdata.replace('/mobility.urdf', '')
+            uri = uri[uri.index('models/') + 7:]
+            index = uri[uri.index('/') + 1:]
+            if index == '00001':
+                index = 'VeggieCabbage'
+            instances[m['name']] = index
+    return instances
+
+
+def exist_instance(run_dir, instance):
+    instances = get_instance_info(run_dir)
+    return list(instances.values()).count(instance) > 0
+
+
+def get_lisdf_xml(run_dir):
+    return untangle.parse(join(run_dir, 'scene.lisdf')).sdf.world
+
+
+def get_plan_skeleton(plan, indices={}):
+    from fastamp.text_utils import ACTION_ABV, ACTION_NAMES
+    def get_action_abv(a):
+        if isinstance(a, str):
+            name = a[a.index("name='")+6: a.index("', args=(")]
+            return ACTION_ABV[name]
+        else:
+            if a[0] in ACTION_ABV:
+                skeleton = ACTION_ABV[a[0]]
+                if hasattr(a, 'args'):
+                    a = a.args
+            else:
+                ABV = {ACTION_NAMES[k]: v for k, v in ACTION_ABV.items()}
+                skeleton = ABV[a[0]]
+            aa = []
+            for e in a:
+                aa.append(indices[str(e)] if str(e) in indices else str(e))
+            if len(skeleton) > 0:
+                skeleton += ''.join([f"({o[0]}{o[-1]})" for o in aa[1:] if '::' in o])
+            return skeleton
+    return ''.join([get_action_abv(a) for a in plan])
+
+
+def get_init_tuples(run_dir):
+    from fastamp.fastamp_utils import get_init, get_objs
+    lines = open(join(run_dir, 'problem.pddl'), 'r').readlines()
+    objs = get_objs(lines)
+    init = get_init(lines, objs, get_all=True)
+    return init
+
+
+def get_lisdf_xml(run_dir):
+    return untangle.parse(join(run_dir, 'scene.lisdf')).sdf.world
+
+
+def get_instance_info(run_dir, world=None):
+    if world is None:
+        world = get_lisdf_xml(run_dir)
+    instances = {}
+    for m in world.include:
+        if 'mobility.urdf' in m.uri.cdata:
+            uri = m.uri.cdata.replace('/mobility.urdf', '')
+            uri = uri[uri.index('models/') + 7:]
+            index = uri[uri.index('/') + 1:]
+            if index == '00001':
+                index = 'VeggieCabbage'
+            instances[m['name']] = index
+    return instances
+
+
+def exist_instance(model_instances, instance):
+    return list(model_instances.values()).count(instance) > 0

@@ -7,7 +7,7 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
     add_text, AABB, Point, Euler, PI, add_line, YELLOW, BLACK, remove_handles, get_com_pose, Pose, invert, \
     stable_z, get_joint_descendants, get_link_children, get_joint_info, get_links, link_from_name, set_renderer, \
     get_min_limit, get_max_limit, get_link_parent, LockRenderer, HideOutput, pairwise_collisions, get_bodies, \
-    remove_debug
+    remove_debug, child_link_from_joint, unit_point, tform_point, buffer_aabb, get_aabb_center
 from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_box_entity, get_instance_name
 
 import numpy as np
@@ -118,6 +118,12 @@ class Object(Index):
 
     ## =============== put other object on top of object =============
     ##
+    def is_placement(self, body):
+        for o in self.supported_objects:
+            if o.body == body:
+                return True
+        return False
+
     def support_obj(self, obj):
         obj.supporting_surface = self
         if obj not in self.supported_objects:
@@ -127,7 +133,7 @@ class Object(Index):
         from pybullet_tools.bullet_utils import create_attachment
         link = self.link if self.link is not None else 0
         self.world.ATTACHMENTS[obj] = create_attachment(self, link, obj, OBJ=True)
-        self.support_obj(obj)
+        obj.change_supporting_surface(self)
 
     def place_new_obj(self, obj_name, max_trial=8):
         from pybullet_tools.bullet_utils import sample_obj_on_body_link_surface
@@ -261,12 +267,37 @@ class Object(Index):
         # TODO: is there an easier way to to bind all of these methods?
         return get_aabb(self.body, *args, **kwargs)
 
-    def draw(self, text='', **kwargs):
+    def draw_joints(self, buffer=5e-2):
+        handles = []
+        if isinstance(self, Robot):
+            return handles
+        # add_body_name | draw_link_name
+        for joint in get_movable_joints(self.body):
+            joint_name = get_joint_name(self.body, joint)
+            child_link = child_link_from_joint(joint)
+            label = f'{joint_name}:{joint}'
+            # label = f'{self.name}-{self.body}:{joint_name}-{joint}'
+            child_aabb = buffer_aabb(get_aabb(self.body, child_link), buffer=buffer)  # TODO: union of children
+            child_lower, child_upper = child_aabb
+            # position = unit_point()
+            # position = child_upper
+            position = get_aabb_center(child_aabb)
+            position[0] = child_upper[0]
+            child_pose = self.get_link_pose(child_link)
+            position = tform_point(invert(child_pose), position)
+            handles.append(add_text(label, position=position, parent=self.body, parent_link=child_link))
+        self.handles.extend(handles)
+        return handles
+    def draw(self, text=None, **kwargs):
+        if text is None:
+            text = f':{self.body}'
         self.erase()
         if self.name is not None and self.category != 'door':
             # TODO: attach to the highest link (for the robot)
             self.handles.append(add_body_label(self.body, name=self.name, text=text, **kwargs))
         #self.handles.extend(draw_pose(Pose(), parent=self.body, **kwargs))
+        if not isinstance(self, Robot):
+            self.draw_joints()
         return self.handles
     def erase(self):
         remove_handles(self.handles)
@@ -329,6 +360,11 @@ class Moveable(Object):
         super(Moveable, self).__init__(body, collision=False, **kwargs)
         self.supporting_surface = None
 
+    def change_supporting_surface(self, obj):
+        if self.supporting_surface is not None:
+            self.supporting_surface.supported_objects.remove(self)
+        obj.support_obj(self)
+
 class Steerable(Object):
     def __init__(self, body, **kwargs):
         super(Steerable, self).__init__(body, collision=False, **kwargs)
@@ -365,7 +401,7 @@ class Surface(Region):
         super(Region, self).__init__(body, link=link, **kwargs)
         if self.name is None:
             self.name = get_link_name(body, link)
-        self.supported_objects = []
+        # self.supported_objects = []
 
 class Space(Region):
     """ to support object inside, like cabinets and drawers """
@@ -373,12 +409,19 @@ class Space(Region):
         super(Region, self).__init__(body, link=link, **kwargs)
         if self.name is None:
             self.name = get_link_name(body, link)
-        self.objects_inside = []
+        # self.objects_inside = []
+
+    def is_contained(self, body):
+        for o in self.supported_objects:
+            if o.body == body:
+                return True
+        return False
 
     def include_and_attach(self, obj):
         from pybullet_tools.bullet_utils import create_attachment
-        if obj not in self.objects_inside:
-            self.objects_inside.append(obj)
+        if obj not in self.supported_objects:
+            # self.supported_objects.append(obj)
+            obj.change_supporting_surface(self)
         attachment = create_attachment(self, self.link, obj, OBJ=True)
         self.world.ATTACHMENTS[obj] = attachment
 
@@ -589,8 +632,9 @@ class Camera(object):
         self.kwargs = dict(kwargs)
         #self.__dict__.update(**kwargs)
         # self.handles = []
-        self.handles = self.draw()
-        self.get_boundaries()
+
+        # self.handles = self.draw()
+        # self.get_boundaries()
 
     def get_pose(self):
         pose = get_link_pose(self.body, self.camera_link)
@@ -667,11 +711,11 @@ class StaticCamera(object):
     def set_pose(self, pose):
         self.pose = pose
 
-    def get_image(self, segment=True, segment_links=False, **kwargs):
+    def get_image(self, segment=True, segment_links=False, far=8, **kwargs):
         # TODO: apply maximum depth
         self.index += 1
         #image = get_image(self.get_pose(), target_pos=[0, 0, 1])
-        return get_image_at_pose(self.get_pose(), self.camera_matrix,
+        return get_image_at_pose(self.get_pose(), self.camera_matrix, far=far,
                                  tiny=False, segment=segment, segment_links=segment_links, **kwargs)
 
     def draw(self):
