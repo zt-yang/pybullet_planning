@@ -135,7 +135,7 @@ class PVT(FeasibilityChecker):
     def __init__(self, run_dir, pt_path=None, task_name=None, mode='pvt', scoring=False):
         super().__init__(run_dir)
         from fastamp.test_piginet import get_model, DAFAULT_PT_NAME, TASK_PT_NAMES, \
-            PT_NEWER, get_args
+            PT_NEWER, get_args, TASK_PT_STAR
         from fastamp.fastamp_utils import get_facts_goals_visuals, get_successful_plan, \
             get_action_elems, get_plans
 
@@ -145,8 +145,11 @@ class PVT(FeasibilityChecker):
         """ get model """
         if pt_path is None:
             pt_name = DAFAULT_PT_NAME
-            if task_name is not None and task_name in TASK_PT_NAMES:
-                pt_name = TASK_PT_NAMES[task_name]
+            if task_name is not None:
+                if 'task*' in mode and task_name in TASK_PT_STAR:
+                    pt_name = TASK_PT_STAR[task_name]
+                elif task_name in TASK_PT_NAMES:
+                    pt_name = TASK_PT_NAMES[task_name]
             elif mode in PT_NEWER:
                 pt_name = PT_NEWER[mode]
             pt_path = join(dirname(abspath(__file__)), '..', 'fastamp', 'models', pt_name)
