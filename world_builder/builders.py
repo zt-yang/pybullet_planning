@@ -10,8 +10,9 @@ from .loaders import create_pr2_robot, load_rooms, load_cart, load_cart_regions,
     load_kitchen_mechanism, create_gripper_robot, load_cabinet_test_scene, load_random_mini_kitchen_counter, \
     load_another_table, load_another_fridge_food, random_set_doors
 from .utils import load_asset, FLOOR_HEIGHT, WALL_HEIGHT, visualize_point
-from .world_generator import to_lisdf, save_to_kitchen_worlds
+from .world_generator import to_lisdf, save_to_kitchen_worlds, save_to_test_cases
 
+import pybullet as p
 from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, HideOutput, load_model, TURTLEBOT_URDF, \
     set_all_color, dump_body, draw_base_limits, multiply, Pose, Euler, PI, draw_pose, unit_pose, create_box, TAN, Point, \
     GREEN, create_cylinder, INF, BLACK, WHITE, RGBA, GREY, YELLOW, BLUE, BROWN, RED, stable_z, set_point, set_camera_pose, \
@@ -20,7 +21,8 @@ from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, H
     get_pose, get_joint_position, enable_gravity, enable_real_time, get_links, set_color, dump_link, draw_link_name, \
     get_link_pose, get_aabb, get_link_name, sample_aabb, aabb_contains_aabb, aabb2d_from_aabb, sample_placement, \
     aabb_overlap, get_links, get_collision_data, get_visual_data, link_from_name, body_collision, get_closest_points, \
-    load_pybullet, FLOOR_URDF, pairwise_collision, is_movable, get_bodies, get_aabb_center, draw_aabb, quat_from_euler
+    load_pybullet, FLOOR_URDF, pairwise_collision, is_movable, get_bodies, get_aabb_center, draw_aabb, quat_from_euler, \
+    connect, enable_preview, reset_simulation
 from pybullet_tools.pr2_primitives import get_group_joints, Conf
 from pybullet_tools.pr2_agent import pddlstream_from_state_goal, test_marker_pull_grasps
 from pybullet_tools.pr2_streams import get_marker_grasp_gen, Position, \
@@ -28,6 +30,55 @@ from pybullet_tools.pr2_streams import get_marker_grasp_gen, Position, \
     get_pull_marker_to_pose_motion_gen, get_pull_marker_random_motion_gen, get_parent_new_pose, get_bqs_given_p2
 from pybullet_tools.bullet_utils import set_camera_target_body, set_camera_target_robot, draw_collision_shapes, \
     open_joint, collided
+
+
+def create_pybullet_world(args, builder, world_name='test_scene', SAVE_LISDF=False, EXIT=True, RESET=True,
+                          USE_GUI=False, SAVE_TESTCASE=False, template_name=None, out_dir=None, verbose=False):
+    """ build a pybullet world with lisdf & pddl files into test_cases folder,
+        given a text_case folder to copy the domain, stream, and config from """
+
+    if template_name is None:
+        template_name = builder.__name__
+
+    """ ============== initiate simulator ==================== """
+
+    ## for viewing, not the size of depth image
+    connect(use_gui=USE_GUI, shadows=False, width=1980, height=1238)
+
+    # set_camera_pose(camera_point=[2.5, 0., 3.5], target_point=[1., 0, 1.])
+    if args.camera:
+        enable_preview()
+        p.configureDebugVisualizer(p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW, False)
+    draw_pose(unit_pose(), length=1.)
+
+    """ ============== sample world configuration ==================== """
+
+    world = World(args, time_step=args.time_step)
+    if not hasattr(world, 'robot'):
+        robot = create_pr2_robot(world, custom_limits=custom_limits, base_q=(x, y, PI / 2 + PI / 2))
+        robot.set_spawn_range(((4.2, 2, 0.5), (5, 3.5, 1.9)))
+    floorplan, goal = builder(world, verbose=verbose)
+
+    ## no gravity once simulation starts
+    set_all_static()
+    if verbose: world.summarize_all_objects()
+
+    """ ============== save world configuration ==================== """
+
+    state = State(world)
+    file = None
+    if SAVE_LISDF:   ## only lisdf files
+        init = state.get_facts(verbose=verbose)
+        file = to_lisdf(state.world, init, floorplan=floorplan, world_name=world_name, verbose=verbose)
+    if SAVE_TESTCASE and out_dir is not None:
+        file = save_to_test_cases(state, goal, template_name, floorplan, out_dir, verbose=verbose, DEPTH_IMAGES=True)
+
+    if EXIT:
+        wait_if_gui('exit?')
+    if RESET:
+        reset_simulation()
+        return file
+    return world, goal, file
 
 
 def test_pick(world, w=.5, h=.9, mass=1):
