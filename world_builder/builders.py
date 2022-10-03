@@ -328,7 +328,7 @@ def test_fridges_tables(world, verbose=True, **kwargs):
 
 
 def sample_fridges_tables_scene(world, verbose=True, **kwargs):
-    minifridge_doors = sample_one_fridge_scene(world, open_doors=False)
+    minifridge_doors = sample_one_fridge_scene(world, open_doors=False, **kwargs)
     load_another_table(world, four_ways=False)
     placement = load_another_fridge_food(world, **kwargs)
     random_set_doors(minifridge_doors, epsilon=0.25, extent_max=0.5)
