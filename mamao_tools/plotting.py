@@ -36,7 +36,7 @@ METHODS = ['None', 'pvt', 'pvt*', 'pvt-task', 'oracle'] ##
 METHOD_NAMES = ['Baseline', 'PST', 'PST*', 'PST-task', 'Oracle']
 ## ## , 'random' , 'piginet', 'pvt-task', 'pvt-2', 'pvt|rel=all'
 
-check_time = 1664750094
+check_time = 1664255601 ## 1664255601 for baselines | 1664750094  ## for d4
 
 color_dict = {
     'b': ('#3498db', '#2980b9'),
