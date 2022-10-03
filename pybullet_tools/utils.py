@@ -848,8 +848,6 @@ def load_pybullet(filename, fixed_base=False, scale=1., **kwargs):
     # fixed_base=False implies infinite base mass
     with LockRenderer():
         if filename.endswith('.urdf'):
-            if 'pr2_description' in filename:
-                filename = '/home/yang/Documents/kitchen-worlds/assets/models/drake/pr2_description/urdf/pr2_simplified.urdf'
             flags = get_urdf_flags(**kwargs)
             body = p.loadURDF(filename, useFixedBase=fixed_base, flags=flags,
                               globalScaling=scale, physicsClientId=CLIENT)
@@ -5636,6 +5634,7 @@ def merge_rigid_leaves(urdf_model, verbose=False):
 
 
 def decompose_obj(obj_path, verbose=True):
+    import trimesh
     assert obj_path.endswith(OBJ)
     root, ext = os.path.splitext(obj_path)
     meshes = read_obj(obj_path, decompose=True)
@@ -5712,7 +5711,6 @@ def decompose_model(urdf_model, **kwargs):
     return decomposed_from_original
 
 
-import trimesh
 import copy
 import traceback
 import time
@@ -5772,6 +5770,7 @@ def create_vhacd(input_path, output_path=None, output_dir=VHACD_DIR, cache=True,
 
 
 def safe_vhacd(filename, min_length=0.01, min_volume=None, max_time=INF, **kwargs):
+    import trimesh
     if min_volume is None:
         min_volume = min_length**3
     result = None
