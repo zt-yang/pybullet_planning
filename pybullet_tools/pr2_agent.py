@@ -978,6 +978,7 @@ def test_marker_pull_bconfs(state, init):
     rbb = create_pr2()
     set_group_conf(rbb, 'base', bq2.values)
 
+
 def test_marker_pull_grasps(state, marker, visualize=False):
     funk = get_marker_grasp_gen(state)
     grasps = funk(marker) ## funk(cart) ## is a previous version
