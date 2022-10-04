@@ -42,6 +42,7 @@ LINK_COLORS = [RED, YELLOW, GREEN, BLUE, GREY, BLACK]
 LINK_STR = '::'
 PART_INSTANCE_NAME = "{body_instance_name}" + LINK_STR + "{part_name}"
 
+
 class World():
     def __init__(self, lisdf):
         self.lisdf = lisdf
@@ -484,14 +485,18 @@ def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True, t
         domain_path = join(exp_dir, 'domain_full.pddl')
         stream_path = join(exp_dir, 'stream.pddl')
     config_path = join(exp_dir, 'planning_config.json')
-    print(f'Experiment: {exp_dir}\n'
-          f'Domain PDDL: {domain_path}\n'
-          f'Stream PDDL: {stream_path}\n'
-          f'Config: {config_path}')
+    if not isfile(domain_path):
+        planning_config = json.load(open(config_path, 'r'))
+        domain_path = planning_config['domain_full']
+        stream_path = planning_config['stream']
+
+    print(f'Experiment: \t{exp_dir}\n'
+          f'Domain PDDL: \t{domain_path}\n'
+          f'Stream PDDL: \t{stream_path}\n'
+          f'Config: \t{config_path}')
 
     domain_pddl = read(domain_path)
     stream_pddl = read(stream_path)
-    planning_config = json.load(open(config_path))
 
     world = problem.world
     init, goal, constant_map = pddl_to_init_goal(exp_dir, world)

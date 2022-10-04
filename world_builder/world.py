@@ -965,6 +965,17 @@ class State(object):
         wconf = WConf(poses, positions)
         return wconf
 
+    def get_planning_config(self):
+        import platform
+        config = {
+            'base_limits': self.world.robot.custom_limits,  ## state.world.args.base_limits,
+            'body_to_name': self.world.get_indices(),
+            'system': platform.system()
+        }
+        if self.world.camera != None:
+            config['obs_camera_pose'] = self.world.camera.pose
+        return config
+
     def __repr__(self):
         return '{}{}'.format(self.__class__.__name__, self.objects)
 

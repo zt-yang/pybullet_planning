@@ -1,4 +1,5 @@
 import copy
+import json
 from os.path import join, abspath, dirname, isdir, isfile
 
 import lisdf.components as C
@@ -68,12 +69,19 @@ class Problem():
 
 def pddl_to_init_goal(exp_dir, world):
 
+    domain_file = join(exp_dir, 'domain.pddl')
+    if not isfile(domain_file):
+        config_file = join(exp_dir, 'planning_config.json')
+        domain_file = json.loads(open(config_file).read())['domain']
+
     lisdf, domain, problem = load_all(
         join(exp_dir, 'scene.lisdf'),
-        join(exp_dir, 'domain.pddl'),
+        domain_file,
         join(exp_dir, 'problem.pddl'),
     )
-    world.update_objects(problem.objects)
+    from lisdf_tools.lisdf_loader import World
+    if isinstance(world, World):
+        world.update_objects(problem.objects)
     robot = world.robot
 
     existed = [] ## {k: [] for k in ['q', 'aq', 'p', 'g', 'hg', 'pstn', 'lp']}
