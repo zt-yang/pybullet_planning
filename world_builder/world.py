@@ -313,8 +313,9 @@ class World(object):
                 printout += "{type}({num}), ".format(type=typ, num=num)
         return printout
 
-    def summarize_all_objects(self):
-        from pybullet_tools.logging import myprint as print
+    def summarize_all_objects(self, print_fn=None):
+        if print_fn is None:
+            from pybullet_tools.logging import myprint as print_fn
 
         BODY_TO_OBJECT = self.BODY_TO_OBJECT
         ROBOT_TO_OBJECT = self.ROBOT_TO_OBJECT
@@ -351,9 +352,9 @@ class World(object):
         #     else:
         #         print(f'{body}  |  Name: {get_name(body)}, not in BODY_TO_OBJECT')
 
-        print('----------------')
-        print(f'PART I: world objects | {self.summarize_all_types()} | obstacles({len(self.fixed)}) = {self.fixed}')
-        print('----------------')
+        print_fn('----------------')
+        print_fn(f'PART I: world objects | {self.summarize_all_types()} | obstacles({len(self.fixed)}) = {self.fixed}')
+        print_fn('----------------')
         for body in [self.robot] + sort_body_parts(BODY_TO_OBJECT.keys()):
             if body in ROBOT_TO_OBJECT:
                 object = ROBOT_TO_OBJECT[body]
@@ -380,8 +381,8 @@ class World(object):
                 pose = get_link_pose(body, link)
             else:
                 pose = get_pose(body)
-            print(f"{line}\t|  Pose: {nice(pose)}")
-        print('----------------')
+            print_fn(f"{line}\t|  Pose: {nice(pose)}")
+        print_fn('----------------')
 
     def remove_body_from_planning(self, body):
         if body == None: return
@@ -964,6 +965,17 @@ class State(object):
         positions = {i[1]: i[2] for i in init if i[0] == 'AtPosition'}
         wconf = WConf(poses, positions)
         return wconf
+
+    def get_planning_config(self):
+        import platform
+        config = {
+            'base_limits': self.world.robot.custom_limits,  ## state.world.args.base_limits,
+            'body_to_name': self.world.get_indices(),
+            'system': platform.system()
+        }
+        if self.world.camera != None:
+            config['obs_camera_pose'] = self.world.camera.pose
+        return config
 
     def __repr__(self):
         return '{}{}'.format(self.__class__.__name__, self.objects)

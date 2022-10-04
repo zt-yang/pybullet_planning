@@ -7,20 +7,34 @@ import csv
 import pprint
 
 TXT_FILE = abspath('txt_file.txt')
-COMMANDS_FILE = abspath('commands.json')
+
+
+def parallel_print(text='', *kwargs):
+    string = get_string(text, kwargs)
+    print_in_file(string, txt_file='txt_file.txt')
 
 
 def myprint(text='', *kwargs):
+    string = get_string(text, kwargs)
+    print_in_file(string)
+
+
+def get_string(text, kwargs):
     string = [str(text)]
     if len(kwargs) > 0:
         print(text, kwargs)
         string.extend([str(n) for n in kwargs])
     else:
         print(text)
+    return string
+
+
+def print_in_file(string, txt_file=TXT_FILE):
     string = ' '.join(string)+'\n'
     string = string.replace('\t', '    ')
-    with open(TXT_FILE, 'a+') as f:
+    with open(txt_file, 'a+') as f:
         f.writelines(string)
+
 
 
 def record_results(goal, plan, planning_time, exp_name='default'):

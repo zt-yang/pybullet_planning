@@ -44,7 +44,7 @@ MODEL_BOX_STR = """
           </geometry>
           <material>
             <diffuse>{rgb} 1</diffuse>
-          </material> 
+          </material>
         </visual>
       </link>
     </model>
@@ -383,15 +383,6 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     all_pred_names = generate_problem_pddl(state, pddlstream_problem.init, pddlstream_problem.goal,
                              world_name=world_name, out_path=join(outpath, 'problem.pddl'))
 
-    import platform
-    config = {
-        'base_limits': state.world.robot.custom_limits,  ## state.world.args.base_limits,
-        'body_to_name': state.world.get_indices(),
-        'system': platform.system()
-    }
-    if state.world.camera != None:
-        config['obs_camera_pose'] = state.world.camera.pose
-
     ## --- domain and stream copied over  ## shutil.copy()
     with open(join(outpath, 'domain_full.pddl'), 'w') as f:
         f.write(pddlstream_problem.domain_pddl)
@@ -400,7 +391,7 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     with open(join(outpath, 'stream.pddl'), 'w') as f:
         f.write(pddlstream_problem.stream_pddl)
     with open(join(outpath, 'planning_config.json'), 'w') as f:
-        json.dump(config, f)
+        json.dump(state.get_planning_config(), f)
 
     if DEPTH_IMAGES and state.world.camera != None:
         # reset_simulation()
@@ -416,6 +407,13 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     if EXIT: sys.exit()
 
 
+def get_config_from_template(template_path):
+    print('\n\nget_config_from_template', get_config_from_template, '\n\n')
+    planning_config = json.load(open(join(template_path, 'planning_config.json'), 'r'))
+    return {k: v for k, v in planning_config.items() \
+            if k in ['base_limits', 'robot_builder', 'robot_name', 'obs_camera_pose']}
+
+
 def save_to_test_cases(state, goal, template_name, floorplan, out_dir, root_path='..',
                        verbose=True, DEPTH_IMAGES=False):
 
@@ -427,15 +425,10 @@ def save_to_test_cases(state, goal, template_name, floorplan, out_dir, root_path
     if not isdir(outpath):
         os.mkdir(outpath)
 
-    ## get current index
-    index = len([f for f in listdir(outpath) if 'DS_Store' not in f]) + 1
-    outpath = join(outpath, str(index))
-    os.mkdir(outpath)
-
     init = state.get_facts(verbose=verbose)
 
     ## --- scene in scene.lisdf
-    to_lisdf(state.world, init, floorplan=floorplan, exp_name=join(out_dir, str(index)),
+    to_lisdf(state.world, init, floorplan=floorplan, exp_name=out_dir,
              world_name=template_name, root_path=root_path, verbose=verbose)
 
     ## --- init and goal in problem.pddl
@@ -443,12 +436,14 @@ def save_to_test_cases(state, goal, template_name, floorplan, out_dir, root_path
                           out_path=join(outpath, 'problem.pddl'))
 
     ## --- planning related files and params are referred to in template directory
-    config = {
-        'base_limits': state.world.robot.custom_limits,
-        'domain_full': join(template_name, 'domain_full.pddl'),
-        'domain': join(template_name, 'domain.pddl'),
-        'stream': join(template_name, 'stream.pddl'),
-    }
+    template_dir = join(exp_path, template_name)
+    config = get_config_from_template(template_dir)
+    config.update(state.get_planning_config())
+    config.update({
+        'domain_full': abspath(join(template_dir, 'domain_full.pddl')),
+        'domain': abspath(join(template_dir, 'domain.pddl')),
+        'stream': abspath(join(template_dir, 'stream.pddl')),
+    })
     with open(join(outpath, 'planning_config.json'), 'w') as f:
         json.dump(config, f, indent=4)
 
@@ -457,8 +452,8 @@ def save_to_test_cases(state, goal, template_name, floorplan, out_dir, root_path
         reset_simulation()
         get_depth_images(outpath, camera_pose=state.world.camera.pose,
                          img_dir=join(outpath, 'depth_maps'), verbose=True)
-    else:
-        state.world.visualize_image(img_dir=outpath)
+    # else:
+    #     state.world.visualize_image(img_dir=outpath)
 
 
 def get_pddl_from_list(fact, world):
@@ -470,7 +465,6 @@ def get_pddl_from_list(fact, world):
 
 def generate_problem_pddl(state, facts, goals, ## pddlstream_problem,
                           world_name='lisdf', domain_name='domain', out_path=None):
-    from pybullet_tools.logging import myprint as print
     # facts = pddlstream_problem.init
     # goals = pddlstream_problem.goal
     if goals[0] == 'and':
@@ -550,10 +544,11 @@ def generate_problem_pddl(state, facts, goals, ## pddlstream_problem,
     problem_pddl = PDDL_STR.format(
         objects_pddl=objects_pddl, init_pddl=init_pddl, goal_pddl=goal_pddl,
         world_name=world_name, domain_name=domain_name
-    )
+    ).lower()
     if out_path != None:
         with open(out_path, 'w') as f:
             f.writelines(problem_pddl)
     else:
+        from pybullet_tools.logging import myprint as print
         print(f'----------------{problem_pddl}')
     return all_pred_names

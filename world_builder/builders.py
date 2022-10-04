@@ -1,5 +1,6 @@
 import math
 import random
+import json
 from os.path import join
 
 import pybullet as p
@@ -15,20 +16,37 @@ from pybullet_tools.utils import Pose, Euler, PI, create_box, TAN, Point, set_ca
 
 from pybullet_tools.bullet_utils import set_camera_target_body, set_camera_target_robot, draw_collision_shapes, \
     open_joint
-from world_builder.world_generator import to_lisdf, save_to_test_cases
+from world_builder.world_generator import to_lisdf, save_to_test_cases, EXP_PATH
 
 
-def create_pybullet_world(args, builder, world_name='test_scene', verbose=False,
-                          SAVE_LISDF=False, EXIT=True, RESET=True,
-                          SAVE_TESTCASE=False, template_name=None, out_dir=None):
+def get_robot_builder(builder_name):
+    if builder_name == 'build_fridge_domain_robot':
+        return build_fridge_domain_robot
+    return None
+
+
+def maybe_add_robot(world, template_name):
+    config_file = join(EXP_PATH, template_name, 'planning_config.json')
+    planning_config = json.load(open(config_file, 'r'))
+    if 'robot_builder' not in planning_config:
+        return
+    custom_limits = planning_config['base_limits']
+    robot_name = planning_config['robot_name']
+    robot_builder = get_robot_builder(planning_config['robot_builder'])
+    robot_builder(world, robot_name=robot_name, custom_limits=custom_limits)
+
+
+def create_pybullet_world(args, builder, world_name='test_scene', verbose=False, SAMPLING=False,
+                          SAVE_LISDF=False, DEPTH_IMAGES=False, EXIT=False, RESET=False,
+                          SAVE_TESTCASE=False, template_name=None, out_dir=None, root_dir=None):
     """ build a pybullet world with lisdf & pddl files into test_cases folder,
         given a text_case folder to copy the domain, stream, and config from """
 
     if template_name is None:
         template_name = builder.__name__
+    template_dir = join(root_dir, template_name)
 
     """ ============== initiate simulator ==================== """
-
     ## for viewing, not the size of depth image
     connect(use_gui=args.viewer, shadows=False, width=1980, height=1238)
 
@@ -41,7 +59,8 @@ def create_pybullet_world(args, builder, world_name='test_scene', verbose=False,
     """ ============== sample world configuration ==================== """
 
     world = World(args, time_step=args.time_step)
-    floorplan, goal = builder(world, verbose=verbose)
+    maybe_add_robot(world, template_dir)
+    floorplan, goal = builder(world, verbose=verbose, SAMPLING=SAMPLING)
 
     ## no gravity once simulation starts
     set_all_static()
@@ -54,15 +73,18 @@ def create_pybullet_world(args, builder, world_name='test_scene', verbose=False,
     if SAVE_LISDF:   ## only lisdf files
         init = state.get_facts(verbose=verbose)
         file = to_lisdf(state.world, init, floorplan=floorplan, world_name=world_name, verbose=verbose)
+
     if SAVE_TESTCASE and out_dir is not None:
-        file = save_to_test_cases(state, goal, template_name, floorplan, out_dir, verbose=verbose, DEPTH_IMAGES=True)
+        file = save_to_test_cases(state, goal, template_name, floorplan, out_dir,
+                                  verbose=verbose, DEPTH_IMAGES=DEPTH_IMAGES)
 
     if EXIT:
         wait_if_gui('exit?')
+
     if RESET:
         reset_simulation()
         return file
-    return world, goal, file
+    return state, goal, file
 
 
 def test_pick(world, w=.5, h=.9, mass=1):
@@ -220,14 +242,10 @@ def test_feg_pick(world, floorplan='counter.svg', verbose=True):
     ]
     goal = random.choice(goal_template)
 
-    """ ============== [Output] Save depth image ==================== """
-    ## you may purturb the camera pose ((point), (quaternian))
-    camera_pose = ((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5))
-    world.add_camera(camera_pose)
-
     return floorplan, goal
 
 ############################################
+
 
 def set_time_seed():
     import numpy as np
@@ -236,6 +254,22 @@ def set_time_seed():
     np.random.seed(seed)
     random.seed(seed)
     return seed
+
+
+def build_fridge_domain_robot(world, robot_name, custom_limits=None):
+    x, y = (5, 3)
+    ## temprarily using floating gripper
+    if robot_name == 'feg':
+        if custom_limits is None:
+            custom_limits = {0: (0, 6), 1: (0, 6), 2: (0, 2)}
+        robot = create_gripper_robot(world, custom_limits, initial_q=[x, y, 0.7, 0, -math.pi / 2, 0])
+        robot.set_spawn_range(((2.5, 2, 0.5), (3.8, 3.5, 1.9)))
+    else:
+        if custom_limits is None:
+            custom_limits = ((0, 0, 0), (6, 6, 1.5))
+        robot = create_pr2_robot(world, custom_limits=custom_limits, base_q=(x, y, PI / 2 + PI / 2))
+        robot.set_spawn_range(((4.2, 2, 0.5), (5, 3.5, 1.9)))
+    return robot
 
 
 def test_one_fridge(world, verbose=True, **kwargs):
@@ -352,8 +386,8 @@ def sample_fridges_tables_goal(world, placement):
 
     ## the goal will be to pick one object and put in the other fridge
     goal_candidates = [
-        [('Holding', arm, food)],
-        # [('In', food, other)],
+        # [('Holding', arm, food)],
+        [('In', food, other)],
     ]
 
     return random.choice(goal_candidates)

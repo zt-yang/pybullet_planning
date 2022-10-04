@@ -112,6 +112,7 @@ class Object(Index):
         self.drawers = None
         self.surfaces = []
         self.spaces = []
+        self.supporting_surface = None
         self.supported_objects = []
         self.events = []
         self.categories = [category] ## for added categories like moveable
@@ -180,6 +181,11 @@ class Object(Index):
         self.attach_obj(obj)
         # set_renderer(True)
         return obj
+
+    def change_supporting_surface(self, obj):
+        if self.supporting_surface is not None:
+            self.supporting_surface.supported_objects.remove(self)
+        obj.support_obj(self)
     ##
     ## ====================================================================
 
@@ -358,12 +364,6 @@ class Object(Index):
 class Moveable(Object):
     def __init__(self, body, **kwargs):
         super(Moveable, self).__init__(body, collision=False, **kwargs)
-        self.supporting_surface = None
-
-    def change_supporting_surface(self, obj):
-        if self.supporting_surface is not None:
-            self.supporting_surface.supported_objects.remove(self)
-        obj.support_obj(self)
 
 class Steerable(Object):
     def __init__(self, body, **kwargs):

@@ -42,6 +42,7 @@ LINK_COLORS = [RED, YELLOW, GREEN, BLUE, GREY, BLACK]
 LINK_STR = '::'
 PART_INSTANCE_NAME = "{body_instance_name}" + LINK_STR + "{part_name}"
 
+
 class World():
     def __init__(self, lisdf):
         self.lisdf = lisdf
@@ -169,9 +170,10 @@ class World():
     def cat_to_bodies(self, cat, init):
         return [f[1] for f in init if f[0].lower() == cat]
 
-    def summarize_all_objects(self, init=None):
+    def summarize_all_objects(self, init=None, print_fn=None):
         """ call this after pddl_to_init_goal() where world.update_objects() happens """
-        from pybullet_tools.logging import myprint as print
+        if print_fn is None:
+            from pybullet_tools.logging import myprint as print_fn
 
         self.check_world_obstacles()
         ob = [n for n in self.fixed if n not in self.floors]
@@ -187,9 +189,9 @@ class World():
                             self.body_types[body].append('storage')
                     self.body_types[body].append(typ)
 
-        print('----------------')
-        print(f'PART I: world objects | {self.summarize_all_types(init)} | obstacles({len(ob)}) = {ob}')
-        print('----------------')
+        print_fn('----------------')
+        print_fn(f'PART I: world objects | {self.summarize_all_types(init)} | obstacles({len(ob)}) = {ob}')
+        print_fn('----------------')
 
         for body in sort_body_parts(self.body_to_name.keys()):
             name = self.body_to_name[body]
@@ -206,8 +208,8 @@ class World():
                 pose = get_group_joints(body, 'base')
             else:
                 pose = get_pose(body)
-            print(f"{line}\t|  Pose: {nice(pose)}")
-        print('----------------')
+            print_fn(f"{line}\t|  Pose: {nice(pose)}")
+        print_fn('----------------')
 
     def get_type(self, body):
         if body in self.body_types:
@@ -472,8 +474,7 @@ def make_sdf_world(sdf_model):
 #######################
 
 
-def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True, teleport=False, **kwargs):
-    exp_dir = abspath(exp_dir)
+def pddl_files_from_dir(exp_dir, replace_pddl=False):
     if replace_pddl:
         root_dir = abspath(join(__file__, *[os.pardir]*4))
         cognitive_dir = join(root_dir, 'cognitive-architectures')
@@ -484,14 +485,24 @@ def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True, t
         domain_path = join(exp_dir, 'domain_full.pddl')
         stream_path = join(exp_dir, 'stream.pddl')
     config_path = join(exp_dir, 'planning_config.json')
-    print(f'Experiment: {exp_dir}\n'
-          f'Domain PDDL: {domain_path}\n'
-          f'Stream PDDL: {stream_path}\n'
-          f'Config: {config_path}')
+    if not isfile(domain_path):
+        planning_config = json.load(open(config_path, 'r'))
+        domain_path = planning_config['domain_full']
+        stream_path = planning_config['stream']
+    return domain_path, stream_path, config_path
+
+
+def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True, teleport=False, **kwargs):
+    exp_dir = abspath(exp_dir)
+
+    domain_path, stream_path, config_path = pddl_files_from_dir(exp_dir, replace_pddl)
+    print(f'Experiment: \t{exp_dir}\n'
+          f'Domain PDDL: \t{domain_path}\n'
+          f'Stream PDDL: \t{stream_path}\n'
+          f'Config: \t{config_path}')
 
     domain_pddl = read(domain_path)
     stream_pddl = read(stream_path)
-    planning_config = json.load(open(config_path))
 
     world = problem.world
     init, goal, constant_map = pddl_to_init_goal(exp_dir, world)
