@@ -105,15 +105,16 @@ class Oracle(FeasibilityChecker):
     def _check(self, input):
         if len(input) != len(self.correct):
             return False
+        print('\n\nOracle, checking', input)
         for i in range(len(input)):
             action = [input[i].name] + list(input[i].args)
             for j in range(len(self.correct[i])):
-                if '=' not in self.correct[i][j]:
+                if '=' not in self.correct[i][j] and self.correct[i][j] != 'None':
                     if len(action) != len(self.correct[i]):
                         print('len(input[i]) != len(self.correct[i])', action, self.correct[i])
                         return False
                     if str(action[j]) != self.correct[i][j]:
-                        # print(i, self.correct[i], '\n', action, '\n')
+                        # print(i, self.correct[i], self.correct[i][j], '\n', action, str(action[j]), '\n')
                         return False
         # print('pass', input)
         return True

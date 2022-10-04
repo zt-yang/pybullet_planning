@@ -124,6 +124,8 @@ def get_successful_plan(run_dir, indices={}, continuous={}):
         vs, inv_vs = get_variables(data['init'])
         for a in actions:
             name = a[a.index("name='")+6: a.index("', args=(")]
+            # if 'grasp_handle' in name:
+            #     continue
             args = a[a.index("args=(")+6:-2].replace("'", "")
             new_args = parse_pddl_str(args, vs=vs, inv_vs=inv_vs, indices=indices)
             plan.append([name] + new_args)

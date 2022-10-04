@@ -166,7 +166,8 @@ def pddl_to_init_goal(exp_dir, world):
         to_remove = []
         inwconf = inwconf[0]
         if inwconf == 'none':
-            init += [('inwconf', 'none')]
+            to_remove += [('wconf', inwconf)]
+            init += [('inwconf', None), ('wconf', None)]
 
         else:
             # import ipdb; ipdb.set_trace()
@@ -184,7 +185,7 @@ def pddl_to_init_goal(exp_dir, world):
                 init += [('wconf', new_wconf), ('newwconfpst', wconf, n[2], n[3], new_wconf)]
                 to_remove += [('wconf', n[-1])]
             to_remove += newwconfpst
-            init = [i for i in init if i not in to_remove]
+        init = [i for i in init if i not in to_remove]
 
     else:
         wconf = WConf(poses, positions)
