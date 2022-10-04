@@ -1149,7 +1149,7 @@ def load_another_table(world, w=6, l=6, four_ways=True):
     # set_renderer(False)
 
 
-def load_another_fridge_food(world, verbose=True, SAMPLING=False):
+def load_another_fridge_food(world, verbose=True, SAMPLING=False, trial=0):
     from pybullet_tools.bullet_utils import nice as r
 
     floor = world.name_to_body('floor')
@@ -1158,6 +1158,15 @@ def load_another_fridge_food(world, verbose=True, SAMPLING=False):
     fridge = world.name_to_body('minifridge')
     table = world.name_to_object('table')
     placement = { food: space }
+    existing_bodies = get_bodies()
+    title = f'load_another_fridge_food (trial {trial}) | '
+
+    def reset_world(world):
+        for body in get_bodies():
+            if body not in existing_bodies:
+                obj = world.BODY_TO_OBJECT[body]
+                world.remove_object(obj)
+        return load_another_fridge_food(world, verbose=verbose, SAMPLING=SAMPLING, trial=trial+1)
 
     def random_space():
         spaces = world.cat_to_objects('space')
@@ -1207,9 +1216,9 @@ def load_another_fridge_food(world, verbose=True, SAMPLING=False):
         place_by_space(cabinet, space)
         count -= 1
         if count == 0:
-            print('load_another_fridge_food | cant place cabinet by fridge after 20 trials')
-            sys.exit()
-    print(f'!!! moved cabinet from {r(y_ori)} to {r(y)} (y0 = {r(y0)})')
+            print(title, 'cant place cabinet by fridge after 20 trials')
+            reset_world(world)
+    print(f'{title} !!! moved cabinet from {r(y_ori)} to {r(y)} (y0 = {r(y0)})')
 
     ## place another food in one of the fridges
     new_food = world.add_object(Moveable(
@@ -1231,8 +1240,8 @@ def load_another_fridge_food(world, verbose=True, SAMPLING=False):
         # print(f'first food\t', world.body_to_name(food), nice(get_pose(food)))
         if max_trial == 0:
             food = world.BODY_TO_OBJECT[food].name
-            print(f'\n... unable to put {new_food} along with {food}')
-            sys.exit()
+            print(f'{title} ... unable to put {new_food} along with {food}')
+            reset_world(world)
 
     placement[new_food] = s.pybullet_name
 
