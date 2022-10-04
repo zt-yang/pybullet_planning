@@ -44,7 +44,7 @@ MODEL_BOX_STR = """
           </geometry>
           <material>
             <diffuse>{rgb} 1</diffuse>
-          </material> 
+          </material>
         </visual>
       </link>
     </model>
@@ -408,6 +408,7 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
 
 
 def get_config_from_template(template_path):
+    print('\n\nget_config_from_template', get_config_from_template, '\n\n')
     planning_config = json.load(open(join(template_path, 'planning_config.json'), 'r'))
     return {k: v for k, v in planning_config.items() \
             if k in ['base_limits', 'robot_builder', 'robot_name', 'obs_camera_pose']}
@@ -464,7 +465,6 @@ def get_pddl_from_list(fact, world):
 
 def generate_problem_pddl(state, facts, goals, ## pddlstream_problem,
                           world_name='lisdf', domain_name='domain', out_path=None):
-    from pybullet_tools.logging import myprint as print
     # facts = pddlstream_problem.init
     # goals = pddlstream_problem.goal
     if goals[0] == 'and':
@@ -549,5 +549,6 @@ def generate_problem_pddl(state, facts, goals, ## pddlstream_problem,
         with open(out_path, 'w') as f:
             f.writelines(problem_pddl)
     else:
+        from pybullet_tools.logging import myprint as print
         print(f'----------------{problem_pddl}')
     return all_pred_names

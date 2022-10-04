@@ -79,9 +79,7 @@ def pddl_to_init_goal(exp_dir, world):
         domain_file,
         join(exp_dir, 'problem.pddl'),
     )
-    from lisdf_tools.lisdf_loader import World
-    if isinstance(world, World):
-        world.update_objects(problem.objects)
+    world.update_objects(problem.objects)
     robot = world.robot
 
     existed = [] ## {k: [] for k in ['q', 'aq', 'p', 'g', 'hg', 'pstn', 'lp']}

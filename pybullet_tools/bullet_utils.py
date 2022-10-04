@@ -890,10 +890,11 @@ def get_readable_list(lst, world=None, NAME_ONLY=False, TO_LISDF=False):
     return to_print
 
 
-def summarize_facts(facts, world=None, name='Initial facts'):
-    from pybullet_tools.logging import myprint as print
-    print('----------------')
-    print(f'{name} ({len(facts)})')
+def summarize_facts(facts, world=None, name='Initial facts', print_fn=None):
+    if print_fn is None:
+        from pybullet_tools.logging import myprint as print_fn
+    print_fn('----------------')
+    print_fn(f'{name} ({len(facts)})')
     predicates = {}
     for fact in facts:
         pred = fact[0].lower()
@@ -906,32 +907,35 @@ def summarize_facts(facts, world=None, name='Initial facts'):
         to_print_line = [get_readable_list(fa, world) for fa in predicates[pred]]
         to_print_line = sorted([str(l).lower() for l in to_print_line])
         to_print = ', '.join(to_print_line)
-        print(f'  {pred} [{len(to_print_line)}] : {to_print}')
-    print('----------------')
+        print_fn(f'  {pred} [{len(to_print_line)}] : {to_print}')
+    print_fn('----------------')
 
-def print_plan(plan, world=None):
+
+def print_plan(plan, world=None, print_fn=None):
     from pddlstream.language.constants import Equal, AND, PDDLProblem, is_plan
-    from pybullet_tools.logging import myprint as print
+    if print_fn is None:
+        from pybullet_tools.logging import myprint as print_fn
 
     if not is_plan(plan):
         return
     step = 1
-    print('Plan:')
+    print_fn('Plan:')
     for action in plan:
         name, args = action
         args2 = [str(a) for a in get_readable_list(args, world)]
-        print('{:2}) {} {}'.format(step, name, ' '.join(args2)))
+        print_fn('{:2}) {} {}'.format(step, name, ' '.join(args2)))
         step += 1
-    print()
+    print_fn()
 
 
-def print_goal(goal, world=None):
-    from pybullet_tools.logging import myprint as print
+def print_goal(goal, world=None, print_fn=None):
+    if print_fn is None:
+        from pybullet_tools.logging import myprint as print_fn
 
-    print(f'Goal ({len(goal) - 1}): ({goal[0]}')
+    print_fn(f'Goal ({len(goal) - 1}): ({goal[0]}')
     for each in get_readable_list(goal[1:], world):
-        print(f'   {tuple(each)},')
-    print(')')
+        print_fn(f'   {tuple(each)},')
+    print_fn(')')
 
 
 #######################################################

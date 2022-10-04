@@ -36,7 +36,7 @@ def maybe_add_robot(world, template_name):
     robot_builder(world, robot_name=robot_name, custom_limits=custom_limits)
 
 
-def create_pybullet_world(args, builder, world_name='test_scene', verbose=False,
+def create_pybullet_world(args, builder, world_name='test_scene', verbose=False, SAMPLING=False,
                           SAVE_LISDF=False, DEPTH_IMAGES=False, EXIT=False, RESET=False,
                           SAVE_TESTCASE=False, template_name=None, out_dir=None, root_dir=None):
     """ build a pybullet world with lisdf & pddl files into test_cases folder,
@@ -60,7 +60,7 @@ def create_pybullet_world(args, builder, world_name='test_scene', verbose=False,
 
     world = World(args, time_step=args.time_step)
     maybe_add_robot(world, template_dir)
-    floorplan, goal = builder(world, verbose=verbose)
+    floorplan, goal = builder(world, verbose=verbose, SAMPLING=SAMPLING)
 
     ## no gravity once simulation starts
     set_all_static()

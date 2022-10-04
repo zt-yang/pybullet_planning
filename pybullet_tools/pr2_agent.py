@@ -521,8 +521,10 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
                                custom_limits=BASE_LIMITS,
                                init_facts=[], ## avoid duplicates
                                facts=[],  ## completely overwrite
-                               collisions=True, teleport=False, PRINT=True, **kwargs):
-    from pybullet_tools.logging import myprint as print
+                               collisions=True, teleport=False, PRINT=True, print_fn=None,
+                               **kwargs):
+    if print_fn is None:
+        from pybullet_tools.logging import myprint as print_fn
 
     robot = state.robot
     world = state.world
@@ -530,13 +532,13 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     if not isinstance(custom_limits, dict):
         custom_limits = get_base_custom_limits(robot, custom_limits)
 
-    world.summarize_all_objects()
+    world.summarize_all_objects(print_fn=print_fn)
 
     if len(facts) == 0:
         facts = state.get_facts(init_facts)
     init = facts
 
-    print(f'pr2_agent.pddlstream_from_state_goal(\n'
+    print_fn(f'pr2_agent.pddlstream_from_state_goal(\n'
           f'\tdomain = {domain_pddl}, \n'
           f'\tstream = {stream_pddl}, \n'
           f'\tcustom_limits = {custom_limits}')
@@ -595,7 +597,7 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
             goal[-1] = ("not", atbconf)
 
     if PRINT:
-        summarize_facts(init, world, name='Facts extracted from observation')
+        summarize_facts(init, world, name='Facts extracted from observation', print_fn=print_fn)
 
     ## make all pred lower case
     new_init = []
@@ -607,7 +609,7 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
 
     init_added = [n for n in init_facts if n not in init]
     if len(init_facts) != 0:  ## only print the world facts the first time
-        summarize_facts(init_added, world, name='Added facts from PDDLStream preimage')
+        summarize_facts(init_added, world, name='Added facts from PDDLStream preimage', print_fn=print_fn)
         init = init + init_added
 
     domain_pddl = read(domain_pddl)
@@ -616,10 +618,12 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     goal = [g for g in goal if not (g[0] == 'not' and g[1][0] == '=')]
 
     if PRINT:
-        print_goal(goal, world=world)
+        print_goal(goal, world=world, print_fn=print_fn)
+        print_fn(f'Robot: {world.robot} | Objects: {world.objects}\n'
+                 f'Movable: {world.movable} | Fixed: {world.fixed} | Floor: {world.floors}')
+        print_fn(SEPARATOR)
 
     stream_map = robot.get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
-    # get_press_gen(problem, teleport=teleport)
     return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
 
 
@@ -669,23 +673,30 @@ def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False, lock=Fals
     return solution
 
 
-def solve_multiple(pddlstream_problem, stream_info, lock=True, **kwargs):
-    reset_globals()
-    # profiler = Profiler(field='tottime', num=25) ## , enable=profile # cumtime | tottime
-    # profiler.save()
-
-    temp_dir = '/tmp/pddlstream-{}-{}/'.format(os.getpid(), int(time.time()))
+def create_cwd_saver():
+    # temp_dir = '/tmp/pddlstream-{}-{}/'.format(os.getpid(), int(time.time()))
+    temp_dir = '/tmp/pddlstream-{}/'.format(os.getpid())
     print(f'\n\n\n\nsolve_multiple at temp dir {temp_dir} \n\n\n\n')
     safe_remove(temp_dir)
     ensure_dir(temp_dir)
     cwd_saver = TmpCWD(temp_cwd=temp_dir)  # TODO: multithread
     cwd_saver.save()  # TODO: move to the constructor
+    return cwd_saver
+
+
+def solve_multiple(pddlstream_problem, stream_info, lock=True, cwd_saver=None, **kwargs):
+    reset_globals()
+    # profiler = Profiler(field='tottime', num=25) ## , enable=profile # cumtime | tottime
+    # profiler.save()
+
+    if cwd_saver is None:
+        cwd_saver = create_cwd_saver()
     lock_saver = LockRenderer(lock=lock)
 
     solution = solve_one(pddlstream_problem, stream_info, lock=lock, **kwargs)
 
     # profiler.restore()
-    return solution, join(cwd_saver.tmp_cwd, 'visualizations')
+    return solution, cwd_saver.tmp_cwd
 
 
 def get_named_colors(kind='tablaeu', alpha=1.):
