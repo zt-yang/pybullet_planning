@@ -4,7 +4,7 @@ import os
 import time
 
 from pybullet_tools.pr2_streams import get_handle_grasp_gen, get_ik_ir_grasp_handle_gen, \
-    get_joint_position_test, get_marker_grasp_gen, get_bconf_in_region_test, \
+    get_marker_grasp_gen, get_bconf_in_region_test, \
     get_bconf_in_region_gen, get_pose_in_region_gen, get_motion_wconf_gen, get_update_wconf_p_two_gen, \
     get_marker_pose_gen, get_pull_marker_to_pose_motion_gen, get_pull_marker_to_bconf_motion_gen,  \
     get_pull_marker_random_motion_gen, get_ik_ungrasp_handle_gen, get_pose_in_region_test, \
@@ -17,7 +17,7 @@ from pybullet_tools.pr2_primitives import get_stable_gen, get_group_joints, Conf
     get_gripper_joints, GripperCommand, apply_commands, State, Trajectory
 from pybullet_tools.general_streams import get_cfree_approach_pose_test, get_grasp_list_gen, get_stable_list_gen, \
     sample_joint_position_open_list_gen, get_update_wconf_pst_gen, get_update_wconf_p_gen, get_sample_wconf_list_gen, \
-    Position, LinkPose, get_contain_list_gen, get_position_gen, get_pose_from_attachment
+    Position, get_contain_list_gen, get_pose_from_attachment
 
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
     set_camera_target_robot, nice, BASE_LIMITS, get_file_short_name

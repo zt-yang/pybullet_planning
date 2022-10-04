@@ -18,8 +18,9 @@ from pybullet_tools.bullet_utils import set_camera_target_body, set_camera_targe
 from world_builder.world_generator import to_lisdf, save_to_test_cases
 
 
-def create_pybullet_world(args, builder, world_name='test_scene', SAVE_LISDF=False, EXIT=True, RESET=True,
-                          USE_GUI=False, SAVE_TESTCASE=False, template_name=None, out_dir=None, verbose=False):
+def create_pybullet_world(args, builder, world_name='test_scene', verbose=False,
+                          SAVE_LISDF=False, EXIT=True, RESET=True,
+                          SAVE_TESTCASE=False, template_name=None, out_dir=None):
     """ build a pybullet world with lisdf & pddl files into test_cases folder,
         given a text_case folder to copy the domain, stream, and config from """
 
@@ -29,7 +30,7 @@ def create_pybullet_world(args, builder, world_name='test_scene', SAVE_LISDF=Fal
     """ ============== initiate simulator ==================== """
 
     ## for viewing, not the size of depth image
-    connect(use_gui=USE_GUI, shadows=False, width=1980, height=1238)
+    connect(use_gui=args.viewer, shadows=False, width=1980, height=1238)
 
     # set_camera_pose(camera_point=[2.5, 0., 3.5], target_point=[1., 0, 1.])
     if args.camera:
@@ -121,7 +122,8 @@ def test_exist_omelette(world, w=.5, h=.9, mass=1):
 
     return None, []
 
-def test_kitchen_oven(world, floorplan='counter.svg'):
+
+def test_kitchen_oven(world, floorplan='counter.svg', verbose=False):
 
     set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
     floor = load_floor_plan(world, plan_name=floorplan)
@@ -328,7 +330,7 @@ def test_fridges_tables(world, verbose=True, **kwargs):
 
 
 def sample_fridges_tables_scene(world, verbose=True, **kwargs):
-    minifridge_doors = sample_one_fridge_scene(world, open_doors=False)
+    minifridge_doors = sample_one_fridge_scene(world, open_doors=False, **kwargs)
     load_another_table(world, four_ways=False)
     placement = load_another_fridge_food(world, **kwargs)
     random_set_doors(minifridge_doors, epsilon=0.25, extent_max=0.5)

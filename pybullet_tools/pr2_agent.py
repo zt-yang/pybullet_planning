@@ -637,9 +637,10 @@ from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, st
 
 
 def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False, lock=False,
-              max_time=INF, downward_time=10, evaluation_time=10, visualize=False):
+              max_time=INF, downward_time=10, evaluation_time=10, max_plans=100,
+              visualize=False):
     if diverse:
-        max_plans = 200 ## 100
+        # max_plans = 200 ## 100
         plan_dataset = []
         max_skeletons = 1
         use_feedback = False

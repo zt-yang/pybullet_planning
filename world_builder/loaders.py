@@ -987,7 +987,7 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
         return None
 
     ## --- ADD A FRIDGE TO BE PUT INTO OR ONTO, ALIGN TO ONE SIDE
-    minifridge_doors = load_fridge_with_food_on_surface(world, counter, cabbage=cabbage)
+    minifridge_doors = load_fridge_with_food_on_surface(world, counter, cabbage=cabbage, SAMPLING=SAMPLING)
 
     # ## --- PICK FROM THE TABLE
     # counter.place_obj(cabbage)

@@ -37,6 +37,7 @@ SCALE_DB = abspath(join(dirname(__file__), 'model_scales.json'))
 SAMPLER_DB = abspath(join(dirname(__file__), 'sampling_distributions.json'))
 SAMPLER_KEY = "{x}&{y}"
 
+
 def read_xml(plan_name, asset_path=ASSET_PATH):
     X_OFFSET, Y_OFFSET, SCALING = None, None, None
     FLOOR_X_MIN, FLOOR_X_MAX = inf, -inf
@@ -187,6 +188,8 @@ def get_file_by_category(category, RANDOM_INSTANCE=False, SAMPLING=False):
         files = [join(asset_root, f) for f in listdir(join(asset_root))
                  if 'DS_Store' not in f and not f.startswith('_')]
 
+        # if 'minifridge' in asset_root.lower():
+        #     print('asset_root', asset_root)
         if len(ids) == len(files):  ## mobility objects
             paths = [join(asset_root, p) for p in ids]
             paths.sort()
