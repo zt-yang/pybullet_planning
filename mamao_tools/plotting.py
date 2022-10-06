@@ -36,10 +36,10 @@ METHODS = ['None', 'pvt', 'pvt*', 'pvt-task', 'oracle'] ##
 METHOD_NAMES = ['Baseline', 'PST', 'PST*', 'PST-task', 'Oracle']
 ## ## , 'random' , 'piginet', 'pvt-task', 'pvt-2', 'pvt|rel=all'
 
-METHODS = ['None', 'pvt-task', 'pvt-task*', 'oracle'] ##
-METHOD_NAMES = ['Baseline', 'PST-task', 'PST-task\n (with features)', 'Oracle']
+METHODS = ['None', 'pvt-task', 'pvt-task*', 'pvt-all', 'oracle'] ##
+METHOD_NAMES = ['Baseline', 'PST-task', 'PST-task *', 'PST-all', 'Oracle']
 
-check_time = 1664255601 ## 1664255601 for baselines | 1664750094  ## for d4 | 1664797442 for d3
+check_time = 1665023417 ## 1664255601 for baselines | 1664750094  ## for d4 | 1665010453 for d3
 
 color_dict = {
     'b': ('#3498db', '#2980b9'),
@@ -109,6 +109,7 @@ def get_time_data(diverse=False):
         data[group]['count'] = len([f for f in run_dirs if isdir(join(f, 'crop_images'))])
         data[group]['missing'] = {}
         data[group]['run_dir'] = {}
+        data[group]['overhead'] = {}
         for run_dir in run_dirs:
 
             for method in METHODS:
@@ -118,6 +119,8 @@ def get_time_data(diverse=False):
                     data[group]['missing'][method] = []
                 if method not in data[group]['run_dir']:
                     data[group]['run_dir'][method] = []
+                if method not in data[group]['overhead']:
+                    data[group]['overhead'][method] = []
                 if 'run_dir' not in data[group]:
                     data[group]['run_dir'] = []
 
@@ -135,37 +138,42 @@ def get_time_data(diverse=False):
                     # else:
                     #     continue
 
-                with open(file, 'r') as f:
-                    last_modified = os.path.getmtime(file)
-                    if last_modified < check_time:
-                        print('skipping old result', file)
-                        data[group]['missing'][method].append(run_dir)
-                        continue
+                last_modified = os.path.getmtime(file)
+                if last_modified < check_time:
+                    print('skipping old result', file)
+                    data[group]['missing'][method].append(run_dir)
+                    continue
 
-                    d = json.load(f)
+                d = json.load(open(file, 'r'))
+                if FPC:
+                    print(d['checks'])
+                else:
+                    ## original planning time
+                    if len(d) == 2:
+                        t = d[0]["planning"]
 
-                    if FPC:
-                        print(d['checks'])
+                    ## replanning time
                     else:
-                        ## original planning time
-                        if len(d) == 2:
-                            t = d[0]["planning"]
+                        if d["plan"] is None:
+                            print('Failed old result', file)
+                            if last_modified < check_time:
+                                data[group]['missing'][method].append(run_dir)
+                            continue
+                        t = d["planning_time"]
+                    if t > 500:
+                        print(f"Planning time too long: {t} s", file)
+                        # t = 500
+                data[group][method].append(t)
 
-                        ## replanning time
-                        else:
-                            if d["plan"] is None:
-                                print('Failed old result', file)
-                                if last_modified < check_time:
-                                    data[group]['missing'][method].append(run_dir)
-                                continue
-                            t = d["planning_time"]
-                        if t > 500:
-                            print(f"Planning time too long: {t} s", file)
-                            # t = 500
+                log_file = file.replace('plan_rerun_fc', 'fc_log')
+                print('log_file', log_file)
+                inf_t = json.load(open(log_file, 'r'))['run_time'][0]
+                if isinstance(inf_t, list):
+                    inf_t = inf_t[0]
+                data[group]['overhead'][method].append(inf_t)
 
-                    data[group][method].append(t)
-                    if run_dir not in data[group]['run_dir']:
-                        data[group]['run_dir'][method].append(run_dir)
+                if run_dir not in data[group]['run_dir']:
+                    data[group]['run_dir'][method].append(run_dir)
     return data
 
 
@@ -185,6 +193,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     groups = list(data.keys())
     n_groups = len(data)
     means = {}
+    means_overhead = {}
     stds = {}
     maxs = {}
     argmaxs = {}
@@ -202,6 +211,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
             method = METHODS[j]
             if method not in means:
                 means[method] = []
+                means_overhead[method] = []
                 stds[method] = []
                 maxs[method] = []
                 argmaxs[method] = []
@@ -212,8 +222,12 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                     points_y[method] = []
 
             if method in data[group] and len(data[group][method]) > 0:
+                # means_planning = np.asarray(data[group][method]) - np.asarray(data[group]['overhead'][method])
+                # means[method].append(np.mean(means_planning))
+                # stds[method].append(np.std(means_planning))
                 means[method].append(np.mean(data[group][method]))
                 stds[method].append(np.std(data[group][method]))
+                means_overhead[method].append(np.mean(data[group]['overhead'][method]))
                 maxs[method].append(np.max(data[group][method]))
                 label = data[group]['run_dir'][method][np.argmax(data[group][method])]
                 label = label.replace(abspath(DATASET_PATH), '')
@@ -228,6 +242,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                     points_y[i].extend(data[group][method])
             else:
                 means[method].append(0)
+                means_overhead[method].append(0)
                 stds[method].append(0)
                 maxs[method].append(0)
                 argmaxs[method].append("")
@@ -308,6 +323,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     else:
         figsize = (15, 6) if not PAPER_VERSION else (15, 4)
         figsize = (12, 4) if len(groups) == 3 else figsize
+        figsize = (18, 6) if len(METHODS) == 5 or len(groups) == 5 else figsize
         bar_width = 0.3
         fig, axs = plt.subplots(1, len(groups), figsize=figsize)
 
@@ -315,6 +331,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
         ll = [x for x in range(len(METHODS))]
         for i in range(len(groups)):
             mean = [means[method][i] for method in METHODS]
+            overhead = [means_overhead[method][i] for method in METHODS]
             std = [stds[method][i] for method in METHODS]
             count = [counts[method][i] for method in METHODS]
             miss = [missing[method][i] for method in METHODS]
@@ -343,6 +360,12 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                         yerr=std,
                         error_kw={'ecolor': colors_darker},
                         label=METHODS)
+                # axs[i].bar(ll, overhead, bar_width,
+                #         alpha=1,
+                #         color=colors,
+                #         label=METHODS[i],
+                #         bottom=mean)
+                # print(method, 'means_overhead', means_overhead[method])
 
                 for j in range(len(METHODS)):
                     cc = [colors[k] for k in xx]
