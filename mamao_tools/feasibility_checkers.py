@@ -41,6 +41,7 @@ class FeasibilityChecker(object):
                 self._log['run_time'].append(round(time.time() - start, 4))
                 printout.append((skeleton, 'pass' if prediction else f'x ({self.skeleton})'))
         else:
+            self._log['sequence'] = []
             start = time.time()
             predictions = self._check(inputs)
             run_time = round(time.time() - start, 4)
@@ -52,8 +53,10 @@ class FeasibilityChecker(object):
             sorted_predictions = {k: v for k, v in sorted(p.items(), key=lambda item: item[1], reverse=True)}
             for i, prediction in sorted_predictions.items():
                 plan = get_plan_from_input(inputs[i])
+                sequence = self.sequences[i]
                 skeleton = get_plan_skeleton(plan, indices)
                 self._log['checks'].append((skeleton, plan, prediction))
+                self._log['sequence'].append(sequence)
                 self._log['run_time'].append(ave_time)
                 printout.append((round(prediction, 3), skeleton))
         [print(p) for p in printout]
@@ -160,13 +163,11 @@ class PVT(FeasibilityChecker):
         self.data = get_facts_goals_visuals(run_dir, mode=args.input_mode, img_mode=args.image_mode, links_only=True)
         plan_gt = get_successful_plan(run_dir, self.data['indices'], self.data['continuous'])[0]
         self.plan_gt = [get_action_elems(a) for a in plan_gt]
-        # plan_gt, continuous = get_plans(run_dir, self.data['indices'], self.data['continuous'])
-        # self.data['continuous'].update(continuous)
-        # self.plan_gt = [get_action_elems(a) for a in plan_gt[0]]
 
         self._model = get_model(pt_path, args)
         self._model.eval()
         self.scoring = scoring
+        self.sequences = []
         print('\n\nPVT model loaded from', pt_path, '\n\n')
 
     def _check(self, inputs):
@@ -175,6 +176,7 @@ class PVT(FeasibilityChecker):
         from fastamp.fastamp_utils import get_action_elems, get_plan_skeleton
         import torch.nn as nn
         args = self.args
+        self.sequences = []
 
         indices = self.data['indices']
         dataset = []
@@ -215,6 +217,7 @@ class PVT(FeasibilityChecker):
                 else:
                     predictions = nn.Sigmoid()(outputs).round().cpu().bool().numpy()
                 all_predictions.extend([p.item() for p in predictions])
+                self.sequences.extend(self._model.sequences)
 
         if len(inputs) == 1:
             return predictions[0].item()
