@@ -933,7 +933,7 @@ def load_feg_kitchen(world):
     world.add_to_cat(chicken, 'cleaned')
 
 
-def place_in_cabinet(fridgestorage, cabbage, place=True):
+def place_in_cabinet(fridgestorage, cabbage, place=True, world=None):
     #random.seed(time.time())
     if not isinstance(fridgestorage, tuple):
         b = fridgestorage.body
@@ -953,6 +953,7 @@ def place_in_cabinet(fridgestorage, cabbage, place=True):
     # print(f'loaders.place_in_cabinet from {nice(old_pose)} to {nice(pose)}')
 
     if place:
+        # world.remove_body_attachment(cabbage)
         set_pose(cabbage, pose)
         fridgestorage.include_and_attach(cabbage)
     else:
@@ -1036,6 +1037,8 @@ def load_fridge_with_food_on_surface(world, counter, name='minifridge', cabbage=
     (_, _, z), quat = get_pose(minifridge)
     z += 0.02
     set_pose(minifridge, ((x, y, z), quat))
+    world.BODY_TO_OBJECT[counter].support_obj(minifridge)
+
     set_camera_target_body(minifridge, dx=2, dy=0, dz=2)
 
     ## --- ADD EACH DOOR JOINT
@@ -1124,9 +1127,10 @@ def random_set_table_by_counter(table, counter, four_ways=True):
         sys.exit()
 
     set_pose(table, ((x, y, z), quat))
+    return table
 
 
-def load_another_table(world, w=6, l=6, four_ways=True):
+def load_another_table(world, w=6, l=6, table_name='table', four_ways=True):
     counter = world.name_to_body('counter')
     floor = world.name_to_body('floor')
     cabbage = world.cat_to_objects('food')[0]
@@ -1134,56 +1138,21 @@ def load_another_table(world, w=6, l=6, four_ways=True):
     h = random.uniform(0.3, 0.9)
     table = world.add_object(Object(
         load_asset('KitchenCounter', x=w/2, y=0, yaw=math.pi, floor=floor, h=h,
-                   RANDOM_INSTANCE=True, verbose=False), category='supporter', name='table'))
+                   RANDOM_INSTANCE=True, verbose=False),
+        category='supporter', name=table_name))
     random_set_table_by_counter(table, counter, four_ways=four_ways)
     obstacles = [o for o in get_bodies() if o != table]
     while collided(table, obstacles, verbose=True, tag='load_another_table'):
         random_set_table_by_counter(table, counter, four_ways=four_ways)
 
-    # set_renderer(True)
-    # set_renderer(False)
 
-    # set_camera_target_body(table, dx=1.6, dy=1.2, dz=1.6)
-    # set_renderer(True)
-    # table.place_obj(cabbage)
-    # set_renderer(False)
-
-
-def load_another_fridge_food(world, verbose=True, SAMPLING=False, trial=0):
+def load_another_fridge(world, verbose=True, SAMPLING=False,
+                        table_name='table', fridge_name='cabinet'):
     from pybullet_tools.bullet_utils import nice as r
 
-    floor = world.name_to_body('floor')
-    food = world.cat_to_bodies('food')[0]
     space = world.cat_to_bodies('space')[0]
-    fridge = world.name_to_body('minifridge')
-    table = world.name_to_object('table')
-    placement = { food: space }
-    existing_bodies = get_bodies()
-    title = f'load_another_fridge_food (trial {trial}) | '
-
-    def reset_world(world):
-        for body in get_bodies():
-            if body not in existing_bodies:
-                obj = world.BODY_TO_OBJECT[body]
-                world.remove_object(obj)
-        return load_another_fridge_food(world, verbose=verbose, SAMPLING=SAMPLING, trial=trial+1)
-
-    def random_space():
-        spaces = world.cat_to_objects('space')
-        if random.random() < 0.5:
-            s = spaces[0]
-        else:
-            s = spaces[1]
-        return s
-
-        # return [s for s in spaces if s.body != space[0]][0]
-
-        # random.shuffle(spaces)
-        # s = random.choice(world.cat_to_objects('space'))
-        # # print('load_another_fridge_food:', space.name)
-        # # for i in range(20):
-        # #     print(i, random.choice(world.cat_to_objects('space')))
-        # return s
+    table = world.name_to_object(table_name)
+    title = f'load_another_fridge | '
 
     def place_by_space(cabinet, space):
         width = get_aabb_extent(get_aabb(cabinet))[1] / 2
@@ -1204,23 +1173,39 @@ def load_another_fridge_food(world, verbose=True, SAMPLING=False, trial=0):
         return aabb.upper[1] > limit[1] or aabb.lower[1] < limit[0]
 
     ## place another fridge on the table
-    doors = load_fridge_with_food_on_surface(world, table.body, 'cabinet', SAMPLING=SAMPLING)
-    cabinet = world.name_to_body('cabinet')
+    doors = load_fridge_with_food_on_surface(world, table.body, fridge_name, SAMPLING=SAMPLING)
+    cabinet = world.name_to_body(fridge_name)
     (x, y, z), quat = get_pose(cabinet)
     y_ori = y
     y0 = get_link_pose(space[0], space[-1])[0][1]
     place_by_space(cabinet, space)
     obstacles = [world.name_to_body('counter')]
     count = 20
-    while collided(cabinet, obstacles, verbose=True, tag='load cabinet by fridge') or outside_limit(cabinet):
+    tag = f'load {fridge_name} by minifridge'
+    while collided(cabinet, obstacles, verbose=True, tag=tag) or outside_limit(cabinet):
         place_by_space(cabinet, space)
         count -= 1
         if count == 0:
-            print(title, 'cant place cabinet by fridge after 20 trials')
-            reset_world(world)
-    print(f'{title} !!! moved cabinet from {r(y_ori)} to {r(y)} (y0 = {r(y0)})')
+            print(title, f'cant {tag} after 20 trials')
+            return None
+    if verbose:
+        (x, y, z), quat = get_pose(cabinet)
+        print(f'{title} !!! moved {fridge_name} from {r(y_ori)} to {r(y)} (y0 = {r(y0)})')
+    return doors
 
-    ## place another food in one of the fridges
+
+def place_another_food(world, SAMPLING=False, verbose=True):
+    """ place the food in one of the fridges """
+    floor = world.name_to_body('floor')
+    food = world.cat_to_bodies('food')[0]
+    space = world.cat_to_bodies('space')[0]
+    placement = { food: space }
+    title = f'place_another_food |'
+
+    def random_space():
+        spaces = world.cat_to_objects('space')
+        return random.choice(spaces)
+
     new_food = world.add_object(Moveable(
         load_asset('Food', x=0, y=0, yaw=random.uniform(-math.pi, math.pi),
                    floor=floor, RANDOM_INSTANCE=True, SAMPLING=SAMPLING),
@@ -1240,11 +1225,31 @@ def load_another_fridge_food(world, verbose=True, SAMPLING=False, trial=0):
         # print(f'first food\t', world.body_to_name(food), nice(get_pose(food)))
         if max_trial == 0:
             food = world.BODY_TO_OBJECT[food].name
-            print(f'{title} ... unable to put {new_food} along with {food}')
-            reset_world(world)
+            if verbose:
+                print(f'{title} ... unable to put {new_food} along with {food}')
+            return None
 
-    placement[new_food] = s.pybullet_name
+    placement[new_food.body] = s.pybullet_name
+    return placement
 
+
+def load_another_fridge_food(world, table_name='table', fridge_name='cabinet', trial=0, **kwargs):
+    existing_bodies = get_bodies()
+
+    def reset_world(world):
+        for body in get_bodies():
+            if body not in existing_bodies:
+                obj = world.BODY_TO_OBJECT[body]
+                world.remove_object(obj)
+        print(f'load_another_fridge_food (trial {trial+1})')
+        return load_another_fridge_food(world, table_name=table_name, trial=trial+1, **kwargs)
+
+    doors = load_another_fridge(world, table_name=table_name, fridge_name=fridge_name, **kwargs)
+    if doors is None:
+        return reset_world(world)
+    placement = place_another_food(world, **kwargs)
+    if placement is None:
+        return reset_world(world)
     random_set_doors(doors, epsilon=0.25)
-    ## the goal will be to pick one object and put in the other fridge
+
     return placement
