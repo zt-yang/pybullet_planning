@@ -113,6 +113,8 @@ class World(object):
         return objs
 
     def get_name(self, body):
+        if isinstance(body, list):
+            print('world.get_name', body)
         if body in self.BODY_TO_OBJECT:
             return self.BODY_TO_OBJECT[body].name
         return None
@@ -392,6 +394,11 @@ class World(object):
             o for o in self.OBJECTS_BY_CATEGORY[category] if not
             (o.body == obj.body and o.link == obj.link and o.joint == obj.joint)
         ]
+
+    def remove_body_attachment(self, body):
+        obj = self.BODY_TO_OBJECT[body]
+        if obj in self.ATTACHMENTS:
+            self.ATTACHMENTS.pop(obj)
 
     def remove_object(self, object):
         object = self.get_object(object)

@@ -403,6 +403,7 @@ class Surface(Region):
             self.name = get_link_name(body, link)
         # self.supported_objects = []
 
+
 class Space(Region):
     """ to support object inside, like cabinets and drawers """
     def __init__(self, body, link, **kwargs):
