@@ -111,3 +111,39 @@ def get_instance_info(run_dir, world=None):
 
 def exist_instance(model_instances, instance):
     return list(model_instances.values()).count(instance) > 0
+
+
+def get_fc_record(run_dir, fc_classes=[], diverse=True, rerun_subdir=None):
+    prefix = 'diverse_' if diverse else ''
+    pass_fail = {}
+    indices = get_indices(run_dir)
+    rerun_dir = join(run_dir, rerun_subdir) if rerun_subdir is not None else run_dir
+    for fc_class in fc_classes:
+        pas = []
+        fail = []
+        log_file = join(rerun_dir, f"{prefix}fc_log={fc_class}.json")
+        plan_file = join(rerun_dir, f"{prefix}plan_rerun_fc={fc_class}.json")
+
+        if isfile(log_file) and isfile(plan_file):
+            log = json.load(open(log_file, 'r'))
+            for aa in log['checks']:
+                plan, prediction = aa[-2:]
+                skeleton = get_plan_skeleton(plan, indices=indices)
+                note = f"{skeleton} ({round(prediction, 4)})"
+                if prediction and prediction > 0.5:
+                    pas.append(note)
+                else:
+                    fail.append(note)
+
+            result = json.load(open(plan_file, 'r'))
+            plan = result['plan']
+            planning_time = round(result['planning_time'], 2)
+            if len(pas) > 0 or len(fail) > 0:
+                if plan is not None:
+                    plan = get_plan_skeleton(plan, indices=indices)
+                    t_skeletons = [sk[:sk.index(' (')] for sk in pas]
+                    num_FP = t_skeletons.index(plan) if plan in t_skeletons else len(pas)
+                else:
+                    num_FP = None
+                pass_fail[fc_class] = (fail, pas, [plan], planning_time, num_FP)
+    return pass_fail

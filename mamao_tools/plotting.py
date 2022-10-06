@@ -15,11 +15,13 @@ import seaborn as sns
 sns.set_style("darkgrid", {"axes.facecolor": ".9"})
 
 from utils import DATASET_PATH
+from data_utils import get_fc_record
 
 AUTO_REFRESH = False
 VIOLIN = False
 FPC = False
 PAPER_VERSION = False ## no preview, just save pdf
+
 
 from matplotlib import rc
 rc('font', **{'family': 'serif', 'serif': ['Times']})
@@ -36,10 +38,10 @@ METHODS = ['None', 'pvt', 'pvt*', 'pvt-task', 'oracle'] ##
 METHOD_NAMES = ['Baseline', 'PST', 'PST*', 'PST-task', 'Oracle']
 ## ## , 'random' , 'piginet', 'pvt-task', 'pvt-2', 'pvt|rel=all'
 
-METHODS = ['None', 'pvt-task', 'pvt-task*', 'pvt-all', 'oracle'] ##
-METHOD_NAMES = ['Baseline', 'PST-task', 'PST-task *', 'PST-all', 'Oracle']
+METHODS = ['None', 'pvt-task', 'pvt-task*', 'pvt-all', 'pvt-124', 'oracle'] ##
+METHOD_NAMES = ['Baseline', 'PST', 'PST*', 'PST-all', 'pvt-124', 'Oracle']
 
-check_time = 1665023417 ## 1664255601 for baselines | 1664750094  ## for d4 | 1665010453 for d3
+check_time = 1664255601 ## 1664255601 for baselines | 1664750094  ## for d4 | 1665010453 for d3
 
 color_dict = {
     'b': ('#3498db', '#2980b9'),
@@ -52,8 +54,8 @@ color_dict = {
 colors = ['b', 'r', 'g', 'y', 'gray'] ## , 'p'
 colors = ['#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#95a5a6'] ## , '#9b59b6'
 colors_darker = ['#2980b9', '#c0392b', '#27ae60', '#f39c12', '#7f8c8d'] ## , '#8e44ad'
-colors = [color_dict[k][0] for k in ['b', 'r', 'g', 'y', 'gray']]
-colors_darker = [color_dict[k][0] for k in ['b', 'r', 'g', 'y', 'gray']]
+colors = [color_dict[k][0] for k in ['b', 'r', 'g', 'y', 'p', 'gray']]
+colors_darker = [color_dict[k][0] for k in ['b', 'r', 'g', 'y', 'p', 'gray']]
 
 ## see which files are missing
 # METHODS = ['None', 'oracle'] ## , 'pvt'
@@ -75,12 +77,19 @@ def get_rundirs(task_name):
 
 def check_run_dirs():
     for group in GROUPS:
+        if 'two_fridge' not in group:
+            continue
         run_dirs = get_rundirs(group)
         for run_dir in run_dirs:
 
-            domain_file = join(run_dir, f"domain_full.pddl")
-            correct_file = '/home/yang/Documents/cognitive-architectures/bullet/assets/pddl/domains/pr2_mamao.pddl'
-            num_lines = len(open(domain_file, 'r').readlines())
+            files = [join(run_dir, f) for f in listdir(run_dir) if 'pvt-task*' in f]
+            print(run_dir, len(files))
+            # for f in files:
+            #     os.remove(f)
+
+            # domain_file = join(run_dir, f"domain_full.pddl")
+            # correct_file = '/home/yang/Documents/cognitive-architectures/bullet/assets/pddl/domains/pr2_mamao.pddl'
+            # num_lines = len(open(domain_file, 'r').readlines())
 
             # last_modified = os.path.getmtime(domain_file)
             # if last_modified > time.time() - 60 * 60:
@@ -110,6 +119,7 @@ def get_time_data(diverse=False):
         data[group]['missing'] = {}
         data[group]['run_dir'] = {}
         data[group]['overhead'] = {}
+        data[group]['num_FP'] = {}
         for run_dir in run_dirs:
 
             for method in METHODS:
@@ -124,10 +134,7 @@ def get_time_data(diverse=False):
                 if 'run_dir' not in data[group]:
                     data[group]['run_dir'] = []
 
-                if FPC: ## False positive count
-                    file = join(run_dir, f"{prefix}fc_log={method}.json")
-                else: ## planning time
-                    file = join(run_dir, f"{prefix}plan_rerun_fc={method}.json")
+                file = join(run_dir, f"{prefix}plan_rerun_fc={method}.json")
 
                 if not isfile(file):
                     print(f"File not found: {file}")
@@ -146,7 +153,11 @@ def get_time_data(diverse=False):
 
                 d = json.load(open(file, 'r'))
                 if FPC:
-                    print(d['checks'])
+                    rr = run_dir[:-len(RERUN_SUBDIR)-1]
+                    num_FP = get_fc_record(rr, fc_classes=[method], rerun_subdir=RERUN_SUBDIR)[method][-1]
+                    if num_FP is not None:
+                        data[group][method].append(num_FP)
+
                 else:
                     ## original planning time
                     if len(d) == 2:
@@ -163,8 +174,9 @@ def get_time_data(diverse=False):
                     if t > 500:
                         print(f"Planning time too long: {t} s", file)
                         # t = 500
-                data[group][method].append(t)
+                    data[group][method].append(t)
 
+                ## may want to visualize overhead
                 log_file = file.replace('plan_rerun_fc', 'fc_log')
                 print('log_file', log_file)
                 inf_t = json.load(open(log_file, 'r'))['run_time'][0]
@@ -222,11 +234,13 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                     points_y[method] = []
 
             if method in data[group] and len(data[group][method]) > 0:
-                # means_planning = np.asarray(data[group][method]) - np.asarray(data[group]['overhead'][method])
-                # means[method].append(np.mean(means_planning))
-                # stds[method].append(np.std(means_planning))
-                means[method].append(np.mean(data[group][method]))
-                stds[method].append(np.std(data[group][method]))
+                if FPC:
+                    means[method].append(np.mean(data[group][method]))
+                    stds[method].append(np.std(data[group][method]))
+                else:
+                    means_planning = np.asarray(data[group][method]) - np.asarray(data[group]['overhead'][method])
+                    means[method].append(np.mean(means_planning))
+                    stds[method].append(np.std(means_planning))
                 means_overhead[method].append(np.mean(data[group]['overhead'][method]))
                 maxs[method].append(np.max(data[group][method]))
                 label = data[group]['run_dir'][method][np.argmax(data[group][method])]
@@ -264,6 +278,10 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     dt = datetime.now().strftime("%m%d_%H%M%S")
     title = 'Planning time comparison '
     title += '(diverse planning mode) ' if diverse else ''
+    if FPC:
+        title = "Number of false positive skeletons before finding a solution"
+    else:
+        title = "Planning time"
     labels = tuple([f"{g.replace('tt_', '')}\n({data[g]['count']})" for g in groups])
     labels = tuple([f"{g.replace('tt_', '')}" for g in groups])
 
@@ -323,7 +341,10 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     else:
         figsize = (15, 6) if not PAPER_VERSION else (15, 4)
         figsize = (12, 4) if len(groups) == 3 else figsize
-        figsize = (18, 6) if len(METHODS) == 5 or len(groups) == 5 else figsize
+        if len(METHODS) == 5 or len(groups) == 5:
+            figsize = (18, 6)
+        if len(METHODS) == 6 or len(groups) == 6:
+            figsize = (21, 6)
         bar_width = 0.3
         fig, axs = plt.subplots(1, len(groups), figsize=figsize)
 
@@ -360,17 +381,36 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                         yerr=std,
                         error_kw={'ecolor': colors_darker},
                         label=METHODS)
-                # axs[i].bar(ll, overhead, bar_width,
-                #         alpha=1,
-                #         color=colors,
-                #         label=METHODS[i],
-                #         bottom=mean)
-                # print(method, 'means_overhead', means_overhead[method])
+                if not FPC:
+                    axs[i].bar(ll, overhead, bar_width,
+                            alpha=0.4,
+                            color='#000000',
+                            label=METHODS[i],
+                            bottom=mean)
+                else:
+                    from matplotlib.ticker import MaxNLocator
+                    axs[i].yaxis.set_major_locator(MaxNLocator(integer=True))
+
+                cc = [colors[k] for k in xx]
+                xxx = [x * scale for x in xx]
+                s = 20
+                if FPC:
+                    ss = []
+                    for j in range(len(METHODS)):
+                        yy_method = [yy[m] for m in range(len(yy)) if xx[m] == j]
+                        unique, num = np.unique(yy_method, return_counts=True)
+                        unique = list(unique)
+                        sss = [num[unique.index(m)] for m in yy_method]
+                        if len(sss) == 0:
+                            ss.extend([s]*len(yy_method))
+                            continue
+                        sss_min = min(sss)
+                        sss = [np.log(ssss/sss_min + 1)*s for ssss in sss]
+                        ss.extend(sss)
+                    s = np.asarray(ss)
+                axs[i].scatter(xxx, yy, s=s, color=cc, alpha=0.7)
 
                 for j in range(len(METHODS)):
-                    cc = [colors[k] for k in xx]
-                    xxx = [x*scale for x in xx]
-                    axs[i].scatter(xxx, yy, s=20, color=cc, alpha=0.7)
 
                     if not PAPER_VERSION:
                         bar_label = f"{count[j]} \n"
@@ -401,12 +441,14 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
             axs[i].set_xticks(ll)
             axs[i].set_xticklabels(METHOD_NAMES, fontsize=10) ## , y=-0.25 , rotation=45
 
+            # print(groups[i], 'means_overhead', means_overhead)
+
         axs[0].set_ylabel('Planning time', fontsize=12)
         handles = [plt.Rectangle((0, 0), 1, 1, color=colors[i]) for i in range(len(METHODS))]
 
         if not PAPER_VERSION:
             plt.subplots_adjust(hspace=0.55, left=0.1, right=0.95, top=0.8, bottom=0.2)
-            fig.suptitle(title + dt, fontsize=16, y=0.96) ##
+            fig.suptitle(title, fontsize=16, y=0.96) ##  + dt
             fig.legend(handles, METHOD_NAMES, ncol=len(METHODS), fontsize=11,
                        loc='upper center', bbox_to_anchor=(0.5, 0.9))
         else:
@@ -424,6 +466,8 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
 
 
 if __name__ == '__main__':
+
+    # check_run_dirs()
 
     if not AUTO_REFRESH:
         print('time.time()', int(time.time()))
