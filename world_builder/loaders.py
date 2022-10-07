@@ -953,7 +953,8 @@ def place_in_cabinet(fridgestorage, cabbage, place=True, world=None):
     # print(f'loaders.place_in_cabinet from {nice(old_pose)} to {nice(pose)}')
 
     if place:
-        # world.remove_body_attachment(cabbage)
+        if hasattr(world, 'remove_body_attachment'):
+            world.remove_body_attachment(cabbage)
         set_pose(cabbage, pose)
         fridgestorage.include_and_attach(cabbage)
     else:
@@ -1160,7 +1161,7 @@ def load_another_fridge(world, verbose=True, SAMPLING=False,
         y_min = get_aabb(space[0], link=space[1]).lower[1]
         y0 = get_link_pose(space[0], space[-1])[0][1]
         (x, y, z), quat = get_pose(cabinet)
-        offset = random.uniform(0.2, 0.8)
+        offset = random.uniform(0.4, 0.8)
         if y > y0:
             y = y_max + offset + width
         elif y < y0:
