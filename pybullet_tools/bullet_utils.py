@@ -1093,7 +1093,8 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
     instance_name = state.world.get_instance_name(body_name)
     found, db, db_file = find_grasp_in_db('hand_grasps.json', instance_name,
                                           LENGTH_VARIANTS=LENGTH_VARIANTS)
-    if found is not None: return found
+    if found is not None:
+        return found
 
     dist = grasp_length
     robot = state.robot
