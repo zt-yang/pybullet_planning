@@ -279,7 +279,7 @@ def test_one_fridge(world, verbose=True, **kwargs):
     return None, goal
 
 
-def sample_one_fridge_scene(world, verbose=True, open_doors=True, **kwargs):
+def sample_one_fridge_scene(world, movable_category='food', verbose=True, open_doors=True, **kwargs):
 
     ## later we may want to automatically add irrelevant objects and joints
     world.set_skip_joints()
@@ -288,7 +288,7 @@ def sample_one_fridge_scene(world, verbose=True, open_doors=True, **kwargs):
     world.robot.randomly_spawn()
 
     """ ============== Add world objects ================ """
-    minifridge_doors = load_random_mini_kitchen_counter(world, **kwargs)
+    minifridge_doors = load_random_mini_kitchen_counter(world, movable_category, **kwargs)
 
     """ ============== Change joint positions ================ """
     ## only after all objects have been placed inside
@@ -301,8 +301,8 @@ def sample_one_fridge_scene(world, verbose=True, open_doors=True, **kwargs):
     return minifridge_doors
 
 
-def sample_one_fridge_goal(world):
-    cabbage = world.cat_to_bodies('food')[0]  ## world.name_to_body('cabbage')
+def sample_one_fridge_goal(world, movable_category='food'):
+    cabbage = world.cat_to_bodies(movable_category)[0]  ## world.name_to_body('cabbage')
     fridge = world.name_to_body('fridgestorage')
     counter = world.name_to_body('counter')
 
@@ -318,20 +318,20 @@ def sample_one_fridge_goal(world):
 ############################################
 
 
-def test_fridge_table(world, verbose=True, **kwargs):
+def test_fridge_table(world, movable_category='food', verbose=True, **kwargs):
     #set_time_seed()
-    sample_fridge_table_scene(world, verbose, **kwargs)
-    goal = sample_fridge_table_goal(world)
+    sample_fridge_table_scene(world, movable_category, verbose, **kwargs)
+    goal = sample_fridge_table_goal(world, movable_category)
     return None, goal
 
 
-def sample_fridge_table_scene(world, verbose=True, **kwargs):
-    sample_one_fridge_scene(world, verbose=verbose, **kwargs)
+def sample_fridge_table_scene(world, movable_category='food', verbose=True, **kwargs):
+    sample_one_fridge_scene(world, movable_category, verbose=verbose, **kwargs)
     load_another_table(world)
 
 
-def sample_fridge_table_goal(world):
-    cabbage = world.cat_to_objects('food')[0]  ## world.name_to_body('cabbage')
+def sample_fridge_table_goal(world, movable_category='food'):
+    cabbage = world.cat_to_objects(movable_category)[0]  ## world.name_to_body('cabbage')
     fridge = world.name_to_body('fridgestorage')
     counter = world.name_to_body('counter')
     table = world.name_to_object('table')
@@ -357,23 +357,23 @@ def sample_fridge_table_goal(world):
 ############################################
 
 
-def test_fridges_tables(world, verbose=True, **kwargs):
-    placement = sample_fridges_tables_scene(world, verbose=verbose, **kwargs)
-    goal = sample_fridges_tables_goal(world, placement)
+def test_fridges_tables(world, movable_category='food', verbose=True, **kwargs):
+    placement = sample_fridges_tables_scene(world, movable_category, verbose=verbose, **kwargs)
+    goal = sample_fridges_tables_goal(world, placement, movable_category)
     return None, goal
 
 
-def sample_fridges_tables_scene(world, verbose=True, **kwargs):
-    minifridge_doors = sample_one_fridge_scene(world, open_doors=False, **kwargs)
+def sample_fridges_tables_scene(world, movable_category='food', verbose=True, **kwargs):
+    minifridge_doors = sample_one_fridge_scene(world, movable_category, open_doors=False, **kwargs)
     load_another_table(world, four_ways=False)
-    placement = load_another_fridge_food(world, **kwargs)
+    placement = load_another_fridge_food(world, movable_category, **kwargs)
     random_set_doors(minifridge_doors, epsilon=0.25, extent_max=0.5)
     ensure_robot_cfree(world, verbose=verbose)
     return placement
 
 
-def sample_fridges_tables_goal(world, placement):
-    food = random.choice(world.cat_to_bodies('food'))
+def sample_fridges_tables_goal(world, placement, movable_category='food'):
+    food = random.choice(world.cat_to_bodies(movable_category))
     spaces = world.cat_to_bodies('space')
     other = [s for s in spaces if s != placement[food]][0]
 
@@ -381,7 +381,7 @@ def sample_fridges_tables_goal(world, placement):
 
     ## the goal will be to pick one object and put in the other fridge
     goal_candidates = [
-        # [('Holding', arm, food)],
+        [('Holding', arm, food)],
         [('In', food, other)],
     ]
 
@@ -391,15 +391,15 @@ def sample_fridges_tables_goal(world, placement):
 ############################################
 
 
-def test_three_fridges_tables(world, **kwargs):
-    placement = sample_three_fridges_tables_scene(world, **kwargs)
-    goal = sample_three_fridges_tables_goal(world, placement)
+def test_three_fridges_tables(world, movable_category='food', **kwargs):
+    placement = sample_three_fridges_tables_scene(world, movable_category, **kwargs)
+    goal = sample_three_fridges_tables_goal(world, placement, movable_category)
     return None, goal
 
 
-def sample_three_fridges_tables_scene(world, verbose=True, **kwargs):
+def sample_three_fridges_tables_scene(world, movable_category='food', verbose=True, **kwargs):
     sample_one_fridge_scene(world, verbose=verbose, open_doors=False, **kwargs)
-    placement = {world.cat_to_bodies('food')[0]: world.cat_to_objects('space')[0].pybullet_name}
+    placement = {world.cat_to_bodies(movable_category)[0]: world.cat_to_objects('space')[0].pybullet_name}
 
     load_another_table(world, four_ways=False, table_name='table')
     load_another_table(world, four_ways=False, table_name='station')
@@ -414,9 +414,9 @@ def sample_three_fridges_tables_scene(world, verbose=True, **kwargs):
     return placement
 
 
-def sample_three_fridges_tables_goal(world, placement):
+def sample_three_fridges_tables_goal(world, placement, movable_category='food'):
     arm = world.robot.arms[0]
-    foods = world.cat_to_bodies('food')
+    foods = world.cat_to_bodies(movable_category)
     random.shuffle(foods)
     cases = ['in1', 'hold1', 'in2', 'in2hold1', 'in3']
 
