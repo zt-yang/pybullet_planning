@@ -961,7 +961,7 @@ def place_in_cabinet(fridgestorage, cabbage, place=True, world=None):
         return pose
 
 
-def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, table_only=False, SAMPLING=False):
+def load_random_mini_kitchen_counter(world, movable_category='food', w=6, l=6, h=0.9, wb=.07, hb=.1, table_only=False, SAMPLING=False):
     """ each kitchen counter has one minifridge and one microwave
     """
     floor = world.add_object(
@@ -979,10 +979,11 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     # table = world.add_object(
     #     Object(create_box(0.5, 0.5, h, color=(.75, .75, .75, 1)), category='supporter', name='table'),
     #     Pose(point=Point(x=x, y=y, z=h / 2)))
+    cat = movable_category.capitalize()
     cabbage = world.add_object(Moveable(
-        load_asset('Food', x=x, y=y, yaw=random.uniform(-math.pi, math.pi),
+        load_asset(cat, x=x, y=y, yaw=random.uniform(-math.pi, math.pi),
                    floor=floor, RANDOM_INSTANCE=True, SAMPLING=SAMPLING),
-        category='Food'
+        category=cat
     ))
 
     if table_only:
@@ -1021,7 +1022,8 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     return minifridge_doors
 
 
-def load_fridge_with_food_on_surface(world, counter, name='minifridge', cabbage=None, SAMPLING=False):
+def load_fridge_with_food_on_surface(world, counter, name='minifridge',
+                                     cabbage=None, SAMPLING=False):
     (x, y, _), _ = get_pose(counter)
     SAMPLING = cabbage if SAMPLING else False
     minifridge = world.add_object(Object(
@@ -1134,7 +1136,6 @@ def random_set_table_by_counter(table, counter, four_ways=True):
 def load_another_table(world, w=6, l=6, table_name='table', four_ways=True):
     counter = world.name_to_body('counter')
     floor = world.name_to_body('floor')
-    cabbage = world.cat_to_objects('food')[0]
 
     h = random.uniform(0.3, 0.9)
     table = world.add_object(Object(
@@ -1195,22 +1196,23 @@ def load_another_fridge(world, verbose=True, SAMPLING=False,
     return doors
 
 
-def place_another_food(world, SAMPLING=False, verbose=True):
+def place_another_food(world, movable_category='food', SAMPLING=False, verbose=True):
     """ place the food in one of the fridges """
     floor = world.name_to_body('floor')
-    food = world.cat_to_bodies('food')[0]
+    food = world.cat_to_bodies(movable_category)[0]
     space = world.cat_to_bodies('space')[0]
     placement = { food: space }
-    title = f'place_another_food |'
+    title = f'place_another_food ({movable_category}) |'
 
     def random_space():
         spaces = world.cat_to_objects('space')
         return random.choice(spaces)
 
+    cat = movable_category.capitalize()
     new_food = world.add_object(Moveable(
-        load_asset('Food', x=0, y=0, yaw=random.uniform(-math.pi, math.pi),
+        load_asset(cat, x=0, y=0, yaw=random.uniform(-math.pi, math.pi),
                    floor=floor, RANDOM_INSTANCE=True, SAMPLING=SAMPLING),
-        category='Food'
+        category=cat
     ))
 
     s = random_space()
@@ -1234,7 +1236,8 @@ def place_another_food(world, SAMPLING=False, verbose=True):
     return placement
 
 
-def load_another_fridge_food(world, table_name='table', fridge_name='cabinet', trial=0, **kwargs):
+def load_another_fridge_food(world, movable_category='food', table_name='table',
+                             fridge_name='cabinet', trial=0, **kwargs):
     existing_bodies = get_bodies()
 
     def reset_world(world):
@@ -1243,12 +1246,13 @@ def load_another_fridge_food(world, table_name='table', fridge_name='cabinet', t
                 obj = world.BODY_TO_OBJECT[body]
                 world.remove_object(obj)
         print(f'load_another_fridge_food (trial {trial+1})')
-        return load_another_fridge_food(world, table_name=table_name, trial=trial+1, **kwargs)
+        return load_another_fridge_food(world, movable_category, table_name=table_name,
+                                        trial=trial+1, **kwargs)
 
     doors = load_another_fridge(world, table_name=table_name, fridge_name=fridge_name, **kwargs)
     if doors is None:
         return reset_world(world)
-    placement = place_another_food(world, **kwargs)
+    placement = place_another_food(world, movable_category, **kwargs)
     if placement is None:
         return reset_world(world)
     random_set_doors(doors, epsilon=0.25)
