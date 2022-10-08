@@ -381,11 +381,46 @@ def sample_fridges_tables_goal(world, placement, movable_category='food'):
 
     ## the goal will be to pick one object and put in the other fridge
     goal_candidates = [
-        [('Holding', arm, food)],
+        # [('Holding', arm, food)],
         [('In', food, other)],
     ]
 
     return random.choice(goal_candidates)
+
+
+############################################
+
+
+def test_fridges_tables_conjunctive(world, movable_category='food', verbose=True, **kwargs):
+    placement = sample_fridges_tables_scene(world, movable_category, verbose=verbose, **kwargs)
+    goal = sample_conjunctive_fridges_tables_goal(world, placement, movable_category)
+    return None, goal
+
+
+def sample_conjunctive_fridges_tables_goal(world, placement, movable_category='food'):
+    foods = world.cat_to_bodies(movable_category)
+    random.shuffle(foods)
+    arm = world.robot.arms[0]
+    spaces = world.cat_to_bodies('space')
+
+    cases = ['in2', 'in1hold1']
+    open_surfaces = get_open_surfaces(world)
+    if len(open_surfaces) > 0:
+        cases.extend(['in1on1'])
+
+    case = random.choice(cases)
+    goals = []
+    if case == 'in2':
+        goals.append(get_goal_in(foods[0], placement, spaces=spaces))
+        goals.append(get_goal_in(foods[1], placement, spaces=spaces))
+    elif case == 'in1hold1':
+        goals.append(get_goal_in(foods[0], placement, spaces=spaces))
+        goals.append(('Holding', arm, foods[1]))
+    elif case == 'in2on1':
+        goals.append(get_goal_in(foods[0], placement, spaces=spaces))
+        goals.append(get_goal_on(foods[1], open_surfaces))
+
+    return goals
 
 
 ############################################
@@ -414,55 +449,66 @@ def sample_three_fridges_tables_scene(world, movable_category='food', verbose=Tr
     return placement
 
 
+def get_goal_in(food, placement, spaces=None, world=None):
+    """ random sample another fridge as destination """
+    if spaces is None:
+        spaces = world.cat_to_bodies('space')
+    other = [s for s in spaces if s != placement[food]][0]
+    return ('In', food, other)
+
+
+def get_open_surfaces(world):
+    return [ind.pybullet_name for ind in world.cat_to_objects('supporter') if has_open_surface(ind)]
+
+
+def has_open_surface(obj):
+    aabb_fridge = get_aabb(obj.supported_objects[0].body)
+    aabb_table = get_aabb(obj.body)
+    return abs(aabb_fridge.lower[1] - aabb_table.lower[1]) > 0.2 or \
+           abs(aabb_fridge.upper[1] - aabb_table.upper[1]) > 0.2
+
+
+def get_goal_on(food, open_surfaces=None, world=None):
+    """ random sample an open table as destination """
+    if open_surfaces is None:
+        open_surfaces = get_open_surfaces(world)
+    table = random.choice(open_surfaces)
+    return ('On', food, table)
+
+
 def sample_three_fridges_tables_goal(world, placement, movable_category='food'):
     arm = world.robot.arms[0]
     foods = world.cat_to_bodies(movable_category)
+    spaces = world.cat_to_bodies('space')
     random.shuffle(foods)
     cases = ['in1', 'hold1', 'in2', 'in2hold1', 'in3']
 
-    def has_open_surface(obj):
-        aabb_fridge = get_aabb(obj.supported_objects[0].body)
-        aabb_table = get_aabb(obj.body)
-        return abs(aabb_fridge.lower[1] - aabb_table.lower[1]) > 0.2 or \
-               abs(aabb_fridge.upper[1] - aabb_table.upper[1]) > 0.2
-
-    open_surfaces = [ind.pybullet_name for ind in world.cat_to_objects('supporter') if has_open_surface(ind)]
+    open_surfaces = get_open_surfaces(world)
     if len(open_surfaces) > 0:
         cases.extend(['on1', 'in2on1'])
-
-    def get_goal_in(food):
-        """ random sample another fridge as destination """
-        spaces = world.cat_to_bodies('space')
-        other = [s for s in spaces if s != placement[food]][0]
-        return ('In', food, other)
-
-    def get_goal_on(food):
-        """ random sample an open table as destination """
-        table = random.choice(open_surfaces)
-        return ('On', food, table)
 
     goals = []
     case = random.choice(cases)
     if case == 'in1':
-        goals.append(get_goal_in(foods[0]))
+        goals.append(get_goal_in(foods[0], placement, spaces=spaces))
     elif case == 'hold1':
         goals.append(('Holding', arm, foods[0]))
     elif case == 'on1':
-        goals.append(get_goal_on(foods[0]))
+        goals.append(get_goal_on(foods[0], open_surfaces))
     elif case == 'in2':
-        goals.append(get_goal_in(foods[0]))
-        goals.append(get_goal_in(foods[1]))
+        goals.append(get_goal_in(foods[0], placement, spaces=spaces))
+        goals.append(get_goal_in(foods[1], placement, spaces=spaces))
     elif case == 'in2hold1':
-        goals.append(get_goal_in(foods[0]))
-        goals.append(get_goal_in(foods[1]))
+        goals.append(get_goal_in(foods[0], placement, spaces=spaces))
+        goals.append(get_goal_in(foods[1], placement, spaces=spaces))
         goals.append(('Holding', arm, foods[2]))
     elif case == 'in2on1':
-        goals.append(get_goal_in(foods[0]))
-        goals.append(get_goal_in(foods[1]))
-        goals.append(get_goal_on(foods[2]))
+        goals.append(get_goal_in(foods[0], placement, spaces=spaces))
+        goals.append(get_goal_in(foods[1], placement, spaces=spaces))
+        goals.append(get_goal_on(foods[2], open_surfaces))
     elif case == 'in3':
-        goals.append(get_goal_in(foods[0]))
-        goals.append(get_goal_in(foods[1]))
-        goals.append(get_goal_in(foods[2]))
+        goals.append(get_goal_in(foods[0], placement, spaces=spaces))
+        goals.append(get_goal_in(foods[1], placement, spaces=spaces))
+        goals.append(get_goal_in(foods[2], placement, spaces=spaces))
 
     return goals
