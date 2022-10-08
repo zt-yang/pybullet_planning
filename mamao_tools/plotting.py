@@ -29,6 +29,7 @@ rc('font', **{'family': 'serif', 'serif': ['Times']})
 
 GROUPS = ['tt_one_fridge_table_pick', 'tt_one_fridge_table_in', 'tt_two_fridge_pick',
           'tt_two_fridge_in']  ## ## 'tt_one_fridge_table_on', 'tt_one_fridge_pick',
+GROUPS = ['tt_two_fridge_pick', 'tt_two_fridge_in', 'ss_two_fridge_pick', 'ss_two_fridge_in']
 
 METHODS = ['None', 'shuffle', 'binary', 'pvt', 'oracle']
 METHOD_NAMES = ['Baseline', 'Shuffle', 'PST-0/1', 'PST', 'Oracle']
@@ -38,8 +39,8 @@ METHODS = ['None', 'pvt', 'pvt*', 'pvt-task', 'oracle'] ##
 METHOD_NAMES = ['Baseline', 'PST', 'PST*', 'PST-task', 'Oracle']
 ## ## , 'random' , 'piginet', 'pvt-task', 'pvt-2', 'pvt|rel=all'
 
-METHODS = ['None', 'pvt-task', 'pvt-task*', 'pvt-all', 'pvt-124', 'oracle'] ##
-METHOD_NAMES = ['Baseline', 'PST', 'PST*', 'PST-all', 'pvt-124', 'Oracle']
+METHODS = ['None', 'pvt-task', 'pvt-all', 'oracle'] ##
+METHOD_NAMES = ['Baseline', 'PIGI', 'PIGI-all', 'Oracle']
 
 check_time = 1664255601 ## 1664255601 for baselines | 1664750094  ## for d4 | 1665010453 for d3
 
@@ -51,11 +52,9 @@ color_dict = {
     'p': ('#9b59b6', '#8e44ad'),
     'gray': ('#95a5a6', '#7f8c8d'),
 }
-colors = ['b', 'r', 'g', 'y', 'gray'] ## , 'p'
-colors = ['#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#95a5a6'] ## , '#9b59b6'
-colors_darker = ['#2980b9', '#c0392b', '#27ae60', '#f39c12', '#7f8c8d'] ## , '#8e44ad'
-colors = [color_dict[k][0] for k in ['b', 'r', 'g', 'y', 'p', 'gray']]
-colors_darker = [color_dict[k][0] for k in ['b', 'r', 'g', 'y', 'p', 'gray']]
+cc = ['b', 'r', 'g', 'gray'] ## , 'p'
+colors = [color_dict[k][0] for k in cc]
+colors_darker = [color_dict[k][0] for k in cc]
 
 ## see which files are missing
 # METHODS = ['None', 'oracle'] ## , 'pvt'
@@ -135,6 +134,10 @@ def get_time_data(diverse=False):
                     data[group]['run_dir'] = []
 
                 file = join(run_dir, f"{prefix}plan_rerun_fc={method}.json")
+                # if 'tt_two_fridge_pick' in run_dir and method == 'pvt-task*':
+                #     file = join(run_dir, f"{prefix}plan_rerun_fc=pvt-124.json")
+                # elif 'tt_two_fridge_in' in run_dir and method == 'pvt-task*':
+                #     file = join(run_dir, f"{prefix}plan_rerun_fc=pvt-123.json")
 
                 if not isfile(file):
                     print(f"File not found: {file}")
@@ -178,7 +181,6 @@ def get_time_data(diverse=False):
 
                 ## may want to visualize overhead
                 log_file = file.replace('plan_rerun_fc', 'fc_log')
-                print('log_file', log_file)
                 inf_t = json.load(open(log_file, 'r'))['run_time'][0]
                 if isinstance(inf_t, list):
                     inf_t = inf_t[0]
@@ -271,6 +273,8 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
         bar_width = 0.25
     elif len(METHODS) == 4:
         bar_width = 0.2
+    elif len(METHODS) == 5:
+        bar_width = 0.15
     x_ticks_offset = bar_width * (len(METHODS)-1)/2
 
     error_config = {'ecolor': '0.3'}
@@ -332,14 +336,15 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
         plt.ylim([0, max_y+100]) if diverse else plt.ylim([0, 500])
         plt.legend(ncol=len(METHODS), fontsize=11, loc='upper center', bbox_to_anchor=(0.5, 1.1), fontname='Times')
         plt.xlabel('Tasks (run count)', fontsize=12, fontname='Times')
-        plt.ylabel('Planning time', fontsize=12, fontname='Times')
+        ylabel = 'Planning time (ms)' if not FPC else 'Number of FP skeletons'
+        plt.ylabel(ylabel, fontsize=12, fontname='Times')
         plt.xticks(index + x_ticks_offset, labels, fontsize=10)
         ax.tick_params(axis='x', which='major', pad=28)
         plt.tight_layout()
 
     ## ------------- different y axis to amplify improvements ------------ ##
     else:
-        figsize = (15, 6) if not PAPER_VERSION else (15, 4)
+        figsize = (15, 5) if not PAPER_VERSION else (15, 4)
         figsize = (12, 4) if len(groups) == 3 else figsize
         if len(METHODS) == 5 or len(groups) == 5:
             figsize = (18, 6)
@@ -385,8 +390,9 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                     axs[i].bar(ll, overhead, bar_width,
                             alpha=0.4,
                             color='#000000',
-                            label=METHODS[i],
+                            label=METHODS,
                             bottom=mean)
+                    print(f"task: {groups[i]} overhead: {overhead}")
                 else:
                     from matplotlib.ticker import MaxNLocator
                     axs[i].yaxis.set_major_locator(MaxNLocator(integer=True))
