@@ -161,8 +161,8 @@ class PVT(FeasibilityChecker):
 
         self.args = args = get_args(basename(pt_path))
         self.data = get_facts_goals_visuals(run_dir, mode=args.input_mode, img_mode=args.image_mode, links_only=True)
-        plan_gt = get_successful_plan(run_dir, self.data['indices'], self.data['continuous'])[0]
-        self.plan_gt = [get_action_elems(a) for a in plan_gt]
+        plan_gt = get_successful_plan(run_dir, self.data['indices'], self.data['continuous'])
+        self.plan_gt = [get_action_elems(a) for a in plan_gt[0]] if plan_gt is not None else None
 
         self._model = get_model(pt_path, args)
         self._model.eval()
