@@ -293,7 +293,7 @@ def sample_one_fridge_scene(world, movable_category='food', verbose=True, open_d
     """ ============== Change joint positions ================ """
     ## only after all objects have been placed inside
     if open_doors:
-        random_set_doors(minifridge_doors, epsilon=0.2)
+        random_set_doors(minifridge_doors, epsilon=0.5)
 
     """ ============== Check collisions ================ """
     ensure_robot_cfree(world, verbose=verbose)
@@ -364,10 +364,11 @@ def test_fridges_tables(world, movable_category='food', verbose=True, **kwargs):
 
 
 def sample_fridges_tables_scene(world, movable_category='food', verbose=True, **kwargs):
+    epsilon = 0.45
     minifridge_doors = sample_one_fridge_scene(world, movable_category, open_doors=False, **kwargs)
     load_another_table(world, four_ways=False)
-    placement = load_another_fridge_food(world, movable_category, **kwargs)
-    random_set_doors(minifridge_doors, epsilon=0.25, extent_max=0.5)
+    placement = load_another_fridge_food(world, movable_category, epsilon=epsilon, **kwargs)
+    random_set_doors(minifridge_doors, epsilon=epsilon, extent_max=0.5)
     ensure_robot_cfree(world, verbose=verbose)
     return placement
 
@@ -433,6 +434,7 @@ def test_three_fridges_tables(world, movable_category='food', **kwargs):
 
 
 def sample_three_fridges_tables_scene(world, movable_category='food', verbose=True, **kwargs):
+    epsilon = 0.45
     sample_one_fridge_scene(world, verbose=verbose, open_doors=False, **kwargs)
     placement = {world.cat_to_bodies(movable_category)[0]: world.cat_to_objects('space')[0].pybullet_name}
 
@@ -440,11 +442,11 @@ def sample_three_fridges_tables_scene(world, movable_category='food', verbose=Tr
     load_another_table(world, four_ways=False, table_name='station')
 
     placement.update(load_another_fridge_food(world, verbose=verbose, table_name='table',
-                                         fridge_name='cabinet', **kwargs))
+                                         fridge_name='cabinet', epsilon=epsilon, **kwargs))
     placement.update(load_another_fridge_food(world, verbose=verbose, table_name='station',
-                                          fridge_name='sterilizer', **kwargs))
+                                          fridge_name='sterilizer', epsilon=epsilon, **kwargs))
 
-    random_set_doors(world.cat_to_bodies('door'), extent_max=0.5, epsilon=0.25)
+    random_set_doors(world.cat_to_bodies('door'), extent_max=0.5, epsilon=epsilon)
     ensure_robot_cfree(world, verbose=verbose)
     return placement
 

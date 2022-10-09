@@ -1237,7 +1237,7 @@ def place_another_food(world, movable_category='food', SAMPLING=False, verbose=T
 
 
 def load_another_fridge_food(world, movable_category='food', table_name='table',
-                             fridge_name='cabinet', trial=0, **kwargs):
+                             fridge_name='cabinet', trial=0, epsilon=0.5, **kwargs):
     existing_bodies = get_bodies()
 
     def reset_world(world):
@@ -1255,6 +1255,6 @@ def load_another_fridge_food(world, movable_category='food', table_name='table',
     placement = place_another_food(world, movable_category, **kwargs)
     if placement is None:
         return reset_world(world)
-    random_set_doors(doors, epsilon=0.25)
+    random_set_doors(doors, epsilon=epsilon)
 
     return placement
