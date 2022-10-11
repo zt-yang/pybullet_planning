@@ -2,6 +2,7 @@ import math
 import random
 import json
 from os.path import join
+import sys
 
 import pybullet as p
 from .world import World, State
@@ -409,7 +410,11 @@ def sample_conjunctive_fridges_tables_goal(world, placement, movable_category='f
     if len(open_surfaces) > 0:
         cases.extend(['in1on1'])
 
+    ## because of data imbalance
     case = random.choice(cases)
+    if len(open_surfaces) > 0:
+        case = 'in1on1'
+
     goals = []
     if case == 'in2':
         goals.append(get_goal_in(foods[0], placement, spaces=spaces))
@@ -417,7 +422,7 @@ def sample_conjunctive_fridges_tables_goal(world, placement, movable_category='f
     elif case == 'in1hold1':
         goals.append(get_goal_in(foods[0], placement, spaces=spaces))
         goals.append(('Holding', arm, foods[1]))
-    elif case == 'in2on1':
+    elif case == 'in1on1':
         goals.append(get_goal_in(foods[0], placement, spaces=spaces))
         goals.append(get_goal_on(foods[1], open_surfaces))
 
@@ -455,7 +460,10 @@ def get_goal_in(food, placement, spaces=None, world=None):
     """ random sample another fridge as destination """
     if spaces is None:
         spaces = world.cat_to_bodies('space')
-    other = [s for s in spaces if s != placement[food]][0]
+    other = random.choice([s for s in spaces if s != placement[food]])
+    if other == placement[food]:
+        print('same space')
+        sys.exit()
     return ('In', food, other)
 
 
