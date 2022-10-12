@@ -19,7 +19,8 @@ from .utils import create_box, set_base_values, set_point, set_pose, get_pose, G
     joint_from_name, get_joint_limits, irange, is_pose_close, CLIENT, set_all_color
 
 from pybullet_tools.pr2_primitives import Conf, Grasp, Trajectory, Commands, State
-from pybullet_tools.general_streams import Position, get_grasp_list_gen, get_handle_link
+from pybullet_tools.general_streams import Position, get_grasp_list_gen, get_handle_link, \
+    process_motion_fluents
 from pybullet_tools.bullet_utils import collided
 from .pr2_utils import DRAKE_PR2_URDF
 
@@ -293,6 +294,8 @@ def get_free_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
     saver = BodySaver(robot)
     obstacles = problem.fixed if collisions else []
     def fn(q1, q2, w, fluents=[]):
+        if fluents:
+            attachments = process_motion_fluents(fluents, robot)
 
         saver.restore()
         q1.assign()
@@ -367,6 +370,8 @@ def get_ik_fn(problem, teleport=False, verbose=False, custom_limits={}, **kwargs
     robot = problem.robot
     obstacles = problem.fixed
     def fn(a, o, p, g, w, fluents=[]):
+        if fluents:
+            attachments = process_motion_fluents(fluents, robot)
         # set_renderer(False)
         w.assign()
         p.assign()
@@ -391,7 +396,9 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
     saver = BodySaver(robot)
     obstacles = problem.fixed if collisions else []
 
-    def fn(a, o, pst1, pst2, g, q1, fluents=[]):
+    def fn(a, o, pst1, pst2, g, q1, wconf, fluents=[]):
+        if fluents:
+            attachments = process_motion_fluents(fluents, robot)
         if pst1.value == pst2.value:
             return None
 

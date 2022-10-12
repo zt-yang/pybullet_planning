@@ -2,24 +2,17 @@
 
 from __future__ import print_function
 import os
-import json
 from os.path import join, abspath, dirname, isdir, isfile
 from config import EXP_PATH
 
-from pybullet_tools.pr2_utils import get_group_conf
 from pybullet_tools.utils import disconnect, LockRenderer, has_gui, WorldSaver, wait_if_gui, \
     SEPARATOR, get_aabb, wait_for_duration
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice
 from pybullet_tools.pr2_agent import get_stream_info, post_process, move_cost_fn
 from pybullet_tools.logging import TXT_FILE
 
-from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
-    get_ik_ir_gen, get_motion_gen, get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
-    get_grasp_gen, Attach, Detach, Clean, Cook, control_commands, Command, \
-    get_gripper_joints, GripperCommand, State
-from pybullet_tools.flying_gripper_agent import get_stream_map
+from pybullet_tools.pr2_primitives import control_commands
 
-from pddlstream.language.generator import from_gen_fn, from_list_fn, from_fn, fn_from_constant, empty_gen, from_test
 from pddlstream.language.constants import Equal, AND, print_solution, PDDLProblem
 from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, str_from_object
 from pddlstream.algorithms.meta import solve, create_parser
@@ -31,26 +24,34 @@ from pybullet_planning.lisdf_tools.lisdf_planning import pddl_to_init_goal, Prob
 from world_builder.actions import apply_actions
 
 
-DEFAULT_TEST = 'test_feg_pick'  ## 'test_feg_pick_1_opened'  ## success
-# DEFAULT_TEST = 'test_feg_cabinets_rearrange'  ## success
-# DEFAULT_TEST = 'test_feg_clean_only'  ## success
-# DEFAULT_TEST = 'test_feg_clean_after_open'  ## fail
-# DEFAULT_TEST = 'one_fridge_feg'
-
+""" a scene with two food items, fridge, pot, and basin """
+DEFAULT_TEST = 'test_feg_pick'
 GOAL = None
-
-""" working """
 GOAL = [('holding', 'hand', 'veggiecabbage#1')]
 GOAL = [('holding', 'hand', 'meatturkeyleg#1')]
 GOAL = [('holding', 'hand', 'braiserlid#1')]
 GOAL = [('on', 'meatturkeyleg#1', 'fridge#1::shelf_bottom')]
 GOAL = [('on', 'veggiecabbage#1', 'counter#1::indigo_tmp')]
 GOAL = [('on', 'veggiecabbage#1', 'braiserbody#1::braiser_bottom')]  ## remove lid first
+GOAL = [('graspedhandle', 'faucet#1::joint_faucet_1')]
+GOAL = [('cleaned', 'veggiecabbage#1')]
 
-GOAL = [('open', 'veggiecabbage#1', 'braiserbody#1::braiser_bottom')]
+""" a scene with open cabinet doors """
+DEFAULT_TEST = 'test_feg_cabinets_rearrange'
+GOAL = None
+GOAL = [('in', 'oilbottle#1', 'counter#1::sektion')]
+GOAL = [('storedinspace', '@bottle', 'counter#1::sektion')]
 
-""" not working yet """
-# GOAL = [('in', 'veggiecabbage#1', 'counter#1::indigo_tmp')]
+""" a scene with doors that should be opened - very slow """
+DEFAULT_TEST = 'test_feg_closed_doors'
+GOAL = None
+GOAL = [('graspedhandle', 'fridge#1::fridge_door')]
+GOAL = [('graspedhandle', 'fridge#1::fridge_door'),
+        ('holding', 'hand', 'veggiecabbage#1')]
+GOAL = [('holding', 'hand', 'veggiecabbage#1')]
+# GOAL = [('on', 'veggiecabbage#1', 'basin#1::basin_bottom')]
+# GOAL = [('graspedhandle', 'faucet#1::joint_faucet_0')]
+# GOAL = [('cleaned', 'veggiecabbage#1')]
 
 
 def init_experiment(exp_dir):

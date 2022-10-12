@@ -684,3 +684,35 @@ def get_cfree_approach_pose_test(problem, collisions=True):
         return result
     return test
 
+
+
+""" ==============================================================
+
+            Dealing with collisions
+
+    ==============================================================
+"""
+
+
+def process_motion_fluents(fluents, robot, verbose=False):
+    if verbose:
+        print('Fluents:', fluents)
+    attachments = []
+    for atom in fluents:
+        predicate, args = atom[0], atom[1:]
+        if predicate == 'atpose':
+            o, p = args
+            p.assign()
+        elif predicate == 'atgrasp':
+            a, o, g = args
+            attachments.append(g.get_attachment(robot, a))
+        elif predicate == 'atposition':
+            o, p = args
+            p.assign()
+        elif predicate == 'ataconf': # TODO: the arm conf isn't being set pre/post moves correctly
+            # a, q = args
+            # q.assign()
+            pass
+        else:
+            raise NotImplementedError(atom)
+    return attachments
