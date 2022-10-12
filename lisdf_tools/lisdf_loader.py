@@ -366,7 +366,7 @@ def get_custom_limits(config_path):
     return custom_limits
 
 
-def load_lisdf_pybullet(lisdf_path, verbose=True, use_gui=True, width=1980, height=1238):
+def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, width=1980, height=1238):
     # scenes_path = dirname(os.path.abspath(lisdf_path))
     tmp_path = join(ASSET_PATH, 'tmp')
     if not isdir(tmp_path): os.mkdir(tmp_path)
@@ -509,7 +509,20 @@ def pddl_files_from_dir(exp_dir, replace_pddl=False):
     return domain_path, stream_path, config_path
 
 
-def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True, teleport=False, **kwargs):
+def revise_goal(goal, world):
+    new_goal = []
+    for tup in goal:
+        new_tup = []
+        for elem in tup:
+            if elem in world.name_to_body:
+                elem = world.name_to_body[elem]
+            new_tup.append(elem)
+        new_goal.append(tuple(new_tup))
+    return new_goal
+
+
+def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True,
+                        teleport=False, goal=None, **kwargs):
     exp_dir = abspath(exp_dir)
 
     domain_path, stream_path, config_path = pddl_files_from_dir(exp_dir, replace_pddl)
@@ -522,8 +535,12 @@ def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True, t
     stream_pddl = read(stream_path)
 
     world = problem.world
-    init, goal, constant_map = pddl_to_init_goal(exp_dir, world)
-    goal = [AND] + goal
+    init, g, constant_map = pddl_to_init_goal(exp_dir, world)
+    if goal is not None:
+        goal = [AND] + revise_goal(goal, world)
+    else:
+        goal = [AND] + g
+
     problem.add_init(init)
 
     custom_limits = problem.world.robot.custom_limits ## planning_config['base_limits']

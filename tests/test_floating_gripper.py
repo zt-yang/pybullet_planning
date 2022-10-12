@@ -31,11 +31,26 @@ from pybullet_planning.lisdf_tools.lisdf_planning import pddl_to_init_goal, Prob
 from world_builder.actions import apply_actions
 
 
-# DEFAULT_TEST = 'test_feg_pick_1'  ## 'test_feg_pick_1_opened'  ## success
+DEFAULT_TEST = 'test_feg_pick'  ## 'test_feg_pick_1_opened'  ## success
 # DEFAULT_TEST = 'test_feg_cabinets_rearrange'  ## success
-DEFAULT_TEST = 'test_feg_clean_only'  ## success
+# DEFAULT_TEST = 'test_feg_clean_only'  ## success
 # DEFAULT_TEST = 'test_feg_clean_after_open'  ## fail
 # DEFAULT_TEST = 'one_fridge_feg'
+
+GOAL = None
+
+""" working """
+GOAL = [('holding', 'hand', 'veggiecabbage#1')]
+GOAL = [('holding', 'hand', 'meatturkeyleg#1')]
+GOAL = [('holding', 'hand', 'braiserlid#1')]
+GOAL = [('on', 'meatturkeyleg#1', 'fridge#1::shelf_bottom')]
+GOAL = [('on', 'veggiecabbage#1', 'counter#1::indigo_tmp')]
+GOAL = [('on', 'veggiecabbage#1', 'braiserbody#1::braiser_bottom')]  ## remove lid first
+
+GOAL = [('open', 'veggiecabbage#1', 'braiserbody#1::braiser_bottom')]
+
+""" not working yet """
+# GOAL = [('in', 'veggiecabbage#1', 'counter#1::indigo_tmp')]
 
 
 def init_experiment(exp_dir):
@@ -67,7 +82,7 @@ def main(exp_name, verbose=True):
     problem = Problem(world)
 
     pddlstream_problem = pddlstream_from_dir(problem, exp_dir=exp_dir, collisions=not args.cfree,
-                                             teleport=args.teleport)
+                                             teleport=args.teleport, goal=GOAL)
     _, _, _, stream_map, init, goal = pddlstream_problem
     world.summarize_all_objects(init)
     stream_info = world.robot.get_stream_info()
@@ -103,6 +118,7 @@ def main(exp_name, verbose=True):
         problem.remove_gripper()
         saver.restore()
 
+    world.remove_redundant_bodies()
     saver.restore()
     wait_if_gui('Execute?')
     if args.simulate:  ## real physics

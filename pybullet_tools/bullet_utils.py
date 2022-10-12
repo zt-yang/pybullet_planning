@@ -32,7 +32,7 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     YELLOW, add_line, draw_point, RED, BROWN, BLACK, BLUE, GREY, remove_handles, apply_affine, vertices_from_rigid, \
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
     parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug, set_point, has_gui, get_rigid_clusters, \
-    BASE_LINK as ROOT_LINK, link_pairs_collision, draw_collision_info
+    BASE_LINK as ROOT_LINK, link_pairs_collision, draw_collision_info, wait_unlocked
 
 
 OBJ = '?obj'
@@ -1089,34 +1089,45 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                     HANDLE_FILTER=False, LENGTH_VARIANTS=False,
                     visualize=False, RETAIN_ALL=False, verbose=False,
                     collisions=False, num_samples=6, debug_del=False):
-    from pybullet_tools.flying_gripper_utils import set_se3_conf, create_fe_gripper, se3_from_pose
+    from pybullet_tools.flying_gripper_utils import set_se3_conf, create_fe_gripper, se3_from_pose, \
+        get_cloned_se3_conf
     body_name = (body, link) if link is not None else body
     title = f'bullet_utils.get_hand_grasps({body_name}) | '
-
-    instance_name = state.world.get_instance_name(body_name)
-    found, db, db_file = find_grasp_in_db('hand_grasps.json', instance_name,
-                                          LENGTH_VARIANTS=LENGTH_VARIANTS)
-    if found is not None:
-        return found
-
     dist = grasp_length
     robot = state.robot
-    obstacles = state.fixed
-    if body not in obstacles:
-        obstacles += [body]
 
     body_pose, aabb, handles = draw_fitted_box(body, link=link, verbose=verbose)
-
-    if link == None:
+    if link is None:
         body_pose = get_pose(body)
     else: ## for handle grasps, use the original pose of handle_link
         body_pose = multiply(body_pose, invert(robot.tool_from_hand))
         if verbose:
             print(f'{title}hand_link = {link} | body_pose = multiply(body_pose, invert(robot.tool_from_hand)) = {nice(body_pose)}')
 
+    instance_name = state.world.get_instance_name(body_name)
+    grasp_db_name = f'hand_grasps_{robot.__class__.__name__}.json'  ## 'hand_grasps.json'
+    found, db, db_file = find_grasp_in_db(grasp_db_name, instance_name,
+                                          LENGTH_VARIANTS=LENGTH_VARIANTS)
+    if found is not None:
+        if visualize:
+            bodies = []
+            for g in found:
+                bodies.append(robot.visualize_grasp(body_pose, g, verbose=verbose))
+            ## nice(get_cloned_se3_conf(robot, bodies[0]))[1] != nice(get_pose(body))[1] == nice(body_pose)[1]
+            # set_renderer(True)
+            set_camera_target_body(body)
+            # wait_unlocked()
+            for b in bodies:
+                remove_body(b)
+        remove_handles(handles)
+        return found
+
+    obstacles = state.fixed
+    if body not in obstacles:
+        obstacles += [body]
+
     ## only one in each direction
     def check_new(aabbs, aabb):
-        return True
         yzs = [AABB(m.lower[1:], m.upper[1:]) for m in aabbs]
         if AABB(aabb.lower[1:], aabb.upper[1:]) in yzs: return False
         xys = [AABB(m.lower[:-1], m.upper[:-1]) for m in aabbs]
@@ -1230,6 +1241,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
     ## lastly store the newly sampled grasps
     add_grasp_in_db(db, db_file, instance_name, grasps, name=state.world.get_name(body_name),
                     LENGTH_VARIANTS=LENGTH_VARIANTS)
+    remove_handles(handles)
     # if len(grasps) > num_samples:
     #     random.shuffle(grasps)
     #     return grasps[:num_samples]

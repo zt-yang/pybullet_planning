@@ -9,6 +9,8 @@ import json
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
+MODELS_PATH = '/home/yang/Documents/fastamp/fastamp/test_models'
+
 
 class FeasibilityChecker(object):
 
@@ -156,12 +158,12 @@ class PVT(FeasibilityChecker):
                     pt_name = TASK_PT_NAMES[task_name]
             elif mode in PT_NEWER:
                 pt_name = PT_NEWER[mode]
-            pt_path = join(dirname(abspath(__file__)), '..', 'fastamp', 'models', pt_name)
+            pt_path = join(MODELS_PATH, pt_name)
         self.pt_path = abspath(pt_path)
 
         self.args = args = get_args(basename(pt_path))
         self.data = get_facts_goals_visuals(run_dir, mode=args.input_mode, img_mode=args.image_mode, links_only=True)
-        plan_gt = get_successful_plan(run_dir, self.data['indices'], self.data['continuous'])
+        plan_gt = get_successful_plan(run_dir, self.data['indices'])
         self.plan_gt = [get_action_elems(a) for a in plan_gt[0]] if plan_gt is not None else None
 
         self._model = get_model(pt_path, args)

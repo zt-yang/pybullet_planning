@@ -423,7 +423,7 @@ def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=
 
 
 def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | PI/4 | INF
-                       randomize=True, visualize=False, RETAIN_ALL=False):
+                  randomize=True, visualize=False, RETAIN_ALL=False):
     robot = problem.robot
     grasp_type = 'hand'
     arm = 'left'

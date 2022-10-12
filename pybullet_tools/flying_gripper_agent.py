@@ -20,7 +20,7 @@ def get_stream_map(p, c, l, t):
     stream_map = {
         'sample-pose-on': from_gen_fn(get_stable_gen(p, collisions=c)),
         'sample-pose-in': from_gen_fn(get_contain_gen(p, collisions=c, verbose=False)),
-        'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True)),
+        'sample-grasp': from_list_fn(get_grasp_list_gen(p, collisions=True, visualize=False)),
 
         'inverse-kinematics-hand': from_fn(get_ik_fn(p, collisions=c, teleport=t, custom_limits=l, verbose=False)),
         'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(collisions=c)),
