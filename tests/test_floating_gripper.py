@@ -18,8 +18,8 @@ from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, st
 from pddlstream.algorithms.meta import solve, create_parser
 from pddlstream.algorithms.focused import solve_focused
 
-from pybullet_planning.lisdf_tools.lisdf_loader import load_lisdf_pybullet, pddlstream_from_dir
-from pybullet_planning.lisdf_tools.lisdf_planning import pddl_to_init_goal, Problem
+from lisdf_tools.lisdf_loader import load_lisdf_pybullet, pddlstream_from_dir
+from lisdf_tools.lisdf_planning import pddl_to_init_goal, Problem
 
 from world_builder.actions import apply_actions
 
@@ -37,18 +37,20 @@ GOAL = [('graspedhandle', 'faucet#1::joint_faucet_1')]
 GOAL = [('cleaned', 'veggiecabbage#1')]
 
 """ a scene with open cabinet doors """
-DEFAULT_TEST = 'test_feg_cabinets_rearrange'
-GOAL = None
-GOAL = [('in', 'oilbottle#1', 'counter#1::sektion')]
-GOAL = [('storedinspace', '@bottle', 'counter#1::sektion')]
+# DEFAULT_TEST = 'test_feg_cabinets_rearrange'
+# GOAL = None
+# GOAL = [('in', 'oilbottle#1', 'counter#1::sektion')]
+# GOAL = [('in', 'oilbottle#1', 'counter#1::sektion'),
+#         ('in', 'vinegarbottle#1', 'counter#1::sektion')]
+# GOAL = [('storedinspace', '@bottle', 'counter#1::sektion')]
 
 """ a scene with doors that should be opened - very slow """
-DEFAULT_TEST = 'test_feg_closed_doors'
-GOAL = None
-GOAL = [('graspedhandle', 'fridge#1::fridge_door')]
-GOAL = [('graspedhandle', 'fridge#1::fridge_door'),
-        ('holding', 'hand', 'veggiecabbage#1')]
-GOAL = [('holding', 'hand', 'veggiecabbage#1')]
+# DEFAULT_TEST = 'test_feg_closed_doors'
+# GOAL = None
+# GOAL = [('graspedhandle', 'fridge#1::fridge_door')]
+# GOAL = [('graspedhandle', 'fridge#1::fridge_door'),
+#         ('holding', 'hand', 'veggiecabbage#1')]
+# GOAL = [('holding', 'hand', 'veggiecabbage#1')]
 # GOAL = [('on', 'veggiecabbage#1', 'basin#1::basin_bottom')]
 # GOAL = [('graspedhandle', 'faucet#1::joint_faucet_0')]
 # GOAL = [('cleaned', 'veggiecabbage#1')]

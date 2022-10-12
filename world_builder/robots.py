@@ -6,7 +6,7 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
     link_from_name, get_link_subtree, get_joints, is_movable, multiply, invert, \
     set_joint_positions, set_pose, GREEN, dump_body, get_pose, remove_body, PoseSaver, \
     ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles, \
-    interpolate_poses, Pose, Euler, quat_from_euler, set_renderer
+    interpolate_poses, Pose, Euler, quat_from_euler, set_renderer, get_bodies
 
 from pybullet_tools.bullet_utils import equal, nice, get_gripper_direction, set_camera_target_body, Attachment, \
     BASE_LIMITS
@@ -206,7 +206,7 @@ class PR2Robot(RobotAPI):
         return self.grippers[arm]
 
     def get_gripper(self, arm='left', **kwargs):
-        if arm not in self.grippers:
+        if arm not in self.grippers or self.grippers[arm] not in get_bodies():
             self.grippers[arm] = self.create_gripper(arm=arm, **kwargs)
         return self.grippers[arm]
 

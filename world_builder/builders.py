@@ -273,9 +273,9 @@ def build_fridge_domain_robot(world, robot_name, custom_limits=None):
     return robot
 
 
-def test_one_fridge(world, verbose=True, **kwargs):
+def test_one_fridge(world, movable_category='food', verbose=True, **kwargs):
     #set_time_seed()
-    sample_one_fridge_scene(world, verbose, **kwargs)
+    sample_one_fridge_scene(world, movable_category, verbose=verbose, **kwargs)
     goal = sample_one_fridge_goal(world)
     return None, goal
 

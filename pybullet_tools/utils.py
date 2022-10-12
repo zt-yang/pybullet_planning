@@ -201,6 +201,8 @@ def unzip(sequence):
 
 def safe_zip(sequence1, sequence2): # TODO: *args
     sequence1, sequence2 = list(sequence1), list(sequence2)
+    if len(sequence1) != len(sequence2):
+        print('Sequences must be the same length')
     assert len(sequence1) == len(sequence2)
     return list(zip(sequence1, sequence2))
 
