@@ -283,13 +283,14 @@ def load_experiment_objects(world, w=.5, h=.9, wb=.07, hb=.1, mass=1, EXIST_PLAT
 
     return cabbage
 
+
 def studio(args):
     """
     for testing fridge: plan_name = 'fridge.svg', robot pose: x=1.79, y=4.5
     for testing fridge: plan_name = 'kitchen.svg', robot pose: x=1.79, y=8 | 5.5
     for testing planning: plan_name = 'studio0.svg', robot pose: x=1.79, y=8
     """
-    world = World(args, time_step=args.time_step)
+    world = World(time_step=args.time_step, camera=args.camera, segment=args.segment)
 
     floor = load_floor_plan(world, plan_name='kitchen.svg') ## studio0, studio1
     # load_experiment_objects(world, CABBAGE_ONLY=False)

@@ -59,7 +59,7 @@ def create_pybullet_world(args, builder, world_name='test_scene', verbose=False,
 
     """ ============== sample world configuration ==================== """
 
-    world = World(args, time_step=args.time_step)
+    world = World(time_step=args.time_step, camera=args.camera, segment=args.segment)
     maybe_add_robot(world, template_dir)
     floorplan, goal = builder(world, verbose=verbose, SAMPLING=SAMPLING)
 

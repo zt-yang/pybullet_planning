@@ -30,13 +30,14 @@ from .entities import Region, Environment, Robot, Surface, ArticulatedObjectPart
 from world_builder.utils import GRASPABLES
 
 class World(object):
-    def __init__(self, args, time_step=1e-3, prevent_collisions=False,
+    def __init__(self, time_step=1e-3, prevent_collisions=False, camera=True, segment=False,
                  conf_noise=None, pose_noise=None, depth_noise=None, action_noise=None): # TODO: noise model class?
-        self.args = args
+        # self.args = args
         self.time_step = time_step
         self.prevent_collisions = prevent_collisions
         self.scramble = False
-        # TODO: methods for testing whether something has a certain property
+        self.camera = camera
+        self.segment = segment
 
         self.BODY_TO_OBJECT = {}
         self.ROBOT_TO_OBJECT = {}
@@ -621,13 +622,12 @@ class World(object):
 
     def add_camera(self, pose, img_dir=join('visualizations', 'camera_images')):
         from .entities import StaticCamera
-        args = self.args
         camera = StaticCamera(pose, camera_matrix=CAMERA_MATRIX, max_depth=6)
         self.cameras.append(camera)
         self.camera = camera
         self.img_dir = img_dir
-        if args.camera:
-            return self.cameras[-1].get_image(segment=args.segment)
+        if self.camera:
+            return self.cameras[-1].get_image(segment=self.segment)
         return None
 
     def visualize_image(self, pose=None, img_dir=None):
@@ -635,7 +635,7 @@ class World(object):
             self.camera.set_pose(pose)
         if img_dir != None:
             self.img_dir = img_dir
-        image = self.camera.get_image(segment=self.args.segment)
+        image = self.camera.get_image(segment=self.segment)
         visualize_camera_image(image, self.camera.index, img_dir=self.img_dir)
 
     def get_indices(self):
@@ -751,11 +751,11 @@ class State(object):
         # assert isinstance(action, Action)
         return action.transition(self.copy())
     def camera_observation(self, include_rgb=False, include_depth=False, include_segment=False):
-        if not (self.world.args.camera or include_rgb or include_depth or include_segment):
+        if not (self.world.amera or include_rgb or include_depth or include_segment):
             return None
         [camera] = self.robot.cameras
         rgb, depth, seg, pose, matrix = camera.get_image(
-            segment=(self.world.args.segment or include_segment), segment_links=False)
+            segment=(self.world.segment or include_segment), segment_links=False)
         if not include_rgb:
             rgb = None
         if not include_depth:
@@ -976,7 +976,7 @@ class State(object):
     def get_planning_config(self):
         import platform
         config = {
-            'base_limits': self.world.robot.custom_limits,  ## state.world.args.base_limits,
+            'base_limits': self.world.robot.custom_limits,
             'body_to_name': self.world.get_indices(),
             'system': platform.system()
         }
@@ -1094,7 +1094,6 @@ class Process(object):
     def evolve(self, state, ONCE=False, verbose=False):
         start_time = time.time()
         # new_state = self.wrapped_transition(state)
-        # with LockRenderer(lock=not self.world.args.viewer):  ## 0.05 sec delay
         if True:
             new_state = self.wrapped_transition(state, ONCE=ONCE, verbose=verbose)
             if verbose: print(f'  evolve \ finished wrapped_transition inner in {round(time.time() - start_time, 4)} sec')

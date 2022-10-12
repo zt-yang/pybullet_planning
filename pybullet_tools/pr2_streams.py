@@ -209,6 +209,7 @@ def solve_nearby_ik(robot, arm, approach_pose, custom_limits={}):
         # approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits)
     return approach_conf
 
+
 def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbose=False, ACONF=False):
     robot = problem.robot
     obstacles = problem.fixed if collisions else []

@@ -44,7 +44,7 @@ PART_INSTANCE_NAME = "{body_instance_name}" + LINK_STR + "{part_name}"
 
 
 class World():
-    def __init__(self, lisdf):
+    def __init__(self, lisdf=None):
         self.lisdf = lisdf
         self.body_to_name = {}
         self.instance_names = {}
@@ -137,12 +137,21 @@ class World():
     #     elif 'fe' in domain_name:
     #         self.robot = 'feg'
 
+    def safely_get_body_from_name(self, name):
+        if name in self.name_to_body:
+            return self.name_to_body[name]
+        elif name[:-1] in self.name_to_body:  ## 'pr20
+            return self.name_to_body[name[:-1]]
+        return None
+
     def check_world_obstacles(self):
+        if self.lisdf is None:
+            return
         fixed = []
         movable = []
         floors = []
         for model in self.lisdf.models:
-            body = self.name_to_body[model.name]
+            body = self.safely_get_body_from_name(model.name)
             if 'pr2' not in model.name and 'feg' not in model.name:
                 if model.static: fixed.append(body)
                 else: movable.append(body)
@@ -348,6 +357,15 @@ def change_world_state(world, test_case):
     print('-------------------')
 
 
+def get_custom_limits(config_path):
+    bl = json.load(open(config_path, 'r'))['base_limits']
+    if isinstance(bl, dict):
+        custom_limits = {int(k): v for k, v in bl.items()}
+    else:
+        custom_limits = {i: v for i, v in enumerate(bl)}
+    return custom_limits
+
+
 def load_lisdf_pybullet(lisdf_path, verbose=True, use_gui=True, width=1980, height=1238):
     # scenes_path = dirname(os.path.abspath(lisdf_path))
     tmp_path = join(ASSET_PATH, 'tmp')
@@ -357,8 +375,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, use_gui=True, width=1980, heig
     custom_limits = {}
     # body_to_name = None
     if isfile(config_path):
-        planning_config = json.load(open(config_path))
-        custom_limits = {int(k):v for k,v in planning_config['base_limits'].items()}
+        custom_limits = get_custom_limits(config_path)
         # body_to_name = planning_config['body_to_name']
         lisdf_path = join(lisdf_path, 'scene.lisdf')
 

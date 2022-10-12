@@ -2,9 +2,10 @@
 
 from __future__ import print_function
 
-from pybullet_tools.pr2_utils import PR2_GROUPS
-from pybullet_tools.utils import HideOutput, disconnect, set_base_values, joint_from_name, connect, wait_if_gui, \
-    dump_world, get_link_name, wait_if_gui, clone_body, get_link_parent, get_link_descendants, load_model
+from pybullet_tools.pr2_utils import PR2_GROUPS, DRAKE_PR2_URDF
+from pybullet_tools.utils import HideOutput, disconnect, set_base_values, joint_from_name, connect, \
+    wait_if_gui, dump_world, get_link_name, wait_if_gui, clone_body, get_link_parent, \
+    get_link_descendants, load_model, set_renderer, get_pose
 
 
 def test_clone_robot(pr2):
@@ -50,9 +51,12 @@ def test_clone_robot(pr2):
         if not np.allclose(joint_info1.jointAxis, joint_info2.jointAxis, rtol=0, atol=1e-3):
             print('Axis', get_link_name(pr2, link), link, joint_info1.jointAxis, joint_info2.jointAxis)
     """
+    # set_renderer(True)
     set_base_values(new_pr2, (2, 0, 0))
     wait_if_gui()
+    print(get_pose(pr2), get_pose(new_pr2))
     # TODO: the drake one has a large out-of-place cylinder as well
+
 
 def test_clone_arm(pr2):
     first_joint_name = PR2_GROUPS['left_arm'][0]
@@ -66,11 +70,12 @@ def test_clone_arm(pr2):
     set_base_values(pr2, (-2, 0, 0))
     wait_if_gui()
 
+
 def main():
     connect(use_gui=True)
 
     with HideOutput():
-        pr2 = load_model("models/pr2_description/pr2.urdf")
+        pr2 = load_model(DRAKE_PR2_URDF)
     test_clone_robot(pr2)
     test_clone_arm(pr2)
 

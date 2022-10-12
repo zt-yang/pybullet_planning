@@ -313,6 +313,7 @@ def articulated_collisions(obj, obstacles, **kwargs): # TODO: articulated_collis
             return True
     return False
 
+
 def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=False, visualize=False, min_num_pts=0,
              use_aabb=True, **kwargs):
     prefix = 'bullet_utils.collided '
@@ -717,7 +718,7 @@ class ObjAttachment(Attachment):
 
 #######################################################
 
-def set_camera_target_body(body, link=None, dx=3.8, dy=0, dz=1):
+def set_camera_target_body(body, link=None, dx=0.5, dy=0.5, dz=0.5):
     # if isinstance(body, tuple):
     #     link = BODY_TO_OBJECT[body].handle_link
     #     body = body[0]
@@ -1022,8 +1023,10 @@ def get_model_points(body, link=None, verbose=False):
 
     vertices = []
     for link in links:
-        new_vertices = apply_affine(unit_pose(), vertices_from_rigid(body, link))
-        vertices.extend(new_vertices)
+        vv = vertices_from_rigid(body, link)
+        if len(vv) > 0:
+            new_vertices = apply_affine(unit_pose(), vv)
+            vertices.extend(new_vertices)
     return body_pose, vertices
 
 

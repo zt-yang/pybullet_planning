@@ -150,15 +150,24 @@ class WConf(object):
 """
 
 
-def get_stable_gen(problem, collisions=True, num_trials=20, **kwargs):
+def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False,
+                   learned_sampling=True, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
     obstacles = problem.fixed if collisions else []
     world = problem.world
+
     def gen(body, surface):
         if surface is None:
             surfaces = problem.surfaces
         else:
             surfaces = [surface]
+
+        ## --------- Special case for plates -------------
+        result = check_plate_placement(body, surfaces, obstacles, num_trials)
+        if result is not None:
+            return result
+        ## ------------------------------------------------
+
         count = num_trials
         while count > 0: ## True
             count -= 1
@@ -171,7 +180,8 @@ def get_stable_gen(problem, collisions=True, num_trials=20, **kwargs):
                 break
 
             ## hack to reduce planning time
-            body_pose = learned_pose_sampler(world, body, surface, body_pose)
+            if learned_sampling:
+                body_pose = learned_pose_sampler(world, body, surface, body_pose)
 
             p = Pose(body, body_pose, surface)
             p.assign()
@@ -189,36 +199,19 @@ def learned_pose_sampler(world, body, surface, body_pose):
     return body_pose
 
 
-def get_stable_list_gen(problem, num_samples=3, collisions=True, **kwargs):
-    from pybullet_tools.pr2_primitives import Pose
-    obstacles = problem.fixed if collisions else []
+def get_stable_list_gen(problem, num_samples=5, collisions=True, **kwargs):
+    funk = get_stable_gen(problem, collisions=collisions, **kwargs)
+
     def gen(body, surface):
-        # TODO: surface poses are being sampled in pr2_belief
-        if surface is None:
-            surfaces = problem.surfaces
-        else:
-            surfaces = [surface]
+        g = funk(body, surface)
         poses = []
-
-        ## --------- Special case for plates -------------
-        result = check_plate_placement(body, surfaces, obstacles, num_samples)
-        if result is not None:
-            return result
-        ## ------------------------------------------------
-
-        while True:
-            surface = random.choice(surfaces) # TODO: weight by area
-            body_pose = sample_placement(body, surface, **kwargs)
-            if body_pose is None:
+        while len(poses) < num_samples:
+            try:
+                pose = next(g)
+                poses.append(pose)
+            except StopIteration:
                 break
-            p = Pose(body, body_pose, surface)
-            p.assign()
-            if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, surface}):
-                # yield (p,)
-                poses.append(p)
-                if len(poses) >= num_samples:
-                    return [(p,) for p in poses]
-        return []
+        return poses
     return gen
 
 
@@ -266,8 +259,7 @@ def get_mod_pose(pose):
     return ((x, y, z+0.01), quat)
 
 
-def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=10,
-                         verbose=False, force_storage=False, **kwargs):
+def get_contain_gen(problem, collisions=True, max_attempts=60, verbose=False, learned_sampling=False, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
     obstacles = problem.fixed if collisions else []
     world = problem.world
@@ -280,8 +272,7 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=
         else:
             spaces = [space]
         attempts = 0
-        poses = []
-        while attempts < max_attempts and len(poses) < num_samples:
+        while attempts < max_attempts:
             attempts += 1
             space = random.choice(spaces)  # TODO: weight by area
 
@@ -295,7 +286,7 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=
                 break
 
             ## special sampler for data collection
-            if 'storage' in world.get_name(space) or 'storage' in world.get_type(space):
+            if 'storage' in world.get_name(space) or 'storage' in world.get_type(space) or learned_sampling:
                 from world_builder.loaders import place_in_cabinet
                 if verbose:
                     print('use special pose sampler')
@@ -307,16 +298,27 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=
             obs = [obst for obst in obstacles if obst not in {body, space}]
             if not collided(body, obs, articulated=False, verbose=True):
                 p = Pose(body, body_pose, space)
-                # if return_all:
-                #     poses.append((p,))
                 yield (p,)
         if verbose:
             print(f'{title} reached max_attempts = {max_attempts}')
-
-        # if return_all:
-        #     print(f'{title} return {len(poses)} poses = {poses}')
-        #     return poses
         yield None
+    return gen
+
+
+def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=10,
+                    verbose=False, learned_sampling=False, **kwargs):
+    funk = get_contain_gen(problem, collisions, max_attempts, verbose, learned_sampling, **kwargs)
+
+    def gen(body, space):
+        g = funk(body, space)
+        poses = []
+        while len(poses) < num_samples:
+            try:
+                pose = next(g)
+                poses.append(pose)
+            except StopIteration:
+                break
+        return poses
     return gen
 
 
@@ -420,7 +422,7 @@ def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=
     return angle_between(grasp_direction, Point(z=-1)) <= top_grasp_tolerance # TODO: direction parameter
 
 
-def get_grasp_list_gen(problem, collisions=True, top_grasp_tolerance=None, # None | PI/4 | INF
+def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | PI/4 | INF
                        randomize=True, visualize=False, RETAIN_ALL=False):
     robot = problem.robot
     grasp_type = 'hand'
@@ -439,6 +441,23 @@ def get_grasp_list_gen(problem, collisions=True, top_grasp_tolerance=None, # Non
         for g in grasps:
            yield (g,)
     return fn
+
+
+def get_grasp_list_gen(problem, collisions=True, num_samples=10, top_grasp_tolerance=None, # None | PI/4 | INF
+                       randomize=True, visualize=False, RETAIN_ALL=False):
+    funk = get_grasp_gen(problem, collisions, top_grasp_tolerance, randomize, visualize, RETAIN_ALL)
+
+    def gen(body):
+        g = funk(body)
+        grasps = []
+        while len(grasps) < num_samples:
+            try:
+                grasp = next(g)
+                grasps.append(grasp)
+            except StopIteration:
+                break
+        return grasps
+    return gen
 
 
 """ ==============================================================
@@ -650,6 +669,7 @@ def get_cfree_approach_pose_test(problem, collisions=True):
     # TODO: apply this before inverse kinematics as well
     arm = 'left'
     obstacles = problem.fixed
+
     def test(b1, p1, g1, b2, p2):
         if not collisions or (b1 == b2):
             return True

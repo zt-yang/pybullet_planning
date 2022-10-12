@@ -25,7 +25,7 @@ from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custo
     get_gripper_joints, GripperCommand, apply_commands, State, Trajectory, Simultaneous, create_trajectory
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
-    set_camera_target_robot, nice, BASE_LIMITS, get_file_short_name, get_root_links
+    set_camera_target_robot, nice, BASE_LIMITS, get_file_short_name, get_root_links, collided
 from pybullet_tools.pr2_problems import create_pr2
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, create_gripper, set_group_conf
 from pybullet_tools.utils import connect, disconnect, wait_if_gui, LockRenderer, HideOutput, get_client, \
@@ -58,6 +58,7 @@ from collections import namedtuple
 from world_builder.entities import Object
 from world_builder.actions import get_primitive_actions
 from world_builder.world_generator import get_pddl_from_list
+
 
 def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
                    pull_collisions=True, base_collisions=True):
@@ -1060,7 +1061,7 @@ def test_grasps(state, name='cabbage', visualize=True):
     return goals
 
 
-def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False):
+def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=False):
     robot = state.robot
     colors = [BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED]
 
@@ -1068,7 +1069,10 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False):
         w = grasp.grasp_width
         if RETAIN_ALL:
             gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, body=grasp.body,
-                                                  color=colors[i%len(colors)], width=w)
+                                                  color=colors[index%len(colors)], width=w)
+            if collisions and collided(gripper_grasp, state.obstacles, verbose=True):
+                remove_body(gripper_grasp)
+                return None
             # set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.5)
         else:
             gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, body=grasp.body, color=GREEN, width=w)
@@ -1076,6 +1080,7 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False):
             # set_camera_target_body(gripper_approach, dx=0, dy=-1, dz=0)
             remove_body(gripper_grasp)
             remove_body(gripper_approach)
+            return None
 
         return gripper_grasp
 
@@ -1085,14 +1090,20 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False):
     # else:
 
     i = 0
-    gripper_grasp = 0
+    gripper_grasp = None
     for grasp in outputs:
-        gripper_grasp = visualize_grasp(grasp[0], index=i)
-        i += 1
-    set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.5)
+        output = visualize_grasp(grasp[0], index=i)
+        if output is not None:
+            gripper_grasp = output
+            i += 1
+    if i > 0:
+        set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.5)
+    else:
+        print('\n\n\n No grasps found \n\n\n')
 
     # if RETAIN_ALL:
     #     wait_if_gui()
+
 
 def visualize_grasps_by_quat(state, outputs, body_pose, verbose=False):
     robot = state.robot
