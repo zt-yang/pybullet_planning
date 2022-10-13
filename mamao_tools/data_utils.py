@@ -60,7 +60,7 @@ def get_lisdf_xml(run_dir):
 
 
 def get_plan_skeleton(plan, indices={}):
-    from fastamp.text_utils import ACTION_ABV, ACTION_NAMES
+    from text_utils import ACTION_ABV, ACTION_NAMES
     def get_action_abv(a):
         if isinstance(a, str):
             name = a[a.index("name='")+6: a.index("', args=(")]
@@ -83,7 +83,7 @@ def get_plan_skeleton(plan, indices={}):
 
 
 def get_init_tuples(run_dir):
-    from fastamp.fastamp_utils import get_init, get_objs
+    from fastamp_utils import get_init, get_objs
     lines = open(join(run_dir, 'problem.pddl'), 'r').readlines()
     objs = get_objs(lines)
     init = get_init(lines, objs, get_all=True)
@@ -191,7 +191,7 @@ def get_variables(init, objs=None):
 
 
 def get_plan_from_strings(actions, vs, inv_vs, indices={}):
-    from fastamp.text_utils import ACTION_NAMES
+    from text_utils import ACTION_NAMES
     plan = []
     for a in actions:
         name = a[a.index("name='") + 6: a.index("', args=(")]

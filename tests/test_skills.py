@@ -291,20 +291,21 @@ def test_handle_grasps(robot, category):
         instance_name = get_instance_name(path)
         world.add_body(body, f'{category.lower()}#{id}', instance_name)
         set_camera_target_body(body, dx=1, dy=1, dz=1)
-        draw_text_label(body, id)
 
-        # ## color links corresponding to semantic labels
-        # body_joints = get_partnet_doors(path, body)
-        # world.add_joints(body, body_joints)
-        #
-        # for body_joint in body_joints:
-        #     outputs = funk(body_joint)
-        #     body_pose = get_handle_pose(body_joint)
-        #
-        #     set_renderer(True)
-        #     set_camera_target_body(body, dx=2, dy=1, dz=1)
-        #     visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=True)
-        #     set_camera_target_body(body, dx=2, dy=1, dz=1)
+        # draw_text_label(body, id)
+
+        ## color links corresponding to semantic labels
+        body_joints = get_partnet_doors(path, body)
+        world.add_joints(body, body_joints)
+
+        for body_joint in body_joints:
+            outputs = funk(body_joint)
+            body_pose = get_handle_pose(body_joint)
+
+            set_renderer(True)
+            set_camera_target_body(body, dx=2, dy=1, dz=1)
+            visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=True)
+            set_camera_target_body(body, dx=2, dy=1, dz=1)
         i += 1
 
     set_camera_pose((8, 8, 2), (0, 8, 1))
@@ -712,11 +713,11 @@ if __name__ == '__main__':
     # test_grasps(['Food'], robot)
     ## 'Bottle', 'Stapler', 'Camera', 'Glasses', 'Food', 'MiniFridge', 'KitchenCounter'
     # test_handle_grasps_counter()
-    # test_handle_grasps(robot, category='MiniFridge')
+    test_handle_grasps(robot, category='MiniFridge')
     # test_pick_place_counter(robot)
 
 
     ## --- placement related  ---
     # test_placement_counter()  ## initial placement
     # (robot, category='MiniFridge')  ## sampled placement
-    test_placement_on(robot, category='KitchenCounter')  ## sampled placement
+    # test_placement_on(robot, category='KitchenCounter')  ## sampled placement

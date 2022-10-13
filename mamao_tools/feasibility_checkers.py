@@ -9,7 +9,7 @@ import json
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-MODELS_PATH = '/home/yang/Documents/fastamp/fastamp/test_models'
+MODELS_PATH = '/home/yang/Documents/fastamp/test_models'
 
 
 class FeasibilityChecker(object):
@@ -25,7 +25,7 @@ class FeasibilityChecker(object):
         raise NotImplementedError('should implement this for FeasibilityChecker')
 
     def check(self, inputs):
-        from fastamp.fastamp_utils import get_plan_skeleton, get_indices
+        from fastamp_utils import get_plan_skeleton, get_indices
         if not isinstance(inputs[0], list):
             inputs = [inputs]
 
@@ -102,7 +102,7 @@ class Oracle(FeasibilityChecker):
     def __init__(self, run_dir, correct):
         super().__init__(run_dir)
         self.correct = correct
-        from fastamp.fastamp_utils import get_plan_skeleton, get_indices
+        from fastamp_utils import get_plan_skeleton, get_indices
         self.skeleton = get_plan_skeleton(correct, get_indices(run_dir))
         print(f'\nOracle feasibility checker - {self.skeleton})\n'+
               '\n'.join([str(c) for c in correct]))
@@ -140,9 +140,9 @@ class PVT(FeasibilityChecker):
 
     def __init__(self, run_dir, pt_path=None, task_name=None, mode='pvt', scoring=False):
         super().__init__(run_dir)
-        from fastamp.test_piginet import get_model, DAFAULT_PT_NAME, TASK_PT_NAMES, \
+        from test_piginet import get_model, DAFAULT_PT_NAME, TASK_PT_NAMES, \
             PT_NEWER, get_args, TASK_PT_STAR
-        from fastamp.fastamp_utils import get_facts_goals_visuals, get_successful_plan, \
+        from fastamp_utils import get_facts_goals_visuals, get_successful_plan, \
             get_action_elems, get_plans
 
         """ get data """
@@ -173,9 +173,9 @@ class PVT(FeasibilityChecker):
         print('\n\nPVT model loaded from', pt_path, '\n\n')
 
     def _check(self, inputs):
-        from fastamp.text_utils import ACTION_NAMES
-        from fastamp.datasets import get_dataset, collate
-        from fastamp.fastamp_utils import get_action_elems, get_plan_skeleton
+        from text_utils import ACTION_NAMES
+        from datasets import get_dataset, collate
+        from fastamp_utils import get_action_elems, get_plan_skeleton
         import torch.nn as nn
         args = self.args
         self.sequences = []
