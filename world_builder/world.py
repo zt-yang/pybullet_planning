@@ -4,23 +4,23 @@ from itertools import product
 from collections import defaultdict
 import copy
 from os.path import join
+import numpy as np
 
 from pddlstream.language.constants import Equal, AND
 from pddlstream.algorithms.downward import set_cost_scale
 
 from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, get_pose, LockRenderer, \
-    CameraImage, get_joint_positions, euler_from_quat, get_link_name, get_joint_position, \
+    CameraImage, euler_from_quat, get_link_name, get_joint_position, \
     BodySaver, set_pose, INF, add_parameter, irange, wait_for_duration, get_bodies, remove_body, \
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
-    get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked
+    get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked, \
+    get_movable_joints, apply_alpha, get_all_links, set_color, get_texture, dump_body, clear_texture, get_link_name
 from pybullet_tools.pr2_streams import Position, get_handle_grasp_gen, pr2_grasp, WConf
 from pybullet_tools.general_streams import get_stable_list_gen, get_grasp_list_gen, get_contain_list_gen
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
     is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
     set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR, CAMERA_MATRIX, visualize_camera_image, equal, \
-    draw_pose2d_path, draw_pose3d_path, sort_body_parts
-from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints, \
-    get_group_conf, get_top_grasps, get_side_grasps, create_gripper
+    draw_pose2d_path, draw_pose3d_path, sort_body_parts, get_root_links, colorize_world
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
     Attach, Detach, Clean, Cook, control_commands, link_from_name, \
     get_gripper_joints, GripperCommand, apply_commands, State, Command
@@ -29,8 +29,10 @@ from .entities import Region, Environment, Robot, Surface, ArticulatedObjectPart
     Camera, Object
 from world_builder.utils import GRASPABLES
 
+
 class World(object):
     def __init__(self, time_step=1e-3, prevent_collisions=False, camera=True, segment=False,
+                 teleport=False, drive=True,
                  conf_noise=None, pose_noise=None, depth_noise=None, action_noise=None): # TODO: noise model class?
         # self.args = args
         self.time_step = time_step
@@ -38,6 +40,8 @@ class World(object):
         self.scramble = False
         self.camera = camera
         self.segment = segment
+        self.teleport = teleport
+        self.drive = drive
 
         self.BODY_TO_OBJECT = {}
         self.ROBOT_TO_OBJECT = {}
@@ -75,6 +79,9 @@ class World(object):
 
     def add_handles(self, handles):
         self.handles.extend(handles)
+
+    def make_doors_transparent(self, transparency=0.5):
+        colorize_world(self.fixed, transparency)
 
     def set_path(self, path):
         remove_handles(self.handles)

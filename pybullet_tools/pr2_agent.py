@@ -720,33 +720,6 @@ def get_named_colors(kind='tablaeu', alpha=1.):
             for name, hex in colors.items()}
 
 
-def colorize_world(world, color_types=['brown', 'tan'], transparency=0.5):
-    named_colors = get_named_colors(kind='xkcd')
-    colors = [color for name, color in named_colors.items()
-              if any(color_type in name for color_type in color_types)] # TODO: convex combination
-    for body in world.fixed:
-        joints = get_movable_joints(body)
-        if not joints:
-            continue
-        # dump_body(body)
-        #body_color = apply_alpha(WHITE, alpha=0.5)
-        #body_color = random.choice(colors)
-        body_color = apply_alpha(0.9*np.ones(3))
-        links = get_all_links(body)
-        rigid = get_root_links(body)
-
-        #links = set(links) - set(rigid)
-        for link in links:
-            #print('Body: {} | Link: {} | Joints: {}'.format(body, link, joints))
-            #print(get_color(body, link=link))
-            #print(get_texture(body, link=link))
-            #clear_texture(body, link=link)
-            #link_color = body_color
-            link_color = np.array(body_color) + np.random.normal(0, 1e-2, 4) # TODO: clip
-            link_color = apply_alpha(link_color, alpha=1.0 if link in rigid else transparency)
-            set_color(body, link=link, color=link_color)
-
-
 def serial_checker(checker):
     return lambda plans: list(map(checker, plans))
 
@@ -807,8 +780,8 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
           f'Movable: {world.movable} | Fixed: {world.fixed} | Floor: {world.floors}')
     stream_info = world.robot.get_stream_info()
 
-    colorize_world(world)
-    #wait_unlocked()
+    world.make_doors_transparent()
+    # wait_unlocked()
 
     #########################
 

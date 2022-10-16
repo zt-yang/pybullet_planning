@@ -22,7 +22,7 @@ from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove
     parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK, read, get_client, \
     reset_simulation, dump_joint, JOINT_TYPES, get_joint_type, is_movable, get_camera_matrix
 from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link, get_instance_name, \
-    toggle_joint, get_door_links, set_camera_target_body
+    toggle_joint, get_door_links, set_camera_target_body, colorize_world
 from pybullet_tools.pr2_streams import get_handle_link
 from pybullet_tools.flying_gripper_utils import set_se3_conf
 
@@ -76,6 +76,9 @@ class World():
 
     def add_handles(self, handles):
         self.handles.extend(handles)
+
+    def make_doors_transparent(self, transparency=0.5):
+        colorize_world(self.fixed, transparency)
 
     def add_body(self, body, name, instance_name=None):
         if body is None:

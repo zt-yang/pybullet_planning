@@ -32,7 +32,7 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     YELLOW, add_line, draw_point, RED, BROWN, BLACK, BLUE, GREY, remove_handles, apply_affine, vertices_from_rigid, \
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
     parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug, set_point, has_gui, get_rigid_clusters, \
-    BASE_LINK as ROOT_LINK, link_pairs_collision, draw_collision_info, wait_unlocked
+    BASE_LINK as ROOT_LINK, link_pairs_collision, draw_collision_info, wait_unlocked, apply_alpha, set_color
 
 
 OBJ = '?obj'
@@ -51,6 +51,7 @@ BASE_LIMITS = ((-1, 3), (6, 13))
 CAMERA_FRAME = 'high_def_optical_frame'
 EYE_FRAME = 'wide_stereo_gazebo_r_stereo_camera_frame'
 CAMERA_MATRIX = get_camera_matrix(width=640, height=480, fx=525., fy=525.) # 319.5, 239.5 | 772.55, 772.5S
+
 
 def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
     other_arm = get_other_arm(arm)
@@ -1723,6 +1724,33 @@ def clone_body_link(body, link, collision=True, visual=True, client=None):
             # TODO: check if movable?
             p.resetJointState(new_body, joint, value, targetVelocity=0, physicsClientId=client)
     return new_body
+
+
+def colorize_world(fixed, transparency=0.5):
+    # named_colors = get_named_colors(kind='xkcd')
+    # colors = [color for name, color in named_colors.items()
+    #           if any(color_type in name for color_type in color_types)]  # TODO: convex combination
+    for body in fixed:
+        joints = get_movable_joints(body)
+        if not joints:
+            continue
+        # dump_body(body)
+        # body_color = apply_alpha(WHITE, alpha=0.5)
+        # body_color = random.choice(colors)
+        body_color = apply_alpha(0.9 * np.ones(3))
+        links = get_all_links(body)
+        rigid = get_root_links(body)
+
+        # links = set(links) - set(rigid)
+        for link in links:
+            # print('Body: {} | Link: {} | Joints: {}'.format(body, link, joints))
+            # print(get_color(body, link=link))
+            # print(get_texture(body, link=link))
+            # clear_texture(body, link=link)
+            # link_color = body_color
+            link_color = np.array(body_color) + np.random.normal(0, 1e-2, 4)  # TODO: clip
+            link_color = apply_alpha(link_color, alpha=1.0 if link in rigid else transparency)
+            set_color(body, link=link, color=link_color)
 
 
 def draw_base_limits(custom_limits, **kwargs):
