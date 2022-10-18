@@ -69,6 +69,7 @@ MODEL_SCALES = {
         'VeggieTomato': 0.008,
     }
 }
+MODEL_SCALES['MiniFridgeDoorless'] = MODEL_SCALES['MiniFridge']
 MODEL_SCALES.update({k.lower(): v for k, v in MODEL_SCALES.items()})
 MODEL_SCALES['Food'].update({k.lower(): v for k, v in MODEL_SCALES['Food'].items()})
 

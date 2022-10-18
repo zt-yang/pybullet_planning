@@ -235,9 +235,9 @@ def test_grasps(categories=[], robot='feg'):
 
 def load_body(path, scale, pose_2d=(0,0), random_yaw=False):
     file = join(path, 'mobility.urdf')
-    if 'MiniFridge' in file:
-        file = file[file.index('../')+2:]
-        file = '/home/yang/Documents/cognitive-architectures/bullet' + file
+    # if 'MiniFridge' in file:
+    #     file = file[file.index('../')+2:]
+    #     file = '/home/yang/Documents/cognitive-architectures/bullet' + file
     print('loading', file)
     with HideOutput(True):
         body = load_model(file, scale=scale)
@@ -288,9 +288,13 @@ def test_handle_grasps(robot, category):
     set_camera_pose((4, 3, 2), (0, 3, 0.5))
     for id in instances:
         path, body, _ = load_model_instance(category, id, location=locations[i])
+        i += 1
         instance_name = get_instance_name(path)
         world.add_body(body, f'{category.lower()}#{id}', instance_name)
-        set_camera_target_body(body, dx=1, dy=1, dz=1)
+        set_camera_target_body(body, dx=1, dy=1, dz=1)\
+
+        if 'doorless' in category.lower():
+            continue
 
         # draw_text_label(body, id)
 
@@ -306,7 +310,6 @@ def test_handle_grasps(robot, category):
             set_camera_target_body(body, dx=2, dy=1, dz=1)
             visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=True)
             set_camera_target_body(body, dx=2, dy=1, dz=1)
-        i += 1
 
     set_camera_pose((8, 8, 2), (0, 8, 1))
     wait_if_gui('Finish?')
@@ -713,7 +716,7 @@ if __name__ == '__main__':
     # test_grasps(['Food'], robot)
     ## 'Bottle', 'Stapler', 'Camera', 'Glasses', 'Food', 'MiniFridge', 'KitchenCounter'
     # test_handle_grasps_counter()
-    test_handle_grasps(robot, category='MiniFridge')
+    test_handle_grasps(robot, category='MiniFridgeDoorless')
     # test_pick_place_counter(robot)
 
 
