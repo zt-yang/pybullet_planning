@@ -386,6 +386,7 @@ def get_ik_fn(problem, teleport=False, verbose=False, custom_limits={}, **kwargs
         return (q1, q2, cmd)
     return fn
 
+
 def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, teleport=False,
                                     num_intervals=12, visualize=False, RETAIN_ALL=False, verbose=False):
     from pybullet_tools.pr2_streams import LINK_POSE_TO_JOINT_POSITION

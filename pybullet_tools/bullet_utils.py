@@ -1540,6 +1540,39 @@ def get_segmask(seg):
     return unique
 
 
+def adjust_segmask(unique, world):
+    """ looks ugly if we just remove some links, so create a doorless lisdf """
+    # links_to_show = {}
+    # for b, l in world.colored_links:
+    #     if b not in links_to_show:
+    #         links_to_show[b] = get_links(b)
+    #     if l in links_to_show[b]:
+    #         links_to_show[b].remove(l)
+    # for b, ll in links_to_show.items():
+    #     if len(ll) == len(get_links(b)):
+    #         continue
+    #     for l in links_to_show[b]:
+    #         clone_body_link(b, l, visual=True, collision=True)
+    #     remove_body(b)
+
+    imgs = world.camera.get_image(segment=True, segment_links=True)
+    seg = imgs.segmentationMaskBuffer
+    movable_unique = get_segmask(seg)
+    for k, v in movable_unique.items():
+        if k not in unique:
+            unique[k] = v
+            # print(k, 'new', len(v))
+        else:
+            ## slow
+            # new_v = [p for p in v if p not in unique[k]]
+            # unique[k] += new_v
+            old_count = len(unique[k])
+            unique[k] += v
+            unique[k] = list(set(unique[k]))
+            # print(k, 'added', len(unique[k]) - old_count)
+    return unique
+
+
 def get_door_links(body, joint):
     from pybullet_tools.utils import ConfSaver, get_joint_limits
     with ConfSaver(body):
@@ -1549,6 +1582,7 @@ def get_door_links(body, joint):
         set_joint_position(body, joint, max_pstn)
         links = [i for i in range(len(lps)) if lps[i] != get_link_pose(body, i)]
     return links
+
 
 def sort_body_parts(bodies):
     indices = []
@@ -1730,6 +1764,7 @@ def colorize_world(fixed, transparency=0.5):
     # named_colors = get_named_colors(kind='xkcd')
     # colors = [color for name, color in named_colors.items()
     #           if any(color_type in name for color_type in color_types)]  # TODO: convex combination
+    colored = []
     for body in fixed:
         joints = get_movable_joints(body)
         if not joints:
@@ -1751,6 +1786,9 @@ def colorize_world(fixed, transparency=0.5):
             link_color = np.array(body_color) + np.random.normal(0, 1e-2, 4)  # TODO: clip
             link_color = apply_alpha(link_color, alpha=1.0 if link in rigid else transparency)
             set_color(body, link=link, color=link_color)
+            if link not in rigid:
+                colored.append((body, link))
+    return colored
 
 
 def draw_base_limits(custom_limits, **kwargs):

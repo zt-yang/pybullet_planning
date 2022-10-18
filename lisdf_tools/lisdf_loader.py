@@ -60,6 +60,7 @@ class World():
         ## for visualization
         self.handles = []
         self.cameras = []
+        self.colored_links = []
 
     def clear_viz(self):
         self.remove_handles()
@@ -78,7 +79,9 @@ class World():
         self.handles.extend(handles)
 
     def make_doors_transparent(self, transparency=0.5):
-        colorize_world(self.fixed, transparency)
+        if self.fixed is None:
+            self.check_world_obstacles()
+        self.colored_links = colorize_world(self.fixed, transparency)
 
     def add_body(self, body, name, instance_name=None):
         if body is None:
@@ -369,33 +372,29 @@ def get_custom_limits(config_path):
     return custom_limits
 
 
-def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, width=1980, height=1238):
-    # scenes_path = dirname(os.path.abspath(lisdf_path))
+def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False,
+                        width=1980, height=1238):
+    ## tmp path for putting sdf files, e.g. floor
     tmp_path = join(ASSET_PATH, 'tmp')
     if not isdir(tmp_path): os.mkdir(tmp_path)
 
-    config_path = join(lisdf_path, 'planning_config.json')
+    ## sometimes another lisdf name is given
+    if lisdf_path.endswith('.lisdf'):
+        lisdf_dir = dirname(lisdf_path)
+    else:
+        lisdf_dir = lisdf_path
+        lisdf_path = join(lisdf_dir, 'scene.lisdf')
+
+    ## get custom base limits for robots
+    config_path = join(lisdf_dir, 'planning_config.json')
     custom_limits = {}
-    # body_to_name = None
     if isfile(config_path):
         custom_limits = get_custom_limits(config_path)
-        # body_to_name = planning_config['body_to_name']
-        lisdf_path = join(lisdf_path, 'scene.lisdf')
-
-    # if '4763' in lisdf_path:
-    #     with open(lisdf_path, 'r') as f:
-    #         lines = f.readlines()
-    #         print(len(lines))
 
     ## --- the floor and pose will become extra bodies
     connect(use_gui=use_gui, shadows=False, width=width, height=height)
     # draw_pose(unit_pose(), length=1.)
     # create_floor()
-
-    # with HideOutput():
-        # load_pybullet(join('models', 'Basin', '102379', 'mobility.urdf'))
-    # load_pybullet(sdf_path)  ## failed
-    # load_pybullet(join(tmp_path, 'table#1_1.sdf'))
 
     world = load_sdf(lisdf_path).worlds[0]
     bullet_world = World(world)
@@ -447,7 +446,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, width=1980, hei
             set_pose(body, pose)
             bullet_world.add_body(body, model.name, instance_name)
 
-        if model.name in model_states:
+        if not jointless and model.name in model_states:
             for js in model_states[model.name].joint_states:
                 position = js.axis_states[0].value
                 set_joint_position(body, joint_from_name(body, js.name), position)
