@@ -641,7 +641,7 @@ def get_motion_gen(problem, custom_limits={}, collisions=True, teleport=False):
     def fn(bq1, bq2, fluents=[]):
         saver.restore()
         bq1.assign()
-        print('bullet.get_motion_gen\tobstacles:', obstacles)
+        print('Discarded pr2_primitives.get_motion_gen\tobstacles:', obstacles)
         if teleport:
             path = [bq1, bq2]
         elif is_drake_pr2(robot):

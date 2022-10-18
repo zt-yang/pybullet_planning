@@ -397,7 +397,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
     saver = BodySaver(robot)
     obstacles = problem.fixed if collisions else []
 
-    def fn(a, o, pst1, pst2, g, q1, wconf, fluents=[]):
+    def fn(a, o, pst1, pst2, g, q1, fluents=[]):
         if fluents:
             attachments = process_motion_fluents(fluents, robot)
         if pst1.value == pst2.value:

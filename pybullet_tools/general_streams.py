@@ -107,40 +107,40 @@ class HandleGrasp(object):
         # return Attachment(robot, tool_link, self.value, self.body)
     def __repr__(self):
         return 'hg{}={}'.format(self.index % 1000, nice(self.value))
-
-
-class WConf(object):
-    def __init__(self, poses, positions, index=None):
-        self.poses = poses
-        self.positions = positions
-        if index is None:
-            index = id(self)
-        self.index = index
-
-    def assign(self):
-        for p in self.poses.values():
-            p.assign()
-        for p in self.positions.values():
-            p.assign()
-
-    def printout(self, obstacles=None):
-        if obstacles is None:
-            obstacles = list(self.poses.keys())
-            positions = list(self.positions.keys())
-        else:
-            positions = [o for o in self.positions.keys() if o[0] in obstacles]
-
-        string = f"  {str(self)}"
-        poses = {o: nice(self.poses[o].value[0]) for o in obstacles if o in self.poses}
-        if len(poses) > 0:
-            string += f'\t|\tposes: {str(poses)}'
-        positions = {o: nice(self.positions[(o[0], o[1])].value) for o in positions}
-        if len(positions) > 0:
-            string += f'\t|\tpositions: {str(positions)}'
-        return string
-
-    def __repr__(self):
-        return 'wconf{}'.format(self.index % 1000)
+#
+#
+# class WConf(object):
+#     def __init__(self, poses, positions, index=None):
+#         self.poses = poses
+#         self.positions = positions
+#         if index is None:
+#             index = id(self)
+#         self.index = index
+#
+#     def assign(self):
+#         for p in self.poses.values():
+#             p.assign()
+#         for p in self.positions.values():
+#             p.assign()
+#
+#     def printout(self, obstacles=None):
+#         if obstacles is None:
+#             obstacles = list(self.poses.keys())
+#             positions = list(self.positions.keys())
+#         else:
+#             positions = [o for o in self.positions.keys() if o[0] in obstacles]
+#
+#         string = f"  {str(self)}"
+#         poses = {o: nice(self.poses[o].value[0]) for o in obstacles if o in self.poses}
+#         if len(poses) > 0:
+#             string += f'\t|\tposes: {str(poses)}'
+#         positions = {o: nice(self.positions[(o[0], o[1])].value) for o in positions}
+#         if len(positions) > 0:
+#             string += f'\t|\tpositions: {str(positions)}'
+#         return string
+#
+#     def __repr__(self):
+#         return 'wconf{}'.format(self.index % 1000)
 
 """ ==============================================================
 
@@ -540,63 +540,6 @@ def linkpose_from_position(pose):
     return pose_value ## LinkPose(pose.body, joint, pose_value)
 
 
-""" ==============================================================
-
-            Generating world configuration ?wconf
-
-    ==============================================================
-"""
-
-
-def get_update_wconf_p_gen(verbose=True):
-    def fn(w1, o, p):
-        poses = copy.deepcopy(w1.poses)
-        if verbose:
-            print('general_streams.get_update_wconf_p_gen\tbefore:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})
-        if o != p.body:
-            return None
-        elif o in poses and poses[o].value == p.value:
-            poses.pop(o)
-        else:
-            poses[o] = copy.deepcopy(p)
-        w2 = WConf(poses, w1.positions)
-        if verbose:
-            print('general_streams.get_update_wconf_p_gen\t after:', {o0: nice(p0.value[0]) for o0,p0 in w2.poses.items()})
-        return (w2,)
-    return fn
-
-
-def get_update_wconf_p_two_gen(verbose=False):
-    title = 'general_streams.get_update_wconf_p_two_gen'
-    def fn(w1, o, p, o2, p2):
-        if w1 is None:
-            return None
-        poses = copy.deepcopy(w1.poses)
-        if verbose:
-            print(f'{title}\tbefore:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})
-        poses[o] = p
-        poses[o2] = p2
-        w2 = WConf(poses, w1.positions)
-        if verbose:
-            print(f'{title}\t after:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})
-        return (w2,)
-    return fn
-
-
-def get_update_wconf_pst_gen(verbose=False):
-    title = 'general_streams.get_update_wconf_pst_gen'
-    def fn(w1, o, pstn):
-        positions = copy.deepcopy(w1.positions)
-        if verbose:
-            print(f'{title}\tbefore:', {o0: nice(p0.value) for o0,p0 in positions.items()})
-        positions[o] = pstn
-        w2 = WConf(w1.poses, positions)
-        if verbose:
-            print(f'{title}\t after:', {o0: nice(p0.value) for o0,p0 in w2.positions.items()})
-        return (w2,)
-    return fn
-
-
 def get_pose_from_attachment(problem):
     from pybullet_tools.pr2_primitives import Pose
     world = problem.world
@@ -610,50 +553,6 @@ def get_pose_from_attachment(problem):
             p = Pose(o, get_pose(o))
             return (p,)
         return None
-    return fn
-
-
-def get_sample_wconf_list_gen(problem, verbose=True):
-    from pybullet_tools.flying_gripper_utils import get_reachable_test
-    title = 'general_streams.get_sample_wconf_gen'
-    open_pstn_sampler = sample_joint_position_open_list_gen(problem)
-    test_reachable = get_reachable_test(problem, custom_limits=problem.robot.custom_limits)
-    def fn(w1, o, p, q, g):
-        w1.assign()
-        p.assign()
-        q.assign()
-
-        positions = copy.deepcopy(w1.positions)
-        if verbose:
-            print(f'{title}\tbefore:', {o0: nice(p0.value) for o0, p0 in positions.items()})
-
-        ## find pstns that's an open position of joints whose handle link is closest to o
-        distances = {}
-        new_positions = {}
-        p = get_pose(o)[0]
-        for o0, p0 in positions.items():
-            new_pstn = open_pstn_sampler(o0, p0)[0][0]
-            if p0.value == new_pstn.value:
-                continue
-            d = dist(p, get_link_pose(o0[0], get_handle_link(o0))[0])
-            distances[o0] = d
-            new_positions[o0] = new_pstn
-        objs = [oo for oo, vv in sorted(distances.items(), key=lambda item: item[1])]
-
-        ## update pstn
-        wconfs = []
-        for oo in objs:
-            pstn = new_positions[oo]
-            positions = copy.deepcopy(w1.positions)
-            positions[oo] = pstn
-            w2 = WConf(w1.poses, positions)
-            if test_reachable(o, p, g, q, w2):
-                if verbose:
-                    print(f'{title}\t after:', {o0: nice(p0.value) for o0, p0 in positions.items()},
-                          f'\tnew pstn: {pstn} \twith distance {nice(distances[oo])}')
-                wconfs.append((oo, pstn, w2))
-                # break  ## only toggle once
-        return wconfs
     return fn
 
 

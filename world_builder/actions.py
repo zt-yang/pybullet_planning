@@ -315,14 +315,16 @@ class JustSucceed(Action):
     def transition(self, state):
         return state.new_state()
 
-class ChangeWConf(Action):
-    def __init__(self, wconf):
-        self.wconf = wconf
+
+class ChangePositions(Action):
+    def __init__(self, pstn):
+        self.pstn = pstn
     def transition(self, state):
-        self.wconf.assign()
+        self.pstn.assign()
         # set_renderer(True)
         # set_renderer(True)
         return state.new_state()
+
 
 class MagicDisappear(Action):
     def __init__(self, body):
@@ -333,6 +335,7 @@ class MagicDisappear(Action):
         if self.body in objects: objects.remove(self.body)
         return state.new_state(objects=objects)
 
+
 class TeleportObject(Action):
     def __init__(self, body, pose):
         self.body = body
@@ -340,6 +343,7 @@ class TeleportObject(Action):
     def transition(self, state):
         self.pose.assign()
         return state.new_state()
+
 
 class ChangeJointPosition(Action):
     def __init__(self, position):
@@ -353,6 +357,7 @@ class ChangeJointPosition(Action):
         self.position.assign()
         return state.new_state()
 
+
 class ChangeLinkColorEvent(Action):
     def __init__(self, body, color, link=None):
         self.body = body
@@ -361,6 +366,7 @@ class ChangeLinkColorEvent(Action):
     def transition(self, state):
         set_color(self.body, self.color, self.link)
         return state.new_state()
+
 
 class CreateCylinderEvent(Action):
     def __init__(self, radius, height, color, pose):
@@ -378,6 +384,7 @@ class CreateCylinderEvent(Action):
             set_all_static()
             print(f'    bullet.actions.CreateCylinderEvent | {self.body} at {nice(self.pose)}')
         return state.new_state(objects=objects) ## we may include the new body in objects, becomes the new state for planning
+
 
 class RemoveBodyEvent(Action):
     def __init__(self, body=None, event=None):
@@ -405,6 +412,7 @@ class RemoveBodyEvent(Action):
 #     def transition(self, state):
 #         set_pose(self.pose.body, self.pose.value)
 #         return state.new_state()
+
 
 class MoveInSE3Action(Action):
     def __init__(self, conf):
@@ -519,8 +527,6 @@ def get_primitive_actions(action, world, teleport=False):
         if '_attachment' in name:
             o3, p3, p4 = args[-3:]
             args = args[:-3]
-        if '_wconf' in name:
-            args = args[:-2]
 
         ## FEG
         if len(args) == 8:
@@ -541,11 +547,7 @@ def get_primitive_actions(action, world, teleport=False):
         if 'move_base' in name:
             q1, q2, t = args[:3]
         elif 'pull_marker' in name:
-            if '_wconf' in name:
-                args = args[:-2]
             a, o, p1, p2, g, q1, q2, o2, p3, p4, t = args
-        elif name == 'pull_marker_wconf':
-            a, o, p1, p2, g, q1, q2, t, w1, w2 = args
         elif 'pull_drawer_handle' in name:
             a, o, p1, p2, g, q1, q2, t = args
         else:
@@ -677,8 +679,8 @@ def get_primitive_actions(action, world, teleport=False):
         new_commands = [JustSucceed()]
 
     elif name == 'toggle':
-        o, p1, p2, w1, w2 = args
-        new_commands = [ChangeWConf(w2)]
+        o, pstn1, pstn2 = args
+        new_commands = [ChangePositions(pstn2)]
 
     elif name in ['declare_store_in_space', 'declare_store_on_surface']:
         new_commands = []

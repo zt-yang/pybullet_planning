@@ -15,7 +15,7 @@ from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, g
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
     get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked, \
     get_movable_joints, apply_alpha, get_all_links, set_color, get_texture, dump_body, clear_texture, get_link_name
-from pybullet_tools.pr2_streams import Position, get_handle_grasp_gen, pr2_grasp, WConf
+from pybullet_tools.pr2_streams import Position, get_handle_grasp_gen, pr2_grasp
 from pybullet_tools.general_streams import get_stable_list_gen, get_grasp_list_gen, get_contain_list_gen
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
     is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
@@ -783,7 +783,7 @@ class State(object):
         return Observation(self, robot_conf=robot_conf, obj_poses=obj_poses,
                            facts=facts, variables=variables, image=image)
 
-    def get_facts(self, init_facts=[], conf_saver=None, obj_poses=None, use_wconf=False, verbose=True):
+    def get_facts(self, init_facts=[], conf_saver=None, obj_poses=None, verbose=True):
         robot = self.world.robot.body
         cat_to_bodies = self.world.cat_to_bodies
         cat_to_objects = self.world.cat_to_objects
@@ -909,40 +909,6 @@ class State(object):
         for k in self.variables:
             init += [(k[0], k[1])]
 
-        ## --- world configuration
-        if use_wconf:
-            wconf = self.get_wconf(init)
-        else:
-            wconf = None
-        init += [('WConf', wconf), ('InWConf', wconf)]
-        if verbose and (wconf is not None):
-            print('world.get_facts | initial wconf', wconf.printout())
-        # ## ---- add multiple world conf for joints
-        # from pybullet_tools.general_streams import sample_joint_position_open_list_gen, get_pose_from_attachment
-        # joint_opener = sample_joint_position_open_list_gen(self, num_samples=1)
-        # pose_generator = get_pose_from_attachment(self)
-        # for body in cat_to_bodies('drawer') + cat_to_bodies('door'):
-        #     pstn = [f[2] for f in init if f[0] == 'AtPosition' and f[1] == body][0]
-        #     pstn_open = joint_opener(body, pstn)[0][0]
-        #     if pstn_open.value != pstn.value:
-        #         new_positions = copy.deepcopy(wconf.positions)
-        #         new_positions[body] = pstn_open
-        #         new_wconf = WConf({}, new_positions)
-        #         init += [('WConf', new_wconf), ('Position', body, pstn_open),
-        #                  ('IsOpenedPosition', body, pstn_open),
-        #                  ('NewWConfPst', wconf, body, pstn_open, new_wconf)]
-        #         print('world.get_facts | possible wconf', new_wconf.printout())
-        #
-        #         for child, attach in self.world.ATTACHMENTS.items():
-        #             if attach.parent.body == body[0]:
-        #                 result = pose_generator(child, new_wconf)
-        #                 if result != None:
-        #                     pose = result[0]
-        #                     init += [('Pose', child, pose), ('NewPoseFromAttachment', child, pose, new_wconf)]
-        # wconf.assign()
-        # for body in set([b[0] for b in wconf.positions]):
-        #     self.world.assign_attachment(body, tag='resume after pre-processing')
-
         ## --- for testing IK
         # lid = self.world.name_to_body('braiserlid')
         # surface = self.world.name_to_body('indigo_tmp')
@@ -971,14 +937,6 @@ class State(object):
             ## initial position
             init += [('AtPosition', body, Position(body))]
         return init
-
-    def get_wconf(self, init=None):
-        if init == None:
-            init = self.get_joint_facts()
-        poses = {} ## {i[1]: i[2] for i in init if i[0] == 'AtPose'}
-        positions = {i[1]: i[2] for i in init if i[0] == 'AtPosition'}
-        wconf = WConf(poses, positions)
-        return wconf
 
     def get_planning_config(self):
         import platform

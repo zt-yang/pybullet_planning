@@ -1,12 +1,13 @@
 from __future__ import print_function
 
+from pybullet_tools.pr2_agent import move_cost_fn
 from pybullet_tools.pr2_streams import get_handle_grasp_gen
 from pybullet_tools.pr2_primitives import get_cfree_pose_pose_test, get_cfree_traj_pose_test
-from pybullet_tools.general_streams import get_cfree_approach_pose_test, get_grasp_list_gen, get_stable_list_gen, \
-    sample_joint_position_open_list_gen, get_update_wconf_pst_gen, get_update_wconf_p_gen, get_sample_wconf_list_gen, \
+from pybullet_tools.general_streams import get_cfree_approach_pose_test, get_grasp_list_gen, \
+    get_stable_list_gen, sample_joint_position_open_list_gen, \
     Position, get_contain_list_gen, get_pose_from_attachment, get_stable_gen, get_contain_gen
 
-from pddlstream.language.generator import from_gen_fn, from_list_fn, from_fn, fn_from_constant, empty_gen, from_test
+from pddlstream.language.generator import from_gen_fn, from_list_fn, from_fn, from_test
 
 
 from .flying_gripper_utils import get_ik_fn, get_free_motion_gen, get_pull_door_handle_motion_gen, get_reachable_test
@@ -63,12 +64,8 @@ def get_stream_map(p, c, l, t):
         # # 'sample-bconf-in-region': from_gen_fn(get_bconf_in_region_gen(p, collisions=c, visualize=False)),
         # 'sample-bconf-in-region': from_list_fn(get_bconf_in_region_gen(p, collisions=c, visualize=False)),
         # 'sample-pose-in-region': from_list_fn(get_pose_in_region_gen(p, collisions=c, visualize=False)),
-        #
-        # 'update-wconf-p': from_fn(get_update_wconf_p_gen()),
-        # 'update-wconf-p-two': from_fn(get_update_wconf_p_two_gen()),
-        'update-wconf-pst': from_fn(get_update_wconf_pst_gen()),
+
         'test-reachable-pose': from_test(get_reachable_test(p, custom_limits=l)),
-        # 'update-wconf-pst-for-reachability': from_list_fn(get_sample_wconf_list_gen(p)),
 
         'MoveCost': move_cost_fn,
 
@@ -78,28 +75,4 @@ def get_stream_map(p, c, l, t):
     }
     return stream_map
 
-from pybullet_tools.pr2_agent import opt_move_cost_fn, opt_pose_fn, opt_ik_fn, opt_ik_wconf_fn, opt_motion_fn, \
-    move_cost_fn
 
-# def get_stream_info(partial=False, defer=False):
-#     stream_info = {
-#         # 'test-cfree-pose-pose': StreamInfo(p_success=1e-3, verbose=verbose),
-#         # 'test-cfree-approach-pose': StreamInfo(p_success=1e-2, verbose=verbose),
-#         # 'test-cfree-traj-pose': StreamInfo(p_success=1e-1, verbose=verbose),
-#
-#         'MoveCost': FunctionInfo(opt_move_cost_fn),
-#     }
-#     stream_info.update({
-#         'sample-pose-on': StreamInfo(opt_gen_fn=PartialInputs('?r')),
-#         'sample-pose-in': StreamInfo(opt_gen_fn=PartialInputs('?r')),
-#         'inverse-kinematics': StreamInfo(opt_gen_fn=PartialInputs('?p')),
-#         'plan-base-motion': StreamInfo(opt_gen_fn=PartialInputs('?q1 ?q2'),
-#                                       defer_fn=defer_shared if defer else never_defer),
-#         'plan-base-motion-wconf': StreamInfo(opt_gen_fn=PartialInputs('?q1 ?q2 ?w'),
-#                                       defer_fn=defer_shared if defer else never_defer),
-#                        } if partial else {
-#         'sample-pose': StreamInfo(opt_gen_fn=from_fn(opt_pose_fn)),
-#         'inverse-kinematics': StreamInfo(opt_gen_fn=from_fn(opt_ik_fn)),
-#         'plan-base-motion': StreamInfo(opt_gen_fn=from_fn(opt_motion_fn)),
-#     })
-#     return stream_info

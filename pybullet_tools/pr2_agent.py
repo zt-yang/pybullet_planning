@@ -11,13 +11,13 @@ import json
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_pull_drawer_handle_motion_gen
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_turn_knob_handle_motion_gen
 from pybullet_tools.pr2_streams import get_stable_gen, Position, get_handle_grasp_gen, \
-    get_ik_ir_grasp_handle_gen, get_update_wconf_p_gen, get_pose_in_space_test, \
+    get_pose_in_space_test, \
     get_marker_grasp_gen, get_bconf_in_region_test, get_pull_door_handle_motion_gen, \
-    get_bconf_in_region_gen, get_pose_in_region_gen, get_motion_wconf_gen, get_update_wconf_p_two_gen, \
+    get_bconf_in_region_gen, get_pose_in_region_gen, get_base_motion_gen, \
     get_marker_pose_gen, get_pull_marker_to_pose_motion_gen, get_pull_marker_to_bconf_motion_gen,  \
     get_pull_marker_random_motion_gen, get_ik_ungrasp_handle_gen, get_pose_in_region_test, \
     get_cfree_btraj_pose_test, get_joint_position_open_gen, get_ik_ungrasp_mark_gen, \
-    sample_joint_position_open_list_gen, get_update_wconf_pst_gen, get_ik_ir_wconf_gen, get_ik_gen, get_ik_fn
+    sample_joint_position_open_list_gen, get_ik_gen, get_ik_fn
 
 from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
     get_ik_ir_gen, get_motion_gen, get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
@@ -81,55 +81,41 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c)),
         'sample-pose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, verbose=False)),  ##
         'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False)), # TODO: collisions
-
-        'inverse-kinematics': from_gen_fn(get_ik_ir_gen(p, collisions=c, teleport=t, custom_limits=l,
-                                                        learned=False, max_attempts=60, verbose=False)),
-        'inverse-reachability-wconf': from_gen_fn(  ## get_ik_ir_wconf_gen
-            get_ik_gen(p, collisions=c, teleport=t, ir_only=True, custom_limits=l, WCONF=True,
+        'inverse-reachability': from_gen_fn(
+            get_ik_gen(p, collisions=c, teleport=t, ir_only=True, custom_limits=l,
                        learned=False, verbose=False, visualize=False)),
-        'inverse-kinematics-wconf': from_fn(get_ik_fn(p, collisions=motion_collisions, teleport=t, verbose=False, ACONF=False)),
-
-        'plan-base-motion': from_fn(get_motion_gen(p, collisions=base_collisions, teleport=t, custom_limits=l)),
-        'plan-base-motion-wconf': from_fn(get_motion_wconf_gen(p, collisions=base_collisions, teleport=t, custom_limits=l)),
+        'inverse-kinematics': from_fn(get_ik_fn(p, collisions=motion_collisions, teleport=t, verbose=False, ACONF=False)),
+        'plan-base-motion': from_fn(get_base_motion_gen(p, collisions=base_collisions, teleport=t, custom_limits=l)),
 
         'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(collisions=c)),
         'test-cfree-approach-pose': from_test(get_cfree_approach_pose_test(p, collisions=c)),
         'test-cfree-traj-pose': from_test(get_cfree_traj_pose_test(p.robot, collisions=c)),
-
         'test-cfree-traj-position': from_test(universe_test),
-
         'test-cfree-btraj-pose': from_test(get_cfree_btraj_pose_test(p.robot, collisions=c)),
 
-        # 'get-joint-position-open': from_fn(get_joint_position_open_gen(p)),
         'get-joint-position-open': from_gen_fn(sample_joint_position_open_list_gen(p)),
 
         'sample-handle-grasp': from_gen_fn(get_handle_grasp_gen(p, collisions=c)),
 
         # TODO: apply motion_collisions to pulling?
-        'inverse-kinematics-grasp-handle': from_gen_fn(  ## get_ik_ir_grasp_handle_gen
+        'inverse-kinematics-grasp-handle': from_gen_fn(
             get_ik_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l,
-                        learned=False, verbose=False, ACONF=True, WCONF=False)),
+                        learned=False, verbose=False, ACONF=True)),
         'inverse-kinematics-ungrasp-handle': from_gen_fn(
             get_ik_ungrasp_handle_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l,
-                                      verbose=False, WCONF=False)),
-        # 'inverse-kinematics-grasp-handle-wconf': from_gen_fn(
-        #     get_ik_ir_grasp_handle_gen(p, collisions=c, teleport=t, custom_limits=l,
-        #                                learned=False, verbose=False, ACONF=True, WCONF=True)),
-        # 'inverse-kinematics-ungrasp-handle-wconf': from_gen_fn(
-        #     get_ik_ungrasp_handle_gen(p, collisions=c, teleport=t, custom_limits=l,
-        #                               verbose=False, WCONF=True)),
+                                      verbose=False)),
 
-        'plan-base-pull-drawer-handle': from_fn(  ## get_pull_drawer_handle_motion_gen
-            get_pull_door_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
         'plan-base-pull-door-handle': from_fn(
             get_pull_door_handle_motion_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l)),
+        'plan-base-pull-drawer-handle': from_fn(  ## get_pull_drawer_handle_motion_gen
+            get_pull_door_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
         'plan-arm-turn-knob-handle': from_fn(  ## get_turn_knob_handle_motion_gen
             get_pull_door_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
 
         'sample-marker-grasp': from_list_fn(get_marker_grasp_gen(p, collisions=c)),
         'inverse-kinematics-grasp-marker': from_gen_fn(
-            get_ik_ir_grasp_handle_gen(p, collisions=c, teleport=t, custom_limits=l,
-                                       learned=False, verbose=False)),
+            get_ik_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l,
+                        learned=False, verbose=False, ACONF=True)),
         'inverse-kinematics-ungrasp-marker': from_fn(
             get_ik_ungrasp_mark_gen(p, collisions=c, teleport=t, custom_limits=l)),
         'plan-base-pull-marker-random': from_gen_fn(
@@ -146,10 +132,6 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         # 'sample-bconf-in-region': from_gen_fn(get_bconf_in_region_gen(p, collisions=c, visualize=False)),
         'sample-bconf-in-region': from_list_fn(get_bconf_in_region_gen(p, collisions=c, visualize=False)),
         'sample-pose-in-region': from_list_fn(get_pose_in_region_gen(p, collisions=c, visualize=False)),
-
-        'update-wconf-p': from_fn(get_update_wconf_p_gen()),
-        'update-wconf-p-two': from_fn(get_update_wconf_p_two_gen()),
-        'update-wconf-pst': from_fn(get_update_wconf_pst_gen()),
 
         'MoveCost': move_cost_fn,
 
@@ -174,26 +156,6 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
 
     return stream_map
 
-# def get_stream_info(partial, defer):
-#     stream_info = {
-#         # 'test-cfree-pose-pose': StreamInfo(p_success=1e-3, verbose=verbose),
-#         # 'test-cfree-approach-pose': StreamInfo(p_success=1e-2, verbose=verbose),
-#         # 'test-cfree-traj-pose': StreamInfo(p_success=1e-1, verbose=verbose),
-#
-#         'MoveCost': FunctionInfo(opt_move_cost_fn),
-#     }
-#     stream_info.update({
-#                            'sample-pose': StreamInfo(opt_gen_fn=PartialInputs('?r')),
-#                            'inverse-kinematics': StreamInfo(opt_gen_fn=PartialInputs('?p')),
-#                            'plan-base-motion': StreamInfo(opt_gen_fn=PartialInputs('?q1 ?q2'),
-#                                                           defer_fn=defer_shared if defer else never_defer),
-#                        } if partial else {
-#         'sample-pose': StreamInfo(opt_gen_fn=from_fn(opt_pose_fn)),
-#         'inverse-kinematics': StreamInfo(opt_gen_fn=from_fn(opt_ik_fn)),
-#         'plan-base-motion': StreamInfo(opt_gen_fn=from_fn(opt_motion_fn)),
-#     })
-#     return stream_info
-
 
 def get_stream_info(unique=False):
     stream_info = {
@@ -206,9 +168,7 @@ def get_stream_info(unique=False):
         'sample-pose': StreamInfo(opt_gen_fn=from_fn(opt_pose_fn)),
         'sample-pose-inside': StreamInfo(opt_gen_fn=from_fn(opt_pose_inside_fn)),
         'inverse-kinematics': StreamInfo(opt_gen_fn=from_fn(opt_ik_fn)),
-        # 'inverse-kinematics-wconf': StreamInfo(opt_gen_fn=from_fn(opt_ik_wconf_fn)),
         'plan-base-motion': StreamInfo(opt_gen_fn=from_fn(opt_motion_fn)),
-        # 'plan-base-motion-wconf': StreamInfo(opt_gen_fn=from_fn(opt_motion_wconf_fn)),
         'sample-joint-position': StreamInfo(opt_gen_fn=from_fn(opt_position_fn)),
         # 'inverse-kinematics-grasp-handle': StreamInfo(opt_gen_fn=from_fn(opt_ik_grasp_fn)),
     })
@@ -228,21 +188,18 @@ def get_stream_info(unique=False):
 
         'get-joint-position-open': StreamInfo(opt_gen_fn=opt_gen_fn),
         'sample-joint-position': StreamInfo(opt_gen_fn=opt_gen_fn),
-        'update-wconf-pst': StreamInfo(opt_gen_fn=PartialInputs(unique=False)), # TODO(caelan): limited depth
 
         # TODO: still not re-ordering quite right
         'sample-pose': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e-1),
         'sample-pose-inside': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e-1),
 
         'inverse-kinematics': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
-        'inverse-kinematics-wconf': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
 
         'inverse-kinematics-grasp-handle': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
         'inverse-kinematics-ungrasp-handle': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
         'plan-base-pull-door-handle': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
 
         'plan-base-motion': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e1),
-        'plan-base-motion-wconf': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e1),
     }
 
     return stream_info
@@ -267,9 +224,6 @@ def opt_ik_fn(a, o, p, g):
     t = CustomValue('t-ik', tuple())
     return q, t
 
-def opt_ik_wconf_fn(a, o, p, g, w):
-    return opt_ik_fn(a, o, p, g)
-
 def opt_motion_fn(q1, q2):
     t = CustomValue('t-pbm', (q1, q2))
     return t,
@@ -287,16 +241,6 @@ def opt_ik_grasp_fn(a, o, p, g):
     aq = CustomValue('aq-ik-hg', (p,))
     t = CustomValue('t-ik-hg', tuple())
     return q, aq, t
-
-def opt_ik_wconf_fn(a, o, p, g, w):
-    q = CustomValue('q-ik', (p,))
-    t = CustomValue('t-ik', tuple())
-    return q, t
-
-
-def opt_motion_wconf_fn(q1, q2, w):
-    t = CustomValue('t-pbm', (q1, q2))
-    return t,
 
 
 #######################################################
@@ -325,11 +269,8 @@ def get_open_command(robot, arm, teleport=False):
 
 def get_primitive_commands(action, robot, teleport=False):
     name, args = action
-    if name in ['move_base']: #, 'move_base_wconf']:
+    if name in ['move_base']:
         c = args[-1]
-        new_commands = c.commands
-    elif name == 'move_base_wconf':
-        q1, q2, c, w = args
         new_commands = c.commands
     elif name == 'pick':
         a, b, p, g, _, c = args[:6]
@@ -343,18 +284,16 @@ def get_primitive_commands(action, robot, teleport=False):
         open_gripper = get_open_command(robot, a, teleport=teleport)
         detach = Detach(robot, a, b)
         new_commands = [t, detach, open_gripper, t.reverse()]
-    elif name in 'grasp_handle':
+    elif name == 'grasp_handle':
         a, o, p, g, q, aq1, aq2, c = args
         close_gripper = get_close_command(robot, a, g, teleport=teleport)
         new_commands = list(c.commands) + [close_gripper]
-    elif name in 'ungrasp_handle':
+    elif name == 'ungrasp_handle':
         a, o, p, g, q, aq1, aq2, c = args
         open_gripper = get_open_command(robot, a, teleport=teleport)
         new_commands = list(c.reverse().commands) + [open_gripper]
     elif name == 'pull_door_handle':
         a, o, p1, p2, g, q1, q2, bt, aq1, aq2, at = args
-        #new_commands = at.commands
-        #new_commands = bt.commands
         dt = create_trajectory(robot=p1.body, joints=[p1.joint],
                                path=np.linspace([p1.value], [p2.value], num=len(bt.commands[0].path), endpoint=True))
         new_commands = [Simultaneous(commands=[bt, at, dt])]
@@ -460,15 +399,6 @@ def opt_ik_grasp_fn(a, o, p, g):
     t = CustomValue('t-ik-hg', tuple())
     return q, aq, t
 
-def opt_ik_wconf_fn(a, o, p, g, w):
-    q = CustomValue('q-ik', (p,))
-    t = CustomValue('t-ik', tuple())
-    return q, t
-
-def opt_motion_wconf_fn(q1, q2, w):
-    t = CustomValue('t-pbm', (q1, q2))
-    return t,
-
 #######################################################
 
 class Problem(object):
@@ -559,20 +489,12 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
         elif test == 'test_pose_gen':
             goals, ff = test_pose_gen(state, init, name[0], name[1])
             init += ff
-        elif test == 'test_update_wconf_pst':
-            goals, ff = test_update_wconf_pst(state, init, name)
-            init += ff
         elif test == 'test_door_pull_traj':
             goals = test_door_pull_traj(state, init, name)
         elif test == 'test_reachable_pose':
             goals = test_reachable_pose(state, init, name)
-        elif test == 'test_sample_wconf':
-            goals, ff = test_sample_wconf(state, init, name)
-            init += ff
         elif test == 'test_at_reachable_pose':
             goals = test_at_reachable_pose(init, name)
-        elif test == 'test_new_wconf':
-            goals = test_new_wconf(init, name)
         else:
             print('\n\n\npr2_agent.pddlstream_from_state_goal | didnt implement', goals)
             sys.exit()
@@ -705,7 +627,7 @@ def get_named_colors(kind='tablaeu', alpha=1.):
     # from pybullet_planning.pybullet_tools.utils import CHROMATIC_COLORS, COLOR_FROM_NAME
     # TODO: colors.py from past projects
     from matplotlib.colors import BASE_COLORS, TABLEAU_COLORS, XKCD_COLORS, CSS4_COLORS, to_rgba
-    from pybullet_planning.pybullet_tools.utils import RGBA, apply_alpha
+    from pybullet_tools.utils import RGBA, apply_alpha
     if kind == 'base':
         return {name: apply_alpha(rgb, alpha=alpha) for name, rgb in BASE_COLORS.items()} # TODO: single character
     elif kind == 'tablaeu':
@@ -732,7 +654,7 @@ def get_debug_checker(world):
                 action_name, args = action
                 args = params_from_objects(args)
                 body, joint = None, None
-                if action_name == 'move_base_wconf':
+                if action_name == 'move_base':
                     continue
                 elif action_name == 'pick':
                     arm, body = args[:2]
@@ -831,7 +753,7 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
                                      #unit_efforts=True, effort_weight=1,
                                      unit_efforts=True, effort_weight=None,
                                      bind=True,
-                                     unique_optimistic=True, # NOTE(caelan): cannot use update-wconf-pst
+                                     unique_optimistic=True,
                                      use_feedback=True, # plan_dataset
                                      forbid=True,
                                      max_plans=max_plans, max_skeletons=max_skeletons,
@@ -972,13 +894,14 @@ def test_marker_pull_grasps(state, marker, visualize=False):
         robot = state.robot
         cart = state.world.BODY_TO_OBJECT[marker].grasp_parent
         for grasp in grasps:
-            gripper_grasp = visualize_grasp(robot, get_pose(marker), grasp[0].value)
+            gripper_grasp = robot.visualize_grasp(get_pose(marker), grasp[0].value)
             set_camera_target_body(gripper_grasp, dx=0, dy=-1, dz=0)
             print('collision with marker', pairwise_collision(gripper_grasp, marker))
             print('collision with cart', pairwise_collision(gripper_grasp, cart))
             remove_body(gripper_grasp)
     print('test_marker_pull_grasps:', grasps)
     return grasps
+
 
 def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=False, verbose=False):
     if isinstance(name, str):
@@ -1112,18 +1035,10 @@ def test_grasp_ik(state, init, name='cabbage', visualize=True):
     robot = state.robot
     custom_limits = robot.get_custom_limits()
     pose = [i for i in init if i[0].lower() == "AtPose".lower() and i[1] == body][0][-1]
-    wconfs = [i for i in init if "NewWConf".lower() in i[0].lower()]
 
-    if len(wconfs) == 0:
-        funk = get_ik_ir_gen(state, verbose=visualize, custom_limits=custom_limits
-                             )('left', body, pose, grasp)
-        print('test_grasp_ik', body, pose, grasp)
-    else:
-        wconf = wconfs[0][-1]
-        print('test_grasp_ik', body, pose, grasp, wconf)
-        wconf.printout()
-        funk = get_ik_ir_wconf_gen(state, verbose=visualize, custom_limits=custom_limits
-                                   )('left', body, pose, grasp, wconf)
+    funk = get_ik_ir_gen(state, verbose=visualize, custom_limits=custom_limits
+                         )('left', body, pose, grasp)
+    print('test_grasp_ik', body, pose, grasp)
     next(funk)
 
     return goals
@@ -1168,15 +1083,6 @@ def test_pose_gen(problem, init, o, s):
     pose.assign()
     return [('AtPose', o, p)], [('Pose', o, p), ('Supported', o, p, s)]
 
-def test_update_wconf_pst(problem, init, o):
-    pst1 = [f[2] for f in init if f[0].lower() == 'atposition' and f[1] == o][0]
-    funk1 = sample_joint_position_open_list_gen(problem)
-    pst2 = funk1(o, pst1)[0][0]
-
-    w1 = [f[1] for f in init if f[0].lower() == 'inwconf'][0]
-    funk2 = get_update_wconf_pst_gen()
-    [w2] = funk2(w1, o, pst2)
-    return [('InWConf', w2)], [('WConf', w2)]
 
 def test_door_pull_traj(problem, init, o):
     from pybullet_tools.flying_gripper_utils import get_pull_door_handle_motion_gen
@@ -1200,40 +1106,21 @@ def test_door_pull_traj(problem, init, o):
     print('\n\n!!!! cant find any handle grasp that works for', o)
     sys.exit()
 
+
 def test_reachable_pose(state, init, o):
     from pybullet_tools.flying_gripper_utils import get_reachable_test
     robot = state.robot
     funk = get_reachable_test(state, custom_limits=robot.custom_limits)
     p = [f[2] for f in init if f[0].lower() == "AtPose".lower() and f[1] == o][0]
     q = [f[1] for f in init if f[0].lower() == 'AtSEConf'.lower()][0]
-    w = [f[1] for f in init if f[0].lower() == 'InWConf'.lower()][0]
 
     outputs = get_grasp_list_gen(state)(o)
     for (g,) in outputs:
-        result = funk(o, p, g, q, w)
+        result = funk(o, p, g, q)
         if result: return True
     return False
 
-def test_sample_wconf(state, init, o):
-    from pybullet_tools.general_streams import get_sample_wconf_list_gen
-    funk = get_sample_wconf_list_gen(state)
-    w1 = [f[1] for f in init if f[0].lower() == 'InWConf'.lower()][0]
-    outputs = funk(o, w1)
-    p2, w2 = outputs[0]
-    joint_o = (p2.body, p2.joint)
-    return [('InWConf', w2)], [('WConf', w2), ('Position', joint_o, p2), ('NewWConfPst', w1, joint_o, p2, w2)]
 
 def test_at_reachable_pose(init, o):
     p = [f[2] for f in init if f[0].lower() == "AtPose".lower() and f[1] == o][0]
     return [('AtReachablePose', o, p)]
-
-def test_new_wconf(init, j):
-    wconf = [w[1] for w in init if w[0].lower() == 'atwconf']
-    new_wconfs = [w[1] for w in init if w[0].lower() == 'wconf' and w[1] not in wconf]
-    for new_wconf in new_wconfs:
-        if new_wconf.positions[j].value > 0:
-            new_pstn = [f[3] for f in init if f[0].lower() == 'newwconfpst' and f[2] == j and f[4] == new_wconf][0]
-            # return [('AtPosition', j, new_pstn), ('InWConf', new_wconf)]
-            # return [('AtPosition', j, new_pstn)]
-            return [('InWConf', new_wconf)]
-    sys.exit()
