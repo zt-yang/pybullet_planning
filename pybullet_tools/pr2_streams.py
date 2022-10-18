@@ -1693,6 +1693,10 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
                     bconf = ir_outputs[0].values
                     samples.append(visualize_bconf(bconf))
 
+                if ir_only:
+                    yield ir_outputs
+                    continue
+
                 ik_outputs = ik_fn(*(inputs + ir_outputs))
                 if ik_outputs is None:
                     continue
