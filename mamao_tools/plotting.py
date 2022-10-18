@@ -28,8 +28,8 @@ rc('font', **{'family': 'serif', 'serif': ['Times']})
 # rc('text', usetex=True)
 
 GROUPS = ['tt_one_fridge_table_pick', 'tt_one_fridge_table_in', 'tt_two_fridge_pick',
-          'tt_two_fridge_in']  ## ## 'tt_one_fridge_table_on', 'tt_one_fridge_pick',
-GROUPS = ['tt_two_fridge_pick', 'tt_two_fridge_in', 'ss_two_fridge_pick', 'ss_two_fridge_in']
+          'tt_two_fridge_in', 'tt_two_fridge_goals']
+# GROUPS = ['tt_two_fridge_pick', 'tt_two_fridge_in', 'ss_two_fridge_pick', 'ss_two_fridge_in']
 
 METHODS = ['None', 'shuffle', 'binary', 'pvt', 'oracle']
 METHOD_NAMES = ['Baseline', 'Shuffle', 'PST-0/1', 'PST', 'Oracle']
