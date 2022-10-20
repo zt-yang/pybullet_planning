@@ -101,7 +101,7 @@ class Oracle(FeasibilityChecker):
 
     def __init__(self, run_dir, correct):
         super().__init__(run_dir)
-        self.correct = correct
+        self.correct = [[a for a in act if a != 'None'] for act in correct]
         from fastamp_utils import get_plan_skeleton, get_indices
         self.skeleton = get_plan_skeleton(correct, get_indices(run_dir))
         print(f'\nOracle feasibility checker - {self.skeleton})\n'+
@@ -113,7 +113,7 @@ class Oracle(FeasibilityChecker):
         print('\n\nOracle, checking', input)
         for i in range(len(input)):
             action = [input[i].name] + list(input[i].args)
-            for j in range(len(self.correct[i])):
+            for j in range(1, len(self.correct[i])):
                 if '=' not in self.correct[i][j] and self.correct[i][j] != 'None':
                     if len(action) != len(self.correct[i]):
                         print('len(input[i]) != len(self.correct[i])', action, self.correct[i])
