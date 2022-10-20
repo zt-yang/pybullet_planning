@@ -39,8 +39,8 @@ METHODS = ['None', 'pvt', 'pvt*', 'pvt-task', 'oracle'] ##
 METHOD_NAMES = ['Baseline', 'PST', 'PST*', 'PST-task', 'Oracle']
 ## ## , 'random' , 'piginet', 'pvt-task', 'pvt-2', 'pvt|rel=all'
 
-METHODS = ['None', 'pvt-task', 'pvt-all', 'oracle'] ##
-METHOD_NAMES = ['Baseline', 'PIGI', 'PIGI-all', 'Oracle']
+METHODS = ['None', 'pvt-task', 'pvt-all', 'pvt-3-trans', 'oracle'] ##
+METHOD_NAMES = ['Baseline', 'PIGI', 'PIGI-all', 'PIGI-trans', 'Oracle']
 
 check_time = 1664255601 ## 1664255601 for baselines | 1664750094  ## for d4 | 1665010453 for d3
 
@@ -52,7 +52,7 @@ color_dict = {
     'p': ('#9b59b6', '#8e44ad'),
     'gray': ('#95a5a6', '#7f8c8d'),
 }
-cc = ['b', 'r', 'g', 'gray'] ## , 'p'
+cc = ['b', 'r', 'g', 'gray'] if len(METHODS) <= 4 else ['b', 'r', 'g', 'p', 'gray'] ##
 colors = [color_dict[k][0] for k in cc]
 colors_darker = [color_dict[k][0] for k in cc]
 
@@ -348,6 +348,8 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
         figsize = (12, 4) if len(groups) == 3 else figsize
         if len(METHODS) == 5 or len(groups) == 5:
             figsize = (18, 6)
+            if len(METHODS) == 5 and len(groups) == 5:
+                figsize = (21, 6)
         if len(METHODS) == 6 or len(groups) == 6:
             figsize = (21, 6)
         bar_width = 0.3

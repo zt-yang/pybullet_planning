@@ -7,6 +7,9 @@ import time
 import torch
 import json
 
+import sys
+sys.path.append('/home/yang/Documents/fastamp')
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 MODELS_PATH = '/home/yang/Documents/fastamp/test_models'
