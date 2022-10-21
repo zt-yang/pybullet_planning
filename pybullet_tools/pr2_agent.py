@@ -702,7 +702,10 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
           f'Movable: {world.movable} | Fixed: {world.fixed} | Floor: {world.floors}')
     stream_info = world.robot.get_stream_info()
 
-    world.make_doors_transparent()
+    if has_gui():
+        with LockRenderer(lock=False):
+            world.make_doors_transparent()
+
     # wait_unlocked()
 
     #########################

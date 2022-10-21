@@ -412,6 +412,7 @@ def sample_conjunctive_fridges_tables_goal(world, placement, movable_category='f
 
     ## because of data imbalance
     case = random.choice(cases)
+    case = 'in2'
     # if len(open_surfaces) > 0:
     #     case = 'in1on1'
 

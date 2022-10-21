@@ -4,6 +4,8 @@ from os.path import join, isfile, isdir, abspath
 import untangle
 import copy
 
+import sys
+sys.path.append('/home/yang/Documents/fastamp')
 
 def get_indices_from_log(run_dir):
     indices = {}
