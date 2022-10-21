@@ -716,7 +716,8 @@ if __name__ == '__main__':
     # test_grasps(['Food'], robot)
     ## 'Bottle', 'Stapler', 'Camera', 'Glasses', 'Food', 'MiniFridge', 'KitchenCounter'
     # test_handle_grasps_counter()
-    test_handle_grasps(robot, category='MiniFridgeDoorless')
+    test_handle_grasps(robot, category='MiniFridge')
+    # test_handle_grasps(robot, category='MiniFridgeDoorless')
     # test_pick_place_counter(robot)
 
 

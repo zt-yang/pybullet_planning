@@ -95,7 +95,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
 
         'get-joint-position-open': from_gen_fn(sample_joint_position_open_list_gen(p)),
 
-        'sample-handle-grasp': from_gen_fn(get_handle_grasp_gen(p, collisions=c)),
+        'sample-handle-grasp': from_gen_fn(get_handle_grasp_gen(p, max_samples=2, collisions=c)),
 
         # TODO: apply motion_collisions to pulling?
         'inverse-kinematics-grasp-handle': from_gen_fn(
