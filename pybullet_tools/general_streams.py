@@ -489,7 +489,8 @@ def get_handle_width(body_joint):
     return j.handle_width
 
 
-def get_handle_grasp_gen(problem, collisions=False, randomize=False, visualize=False, verbose=False):
+def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
+                         randomize=False, visualize=False, verbose=False):
     collisions = True
     obstacles = problem.fixed if collisions else []
     world = problem.world
@@ -526,6 +527,9 @@ def get_handle_grasp_gen(problem, collisions=False, randomize=False, visualize=F
 
         if randomize:
             random.shuffle(grasps)
+        if len(grasps) > max_samples:
+            random.shuffle(grasps)
+            grasps = grasps[:max_samples]
         # return [(g,) for g in grasps]
         for g in grasps:
            yield (g,)

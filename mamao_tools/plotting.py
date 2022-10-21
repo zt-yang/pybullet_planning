@@ -39,7 +39,7 @@ METHODS = ['None', 'pvt', 'pvt*', 'pvt-task', 'oracle'] ##
 METHOD_NAMES = ['Baseline', 'PST', 'PST*', 'PST-task', 'Oracle']
 ## ## , 'random' , 'piginet', 'pvt-task', 'pvt-2', 'pvt|rel=all'
 
-METHODS = ['None', 'pvt-task', 'pvt-all', 'pvt-3-trans', 'oracle'] ##
+METHODS = ['None', 'pvt-task', 'pvt-all', 'pvt-trans', 'oracle'] ##
 METHOD_NAMES = ['Baseline', 'PIGI', 'PIGI-all', 'PIGI-trans', 'Oracle']
 
 check_time = 1664255601 ## 1664255601 for baselines | 1664750094  ## for d4 | 1665010453 for d3
