@@ -248,7 +248,7 @@ def get_successful_plan(run_dir, indices={}):
 
 
 def save_multiple_solutions(plan_dataset, indices=None, run_dir=None,
-                            file_name='multiple_solutions'):
+                            file_path='multiple_solutions.json'):
     if indices is None and run_dir is not None:
         indices = get_indices(run_dir)
     first_solution = None
@@ -275,6 +275,6 @@ def save_multiple_solutions(plan_dataset, indices=None, run_dir=None,
             'score': score
         }
         solutions_log.append(log)
-    with open(f'{file_name}.json', 'w') as f:
+    with open(file_path, 'w') as f:
         json.dump(solutions_log, f, indent=3)
     return first_solution
