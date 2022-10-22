@@ -7,6 +7,7 @@ import copy
 import sys
 sys.path.append('/home/yang/Documents/fastamp')
 
+
 def get_indices_from_log(run_dir):
     indices = {}
     with open(join(run_dir, 'log.txt'), 'r') as f:
@@ -244,3 +245,36 @@ def get_successful_plan(run_dir, indices={}):
         vs, inv_vs = get_variables(data['init'])
         plan = get_plan_from_strings(actions, vs=vs, inv_vs=inv_vs, indices=indices)
     return [plan]
+
+
+def save_multiple_solutions(plan_dataset, indices=None, run_dir=None,
+                            file_name='multiple_solutions'):
+    if indices is None and run_dir is not None:
+        indices = get_indices(run_dir)
+    first_solution = None
+    min_len = 10000
+    solutions_log = []
+    for i, (opt_solution, real_solution) in enumerate(plan_dataset):
+        stream_plan, (opt_plan, preimage), opt_cost = opt_solution
+        plan = None
+        score = 0
+        if real_solution is not None:
+            plan, cost, certificate = real_solution
+            if first_solution is None:
+                first_solution = real_solution
+                min_len = len(plan)
+            if plan is not None:
+                score = round(0.5 + min_len / (2*len(plan)), 3)
+        skeleton = get_plan_skeleton(opt_plan, indices=indices)
+        print(f'\n{i + 1}/{len(plan_dataset)}) Optimistic Plan: {opt_plan}\n'
+              f'Skeleton: {skeleton}\nPlan: {plan}')
+        log = {
+            'optimistic_plan': str(opt_plan),
+            'skeleton': str(skeleton),
+            'plan': [str(a) for a in plan] if plan is not None else None,
+            'score': score
+        }
+        solutions_log.append(log)
+    with open(f'{file_name}.json', 'w') as f:
+        json.dump(solutions_log, f, indent=3)
+    return first_solution

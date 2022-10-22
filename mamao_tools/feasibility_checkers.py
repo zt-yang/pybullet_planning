@@ -137,6 +137,9 @@ class Random(FeasibilityChecker):
 
     def _check(self, input):
         return np.random.rand() > self.p_feasible
+    # feasibility_checker = lambda *args: False # Reject all
+    # feasibility_checker = lambda *args: True # Accept all
+    # feasibility_checker = lambda *args: np.random.random() # Randomize
 
 
 class PVT(FeasibilityChecker):

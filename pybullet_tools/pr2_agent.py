@@ -564,10 +564,24 @@ from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, st
 
 
 def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False, lock=False,
-              max_time=INF, downward_time=10, evaluation_time=10, max_plans=100,
-              visualize=False):
+              max_time=INF, downward_time=10, evaluation_time=10,
+              max_cost=INF, collect_dataset=False,
+              visualize=False, **kwargs):
+    # skeleton = [
+    #     ('grasp_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
+    #     ('pull_door_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
+    #     ('ungrasp_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
+    #     ('pick', [WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
+    #     ('place', [WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
+    # ]
+    # # constraints = PlanConstraints(skeletons=[skeleton], exact=False, max_cost=max_cost + 1)
+    constraints = PlanConstraints(max_cost=max_cost + 1)  # TODO: plus 1 in action costs?
+
+    max_solutions = 6 if collect_dataset else 1
+    diverse = diverse or collect_dataset
+
     if diverse:
-        # max_plans = 200 ## 100
+        max_plans = 100
         plan_dataset = []
         max_skeletons = 1
         use_feedback = False
@@ -580,19 +594,18 @@ def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False, lock=Fals
     # with Profiler():
     set_cost_scale(cost_scale=1)
     with LockRenderer(lock=lock):
-        solution = solve_focused(pddlstream_problem, stream_info=stream_info,
+        solution = solve_focused(pddlstream_problem, stream_info=stream_info, constraints=constraints,
                                  planner='ff-astar1', max_planner_time=downward_time, debug=False,
                                  unit_costs=False, success_cost=INF, initial_complexity=5,
                                  max_time=max_time, verbose=True, visualize=visualize,
-                                 unit_efforts=True, effort_weight=None,
+                                 # unit_efforts=True, effort_weight=None,
                                  unique_optimistic=True, use_feedback=use_feedback,
                                  forbid=True, max_plans=max_plans, fc=fc,
                                  bind=True, max_skeletons=max_skeletons,
-                                 plan_dataset=plan_dataset, evaluation_time=evaluation_time, max_solutions=1,
-                                 search_sample_ratio=0)
-        # solution = solve(pddlstream_problem, algorithm=DEFAULT_ALGORITHM, unit_costs=False,
-        #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False,
-        #                  visualize=visualize, feasibility_checker=fc)
+                                 plan_dataset=plan_dataset, evaluation_time=evaluation_time,
+                                 max_solutions=max_solutions, search_sample_ratio=0, **kwargs)
+    if collect_dataset:
+        return solution, plan_dataset
     return solution
 
 
@@ -687,9 +700,8 @@ def get_debug_checker(world):
 
 
 def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=False,
-                     collect_dataset=False, max_cost=INF,
+                     collect_dataset=False,
                      profile=True, lock=False, max_time=5*50, preview=False, **kwargs):
-    # from examples.pybullet.utils.pybullet_tools.utils import CLIENTS
     from pybullet_tools.logging import myprint as print
 
     start_time = time.time()
@@ -708,99 +720,28 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
         time.sleep(0.1)
         set_renderer(False)
 
-    # wait_unlocked()
-
     #########################
 
     print(SEPARATOR)
 
-    plan_dataset = None
-    if collect_dataset:
-        #plan_dataset = PlanDataset()
-        plan_dataset = []
-
-    # TODO: more general version will just sort and return a subset the plans
-    feasibility_checker = None
-    # feasibility_checker = lambda *args: False # Reject all
-    # feasibility_checker = lambda *args: True # Accept all
-    # feasibility_checker = lambda *args: np.random.random() # Randomize
-
-    skeleton = [
-        ('grasp_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
-        ('pull_door_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
-        ('ungrasp_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
-        ('pick', [WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
-        ('place', [WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
-    ]
-    #constraints = PlanConstraints(skeletons=[skeleton], exact=False, max_cost=max_cost + 1)
-    constraints = PlanConstraints(max_cost=max_cost + 1) # TODO: plus 1 in action costs?
-
-    if collect_dataset:
-        max_plans, max_planner_time, max_skeletons = 100, 10, 1
-    else:
-        max_plans, max_planner_time, max_skeletons = 1, 10, INF
-
-    max_solutions = 6
-    evaluation_time = 120
-
     # profiler = Profiler(field='cumtime' if profile else None, num=25) # cumtime | tottime
     # profiler.save()
-    if True:
-        with LockRenderer(lock=lock):
-            # solution = solve(pddlstream_problem, algorithm='adaptive', unit_costs=True, visualize=False,
-            #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
-            solution = solve_focused(pddlstream_problem, stream_info=stream_info, constraints=constraints,
-                                     planner='ff-astar1', max_planner_time=max_planner_time,
-                                     debug=False,
-                                     initial_complexity=5,
-                                     unit_costs=False, success_cost=INF,
-                                     max_time=max_time, verbose=True, visualize=visualization,
-                                     #unit_efforts=True, effort_weight=1,
-                                     unit_efforts=True, effort_weight=None,
-                                     bind=True,
-                                     unique_optimistic=True,
-                                     use_feedback=True, # plan_dataset
-                                     forbid=True,
-                                     max_plans=max_plans, max_skeletons=max_skeletons,
-                                     fc=feasibility_checker,
-                                     plan_dataset=plan_dataset, evaluation_time=evaluation_time,
-                                     max_solutions=max_solutions,
-                                     search_sample_ratio=0, **kwargs)
 
-    else:
-        solution = solve_one(pddlstream_problem, stream_info, fc=feasibility_checker, visualize=visualization)
+    with LockRenderer(lock=lock):
+        solution = solve_one(pddlstream_problem, stream_info, fc=None,
+                             collect_dataset=collect_dataset,
+                             visualize=visualization, **kwargs)
+
+    ## collect data of multiple solutions
+    if collect_dataset:
+        from mamao_tools.data_utils import save_multiple_solutions
+        solution, plan_dataset = solution
+
+        indices = world.get_indices()
+        solution = save_multiple_solutions(plan_dataset, indices=indices)
+
     saver.restore()
     # profiler.restore()
-
-    if plan_dataset is not None:
-        from mamao_tools.data_utils import get_plan_skeleton
-        indices = world.get_indices()
-        solutions_log = []
-        for i, (opt_solution, real_solution) in enumerate(plan_dataset):
-            stream_plan, (opt_plan, preimage), opt_cost = opt_solution
-            plan = None
-            if real_solution is not None:
-                plan, cost, certificate = real_solution
-                solution = real_solution # TODO: first solution
-            skeleton = get_plan_skeleton(opt_plan, indices=indices)
-            print(f'\n{i+1}/{len(plan_dataset)}) Optimistic Plan: {opt_plan}\n'
-                  f'Skeleton: {skeleton}\nPlan: {plan}')
-            log = {
-                'optimistic_plan': str(opt_plan),
-                'skeleton': str(skeleton),
-                'plan': [str(a) for a in plan] if plan is not None else None,
-            }
-            solutions_log.append(log)
-        with open('multiple_solutions.json', 'w') as f:
-            json.dump(solutions_log, f, indent=3)
-
-    # PARALLEL = True
-    #
-    # if PARALLEL:
-    #     solution, log_dir = solve_multiple(pddlstream_problem, stream_info, visualization)
-    # else:
-    #     solution = solve_one(pddlstream_problem, stream_info, visualization)
-    #     log_dir = 'visualizations'
 
     knowledge = parse_problem(pddlstream_problem, stream_info=stream_info,
                               constraints=PlanConstraints(), unit_costs=True, unit_efforts=True)
