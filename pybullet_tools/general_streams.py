@@ -527,7 +527,7 @@ def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
 
         if randomize:
             random.shuffle(grasps)
-        if len(grasps) > max_samples:
+        if max_samples is not None and len(grasps) > max_samples:
             random.shuffle(grasps)
             grasps = grasps[:max_samples]
         # return [(g,) for g in grasps]

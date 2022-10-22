@@ -406,6 +406,7 @@ class World(object):
     def remove_body_attachment(self, body):
         obj = self.BODY_TO_OBJECT[body]
         if obj in self.ATTACHMENTS:
+            print('world.remove_body_attachment\t', self.ATTACHMENTS[obj])
             self.ATTACHMENTS.pop(obj)
 
     def remove_object(self, object):

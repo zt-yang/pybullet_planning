@@ -424,6 +424,7 @@ class Space(Region):
             # self.supported_objects.append(obj)
             obj.change_supporting_surface(self)
         attachment = create_attachment(self, self.link, obj, OBJ=True)
+        print('entities.include_and_attach\t', attachment)
         self.world.ATTACHMENTS[obj] = attachment
 
     def place_new_obj(self, obj_name, max_trial=8, verbose=False):

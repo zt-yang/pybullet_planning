@@ -934,8 +934,8 @@ def load_feg_kitchen(world):
     world.add_to_cat(chicken, 'cleaned')
 
 
-def place_in_cabinet(fridgestorage, cabbage, place=True, world=None):
-    #random.seed(time.time())
+def place_in_cabinet(fridgestorage, cabbage, place=True, world=None, learned=True):
+    # random.seed(time.time())
     if not isinstance(fridgestorage, tuple):
         b = fridgestorage.body
         l = fridgestorage.link
@@ -945,16 +945,28 @@ def place_in_cabinet(fridgestorage, cabbage, place=True, world=None):
 
     (x0, y0, z0), quat0 = get_pose(cabbage)
     old_pose = (x0, y0, z0), quat0
-    y0 = max(y0, get_aabb(b, link=l).lower[1] + 0.05)
-    y0 = min(y0, get_aabb(b, link=l).upper[1] - 0.05)
-    offset = get_aabb_extent(get_aabb(cabbage))[0] / 2 + random.uniform(0.05, 0.13)  ## 0.05
-
-    x0 = get_aabb(b, link=l).upper[0] - offset
+    x_offset = random.uniform(0.05, 0.1)
+    y_offset = 0.2
+    y0 = max(y0, get_aabb(b, link=l).lower[1] + y_offset)
+    y0 = min(y0, get_aabb(b, link=l).upper[1] - y_offset)
+    x0 = get_aabb(b, link=l).upper[0] - get_aabb_extent(get_aabb(cabbage))[0] / 2 - x_offset
     pose = ((x0, y0, z0), quat0)
     # print(f'loaders.place_in_cabinet from {nice(old_pose)} to {nice(pose)}')
 
+    # ## debug: draw the pose sampling boundary
+    # x_min = get_aabb(b, link=l).upper[0] - get_aabb_extent(get_aabb(cabbage))[0] / 2 - 0.1
+    # x_max = get_aabb(b, link=l).upper[0] - get_aabb_extent(get_aabb(cabbage))[0] / 2 - 0.05
+    # y_min = get_aabb(b, link=l).lower[1] + y_offset
+    # y_max = get_aabb(b, link=l).upper[1] - y_offset
+    # z_min = z0 - get_aabb_extent(get_aabb(cabbage))[2] / 2
+    # z_max = z0 + get_aabb_extent(get_aabb(cabbage))[2] / 2
+    # boundary = AABB(lower=(x_min, y_min, z_min), upper=(x_max, y_max, z_max))
+    # draw_aabb(boundary, color=(1, 0, 0, 1), parent=cabbage)
+    # fridgestorage.world.open_all_doors_drawers(extent=0.5)
+
     if place:
-        if hasattr(world, 'remove_body_attachment'):
+        world = fridgestorage.world if world is None else world
+        if hasattr(world, 'BODY_TO_OBJECT'):
             world.remove_body_attachment(cabbage)
         set_pose(cabbage, pose)
         fridgestorage.include_and_attach(cabbage)
@@ -1202,7 +1214,7 @@ def place_another_food(world, movable_category='food', SAMPLING=False, verbose=T
     floor = world.name_to_body('floor')
     food = world.cat_to_bodies(movable_category)[0]
     space = world.cat_to_bodies('space')[0]
-    placement = { food: space }
+    placement = {}
     title = f'place_another_food ({movable_category}) |'
 
     def random_space():

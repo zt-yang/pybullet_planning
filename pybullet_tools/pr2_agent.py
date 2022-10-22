@@ -95,7 +95,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
 
         'get-joint-position-open': from_gen_fn(sample_joint_position_open_list_gen(p)),
 
-        'sample-handle-grasp': from_gen_fn(get_handle_grasp_gen(p, max_samples=2, collisions=c)),
+        'sample-handle-grasp': from_gen_fn(get_handle_grasp_gen(p, max_samples=None, collisions=c)),
 
         # TODO: apply motion_collisions to pulling?
         'inverse-kinematics-grasp-handle': from_gen_fn(
@@ -703,8 +703,10 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
     stream_info = world.robot.get_stream_info()
 
     if has_gui():
-        with LockRenderer(lock=False):
-            world.make_doors_transparent()
+        world.make_doors_transparent()
+        set_renderer(True)
+        time.sleep(0.1)
+        set_renderer(False)
 
     # wait_unlocked()
 
@@ -932,7 +934,7 @@ def test_grasps(state, name='cabbage', visualize=True):
         body = name
     robot = state.robot
 
-    funk = get_grasp_list_gen(state, visualize=False, RETAIN_ALL=False)
+    funk = get_grasp_list_gen(state, visualize=True, RETAIN_ALL=False)
     outputs = funk(body)
 
     if 'left' in robot.joint_groups:
@@ -997,8 +999,6 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=Fal
             i += 1
     if i > 0:
         set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.5)
-    else:
-        print('\n\n\n No grasps found \n\n\n')
 
     # if RETAIN_ALL:
     #     wait_if_gui()
