@@ -260,10 +260,10 @@ def save_multiple_solutions(plan_dataset, indices=None, run_dir=None,
         score = 0
         if real_solution is not None:
             plan, cost, certificate = real_solution
-            if first_solution is None:
-                first_solution = real_solution
-                min_len = len(plan)
             if plan is not None:
+                if first_solution is None:
+                    first_solution = real_solution
+                    min_len = len(plan)
                 score = round(0.5 + min_len / (2*len(plan)), 3)
         skeleton = get_plan_skeleton(opt_plan, indices=indices)
         print(f'\n{i + 1}/{len(plan_dataset)}) Optimistic Plan: {opt_plan}\n'
