@@ -180,7 +180,7 @@ class PVT(FeasibilityChecker):
 
     def _check(self, inputs):
         from text_utils import ACTION_NAMES
-        from datasets import get_dataset, collate
+        from dataset.datasets import get_dataset, collate
         from fastamp_utils import get_action_elems, get_plan_skeleton
         import torch.nn as nn
         args = self.args
