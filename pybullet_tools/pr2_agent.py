@@ -565,7 +565,7 @@ from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, st
 
 def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False, lock=False,
               max_time=INF, downward_time=10, evaluation_time=10,
-              max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=1,
+              max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=None,
               visualize=False, **kwargs):
     # skeleton = [
     #     ('grasp_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
@@ -577,7 +577,8 @@ def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False, lock=Fals
     # # constraints = PlanConstraints(skeletons=[skeleton], exact=False, max_cost=max_cost + 1)
     constraints = PlanConstraints(max_cost=max_cost + 1)  # TODO: plus 1 in action costs?
 
-    max_solutions = 6 if collect_dataset is None else max_solutions
+    if collect_dataset:
+        max_solutions = 6 if max_solutions is None else max_solutions
     diverse = diverse or collect_dataset
 
     if diverse:
@@ -716,9 +717,9 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
 
     if has_gui():
         world.make_doors_transparent()
-        set_renderer(True)
-        time.sleep(0.1)
-        set_renderer(False)
+        # set_renderer(True)
+        # time.sleep(0.1)
+        # set_renderer(False)
 
     #########################
 
