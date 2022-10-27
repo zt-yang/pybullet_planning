@@ -251,7 +251,7 @@ def save_multiple_solutions(plan_dataset, indices=None, run_dir=None,
                             file_path='multiple_solutions.json'):
     if indices is None and run_dir is not None:
         indices = get_indices(run_dir)
-    first_solution = None, None, None
+    first_solution = None
     min_len = 10000
     solutions_log = []
     for i, (opt_solution, real_solution) in enumerate(plan_dataset):
