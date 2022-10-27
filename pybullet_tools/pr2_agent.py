@@ -565,7 +565,7 @@ from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, st
 
 def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False, lock=False,
               max_time=INF, downward_time=10, evaluation_time=10,
-              max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=None,
+              max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=1,
               visualize=False, **kwargs):
     # skeleton = [
     #     ('grasp_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
@@ -578,7 +578,7 @@ def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False, lock=Fals
     constraints = PlanConstraints(max_cost=max_cost + 1)  # TODO: plus 1 in action costs?
 
     if collect_dataset:
-        max_solutions = 6 if max_solutions is None else max_solutions
+        max_solutions = 6 if max_solutions==1 else max_solutions
     diverse = diverse or collect_dataset
 
     if diverse:

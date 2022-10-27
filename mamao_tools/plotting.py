@@ -39,8 +39,8 @@ METHODS = ['None', 'pvt', 'pvt*', 'pvt-task', 'oracle'] ##
 METHOD_NAMES = ['Baseline', 'PST', 'PST*', 'PST-task', 'Oracle']
 ## ## , 'random' , 'piginet', 'pvt-task', 'pvt-2', 'pvt|rel=all'
 
-METHODS = ['None', 'pvt-task', 'pvt-all', 'pvt-trans', 'oracle'] ##
-METHOD_NAMES = ['Baseline', 'PIGI', 'PIGI-all', 'PIGI-trans', 'Oracle']
+METHODS = ['None', 'pvt-task', 'pvt-all', 'binary', 'oracle']  ## 'pvt-trans',
+METHOD_NAMES = ['Baseline', 'PIGI', 'PIGI-all', 'PIGI-binary', 'Oracle']  ## 'PIGI-trans',
 
 check_time = 1664255601 ## 1664255601 for baselines | 1664750094  ## for d4 | 1665010453 for d3
 
@@ -52,7 +52,11 @@ color_dict = {
     'p': ('#9b59b6', '#8e44ad'),
     'gray': ('#95a5a6', '#7f8c8d'),
 }
-cc = ['b', 'r', 'g', 'gray'] if len(METHODS) <= 4 else ['b', 'r', 'g', 'p', 'gray'] ##
+cc = ['b', 'r', 'g', 'gray']
+if len(METHODS) == 5:
+    cc = ['b', 'r', 'g', 'p', 'gray']
+elif len(METHODS) == 6:
+    cc = ['b', 'r', 'g', 'p', 'y', 'gray']
 colors = [color_dict[k][0] for k in cc]
 colors_darker = [color_dict[k][0] for k in cc]
 
