@@ -756,7 +756,7 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
 
     time_log = {'planning': round(time.time()-start_time, 4)}
     start_time = time.time()
-    if plan != None:
+    if plan is not None:
         preimage = evaluations.preimage_facts
 
         ## ------ debug why can't find action skeleton
