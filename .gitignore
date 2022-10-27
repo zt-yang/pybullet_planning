@@ -15,3 +15,5 @@ build/
 
 tests/visualizations/
 tests/temp/
+tests/statistics/
+tests/txt_file.txt
