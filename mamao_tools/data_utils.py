@@ -278,5 +278,5 @@ def save_multiple_solutions(plan_dataset, indices=None, run_dir=None,
     with open(file_path, 'w') as f:
         json.dump(solutions_log, f, indent=3)
     if first_solution is None:
-        first_solution = None, 0, None
+        first_solution = None, 0, []
     return first_solution
