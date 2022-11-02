@@ -9,9 +9,9 @@ rc('font', **{'family':'serif', 'serif':['Times']})
 
 # groups = ['Text', 'Value', 'Image', 'Geometry']
 
-groups = ['Object', 'Value', 'Text', 'Init', 'Geometry']
-group_names = ['(a) Object embedding', '(b) Value embedding', '(c) Text embedding',
-               '(d) Init sequence', '(e) Geometry']
+groups = ['Object', 'Value', 'Geometry', 'Text', 'Init']
+group_names = ['(a) Object embedding', '(b) Value embedding', '(c) Geometry', '(d) Text embedding',
+               '(e) Init sequence']
 
 # models = [
 #     'baseline', 'rel=no_init', 'rel=one-hot',
@@ -22,16 +22,16 @@ group_names = ['(a) Object embedding', '(b) Value embedding', '(c) Text embeddin
 models = [
     'baseline', 'img=feature', 'img=one-hot',
     'val=no-value', 'val=no-pose', 'val=no-position',
-    'baseline', 'rel=one-hot',
-    'baseline', 'rel=all', 'rel=no_init',
     'baseline', 'img=one-hot', 'val=no-value', 'img=one-hot\nval=no-value',
+    'baseline', 'rel=one-hot',
+    'baseline', 'rel=no_init',
 ]
 
 areas = ['Object', 'Object', 'Object',
          'Value', 'Value', 'Value',
+         'Geometry', 'Geometry', 'Geometry', 'Geometry',
          'Text', 'Text',
-         'Init', 'Init',
-         'Geometry', 'Geometry', 'Geometry', 'Geometry']
+         'Init', 'Init']
 areas = [group_names[groups.index(area)] for area in areas]
 
 df = pd.DataFrame({
@@ -46,9 +46,9 @@ df = pd.DataFrame({
     'Area': areas,
     'Rank': ['CLIP feature', 'one-hot', 'both',
              'no value', 'no pose', 'no position',
+             'PIGINet', 'no img', 'no value', 'no both',
              'CLIP feature', 'one-hot',
-             'random-drop', 'none',
-             'PST', 'no img', 'no value', 'no both'],
+             'random-drop', 'none'],
     # 'Training Accuracy': [
     #     0.955, ## baseline
     #     0.723, ## rel=no_init
@@ -71,16 +71,16 @@ df = pd.DataFrame({
         0.911,  ## val=no-position
 
         0.916,  ## baseline
+        0.881, ## img=one-hot
+        0.9, ## val=no-value
+        0.774, ## img=one-hot|relno-value - 150
+
+        0.916,  ## baseline
         0.846, ## rel=one-hot
 
         0.916,  ## baseline
         # 0.918, ## rel=all
         0.741, ## rel=no_init
-
-        0.916,  ## baseline
-        0.881, ## img=one-hot
-        0.9, ## val=no-value
-        0.774, ## img=one-hot|relno-value - 150
     ],
     'True Positive Rate': [
         0.9261, ## img=feature
@@ -91,17 +91,17 @@ df = pd.DataFrame({
         0.9113,  ## val=no-pose
         0.9409,  ## val=no-position
 
+        0.931,  ## baseline
+        0.8522, ## img=one-hot
+        0.8867, ## val=no-value
+        0.7685, ## img=one-hot|relno-value - 150
+
         0.931, ## baseline
         0.7685, ## rel=one-hot - 178
 
         0.931,  ## baseline
         # 0.9113, ## rel=all
         0.8276, ## rel=no_init
-
-        0.931,  ## baseline
-        0.8522, ## img=one-hot
-        0.8867, ## val=no-value
-        0.7685, ## img=one-hot|relno-value - 150
     ],
     ' True Negative Rate': [
         0.9159, ## img=feature
@@ -113,16 +113,16 @@ df = pd.DataFrame({
         0.885,  ## val=no-position
 
         0.9027,  ## baseline
+        0.9071, ## img=one-hot
+        0.9115, ## val=no-value
+        0.7788, ## img=one-hot|relno-value - 150
+
+        0.9027,  ## baseline
         0.9159, ## rel=one-hot - 178
 
         0.9027,  ## baseline
         # 0.9248, ## rel=all
         0.6637, ## rel=no_init
-
-        0.9027,  ## baseline
-        0.9071, ## img=one-hot
-        0.9115, ## val=no-value
-        0.7788, ## img=one-hot|relno-value - 150
     ],
 })
 df = df.set_index(['Area', 'Rank'])
@@ -144,7 +144,7 @@ for i, l in enumerate(group_names):
     else:
         sub1 = fig.add_subplot(151+i, sharey=sub1)
 
-    df.loc[l].plot(kind='bar', ax=sub1, color=colors)
+    df.loc[l].plot(kind='bar', ax=sub1, color=colors, alpha=0.6)
     sub1.set_xticklabels(sub1.get_xticklabels(), rotation=0, fontsize=10)
     sub1.set_xlabel(l, fontsize=12)
     sub1.tick_params(axis='x', which='major', pad=0)
