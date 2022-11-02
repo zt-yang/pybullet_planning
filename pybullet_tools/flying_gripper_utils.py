@@ -288,18 +288,19 @@ def plan_se3_motion(robot, initial_conf, final_conf, obstacles=[],
                              self_collisions=False, custom_limits=custom_limits)
     return path
 
+
 def get_free_motion_gen(problem, custom_limits={}, collisions=True, teleport=False,
                         visualize=False, time_step=0.05):
     robot = problem.robot
     saver = BodySaver(robot)
     obstacles = problem.fixed if collisions else []
-    def fn(q1, q2, w, fluents=[]):
+
+    def fn(q1, q2, fluents=[]):
         if fluents:
             attachments = process_motion_fluents(fluents, robot)
 
         saver.restore()
         q1.assign()
-        w.assign()
         set_renderer(visualize)
         print('flying_gripper_utils.get_free_motion_gen with obstacles', obstacles)
         raw_path = plan_se3_motion(robot, q1.values, q2.values, obstacles=obstacles,
@@ -369,11 +370,10 @@ def get_approach_path(robot, o, g, obstacles=[], verbose=False, custom_limits={}
 def get_ik_fn(problem, teleport=False, verbose=False, custom_limits={}, **kwargs):
     robot = problem.robot
     obstacles = problem.fixed
-    def fn(a, o, p, g, w, fluents=[]):
+    def fn(a, o, p, g, fluents=[]):
         if fluents:
             attachments = process_motion_fluents(fluents, robot)
         # set_renderer(False)
-        w.assign()
         p.assign()
         attachments = {}
         path = get_approach_path(robot, o, g, obstacles, verbose=verbose, custom_limits=custom_limits)
@@ -493,12 +493,13 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
 def get_reachable_test(problem, custom_limits={}, visualize=False):
     robot = problem.robot
     obstacles = problem.fixed
-    def test(o, p, g, q, w):
+    def test(o, p, g, q, fluents=[]):
+        if fluents:
+            attachments = process_motion_fluents(fluents, robot)
         set_renderer(False)
         with ConfSaver(robot):
             p.assign()
             q.assign()
-            w.assign()
 
             body_pose = robot.get_body_pose(g.body)
             approach_pose = multiply(body_pose, g.approach)
@@ -521,7 +522,7 @@ def get_reachable_test(problem, custom_limits={}, visualize=False):
                     remove_body(gripper)
                     set_renderer(False)
 
-            print(f'       flying_gripper_utils.get_reachable_test({o}, {p}, {q}, {g}, {w}) ->\t {result}')
+            print(f'       flying_gripper_utils.get_reachable_test({o}, {p}, {q}, {g}) ->\t {result}')
         return result
 
     return test

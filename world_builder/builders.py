@@ -61,7 +61,7 @@ def create_pybullet_world(args, builder, world_name='test_scene', verbose=False,
 
     world = World(time_step=args.time_step, camera=args.camera, segment=args.segment)
     maybe_add_robot(world, template_dir)
-    floorplan, goal = builder(world, verbose=verbose, SAMPLING=SAMPLING)
+    goal = builder(world, verbose=verbose, SAMPLING=SAMPLING)
 
     ## no gravity once simulation starts
     set_all_static()
@@ -70,6 +70,7 @@ def create_pybullet_world(args, builder, world_name='test_scene', verbose=False,
     """ ============== save world configuration ==================== """
 
     state = State(world)
+    floorplan = world.floorplan
     file = None
     if SAVE_LISDF:   ## only lisdf files
         init = state.get_facts(verbose=verbose)
@@ -100,7 +101,7 @@ def test_pick(world, w=.5, h=.9, mass=1):
 
     robot = create_pr2_robot(world, base_q=(0, 2, -PI / 2))
 
-    return None, []
+    return []
 
 
 def test_exist_omelette(world, w=.5, h=.9, mass=1):
@@ -143,7 +144,7 @@ def test_exist_omelette(world, w=.5, h=.9, mass=1):
 
     robot = create_pr2_robot(world, base_q=(0, 0, 0))
 
-    return None, []
+    return []
 
 
 def test_kitchen_oven(world, floorplan='counter.svg', verbose=False):
@@ -175,7 +176,7 @@ def test_kitchen_oven(world, floorplan='counter.svg', verbose=False):
     # draw_collision_shapes(world.name_to_body('braiserlid'))
     # draw_collision_shapes(world.name_to_body('oven'))
 
-    return floorplan, []
+    return []
 
 def test_feg_pick(world, floorplan='counter.svg', verbose=True):
 
@@ -243,7 +244,7 @@ def test_feg_pick(world, floorplan='counter.svg', verbose=True):
     ]
     goal = random.choice(goal_template)
 
-    return floorplan, goal
+    return goal
 
 ############################################
 
@@ -277,7 +278,7 @@ def test_one_fridge(world, movable_category='food', verbose=True, **kwargs):
     #set_time_seed()
     sample_one_fridge_scene(world, movable_category, verbose=verbose, **kwargs)
     goal = sample_one_fridge_goal(world)
-    return None, goal
+    return goal
 
 
 def sample_one_fridge_scene(world, movable_category='food', verbose=True, open_doors=True, **kwargs):
@@ -323,7 +324,7 @@ def test_fridge_table(world, movable_category='food', verbose=True, **kwargs):
     #set_time_seed()
     sample_fridge_table_scene(world, movable_category, verbose, **kwargs)
     goal = sample_fridge_table_goal(world, movable_category)
-    return None, goal
+    return goal
 
 
 def sample_fridge_table_scene(world, movable_category='food', verbose=True, **kwargs):
@@ -359,9 +360,9 @@ def sample_fridge_table_goal(world, movable_category='food'):
 
 
 def test_fridges_tables(world, movable_category='food', verbose=True, **kwargs):
-    placement = sample_fridges_tables_scene(world, movable_category, verbose=verbose, **kwargs)
-    goal = sample_fridges_tables_goal(world, placement, movable_category)
-    return None, goal
+    sample_fridges_tables_scene(world, movable_category, verbose=verbose, **kwargs)
+    goal = sample_fridges_tables_goal(world, movable_category)
+    return goal
 
 
 def sample_fridges_tables_scene(world, movable_category='food', verbose=True, **kwargs):
@@ -393,12 +394,12 @@ def sample_fridges_tables_goal(world, movable_category='food'):
 
 
 def test_fridges_tables_conjunctive(world, movable_category='food', verbose=True, **kwargs):
-    placement = sample_fridges_tables_scene(world, movable_category, verbose=verbose, **kwargs)
-    goal = sample_conjunctive_fridges_tables_goal(world, placement, movable_category)
-    return None, goal
+    sample_fridges_tables_scene(world, movable_category, verbose=verbose, **kwargs)
+    goal = sample_conjunctive_fridges_tables_goal(world, movable_category)
+    return goal
 
 
-def sample_conjunctive_fridges_tables_goal(world, placement, movable_category='food'):
+def sample_conjunctive_fridges_tables_goal(world, movable_category='food'):
     foods = world.cat_to_objects(movable_category)
     random.shuffle(foods)
     arm = world.robot.arms[0]
@@ -435,7 +436,7 @@ def sample_conjunctive_fridges_tables_goal(world, placement, movable_category='f
 def test_three_fridges_tables(world, movable_category='food', **kwargs):
     sample_three_fridges_tables_scene(world, movable_category, **kwargs)
     goal = sample_three_fridges_tables_goal(world, movable_category)
-    return None, goal
+    return goal
 
 
 def sample_three_fridges_tables_scene(world, movable_category='food', verbose=True, **kwargs):

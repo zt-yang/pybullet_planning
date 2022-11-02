@@ -947,7 +947,10 @@ class State(object):
             'system': platform.system()
         }
         if self.world.camera != None:
-            config['obs_camera_pose'] = self.world.camera.pose
+            t, r = self.world.camera.pose
+            if isinstance(t, np.ndarray):
+                t = tuple(t)
+            config['obs_camera_pose'] = (t, r)
         return config
 
     def __repr__(self):

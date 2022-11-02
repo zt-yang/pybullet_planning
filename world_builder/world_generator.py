@@ -1,8 +1,10 @@
+import numpy as np
 import os
 import sys
 import json
 import copy
 import shutil
+import numpy as np
 from os.path import join, isdir, isfile, dirname, abspath
 from os import listdir
 
@@ -410,8 +412,9 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
 def get_config_from_template(template_path):
     print('\n\nget_config_from_template', get_config_from_template, '\n\n')
     planning_config = json.load(open(join(template_path, 'planning_config.json'), 'r'))
-    return {k: v for k, v in planning_config.items() \
+    config = {k: v for k, v in planning_config.items() \
             if k in ['base_limits', 'robot_builder', 'robot_name', 'obs_camera_pose']}
+    return config
 
 
 def save_to_test_cases(state, goal, template_name, floorplan, out_dir, root_path='..',
