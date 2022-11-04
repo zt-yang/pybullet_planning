@@ -10,7 +10,7 @@ from pddlstream.language.constants import Equal, AND
 from pddlstream.algorithms.downward import set_cost_scale
 
 from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, get_pose, LockRenderer, \
-    CameraImage, euler_from_quat, get_link_name, get_joint_position, \
+    CameraImage, euler_from_quat, get_link_name, get_joint_position, joint_from_name, \
     BodySaver, set_pose, INF, add_parameter, irange, wait_for_duration, get_bodies, remove_body, \
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
     get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked, \
@@ -314,6 +314,42 @@ class World(object):
         surface = Surface(body, link=link)
         self.add_object(surface)
         return surface
+
+    def get_wconf(self, world_index=None):
+        """ similar to to_lisdf in world_generator.py """
+        wconf = {}
+
+        c = self.cat_to_bodies
+        movables = c('moveable')
+        joints = c('door') + c('drawer') + c('knob')  ## [f[1] for f in init if f[0] == 'joint']
+        articulated_bodies = list(set([j[0] for j in joints]))
+        robot = self.robot
+
+        bodies = copy.deepcopy(get_bodies())
+        bodies.sort()
+        for body in bodies:
+            if body in self.BODY_TO_OBJECT:
+                obj = self.BODY_TO_OBJECT[body]
+            elif body in self.ROBOT_TO_OBJECT:
+                obj = self.ROBOT_TO_OBJECT[body]
+            else:
+                continue
+
+            wconf[obj.lisdf_name] = {
+                'is_static': 'false' if body in movables else 'true',
+                'pose': obj.get_pose()
+            }
+
+            if body in articulated_bodies + [robot.body]:
+                joint_state = {}
+                for joint in get_movable_joints(body):
+                    joint_name = get_joint_name(body, joint)
+                    position = get_joint_position(body, joint)
+                    joint_state[joint_name] = position
+                wconf[obj.lisdf_name]['joint_state'] = joint_state
+
+        wconf = {f"w{world_index}_{k}": v for k, v in wconf.items()}
+        return wconf
 
     def summarize_all_types(self):
         printout = ''

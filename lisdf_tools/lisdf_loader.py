@@ -7,6 +7,7 @@ from lisdf.parsing.sdf_j import load_sdf
 from lisdf.components.model import URDFInclude
 import numpy as np
 import json
+import copy
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -225,6 +226,31 @@ class World():
                 pose = get_pose(body)
             print_fn(f"{line}\t|  Pose: {nice(pose)}")
         print_fn('----------------')
+
+    def get_wconf(self, world_index=None):
+        """ similar to to_lisdf in world_generator.py """
+        wconf = {}
+        robot = self.robot
+
+        bodies = copy.deepcopy(get_bodies())
+        bodies.sort()
+        for body in bodies:
+
+            wconf[obj.lisdf_name] = {
+                'is_static': 'false' if body in movables else 'true',
+                'pose': obj.get_pose()
+            }
+
+            if body in articulated_bodies + [robot.body]:
+                joint_state = {}
+                for joint in get_movable_joints(body):
+                    joint_name = get_joint_name(body, joint)
+                    position = get_joint_position(body, joint)
+                    joint_state[joint_name] = position
+                wconf[obj.lisdf_name]['joint_state'] = joint_state
+
+        wconf = {f"w{world_index}_{k}": v for k, v in wconf.items()}
+        return wconf
 
     def get_type(self, body):
         if body in self.body_types:
