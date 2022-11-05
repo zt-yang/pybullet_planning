@@ -1,7 +1,7 @@
 import math
 import random
 import json
-from os.path import join
+from os.path import join, abspath
 import sys
 
 import pybullet as p
@@ -11,7 +11,7 @@ from .entities import Object, Region, Environment, Robot, Camera, Floor, Stove,\
 from .loaders import create_pr2_robot, load_rooms, load_cart, load_cart_regions, load_blocked_kitchen, \
     load_blocked_sink, load_blocked_stove, load_floor_plan, load_experiment_objects, load_pot_lid, load_basin_faucet, \
     load_kitchen_mechanism, create_gripper_robot, load_cabinet_test_scene, load_random_mini_kitchen_counter, \
-    load_another_table, load_another_fridge_food, random_set_doors, ensure_robot_cfree
+    load_another_table, load_another_fridge_food, random_set_doors, ensure_robot_cfree, load_kitchen_mini_scene
 from pybullet_tools.utils import Pose, Euler, PI, create_box, TAN, Point, set_camera_pose, link_from_name, \
     connect, enable_preview, draw_pose, unit_pose, set_all_static, wait_if_gui, reset_simulation, get_aabb
 
@@ -26,8 +26,8 @@ def get_robot_builder(builder_name):
     return None
 
 
-def maybe_add_robot(world, template_name):
-    config_file = join(EXP_PATH, template_name, 'planning_config.json')
+def maybe_add_robot(world, template_dir):
+    config_file = join(template_dir, 'planning_config.json')
     planning_config = json.load(open(config_file, 'r'))
     if 'robot_builder' not in planning_config:
         return
@@ -39,13 +39,14 @@ def maybe_add_robot(world, template_name):
 
 def create_pybullet_world(args, builder, world_name='test_scene', verbose=False, SAMPLING=False,
                           SAVE_LISDF=False, DEPTH_IMAGES=False, EXIT=False, RESET=False,
-                          SAVE_TESTCASE=False, template_name=None, out_dir=None, root_dir=None):
+                          SAVE_TESTCASE=False, SAVE_RGB=False, template_name=None, out_dir=None,
+                          root_dir='..'):
     """ build a pybullet world with lisdf & pddl files into test_cases folder,
         given a text_case folder to copy the domain, stream, and config from """
 
     if template_name is None:
         template_name = builder.__name__
-    template_dir = join(root_dir, template_name)
+    template_dir = abspath(join(root_dir, EXP_PATH, template_name))
 
     """ ============== initiate simulator ==================== """
     ## for viewing, not the size of depth image
@@ -76,9 +77,13 @@ def create_pybullet_world(args, builder, world_name='test_scene', verbose=False,
         init = state.get_facts(verbose=verbose)
         file = to_lisdf(state.world, init, floorplan=floorplan, world_name=world_name, verbose=verbose)
 
-    if SAVE_TESTCASE and out_dir is not None:
-        file = save_to_test_cases(state, goal, template_name, floorplan, out_dir,
-                                  verbose=verbose, DEPTH_IMAGES=DEPTH_IMAGES)
+    if out_dir is not None:
+        if SAVE_TESTCASE:
+            file = save_to_test_cases(state, goal, template_name, floorplan, out_dir,
+                                      verbose=verbose, DEPTH_IMAGES=DEPTH_IMAGES)
+
+        if SAVE_RGB:
+            world.visualize_image(img_dir=join(root_dir, EXP_PATH, out_dir), rgb=True)
 
     if EXIT:
         wait_if_gui('exit?')
@@ -518,3 +523,29 @@ def sample_three_fridges_tables_goal(world, placement, movable_category='food'):
         goals.append(get_goal_in(foods[2], spaces=spaces))
 
     return goals
+
+
+##########################################################################################
+
+
+def test_feg_kitchen_mini(world, **kwargs):
+    sample_kitchen_mini_scene(world, **kwargs)
+    goal = sample_kitchen_mini_goal(world)
+    return goal
+
+
+def sample_kitchen_mini_scene(world, **kwargs):
+    """ implemented by Felix for the FEG gripper """
+    load_kitchen_mini_scene(world)
+
+
+def sample_kitchen_mini_goal(world):
+    bottle = random.choice(world.cat_to_bodies('bottle'))
+
+    hand = world.robot.arms[0]
+    goal_candidates = [
+        [('Holding', hand, bottle)],
+        # [('On', cabbage, counter)],
+        # [('In', cabbage, fridge)],
+    ]
+    return random.choice(goal_candidates)

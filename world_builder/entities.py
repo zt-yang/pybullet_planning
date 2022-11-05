@@ -136,13 +136,13 @@ class Object(Index):
         self.world.ATTACHMENTS[obj] = create_attachment(self, link, obj, OBJ=True)
         obj.change_supporting_surface(self)
 
-    def place_new_obj(self, obj_name, max_trial=8, scale=1):
+    def place_new_obj(self, obj_name, max_trial=8, **kwargs):
         from pybullet_tools.bullet_utils import sample_obj_on_body_link_surface
         from world_builder.utils import load_asset
 
         # set_renderer(False)
         obj = self.world.add_object(
-            Object(load_asset(obj_name.lower(), maybe=True, scale=scale), category=obj_name)
+            Object(load_asset(obj_name.lower(), maybe=True, **kwargs), category=obj_name)
         )
         # body = sample_obj_on_body_link_surface(obj, self.body, self.link, max_trial=max_trial)
         self.world.put_on_surface(obj, max_trial=max_trial, surface=self.shorter_name)
@@ -212,6 +212,9 @@ class Object(Index):
             set_group_conf(self.body, 'base', conf)
         else:
             set_pose(self.body, conf)
+        if self.supporting_surface is not None:
+            self.change_supporting_surface(self.supporting_surface)
+
     def get_joint(self, joint): # int | str
         # TODO: unify with get_joint in pybullet-planning
         try:
