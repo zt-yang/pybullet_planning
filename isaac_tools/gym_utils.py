@@ -99,24 +99,23 @@ def update_gym_world_by_pb_world(gym_world, pb_world, pause=False, verbose=False
         gym_world.wait_if_gui()
 
 
-def update_gym_world_by_wconf(gym_world, wconf, offset=None):
+def update_gym_world_by_wconf(gym_world, wconf, offsets=None):
     for actor in gym_world.get_actors():
         name = gym_world.get_actor_name(actor)
         if name not in wconf:
             continue
-
+        world_index = eval(name[1:name.index('_')])
         data = wconf[name]
-        if not data['is_static']:
-            pose = data['pose']
-            if offset is not None:
-                pose = (pose[0] + offset, pose[1])
-            gym_world.set_pose(actor, pose)
 
-        if 'joint_state' in data:
-            joint_state = data['joint_state']
-            joints = gym_world.get_joint_names(actor)
-            positions = list(map(joint_state.get, joints))
-            gym_world.set_joint_positions(actor, positions)
+        pose = data['pose']
+        if offsets is not None:
+            pose = (pose[0] + offsets[world_index], pose[1])
+        gym_world.set_pose(actor, pose)
+
+        joint_state = data['joint_state']
+        joints = gym_world.get_joint_names(actor)
+        positions = list(map(joint_state.get, joints))
+        gym_world.set_joint_positions(actor, positions)
 
     gym_world.simulator.update_viewer()
 
@@ -129,6 +128,9 @@ def load_envs_isaacgym(ori_dirs, robots=True, pause=False, num_rows=5, num_cols=
 
     gym_world = create_single_world(args=default_arguments(use_gpu=False), spacing=5.)
     gym_world.set_viewer_target(camera_point, target=camera_target)
+
+    camera = gym_world.create_camera(width=camera_width, height=camera_height, fov=60)
+    gym_world.set_camera_target(camera, camera_point, camera_target)
 
     world_size = 6
     num_worlds = min(num_rows * num_cols, 24)
