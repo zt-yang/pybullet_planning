@@ -121,9 +121,13 @@ def get_successful_plan(run_dir, indices={}, continuous={}):
     with open(join(run_dir, 'plan.json'), 'r') as f:
         data = json.load(f)[0]
         actions = data['plan']
+        if actions == 'FAILED':
+            return None
         vs, inv_vs = get_variables(data['init'])
         for a in actions:
             name = a[a.index("name='")+6: a.index("', args=(")]
+            # if 'grasp_handle' in name:
+            #     continue
             args = a[a.index("args=(")+6:-2].replace("'", "")
             new_args = parse_pddl_str(args, vs=vs, inv_vs=inv_vs, indices=indices)
             plan.append([name] + new_args)
@@ -162,10 +166,13 @@ def parse_pddl_str(args, vs, inv_vs, indices={}):
     return new_args
 
 
-def get_plan(run_dir, indices={}, continuous={}):
+def get_plan(run_dir, indices={}, continuous={}, plan_json=None):
     if indices == {}:
         indices = get_indices_from_config(run_dir)
-    plan = get_successful_plan(run_dir, indices)
+    if plan_json is not None:
+        plan = json.load(open(plan_json, 'r'))['plan']
+    else:
+        plan = get_successful_plan(run_dir, indices)
 
     ## add the continuous mentioned in plan
     new_continuous = {}

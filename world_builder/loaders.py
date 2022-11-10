@@ -283,13 +283,14 @@ def load_experiment_objects(world, w=.5, h=.9, wb=.07, hb=.1, mass=1, EXIST_PLAT
 
     return cabbage
 
+
 def studio(args):
     """
     for testing fridge: plan_name = 'fridge.svg', robot pose: x=1.79, y=4.5
     for testing fridge: plan_name = 'kitchen.svg', robot pose: x=1.79, y=8 | 5.5
     for testing planning: plan_name = 'studio0.svg', robot pose: x=1.79, y=8
     """
-    world = World(args, time_step=args.time_step)
+    world = World(time_step=args.time_step, camera=args.camera, segment=args.segment)
 
     floor = load_floor_plan(world, plan_name='kitchen.svg') ## studio0, studio1
     # load_experiment_objects(world, CABBAGE_ONLY=False)
@@ -933,8 +934,8 @@ def load_feg_kitchen(world):
     world.add_to_cat(chicken, 'cleaned')
 
 
-def place_in_cabinet(fridgestorage, cabbage, place=True):
-    #random.seed(time.time())
+def place_in_cabinet(fridgestorage, cabbage, place=True, world=None, learned=True):
+    # random.seed(time.time())
     if not isinstance(fridgestorage, tuple):
         b = fridgestorage.body
         l = fridgestorage.link
@@ -944,22 +945,36 @@ def place_in_cabinet(fridgestorage, cabbage, place=True):
 
     (x0, y0, z0), quat0 = get_pose(cabbage)
     old_pose = (x0, y0, z0), quat0
-    y0 = max(y0, get_aabb(b, link=l).lower[1] + 0.05)
-    y0 = min(y0, get_aabb(b, link=l).upper[1] - 0.05)
-    offset = get_aabb_extent(get_aabb(cabbage))[0] / 2 + random.uniform(0.05, 0.13)  ## 0.05
-
-    x0 = get_aabb(b, link=l).upper[0] - offset
+    x_offset = random.uniform(0.05, 0.1)
+    y_offset = 0.2
+    y0 = max(y0, get_aabb(b, link=l).lower[1] + y_offset)
+    y0 = min(y0, get_aabb(b, link=l).upper[1] - y_offset)
+    x0 = get_aabb(b, link=l).upper[0] - get_aabb_extent(get_aabb(cabbage))[0] / 2 - x_offset
     pose = ((x0, y0, z0), quat0)
     # print(f'loaders.place_in_cabinet from {nice(old_pose)} to {nice(pose)}')
 
+    # ## debug: draw the pose sampling boundary
+    # x_min = get_aabb(b, link=l).upper[0] - get_aabb_extent(get_aabb(cabbage))[0] / 2 - 0.1
+    # x_max = get_aabb(b, link=l).upper[0] - get_aabb_extent(get_aabb(cabbage))[0] / 2 - 0.05
+    # y_min = get_aabb(b, link=l).lower[1] + y_offset
+    # y_max = get_aabb(b, link=l).upper[1] - y_offset
+    # z_min = z0 - get_aabb_extent(get_aabb(cabbage))[2] / 2
+    # z_max = z0 + get_aabb_extent(get_aabb(cabbage))[2] / 2
+    # boundary = AABB(lower=(x_min, y_min, z_min), upper=(x_max, y_max, z_max))
+    # draw_aabb(boundary, color=(1, 0, 0, 1), parent=cabbage)
+    # fridgestorage.world.open_all_doors_drawers(extent=0.5)
+
     if place:
+        world = fridgestorage.world if world is None else world
+        if hasattr(world, 'BODY_TO_OBJECT'):
+            world.remove_body_attachment(cabbage)
         set_pose(cabbage, pose)
         fridgestorage.include_and_attach(cabbage)
     else:
         return pose
 
 
-def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, table_only=False, SAMPLING=False):
+def load_random_mini_kitchen_counter(world, movable_category='food', w=6, l=6, h=0.9, wb=.07, hb=.1, table_only=False, SAMPLING=False):
     """ each kitchen counter has one minifridge and one microwave
     """
     floor = world.add_object(
@@ -977,10 +992,11 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     # table = world.add_object(
     #     Object(create_box(0.5, 0.5, h, color=(.75, .75, .75, 1)), category='supporter', name='table'),
     #     Pose(point=Point(x=x, y=y, z=h / 2)))
+    cat = movable_category.capitalize()
     cabbage = world.add_object(Moveable(
-        load_asset('Food', x=x, y=y, yaw=random.uniform(-math.pi, math.pi),
+        load_asset(cat, x=x, y=y, yaw=random.uniform(-math.pi, math.pi),
                    floor=floor, RANDOM_INSTANCE=True, SAMPLING=SAMPLING),
-        category='Food'
+        category=cat
     ))
 
     if table_only:
@@ -1019,7 +1035,8 @@ def load_random_mini_kitchen_counter(world, w=6, l=6, h=0.9, wb=.07, hb=.1, tabl
     return minifridge_doors
 
 
-def load_fridge_with_food_on_surface(world, counter, name='minifridge', cabbage=None, SAMPLING=False):
+def load_fridge_with_food_on_surface(world, counter, name='minifridge',
+                                     cabbage=None, SAMPLING=False):
     (x, y, _), _ = get_pose(counter)
     SAMPLING = cabbage if SAMPLING else False
     minifridge = world.add_object(Object(
@@ -1036,6 +1053,8 @@ def load_fridge_with_food_on_surface(world, counter, name='minifridge', cabbage=
     (_, _, z), quat = get_pose(minifridge)
     z += 0.02
     set_pose(minifridge, ((x, y, z), quat))
+    world.BODY_TO_OBJECT[counter].support_obj(minifridge)
+
     set_camera_target_body(minifridge, dx=2, dy=0, dz=2)
 
     ## --- ADD EACH DOOR JOINT
@@ -1124,66 +1143,31 @@ def random_set_table_by_counter(table, counter, four_ways=True):
         sys.exit()
 
     set_pose(table, ((x, y, z), quat))
+    return table
 
 
-def load_another_table(world, w=6, l=6, four_ways=True):
+def load_another_table(world, w=6, l=6, table_name='table', four_ways=True):
     counter = world.name_to_body('counter')
     floor = world.name_to_body('floor')
-    cabbage = world.cat_to_objects('food')[0]
 
     h = random.uniform(0.3, 0.9)
     table = world.add_object(Object(
         load_asset('KitchenCounter', x=w/2, y=0, yaw=math.pi, floor=floor, h=h,
-                   RANDOM_INSTANCE=True, verbose=False), category='supporter', name='table'))
+                   RANDOM_INSTANCE=True, verbose=False),
+        category='supporter', name=table_name))
     random_set_table_by_counter(table, counter, four_ways=four_ways)
     obstacles = [o for o in get_bodies() if o != table]
     while collided(table, obstacles, verbose=True, tag='load_another_table'):
         random_set_table_by_counter(table, counter, four_ways=four_ways)
 
-    # set_renderer(True)
-    # set_renderer(False)
 
-    # set_camera_target_body(table, dx=1.6, dy=1.2, dz=1.6)
-    # set_renderer(True)
-    # table.place_obj(cabbage)
-    # set_renderer(False)
-
-
-def load_another_fridge_food(world, verbose=True, SAMPLING=False, trial=0):
+def load_another_fridge(world, verbose=True, SAMPLING=False,
+                        table_name='table', fridge_name='cabinet'):
     from pybullet_tools.bullet_utils import nice as r
 
-    floor = world.name_to_body('floor')
-    food = world.cat_to_bodies('food')[0]
     space = world.cat_to_bodies('space')[0]
-    fridge = world.name_to_body('minifridge')
-    table = world.name_to_object('table')
-    placement = { food: space }
-    existing_bodies = get_bodies()
-    title = f'load_another_fridge_food (trial {trial}) | '
-
-    def reset_world(world):
-        for body in get_bodies():
-            if body not in existing_bodies:
-                obj = world.BODY_TO_OBJECT[body]
-                world.remove_object(obj)
-        return load_another_fridge_food(world, verbose=verbose, SAMPLING=SAMPLING, trial=trial+1)
-
-    def random_space():
-        spaces = world.cat_to_objects('space')
-        if random.random() < 0.5:
-            s = spaces[0]
-        else:
-            s = spaces[1]
-        return s
-
-        # return [s for s in spaces if s.body != space[0]][0]
-
-        # random.shuffle(spaces)
-        # s = random.choice(world.cat_to_objects('space'))
-        # # print('load_another_fridge_food:', space.name)
-        # # for i in range(20):
-        # #     print(i, random.choice(world.cat_to_objects('space')))
-        # return s
+    table = world.name_to_object(table_name)
+    title = f'load_another_fridge | '
 
     def place_by_space(cabinet, space):
         width = get_aabb_extent(get_aabb(cabinet))[1] / 2
@@ -1191,7 +1175,7 @@ def load_another_fridge_food(world, verbose=True, SAMPLING=False, trial=0):
         y_min = get_aabb(space[0], link=space[1]).lower[1]
         y0 = get_link_pose(space[0], space[-1])[0][1]
         (x, y, z), quat = get_pose(cabinet)
-        offset = random.uniform(0.2, 0.8)
+        offset = random.uniform(0.4, 0.8)
         if y > y0:
             y = y_max + offset + width
         elif y < y0:
@@ -1204,27 +1188,44 @@ def load_another_fridge_food(world, verbose=True, SAMPLING=False, trial=0):
         return aabb.upper[1] > limit[1] or aabb.lower[1] < limit[0]
 
     ## place another fridge on the table
-    doors = load_fridge_with_food_on_surface(world, table.body, 'cabinet', SAMPLING=SAMPLING)
-    cabinet = world.name_to_body('cabinet')
+    doors = load_fridge_with_food_on_surface(world, table.body, fridge_name, SAMPLING=SAMPLING)
+    cabinet = world.name_to_body(fridge_name)
     (x, y, z), quat = get_pose(cabinet)
     y_ori = y
     y0 = get_link_pose(space[0], space[-1])[0][1]
     place_by_space(cabinet, space)
     obstacles = [world.name_to_body('counter')]
     count = 20
-    while collided(cabinet, obstacles, verbose=True, tag='load cabinet by fridge') or outside_limit(cabinet):
+    tag = f'load {fridge_name} by minifridge'
+    while collided(cabinet, obstacles, verbose=True, tag=tag) or outside_limit(cabinet):
         place_by_space(cabinet, space)
         count -= 1
         if count == 0:
-            print(title, 'cant place cabinet by fridge after 20 trials')
-            reset_world(world)
-    print(f'{title} !!! moved cabinet from {r(y_ori)} to {r(y)} (y0 = {r(y0)})')
+            print(title, f'cant {tag} after 20 trials')
+            return None
+    if verbose:
+        (x, y, z), quat = get_pose(cabinet)
+        print(f'{title} !!! moved {fridge_name} from {r(y_ori)} to {r(y)} (y0 = {r(y0)})')
+    return doors
 
-    ## place another food in one of the fridges
+
+def place_another_food(world, movable_category='food', SAMPLING=False, verbose=True):
+    """ place the food in one of the fridges """
+    floor = world.name_to_body('floor')
+    food = world.cat_to_bodies(movable_category)[0]
+    space = world.cat_to_bodies('space')[0]
+    placement = {}
+    title = f'place_another_food ({movable_category}) |'
+
+    def random_space():
+        spaces = world.cat_to_objects('space')
+        return random.choice(spaces)
+
+    cat = movable_category.capitalize()
     new_food = world.add_object(Moveable(
-        load_asset('Food', x=0, y=0, yaw=random.uniform(-math.pi, math.pi),
+        load_asset(cat, x=0, y=0, yaw=random.uniform(-math.pi, math.pi),
                    floor=floor, RANDOM_INSTANCE=True, SAMPLING=SAMPLING),
-        category='Food'
+        category=cat
     ))
 
     s = random_space()
@@ -1240,11 +1241,199 @@ def load_another_fridge_food(world, verbose=True, SAMPLING=False, trial=0):
         # print(f'first food\t', world.body_to_name(food), nice(get_pose(food)))
         if max_trial == 0:
             food = world.BODY_TO_OBJECT[food].name
-            print(f'{title} ... unable to put {new_food} along with {food}')
-            reset_world(world)
+            if verbose:
+                print(f'{title} ... unable to put {new_food} along with {food}')
+            return None
 
-    placement[new_food] = s.pybullet_name
-
-    random_set_doors(doors, epsilon=0.25)
-    ## the goal will be to pick one object and put in the other fridge
+    placement[new_food.body] = s.pybullet_name
     return placement
+
+
+def load_another_fridge_food(world, movable_category='food', table_name='table',
+                             fridge_name='cabinet', trial=0, epsilon=0.5, **kwargs):
+    existing_bodies = get_bodies()
+
+    def reset_world(world):
+        for body in get_bodies():
+            if body not in existing_bodies:
+                obj = world.BODY_TO_OBJECT[body]
+                world.remove_object(obj)
+        print(f'load_another_fridge_food (trial {trial+1})')
+        return load_another_fridge_food(world, movable_category, table_name=table_name,
+                                        trial=trial+1, **kwargs)
+
+    doors = load_another_fridge(world, table_name=table_name, fridge_name=fridge_name, **kwargs)
+    if doors is None:
+        return reset_world(world)
+    placement = place_another_food(world, movable_category, **kwargs)
+    if placement is None:
+        return reset_world(world)
+    random_set_doors(doors, epsilon=epsilon)
+
+    return placement
+
+
+##########################################################################################
+
+
+def load_kitchen_mini_scene(world, **kwargs):
+    """ implemented by Felix for the FEG gripper """
+    # load floor
+    FLOOR_HEIGHT = 1e-3
+    FLOOR_WIDTH = 4
+    FLOOR_LENGTH = 8
+    floor = world.add_object(
+        Floor(create_box(w=round(FLOOR_WIDTH, 1), l=round(FLOOR_LENGTH, 1), h=FLOOR_HEIGHT, color=TAN, collision=True)),
+        Pose(point=Point(x=round(0.5 * FLOOR_WIDTH, 1), y=round(0, 1), z=-0.5 * FLOOR_HEIGHT)))
+
+    # load wall
+    WALL_HEIGHT = 5
+    WALL_WIDTH = FLOOR_HEIGHT
+    WALL_LENGTH = FLOOR_LENGTH
+    wall = world.add_object(
+        Supporter(
+            create_box(w=round(WALL_WIDTH, 1), l=round(WALL_LENGTH, 1), h=WALL_HEIGHT, color=WHITE, collision=True)),
+        Pose(point=Point(x=round(-0.5 * WALL_WIDTH, 1), y=round(0, 1), z=0.5 * WALL_HEIGHT)))
+
+    # sample ordering of fridge, oven, dishwasher
+    if_fridge = random.randint(0, 4)  # 0: no fridge, odd: fridge, even: minifridge
+    if_minifridge = random.randint(0, 4)
+    if_oven = random.randint(0, 4)  # 80% chance of getting oven
+    if_dishwasher = random.randint(0, 4)
+
+    fixtures = [None, None]
+
+    if if_dishwasher:
+        fixtures[0] = 'dishwasher'
+    if if_minifridge:
+        fixtures[1] = 'minifridge'
+    random.shuffle(fixtures)
+
+    if random.randint(0, 1):  # oven left
+        if if_oven:
+            fixtures.insert(0, 'oven')
+        else:
+            fixtures.insert(0, None)
+        if if_fridge:
+            fixtures.append('fridge')
+        else:
+            fixtures.append(None)
+    else:
+        if if_fridge:
+            fixtures.insert(0, 'fridge')
+        else:
+            fixtures.insert(0, None)
+        if if_oven:
+            fixtures.append('oven')
+        else:
+            fixtures.append(None)
+
+    # if if_fridge == 0:
+    #     fixtures.append(None)
+    #     random.shuffle(fixtures)
+    # elif (if_fridge%2) == 1:
+    #     if random.randint(0, 1):
+    #         fixtures.insert(0, 'fridge')
+    #     else:
+    #         fixtures.append('fridge')
+    # elif (if_fridge%2) == 0:
+    #     if random.randint(0, 1):
+    #         fixtures.insert(0, 'minifridge')
+    #     else:
+    #         fixtures.append('minifridge')
+
+    # sample placements of fixtures
+    yaw = {0: 0, 90: PI / 2, 180: PI, 270: -PI / 2}[180]
+    MIN_COUNTER_Z = 0.9
+    fixtures_cfg = {}
+
+    for idx, cat in enumerate(fixtures):
+        if cat:
+            center_x = 0.6
+            center_y = -1.5 + idx * 1
+            center_x += random.random() * 0.1 - 0.1
+            center_y += random.random() * 0.1 - 0.1
+            center_z = MIN_COUNTER_Z - random.random() * 0.1 - 0.05
+            w = 2 * min(abs(center_x - 0), abs(1 - center_x))
+            l = 2 * min(abs(center_y - 2 + idx * 1), abs(-1 + idx * 1 - center_y))
+            fixture = {}
+            if idx in [1, 2]:  # control height for center furniture
+                obj = Object(load_asset(cat, x=center_x, y=center_y, yaw=yaw, floor=floor,
+                                        w=w, l=l, h=center_z, RANDOM_INSTANCE=True))
+            else:
+                obj = Object(load_asset(cat, x=center_x, y=center_y, yaw=yaw, floor=floor,
+                                        w=w, l=l, h=2.5 * MIN_COUNTER_Z, RANDOM_INSTANCE=True))
+            fixture['id'] = world.add_object(obj)
+            center_z = stable_z(obj.body, floor)
+            # center_x = 1-get_aabb_extent(get_aabb(fixture['id'].body))[0]/2
+            center_x += 1 - get_aabb(obj.body)[1][0]
+            fixture['pose'] = Pose(point=Point(x=center_x, y=center_y, z=center_z), euler=Euler(yaw=yaw))
+            set_pose(obj.body, fixture['pose'])
+            fixtures_cfg[cat] = fixture
+
+    # oven_aabb = get_aabb(fixtures_cfg['oven']['id'])
+    # fridge_aabb = get_aabb(fixtures_cfg['fridge']['id'])
+    if fixtures[0] is not None:
+        min_counter_y = get_aabb(fixtures_cfg[fixtures[0]]['id'])[1][1]
+    else:
+        min_counter_y = -2
+    if fixtures[3] is not None:
+        max_counter_y = get_aabb(fixtures_cfg[fixtures[3]]['id'])[0][1]
+    else:
+        max_counter_y = 2
+    min_counter_z = MIN_COUNTER_Z
+    if fixtures[1] is not None:
+        tmp_counter_z = get_aabb(fixtures_cfg[fixtures[1]]['id'])[1][2]
+        if tmp_counter_z > min_counter_z:
+            min_counter_z = tmp_counter_z
+    if fixtures[2] is not None:
+        tmp_counter_z = get_aabb(fixtures_cfg[fixtures[2]]['id'])[1][2]
+        if tmp_counter_z > min_counter_z:
+            min_counter_z = tmp_counter_z
+
+    # add counter
+    COUNTER_HEIGHT = 0.05
+    COUNTER_WIDTH = 1
+    COUNTER_LENGTH = max_counter_y - min_counter_y
+
+    counter = world.add_object(
+        Supporter(create_box(w=COUNTER_WIDTH, l=COUNTER_LENGTH, h=COUNTER_HEIGHT, color=GREY, collision=True)),
+        Pose(point=Point(x=0.5 * COUNTER_WIDTH, y=(max_counter_y + min_counter_y) / 2, z=min_counter_z)))
+
+    # microwave = world.name_to_body('microwave')
+    # world.put_on_surface(microwave, counter)
+    microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random())
+    microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=180)))
+
+    # add pot
+    pot = counter.place_new_obj('kitchenpot', scale=0.2)
+    pot.set_pose(Pose(point=pot.get_pose()[0], euler=Euler(yaw=yaw)))
+
+    # add shelf
+    SHELF_HEIGHT = 0.05
+    SHELF_WIDTH = 0.5
+    MIN_SHELF_LENGTH = 1
+    min_shelf_y = min_counter_y + random.random() * (max_counter_y - min_counter_y - MIN_SHELF_LENGTH)
+    max_shelf_y = max_counter_y - random.random() * (max_counter_y - min_shelf_y - MIN_SHELF_LENGTH)
+    SHELF_LENGTH = max_shelf_y - min_shelf_y
+
+    shelf = world.add_object(
+        Supporter(create_box(w=SHELF_WIDTH, l=SHELF_LENGTH, h=SHELF_HEIGHT, color=GREY, collision=True)),
+        Pose(point=Point(x=0.5 * SHELF_WIDTH, y=(max_shelf_y + min_shelf_y) / 2, z=1.5)))
+
+    # add food
+    food_ids = []
+    for i in range(5):
+        food_ids.append(counter.place_new_obj('food'))
+        food_ids[i].set_pose(Pose(point=food_ids[i].get_pose()[0]))
+
+    # add bottle
+    bottle_ids = []
+    for i in range(3):
+        bottle_ids.append(shelf.place_new_obj('bottle'))
+        bottle_ids[i].set_pose(Pose(point=bottle_ids[i].get_pose()[0]))
+
+    # add camera
+    camera_pose = Pose(point=Point(x=4.2, y=0, z=2.5), euler=Euler(roll=PI / 2 + PI / 8, pitch=0, yaw=-PI / 2))
+    world.add_camera(camera_pose)
+    # rgb, depth, segmented, view_pose, camera_matrix = world.camera.get_image()

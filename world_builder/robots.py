@@ -6,7 +6,7 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
     link_from_name, get_link_subtree, get_joints, is_movable, multiply, invert, \
     set_joint_positions, set_pose, GREEN, dump_body, get_pose, remove_body, PoseSaver, \
     ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles, \
-    interpolate_poses, Pose, Euler, quat_from_euler, set_renderer
+    interpolate_poses, Pose, Euler, quat_from_euler, set_renderer, get_bodies
 
 from pybullet_tools.bullet_utils import equal, nice, get_gripper_direction, set_camera_target_body, Attachment, \
     BASE_LIMITS
@@ -147,7 +147,7 @@ class PR2Robot(RobotAPI):
         robot = self.body
 
         def get_conf(joints):
-            if conf_saver == None:
+            if conf_saver is None:
                 return get_joint_positions(robot, joints)
             return [conf_saver.conf[conf_saver.joints.index(n)] for n in joints]
 
@@ -185,19 +185,16 @@ class PR2Robot(RobotAPI):
             if arm in ['left']:
                 init += [('Controllable', arm)]
 
-        HANDS_EMPTY = {arm: True for arm in ARM_NAMES}
-        for arm, empty in HANDS_EMPTY.items():
-            if empty: init += [('HandEmpty', arm)]
-
+        init += [('HandEmpty', arm) for arm in ARM_NAMES]
         return init
 
     def get_stream_map(self, problem, collisions, custom_limits, teleport, **kwargs):
         from pybullet_tools.pr2_agent import get_stream_map
         return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
 
-    def get_stream_info(self, partial=False, defer=False, **kwargs):
+    def get_stream_info(self, **kwargs):
         from pybullet_tools.pr2_agent import get_stream_info
-        return get_stream_info(**kwargs) ## partial=partial, defer=defer
+        return get_stream_info() ## partial=partial, defer=defer
 
     def create_gripper(self, arm='left', visual=True):
         # TODO(caelan): gripper bodies are removed
@@ -206,7 +203,7 @@ class PR2Robot(RobotAPI):
         return self.grippers[arm]
 
     def get_gripper(self, arm='left', **kwargs):
-        if arm not in self.grippers:
+        if arm not in self.grippers or self.grippers[arm] not in get_bodies():
             self.grippers[arm] = self.create_gripper(arm=arm, **kwargs)
         return self.grippers[arm]
 
@@ -387,6 +384,7 @@ class PR2Robot(RobotAPI):
         from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES
         return PR2_TOOL_FRAMES[a]
 
+
 class FEGripper(RobotAPI):
 
     arms = ['hand']
@@ -496,7 +494,7 @@ class FEGripper(RobotAPI):
         robot = self.body
 
         def get_conf(joints):
-            if conf_saver == None:
+            if conf_saver is None:
                 return get_se3_conf(robot)
             return [conf_saver.conf[conf_saver.joints.index(n)] for n in joints]
 

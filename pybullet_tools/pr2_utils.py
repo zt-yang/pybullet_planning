@@ -801,5 +801,5 @@ def create_gripper(robot, arm, visual=True):
     links = get_link_subtree(robot, link_from_name(robot, link_name))
     gripper = clone_body(robot, links=links, visual=False, collision=True)  # TODO: joint limits
     if not visual:
-        set_all_color(robot, TRANSPARENT)
+        set_all_color(gripper, TRANSPARENT)
     return gripper

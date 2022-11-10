@@ -7,7 +7,7 @@ from lisdf.parsing import load_all
 
 from pddlstream.language.constants import Equal, AND
 
-from pybullet_tools.pr2_streams import WConf, HandleGrasp, Position  ##, MarkerGrasp
+from pybullet_tools.pr2_streams import HandleGrasp, Position  ##, MarkerGrasp
 from pybullet_tools.pr2_primitives import Pose, Conf, APPROACH_DISTANCE, Grasp, \
     TOP_HOLDING_LEFT_ARM
 from pybullet_tools.pr2_utils import get_arm_joints, get_group_joints, create_gripper
@@ -151,44 +151,7 @@ def pddl_to_init_goal(exp_dir, world):
 
     goal = [prop_to_list(v) for v in problem.conjunctive_goal]
     init = [prop_to_list(v) for v in problem.init]
-
-    poses = {}  ## {i[1]: i[2] for i in init if i[0] == 'atpose'}
-    positions = {i[1]: i[2] for i in init if i[0] == 'atposition'}
-
-    ## just create a new one, if there aren't any in the (:objects
-    inwconf = [i[1] for i in init if i[0].lower() == 'inwconf']
-    if inwconf == ['None']: # no more wconf for the new planner
-        to_remove = [('wconf', inwconf[0]), ('inwconf', inwconf[0])]
-        to_add = [('wconf', None), ('inwconf', None)]
-        init = [i for i in init if i not in to_remove] + to_add
-
-    elif len(inwconf) > 0:
-        to_remove = []
-        inwconf = inwconf[0]
-        if inwconf == 'none':
-            init += [('inwconf', 'none')]
-
-        else:
-            # import ipdb; ipdb.set_trace()
-            index = int(''.join([i for i in inwconf if i.isdigit()]))
-            wconf = WConf(poses, positions, index=index)
-            init += [('wconf', wconf), ('inwconf', wconf)]
-            to_remove += [('wconf', inwconf), ('inwconf', inwconf)]
-
-            newwconfpst = [i for i in init if i[0].lower() == 'newwconfpst']
-            for n in newwconfpst:
-                index = int(''.join([i for i in n[-1] if i.isdigit()]))
-                new_positions = copy.deepcopy(positions)
-                new_positions[n[2]] = n[3]
-                new_wconf = WConf(poses, new_positions, index=index)
-                init += [('wconf', new_wconf), ('newwconfpst', wconf, n[2], n[3], new_wconf)]
-                to_remove += [('wconf', n[-1])]
-            to_remove += newwconfpst
-            init = [i for i in init if i not in to_remove]
-
-    else:
-        wconf = WConf(poses, positions)
-        init += [('WConf', wconf), ('InWConf', wconf)]
+    init = [i for i in init if 'wconf' not in i[0].lower()]
 
     # ## ----------- debugging
     # new_init = []

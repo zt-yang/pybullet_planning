@@ -1,7 +1,8 @@
 import math
 import random
 import json
-from os.path import join
+from os.path import join, abspath, basename
+import sys
 
 import pybullet as p
 from .world import World, State
@@ -10,13 +11,13 @@ from .entities import Object, Region, Environment, Robot, Camera, Floor, Stove,\
 from .loaders import create_pr2_robot, load_rooms, load_cart, load_cart_regions, load_blocked_kitchen, \
     load_blocked_sink, load_blocked_stove, load_floor_plan, load_experiment_objects, load_pot_lid, load_basin_faucet, \
     load_kitchen_mechanism, create_gripper_robot, load_cabinet_test_scene, load_random_mini_kitchen_counter, \
-    load_another_table, load_another_fridge_food, random_set_doors, ensure_robot_cfree
-from pybullet_tools.utils import Pose, Euler, PI, create_box, TAN, Point, set_camera_pose, link_from_name, connect, \
-    enable_preview, draw_pose, unit_pose, set_all_static, wait_if_gui, reset_simulation
+    load_another_table, load_another_fridge_food, random_set_doors, ensure_robot_cfree, load_kitchen_mini_scene
+from pybullet_tools.utils import Pose, Euler, PI, create_box, TAN, Point, set_camera_pose, link_from_name, \
+    connect, enable_preview, draw_pose, unit_pose, set_all_static, wait_if_gui, reset_simulation, get_aabb
 
 from pybullet_tools.bullet_utils import set_camera_target_body, set_camera_target_robot, draw_collision_shapes, \
     open_joint
-from world_builder.world_generator import to_lisdf, save_to_test_cases, EXP_PATH
+from world_builder.world_generator import EXP_PATH
 
 
 def get_robot_builder(builder_name):
@@ -25,8 +26,8 @@ def get_robot_builder(builder_name):
     return None
 
 
-def maybe_add_robot(world, template_name):
-    config_file = join(EXP_PATH, template_name, 'planning_config.json')
+def maybe_add_robot(world, template_dir=None):
+    config_file = join(template_dir, 'planning_config.json')
     planning_config = json.load(open(config_file, 'r'))
     if 'robot_builder' not in planning_config:
         return
@@ -36,15 +37,25 @@ def maybe_add_robot(world, template_name):
     robot_builder(world, robot_name=robot_name, custom_limits=custom_limits)
 
 
-def create_pybullet_world(args, builder, world_name='test_scene', verbose=False, SAMPLING=False,
-                          SAVE_LISDF=False, DEPTH_IMAGES=False, EXIT=False, RESET=False,
-                          SAVE_TESTCASE=False, template_name=None, out_dir=None, root_dir=None):
+def create_pybullet_world(args, builder,
+                          verbose=False,
+                          SAMPLING=False,
+                          SAVE_LISDF=False,
+                          DEPTH_IMAGES=False,
+                          RESET=False,
+                          SAVE_TESTCASE=False,
+                          SAVE_RGB=False,
+                          template_dir=None,
+                          out_dir=None,
+                          root_dir='..'):
     """ build a pybullet world with lisdf & pddl files into test_cases folder,
         given a text_case folder to copy the domain, stream, and config from """
 
-    if template_name is None:
+    if template_dir is None:
         template_name = builder.__name__
-    template_dir = join(root_dir, template_name)
+    else:
+        template_name = basename(template_dir)
+    template_dir = abspath(join(root_dir, EXP_PATH, template_name))
 
     """ ============== initiate simulator ==================== """
     ## for viewing, not the size of depth image
@@ -58,33 +69,27 @@ def create_pybullet_world(args, builder, world_name='test_scene', verbose=False,
 
     """ ============== sample world configuration ==================== """
 
-    world = World(args, time_step=args.time_step)
-    maybe_add_robot(world, template_dir)
-    floorplan, goal = builder(world, verbose=verbose, SAMPLING=SAMPLING)
+    world = World(time_step=args.time_step, camera=args.camera, segment=args.segment)
+    maybe_add_robot(world, **args.config.robot)
+    goal = builder(world, verbose=verbose, **args.config.world_builder)
 
     ## no gravity once simulation starts
     set_all_static()
     if verbose: world.summarize_all_objects()
 
     """ ============== save world configuration ==================== """
-
-    state = State(world)
     file = None
     if SAVE_LISDF:   ## only lisdf files
-        init = state.get_facts(verbose=verbose)
-        file = to_lisdf(state.world, init, floorplan=floorplan, world_name=world_name, verbose=verbose)
+        file = world.save_lisdf(verbose=verbose)
 
-    if SAVE_TESTCASE and out_dir is not None:
-        file = save_to_test_cases(state, goal, template_name, floorplan, out_dir,
-                                  verbose=verbose, DEPTH_IMAGES=DEPTH_IMAGES)
-
-    if EXIT:
-        wait_if_gui('exit?')
+    if SAVE_TESTCASE:
+        world.save_test_case(goal, out_dir, template_dir=template_dir,
+                             save_rgb=SAVE_RGB, save_depth=DEPTH_IMAGES)
 
     if RESET:
         reset_simulation()
         return file
-    return state, goal, file
+    return world, goal
 
 
 def test_pick(world, w=.5, h=.9, mass=1):
@@ -99,7 +104,7 @@ def test_pick(world, w=.5, h=.9, mass=1):
 
     robot = create_pr2_robot(world, base_q=(0, 2, -PI / 2))
 
-    return None, []
+    return []
 
 
 def test_exist_omelette(world, w=.5, h=.9, mass=1):
@@ -142,7 +147,7 @@ def test_exist_omelette(world, w=.5, h=.9, mass=1):
 
     robot = create_pr2_robot(world, base_q=(0, 0, 0))
 
-    return None, []
+    return []
 
 
 def test_kitchen_oven(world, floorplan='counter.svg', verbose=False):
@@ -174,7 +179,7 @@ def test_kitchen_oven(world, floorplan='counter.svg', verbose=False):
     # draw_collision_shapes(world.name_to_body('braiserlid'))
     # draw_collision_shapes(world.name_to_body('oven'))
 
-    return floorplan, []
+    return []
 
 def test_feg_pick(world, floorplan='counter.svg', verbose=True):
 
@@ -242,7 +247,7 @@ def test_feg_pick(world, floorplan='counter.svg', verbose=True):
     ]
     goal = random.choice(goal_template)
 
-    return floorplan, goal
+    return goal
 
 ############################################
 
@@ -272,14 +277,14 @@ def build_fridge_domain_robot(world, robot_name, custom_limits=None):
     return robot
 
 
-def test_one_fridge(world, verbose=True, **kwargs):
+def test_one_fridge(world, movable_category='food', verbose=True, **kwargs):
     #set_time_seed()
-    sample_one_fridge_scene(world, verbose, **kwargs)
+    sample_one_fridge_scene(world, movable_category, verbose=verbose, **kwargs)
     goal = sample_one_fridge_goal(world)
-    return None, goal
+    return goal
 
 
-def sample_one_fridge_scene(world, verbose=True, open_doors=True, SAMPLING=False):
+def sample_one_fridge_scene(world, movable_category='food', verbose=True, open_doors=True, **kwargs):
 
     ## later we may want to automatically add irrelevant objects and joints
     world.set_skip_joints()
@@ -288,12 +293,12 @@ def sample_one_fridge_scene(world, verbose=True, open_doors=True, SAMPLING=False
     world.robot.randomly_spawn()
 
     """ ============== Add world objects ================ """
-    minifridge_doors = load_random_mini_kitchen_counter(world, SAMPLING=SAMPLING)
+    minifridge_doors = load_random_mini_kitchen_counter(world, movable_category, **kwargs)
 
     """ ============== Change joint positions ================ """
     ## only after all objects have been placed inside
     if open_doors:
-        random_set_doors(minifridge_doors, epsilon=0.2)
+        random_set_doors(minifridge_doors, epsilon=0.5)
 
     """ ============== Check collisions ================ """
     ensure_robot_cfree(world, verbose=verbose)
@@ -301,8 +306,8 @@ def sample_one_fridge_scene(world, verbose=True, open_doors=True, SAMPLING=False
     return minifridge_doors
 
 
-def sample_one_fridge_goal(world):
-    cabbage = world.cat_to_bodies('food')[0]  ## world.name_to_body('cabbage')
+def sample_one_fridge_goal(world, movable_category='food'):
+    cabbage = world.cat_to_bodies(movable_category)[0]  ## world.name_to_body('cabbage')
     fridge = world.name_to_body('fridgestorage')
     counter = world.name_to_body('counter')
 
@@ -318,20 +323,20 @@ def sample_one_fridge_goal(world):
 ############################################
 
 
-def test_fridge_table(world, verbose=True, **kwargs):
+def test_fridge_table(world, movable_category='food', verbose=True, **kwargs):
     #set_time_seed()
-    sample_fridge_table_scene(world, verbose, **kwargs)
-    goal = sample_fridge_table_goal(world)
-    return None, goal
+    sample_fridge_table_scene(world, movable_category, verbose, **kwargs)
+    goal = sample_fridge_table_goal(world, movable_category)
+    return goal
 
 
-def sample_fridge_table_scene(world, verbose=True, **kwargs):
-    sample_one_fridge_scene(world, verbose=verbose, **kwargs)
+def sample_fridge_table_scene(world, movable_category='food', verbose=True, **kwargs):
+    sample_one_fridge_scene(world, movable_category, verbose=verbose, **kwargs)
     load_another_table(world)
 
 
-def sample_fridge_table_goal(world):
-    cabbage = world.cat_to_objects('food')[0]  ## world.name_to_body('cabbage')
+def sample_fridge_table_goal(world, movable_category='food'):
+    cabbage = world.cat_to_objects(movable_category)[0]  ## world.name_to_body('cabbage')
     fridge = world.name_to_body('fridgestorage')
     counter = world.name_to_body('counter')
     table = world.name_to_object('table')
@@ -357,37 +362,188 @@ def sample_fridge_table_goal(world):
 ############################################
 
 
-def test_fridges_tables(world, verbose=True, **kwargs):
-    placement = sample_fridges_tables_scene(world, **kwargs)
-    goal = sample_fridges_tables_goal(world, placement)
-    return None, goal
+def test_fridges_tables(world, movable_category='food', verbose=True, **kwargs):
+    sample_fridges_tables_scene(world, movable_category, verbose=verbose, **kwargs)
+    goal = sample_fridges_tables_goal(world, movable_category)
+    return goal
 
 
-def sample_fridges_tables_scene(world, verbose=True, **kwargs):
-    minifridge_doors = sample_one_fridge_scene(world, open_doors=False, **kwargs)
+def sample_fridges_tables_scene(world, movable_category='food', verbose=True, **kwargs):
+    epsilon = 0.45
+    minifridge_doors = sample_one_fridge_scene(world, movable_category, open_doors=False, **kwargs)
     load_another_table(world, four_ways=False)
-    placement = load_another_fridge_food(world, **kwargs)
-    random_set_doors(minifridge_doors, epsilon=0.25, extent_max=0.5)
+    load_another_fridge_food(world, movable_category, epsilon=epsilon, **kwargs)
+    random_set_doors(minifridge_doors, epsilon=epsilon, extent_max=0.5)
     ensure_robot_cfree(world, verbose=verbose)
-    return placement
 
 
-def sample_fridges_tables_goal(world, placement):
-    foods = world.cat_to_bodies('food')
-    if random.random() < 0.5:
-        food = foods[0]
-    else:
-        food = foods[1]
-    # food = random.choice(world.cat_to_bodies('food'))
-    spaces = world.cat_to_bodies('space')
-    other = [s for s in spaces if s != placement[food]][0]
+def sample_fridges_tables_goal(world, movable_category='food'):
+    food = random.choice(world.cat_to_objects(movable_category))
+    spaces = world.cat_to_objects('space')
+    other = [s for s in spaces if s != food.suppoting_surface][0]
 
     arm = world.robot.arms[0]
 
     ## the goal will be to pick one object and put in the other fridge
     goal_candidates = [
         # [('Holding', arm, food)],
-        [('In', food, other)],
+        [('In', food.pybullet_name, other.pybullet_name)],
     ]
 
+    return random.choice(goal_candidates)
+
+
+############################################
+
+
+def test_fridges_tables_conjunctive(world, movable_category='food', verbose=True, **kwargs):
+    sample_fridges_tables_scene(world, movable_category, verbose=verbose, **kwargs)
+    goal = sample_conjunctive_fridges_tables_goal(world, movable_category)
+    return goal
+
+
+def sample_conjunctive_fridges_tables_goal(world, movable_category='food'):
+    foods = world.cat_to_objects(movable_category)
+    random.shuffle(foods)
+    arm = world.robot.arms[0]
+    spaces = world.cat_to_objects('space')
+
+    cases = ['in2', 'in1hold1']
+    open_surfaces = get_open_surfaces(world)
+    if len(open_surfaces) > 0:
+        cases.extend(['in1on1'])
+
+    ## because of data imbalance
+    case = random.choice(cases)
+    # case = 'in2'
+    # if len(open_surfaces) > 0:
+    #     case = 'in1on1'
+
+    goals = []
+    if case == 'in2':
+        goals.append(get_goal_in(foods[0], spaces=spaces))
+        goals.append(get_goal_in(foods[1], spaces=spaces))
+    elif case == 'in1hold1':
+        goals.append(get_goal_in(foods[0], spaces=spaces))
+        goals.append(('Holding', arm, foods[1]))
+    elif case == 'in1on1':
+        goals.append(get_goal_in(foods[0], spaces=spaces))
+        goals.append(get_goal_on(foods[1], open_surfaces))
+
+    return goals
+
+
+############################################
+
+
+def test_three_fridges_tables(world, movable_category='food', **kwargs):
+    sample_three_fridges_tables_scene(world, movable_category, **kwargs)
+    goal = sample_three_fridges_tables_goal(world, movable_category)
+    return goal
+
+
+def sample_three_fridges_tables_scene(world, movable_category='food', verbose=True, **kwargs):
+    epsilon = 0.45
+    sample_one_fridge_scene(world, verbose=verbose, open_doors=False, **kwargs)
+
+    load_another_table(world, four_ways=False, table_name='table')
+    load_another_table(world, four_ways=False, table_name='station')
+
+    load_another_fridge_food(world, verbose=verbose, table_name='table',
+                             fridge_name='cabinet', epsilon=epsilon, **kwargs)
+    load_another_fridge_food(world, verbose=verbose, table_name='station',
+                             fridge_name='sterilizer', epsilon=epsilon, **kwargs)
+
+    random_set_doors(world.cat_to_bodies('door'), extent_max=0.5, epsilon=epsilon)
+    ensure_robot_cfree(world, verbose=verbose)
+
+
+def get_goal_in(food, spaces=None, world=None):
+    """ random sample another fridge as destination """
+    if spaces is None:
+        spaces = world.cat_to_bodies('space')
+    other = random.choice([s for s in spaces if s != food.supporting_surface])
+    return ('In', food.pybullet_name, other.pybullet_name)
+
+
+def get_open_surfaces(world):
+    return [ind.pybullet_name for ind in world.cat_to_objects('supporter') if has_open_surface(ind)]
+
+
+def has_open_surface(obj):
+    aabb_fridge = get_aabb(obj.supported_objects[0].body)
+    aabb_table = get_aabb(obj.body)
+    return abs(aabb_fridge.lower[1] - aabb_table.lower[1]) > 0.2 or \
+           abs(aabb_fridge.upper[1] - aabb_table.upper[1]) > 0.2
+
+
+def get_goal_on(food, open_surfaces=None, world=None):
+    """ random sample an open table as destination """
+    if open_surfaces is None:
+        open_surfaces = get_open_surfaces(world)
+    table = random.choice(open_surfaces)
+    return ('On', food, table)
+
+
+def sample_three_fridges_tables_goal(world, placement, movable_category='food'):
+    arm = world.robot.arms[0]
+    foods = world.cat_to_objects(movable_category)
+    spaces = world.cat_to_objects('space')
+    random.shuffle(foods)
+    cases = ['in1', 'hold1', 'in2', 'in2hold1', 'in3']
+
+    open_surfaces = get_open_surfaces(world)
+    if len(open_surfaces) > 0:
+        cases.extend(['on1', 'in2on1'])
+
+    goals = []
+    case = random.choice(cases)
+    if case == 'in1':
+        goals.append(get_goal_in(foods[0], spaces=spaces))
+    elif case == 'hold1':
+        goals.append(('Holding', arm, foods[0]))
+    elif case == 'on1':
+        goals.append(get_goal_on(foods[0], open_surfaces))
+    elif case == 'in2':
+        goals.append(get_goal_in(foods[0], spaces=spaces))
+        goals.append(get_goal_in(foods[1], spaces=spaces))
+    elif case == 'in2hold1':
+        goals.append(get_goal_in(foods[0], spaces=spaces))
+        goals.append(get_goal_in(foods[1], spaces=spaces))
+        goals.append(('Holding', arm, foods[2]))
+    elif case == 'in2on1':
+        goals.append(get_goal_in(foods[0], spaces=spaces))
+        goals.append(get_goal_in(foods[1], spaces=spaces))
+        goals.append(get_goal_on(foods[2], open_surfaces))
+    elif case == 'in3':
+        goals.append(get_goal_in(foods[0], spaces=spaces))
+        goals.append(get_goal_in(foods[1], spaces=spaces))
+        goals.append(get_goal_in(foods[2], spaces=spaces))
+
+    return goals
+
+
+##########################################################################################
+
+
+def test_feg_kitchen_mini(world, **kwargs):
+    sample_kitchen_mini_scene(world, **kwargs)
+    goal = sample_kitchen_mini_goal(world)
+    return goal
+
+
+def sample_kitchen_mini_scene(world, **kwargs):
+    """ implemented by Felix for the FEG gripper """
+    load_kitchen_mini_scene(world)
+
+
+def sample_kitchen_mini_goal(world):
+    bottle = random.choice(world.cat_to_bodies('bottle'))
+
+    hand = world.robot.arms[0]
+    goal_candidates = [
+        [('Holding', hand, bottle)],
+        # [('On', cabbage, counter)],
+        # [('In', cabbage, fridge)],
+    ]
     return random.choice(goal_candidates)

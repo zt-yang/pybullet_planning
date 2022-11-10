@@ -45,8 +45,8 @@ MODEL_SCALES = {
         '103100': 0.15,
         '103104': 0.16,
         '103283': 0.16,
-        '103299': 0.18,
-        '103307': 0.1,
+        '103299': 0.14,
+        '103307': 0.08,
     },
     'MiniFridge': {
         '10797': 1,
@@ -69,6 +69,7 @@ MODEL_SCALES = {
         'VeggieTomato': 0.008,
     }
 }
+MODEL_SCALES['MiniFridgeDoorless'] = MODEL_SCALES['MiniFridge']
 MODEL_SCALES.update({k.lower(): v for k, v in MODEL_SCALES.items()})
 MODEL_SCALES['Food'].update({k.lower(): v for k, v in MODEL_SCALES['Food'].items()})
 

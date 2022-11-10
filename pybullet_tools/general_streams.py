@@ -107,40 +107,40 @@ class HandleGrasp(object):
         # return Attachment(robot, tool_link, self.value, self.body)
     def __repr__(self):
         return 'hg{}={}'.format(self.index % 1000, nice(self.value))
-
-
-class WConf(object):
-    def __init__(self, poses, positions, index=None):
-        self.poses = poses
-        self.positions = positions
-        if index is None:
-            index = id(self)
-        self.index = index
-
-    def assign(self):
-        for p in self.poses.values():
-            p.assign()
-        for p in self.positions.values():
-            p.assign()
-
-    def printout(self, obstacles=None):
-        if obstacles is None:
-            obstacles = list(self.poses.keys())
-            positions = list(self.positions.keys())
-        else:
-            positions = [o for o in self.positions.keys() if o[0] in obstacles]
-
-        string = f"  {str(self)}"
-        poses = {o: nice(self.poses[o].value[0]) for o in obstacles if o in self.poses}
-        if len(poses) > 0:
-            string += f'\t|\tposes: {str(poses)}'
-        positions = {o: nice(self.positions[(o[0], o[1])].value) for o in positions}
-        if len(positions) > 0:
-            string += f'\t|\tpositions: {str(positions)}'
-        return string
-
-    def __repr__(self):
-        return 'wconf{}'.format(self.index % 1000)
+#
+#
+# class WConf(object):
+#     def __init__(self, poses, positions, index=None):
+#         self.poses = poses
+#         self.positions = positions
+#         if index is None:
+#             index = id(self)
+#         self.index = index
+#
+#     def assign(self):
+#         for p in self.poses.values():
+#             p.assign()
+#         for p in self.positions.values():
+#             p.assign()
+#
+#     def printout(self, obstacles=None):
+#         if obstacles is None:
+#             obstacles = list(self.poses.keys())
+#             positions = list(self.positions.keys())
+#         else:
+#             positions = [o for o in self.positions.keys() if o[0] in obstacles]
+#
+#         string = f"  {str(self)}"
+#         poses = {o: nice(self.poses[o].value[0]) for o in obstacles if o in self.poses}
+#         if len(poses) > 0:
+#             string += f'\t|\tposes: {str(poses)}'
+#         positions = {o: nice(self.positions[(o[0], o[1])].value) for o in positions}
+#         if len(positions) > 0:
+#             string += f'\t|\tpositions: {str(positions)}'
+#         return string
+#
+#     def __repr__(self):
+#         return 'wconf{}'.format(self.index % 1000)
 
 """ ==============================================================
 
@@ -150,15 +150,24 @@ class WConf(object):
 """
 
 
-def get_stable_gen(problem, collisions=True, num_trials=20, **kwargs):
+def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False,
+                   learned_sampling=True, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
     obstacles = problem.fixed if collisions else []
     world = problem.world
+
     def gen(body, surface):
         if surface is None:
             surfaces = problem.surfaces
         else:
             surfaces = [surface]
+
+        ## --------- Special case for plates -------------
+        result = check_plate_placement(body, surfaces, obstacles, num_trials)
+        if result is not None:
+            return result
+        ## ------------------------------------------------
+
         count = num_trials
         while count > 0: ## True
             count -= 1
@@ -171,7 +180,8 @@ def get_stable_gen(problem, collisions=True, num_trials=20, **kwargs):
                 break
 
             ## hack to reduce planning time
-            body_pose = learned_pose_sampler(world, body, surface, body_pose)
+            if learned_sampling:
+                body_pose = learned_pose_sampler(world, body, surface, body_pose)
 
             p = Pose(body, body_pose, surface)
             p.assign()
@@ -189,36 +199,19 @@ def learned_pose_sampler(world, body, surface, body_pose):
     return body_pose
 
 
-def get_stable_list_gen(problem, num_samples=3, collisions=True, **kwargs):
-    from pybullet_tools.pr2_primitives import Pose
-    obstacles = problem.fixed if collisions else []
+def get_stable_list_gen(problem, num_samples=5, collisions=True, **kwargs):
+    funk = get_stable_gen(problem, collisions=collisions, **kwargs)
+
     def gen(body, surface):
-        # TODO: surface poses are being sampled in pr2_belief
-        if surface is None:
-            surfaces = problem.surfaces
-        else:
-            surfaces = [surface]
+        g = funk(body, surface)
         poses = []
-
-        ## --------- Special case for plates -------------
-        result = check_plate_placement(body, surfaces, obstacles, num_samples)
-        if result is not None:
-            return result
-        ## ------------------------------------------------
-
-        while True:
-            surface = random.choice(surfaces) # TODO: weight by area
-            body_pose = sample_placement(body, surface, **kwargs)
-            if body_pose is None:
+        while len(poses) < num_samples:
+            try:
+                pose = next(g)
+                poses.append(pose)
+            except StopIteration:
                 break
-            p = Pose(body, body_pose, surface)
-            p.assign()
-            if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, surface}):
-                # yield (p,)
-                poses.append(p)
-                if len(poses) >= num_samples:
-                    return [(p,) for p in poses]
-        return []
+        return poses
     return gen
 
 
@@ -266,8 +259,7 @@ def get_mod_pose(pose):
     return ((x, y, z+0.01), quat)
 
 
-def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=10,
-                         verbose=False, force_storage=False, **kwargs):
+def get_contain_gen(problem, collisions=True, max_attempts=60, verbose=False, learned_sampling=False, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
     obstacles = problem.fixed if collisions else []
     world = problem.world
@@ -280,8 +272,7 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=
         else:
             spaces = [space]
         attempts = 0
-        poses = []
-        while attempts < max_attempts and len(poses) < num_samples:
+        while attempts < max_attempts:
             attempts += 1
             space = random.choice(spaces)  # TODO: weight by area
 
@@ -295,7 +286,7 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=
                 break
 
             ## special sampler for data collection
-            if 'storage' in world.get_name(space) or 'storage' in world.get_type(space):
+            if 'storage' in world.get_name(space) or 'storage' in world.get_type(space) or learned_sampling:
                 from world_builder.loaders import place_in_cabinet
                 if verbose:
                     print('use special pose sampler')
@@ -307,16 +298,27 @@ def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=
             obs = [obst for obst in obstacles if obst not in {body, space}]
             if not collided(body, obs, articulated=False, verbose=True):
                 p = Pose(body, body_pose, space)
-                # if return_all:
-                #     poses.append((p,))
                 yield (p,)
         if verbose:
             print(f'{title} reached max_attempts = {max_attempts}')
-
-        # if return_all:
-        #     print(f'{title} return {len(poses)} poses = {poses}')
-        #     return poses
         yield None
+    return gen
+
+
+def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=10,
+                    verbose=False, learned_sampling=False, **kwargs):
+    funk = get_contain_gen(problem, collisions, max_attempts, verbose, learned_sampling, **kwargs)
+
+    def gen(body, space):
+        g = funk(body, space)
+        poses = []
+        while len(poses) < num_samples:
+            try:
+                pose = next(g)
+                poses.append(pose)
+            except StopIteration:
+                break
+        return poses
     return gen
 
 
@@ -420,8 +422,8 @@ def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=
     return angle_between(grasp_direction, Point(z=-1)) <= top_grasp_tolerance # TODO: direction parameter
 
 
-def get_grasp_list_gen(problem, collisions=True, top_grasp_tolerance=None, # None | PI/4 | INF
-                       randomize=True, visualize=False, RETAIN_ALL=False):
+def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | PI/4 | INF
+                  randomize=True, visualize=False, RETAIN_ALL=False):
     robot = problem.robot
     grasp_type = 'hand'
     arm = 'left'
@@ -439,6 +441,23 @@ def get_grasp_list_gen(problem, collisions=True, top_grasp_tolerance=None, # Non
         for g in grasps:
            yield (g,)
     return fn
+
+
+def get_grasp_list_gen(problem, collisions=True, num_samples=10, top_grasp_tolerance=None, # None | PI/4 | INF
+                       randomize=True, visualize=False, RETAIN_ALL=False):
+    funk = get_grasp_gen(problem, collisions, top_grasp_tolerance, randomize, visualize, RETAIN_ALL)
+
+    def gen(body):
+        g = funk(body)
+        grasps = []
+        while len(grasps) < num_samples:
+            try:
+                grasp = next(g)
+                grasps.append(grasp)
+            except StopIteration:
+                break
+        return grasps
+    return gen
 
 
 """ ==============================================================
@@ -470,7 +489,8 @@ def get_handle_width(body_joint):
     return j.handle_width
 
 
-def get_handle_grasp_gen(problem, collisions=False, randomize=False, visualize=False, verbose=False):
+def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
+                         randomize=False, visualize=False, verbose=False):
     collisions = True
     obstacles = problem.fixed if collisions else []
     world = problem.world
@@ -507,6 +527,9 @@ def get_handle_grasp_gen(problem, collisions=False, randomize=False, visualize=F
 
         if randomize:
             random.shuffle(grasps)
+        if max_samples is not None and len(grasps) > max_samples:
+            random.shuffle(grasps)
+            grasps = grasps[:max_samples]
         # return [(g,) for g in grasps]
         for g in grasps:
            yield (g,)
@@ -519,63 +542,6 @@ def linkpose_from_position(pose):
     # joint = world.BODY_TO_OBJECT[(pose.body, pose.joint)]
     pose_value = get_link_pose(pose.body, handle_link)
     return pose_value ## LinkPose(pose.body, joint, pose_value)
-
-
-""" ==============================================================
-
-            Generating world configuration ?wconf
-
-    ==============================================================
-"""
-
-
-def get_update_wconf_p_gen(verbose=True):
-    def fn(w1, o, p):
-        poses = copy.deepcopy(w1.poses)
-        if verbose:
-            print('general_streams.get_update_wconf_p_gen\tbefore:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})
-        if o != p.body:
-            return None
-        elif o in poses and poses[o].value == p.value:
-            poses.pop(o)
-        else:
-            poses[o] = copy.deepcopy(p)
-        w2 = WConf(poses, w1.positions)
-        if verbose:
-            print('general_streams.get_update_wconf_p_gen\t after:', {o0: nice(p0.value[0]) for o0,p0 in w2.poses.items()})
-        return (w2,)
-    return fn
-
-
-def get_update_wconf_p_two_gen(verbose=False):
-    title = 'general_streams.get_update_wconf_p_two_gen'
-    def fn(w1, o, p, o2, p2):
-        if w1 is None:
-            return None
-        poses = copy.deepcopy(w1.poses)
-        if verbose:
-            print(f'{title}\tbefore:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})
-        poses[o] = p
-        poses[o2] = p2
-        w2 = WConf(poses, w1.positions)
-        if verbose:
-            print(f'{title}\t after:', {o0: nice(p0.value[0]) for o0,p0 in poses.items()})
-        return (w2,)
-    return fn
-
-
-def get_update_wconf_pst_gen(verbose=False):
-    title = 'general_streams.get_update_wconf_pst_gen'
-    def fn(w1, o, pstn):
-        positions = copy.deepcopy(w1.positions)
-        if verbose:
-            print(f'{title}\tbefore:', {o0: nice(p0.value) for o0,p0 in positions.items()})
-        positions[o] = pstn
-        w2 = WConf(w1.poses, positions)
-        if verbose:
-            print(f'{title}\t after:', {o0: nice(p0.value) for o0,p0 in w2.positions.items()})
-        return (w2,)
-    return fn
 
 
 def get_pose_from_attachment(problem):
@@ -594,50 +560,6 @@ def get_pose_from_attachment(problem):
     return fn
 
 
-def get_sample_wconf_list_gen(problem, verbose=True):
-    from pybullet_tools.flying_gripper_utils import get_reachable_test
-    title = 'general_streams.get_sample_wconf_gen'
-    open_pstn_sampler = sample_joint_position_open_list_gen(problem)
-    test_reachable = get_reachable_test(problem, custom_limits=problem.robot.custom_limits)
-    def fn(w1, o, p, q, g):
-        w1.assign()
-        p.assign()
-        q.assign()
-
-        positions = copy.deepcopy(w1.positions)
-        if verbose:
-            print(f'{title}\tbefore:', {o0: nice(p0.value) for o0, p0 in positions.items()})
-
-        ## find pstns that's an open position of joints whose handle link is closest to o
-        distances = {}
-        new_positions = {}
-        p = get_pose(o)[0]
-        for o0, p0 in positions.items():
-            new_pstn = open_pstn_sampler(o0, p0)[0][0]
-            if p0.value == new_pstn.value:
-                continue
-            d = dist(p, get_link_pose(o0[0], get_handle_link(o0))[0])
-            distances[o0] = d
-            new_positions[o0] = new_pstn
-        objs = [oo for oo, vv in sorted(distances.items(), key=lambda item: item[1])]
-
-        ## update pstn
-        wconfs = []
-        for oo in objs:
-            pstn = new_positions[oo]
-            positions = copy.deepcopy(w1.positions)
-            positions[oo] = pstn
-            w2 = WConf(w1.poses, positions)
-            if test_reachable(o, p, g, q, w2):
-                if verbose:
-                    print(f'{title}\t after:', {o0: nice(p0.value) for o0, p0 in positions.items()},
-                          f'\tnew pstn: {pstn} \twith distance {nice(distances[oo])}')
-                wconfs.append((oo, pstn, w2))
-                # break  ## only toggle once
-        return wconfs
-    return fn
-
-
 """ ==============================================================
 
             Checking collisions
@@ -650,6 +572,7 @@ def get_cfree_approach_pose_test(problem, collisions=True):
     # TODO: apply this before inverse kinematics as well
     arm = 'left'
     obstacles = problem.fixed
+
     def test(b1, p1, g1, b2, p2):
         if not collisions or (b1 == b2):
             return True
@@ -664,3 +587,35 @@ def get_cfree_approach_pose_test(problem, collisions=True):
         return result
     return test
 
+
+
+""" ==============================================================
+
+            Dealing with collisions
+
+    ==============================================================
+"""
+
+
+def process_motion_fluents(fluents, robot, verbose=False):
+    if verbose:
+        print('Fluents:', fluents)
+    attachments = []
+    for atom in fluents:
+        predicate, args = atom[0], atom[1:]
+        if predicate == 'atpose':
+            o, p = args
+            p.assign()
+        elif predicate == 'atgrasp':
+            a, o, g = args
+            attachments.append(g.get_attachment(robot, a))
+        elif predicate == 'atposition':
+            o, p = args
+            p.assign()
+        elif predicate == 'ataconf': # TODO: the arm conf isn't being set pre/post moves correctly
+            # a, q = args
+            # q.assign()
+            pass
+        else:
+            raise NotImplementedError(atom)
+    return attachments

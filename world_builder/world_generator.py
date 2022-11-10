@@ -1,9 +1,11 @@
+import numpy as np
 import os
 import sys
 import json
 import copy
 import shutil
-from os.path import join, isdir, isfile, dirname, abspath
+import numpy as np
+from os.path import join, isdir, isfile, dirname, abspath, basename
 from os import listdir
 
 from pybullet_tools.utils import get_bodies, euler_from_quat, get_collision_data, get_joint_name, \
@@ -107,38 +109,41 @@ def get_camera_spec():
     return camera, list(target)
 
 
-def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None,
-             root_path=None, out_path=None, verbose=True):
-    """ if exp_name != None, will be generated into kitchen-world/experiments/{exp_name}/scene.lisdf
+def get_output_dir(exp_name=None, world_name=None, root_path=None, out_path=None):
+    """ if exp_name != None, will be generated into kitchen-world/test_cases/{exp_name}/scene.lisdf
         if world_name != None, will be generated into kitchen-world/assets/scenes/{world_name}.lisdf
         if out_path != None, will be generated into out_path
     """
-
     exp_path = EXP_PATH
     lisdf_path = LISDF_PATH
     if root_path != None:
         exp_path = join(root_path, exp_path)
         lisdf_path = join(root_path, lisdf_path)
 
-    if floorplan != None:
-        objects, _, _, SCALING, _, _, _, _ = read_xml(floorplan)
-        objects = {k.lower(): v for k, v in objects.items()}
-    else:
-        objects = []
-        SCALING = 1
-
-    if exp_name != None:
+    if exp_name is not None:
         outpath = join(exp_path, exp_name)
         if isdir(outpath):
             shutil.rmtree(outpath)
         os.mkdir(outpath)
         outpath = join(exp_path, exp_name, "scene.lisdf")
         world_name = exp_name
-    elif out_path != None:
+    elif out_path is not None:
         outpath = out_path
     else:
         outpath = join(lisdf_path, f"{world_name}.lisdf")
 
+
+def to_lisdf(world, output_dir, world_name=None, verbose=True, **kwargs):
+    outpath = output_dir  ## get_output_dir(**kwargs)
+    if world_name is None:
+        world_name = basename(output_dir)
+
+    floorplan = world.floorplan
+    objects = []
+    SCALING = 1
+    if floorplan is not None:
+        objects, _, _, SCALING, _, _, _, _ = read_xml(floorplan)
+        objects = {k.lower(): v for k, v in objects.items()}
     _, _, _, _, _, _, _, _, yaw, pitch, dist, target = get_camera()
 
     def get_file_scale(name):
@@ -174,10 +179,12 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None,
         if isinstance(obj, Robot):
             ACTOR_STR = world.robot.get_lisdf_string()
             actor_sdf = ACTOR_STR.format(name=obj.name, pose_xml=pose_xml)
-            if exp_name != None:
-                actor_sdf = actor_sdf.replace('../models/', '../../assets/models/')
-            if out_path != None:
-                actor_sdf = actor_sdf.replace('../models/', '../../models/')
+
+            """ useful but not used """
+            # if exp_name != None:
+            #     actor_sdf = actor_sdf.replace('../models/', '../../assets/models/')
+            # if out_path != None:
+            #     actor_sdf = actor_sdf.replace('../models/', '../../models/')
 
             ## robot joint states
             joints_xml = ''
@@ -210,18 +217,21 @@ def to_lisdf(world, init, floorplan=None, exp_name=None, world_name=None,
             file = obj.path
             # scale = get_scale_by_category(file, obj.category)
             scale = obj.scale
+
             # if obj.category in OBJ_SCALES:
             #     scale = OBJ_SCALES[obj.category]
             #     file = get_file_by_category(obj.category)
             # else:
             #     file, scale = get_file_scale(obj.name)
-            if '/home/' in file:
-                file = '../..' + file[file.index('/assets'):]
-            else:
-                if exp_name != None:
-                    file = file.replace('../assets/', '../../assets/')
-                if out_path != None:
-                    file = file.replace('../assets/', '../../')
+
+            """ useful but not used """
+            # if '/home/' in file:
+            #     file = '../..' + file[file.index('/assets'):]
+            # else:
+            #     if exp_name != None:
+            #         file = file.replace('../assets/', '../../assets/')
+            #     if out_path != None:
+            #         file = file.replace('../assets/', '../../')
 
             models_sdf += MODEL_URDF_STR.format(
                 name=obj.lisdf_name, file=file,
@@ -330,7 +340,7 @@ def save_to_exp_folder(state, init, goal, out_path):
 
     to_lisdf(state.world, init, floorplan=floorplan, world_name=world_name,
              out_path=out_path+'_scene.lisdf')
-    generate_problem_pddl(state, init, goal, world_name=world_name,
+    generate_problem_pddl(state.world, init, goal, world_name=world_name,
                           out_path=out_path+'_problem.pddl')
 
 
@@ -380,7 +390,7 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     state.world.outpath = outpath
 
     ## --- init and goal in problem.pddl
-    all_pred_names = generate_problem_pddl(state, pddlstream_problem.init, pddlstream_problem.goal,
+    all_pred_names = generate_problem_pddl(state.world, pddlstream_problem.init, pddlstream_problem.goal,
                              world_name=world_name, out_path=join(outpath, 'problem.pddl'))
 
     ## --- domain and stream copied over  ## shutil.copy()
@@ -410,50 +420,9 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
 def get_config_from_template(template_path):
     print('\n\nget_config_from_template', get_config_from_template, '\n\n')
     planning_config = json.load(open(join(template_path, 'planning_config.json'), 'r'))
-    return {k: v for k, v in planning_config.items() \
+    config = {k: v for k, v in planning_config.items() \
             if k in ['base_limits', 'robot_builder', 'robot_name', 'obs_camera_pose']}
-
-
-def save_to_test_cases(state, goal, template_name, floorplan, out_dir, root_path='..',
-                       verbose=True, DEPTH_IMAGES=False):
-
-    exp_path = EXP_PATH
-    if root_path is not None:
-        exp_path = join(root_path, exp_path)
-
-    outpath = join(exp_path, out_dir)
-    if not isdir(outpath):
-        os.mkdir(outpath)
-
-    init = state.get_facts(verbose=verbose)
-
-    ## --- scene in scene.lisdf
-    to_lisdf(state.world, init, floorplan=floorplan, exp_name=out_dir,
-             world_name=template_name, root_path=root_path, verbose=verbose)
-
-    ## --- init and goal in problem.pddl
-    generate_problem_pddl(state, init, goal, world_name=template_name,
-                          out_path=join(outpath, 'problem.pddl'))
-
-    ## --- planning related files and params are referred to in template directory
-    template_dir = join(exp_path, template_name)
-    config = get_config_from_template(template_dir)
-    config.update(state.get_planning_config())
-    config.update({
-        'domain_full': abspath(join(template_dir, 'domain_full.pddl')),
-        'domain': abspath(join(template_dir, 'domain.pddl')),
-        'stream': abspath(join(template_dir, 'stream.pddl')),
-    })
-    with open(join(outpath, 'planning_config.json'), 'w') as f:
-        json.dump(config, f, indent=4)
-
-    """ save depth image """
-    if DEPTH_IMAGES:
-        reset_simulation()
-        get_depth_images(outpath, camera_pose=state.world.camera.pose,
-                         img_dir=join(outpath, 'depth_maps'), verbose=True)
-    # else:
-    #     state.world.visualize_image(img_dir=outpath)
+    return config
 
 
 def get_pddl_from_list(fact, world):
@@ -463,13 +432,10 @@ def get_pddl_from_list(fact, world):
     return '(' + line + ')'
 
 
-def generate_problem_pddl(state, facts, goals, ## pddlstream_problem,
+def generate_problem_pddl(world, facts, goals,
                           world_name='lisdf', domain_name='domain', out_path=None):
-    # facts = pddlstream_problem.init
-    # goals = pddlstream_problem.goal
     if goals[0] == 'and':
         goals = [list(n) for n in goals[1:]]
-    world = state.world
 
     PDDL_STR = """
 (define

@@ -32,7 +32,7 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     YELLOW, add_line, draw_point, RED, BROWN, BLACK, BLUE, GREY, remove_handles, apply_affine, vertices_from_rigid, \
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
     parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug, set_point, has_gui, get_rigid_clusters, \
-    BASE_LINK as ROOT_LINK, link_pairs_collision, draw_collision_info
+    BASE_LINK as ROOT_LINK, link_pairs_collision, draw_collision_info, wait_unlocked, apply_alpha, set_color
 
 
 OBJ = '?obj'
@@ -51,6 +51,7 @@ BASE_LIMITS = ((-1, 3), (6, 13))
 CAMERA_FRAME = 'high_def_optical_frame'
 EYE_FRAME = 'wide_stereo_gazebo_r_stereo_camera_frame'
 CAMERA_MATRIX = get_camera_matrix(width=640, height=480, fx=525., fy=525.) # 319.5, 239.5 | 772.55, 772.5S
+
 
 def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
     other_arm = get_other_arm(arm)
@@ -313,6 +314,7 @@ def articulated_collisions(obj, obstacles, **kwargs): # TODO: articulated_collis
             return True
     return False
 
+
 def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=False, visualize=False, min_num_pts=0,
              use_aabb=True, **kwargs):
     prefix = 'bullet_utils.collided '
@@ -372,7 +374,8 @@ OBJ_YAWS = {
     'Microwave': PI, 'Toaster': PI / 2
 }
 
-def get_scale_by_category(file=None, category=None, scale = 1):
+
+def get_scale_by_category(file=None, category=None, scale=1):
     from world_builder.partnet_scales import MODEL_HEIGHTS, MODEL_SCALES, OBJ_SCALES
     from world_builder.utils import get_model_scale
 
@@ -717,7 +720,7 @@ class ObjAttachment(Attachment):
 
 #######################################################
 
-def set_camera_target_body(body, link=None, dx=3.8, dy=0, dz=1):
+def set_camera_target_body(body, link=None, dx=0.5, dy=0.5, dz=0.5):
     # if isinstance(body, tuple):
     #     link = BODY_TO_OBJECT[body].handle_link
     #     body = body[0]
@@ -1022,8 +1025,10 @@ def get_model_points(body, link=None, verbose=False):
 
     vertices = []
     for link in links:
-        new_vertices = apply_affine(unit_pose(), vertices_from_rigid(body, link))
-        vertices.extend(new_vertices)
+        vv = vertices_from_rigid(body, link)
+        if len(vv) > 0:
+            new_vertices = apply_affine(unit_pose(), vv)
+            vertices.extend(new_vertices)
     return body_pose, vertices
 
 
@@ -1086,33 +1091,45 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                     HANDLE_FILTER=False, LENGTH_VARIANTS=False,
                     visualize=False, RETAIN_ALL=False, verbose=False,
                     collisions=False, num_samples=6, debug_del=False):
-    from pybullet_tools.flying_gripper_utils import set_se3_conf, create_fe_gripper, se3_from_pose
+    from pybullet_tools.flying_gripper_utils import set_se3_conf, create_fe_gripper, se3_from_pose, \
+        get_cloned_se3_conf
     body_name = (body, link) if link is not None else body
     title = f'bullet_utils.get_hand_grasps({body_name}) | '
-
-    instance_name = state.world.get_instance_name(body_name)
-    found, db, db_file = find_grasp_in_db('hand_grasps.json', instance_name,
-                                          LENGTH_VARIANTS=LENGTH_VARIANTS)
-    if found is not None: return found
-
     dist = grasp_length
     robot = state.robot
-    obstacles = state.fixed
-    if body not in obstacles:
-        obstacles += [body]
 
     body_pose, aabb, handles = draw_fitted_box(body, link=link, verbose=verbose)
-
-    if link == None:
+    if link is None:
         body_pose = get_pose(body)
     else: ## for handle grasps, use the original pose of handle_link
         body_pose = multiply(body_pose, invert(robot.tool_from_hand))
         if verbose:
             print(f'{title}hand_link = {link} | body_pose = multiply(body_pose, invert(robot.tool_from_hand)) = {nice(body_pose)}')
 
+    instance_name = state.world.get_instance_name(body_name)
+    grasp_db_name = f'hand_grasps_{robot.__class__.__name__}.json'  ## 'hand_grasps.json'
+    found, db, db_file = find_grasp_in_db(grasp_db_name, instance_name,
+                                          LENGTH_VARIANTS=LENGTH_VARIANTS)
+    if found is not None:
+        if visualize:
+            bodies = []
+            for g in found:
+                bodies.append(robot.visualize_grasp(body_pose, g, verbose=verbose))
+            ## nice(get_cloned_se3_conf(robot, bodies[0]))[1] != nice(get_pose(body))[1] == nice(body_pose)[1]
+            # set_renderer(True)
+            set_camera_target_body(body)
+            # wait_unlocked()
+            for b in bodies:
+                remove_body(b)
+        remove_handles(handles)
+        return found
+
+    obstacles = state.fixed
+    if body not in obstacles:
+        obstacles += [body]
+
     ## only one in each direction
     def check_new(aabbs, aabb):
-        return True
         yzs = [AABB(m.lower[1:], m.upper[1:]) for m in aabbs]
         if AABB(aabb.lower[1:], aabb.upper[1:]) in yzs: return False
         xys = [AABB(m.lower[:-1], m.upper[:-1]) for m in aabbs]
@@ -1226,6 +1243,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
     ## lastly store the newly sampled grasps
     add_grasp_in_db(db, db_file, instance_name, grasps, name=state.world.get_name(body_name),
                     LENGTH_VARIANTS=LENGTH_VARIANTS)
+    remove_handles(handles)
     # if len(grasps) > num_samples:
     #     random.shuffle(grasps)
     #     return grasps[:num_samples]
@@ -1523,6 +1541,39 @@ def get_segmask(seg):
     return unique
 
 
+def adjust_segmask(unique, world):
+    """ looks ugly if we just remove some links, so create a doorless lisdf """
+    # links_to_show = {}
+    # for b, l in world.colored_links:
+    #     if b not in links_to_show:
+    #         links_to_show[b] = get_links(b)
+    #     if l in links_to_show[b]:
+    #         links_to_show[b].remove(l)
+    # for b, ll in links_to_show.items():
+    #     if len(ll) == len(get_links(b)):
+    #         continue
+    #     for l in links_to_show[b]:
+    #         clone_body_link(b, l, visual=True, collision=True)
+    #     remove_body(b)
+
+    imgs = world.camera.get_image(segment=True, segment_links=True)
+    seg = imgs.segmentationMaskBuffer
+    movable_unique = get_segmask(seg)
+    for k, v in movable_unique.items():
+        if k not in unique:
+            unique[k] = v
+            # print(k, 'new', len(v))
+        else:
+            ## slow
+            # new_v = [p for p in v if p not in unique[k]]
+            # unique[k] += new_v
+            old_count = len(unique[k])
+            unique[k] += v
+            unique[k] = list(set(unique[k]))
+            # print(k, 'added', len(unique[k]) - old_count)
+    return unique
+
+
 def get_door_links(body, joint):
     from pybullet_tools.utils import ConfSaver, get_joint_limits
     with ConfSaver(body):
@@ -1532,6 +1583,7 @@ def get_door_links(body, joint):
         set_joint_position(body, joint, max_pstn)
         links = [i for i in range(len(lps)) if lps[i] != get_link_pose(body, i)]
     return links
+
 
 def sort_body_parts(bodies):
     indices = []
@@ -1707,6 +1759,37 @@ def clone_body_link(body, link, collision=True, visual=True, client=None):
             # TODO: check if movable?
             p.resetJointState(new_body, joint, value, targetVelocity=0, physicsClientId=client)
     return new_body
+
+
+def colorize_world(fixed, transparency=0.5):
+    # named_colors = get_named_colors(kind='xkcd')
+    # colors = [color for name, color in named_colors.items()
+    #           if any(color_type in name for color_type in color_types)]  # TODO: convex combination
+    colored = []
+    for body in fixed:
+        joints = get_movable_joints(body)
+        if not joints:
+            continue
+        # dump_body(body)
+        # body_color = apply_alpha(WHITE, alpha=0.5)
+        # body_color = random.choice(colors)
+        body_color = apply_alpha(0.9 * np.ones(3))
+        links = get_all_links(body)
+        rigid = get_root_links(body)
+
+        # links = set(links) - set(rigid)
+        for link in links:
+            # print('Body: {} | Link: {} | Joints: {}'.format(body, link, joints))
+            # print(get_color(body, link=link))
+            # print(get_texture(body, link=link))
+            # clear_texture(body, link=link)
+            # link_color = body_color
+            link_color = np.array(body_color) + np.random.normal(0, 1e-2, 4)  # TODO: clip
+            link_color = apply_alpha(link_color, alpha=1.0 if link in rigid else transparency)
+            set_color(body, link=link, color=link_color)
+            if link not in rigid:
+                colored.append((body, link))
+    return colored
 
 
 def draw_base_limits(custom_limits, **kwargs):

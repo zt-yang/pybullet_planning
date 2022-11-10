@@ -7,6 +7,9 @@ import sys
 import termios
 import tty
 
+from os.path import join, abspath, dirname
+sys.path.append(abspath(join(dirname(__file__), '..')))
+
 from pybullet_tools.pr2_utils import PR2_GROUPS, DRAKE_PR2_URDF
 from pybullet_tools.utils import add_data_path, connect, enable_gravity, load_model, \
 	joints_from_names, load_pybullet, \

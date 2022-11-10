@@ -4,6 +4,9 @@ from os.path import join, isfile, isdir, abspath
 import untangle
 import copy
 
+import sys
+sys.path.append('/home/yang/Documents/fastamp')
+
 
 def get_indices_from_log(run_dir):
     indices = {}
@@ -60,7 +63,7 @@ def get_lisdf_xml(run_dir):
 
 
 def get_plan_skeleton(plan, indices={}):
-    from fastamp.text_utils import ACTION_ABV, ACTION_NAMES
+    from text_utils import ACTION_ABV, ACTION_NAMES
     def get_action_abv(a):
         if isinstance(a, str):
             name = a[a.index("name='")+6: a.index("', args=(")]
@@ -83,7 +86,7 @@ def get_plan_skeleton(plan, indices={}):
 
 
 def get_init_tuples(run_dir):
-    from fastamp.fastamp_utils import get_init, get_objs
+    from fastamp_utils import get_init, get_objs
     lines = open(join(run_dir, 'problem.pddl'), 'r').readlines()
     objs = get_objs(lines)
     init = get_init(lines, objs, get_all=True)
@@ -111,3 +114,169 @@ def get_instance_info(run_dir, world=None):
 
 def exist_instance(model_instances, instance):
     return list(model_instances.values()).count(instance) > 0
+
+
+def get_fc_record(run_dir, fc_classes=[], diverse=True, rerun_subdir=None):
+    prefix = 'diverse_' if diverse else ''
+    pass_fail = {}
+    indices = get_indices(run_dir)
+    rerun_dir = join(run_dir, rerun_subdir) if rerun_subdir is not None else run_dir
+    for fc_class in fc_classes:
+        pas = []
+        fail = []
+        log_file = join(rerun_dir, f"{prefix}fc_log={fc_class}.json")
+        plan_file = join(rerun_dir, f"{prefix}plan_rerun_fc={fc_class}.json")
+
+        if isfile(log_file) and isfile(plan_file):
+            log = json.load(open(log_file, 'r'))
+            for aa in log['checks']:
+                plan, prediction = aa[-2:]
+                skeleton = get_plan_skeleton(plan, indices=indices)
+                note = f"{skeleton} ({round(prediction, 4)})"
+                if prediction and prediction > 0.5:
+                    pas.append(note)
+                else:
+                    fail.append(note)
+
+            result = json.load(open(plan_file, 'r'))
+            plan = result['plan']
+            planning_time = round(result['planning_time'], 2)
+            if len(pas) > 0 or len(fail) > 0:
+                if plan is not None:
+                    plan = get_plan_skeleton(plan, indices=indices)
+                    t_skeletons = [sk[:sk.index(' (')] for sk in pas]
+                    num_FP = t_skeletons.index(plan) if plan in t_skeletons else len(pas)
+                else:
+                    num_FP = None
+                pass_fail[fc_class] = (fail, pas, [plan], planning_time, num_FP)
+    return pass_fail
+
+
+def get_variables_from_pddl_objects(init):
+    vs = []
+    for i in init:
+        vs.extend([a for a in i[1:] if ',' in a])
+    return list(set(vs))
+
+
+def get_variables_from_pddl(facts, objs):
+    new_objs = copy.deepcopy(objs) + ['left', 'right']
+    new_objs.sort(key=len, reverse=True)
+    vs = []
+    for f in facts:
+        f = f.replace('\n', '').replace('\t', '').strip()[1:-1]
+        if ' ' not in f or f.startswith(';'):
+            continue
+        f = f[f.index(' ')+1:]
+        for o in new_objs:
+            f = f.replace(o, '')
+        f = f.strip()
+        if len(f) == 0:
+            continue
+
+        if f not in vs:
+            found = False
+            for v in vs:
+                if v in f:
+                    found = True
+            if not found and 'wconf' not in f:
+                vs.append(f)
+    return vs
+
+
+def get_variables(init, objs=None):
+    if isinstance(init[0], str):
+        vs = get_variables_from_pddl(init, objs)
+    else:
+        vs = get_variables_from_pddl_objects(init)
+
+    return vs, {vs[i]: f'idx={i}' for i in range(len(vs))}
+
+
+def get_plan_from_strings(actions, vs, inv_vs, indices={}):
+    from text_utils import ACTION_NAMES
+    plan = []
+    for a in actions:
+        name = a[a.index("name='") + 6: a.index("', args=(")]
+        args = a[a.index("args=(") + 6:-2].replace("'", "")
+        new_args = parse_pddl_str(args, vs=vs, inv_vs=inv_vs, indices=indices)
+        plan.append([ACTION_NAMES[name]] + new_args)
+    return plan
+
+
+def parse_pddl_str(args, vs, inv_vs, indices={}):
+    """ parse a string of string, int, and tuples into a list """
+
+    ## replace those tuples with placeholders that doesn't have ', ' or ' '
+    for string, sub in inv_vs.items():
+        if string in args:
+            args = args.replace(string, sub)
+
+    if ',' in args:
+        """  from plan.json
+        e.g. 'left', 7, p1=(3.255, 4.531, 0.762, 0.0, -0.0, 2.758), g208=(0, 0.0, 0.304, -3.142, 0, 0),
+             q624=(3.959, 4.687, 0.123, -1.902), c528=t(7, 60), wconf64 """
+        args = args.split(', ')
+
+    else:
+        """  from problem.pddl
+        e.g. pose veggiecauliflower p0=(3.363, 2.794, 0.859, 0.0, -0.0, 1.976) """
+        args = args.split(' ')
+
+    ## replace those placeholders with original values
+    new_args = []
+    for arg in args:
+        if 'idx=' in arg:
+            idx = int(eval(arg.replace('idx=', '')))
+            arg = vs[idx]
+        if arg in indices:
+            new_args.append(indices[arg])
+        else:
+            new_args.append(arg)
+    return new_args
+
+
+def get_successful_plan(run_dir, indices={}):
+    if len(indices) == 0:
+        indices = get_indices(run_dir)
+    with open(join(run_dir, 'plan.json'), 'r') as f:
+        data = json.load(f)[0]
+        actions = data['plan']
+        vs, inv_vs = get_variables(data['init'])
+        plan = get_plan_from_strings(actions, vs=vs, inv_vs=inv_vs, indices=indices)
+    return [plan]
+
+
+def save_multiple_solutions(plan_dataset, indices=None, run_dir=None,
+                            file_path='multiple_solutions.json'):
+    if indices is None and run_dir is not None:
+        indices = get_indices(run_dir)
+    first_solution = None
+    min_len = 10000
+    solutions_log = []
+    for i, (opt_solution, real_solution) in enumerate(plan_dataset):
+        stream_plan, (opt_plan, preimage), opt_cost = opt_solution
+        plan = None
+        score = 0
+        if real_solution is not None:
+            plan, cost, certificate = real_solution
+            if plan is not None:
+                if first_solution is None:
+                    first_solution = real_solution
+                    min_len = len(plan)
+                score = round(0.5 + min_len / (2*len(plan)), 3)
+        skeleton = get_plan_skeleton(opt_plan, indices=indices)
+        print(f'\n{i + 1}/{len(plan_dataset)}) Optimistic Plan: {opt_plan}\n'
+              f'Skeleton: {skeleton}\nPlan: {plan}')
+        log = {
+            'optimistic_plan': str(opt_plan),
+            'skeleton': str(skeleton),
+            'plan': [str(a) for a in plan] if plan is not None else None,
+            'score': score
+        }
+        solutions_log.append(log)
+    with open(file_path, 'w') as f:
+        json.dump(solutions_log, f, indent=3)
+    if first_solution is None:
+        first_solution = None, 0, []
+    return first_solution

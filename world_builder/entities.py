@@ -132,17 +132,17 @@ class Object(Index):
 
     def attach_obj(self, obj):
         from pybullet_tools.bullet_utils import create_attachment
-        link = self.link if self.link is not None else 0
+        link = self.link if self.link is not None else -1
         self.world.ATTACHMENTS[obj] = create_attachment(self, link, obj, OBJ=True)
         obj.change_supporting_surface(self)
 
-    def place_new_obj(self, obj_name, max_trial=8):
+    def place_new_obj(self, obj_name, max_trial=8, **kwargs):
         from pybullet_tools.bullet_utils import sample_obj_on_body_link_surface
         from world_builder.utils import load_asset
 
         # set_renderer(False)
         obj = self.world.add_object(
-            Object(load_asset(obj_name.lower(), maybe=True), category=obj_name)
+            Object(load_asset(obj_name.lower(), maybe=True, **kwargs), category=obj_name)
         )
         # body = sample_obj_on_body_link_surface(obj, self.body, self.link, max_trial=max_trial)
         self.world.put_on_surface(obj, max_trial=max_trial, surface=self.shorter_name)
@@ -212,6 +212,9 @@ class Object(Index):
             set_group_conf(self.body, 'base', conf)
         else:
             set_pose(self.body, conf)
+        if self.supporting_surface is not None:
+            self.change_supporting_surface(self.supporting_surface)
+
     def get_joint(self, joint): # int | str
         # TODO: unify with get_joint in pybullet-planning
         try:
@@ -372,7 +375,7 @@ class Steerable(Object):
 class Supporter(Object):
     def __init__(self, body, **kwargs):
         super(Supporter, self).__init__(body, collision=False, **kwargs)
-        self.supported_objects = None
+        self.supported_objects = []
 
 class Region(Object):
     def __init__(self, body, **kwargs):
@@ -403,6 +406,7 @@ class Surface(Region):
             self.name = get_link_name(body, link)
         # self.supported_objects = []
 
+
 class Space(Region):
     """ to support object inside, like cabinets and drawers """
     def __init__(self, body, link, **kwargs):
@@ -423,9 +427,10 @@ class Space(Region):
             # self.supported_objects.append(obj)
             obj.change_supporting_surface(self)
         attachment = create_attachment(self, self.link, obj, OBJ=True)
+        print('entities.include_and_attach\t', attachment)
         self.world.ATTACHMENTS[obj] = attachment
 
-    def place_new_obj(self, obj_name, max_trial=8, verbose=False):
+    def place_new_obj(self, obj_name, max_trial=8, verbose=False, scale=1):
         from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, open_joint
         from world_builder.utils import load_asset
 
@@ -435,7 +440,7 @@ class Space(Region):
         # obj = self.world.add_object(Object(body, category=obj_name))
 
         obj = self.world.add_object(
-            Object(load_asset(obj_name.lower(), maybe=True), category=obj_name)
+            Object(load_asset(obj_name.lower(), maybe=True, scale=scale), category=obj_name)
         )
         sample_obj_in_body_link_space(obj, self.body, self.link)
 

@@ -7,6 +7,7 @@ from lisdf.parsing.sdf_j import load_sdf
 from lisdf.components.model import URDFInclude
 import numpy as np
 import json
+import copy
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -20,9 +21,9 @@ from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove
     set_camera_pose, set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
     set_joint_positions, get_links, get_joints, get_joint_name, get_body_name, link_from_name, \
     parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK, read, get_client, \
-    reset_simulation, dump_joint, JOINT_TYPES, get_joint_type, is_movable, get_camera_matrix
+    reset_simulation, get_movable_joints, JOINT_TYPES, get_joint_type, is_movable, get_camera_matrix
 from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link, get_instance_name, \
-    toggle_joint, get_door_links, set_camera_target_body
+    toggle_joint, get_door_links, set_camera_target_body, colorize_world
 from pybullet_tools.pr2_streams import get_handle_link
 from pybullet_tools.flying_gripper_utils import set_se3_conf
 
@@ -44,7 +45,7 @@ PART_INSTANCE_NAME = "{body_instance_name}" + LINK_STR + "{part_name}"
 
 
 class World():
-    def __init__(self, lisdf):
+    def __init__(self, lisdf=None):
         self.lisdf = lisdf
         self.body_to_name = {}
         self.instance_names = {}
@@ -60,6 +61,7 @@ class World():
         ## for visualization
         self.handles = []
         self.cameras = []
+        self.colored_links = []
 
     def clear_viz(self):
         self.remove_handles()
@@ -77,6 +79,11 @@ class World():
     def add_handles(self, handles):
         self.handles.extend(handles)
 
+    def make_doors_transparent(self, transparency=0.5):
+        if self.fixed is None:
+            self.check_world_obstacles()
+        self.colored_links = colorize_world(self.fixed, transparency)
+
     def add_body(self, body, name, instance_name=None):
         if body is None:
             print('lisdf_loader.body = None')
@@ -87,30 +94,30 @@ class World():
         id = body
         if isinstance(body, tuple) and len(body) == 2:
             id = (body[0], get_handle_link(body))
-        elif isinstance(id, RobotAPI):
-            id = body.body
         ## the id is here is either body or (body, link)
         self.instance_names[id] = instance_name
 
-    def add_robot(self, body, name='robot', **kwargs):
-        if not isinstance(body, int):
-            name = body.name
-        self.add_body(body, name)
-        self.robot = body
+    def add_robot(self, robot, name='robot', **kwargs):
+        if not isinstance(robot, int):
+            name = robot.name
+        self.add_body(robot.body, name)
+        self.robot = robot
 
-    def add_joints(self, body, body_joints):
+    def add_joints(self, body, body_joints, color_handle=False):
         idx = 0
         for body_joint, joint_name in body_joints.items():
             self.add_body(body_joint, joint_name)
             handle_link = get_handle_link(body_joint)
-            set_color(body, color=LINK_COLORS[idx], link=handle_link)
+            color = LINK_COLORS[idx] if color_handle else None
+            set_color(body, color=color, link=handle_link)
             idx += 1
 
-    def add_spaces(self, body, body_links):
+    def add_spaces(self, body, body_links, color_link=False):
         idx = 0
         for body_link, link_name in body_links.items():
             self.add_body(body_link, link_name)
-            set_color(body, color=LINK_COLORS[idx], link=body_link[-1])
+            color = LINK_COLORS[idx] if color_link else None
+            set_color(body, color=color, link=body_link[-1])
             idx += 1
 
     def get_part_instance_name(self, id):
@@ -137,12 +144,21 @@ class World():
     #     elif 'fe' in domain_name:
     #         self.robot = 'feg'
 
+    def safely_get_body_from_name(self, name):
+        if name in self.name_to_body:
+            return self.name_to_body[name]
+        elif name[:-1] in self.name_to_body:  ## 'pr20
+            return self.name_to_body[name[:-1]]
+        return None
+
     def check_world_obstacles(self):
+        if self.lisdf is None:
+            return
         fixed = []
         movable = []
         floors = []
         for model in self.lisdf.models:
-            body = self.name_to_body[model.name]
+            body = self.safely_get_body_from_name(model.name)
             if 'pr2' not in model.name and 'feg' not in model.name:
                 if model.static: fixed.append(body)
                 else: movable.append(body)
@@ -210,6 +226,28 @@ class World():
                 pose = get_pose(body)
             print_fn(f"{line}\t|  Pose: {nice(pose)}")
         print_fn('----------------')
+
+    def get_wconf(self, world_index=None, attachments={}):
+        """ similar to to_lisdf in world_generator.py """
+        wconf = {}
+        bodies = copy.deepcopy(get_bodies())
+        bodies.sort()
+        for body in bodies:
+            name = self.body_to_name[body]
+            pose = get_pose(body)
+
+            joint_state = {}
+            for joint in get_movable_joints(body):
+                joint_name = get_joint_name(body, joint)
+                position = get_joint_position(body, joint)
+                joint_state[joint_name] = position
+
+            wconf[name] = {
+                'pose': pose,
+                'joint_state': joint_state,
+            }
+        wconf = {f"w{world_index}_{k}": v for k, v in wconf.items()}
+        return wconf
 
     def get_type(self, body):
         if body in self.body_types:
@@ -348,34 +386,38 @@ def change_world_state(world, test_case):
     print('-------------------')
 
 
-def load_lisdf_pybullet(lisdf_path, verbose=True, use_gui=True, width=1980, height=1238):
-    # scenes_path = dirname(os.path.abspath(lisdf_path))
+def get_custom_limits(config_path):
+    bl = json.load(open(config_path, 'r'))['base_limits']
+    if isinstance(bl, dict):
+        custom_limits = {int(k): v for k, v in bl.items()}
+    else:
+        custom_limits = {i: v for i, v in enumerate(bl)}
+    return custom_limits
+
+
+def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False,
+                        width=1980, height=1238):
+    ## tmp path for putting sdf files, e.g. floor
     tmp_path = join(ASSET_PATH, 'tmp')
     if not isdir(tmp_path): os.mkdir(tmp_path)
 
-    config_path = join(lisdf_path, 'planning_config.json')
-    custom_limits = {}
-    # body_to_name = None
-    if isfile(config_path):
-        planning_config = json.load(open(config_path))
-        custom_limits = {int(k):v for k,v in planning_config['base_limits'].items()}
-        # body_to_name = planning_config['body_to_name']
-        lisdf_path = join(lisdf_path, 'scene.lisdf')
+    ## sometimes another lisdf name is given
+    if lisdf_path.endswith('.lisdf'):
+        lisdf_dir = dirname(lisdf_path)
+    else:
+        lisdf_dir = lisdf_path
+        lisdf_path = join(lisdf_dir, 'scene.lisdf')
 
-    # if '4763' in lisdf_path:
-    #     with open(lisdf_path, 'r') as f:
-    #         lines = f.readlines()
-    #         print(len(lines))
+    ## get custom base limits for robots
+    config_path = join(lisdf_dir, 'planning_config.json')
+    custom_limits = {}
+    if isfile(config_path):
+        custom_limits = get_custom_limits(config_path)
 
     ## --- the floor and pose will become extra bodies
     connect(use_gui=use_gui, shadows=False, width=width, height=height)
     # draw_pose(unit_pose(), length=1.)
     # create_floor()
-
-    # with HideOutput():
-        # load_pybullet(join('models', 'Basin', '102379', 'mobility.urdf'))
-    # load_pybullet(sdf_path)  ## failed
-    # load_pybullet(join(tmp_path, 'table#1_1.sdf'))
 
     world = load_sdf(lisdf_path).worlds[0]
     bullet_world = World(world)
@@ -427,7 +469,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=True, use_gui=True, width=1980, heig
             set_pose(body, pose)
             bullet_world.add_body(body, model.name, instance_name)
 
-        if model.name in model_states:
+        if not jointless and model.name in model_states:
             for js in model_states[model.name].joint_states:
                 position = js.axis_states[0].value
                 set_joint_position(body, joint_from_name(body, js.name), position)
@@ -492,7 +534,20 @@ def pddl_files_from_dir(exp_dir, replace_pddl=False):
     return domain_path, stream_path, config_path
 
 
-def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True, teleport=False, **kwargs):
+def revise_goal(goal, world):
+    new_goal = []
+    for tup in goal:
+        new_tup = []
+        for elem in tup:
+            if elem in world.name_to_body:
+                elem = world.name_to_body[elem]
+            new_tup.append(elem)
+        new_goal.append(tuple(new_tup))
+    return new_goal
+
+
+def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True,
+                        teleport=False, goal=None, **kwargs):
     exp_dir = abspath(exp_dir)
 
     domain_path, stream_path, config_path = pddl_files_from_dir(exp_dir, replace_pddl)
@@ -505,8 +560,12 @@ def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True, t
     stream_pddl = read(stream_path)
 
     world = problem.world
-    init, goal, constant_map = pddl_to_init_goal(exp_dir, world)
-    goal = [AND] + goal
+    init, g, constant_map = pddl_to_init_goal(exp_dir, world)
+    if goal is not None:
+        goal = [AND] + revise_goal(goal, world)
+    else:
+        goal = [AND] + g
+
     problem.add_init(init)
 
     custom_limits = problem.world.robot.custom_limits ## planning_config['base_limits']
