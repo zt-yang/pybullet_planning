@@ -445,6 +445,7 @@ class Problem(object):
     def __repr__(self):
         return repr(self.__dict__)
 
+
 #######################################################
 
 def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',

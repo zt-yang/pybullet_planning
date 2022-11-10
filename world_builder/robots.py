@@ -147,7 +147,7 @@ class PR2Robot(RobotAPI):
         robot = self.body
 
         def get_conf(joints):
-            if conf_saver == None:
+            if conf_saver is None:
                 return get_joint_positions(robot, joints)
             return [conf_saver.conf[conf_saver.joints.index(n)] for n in joints]
 
@@ -185,10 +185,7 @@ class PR2Robot(RobotAPI):
             if arm in ['left']:
                 init += [('Controllable', arm)]
 
-        HANDS_EMPTY = {arm: True for arm in ARM_NAMES}
-        for arm, empty in HANDS_EMPTY.items():
-            if empty: init += [('HandEmpty', arm)]
-
+        init += [('HandEmpty', arm) for arm in ARM_NAMES]
         return init
 
     def get_stream_map(self, problem, collisions, custom_limits, teleport, **kwargs):
@@ -387,6 +384,7 @@ class PR2Robot(RobotAPI):
         from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES
         return PR2_TOOL_FRAMES[a]
 
+
 class FEGripper(RobotAPI):
 
     arms = ['hand']
@@ -496,7 +494,7 @@ class FEGripper(RobotAPI):
         robot = self.body
 
         def get_conf(joints):
-            if conf_saver == None:
+            if conf_saver is None:
                 return get_se3_conf(robot)
             return [conf_saver.conf[conf_saver.joints.index(n)] for n in joints]
 

@@ -1,7 +1,7 @@
 import math
 import random
 import json
-from os.path import join, abspath
+from os.path import join, abspath, basename
 import sys
 
 import pybullet as p
@@ -17,7 +17,7 @@ from pybullet_tools.utils import Pose, Euler, PI, create_box, TAN, Point, set_ca
 
 from pybullet_tools.bullet_utils import set_camera_target_body, set_camera_target_robot, draw_collision_shapes, \
     open_joint
-from world_builder.world_generator import to_lisdf, save_to_test_cases, EXP_PATH
+from world_builder.world_generator import EXP_PATH
 
 
 def get_robot_builder(builder_name):
@@ -26,7 +26,7 @@ def get_robot_builder(builder_name):
     return None
 
 
-def maybe_add_robot(world, template_dir):
+def maybe_add_robot(world, template_dir=None):
     config_file = join(template_dir, 'planning_config.json')
     planning_config = json.load(open(config_file, 'r'))
     if 'robot_builder' not in planning_config:
@@ -37,15 +37,24 @@ def maybe_add_robot(world, template_dir):
     robot_builder(world, robot_name=robot_name, custom_limits=custom_limits)
 
 
-def create_pybullet_world(args, builder, world_name='test_scene', verbose=False, SAMPLING=False,
-                          SAVE_LISDF=False, DEPTH_IMAGES=False, EXIT=False, RESET=False,
-                          SAVE_TESTCASE=False, SAVE_RGB=False, template_name=None, out_dir=None,
+def create_pybullet_world(args, builder,
+                          verbose=False,
+                          SAMPLING=False,
+                          SAVE_LISDF=False,
+                          DEPTH_IMAGES=False,
+                          RESET=False,
+                          SAVE_TESTCASE=False,
+                          SAVE_RGB=False,
+                          template_dir=None,
+                          out_dir=None,
                           root_dir='..'):
     """ build a pybullet world with lisdf & pddl files into test_cases folder,
         given a text_case folder to copy the domain, stream, and config from """
 
-    if template_name is None:
+    if template_dir is None:
         template_name = builder.__name__
+    else:
+        template_name = basename(template_dir)
     template_dir = abspath(join(root_dir, EXP_PATH, template_name))
 
     """ ============== initiate simulator ==================== """
@@ -61,37 +70,26 @@ def create_pybullet_world(args, builder, world_name='test_scene', verbose=False,
     """ ============== sample world configuration ==================== """
 
     world = World(time_step=args.time_step, camera=args.camera, segment=args.segment)
-    maybe_add_robot(world, template_dir)
-    goal = builder(world, verbose=verbose, SAMPLING=SAMPLING)
+    maybe_add_robot(world, **args.config.robot)
+    goal = builder(world, verbose=verbose, **args.config.world_builder)
 
     ## no gravity once simulation starts
     set_all_static()
     if verbose: world.summarize_all_objects()
 
     """ ============== save world configuration ==================== """
-
-    state = State(world)
-    floorplan = world.floorplan
     file = None
     if SAVE_LISDF:   ## only lisdf files
-        init = state.get_facts(verbose=verbose)
-        file = to_lisdf(state.world, init, floorplan=floorplan, world_name=world_name, verbose=verbose)
+        file = world.save_lisdf(verbose=verbose)
 
-    if out_dir is not None:
-        if SAVE_TESTCASE:
-            file = save_to_test_cases(state, goal, template_name, floorplan, out_dir,
-                                      verbose=verbose, DEPTH_IMAGES=DEPTH_IMAGES)
-
-        if SAVE_RGB:
-            world.visualize_image(img_dir=join(root_dir, EXP_PATH, out_dir), rgb=True)
-
-    if EXIT:
-        wait_if_gui('exit?')
+    if SAVE_TESTCASE:
+        world.save_test_case(goal, out_dir, template_dir=template_dir,
+                             save_rgb=SAVE_RGB, save_depth=DEPTH_IMAGES)
 
     if RESET:
         reset_simulation()
         return file
-    return state, goal, file
+    return world, goal
 
 
 def test_pick(world, w=.5, h=.9, mass=1):
