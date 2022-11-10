@@ -374,7 +374,8 @@ OBJ_YAWS = {
     'Microwave': PI, 'Toaster': PI / 2
 }
 
-def get_scale_by_category(file=None, category=None, scale = 1):
+
+def get_scale_by_category(file=None, category=None, scale=1):
     from world_builder.partnet_scales import MODEL_HEIGHTS, MODEL_SCALES, OBJ_SCALES
     from world_builder.utils import get_model_scale
 
