@@ -225,24 +225,25 @@ class World():
             print_fn(f"{line}\t|  Pose: {nice(pose)}")
         print_fn('----------------')
 
-    def get_wconf(self, world_index=None):
+    def get_wconf(self, world_index=None, attachments={}):
         """ similar to to_lisdf in world_generator.py """
         wconf = {}
         bodies = copy.deepcopy(get_bodies())
         bodies.sort()
         for body in bodies:
-            if body not in self.body_to_name:
-                print('lll')
             name = self.body_to_name[body]
+            pose = get_pose(body)
+
             joint_state = {}
             for joint in get_movable_joints(body):
                 joint_name = get_joint_name(body, joint)
                 position = get_joint_position(body, joint)
                 joint_state[joint_name] = position
-                wconf[name] = {
-                    'pose': get_pose(body),
-                    'joint_state': joint_state
-                }
+
+            wconf[name] = {
+                'pose': pose,
+                'joint_state': joint_state,
+            }
         wconf = {f"w{world_index}_{k}": v for k, v in wconf.items()}
         return wconf
 

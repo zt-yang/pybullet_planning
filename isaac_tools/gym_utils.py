@@ -4,6 +4,7 @@ from os.path import join, isdir, abspath, dirname
 import time
 import numpy as np
 
+from pybullet_tools.bullet_utils import nice
 from pybullet_tools.utils import pose_from_tform, get_pose, get_joint_name, get_joint_position, get_movable_joints
 from isaac_tools.urdf_utils import load_lisdf, test_is_robot
 
@@ -25,9 +26,9 @@ ASSET_PATH = join(dirname(__file__), '..', 'assets')
 def load_one_world(gym_world, lisdf_dir, offset=None, robots=True, world_index=None,
                    update_viewer=True, **kwargs):
     for name, path, scale, is_fixed, pose, positions in load_lisdf(lisdf_dir, robots=robots, **kwargs):
-        if 'veggiegreenpepper' in name or 'meatturkeyleg' in name or 'veggietomato' in name:
-            print('!!! skipping', name)
-            continue
+        # if 'veggiegreenpepper' in name or 'meatturkeyleg' in name or 'veggietomato' in name:
+        #     print('!!! skipping', name)
+        #     continue
         is_robot = test_is_robot(name)
         asset = gym_world.simulator.load_asset(
             asset_file=path, root=None, fixed_base=is_fixed or is_robot,  # y_up=is_robot,
@@ -77,6 +78,7 @@ def update_gym_world_by_pb_world(gym_world, pb_world, pause=False, verbose=False
         name = gym_world.get_actor_name(actor)
         body = pb_world.name_to_body[name]
         pose = get_pose(body)
+
         if offset is not None:
             pose = (pose[0] + offset, pose[1])
         gym_world.set_pose(actor, pose)
@@ -102,8 +104,9 @@ def update_gym_world_by_pb_world(gym_world, pb_world, pause=False, verbose=False
 def update_gym_world_by_wconf(gym_world, wconf, offsets=None):
     for actor in gym_world.get_actors():
         name = gym_world.get_actor_name(actor)
-        if name not in wconf:
+        if name not in wconf:  ## because some videos are shorter
             continue
+
         world_index = eval(name[1:name.index('_')])
         data = wconf[name]
 
@@ -133,7 +136,7 @@ def load_envs_isaacgym(ori_dirs, robots=True, pause=False, num_rows=5, num_cols=
     gym_world.set_camera_target(camera, camera_point, camera_target)
 
     world_size = 6
-    num_worlds = min(num_rows * num_cols, 24)
+    num_worlds = min(num_rows * num_cols, 25)
     offsets = []
     for i in range(num_worlds):
         ori_dir = ori_dirs[i]
@@ -220,7 +223,8 @@ def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_n
         state_event = action.transition(state_event.copy())
 
         if return_wconf:
-            wconfs.append(problem.world.get_wconf(world_index=world_index))
+            wconfs.append(problem.world.get_wconf(world_index=world_index,
+                                                  attachments=state_event.attachments))
         else:
             if isinstance(action, AttachObjectAction):
                 print(action.grasp)
