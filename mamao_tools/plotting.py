@@ -20,16 +20,15 @@ from data_utils import get_fc_record
 AUTO_REFRESH = False
 VIOLIN = False
 FPC = False
-PAPER_VERSION = False ## no preview, just save pdf
+PAPER_VERSION = True ## no preview, just save pdf
 
 
 from matplotlib import rc
 rc('font', **{'family': 'serif', 'serif': ['Times']})
 # rc('text', usetex=True)
 
-GROUPS = ['tt_one_fridge_table_pick', 'tt_one_fridge_table_in', 'tt_two_fridge_pick',
-          'tt_two_fridge_in', 'tt_two_fridge_goals']
-# GROUPS = ['tt_two_fridge_pick', 'tt_two_fridge_in', 'ss_two_fridge_pick', 'ss_two_fridge_in']
+GROUPS = ['tt_one_fridge_table_pick', 'tt_two_fridge_pick', 'tt_one_fridge_table_in',
+          'tt_two_fridge_in'] ## , 'tt_two_fridge_goals']
 
 METHODS = ['None', 'shuffle', 'binary', 'pvt', 'oracle']
 METHOD_NAMES = ['Baseline', 'Shuffle', 'PST-0/1', 'PST', 'Oracle']
@@ -39,8 +38,13 @@ METHODS = ['None', 'pvt', 'pvt*', 'pvt-task', 'oracle'] ##
 METHOD_NAMES = ['Baseline', 'PST', 'PST*', 'PST-task', 'Oracle']
 ## ## , 'random' , 'piginet', 'pvt-task', 'pvt-2', 'pvt|rel=all'
 
-METHODS = ['None', 'pvt-task', 'pvt-all', 'binary', 'oracle']  ## 'pvt-trans',
-METHOD_NAMES = ['Baseline', 'PIGI', 'PIGI-all', 'PIGI-binary', 'Oracle']  ## 'PIGI-trans',
+METHODS = ['None', 'pvt-task', 'binary', 'pvt-all', 'oracle']  ## 'pvt-trans',
+METHOD_NAMES = ['Baseline', 'PIGI', 'PIGI-1/0', 'PIGI-all', 'Oracle']  ## 'PIGI-trans',
+
+## ------------ generalization to geometry ------------
+## GROUPS = ['ss_two_fridge_pick', 'ss_two_fridge_in']
+## METHODS = ['None', 'pvt-all', 'oracle']
+## METHOD_NAMES = ['Baseline', 'PIGI-all', 'Oracle']
 
 check_time = 1664255601 ## 1664255601 for baselines | 1664750094  ## for d4 | 1665010453 for d3
 
@@ -292,6 +296,8 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
         title = "Planning time"
     labels = tuple([f"{g.replace('tt_', '')}\n({data[g]['count']})" for g in groups])
     labels = tuple([f"{g.replace('tt_', '')}" for g in groups])
+    if 'ss_' in groups[-1]:
+        labels = tuple([f"{g.replace('ss_', '')} (stapler)" for g in groups])
 
     if SAME_Y_AXES:
         figsize = (9, 6)
@@ -348,14 +354,22 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
 
     ## ------------- different y axis to amplify improvements ------------ ##
     else:
-        figsize = (15, 5) if not PAPER_VERSION else (15, 4)
-        figsize = (12, 4) if len(groups) == 3 else figsize
-        if len(METHODS) == 5 or len(groups) == 5:
-            figsize = (18, 6)
-            if len(METHODS) == 5 and len(groups) == 5:
+        if PAPER_VERSION:
+            if len(groups) == 2:
+                figsize = (5, 4)
+            else:
+                figsize = (15, 4)
+        else:
+            figsize = (12, 4)
+            if len(METHODS) == 4 or len(groups) == 4:
+                figsize = (15, 4)
+            if len(METHODS) == 5 or len(groups) == 5:
+                figsize = (18, 6)
+                if len(METHODS) == 5 and len(groups) == 5:
+                    figsize = (21, 6)
+            if len(METHODS) == 6 or len(groups) == 6:
                 figsize = (21, 6)
-        if len(METHODS) == 6 or len(groups) == 6:
-            figsize = (21, 6)
+
         bar_width = 0.3
         fig, axs = plt.subplots(1, len(groups), figsize=figsize)
 
@@ -424,16 +438,16 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
 
                 for j in range(len(METHODS)):
 
+                    bar_label = f"{count[j]} \n"
+                    if miss[j] > 0:
+                        bar_label += str(miss[j])
+                    axs[i].annotate(bar_label,  # text
+                                (j*scale, 0),  # points location to label
+                                textcoords="offset points",
+                                xytext=(0, -40),  # distance between the points and label
+                                ha='center', color='gray',
+                                fontsize=10)
                     if not PAPER_VERSION:
-                        bar_label = f"{count[j]} \n"
-                        if miss[j] > 0:
-                            bar_label += str(miss[j])
-                        axs[i].annotate(bar_label,  # text
-                                    (j*scale, 0),  # points location to label
-                                    textcoords="offset points",
-                                    xytext=(0, -40),  # distance between the points and label
-                                    ha='center', color='gray',
-                                    fontsize=10)
                         axs[i].annotate(agm[j],  # text
                                     (j*scale, mx[j]),  # points location to label
                                     textcoords="offset points",
@@ -445,7 +459,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                 axs[i].tick_params(axis='x', which='major') ## , pad=28
                 axs[i].tick_params(axis='y', which='major', pad=-4, rotation=45)
 
-            if PAPER_VERSION:
+            if PAPER_VERSION and False:
                 axs[i].set_title(labels[i], fontsize=11, y=-0.2)
             else:
                 axs[i].set_title(f"{labels[i]} ({len(get_rundirs(groups[i]))})", fontsize=11, y=-0.24)
@@ -455,7 +469,8 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
 
             # print(groups[i], 'means_overhead', means_overhead)
 
-        axs[0].set_ylabel('Planning time', fontsize=12)
+        ylabel = 'Number of FP Skeletons' if FPC else 'Planning time'
+        axs[0].set_ylabel(ylabel, fontsize=12)
         handles = [plt.Rectangle((0, 0), 1, 1, color=colors[i]) for i in range(len(METHODS))]
 
         if not PAPER_VERSION:
@@ -468,8 +483,13 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
             fig.legend(handles, METHOD_NAMES, ncol=len(METHODS), fontsize=11,
                        loc='upper center', bbox_to_anchor=(0.5, 0.97))
 
+    print([round(means['pvt-task'][i] / means['None'][i], 2) for i in range(len(groups))])
+
     if PAPER_VERSION: ##  and False
-        plt.savefig('/home/yang/evaluation.pdf', bbox_inches='tight')
+        file_name = 'evaluation' if GROUPS[-1].startswith('tt') else 'evaluation_geometry'
+        if FPC:
+            file_name += '_fpc'
+        plt.savefig(f'/home/yang/{file_name}.pdf', bbox_inches='tight')
     else:
         if update:
             plt.draw()

@@ -25,18 +25,18 @@ line = mlines.Line2D([0, 1], [0, 1], color='white')
 transform = ax.transAxes
 line.set_transform(transform)
 ax.add_line(line)
-ax.scatter(training, testing, c=colors, s=130, alpha=0.8)
+ax.scatter(training, testing, c=colors, s=160, alpha=0.8)
 ax.set_xlim([0.7, 1])
 ax.set_ylim([0.7, 1])
 ax.set_xlabel('Accuracy on problems with seen objects', fontsize=16)
 ax.set_ylabel('Accuracy on problems with the unseen objects', fontsize=16)
-ax.tick_params(axis='both', which='major', labelsize=12)
+ax.tick_params(axis='both', which='major', labelsize=15)
 plt.locator_params(nbins=4)
 
 groups = ['Trained without one food instance', 'Trained without one fridge instance', 'Trained on all instances']
 handles = [plt.Rectangle((0.5, 0.5), 0.5, 0.5, color=color_types[i]) for i in range(len(groups))]
 fig.legend(handles, groups, ncol=1, fontsize=16,
-                       loc='lower right', bbox_to_anchor=(0.94, 0.13))
+                       loc='lower right', bbox_to_anchor=(0.96, 0.13))
 plt.tight_layout()
 
 if PAPER_VERSION:

@@ -3,14 +3,16 @@ import time
 from itertools import product
 from collections import defaultdict
 import copy
-from os.path import join
+from os.path import join, isdir, abspath, basename
+import os
+import json
 import numpy as np
 
 from pddlstream.language.constants import Equal, AND
 from pddlstream.algorithms.downward import set_cost_scale
 
 from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, get_pose, LockRenderer, \
-    CameraImage, euler_from_quat, get_link_name, get_joint_position, \
+    CameraImage, euler_from_quat, get_link_name, get_joint_position, joint_from_name, \
     BodySaver, set_pose, INF, add_parameter, irange, wait_for_duration, get_bodies, remove_body, \
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
     get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked, \
@@ -31,6 +33,7 @@ from world_builder.utils import GRASPABLES
 
 
 class World(object):
+    """ api for building world and tamp problems """
     def __init__(self, time_step=1e-3, prevent_collisions=False, camera=True, segment=False,
                  teleport=False, drive=True,
                  conf_noise=None, pose_noise=None, depth_noise=None, action_noise=None): # TODO: noise model class?
@@ -62,6 +65,7 @@ class World(object):
         self.outpath = None
         self.camera = None
         self.instance_names = {}
+        self.constants = ['@movable', '@bottle', '@edible']
 
     def clear_viz(self):
         self.remove_handles()
@@ -314,6 +318,42 @@ class World(object):
         surface = Surface(body, link=link)
         self.add_object(surface)
         return surface
+
+    def get_wconf(self, world_index=None):
+        """ similar to to_lisdf in world_generator.py """
+        wconf = {}
+
+        c = self.cat_to_bodies
+        movables = c('moveable')
+        joints = c('door') + c('drawer') + c('knob')  ## [f[1] for f in init if f[0] == 'joint']
+        articulated_bodies = list(set([j[0] for j in joints]))
+        robot = self.robot
+
+        bodies = copy.deepcopy(get_bodies())
+        bodies.sort()
+        for body in bodies:
+            if body in self.BODY_TO_OBJECT:
+                obj = self.BODY_TO_OBJECT[body]
+            elif body in self.ROBOT_TO_OBJECT:
+                obj = self.ROBOT_TO_OBJECT[body]
+            else:
+                continue
+
+            wconf[obj.lisdf_name] = {
+                'is_static': 'false' if body in movables else 'true',
+                'pose': obj.get_pose()
+            }
+
+            if body in articulated_bodies + [robot.body]:
+                joint_state = {}
+                for joint in get_movable_joints(body):
+                    joint_name = get_joint_name(body, joint)
+                    position = get_joint_position(body, joint)
+                    joint_state[joint_name] = position
+                wconf[obj.lisdf_name]['joint_state'] = joint_state
+
+        wconf = {f"w{world_index}_{k}": v for k, v in wconf.items()}
+        return wconf
 
     def summarize_all_types(self):
         printout = ''
@@ -638,13 +678,13 @@ class World(object):
             return self.cameras[-1].get_image(segment=self.segment)
         return None
 
-    def visualize_image(self, pose=None, img_dir=None):
+    def visualize_image(self, pose=None, img_dir=None, **kwargs):
         if pose != None:
             self.camera.set_pose(pose)
         if img_dir != None:
             self.img_dir = img_dir
         image = self.camera.get_image(segment=self.segment)
-        visualize_camera_image(image, self.camera.index, img_dir=self.img_dir)
+        visualize_camera_image(image, self.camera.index, img_dir=self.img_dir, **kwargs)
 
     def get_indices(self):
         """ for fastamp project """
@@ -653,9 +693,204 @@ class World(object):
         body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
         return body_to_name
 
+    def get_facts(self, init_facts=[], conf_saver=None, obj_poses=None, verbose=True):
+        robot = self.robot.body
+        cat_to_bodies = self.cat_to_bodies
+        cat_to_objects = self.cat_to_objects
+        name_to_body = self.name_to_body
+        BODY_TO_OBJECT = self.BODY_TO_OBJECT
+
+        def get_body_pose(body):
+            if obj_poses == None:
+                pose = Pose(body, get_pose(body))
+            else:  ## in observation
+                pose = obj_poses[body]
+
+            for fact in init_facts:
+                if fact[0] == 'pose' and fact[1] == body and equal(fact[2].value, pose.value):
+                    return fact[2]
+            return pose
+
+        def get_link_position(body):
+            position = Position(body)
+            for fact in init_facts:
+                if fact[0] == 'position' and fact[1] == body and equal(fact[2].value, position.value):
+                    return fact[2]
+            return position
+
+        def get_grasp(body, attachment):
+            grasp = pr2_grasp(body, attachment.grasp_pose)
+            for fact in init_facts:
+                if fact[0] == 'grasp' and fact[1] == body and equal(fact[2].value, grasp.value):
+                    return fact[2]
+            return grasp
+
+        set_cost_scale(cost_scale=1)
+        init = [Equal(('PickCost',), 1), Equal(('PlaceCost',), 1),
+                ('CanMove',), ('CanPull',)]
+
+        ## ---- robot conf ------------------
+        init += self.robot.get_init(init_facts=init_facts, conf_saver=conf_saver)
+
+        ## ---- object poses / grasps ------------------
+        graspables = [o.body for o in cat_to_objects('object') if o.category in GRASPABLES]
+        graspables = set(cat_to_bodies('moveable') + graspables)
+        for body in graspables:
+            init += [('Graspable', body)]
+            pose = get_body_pose(body)
+
+            ## potential places to put on
+            for surface in cat_to_bodies('supporter') + cat_to_bodies('surface'):
+                init += [('Stackable', body, surface)]
+                if is_placement(body, surface, below_epsilon=0.02) or \
+                        BODY_TO_OBJECT[surface].is_placement(body):
+                    # if is_placement(body, surface, below_epsilon=0.02) != BODY_TO_OBJECT[surface].is_placement(body):
+                    #     print('   \n different conclusion about placement', body, surface)
+                    #     wait_unlocked()
+                    init += [('Supported', body, pose, surface)]
+
+            ## potential places to put in ## TODO: check size
+            for space in cat_to_bodies('container') + cat_to_bodies('space'):
+                init += [('Containable', body, space)]
+                if is_contained(body, space) or BODY_TO_OBJECT[space].is_contained(body):
+                    # if is_contained(body, space) != BODY_TO_OBJECT[space].is_contained(body):
+                    #     print('   \n different conclusion about containment', body, space)
+                    #     wait_unlocked()
+                    if verbose: print('   found contained', body, space)
+                    init += [('Contained', body, pose, space)]
+
+        ## ---- cart poses / grasps ------------------
+        for body in cat_to_bodies('steerable'):
+            pose = get_body_pose(body)
+
+            if body in self.ATTACHMENTS:
+                attachment = self.ATTACHMENTS[body]
+                if not isinstance(attachment, ObjAttachment):
+                    grasp = get_grasp(body, attachment)
+                    arm = 'hand'
+                    if get_link_name(robot, attachment.parent_link).startswith('r_'):
+                        arm = 'left'
+                    if get_link_name(robot, attachment.parent_link).startswith('l_'):
+                        arm = 'left'
+                    init.remove(('HandEmpty', arm))
+                    init += [('Grasp', body, grasp), ('AtGrasp', arm, body, grasp)]
+            else:
+                init += [('Pose', body, pose), ('AtPose', body, pose)]
+
+            obj = BODY_TO_OBJECT[body]
+            for marker in obj.grasp_markers:
+                init += [('Marked', body, marker.body)]
+
+        ## ---- object joint positions ------------- TODO: may need to add to saver
+        knobs = cat_to_bodies('knob')
+        for body in cat_to_bodies('drawer') + cat_to_bodies('door') + knobs:
+            if BODY_TO_OBJECT[body].handle_link is None:
+                continue
+            if ('Joint', body) in init or ('joint', body) in init:
+                continue
+            ## initial position
+            position = get_link_position(body)  ## Position(body)
+            init += [('Joint', body),
+                     ('Position', body, position), ('AtPosition', body, position),
+                     ('IsClosedPosition', body, position),
+                     ('IsJointTo', body, body[0])
+                     ]
+            if body in knobs:
+                controlled = BODY_TO_OBJECT[body].controlled
+                if controlled is not None:
+                    init += [('ControlledBy', controlled, body)]
+
+        ## ---- object types -------------
+        for cat in self.OBJECTS_BY_CATEGORY:
+            if cat.lower() == 'moveable': continue
+            # objects = cat_to_bodies(cat)
+            # init += [(cat, obj) for obj in objects]
+            for obj in cat_to_bodies(cat):
+                init += [(cat, obj)]
+                cat2 = f"@{cat}"
+                if cat2 in self.constants:
+                    init += [('OfType', obj, cat2)]
+
+        ## --- for testing IK
+        # lid = self.name_to_body('braiserlid')
+        # surface = self.name_to_body('indigo_tmp')
+        # pose = Pose(lid, xyzyaw_to_pose((0.694, 8.694, 0.814, 1.277)))
+        # init += [('Pose', lid, pose), ('MagicPose', lid, pose), ('Supported', lid, pose, surface)]
+
+        # ## --- for testing containment
+        # egg = self.name_to_body('egg')
+        # fridge = self.name_to_body('fridge')
+        # init += [('MagicalObj1', egg), ('MagicalObj2', fridge)]
+
+        ## ---- for testing attachment
+        init += [self.get_whole_fact(f, init) for f in self.init if f not in init]
+        for f in self.init_del:
+            f = self.get_whole_fact(f, init)
+            if f in init:
+                init.remove(f)
+
+        return init
+
+    def get_planning_config(self):
+        import platform
+        config = {
+            'base_limits': self.robot.custom_limits,
+            'body_to_name': self.get_indices(),
+            'system': platform.system()
+        }
+        if self.camera is not None:
+            t, r = self.camera.pose
+            if isinstance(t, np.ndarray):
+                if isinstance(t[0], np.ndarray):
+                    t = tuple(t[0]), t[1]
+                t = tuple(t)
+            config['obs_camera_pose'] = (t, r)
+        return config
+
+    def save_problem_pddl(self, goal, output_dir, world_name='world_name', **kwargs):
+        from world_builder.world_generator import generate_problem_pddl
+        init = self.get_facts(**kwargs)
+        generate_problem_pddl(self, init, goal, world_name=world_name,
+                              out_path=join(output_dir, 'problem.pddl'))
+
+    def save_lisdf(self, output_dir, verbose=False):
+        from world_builder.world_generator import to_lisdf
+        to_lisdf(self, join(output_dir, 'scene.lisdf'), verbose=verbose)
+
+    def save_planning_config(self, output_dir, template_dir=None):
+        from world_builder.world_generator import get_config_from_template
+        """ planning related files and params are referred to in template directory """
+        config = self.get_planning_config()
+
+        if template_dir is not None:
+            config.update(get_config_from_template(template_dir))
+            config.update({
+                'domain_full': abspath(join(template_dir, 'domain_full.pddl')),
+                'domain': abspath(join(template_dir, 'domain.pddl')),
+                'stream': abspath(join(template_dir, 'stream.pddl')),
+            })
+        with open(join(output_dir, 'planning_config.json'), 'w') as f:
+            json.dump(config, f, indent=4)
+
+    def save_test_case(self, goal, output_dir, template_dir=None,
+                       save_rgb=False, save_depth=False, **kwargs):
+        if not isdir(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
+        world_name = basename(output_dir)
+
+        self.save_lisdf(output_dir, world_name=world_name, **kwargs)
+        self.save_problem_pddl(goal, output_dir, world_name=world_name)
+        self.save_planning_config(output_dir, template_dir=template_dir)
+
+        if save_rgb:
+            self.visualize_image(img_dir=output_dir, rgb=True)
+        if save_depth:
+            self.visualize_image(img_dir=output_dir)
+
     @property
     def max_delta(self):
         return self.max_velocities * self.time_step
+
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, self.robot)
 
@@ -684,8 +919,6 @@ class State(object):
         self.gripper = None
         self.grasp_types = grasp_types ##, 'side']
         ## allowing both types causes trouble when the AConf used for generating IK isn't the same as the one during execution
-
-        self.constants = ['@movable', '@bottle', '@edible']
 
     def get_gripper(self, arm='left', visual=True):
         if self.gripper is None:
@@ -784,171 +1017,16 @@ class State(object):
         return Observation(self, robot_conf=robot_conf, obj_poses=obj_poses,
                            facts=facts, variables=variables, image=image)
 
-    def get_facts(self, init_facts=[], conf_saver=None, obj_poses=None, verbose=True):
-        robot = self.world.robot.body
-        cat_to_bodies = self.world.cat_to_bodies
-        cat_to_objects = self.world.cat_to_objects
-        name_to_body = self.world.name_to_body
-        BODY_TO_OBJECT = self.world.BODY_TO_OBJECT
-
-        def get_body_pose(body):
-            if obj_poses == None:
-                pose = Pose(body, get_pose(body))
-            else:  ## in observation
-                pose = obj_poses[body]
-
-            for fact in init_facts:
-                if fact[0] == 'pose' and fact[1] == body and equal(fact[2].value, pose.value):
-                    return fact[2]
-            return pose
-
-        def get_link_position(body):
-            position = Position(body)
-            for fact in init_facts:
-                if fact[0] == 'position' and fact[1] == body and equal(fact[2].value, position.value):
-                    return fact[2]
-            return position
-
-        def get_grasp(body, attachment):
-            grasp = pr2_grasp(body, attachment.grasp_pose)
-            for fact in init_facts:
-                if fact[0] == 'grasp' and fact[1] == body and equal(fact[2].value, grasp.value):
-                    return fact[2]
-            return grasp
-
-        set_cost_scale(cost_scale=1)
-        init = [Equal(('PickCost',), 1), Equal(('PlaceCost',), 1),
-                ('CanMove',), ('CanPull',)]
-
-        ## ---- robot conf ------------------
-        init += self.world.robot.get_init(init_facts=init_facts, conf_saver=conf_saver)
-
-        ## ---- object poses / grasps ------------------
-        graspables = [o.body for o in cat_to_objects('object') if o.category in GRASPABLES]
-        graspables = set(cat_to_bodies('moveable') + graspables)
-        for body in graspables:
-
-            init += [('Graspable', body)]
-            pose = get_body_pose(body)
-
-            if body in self.attachments:
-                attachment = self.attachments[body]
-                if not isinstance(attachment, ObjAttachment):
-                    grasp = get_grasp(body, attachment)
-                    arm = 'right'
-                    if get_link_name(robot, attachment.parent_link).startswith('l_'):
-                        arm = 'left'
-                    HANDS_EMPTY[arm] = False ## only able to grasp one thing
-                    init += [('Grasp', body, grasp), ('AtGrasp', arm, body, grasp)]
-                else:
-                    init += [('Pose', body, pose), ('AtPose', body, pose)]
-            else:
-                init += [('Pose', body, pose), ('AtPose', body, pose)]
-
-            ## potential places to put on
-            for surface in cat_to_bodies('supporter') + cat_to_bodies('surface'):
-                init += [('Stackable', body, surface)]
-                if is_placement(body, surface, below_epsilon=0.02) or \
-                        BODY_TO_OBJECT[surface].is_placement(body):
-                    # if is_placement(body, surface, below_epsilon=0.02) != BODY_TO_OBJECT[surface].is_placement(body):
-                    #     print('   \n different conclusion about placement', body, surface)
-                    #     wait_unlocked()
-                    init += [('Supported', body, pose, surface)]
-
-            ## potential places to put in ## TODO: check size
-            for space in cat_to_bodies('container') + cat_to_bodies('space'):
-                init += [('Containable', body, space)]
-                if is_contained(body, space) or BODY_TO_OBJECT[space].is_contained(body):
-                    # if is_contained(body, space) != BODY_TO_OBJECT[space].is_contained(body):
-                    #     print('   \n different conclusion about containment', body, space)
-                    #     wait_unlocked()
-                    if verbose: print('   found contained', body, space)
-                    init += [('Contained', body, pose, space)]
-
-
-        ## ---- cart poses / grasps ------------------
-        for body in cat_to_bodies('steerable'):
-            pose = get_body_pose(body)
-            init += [('Pose', body, pose), ('AtPose', body, pose)]
-
-            obj = BODY_TO_OBJECT[body]
-            for marker in obj.grasp_markers:
-                init += [('Marked', body, marker.body)]
-
-
-        ## ---- object joint positions ------------- TODO: may need to add to saver
-        knobs = cat_to_bodies('knob')
-        for body in cat_to_bodies('drawer') + cat_to_bodies('door') + knobs:
-            if BODY_TO_OBJECT[body].handle_link is None:
-                continue
-            if ('Joint', body) in init or ('joint', body) in init:
-                continue
-            ## initial position
-            position = get_link_position(body)  ## Position(body)
-            init += [ ('Joint', body),
-                      ('Position', body, position), ('AtPosition', body, position),
-                      ('IsClosedPosition', body, position),
-                      ('IsJointTo', body, body[0])
-                     ]
-            if body in knobs:
-                controlled = BODY_TO_OBJECT[body].controlled
-                if controlled is not None:
-                    init += [('ControlledBy', controlled, body)]
-
-        ## ---- object types -------------
-        for cat in self.world.OBJECTS_BY_CATEGORY:
-            if cat.lower() == 'moveable': continue
-            # objects = cat_to_bodies(cat)
-            # init += [(cat, obj) for obj in objects]
-            for obj in cat_to_bodies(cat):
-                init += [(cat, obj)]
-                cat2 = f"@{cat}"
-                if cat2 in self.constants:
-                    init += [('OfType', obj, cat2)]
+    def get_facts(self, init_facts=[], **kwargs):
+        init = self.world.get_facts(init_facts=init_facts, **kwargs)
 
         ## ---- those added to state.variables[label, body]
         for k in self.variables:
             init += [(k[0], k[1])]
-
-        ## --- for testing IK
-        # lid = self.world.name_to_body('braiserlid')
-        # surface = self.world.name_to_body('indigo_tmp')
-        # pose = Pose(lid, xyzyaw_to_pose((0.694, 8.694, 0.814, 1.277)))
-        # init += [('Pose', lid, pose), ('MagicPose', lid, pose), ('Supported', lid, pose, surface)]
-
-        # ## --- for testing containment
-        # egg = self.world.name_to_body('egg')
-        # fridge = self.world.name_to_body('fridge')
-        # init += [('MagicalObj1', egg), ('MagicalObj2', fridge)]
-
-        ## ---- for testing attachment
-        init += [self.world.get_whole_fact(f, init) for f in self.world.init if f not in init]
-        for f in self.world.init_del:
-            f = self.world.get_whole_fact(f, init)
-            if f in init:
-                init.remove(f)
-
-        return init
-
-    def get_joint_facts(self):
-        init = []
-        for body in self.world.cat_to_bodies('drawer') + self.world.cat_to_bodies('door'):
-            if self.world.BODY_TO_OBJECT[body].handle_link == None:
-                continue
-            ## initial position
-            init += [('AtPosition', body, Position(body))]
         return init
 
     def get_planning_config(self):
-        import platform
-        config = {
-            'base_limits': self.world.robot.custom_limits,
-            'body_to_name': self.world.get_indices(),
-            'system': platform.system()
-        }
-        if self.world.camera != None:
-            config['obs_camera_pose'] = self.world.camera.pose
-        return config
+        return self.world.get_planning_config()
 
     def __repr__(self):
         return '{}{}'.format(self.__class__.__name__, self.objects)

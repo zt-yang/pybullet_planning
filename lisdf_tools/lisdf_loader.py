@@ -7,6 +7,7 @@ from lisdf.parsing.sdf_j import load_sdf
 from lisdf.components.model import URDFInclude
 import numpy as np
 import json
+import copy
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -20,7 +21,7 @@ from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove
     set_camera_pose, set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
     set_joint_positions, get_links, get_joints, get_joint_name, get_body_name, link_from_name, \
     parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK, read, get_client, \
-    reset_simulation, dump_joint, JOINT_TYPES, get_joint_type, is_movable, get_camera_matrix
+    reset_simulation, get_movable_joints, JOINT_TYPES, get_joint_type, is_movable, get_camera_matrix
 from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link, get_instance_name, \
     toggle_joint, get_door_links, set_camera_target_body, colorize_world
 from pybullet_tools.pr2_streams import get_handle_link
@@ -93,16 +94,14 @@ class World():
         id = body
         if isinstance(body, tuple) and len(body) == 2:
             id = (body[0], get_handle_link(body))
-        elif isinstance(id, RobotAPI):
-            id = body.body
         ## the id is here is either body or (body, link)
         self.instance_names[id] = instance_name
 
-    def add_robot(self, body, name='robot', **kwargs):
-        if not isinstance(body, int):
-            name = body.name
-        self.add_body(body, name)
-        self.robot = body
+    def add_robot(self, robot, name='robot', **kwargs):
+        if not isinstance(robot, int):
+            name = robot.name
+        self.add_body(robot.body, name)
+        self.robot = robot
 
     def add_joints(self, body, body_joints, color_handle=False):
         idx = 0
@@ -227,6 +226,28 @@ class World():
                 pose = get_pose(body)
             print_fn(f"{line}\t|  Pose: {nice(pose)}")
         print_fn('----------------')
+
+    def get_wconf(self, world_index=None, attachments={}):
+        """ similar to to_lisdf in world_generator.py """
+        wconf = {}
+        bodies = copy.deepcopy(get_bodies())
+        bodies.sort()
+        for body in bodies:
+            name = self.body_to_name[body]
+            pose = get_pose(body)
+
+            joint_state = {}
+            for joint in get_movable_joints(body):
+                joint_name = get_joint_name(body, joint)
+                position = get_joint_position(body, joint)
+                joint_state[joint_name] = position
+
+            wconf[name] = {
+                'pose': pose,
+                'joint_state': joint_state,
+            }
+        wconf = {f"w{world_index}_{k}": v for k, v in wconf.items()}
+        return wconf
 
     def get_type(self, body):
         if body in self.body_types:

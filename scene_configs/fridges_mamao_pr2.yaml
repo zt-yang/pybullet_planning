@@ -1,0 +1,23 @@
+robot:
+  robot_name: pr2
+  joint_groups:
+    base: 'base-torso'
+    arms: ['left']
+  custom_limits:
+    x: [0, 6]
+    y: [0, 6]
+    torso: [0.1, 1.5]
+
+camera:
+  front: [[6.839936400030346, 2.9242544416021223, 1.3], [0.5, 0.5, -0.5, -0.5]]
+
+world_builder:
+  builder_name: test_fridges_tables_conjunctive
+  builder_args:
+    movable_category: ['food']
+    goal_predicates: ['holding', 'on', 'in']
+
+planner:
+  timeout: 300
+  diverse: false
+  dataset: false

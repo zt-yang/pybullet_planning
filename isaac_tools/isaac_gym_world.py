@@ -7,7 +7,7 @@ import os
 from os import listdir
 from os.path import join, isfile, isdir, abspath
 
-from utils import init_isaac_world
+from gym_utils import init_isaac_world
 
 ASSET_ROOT = join(pathlib.Path(__file__), '..', '..', '..', 'assets', 'models')
 
