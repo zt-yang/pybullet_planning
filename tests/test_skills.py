@@ -296,7 +296,7 @@ def test_handle_grasps(robot, category):
         if 'doorless' in category.lower():
             continue
 
-        # draw_text_label(body, id)
+        draw_text_label(body, id)
 
         ## color links corresponding to semantic labels
         body_joints = get_partnet_doors(path, body)
@@ -713,7 +713,7 @@ if __name__ == '__main__':
 
     ## --- grasps related ---
     robot = 'pr2' ## 'feg' | 'pr2'
-    # test_grasps(['Food'], robot)
+    # test_grasps(['Stapler'], robot)
     ## 'Bottle', 'Stapler', 'Camera', 'Glasses', 'Food', 'MiniFridge', 'KitchenCounter'
     # test_handle_grasps_counter()
     test_handle_grasps(robot, category='MiniFridge')

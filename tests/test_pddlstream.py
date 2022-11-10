@@ -45,7 +45,7 @@ def main(exp_name, verbose=True):
     problem = Problem(world)
 
     pddlstream_problem = pddlstream_from_dir(problem, exp_dir=exp_dir, collisions=not args.cfree,
-                                             teleport=args.teleport)
+                                             teleport=args.teleport, replace_pddl=True)
     world.summarize_all_objects()
 
     stream_info = world.robot.get_stream_info(partial=False, defer=False)

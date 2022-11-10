@@ -104,19 +104,21 @@ class World():
         self.add_body(body, name)
         self.robot = body
 
-    def add_joints(self, body, body_joints):
+    def add_joints(self, body, body_joints, color_handle=False):
         idx = 0
         for body_joint, joint_name in body_joints.items():
             self.add_body(body_joint, joint_name)
             handle_link = get_handle_link(body_joint)
-            set_color(body, color=LINK_COLORS[idx], link=handle_link)
+            color = LINK_COLORS[idx] if color_handle else None
+            set_color(body, color=color, link=handle_link)
             idx += 1
 
-    def add_spaces(self, body, body_links):
+    def add_spaces(self, body, body_links, color_link=False):
         idx = 0
         for body_link, link_name in body_links.items():
             self.add_body(body_link, link_name)
-            set_color(body, color=LINK_COLORS[idx], link=body_link[-1])
+            color = LINK_COLORS[idx] if color_link else None
+            set_color(body, color=color, link=body_link[-1])
             idx += 1
 
     def get_part_instance_name(self, id):
