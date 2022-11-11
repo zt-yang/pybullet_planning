@@ -109,32 +109,34 @@ def get_camera_spec():
     return camera, list(target)
 
 
-def get_output_dir(exp_name=None, world_name=None, root_path=None, out_path=None):
+def get_output_dir(exp_name=None, world_name=None, root_path=None, output_dir=None):
     """ if exp_name != None, will be generated into kitchen-world/test_cases/{exp_name}/scene.lisdf
         if world_name != None, will be generated into kitchen-world/assets/scenes/{world_name}.lisdf
         if out_path != None, will be generated into out_path
     """
     exp_path = EXP_PATH
     lisdf_path = LISDF_PATH
-    if root_path != None:
+    if root_path is not None:
         exp_path = join(root_path, exp_path)
         lisdf_path = join(root_path, lisdf_path)
 
     if exp_name is not None:
-        outpath = join(exp_path, exp_name)
-        if isdir(outpath):
-            shutil.rmtree(outpath)
-        os.mkdir(outpath)
-        outpath = join(exp_path, exp_name, "scene.lisdf")
-        world_name = exp_name
-    elif out_path is not None:
-        outpath = out_path
+        output_dir = join(exp_path, exp_name)
+        if isdir(output_dir):
+            shutil.rmtree(output_dir)
+        os.mkdir(output_dir)
+        output_dir = join(exp_path, exp_name, "scene.lisdf")
+
+    elif output_dir is not None:
+        output_dir = output_dir
+
     else:
-        outpath = join(lisdf_path, f"{world_name}.lisdf")
+        output_dir = join(lisdf_path, f"{world_name}.lisdf")
+    return output_dir
 
 
 def to_lisdf(world, output_dir, world_name=None, verbose=True, **kwargs):
-    outpath = output_dir  ## get_output_dir(**kwargs)
+    output_dir = get_output_dir(output_dir=output_dir, world_name=world_name, **kwargs)
     if world_name is None:
         world_name = basename(output_dir)
 
@@ -266,9 +268,9 @@ def to_lisdf(world, output_dir, world_name=None, verbose=True, **kwargs):
         state_sdf=state_sdf, camera_sdf=camera_sdf
     )
 
-    with open(outpath, 'w') as f:
+    with open(output_dir, 'w') as f:
         f.write(world_sdf)
-    if verbose: print(f'\n\nwritten {outpath}\n\n')
+    if verbose: print(f'\n\nwritten {output_dir}\n\n')
 
     return LISDF_PATH
 
@@ -329,19 +331,6 @@ def clean_domain_pddl(pddl_str, all_pred_names):
     pddl_str += '  )\n)'
     # print(pddl_str)
     return pddl_str
-
-
-def save_to_exp_folder(state, init, goal, out_path):
-    if isinstance(goal, tuple): return  ## debug problems instead of real problems
-
-    floorplan = state.world.floorplan
-    world_name = 'experiment'
-    out_path = out_path.replace('.mp4', '')
-
-    to_lisdf(state.world, init, floorplan=floorplan, world_name=world_name,
-             out_path=out_path+'_scene.lisdf')
-    generate_problem_pddl(state.world, init, goal, world_name=world_name,
-                          out_path=out_path+'_problem.pddl')
 
 
 def save_to_outputs_folder(outpath, exp_path, data_generation=False, multiple_solutions=False):

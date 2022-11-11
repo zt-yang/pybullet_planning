@@ -102,7 +102,7 @@ class Object(Index):
         self.handles = []
         self.text_handle = None
         self.text = ''
-        self.draw()
+        # self.draw()
 
         ## in order to move object with objects attached in it
         self.world = None
@@ -178,7 +178,7 @@ class Object(Index):
         if self.verbose:
             supporter_name = f"{self.__class__.__name__.capitalize()} {self.name}"
             print(f'entities.place_obj.placed {obj.name} on {supporter_name} at point {nice((x, y, z))}')
-        self.attach_obj(obj)
+        # self.attach_obj(obj)
         # set_renderer(True)
         return obj
 
