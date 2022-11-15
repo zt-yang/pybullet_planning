@@ -260,7 +260,7 @@ def create_drawer(**kwargs):
 
 #######################################################
 
-def load_experiment_objects(world, w=.5, h=.9, wb=.07, hb=.1, mass=1, EXIST_PLATE=True,
+def load_experiment_objects(world, w=.5, h=.7, wb=.07, hb=.1, mass=1, EXIST_PLATE=True,
                             CABBAGE_ONLY=True, name='cabbage', color=(0, 1, 0, 1)):
 
     if not CABBAGE_ONLY:
@@ -342,16 +342,16 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
     if surfaces == None:
         surfaces = {
             'counter': {
-                'front_left_stove': [],  ## 'Kettle'
+                # 'front_left_stove': [],  ## 'Kettle'
                 'front_right_stove': ['BraiserBody'],  ## 'PotBody',
                 # 'back_left_stove': [],
                 # 'back_right_stove': [],
                 # 'range': [], ##
-                'hitman_tmp': ['Microwave'],  ##
-                'indigo_tmp': ['BraiserLid'],  ## 'MeatTurkeyLeg', 'Toaster'
+                # 'hitman_tmp': ['Microwave'],  ##
+                'indigo_tmp': [],  ## 'MeatTurkeyLeg', 'Toaster', 'BraiserLid'
             },
             'Fridge': {
-                'shelf_top': ['MilkBottle'],  ## 'Egg', 'Egg',
+                # 'shelf_top': ['MilkBottle'],  ## 'Egg', 'Egg',
                 # 'shelf_bottom': [  ## for recording many objects
                 #     'VeggieCabbage', ## 'MeatTurkeyLeg',
                 #     'VeggieArtichoke',
@@ -361,7 +361,7 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                 #     'VeggieGreenPepper',
                 # ]
                 # 'shelf_bottom': ['VeggieCabbage']  ## for kitchen demo
-                'shelf_bottom': []  ## 'VeggieCabbage' ## for HPN testing
+                # 'shelf_bottom': []  ## 'VeggieCabbage' ## for HPN testing
             },
             'Basin': {
                 'faucet_platform': ['Faucet']

@@ -365,6 +365,7 @@ def get_grasp_gen(problem, collisions=False, randomize=True):
         print('\n\n\n\npr2_primitives.get_grasp_gen | DEPRECATED, please use bullet_utils.get_grasp_gen')
         # TODO: max_grasps
         # TODO: return grasps one by one
+        print('problem.grasp_types', problem.grasp_types)
         grasps = []
         arm = 'left'
         # carry_conf = problem.robot.get_carry_conf('top')

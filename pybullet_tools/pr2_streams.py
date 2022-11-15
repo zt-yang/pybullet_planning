@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from pybullet_tools.bullet_utils import check_cfree_gripper
+from pybullet_tools.bullet_utils import check_cfree_gripper, multiply
 from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics
 from pybullet_tools.ikfast.utils import USE_CURRENT
 from pybullet_tools.pr2_primitives import Grasp, \

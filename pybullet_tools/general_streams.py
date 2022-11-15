@@ -7,7 +7,7 @@ import math
 
 import numpy as np
 
-from pybullet_tools.utils import invert, multiply, get_name, set_pose, get_link_pose, is_placement, \
+from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_link_pose, is_placement, \
     pairwise_collision, set_joint_positions, get_joint_positions, sample_placement, get_pose, waypoints_from_path, \
     unit_quat, plan_base_motion, plan_joint_motion, base_values_from_pose, pose_from_base_values, \
     uniform_pose_generator, sub_inverse_kinematics, add_fixed_constraint, remove_debug, remove_fixed_constraint, \
@@ -445,9 +445,14 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | P
 
 def get_grasp_list_gen(problem, collisions=True, num_samples=10, top_grasp_tolerance=None, # None | PI/4 | INF
                        randomize=True, visualize=False, RETAIN_ALL=False):
+    from pybullet_tools.pr2_primitives import get_grasp_gen as get_box_grasp_gen
     funk = get_grasp_gen(problem, collisions, top_grasp_tolerance, randomize, visualize, RETAIN_ALL)
+    funk2 = get_box_grasp_gen(problem, collisions)
 
     def gen(body):
+        ## use the original grasp generator for box
+        if len(get_all_links(body)) == 1:
+            return funk2(body)
         g = funk(body)
         grasps = []
         while len(grasps) < num_samples:

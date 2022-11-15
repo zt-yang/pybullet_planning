@@ -1013,9 +1013,23 @@ def fit_dimensions(body, body_pose=unit_pose()):
     return aabb, get_aabb_center(aabb), get_aabb_extent(aabb)
 
 
+def get_rotation_matrix(body):
+    import untangle
+    r = unit_pose()
+    if set(get_all_links(body)) == {0, -1}:
+        urdf_file = dirname(get_collision_data(body, 0)[0].filename.decode())
+        rpy = untangle.parse(join(urdf_file, 'mobility.urdf')).robot.joint.origin['rpy'].split(' ')
+        rpy = [eval(e) for e in rpy]
+        if equal(rpy, [1.57, 1.57, -1.57], epsilon=0.1):
+            r = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
+        # elif equal(rpy, [3.14, 3.14, -1.57], epsilon=0.1):
+        #     r = Pose(euler=Euler(math.pi, 0, -math.pi / 2))
+    return r
+
+
 def get_model_points(body, link=None, verbose=False):
-    if link == None:
-        body_pose = multiply(get_pose(body), Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2)))  ##
+    if link is None:
+        body_pose = multiply(get_pose(body), get_rotation_matrix(body))  ##
         links = get_links(body)
     else:
         body_pose = get_link_pose(body, link)  ##
@@ -1041,7 +1055,7 @@ def draw_points(body, link=None):
         gap = int(len(vertices)/num_vertices)
         vertices = vertices[::gap]
     for v in vertices:
-        handles.append(draw_point(v, size=0.02, color=RED))
+        handles.append(draw_point(v, size=0.2, color=RED))
     return handles
 
 
@@ -1083,7 +1097,7 @@ def draw_face_points(aabb, body_pose, dist=0.08):
     faces = apply_affine(body_pose, faces)
     handles = []
     for f in faces:
-        handles.append(draw_point(f, size=0.02, color=RED))
+        handles.extend(draw_point(f, size=0.02, color=RED))
     return handles
 
 
@@ -1098,31 +1112,32 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
     dist = grasp_length
     robot = state.robot
 
-    body_pose, aabb, handles = draw_fitted_box(body, link=link, verbose=verbose)
+    body_pose, aabb, handles = draw_fitted_box(body, link=link, verbose=verbose, draw_centroid=False)
     if link is None:
-        body_pose = get_pose(body)
+        body_pose = multiply(body_pose, invert(Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))))
     else: ## for handle grasps, use the original pose of handle_link
         body_pose = multiply(body_pose, invert(robot.tool_from_hand))
         if verbose:
             print(f'{title}hand_link = {link} | body_pose = multiply(body_pose, invert(robot.tool_from_hand)) = {nice(body_pose)}')
 
     instance_name = state.world.get_instance_name(body_name)
-    grasp_db_name = f'hand_grasps_{robot.__class__.__name__}.json'  ## 'hand_grasps.json'
-    found, db, db_file = find_grasp_in_db(grasp_db_name, instance_name,
-                                          LENGTH_VARIANTS=LENGTH_VARIANTS)
-    if found is not None:
-        if visualize:
-            bodies = []
-            for g in found:
-                bodies.append(robot.visualize_grasp(body_pose, g, verbose=verbose))
-            ## nice(get_cloned_se3_conf(robot, bodies[0]))[1] != nice(get_pose(body))[1] == nice(body_pose)[1]
-            # set_renderer(True)
-            set_camera_target_body(body)
-            # wait_unlocked()
-            for b in bodies:
-                remove_body(b)
-        remove_handles(handles)
-        return found
+    if instance_name is not None:
+        grasp_db_name = f'hand_grasps_{robot.__class__.__name__}.json'  ## 'hand_grasps.json'
+        found, db, db_file = find_grasp_in_db(grasp_db_name, instance_name,
+                                              LENGTH_VARIANTS=LENGTH_VARIANTS)
+        if found is not None:
+            if visualize:
+                bodies = []
+                for g in found:
+                    bodies.append(robot.visualize_grasp(body_pose, g, verbose=verbose))
+                ## nice(get_cloned_se3_conf(robot, bodies[0]))[1] != nice(get_pose(body))[1] == nice(body_pose)[1]
+                # set_renderer(True)
+                set_camera_target_body(body)
+                # wait_unlocked()
+                for b in bodies:
+                    remove_body(b)
+            remove_handles(handles)
+            return found
 
     obstacles = state.fixed
     if body not in obstacles:
@@ -1241,8 +1256,9 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
         print(title, 'no grasps found')
 
     ## lastly store the newly sampled grasps
-    add_grasp_in_db(db, db_file, instance_name, grasps, name=state.world.get_name(body_name),
-                    LENGTH_VARIANTS=LENGTH_VARIANTS)
+    if instance_name is not None:
+        add_grasp_in_db(db, db_file, instance_name, grasps, name=state.world.get_name(body_name),
+                        LENGTH_VARIANTS=LENGTH_VARIANTS)
     remove_handles(handles)
     # if len(grasps) > num_samples:
     #     random.shuffle(grasps)

@@ -6,7 +6,7 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
     link_from_name, get_link_subtree, get_joints, is_movable, multiply, invert, \
     set_joint_positions, set_pose, GREEN, dump_body, get_pose, remove_body, PoseSaver, \
     ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles, \
-    interpolate_poses, Pose, Euler, quat_from_euler, set_renderer, get_bodies
+    interpolate_poses, Pose, Euler, quat_from_euler, set_renderer, get_bodies, get_all_links
 
 from pybullet_tools.bullet_utils import equal, nice, get_gripper_direction, set_camera_target_body, Attachment, \
     BASE_LIMITS
@@ -114,8 +114,14 @@ class RobotAPI(Robot):
         return new_body_pose
 
     def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
-        body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
-        tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
+        if body is not None and len(get_all_links(body)) == 1:
+            from pybullet_tools.pr2_primitives import get_tool_from_root
+            tool_from_root = multiply(((0, 0.025, 0.025), unit_quat()),
+                                      self.tool_from_hand,
+                                      get_tool_from_root(self.body, arm))  ##
+        else:
+            body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
+            tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
         return multiply(body_pose, grasp, tool_from_root)
 
     def set_spawn_range(self, limits):
@@ -125,7 +131,7 @@ class RobotAPI(Robot):
 class PR2Robot(RobotAPI):
 
     arms = ['left']
-    grasp_types = ['top']
+    grasp_types = ['top', 'side']  ##
     joint_groups = ['left', 'right', 'base', 'base-torso']
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
     finger_link = 7  ## for detecting if a grasp is pointing upwards

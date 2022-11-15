@@ -58,6 +58,7 @@ class World(object):
         self.init = []
         self.init_del = []
         self.articulated_parts = {k: [] for k in ['door', 'drawer', 'knob', 'button']}
+        self.non_planning_objects = []
 
         ## for visualization
         self.handles = []
@@ -74,7 +75,8 @@ class World(object):
     def remove_redundant_bodies(self):
         with HideOutput():
             for b in get_bodies():
-                if b not in self.BODY_TO_OBJECT and b not in self.ROBOT_TO_OBJECT:
+                if b not in self.BODY_TO_OBJECT and b not in self.ROBOT_TO_OBJECT \
+                        and b not in self.non_planning_objects:
                     remove_body(b)
                     print('world.removed redundant body', b)
 
@@ -435,13 +437,14 @@ class World(object):
         print_fn('----------------')
 
     def remove_body_from_planning(self, body):
-        if body == None: return
+        if body is None: return
         category = self.BODY_TO_OBJECT[body].category
         obj = self.BODY_TO_OBJECT.pop(body)
         self.OBJECTS_BY_CATEGORY[category] = [
             o for o in self.OBJECTS_BY_CATEGORY[category] if not
             (o.body == obj.body and o.link == obj.link and o.joint == obj.joint)
         ]
+        self.non_planning_objects.append(body)
 
     def remove_body_attachment(self, body):
         obj = self.BODY_TO_OBJECT[body]
@@ -904,8 +907,9 @@ class State(object):
                  variables={}, grasp_types=['top']):
         self.world = world
         if len(objects) == 0:
+            # objects = [o for o in world.objects if isinstance(o, int)]
             objects = get_bodies()
-            objects.remove(self.robot)
+            objects.remove(world.robot)
         self.objects = list(objects)
 
         if len(attachments) == 0:
@@ -949,8 +953,9 @@ class State(object):
     @property
     def fixed(self):   ## or the robot will go through tables
         objs = [obj for obj in self.objects if obj not in self.movable]
-        if hasattr(self.world, 'BODY_TO_OBJECT'):
-            objs = [o for o in objs if self.world.BODY_TO_OBJECT[o].category != 'floor']
+        if hasattr(self.world, 'BODY_TO_OBJECT'):  ## some objects are not in planning
+            objs = [o for o in self.world.objects if \
+                    self.world.BODY_TO_OBJECT[o].category != 'floor']
         return objs
         # return [obj for obj in self.objects if isinstance(obj, Region) or isinstance(obj, Environment)]
     @property

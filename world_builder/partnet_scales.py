@@ -67,11 +67,21 @@ MODEL_SCALES = {
         'VeggieArtichoke': 0.014,
         'VeggieGreenPepper': 0.0005,
         'VeggieTomato': 0.008,
+    },
+    'Salter': {
+        '3934': 0.05,
+        '5861': 0.06,
+        '6335': 0.06,
+        '6493': 0.06,
+    },
+    'Plate': {
+        'SquarePlate': 0.02,
     }
 }
 MODEL_SCALES['MiniFridgeDoorless'] = MODEL_SCALES['MiniFridge']
 MODEL_SCALES.update({k.lower(): v for k, v in MODEL_SCALES.items()})
 MODEL_SCALES['Food'].update({k.lower(): v for k, v in MODEL_SCALES['Food'].items()})
+MODEL_SCALES['Plate'].update({k.lower(): v for k, v in MODEL_SCALES['Plate'].items()})
 
 MODEL_HEIGHTS = {
     'KitchenCounter': {
@@ -89,7 +99,7 @@ MODEL_HEIGHTS.update({k.lower(): v for k, v in MODEL_HEIGHTS.items()})
 OBJ_SCALES = {
     'OilBottle': 0.25, 'VinegarBottle': 0.25, 'Salter': 0.1, 'Knife': 0.1, 'Fork': 0.2,
     'Microwave': 0.7, 'Pan': 0.3, 'Pot': 0.3, 'Kettle': 0.3, 'Bottle': 0.25,
-    'Egg': 0.1, 'Veggie': 0.3, 'VeggieLeaf': 0.3, 'VeggieStem': 0.3,
+    'Egg': 0.03, 'Veggie': 0.3, 'VeggieLeaf': 0.3, 'VeggieStem': 0.3,
     'MilkBottle': 0.2, 'Toaster': 0.2, 'Bucket': 0.7, 'Cart': 1.1,
     'PotBody': 0.3, 'BraiserBody': 0.37, 'BraiserLid': 0.37, 'Faucet': 0.35,
     'VeggieCabbage': 0.005, 'MeatTurkeyLeg': 0.0007, 'VeggieTomato': 0.005,

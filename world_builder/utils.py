@@ -176,13 +176,14 @@ def get_sampled_file(SAMPLING, category, ids):
 
 
 def get_file_by_category(category, RANDOM_INSTANCE=False, SAMPLING=False):
-    ## correct the capitalization because Ubuntu cares about it
-    category = [c for c in listdir(join(ASSET_PATH, 'models')) if c.lower() == category.lower()][0]
+    file = None
 
+    ## correct the capitalization because Ubuntu cares about it
+    cats = [c for c in listdir(join(ASSET_PATH, 'models')) if c.lower() == category.lower()]
+    if len(cats) > 0:
+        category = cats[0]
     asset_root = join(ASSET_PATH, 'models', category)  ## ROOT_DIR
     if isdir(asset_root):
-        asset_root = join(ASSET_PATH, 'models', category)
-
         ids = [f for f in listdir(join(asset_root))
                if isdir(join(asset_root, f)) and not f.startswith('_')]
         files = [join(asset_root, f) for f in listdir(join(asset_root))
@@ -209,11 +210,26 @@ def get_file_by_category(category, RANDOM_INSTANCE=False, SAMPLING=False):
         elif category == 'counter':
             file = join(ASSET_PATH, 'models', 'counter', 'urdf', 'kitchen_part_right_gen_convex.urdf')
 
+    else:
+        parent = get_parent_category(category)
+        if parent is not None:
+            file = join(ASSET_PATH, 'models', parent, category, 'mobility.urdf')
+
         else:  ## bookshelf
             file = join(asset_root, 'model.sdf')
             if not isfile(file):
                 file = join(asset_root, f'{category}.sdf')
-        return file
+    return file
+
+
+def get_parent_category(category):
+    from world_builder.partnet_scales import MODEL_SCALES
+    for k, v in MODEL_SCALES.items():
+        for vv in v:
+            if vv == category:
+                for m in [k, k.capitalize(), k.lower()]:
+                    if isdir(join(ASSET_PATH, 'models', m)):
+                        return k
     return None
 
 
@@ -249,7 +265,7 @@ def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=
     """ ============= load body by category ============= """
     file = get_file_by_category(category, RANDOM_INSTANCE=RANDOM_INSTANCE, SAMPLING=SAMPLING)
     scale = get_scale_by_category(file=file, category=category, scale=scale)
-    if file != None:
+    if file is not None:
         if verbose: print(f"Loading ...... {abspath(file)}")
         scale = get_model_scale(file, l, w, h, scale, category)
         with HideOutput():
@@ -365,12 +381,16 @@ def get_instances(category):
     elif category in MODEL_HEIGHTS:
         instances = MODEL_HEIGHTS[category]['models']
         return {k: 1 for k in instances}
-    elif category.lower() in OBJ_SCALES:
-        scale = OBJ_SCALES[category.lower()]
-        category = [c for c in listdir(join(ASSET_PATH, 'models')) if c.lower() == category.lower()][0]
-        asset_root = join(ASSET_PATH, 'models', category)
-        indices = [f for f in listdir(join(asset_root)) if isdir(join(asset_root, f))]
-        return {k : scale for k in indices}
     else:
-        print(f'world_builder.utils.get_instances({category}) didnt find any models')
-        assert NotImplementedError()
+        parent = get_parent_category(category)
+        if parent is not None and parent in MODEL_SCALES:
+            return {(parent, k): v for k, v in MODEL_SCALES[parent].items() if k == category}
+        elif category.lower() in OBJ_SCALES:
+            scale = OBJ_SCALES[category.lower()]
+            category = [c for c in listdir(join(ASSET_PATH, 'models')) if c.lower() == category.lower()][0]
+            asset_root = join(ASSET_PATH, 'models', category)
+            indices = [f for f in listdir(join(asset_root)) if isdir(join(asset_root, f))]
+            return {k : scale for k in indices}
+        else:
+            print(f'world_builder.utils.get_instances({category}) didnt find any models')
+            assert NotImplementedError()

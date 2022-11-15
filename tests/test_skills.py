@@ -15,18 +15,18 @@ from config import ASSET_PATH
 
 from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, load_pybullet, load_model, \
     sample_aabb, AABB, set_pose, get_aabb, get_aabb_center, quat_from_euler, Euler, HideOutput, get_aabb_extent, \
-    set_camera_pose, wait_unlocked, disconnect, wait_if_gui, \
+    set_camera_pose, wait_unlocked, disconnect, wait_if_gui, create_box, \
     SEPARATOR, get_aabb, get_pose, approximate_as_prism, draw_aabb, multiply, unit_quat, remove_body, invert, \
     Pose, get_link_pose, get_joint_limits, WHITE, RGBA, set_all_color, RED, GREEN, set_renderer, clone_body, \
     add_text, joint_from_name, set_caching
-from pybullet_planning.pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, set_camera_target_body, \
+from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, set_camera_target_body, \
     draw_bounding_lines, fit_dimensions, draw_fitted_box, get_hand_grasps, get_partnet_doors, get_partnet_spaces, \
     open_joint, get_instance_name
-from pybullet_planning.pybullet_tools.pr2_agent import get_stream_info, post_process, move_cost_fn, \
+from pybullet_tools.pr2_agent import get_stream_info, post_process, move_cost_fn, \
     visualize_grasps_by_quat, visualize_grasps
-from pybullet_planning.pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, \
+from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, \
     get_stable_gen, get_stable_list_gen, get_handle_grasp_gen
-from pybullet_planning.pybullet_tools.flying_gripper_utils import se3_from_pose, \
+from pybullet_tools.flying_gripper_utils import se3_from_pose, \
     pose_from_se3, se3_ik, set_cloned_se3_conf, create_fe_gripper, set_se3_conf
 
 from world_builder.world import State
@@ -47,11 +47,14 @@ DEFAULT_TEST = 'kitchen' ## 'blocks_pick'
 def get_instances(category):
     instances = get_instances_helper(category)
     keys = list(instances.keys())
-    if not keys[0].isdigit():
+    if isinstance(keys[0], tuple):
+        instances = instances
+    elif not keys[0].isdigit():
         keys = list(set([k.lower() for k in keys]))
         instances = {k: instances[k] for k in keys}
     else:
-        keys = [k for k in keys if isdir(join(ASSET_PATH, 'models', category, k))]
+        if len(listdir(join(ASSET_PATH, 'models', category))) > 0:
+            keys = [k for k in keys if isdir(join(ASSET_PATH, 'models', category, k))]
         instances = {k: instances[k] for k in keys}
     return instances
 
@@ -166,14 +169,32 @@ def test_grasps(categories=[], robot='feg'):
     robot = world.robot
 
     problem = State(world, grasp_types=robot.grasp_types)  ## , 'side' , 'top'
+    tpt = math.pi/4 if 'Plate' not in categories else None
     funk = get_grasp_list_gen(problem, collisions=True, visualize=False,
-                              RETAIN_ALL=False, top_grasp_tolerance=math.pi/4)
+                              RETAIN_ALL=False, top_grasp_tolerance=tpt)
+
+    def test_grasp(body):
+        set_renderer(True)
+        body_pose = get_pose(body)  ## multiply(get_pose(body), Pose(euler=Euler(math.pi/2, 0, -math.pi/2)))
+        outputs = funk(body)
+        if isinstance(outputs, list):
+            print(f'grasps on body {body}:', outputs)
+        visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=True)
+        set_renderer(True)
+        set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
 
     i = -1
     for cat in categories:
+
+        if cat == 'box':
+            body = create_box(0.05, 0.05, 0.05, mass=0.2, color=GREEN)
+            set_pose(body, ((1, 1, 0.9), unit_pose()[1]))
+            test_grasp(body)
+            continue
+
         i += 1
         instances = get_instances(cat)
-        print(instances)
+        print('instances', instances)
         n = len(instances)
         locations = [(i, get_gap(cat) * n) for n in range(1, n+1)]
         j = -1
@@ -181,6 +202,8 @@ def test_grasps(categories=[], robot='feg'):
             # if id not in ['10849']:
             #     continue
             j += 1
+            if isinstance(id, tuple):
+                cat, id = id
             path, body, _ = load_model_instance(cat, id, scale=scale, location=locations[j])
         # for id, scale in TEST_MODELS[cat].items():
         #     j += 1
@@ -204,14 +227,7 @@ def test_grasps(categories=[], robot='feg'):
             # grasps = get_hand_grasps(problem, body)
 
             """ test grasps """
-            set_renderer(True)
-            body_pose = get_pose(body)  ## multiply(get_pose(body), Pose(euler=Euler(math.pi/2, 0, -math.pi/2)))
-            outputs = funk(body)
-            if isinstance(outputs, list):
-                print(f'grasps on body {body}:', outputs)
-            visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=True)
-            set_renderer(True)
-            set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
+            test_grasp(body)
 
             # wait_unlocked()
 
@@ -702,7 +718,7 @@ def test_vhacd():
 if __name__ == '__main__':
 
     ## --- MODELS  ---
-    # get_data(category='MiniFridge')
+    # get_data(category='Salter')
     # test_texture(category='CoffeeMachine', id='103127')
     # test_vhacd()
 
@@ -713,10 +729,10 @@ if __name__ == '__main__':
 
     ## --- grasps related ---
     robot = 'pr2' ## 'feg' | 'pr2'
-    # test_grasps(['Stapler'], robot)
-    ## 'Bottle', 'Stapler', 'Camera', 'Glasses', 'Food', 'MiniFridge', 'KitchenCounter'
+    test_grasps(['Plate'], robot)
+    ## 'box', 'Bottle', 'Stapler', 'Camera', 'Glasses', 'Food', 'MiniFridge', 'KitchenCounter'
     # test_handle_grasps_counter()
-    test_handle_grasps(robot, category='MiniFridge')
+    # test_handle_grasps(robot, category='MiniFridge')
     # test_handle_grasps(robot, category='MiniFridgeDoorless')
     # test_pick_place_counter(robot)
 

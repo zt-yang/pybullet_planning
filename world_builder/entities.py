@@ -85,6 +85,7 @@ class Object(Index):
             self.instance_name = get_instance_name(path)
         elif is_box_entity(body):
             self.is_box = True
+            self.instance_name = None
 
         self.body = body
         self.joint = joint

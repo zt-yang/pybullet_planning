@@ -80,7 +80,8 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
     stream_map = {
         'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c)),
         'sample-pose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, verbose=False)),  ##
-        'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False)), # TODO: collisions
+        'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False,
+                                                       top_grasp_tolerance=PI/4)), # TODO: collisions
         'inverse-reachability': from_gen_fn(
             get_ik_gen(p, collisions=c, teleport=t, ir_only=True, custom_limits=l,
                        learned=False, verbose=False, visualize=False)),
