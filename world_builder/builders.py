@@ -547,3 +547,12 @@ def sample_kitchen_mini_goal(world):
         # [('In', cabbage, fridge)],
     ]
     return random.choice(goal_candidates)
+
+
+##########################################################################################
+
+
+def test_kitchen_clean(world, **kwargs):
+    sample_kitchen_scene(world, **kwargs)
+    goal = sample_kitchen_mini_goal(world)
+    return goal
