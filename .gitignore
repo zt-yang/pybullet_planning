@@ -13,6 +13,8 @@ temp
 **/*.~un
 build/
 
+pybullet_tools/vhacd_utils.py
+
 tests/visualizations/
 tests/temp/
 tests/statistics/

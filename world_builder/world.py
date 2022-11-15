@@ -739,6 +739,20 @@ class World(object):
             init += [('Graspable', body)]
             pose = get_body_pose(body)
 
+            if body in self.ATTACHMENTS:
+                attachment = self.ATTACHMENTS[body]
+                if not isinstance(attachment, ObjAttachment):
+                    grasp = get_grasp(body, attachment)
+                    arm = 'hand'
+                    if get_link_name(robot, attachment.parent_link).startswith('r_'):
+                        arm = 'left'
+                    if get_link_name(robot, attachment.parent_link).startswith('l_'):
+                        arm = 'left'
+                    init.remove(('HandEmpty', arm))
+                    init += [('Grasp', body, grasp), ('AtGrasp', arm, body, grasp)]
+            else:
+                init += [('Pose', body, pose), ('AtPose', body, pose)]
+
             ## potential places to put on
             for surface in cat_to_bodies('supporter') + cat_to_bodies('surface'):
                 init += [('Stackable', body, surface)]
@@ -762,20 +776,7 @@ class World(object):
         ## ---- cart poses / grasps ------------------
         for body in cat_to_bodies('steerable'):
             pose = get_body_pose(body)
-
-            if body in self.ATTACHMENTS:
-                attachment = self.ATTACHMENTS[body]
-                if not isinstance(attachment, ObjAttachment):
-                    grasp = get_grasp(body, attachment)
-                    arm = 'hand'
-                    if get_link_name(robot, attachment.parent_link).startswith('r_'):
-                        arm = 'left'
-                    if get_link_name(robot, attachment.parent_link).startswith('l_'):
-                        arm = 'left'
-                    init.remove(('HandEmpty', arm))
-                    init += [('Grasp', body, grasp), ('AtGrasp', arm, body, grasp)]
-            else:
-                init += [('Pose', body, pose), ('AtPose', body, pose)]
+            init += [('Pose', body, pose), ('AtPose', body, pose)]
 
             obj = BODY_TO_OBJECT[body]
             for marker in obj.grasp_markers:
@@ -847,15 +848,16 @@ class World(object):
             config['obs_camera_pose'] = (t, r)
         return config
 
-    def save_problem_pddl(self, goal, output_dir, world_name='world_name', **kwargs):
+    def save_problem_pddl(self, goal, output_dir, world_name='world_name', init=None, **kwargs):
         from world_builder.world_generator import generate_problem_pddl
-        init = self.get_facts(**kwargs)
+        if init is None:
+            init = self.get_facts(**kwargs)
         generate_problem_pddl(self, init, goal, world_name=world_name,
                               out_path=join(output_dir, 'problem.pddl'))
 
-    def save_lisdf(self, output_dir, verbose=False):
+    def save_lisdf(self, output_dir, verbose=False, **kwargs):
         from world_builder.world_generator import to_lisdf
-        to_lisdf(self, join(output_dir, 'scene.lisdf'), verbose=verbose)
+        to_lisdf(self, join(output_dir, 'scene.lisdf'), verbose=verbose, **kwargs)
 
     def save_planning_config(self, output_dir, template_dir=None):
         from world_builder.world_generator import get_config_from_template
@@ -872,14 +874,14 @@ class World(object):
         with open(join(output_dir, 'planning_config.json'), 'w') as f:
             json.dump(config, f, indent=4)
 
-    def save_test_case(self, goal, output_dir, template_dir=None,
+    def save_test_case(self, goal, output_dir, template_dir=None, init=None,
                        save_rgb=False, save_depth=False, **kwargs):
         if not isdir(output_dir):
             os.makedirs(output_dir, exist_ok=True)
         world_name = basename(output_dir)
 
         self.save_lisdf(output_dir, world_name=world_name, **kwargs)
-        self.save_problem_pddl(goal, output_dir, world_name=world_name)
+        self.save_problem_pddl(goal, output_dir, world_name=world_name, init=init)
         self.save_planning_config(output_dir, template_dir=template_dir)
 
         if save_rgb:

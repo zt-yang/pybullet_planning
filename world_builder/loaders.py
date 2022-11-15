@@ -424,6 +424,9 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
 
         if cat in regions:
 
+            if verbose:
+                print('for region', cat)
+
             if DEBUG:
                 world.open_doors_drawers(body, ADD_JOINT=False)
                 set_camera_target_body(body, dx=0.05, dy=0.05, dz=0.5)
@@ -441,13 +444,19 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                     surface = Surface(body, link=link)
                     world.add_object(surface)
                     for o in surfaces[cat][link_name]:
-                        surface.place_new_obj(o)
+                        obj = surface.place_new_obj(o)
+
+                        if verbose:
+                            print(f'adding object {obj.name} to surface {surface.lisdf_name}')
 
                 if cat in spaces and link_name in spaces[cat]:
                     space = Space(body, link=link)
                     world.add_object(space)
                     for o in spaces[cat][link_name]:
-                        space.place_new_obj(o) ##, verbose=cat.lower() == 'dishwasher'
+                        obj = space.place_new_obj(o) ##, verbose=cat.lower() == 'dishwasher'
+
+                        if verbose:
+                            print(f'adding object {obj.name} to space {space.lisdf_name}')
             if DEBUG:
                 world.close_doors_drawers(body)
 
