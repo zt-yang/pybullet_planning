@@ -443,10 +443,9 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | P
     return fn
 
 
-def get_grasp_list_gen(problem, collisions=True, num_samples=10, top_grasp_tolerance=None, # None | PI/4 | INF
-                       randomize=True, visualize=False, RETAIN_ALL=False):
+def get_grasp_list_gen(problem, collisions=True, num_samples=10, **kwargs):
     from pybullet_tools.pr2_primitives import get_grasp_gen as get_box_grasp_gen
-    funk = get_grasp_gen(problem, collisions, top_grasp_tolerance, randomize, visualize, RETAIN_ALL)
+    funk = get_grasp_gen(problem, collisions, **kwargs)
     funk2 = get_box_grasp_gen(problem, collisions)
 
     def gen(body):
@@ -492,6 +491,22 @@ def get_handle_width(body_joint):
     body, joint = body_joint
     j = ArticulatedObjectPart(body, joint)
     return j.handle_width
+
+
+def get_handle_grasp_list_gen(problem, collisions=True, num_samples=10, **kwargs):
+    funk = get_handle_grasp_gen(problem, collisions, **kwargs)
+
+    def gen(body):
+        g = funk(body)
+        grasps = []
+        while len(grasps) < num_samples:
+            try:
+                grasp = next(g)
+                grasps.append(grasp)
+            except StopIteration:
+                break
+        return grasps
+    return gen
 
 
 def get_handle_grasp_gen(problem, collisions=False, max_samples=2,

@@ -1996,6 +1996,8 @@ JOINT_TYPES = {
 }
 
 def get_num_joints(body):
+    if isinstance(body, tuple):
+        print('utils.get_num_joints()')
     return p.getNumJoints(body, physicsClientId=CLIENT)
 
 def get_joints(body):

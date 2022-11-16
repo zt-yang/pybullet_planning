@@ -10,8 +10,7 @@ import json
 
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_pull_drawer_handle_motion_gen
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_turn_knob_handle_motion_gen
-from pybullet_tools.pr2_streams import get_stable_gen, Position, get_handle_grasp_gen, \
-    get_pose_in_space_test, \
+from pybullet_tools.pr2_streams import get_stable_gen, Position, get_pose_in_space_test, \
     get_marker_grasp_gen, get_bconf_in_region_test, get_pull_door_handle_motion_gen, \
     get_bconf_in_region_gen, get_pose_in_region_gen, get_base_motion_gen, \
     get_marker_pose_gen, get_pull_marker_to_pose_motion_gen, get_pull_marker_to_bconf_motion_gen,  \
@@ -23,7 +22,8 @@ from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custo
     get_ik_ir_gen, get_motion_gen, get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
     move_cost_fn, Attach, Detach, Clean, Cook, control_commands, \
     get_gripper_joints, GripperCommand, apply_commands, State, Trajectory, Simultaneous, create_trajectory
-from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen
+from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, get_handle_grasp_list_gen, \
+    get_handle_grasp_gen
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
     set_camera_target_robot, nice, BASE_LIMITS, get_file_short_name, get_root_links, collided
 from pybullet_tools.pr2_problems import create_pr2
@@ -108,10 +108,10 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
 
         'plan-base-pull-door-handle': from_fn(
             get_pull_door_handle_motion_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l)),
-        'plan-base-pull-drawer-handle': from_fn(  ## get_pull_drawer_handle_motion_gen
-            get_pull_door_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
-        'plan-arm-turn-knob-handle': from_fn(  ## get_turn_knob_handle_motion_gen
-            get_pull_door_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
+        # 'plan-base-pull-drawer-handle': from_fn(  ## get_pull_drawer_handle_motion_gen
+        #     get_pull_door_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
+        # 'plan-arm-turn-knob-handle': from_fn(  ## get_turn_knob_handle_motion_gen
+        #     get_pull_door_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
 
         'sample-marker-grasp': from_list_fn(get_marker_grasp_gen(p, collisions=c)),
         'inverse-kinematics-grasp-marker': from_gen_fn(
@@ -852,14 +852,14 @@ def test_marker_pull_grasps(state, marker, visualize=False):
     return grasps
 
 
-def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=False, verbose=False):
+def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=True, verbose=False):
     if isinstance(name, str):
         body_joint = state.world.name_to_body(name)
     else: ##if isinstance(name, Object):
         body_joint = name
         name = state.world.BODY_TO_OBJECT[body_joint].shorter_name
 
-    funk = get_handle_grasp_gen(state, visualize=visualize, verbose=verbose)
+    funk = get_handle_grasp_list_gen(state, num_samples=24, visualize=visualize, verbose=verbose)
     outputs = funk(body_joint)
     if visualize:
         name_to_object = state.world.name_to_object
@@ -867,8 +867,9 @@ def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=False, v
         visualize_grasps_by_quat(state, outputs, body_pose, verbose=verbose)
     print(f'test_handle_grasps ({len(outputs)}): {outputs}')
     arm = state.robot.arms[0]
-    goals = [("AtHandleGrasp", arm, body_joint, outputs[0][0])]
+    goals = [("AtHandleGrasp", arm, body_joint, outputs[1][0])]
     return goals
+
 
 def test_grasps(state, name='cabbage', visualize=True):
     title = 'pr2_agent.test_grasps | '

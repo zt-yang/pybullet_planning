@@ -374,7 +374,7 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     os.mkdir(outpath)
 
     ## --- scene in scene.lisdf
-    to_lisdf(state.world, pddlstream_problem.init, floorplan=floorplan, exp_name=exp_name,
+    to_lisdf(state.world, pddlstream_problem.init, exp_name=exp_name,
              world_name=world_name, root_path=root_path)
     state.world.outpath = outpath
 

@@ -22,7 +22,7 @@ from pybullet_tools.general_streams import get_stable_list_gen, get_grasp_list_g
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
     is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
     set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR, CAMERA_MATRIX, visualize_camera_image, equal, \
-    draw_pose2d_path, draw_pose3d_path, sort_body_parts, get_root_links, colorize_world
+    draw_pose2d_path, draw_pose3d_path, sort_body_parts, get_root_links, colorize_world, colorize_link
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
     Attach, Detach, Clean, Cook, control_commands, link_from_name, \
     get_gripper_joints, GripperCommand, apply_commands, State, Command
@@ -58,6 +58,7 @@ class World(object):
         self.init = []
         self.init_del = []
         self.articulated_parts = {k: [] for k in ['door', 'drawer', 'knob', 'button']}
+        self.REMOVED_BODY_TO_OBJECT = {}
         self.non_planning_objects = []
 
         ## for visualization
@@ -85,6 +86,10 @@ class World(object):
 
     def add_handles(self, handles):
         self.handles.extend(handles)
+
+    def make_link_transparent(self, name, transparency=0.5):
+        obj = self.name_to_object(name)
+        colorize_link(obj.body, obj.link, transparency=transparency)
 
     def make_doors_transparent(self, transparency=0.5):
         colorize_world(self.fixed, transparency)
@@ -126,9 +131,16 @@ class World(object):
         objs = [o for o in objs if o not in self.floors and o not in self.movable]
         return objs
 
+    @property
+    def ignored_pairs(self):
+        found = []
+        if 'kitchen' in self.floorplan:
+            a = self.cat_to_bodies('counter')[0]
+            b = self.cat_to_bodies('oven')[0]
+            found.extend([(a, b), (b, a)])
+        return found
+
     def get_name(self, body):
-        if isinstance(body, list):
-            print('world.get_name', body)
         if body in self.BODY_TO_OBJECT:
             return self.BODY_TO_OBJECT[body].name
         return None
@@ -201,8 +213,8 @@ class World(object):
         OBJECTS_BY_CATEGORY[category].append(object)
 
         ## -------------- different types of object --------------
-        ## object parts: doors, drawers
-        if joint != None:
+        ## object parts: doors, drawers, knobs
+        if joint is not None:
             BODY_TO_OBJECT[(body, joint)] = object
             object.name = f"{BODY_TO_OBJECT[body].name}{LINK_STR}{object.name}"
             from lisdf_tools.lisdf_loader import PART_INSTANCE_NAME
@@ -212,7 +224,7 @@ class World(object):
             self.instance_names[(body, object.handle_link)] = n
 
         ## object parts: surface, space
-        elif link != None:
+        elif link is not None:
             BODY_TO_OBJECT[(body, None, link)] = object
             object.name = f"{BODY_TO_OBJECT[body].name}{LINK_STR}{object.name}"
             if category == 'surface':
@@ -263,7 +275,7 @@ class World(object):
         robot.world = self
 
     def add_joint_object(self, body, joint, category=None):
-        if category == None:
+        if category is None:
             category, state = check_joint_state(body, joint)
         joints = {k: [] for k in ['door', 'drawer', 'knob']}
         if 'door' in category:
@@ -371,11 +383,12 @@ class World(object):
 
         BODY_TO_OBJECT = self.BODY_TO_OBJECT
         ROBOT_TO_OBJECT = self.ROBOT_TO_OBJECT
+        REMOVED_BODY_TO_OBJECT = self.REMOVED_BODY_TO_OBJECT
 
         # bodies = copy.deepcopy(get_bodies())
         # bodies.sort()
         # print('----------------')
-        # print(f'PART I: pybullet bodies')
+        # print(f'PART I: all pybullet bodies')
         # print('----------------')
         # for body in bodies:
         #     if body in BODY_TO_OBJECT:
@@ -407,9 +420,14 @@ class World(object):
         print_fn('----------------')
         print_fn(f'PART I: world objects | {self.summarize_all_types()} | obstacles({len(self.fixed)}) = {self.fixed}')
         print_fn('----------------')
-        for body in [self.robot] + sort_body_parts(BODY_TO_OBJECT.keys()):
+        bodies = [self.robot] + sort_body_parts(BODY_TO_OBJECT.keys())
+        bodies += sort_body_parts(REMOVED_BODY_TO_OBJECT.keys())
+        print_not = False
+        for body in bodies:
             if body in ROBOT_TO_OBJECT:
                 object = ROBOT_TO_OBJECT[body]
+            elif body in REMOVED_BODY_TO_OBJECT:
+                object = REMOVED_BODY_TO_OBJECT[body]
             else:
                 object = BODY_TO_OBJECT[body]
 
@@ -433,7 +451,15 @@ class World(object):
                 pose = get_link_pose(body, link)
             else:
                 pose = get_pose(body)
-            print_fn(f"{line}\t|  Pose: {nice(pose)}")
+            line += f"\t|  Pose: {nice(pose)}"
+
+            if body in REMOVED_BODY_TO_OBJECT:
+                if not print_not:
+                    print_fn('----------------')
+                    print_not = True
+                line += f"\t (excluded from planning)"
+
+            print_fn(line)
         print_fn('----------------')
 
     def remove_body_from_planning(self, body):
@@ -444,6 +470,7 @@ class World(object):
             o for o in self.OBJECTS_BY_CATEGORY[category] if not
             (o.body == obj.body and o.link == obj.link and o.joint == obj.joint)
         ]
+        self.REMOVED_BODY_TO_OBJECT[body] = obj
         self.non_planning_objects.append(body)
 
     def remove_body_attachment(self, body):
@@ -651,23 +678,22 @@ class World(object):
         if OAO: ## one and only
             self.remove_body_from_planning(self.name_to_body(surface))
 
-    def put_in_space(self, obj, space='hitman_drawer_top', xyzyaw=None, learned=False):
-        left_drawer = self.name_to_object(space)
+    def put_in_space(self, obj, space='hitman_drawer_top', xyzyaw=None, learned=True):
+        container = self.name_to_object(space)
         if learned:
             ## one possible pose put into hitman_drawer_top
-            pose = {'hitman_drawer_top':
-                        ((1.0113178491592407, 7.475691795349121, 0.7000163197517395),
-                        (0, 0, 0.3178013671332143, 0.9481573134497528))
-                    }[space]
+            pose = {'hitman_drawer_top': ((1, 7.5, 0.7), (0, 0, 0.3, 0.95)),
+                    'indigo_drawer_top': ((0.75, 8.9, 0.7), (0, 0, 0.3, 0.95))}[space]
             xyzyaw = list(pose[0])
             xyzyaw.append(euler_from_quat(pose[1])[-1])
             ## xyzyaw = (1.093, 7.088, 0.696, 2.8)
-        left_drawer.place_obj(obj, xyzyaw, max_trial=1)
+        container.place_obj(obj, xyzyaw, max_trial=1)
+        container.attach_obj(obj)
 
     def refine_marker_obstacles(self, marker, obstacles):
         ## for steerables
         parent = self.BODY_TO_OBJECT[marker].grasp_parent
-        if parent != None and parent in obstacles:
+        if parent is not None and parent in obstacles:
             obstacles.remove(parent)
         return obstacles
 
@@ -742,17 +768,16 @@ class World(object):
             init += [('Graspable', body)]
             pose = get_body_pose(body)
 
-            if body in self.ATTACHMENTS:
+            if body in self.ATTACHMENTS and not isinstance(self.ATTACHMENTS[body], ObjAttachment):
                 attachment = self.ATTACHMENTS[body]
-                if not isinstance(attachment, ObjAttachment):
-                    grasp = get_grasp(body, attachment)
-                    arm = 'hand'
-                    if get_link_name(robot, attachment.parent_link).startswith('r_'):
-                        arm = 'left'
-                    if get_link_name(robot, attachment.parent_link).startswith('l_'):
-                        arm = 'left'
-                    init.remove(('HandEmpty', arm))
-                    init += [('Grasp', body, grasp), ('AtGrasp', arm, body, grasp)]
+                grasp = get_grasp(body, attachment)
+                arm = 'hand'
+                if get_link_name(robot, attachment.parent_link).startswith('r_'):
+                    arm = 'left'
+                if get_link_name(robot, attachment.parent_link).startswith('l_'):
+                    arm = 'left'
+                init.remove(('HandEmpty', arm))
+                init += [('Grasp', body, grasp), ('AtGrasp', arm, body, grasp)]
             else:
                 init += [('Pose', body, pose), ('AtPose', body, pose)]
 
@@ -954,7 +979,7 @@ class State(object):
     def fixed(self):   ## or the robot will go through tables
         objs = [obj for obj in self.objects if obj not in self.movable]
         if hasattr(self.world, 'BODY_TO_OBJECT'):  ## some objects are not in planning
-            objs = [o for o in self.world.objects if \
+            objs = [o for o in self.world.objects if o in objs and \
                     self.world.BODY_TO_OBJECT[o].category != 'floor']
         return objs
         # return [obj for obj in self.objects if isinstance(obj, Region) or isinstance(obj, Environment)]
@@ -966,6 +991,9 @@ class State(object):
     @property
     def obstacles(self):
         return {obj for obj in self.objects if obj not in self.regions} - set(self.attachments)
+    @property
+    def ignored_pairs(self):
+        return self.world.ignored_pairs
     def restore(self): # TODO: could extend WorldSaver
         self.saver.restore()
     def scramble(self):

@@ -268,9 +268,11 @@ def load_experiment_objects(world, w=.5, h=.7, wb=.07, hb=.1, mass=1, EXIST_PLAT
             Object(create_box(w, w, h, color=(.75, .75, .75, 1)), category='supporter', name='table'),
             Pose(point=Point(x=4, y=6, z=h / 2)))
 
-    cabbage = world.add_object(
-        Moveable(create_box(wb, wb, hb, mass=mass, color=color), name=name),
-        Pose(point=Point(x=4, y=6, z=h + .1/2)))
+    # cabbage = world.add_object(
+    #     Moveable(create_box(wb, wb, hb, mass=mass, color=color), name=name),
+    #     Pose(point=Point(x=4, y=6, z=h + .1/2)))
+    cabbage = world.add_object(Moveable(load_asset('VeggieCabbage', x=2, y=0, yaw=0), name=name))
+    cabbage.set_pose(Pose(point=Point(x=3, y=6, z=0.9 + .1/2)))
 
     if not CABBAGE_ONLY:
         sink = world.add_object(
@@ -327,19 +329,19 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                     asset_path=ASSET_PATH, RANDOM_INSTANCE=False, verbose=True):
     world.floorplan = plan_name
 
-    if spaces == None:
+    if spaces is None:
         spaces = {
             'counter': {
                 # 'sektion': [], ## 'OilBottle', 'VinegarBottle'
                 # 'dagger': ['Salter'],
-                # 'hitman_drawer_top': [],  ## 'Pan'
-                # 'hitman_drawer_bottom': ['Pan'],
-                # 'indigo_drawer_top': ['Fork'],  ## 'Fork', 'Knife'
+                'hitman_drawer_top': [],  ## 'Pan'
+                # 'hitman_drawer_bottom': [],
+                'indigo_drawer_top': [],  ## 'Fork', 'Knife'
                 # 'indigo_drawer_bottom': ['Fork', 'Knife'],
                 # 'indigo_tmp': ['Pot']
             },
         }
-    if surfaces == None:
+    if surfaces is None:
         surfaces = {
             'counter': {
                 # 'front_left_stove': [],  ## 'Kettle'
@@ -348,7 +350,7 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                 # 'back_right_stove': [],
                 # 'range': [], ##
                 # 'hitman_tmp': ['Microwave'],  ##
-                'indigo_tmp': [],  ## 'MeatTurkeyLeg', 'Toaster', 'BraiserLid'
+                'indigo_tmp': ['BraiserLid'],  ## 'MeatTurkeyLeg', 'Toaster',
             },
             'Fridge': {
                 # 'shelf_top': ['MilkBottle'],  ## 'Egg', 'Egg',
@@ -424,9 +426,6 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
 
         if cat in regions:
 
-            if verbose:
-                print('for region', cat)
-
             if DEBUG:
                 world.open_doors_drawers(body, ADD_JOINT=False)
                 set_camera_target_body(body, dx=0.05, dy=0.05, dz=0.5)
@@ -465,6 +464,85 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
         world.remove_body_from_planning(world.name_to_body(surface))
     set_renderer(True)
     return floor
+
+####################################################
+
+
+def load_five_table_scene(world, w=.5, h=.9, mass=1):
+    custom_limits = ((-4, -4), (4, 4))
+
+    fridge = world.add_box(
+        Supporter(create_box(w, w, h, color=(.75, .75, .75, 1)), name='fridge'),
+        Pose(point=Point(2, 0, h / 2)))
+
+    # egg = world.add_box(
+    #     Moveable(create_box(.07, .07, .1, mass=mass, color=(1, 1, 0, 1)), category='egg', name='egg'),
+    #     Pose(point=Point(2, -0.18, h + .1 / 2)))
+    #
+    # cabbage = world.add_box(
+    #     Moveable(create_box(.07, .07, .1, mass=mass, color=(0, 1, 0, 1)), category='veggie', name='cabbage'),
+    #     Pose(point=Point(2, 0, h + .1 / 2)))
+    #
+    # salter = world.add_box(
+    #     Moveable(create_box(.07, .07, .1, mass=mass, color=(0, 0, 0, 1)), category='salter', name='salter'),
+    #     Pose(point=Point(2, 0.18, h + .1 / 2)))
+    #
+    # plate = world.add_box(
+    #     Moveable(create_box(.07, .07, .1, mass=mass, color=(0.4, 0.4, 0.4, 1)), category='plate', name='plate'),
+    #     Pose(point=Point(2 + 0.18, 0, h + .1 / 2)))
+
+    sink = world.add_box(
+        Supporter(create_box(w, w, h, color=(.25, .25, .75, 1)), category='sink', name='sink'),
+        Pose(point=Point(0, 2, h / 2)))
+
+    stove = world.add_box(
+        Supporter(create_box(w, w, h, color=(.75, .25, .25, 1)), category='stove', name='stove'),
+        Pose(point=Point(0, -2, h / 2)))
+
+    counter = world.add_box(
+        Supporter(create_box(w, w, h, color=(.25, .75, .25, 1)), category='counter', name='counter'),
+        Pose(point=Point(-2, 2, h / 2)))
+
+    table = world.add_box(
+        Supporter(create_box(w, w, h, color=(.75, .75, .25, 1)), category='table', name='table'),
+        Pose(point=Point(-2, -2, h / 2)))
+
+    egg = world.add_object(
+        Moveable(load_asset('Egg', x=2, y=-0.18, yaw=0, floor=fridge),
+                 category='egg', name='egg'))
+    cabbage = world.add_object(
+        Moveable(load_asset('VeggieCabbage', x=2, y=0, yaw=0, floor=fridge),
+                 category='veggie', name='cabbage'))
+    salter = world.add_object(
+        Moveable(load_asset('Salter', x=2, y=0.18, yaw=0, floor=fridge),
+                 category='salter', name='salter'))
+    plate = world.add_object(
+        Moveable(load_asset('Plate', x=0, y=2, yaw=0, floor=sink),
+                 category='plate', name='plate'))
+
+    robot = create_pr2_robot(world, custom_limits=custom_limits)
+    return cabbage
+
+
+def load_full_kitchen(world, name='eggblock', color=TAN, **kwargs):
+    world.set_skip_joints()
+
+    floor = load_floor_plan(world, plan_name='kitchen_v2.svg', **kwargs)  ## studio0, studio0
+    cabbage = load_experiment_objects(world, CABBAGE_ONLY=True, name=name, color=color)
+    counter = world.name_to_object('indigo_tmp')
+    counter.place_obj(cabbage)
+    (_, y, z), _ = cabbage.get_pose()
+    cabbage.set_pose(Pose(point=Point(x=0.85, y=y, z=z)))
+    world.remove_object(floor)
+
+    custom_limits = ((0, 4), (4, 13))
+    robot = create_pr2_robot(world, base_q=(1.79, 6, PI / 2 + PI / 2),
+                             custom_limits=custom_limits, USE_TORSO=True)
+
+    lid = world.name_to_body('braiserlid')
+    world.put_on_surface(lid, 'braiserbody')
+    return cabbage
+
 
 def load_rooms(world, DOOR_GAP = 1.9):
 
@@ -520,6 +598,7 @@ def load_cart(world, cart_x=-0.25, cart_y=0, marker_name='marker'):
     ## -------------------------------------------------
 
     return cart, marker
+
 
 def load_cart_regions(world, w=.5, h=.9, mass=1):
     """ used in problem=test_cart_obstacle and test_cart_obstacle_wconf """

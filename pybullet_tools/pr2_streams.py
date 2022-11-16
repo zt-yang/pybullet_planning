@@ -498,7 +498,7 @@ def bconf_to_pose(bq):
         z = 0
     elif len(bq.values) == 4:
         x, y, z, yaw = bq.values
-    return Pose(point=Point(x,y,z), euler=Euler(yaw=yaw))
+    return Pose(point=Point(x, y, z), euler=Euler(yaw=yaw))
 
 
 def pose_to_bconf(rpose, robot):
@@ -533,6 +533,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
     saver = BodySaver(robot)
     world_saver = WorldSaver()
     obstacles = problem.fixed if collisions else []
+    ignored_pairs = problem.ignored_pairs if collisions else []
 
     def fn(a, o, pst1, pst2, g, bq1, aq1, fluents=[]):
         if pst1.value == pst2.value:
@@ -600,7 +601,8 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
                 if len(bpath) > 1:
                     bpath[-1].assign()
                 break
-            elif collisions and collided(o[0], other_obstacles, articulated=False, world=world, verbose=True):
+            elif collisions and collided(o[0], other_obstacles, articulated=False,
+                                         world=world, verbose=True, ignored_pairs=ignored_pairs):
                 # import ipdb; ipdb.set_trace()
                 if len(bpath) > 1:
                     bpath[-1].assign()

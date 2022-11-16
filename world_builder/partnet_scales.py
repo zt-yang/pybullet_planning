@@ -75,7 +75,7 @@ MODEL_SCALES = {
         '6493': 0.06,
     },
     'Plate': {
-        'SquarePlate': 0.02,
+        'SquarePlate': 0.025,
     }
 }
 MODEL_SCALES['MiniFridgeDoorless'] = MODEL_SCALES['MiniFridge']

@@ -316,7 +316,7 @@ def articulated_collisions(obj, obstacles, **kwargs): # TODO: articulated_collis
 
 
 def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=False, visualize=False, min_num_pts=0,
-             use_aabb=True, **kwargs):
+             use_aabb=True, ignored_pairs=[], **kwargs):
     prefix = 'bullet_utils.collided '
     if len(tag) > 0: prefix += f'( {tag} )'
 
@@ -330,7 +330,7 @@ def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=Fals
     ## first find the bodies that collides with obj
     bodies = []
     for b in obstacles:
-        if pairwise_collision(obj, b):
+        if pairwise_collision(obj, b) and (obj, b) not in ignored_pairs:
             if verbose:
                 print(prefix, f'obj {obj} collides with {b}')
             result = True
@@ -792,7 +792,15 @@ def check_joint_state(body, joint, verbose=False):
     state = None
     if min_limit < max_limit:
 
-        if joint_type == 'revolute' and min_limit == 0:
+        ## knob on faucet, oven
+        if joint_type == 'revolute' and (min_limit + max_limit == 0 or 'knob' in name):
+            category = 'knob'
+            if pose == min_limit:
+                state = 'knob TURNED OFF'
+            elif pose == max_limit:
+                state = 'knob TURNED ON'
+
+        elif joint_type == 'revolute' and min_limit == 0:
             category = 'door-max'
             if pose == max_limit:
                 state = 'door OPENED fully'
@@ -810,14 +818,6 @@ def check_joint_state(body, joint, verbose=False):
             else:
                 state = 'door OPENED partially'
 
-        ## switch on faucet, machines
-        elif joint_type == 'revolute' and min_limit + max_limit == 0:
-            category = 'switch'
-            if pose == min_limit:
-                state = 'switch TURNED OFF'
-            elif pose == max_limit:
-                state = 'switch TURNED ON'
-
         elif joint_type == 'prismatic':  ## drawers
             category = 'drawer'
             if pose == max_limit:
@@ -831,8 +831,8 @@ def check_joint_state(body, joint, verbose=False):
         state = 'fixed joint'
 
     if verbose:
-        print(
-            f'   joint {name}, pose = {pose}, limit = {nice((min_limit, max_limit))}, state = {state}, moveable = {moveable}')
+        print(f'   joint {name}, pose = {pose}, limit = {nice((min_limit, max_limit))}, \
+            state = {state}, moveable = {moveable}')
     return category, state
 
 
@@ -1442,7 +1442,12 @@ def get_instance_name(path):
     if not isfile(path): return None
     rows = open(path, 'r').readlines()
     if len(rows) > 50: rows = rows[:50]
-    name = [r.replace('\n', '')[13:-2] for r in rows if '<robot name="' in r]
+
+    def from_line(r):
+        r = r.replace('\n', '')[13:]
+        return r[:r.index('"')]
+
+    name = [from_line(r) for r in rows if '<robot name="' in r]
     if len(name) == 1:
         return name[0]
     return None
@@ -1775,6 +1780,13 @@ def clone_body_link(body, link, collision=True, visual=True, client=None):
             # TODO: check if movable?
             p.resetJointState(new_body, joint, value, targetVelocity=0, physicsClientId=client)
     return new_body
+
+
+def colorize_link(body, link, transparency=0.5):
+    body_color = apply_alpha(0.9 * np.ones(3))
+    link_color = np.array(body_color) + np.random.normal(0, 1e-2, 4)  # TODO: clip
+    link_color = apply_alpha(link_color, alpha=transparency)
+    set_color(body, link=link, color=link_color)
 
 
 def colorize_world(fixed, transparency=0.5):

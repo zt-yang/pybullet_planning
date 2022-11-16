@@ -550,7 +550,7 @@ def test_torso():
     print(robot)
 
 
-def test_handle_grasps_counter():
+def test_handle_grasps_counter(robot='pr2'):
     from world_builder.loaders import load_floor_plan
     from world_builder.world import World
 
@@ -560,17 +560,20 @@ def test_handle_grasps_counter():
     # lisdf_path = join(ASSET_PATH, 'scenes', f'kitchen_lunch.lisdf')
     # world = load_lisdf_pybullet(lisdf_path, verbose=True)
 
-    world = World()
+    # world = World()
+    world = get_test_world(robot, semantic_world=True, DRAW_BASE_LIMITS=False)
+    robot = world.robot
     floor = load_floor_plan(world, plan_name='counter.svg')
-    robot = add_robot(world, 'feg', DRAW_BASE_LIMITS=False)
+    # robot = add_robot(world, 'feg', DRAW_BASE_LIMITS=False)
 
     world.summarize_all_objects()
     state = State(world, grasp_types=robot.grasp_types)
-    joints = world.cat_to_bodies('door')
-    joints = [(6, 1)]
+    joints = world.cat_to_bodies('drawer')
+    # joints = [(6, 1)]
 
     for body_joint in joints:
         obj = world.BODY_TO_OBJECT[body_joint]
+        print(body_joint, obj.name)
         link = obj.handle_link
         body, joint = body_joint
         set_camera_target_body(body, link=link, dx=0.5, dy=0.5, dz=0.5)
@@ -729,9 +732,9 @@ if __name__ == '__main__':
 
     ## --- grasps related ---
     robot = 'pr2' ## 'feg' | 'pr2'
-    test_grasps(['Plate'], robot)
+    # test_grasps(['Plate'], robot)
     ## 'box', 'Bottle', 'Stapler', 'Camera', 'Glasses', 'Food', 'MiniFridge', 'KitchenCounter'
-    # test_handle_grasps_counter()
+    test_handle_grasps_counter()
     # test_handle_grasps(robot, category='MiniFridge')
     # test_handle_grasps(robot, category='MiniFridgeDoorless')
     # test_pick_place_counter(robot)

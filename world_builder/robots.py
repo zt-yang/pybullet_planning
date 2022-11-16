@@ -114,7 +114,7 @@ class RobotAPI(Robot):
         return new_body_pose
 
     def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
-        if body is not None and len(get_all_links(body)) == 1:
+        if body is not None and isinstance(body, int) and len(get_all_links(body)) == 1:
             from pybullet_tools.pr2_primitives import get_tool_from_root
             tool_from_root = multiply(((0, 0.025, 0.025), unit_quat()),
                                       self.tool_from_hand,
