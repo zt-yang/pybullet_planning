@@ -20,10 +20,23 @@ from pybullet_tools.bullet_utils import set_camera_target_body, set_camera_targe
 from world_builder.world_generator import EXP_PATH
 
 
+def set_time_seed():
+    import numpy as np
+    import time
+    seed = int(time.time())
+    np.random.seed(seed)
+    random.seed(seed)
+    return seed
+
+
 def get_robot_builder(builder_name):
     if builder_name == 'build_fridge_domain_robot':
         return build_fridge_domain_robot
+    elif builder_name == 'build_table_domain_robot':
+        return build_table_domain_robot
     return None
+
+############################################
 
 
 def maybe_add_robot(world, template_dir=None):
@@ -181,6 +194,7 @@ def test_kitchen_oven(world, floorplan='counter.svg', verbose=False):
 
     return []
 
+
 def test_feg_pick(world, floorplan='counter.svg', verbose=True):
 
     """ ============== [State Space] Add world objects (Don't change) ================ """
@@ -252,18 +266,27 @@ def test_feg_pick(world, floorplan='counter.svg', verbose=True):
 ############################################
 
 
-def set_time_seed():
-    import numpy as np
-    import time
-    seed = int(time.time())
-    np.random.seed(seed)
-    random.seed(seed)
-    return seed
+def build_table_domain_robot(world, robot_name, custom_limits=None, initial_q=None):
+    """ simplified cooking domain """
+    if robot_name == 'feg':
+        if custom_limits is None:
+            custom_limits = {0: (0, 4), 1: (3, 12), 2: (0, 2)}
+        if initial_q is None:
+            initial_q = [0.9, 8, 0.7, 0, -math.pi / 2, 0]
+        robot = create_gripper_robot(world, custom_limits, initial_q=initial_q)
+    else:
+        if custom_limits is None:
+            custom_limits = ((0, 0), (8, 8))
+        if initial_q is None:
+            initial_q = (1.79, 6, PI / 2 + PI / 2)
+        robot = create_pr2_robot(world, base_q=initial_q, custom_limits=custom_limits,
+                                 USE_TORSO=False, DRAW_BASE_LIMITS=True)
+    return robot
 
 
 def build_fridge_domain_robot(world, robot_name, custom_limits=None):
+    """ counter and fridge in the (6, 6) range """
     x, y = (5, 3)
-    ## temprarily using floating gripper
     if robot_name == 'feg':
         if custom_limits is None:
             custom_limits = {0: (0, 6), 1: (0, 6), 2: (0, 2)}
@@ -275,6 +298,9 @@ def build_fridge_domain_robot(world, robot_name, custom_limits=None):
         robot = create_pr2_robot(world, custom_limits=custom_limits, base_q=(x, y, PI / 2 + PI / 2))
         robot.set_spawn_range(((4.2, 2, 0.5), (5, 3.5, 1.9)))
     return robot
+
+
+############################################
 
 
 def test_one_fridge(world, movable_category='food', verbose=True, **kwargs):

@@ -11,14 +11,14 @@ import numpy as np
 from pddlstream.language.constants import Equal, AND
 from pddlstream.algorithms.downward import set_cost_scale
 
-from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, get_pose, LockRenderer, \
+from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, get_pose, unit_pose, \
     CameraImage, euler_from_quat, get_link_name, get_joint_position, joint_from_name, \
     BodySaver, set_pose, INF, add_parameter, irange, wait_for_duration, get_bodies, remove_body, \
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
     get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked, \
     get_movable_joints, apply_alpha, get_all_links, set_color, get_texture, dump_body, clear_texture, get_link_name
 from pybullet_tools.pr2_streams import Position, get_handle_grasp_gen, pr2_grasp
-from pybullet_tools.general_streams import get_stable_list_gen, get_grasp_list_gen, get_contain_list_gen
+from pybullet_tools.general_streams import pose_from_attachment
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
     is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
     set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR, CAMERA_MATRIX, visualize_camera_image, equal, \
@@ -67,7 +67,7 @@ class World(object):
         self.outpath = None
         self.camera = None
         self.instance_names = {}
-        self.constants = ['@movable', '@bottle', '@edible']
+        self.constants = ['@movable', '@bottle', '@edible', '@world']
 
     def clear_viz(self):
         self.remove_handles()
@@ -134,7 +134,7 @@ class World(object):
     @property
     def ignored_pairs(self):
         found = []
-        if 'kitchen' in self.floorplan:
+        if self.floorplan is not None and 'kitchen' in self.floorplan:
             a = self.cat_to_bodies('counter')[0]
             b = self.cat_to_bodies('oven')[0]
             found.extend([(a, b), (b, a)])
@@ -332,42 +332,6 @@ class World(object):
         surface = Surface(body, link=link)
         self.add_object(surface)
         return surface
-
-    def get_wconf(self, world_index=None):
-        """ similar to to_lisdf in world_generator.py """
-        wconf = {}
-
-        c = self.cat_to_bodies
-        movables = c('moveable')
-        joints = c('door') + c('drawer') + c('knob')  ## [f[1] for f in init if f[0] == 'joint']
-        articulated_bodies = list(set([j[0] for j in joints]))
-        robot = self.robot
-
-        bodies = copy.deepcopy(get_bodies())
-        bodies.sort()
-        for body in bodies:
-            if body in self.BODY_TO_OBJECT:
-                obj = self.BODY_TO_OBJECT[body]
-            elif body in self.ROBOT_TO_OBJECT:
-                obj = self.ROBOT_TO_OBJECT[body]
-            else:
-                continue
-
-            wconf[obj.lisdf_name] = {
-                'is_static': 'false' if body in movables else 'true',
-                'pose': obj.get_pose()
-            }
-
-            if body in articulated_bodies + [robot.body]:
-                joint_state = {}
-                for joint in get_movable_joints(body):
-                    joint_name = get_joint_name(body, joint)
-                    position = get_joint_position(body, joint)
-                    joint_state[joint_name] = position
-                wconf[obj.lisdf_name]['joint_state'] = joint_state
-
-        wconf = {f"w{world_index}_{k}": v for k, v in wconf.items()}
-        return wconf
 
     def summarize_all_types(self):
         printout = ''
@@ -722,7 +686,7 @@ class World(object):
         body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
         return body_to_name
 
-    def get_facts(self, init_facts=[], conf_saver=None, obj_poses=None, verbose=True):
+    def get_facts(self, init_facts=[], conf_saver=None, obj_poses=None, verbose=True, use_rel_pose=True):
         robot = self.robot.body
         cat_to_bodies = self.cat_to_bodies
         cat_to_objects = self.cat_to_objects
@@ -778,6 +742,18 @@ class World(object):
                     arm = 'left'
                 init.remove(('HandEmpty', arm))
                 init += [('Grasp', body, grasp), ('AtGrasp', arm, body, grasp)]
+
+            elif use_rel_pose:
+                supporter = BODY_TO_OBJECT[body].supporting_surface
+                if supporter is None or supporter.body not in graspables:
+                    supporter = '@world'
+                    rel_pose = pose
+                else:
+                    attachment = self.ATTACHMENTS[body]
+                    rel_pose = pose_from_attachment(attachment)
+
+                init += [('RelPose', body, rel_pose, supporter), ('AtRelPose', body, rel_pose, supporter)]
+
             else:
                 init += [('Pose', body, pose), ('AtPose', body, pose)]
 
@@ -800,6 +776,10 @@ class World(object):
                     #     wait_unlocked()
                     if verbose: print('   found contained', body, space)
                     init += [('Contained', body, pose, space)]
+
+        if use_rel_pose:
+            wp = Pose('@world', unit_pose())
+            init += [('Pose', '@world', wp), ('AtPose', '@world', wp)]
 
         ## ---- cart poses / grasps ------------------
         for body in cat_to_bodies('steerable'):

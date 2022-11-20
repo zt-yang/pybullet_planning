@@ -157,7 +157,7 @@ class Object(Index):
         if isinstance(obj, str):
             obj = self.place_new_obj(obj, max_trial=max_trial)
 
-        if xyzyaw != None:
+        if xyzyaw is None:
             x, y, z, yaw = xyzyaw
             obj.set_pose(Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw)))
 
@@ -179,7 +179,7 @@ class Object(Index):
         if self.verbose:
             supporter_name = f"{self.__class__.__name__.capitalize()} {self.name}"
             print(f'entities.place_obj.placed {obj.name} on {supporter_name} at point {nice((x, y, z))}')
-        # self.attach_obj(obj)
+        self.attach_obj(obj)
         # set_renderer(True)
         return obj
 

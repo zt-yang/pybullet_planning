@@ -569,8 +569,11 @@ def get_primitive_actions(action, world, teleport=False):
     ##    variates of pick
     ## ------------------------------------
 
-    elif name == 'pick':
-        a, o, p, g, _, t = args[:6]
+    elif 'pick' in name:
+        if '_rel' in name:
+            a, o, p, rp, o2, p2, g, _, t = args
+        else:
+            a, o, p, g, _, t = args
         t = get_traj(t)
         close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
         attach = AttachObjectAction(a, g, o)
@@ -683,6 +686,9 @@ def get_primitive_actions(action, world, teleport=False):
         new_commands = [ChangePositions(pstn2)]
 
     elif name in ['declare_store_in_space', 'declare_store_on_surface']:
+        new_commands = []
+
+    elif name.startswith('_'):
         new_commands = []
 
     else:

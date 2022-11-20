@@ -23,7 +23,7 @@ from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custo
     move_cost_fn, Attach, Detach, Clean, Cook, control_commands, \
     get_gripper_joints, GripperCommand, apply_commands, State, Trajectory, Simultaneous, create_trajectory
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, get_handle_grasp_list_gen, \
-    get_handle_grasp_gen
+    get_handle_grasp_gen, get_compute_pose_kin
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
     set_camera_target_robot, nice, BASE_LIMITS, get_file_short_name, get_root_links, collided
 from pybullet_tools.pr2_problems import create_pr2
@@ -82,6 +82,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'sample-pose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, verbose=False)),  ##
         'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False,
                                                        top_grasp_tolerance=PI/4)), # TODO: collisions
+        'compute-pose-kin': from_fn(get_compute_pose_kin()),
         'inverse-reachability': from_gen_fn(
             get_ik_gen(p, collisions=c, teleport=t, ir_only=True, custom_limits=l,
                        learned=False, verbose=False, visualize=False)),
@@ -465,38 +466,43 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     if not isinstance(custom_limits, dict):
         custom_limits = get_base_custom_limits(robot, custom_limits)
 
+    print_fn(f'pr2_agent.pddlstream_from_state_goal(\n'
+          f'\tdomain = {domain_pddl}, \n'
+          f'\tstream = {stream_pddl}, \n'
+          f'\tcustom_limits = {custom_limits}')
+
     world.summarize_all_objects(print_fn=print_fn)
 
     if len(facts) == 0:
         facts = state.get_facts(init_facts)
     init = facts
 
-    print_fn(f'pr2_agent.pddlstream_from_state_goal(\n'
-          f'\tdomain = {domain_pddl}, \n'
-          f'\tstream = {stream_pddl}, \n'
-          f'\tcustom_limits = {custom_limits}')
+    if PRINT:
+        summarize_facts(init, world, name='Facts extracted from observation', print_fn=print_fn)
 
     if isinstance(goals, tuple): ## debugging
-        test, name = goals
+        test, args = goals
         # test_initial_region(state, init)
         # test_marker_pull_bconfs(state, init)
         if test == 'test_handle_grasps':
-            goals = test_handle_grasps(state, name)
+            goals = test_handle_grasps(state, args)
         elif test == 'test_grasps':
-            goals = test_grasps(state, name)
+            goals = test_grasps(state, args)
         elif test == 'test_grasp_ik':
-            goals = test_grasp_ik(state, init, name)
+            goals = test_grasp_ik(state, init, args)
         # test_pulling_handle_ik(state)
         # test_drawer_open(state, goals)
         elif test == 'test_pose_gen':
-            goals, ff = test_pose_gen(state, init, name[0], name[1])
+            goals, ff = test_pose_gen(state, init, args)
             init += ff
         elif test == 'test_door_pull_traj':
-            goals = test_door_pull_traj(state, init, name)
+            goals = test_door_pull_traj(state, init, args)
         elif test == 'test_reachable_pose':
-            goals = test_reachable_pose(state, init, name)
+            goals = test_reachable_pose(state, init, args)
         elif test == 'test_at_reachable_pose':
-            goals = test_at_reachable_pose(init, name)
+            goals = test_at_reachable_pose(init, args)
+        elif test == 'test_pose_kin':
+            goals = test_rel_to_world_pose(init, args)
         else:
             print('\n\n\npr2_agent.pddlstream_from_state_goal | didnt implement', goals)
             sys.exit()
@@ -520,9 +526,6 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
         if goal[-1] == ("not", ("AtBConf", "")):
             atbconf = [i for i in init if i[0].lower() == "AtBConf".lower()][0]
             goal[-1] = ("not", atbconf)
-
-    if PRINT:
-        summarize_facts(init, world, name='Facts extracted from observation', print_fn=print_fn)
 
     ## make all pred lower case
     new_init = []
@@ -1021,7 +1024,9 @@ def test_pulling_handle_ik(problem):
         t = funk('left', drawer, grasp, bq1)
         break
 
-def test_pose_gen(problem, init, o, s):
+
+def test_pose_gen(problem, init, args):
+    o, s = args
     pose = [i for i in init if i[0].lower() == "AtPose".lower() and i[1] == o][0][-1]
     if isinstance(o, Object):
         o = o.body
@@ -1072,3 +1077,22 @@ def test_reachable_pose(state, init, o):
 def test_at_reachable_pose(init, o):
     p = [f[2] for f in init if f[0].lower() == "AtPose".lower() and f[1] == o][0]
     return [('AtReachablePose', o, p)]
+
+
+def test_rel_to_world_pose(init, args):
+    attached, supporter = args
+    world = '@world'
+    funk = get_compute_pose_kin()
+    print(f'test_rel_to_world_pose({attached}, {supporter})')
+
+    rp = [f[2] for f in init if f[0].lower() == "AtRelPose".lower() and f[1] == supporter and f[-1] == world][0]
+    p2 = [f[2] for f in init if f[0].lower() == "AtPose".lower() and f[1] == world][0]
+    p1 = funk(supporter, rp, world, p2)[0]
+    print(p1)
+
+    rp = [f[2] for f in init if f[0].lower() == "AtRelPose".lower() and f[1] == attached and f[-1] == supporter][0]
+    p1 = funk(attached, rp, supporter, p1)
+    print(p1)
+    return [('Holding', 'left', attached)]
+
+

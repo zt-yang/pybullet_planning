@@ -7,24 +7,15 @@ import math
 
 import numpy as np
 
-from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_link_pose, is_placement, \
-    pairwise_collision, set_joint_positions, get_joint_positions, sample_placement, get_pose, waypoints_from_path, \
-    unit_quat, plan_base_motion, plan_joint_motion, base_values_from_pose, pose_from_base_values, \
-    uniform_pose_generator, sub_inverse_kinematics, add_fixed_constraint, remove_debug, remove_fixed_constraint, \
-    disable_real_time, enable_gravity, joint_controller_hold, get_distance, Point, Euler, set_joint_position, \
-    get_min_limit, user_input, step_simulation, get_body_name, get_bodies, BASE_LINK, get_joint_position, \
-    add_segments, get_max_limit, link_from_name, BodySaver, get_aabb, interpolate_poses, \
-    plan_direct_joint_motion, has_gui, create_attachment, wait_for_duration, get_extend_fn, set_renderer, \
-    get_custom_limits, all_between, get_unit_vector, wait_if_gui, create_box, set_point, quat_from_euler, \
-    set_base_values, euler_from_quat, INF, elapsed_time, get_moving_links, flatten_links, get_relative_pose, \
-    get_joint_limits, unit_pose, point_from_pose, clone_body, set_all_color, GREEN, BROWN, get_link_subtree, \
-    RED, remove_body, aabb2d_from_aabb, aabb_overlap, aabb_contains_point, get_aabb_center, get_link_name, \
-    get_links, check_initial_end, get_collision_fn, BLUE, WHITE, TAN, GREY, YELLOW, aabb_contains_aabb, \
-    get_joints, is_movable, pairwise_link_collision, get_closest_points, Pose, PI, quat_from_pose, angle_between, tform_point
+from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_link_pose, \
+    pairwise_collision, sample_placement, get_pose, Point, Euler, set_joint_position, \
+    BASE_LINK, get_joint_position, get_aabb, quat_from_euler, flatten_links, multiply, \
+    get_joint_limits, unit_pose, point_from_pose, draw_point, PI, quat_from_pose, angle_between, \
+    tform_point
+from pybullet_tools.pr2_primitives import Pose
 
-from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, set_camera_target_body, is_contained, \
-    visualize_point, collided, GRIPPER_DIRECTIONS, get_gripper_direction, Attachment, dist, sample_pose, \
-    xyzyaw_to_pose, has_tracik, visualize_bconf
+from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, is_contained, \
+    visualize_point, collided, sample_pose, xyzyaw_to_pose
 
 
 class Position(object):
@@ -62,36 +53,6 @@ class Position(object):
         return 'pstn{}={}'.format(index, nice(self.value))
 
 
-# class LinkPose(object):
-#     num = count()
-#     def __init__(self, body, obj, value=None, support=None, init=False):
-#         self.obj = obj
-#         self.link = self.obj.handle_link
-#         self.body, self.joint = body
-#         if value is None:
-#             value = get_link_pose(self.body, self.link)
-#         self.value = tuple(value)
-#         self.body_pose = get_pose(self.body)
-#         self.support = support
-#         self.init = init
-#         self.index = next(self.num)
-#     @property
-#     def bodies(self):
-#         return flatten_links(self.body)
-#     def assign(self):
-#         pass
-#     def iterate(self):
-#         yield self
-#     # def to_base_conf(self):
-#     #     values = base_values_from_pose(self.value)
-#     #     return Conf(self.body, range(len(values)), values)
-#     def __repr__(self):
-#         index = self.index
-#         #index = id(self) % 1000
-#         return 'lp{}={}'.format(index, nice(self.value))
-#         # return 'p{}'.format(index)
-
-
 class HandleGrasp(object):
     def __init__(self, grasp_type, body, value, approach, carry, index=None):
         self.grasp_type = grasp_type
@@ -107,40 +68,86 @@ class HandleGrasp(object):
         # return Attachment(robot, tool_link, self.value, self.body)
     def __repr__(self):
         return 'hg{}={}'.format(self.index % 1000, nice(self.value))
-#
-#
-# class WConf(object):
-#     def __init__(self, poses, positions, index=None):
-#         self.poses = poses
-#         self.positions = positions
-#         if index is None:
-#             index = id(self)
-#         self.index = index
-#
-#     def assign(self):
-#         for p in self.poses.values():
-#             p.assign()
-#         for p in self.positions.values():
-#             p.assign()
-#
-#     def printout(self, obstacles=None):
-#         if obstacles is None:
-#             obstacles = list(self.poses.keys())
-#             positions = list(self.positions.keys())
-#         else:
-#             positions = [o for o in self.positions.keys() if o[0] in obstacles]
-#
-#         string = f"  {str(self)}"
-#         poses = {o: nice(self.poses[o].value[0]) for o in obstacles if o in self.poses}
-#         if len(poses) > 0:
-#             string += f'\t|\tposes: {str(poses)}'
-#         positions = {o: nice(self.positions[(o[0], o[1])].value) for o in positions}
-#         if len(positions) > 0:
-#             string += f'\t|\tpositions: {str(positions)}'
-#         return string
-#
-#     def __repr__(self):
-#         return 'wconf{}'.format(self.index % 1000)
+
+
+""" ==============================================================
+
+            From relative pose to world pose
+
+    ==============================================================
+"""
+
+
+class RelPose(object):
+    num = count()
+    def __init__(self, body, #link=BASE_LINK,
+                 reference_body=None, reference_link=BASE_LINK,
+                 confs=[], support=None, init=False, index=None):
+        self.body = body
+        #self.link = link
+        self.reference_body = reference_body
+        self.reference_link = reference_link
+        # Could also perform recursively
+        self.confs = tuple(confs) # Attachment is treated as a conf
+        self.support = support
+        self.init = init
+        self.observations = 0
+        if index is None:
+            index = next(self.num)
+        self.index = index
+        self.value = self.get_reference_from_body()
+    @property
+    def bodies(self):
+        bodies = set() # (self.body, None)
+        #if self.reference_body is not None:
+        #    bodies.update({self.reference_body, frozenset(get_link_subtree(self.body, self.reference_link))})
+        for conf in self.confs:
+            bodies.update(conf.bodies)
+        return bodies
+    def assign(self):
+        for conf in self.confs: # Assumed to be totally ordered
+            conf.assign()
+    def get_world_from_reference(self):
+        if self.reference_body is None:
+            return unit_pose()
+        self.assign()
+        return get_link_pose(self.reference_body, self.reference_link)
+    def get_world_from_body(self):
+        self.assign()
+        return get_link_pose(self.body, BASE_LINK)
+    def get_reference_from_body(self):
+        return multiply(invert(self.get_world_from_reference()),
+                        self.get_world_from_body())
+    def draw(self, **kwargs):
+        point_reference = point_from_pose(self.get_reference_from_body())
+        if self.reference_body is None:
+            return draw_point(point_reference, **kwargs)
+        return draw_point(point_reference, parent=self.reference_body,
+                          parent_link=self.reference_link, **kwargs)
+    def __repr__(self):
+        index = self.index  ## id(self) % 1000
+        if self.reference_body is None:
+            pose = get_pose(self.body)
+            return 'wp{}={}'.format(index, nice(pose))
+        rel_pose = self.get_reference_from_body()
+        return 'rp{}=({},{})'.format(index, (self.reference_body, self.reference_link), nice(rel_pose))
+
+
+def pose_from_attachment(attachment, **kwargs):
+    return RelPose(attachment.child, reference_body=attachment.parent,
+                   reference_link=attachment.parent_link, confs=[attachment], **kwargs)
+
+
+def get_compute_pose_kin():
+    def fn(o1, rp, o2, p2):
+        if o1 == o2:
+            return None
+        # p1 = RelPose(o1, support=rp.support, confs=(p2.confs + rp.confs),
+        #              init=(rp.init and p2.init))
+        p1 = Pose(o1, value=multiply(p2.value, rp.value))
+        return (p1,)
+    return fn
+
 
 """ ==============================================================
 
@@ -625,7 +632,8 @@ def process_motion_fluents(fluents, robot, verbose=False):
         predicate, args = atom[0], atom[1:]
         if predicate == 'atpose':
             o, p = args
-            p.assign()
+            if o not in ['@world']:
+                p.assign()
         elif predicate == 'atgrasp':
             a, o, g = args
             attachments.append(g.get_attachment(robot, a))

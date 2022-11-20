@@ -117,6 +117,7 @@ def create_pr2_robot(world, base_q=(0,0,0),
 
     return robot
 
+
 from pybullet_tools.flying_gripper_utils import create_fe_gripper, plan_se3_motion, Problem, \
     get_free_motion_gen, set_gripper_positions, get_se3_joints, set_gripper_positions, \
     set_se3_conf ## se3_from_pose,
@@ -195,6 +196,25 @@ def create_room(color=GREY, *args, **kwargs):
     colors = len(shapes)*[color]
     collision_id, visual_id = create_shape_array(geoms, poses, colors)
     return create_body(collision_id, visual_id, mass=STATIC_MASS)
+
+#######################################################
+
+
+def create_table(world, xy=(0, 0), color=(.75, .75, .75, 1), category='supporter', name='table', w=0.5, h=0.9):
+    return world.add_box(
+        Supporter(create_box(w, w, h, color=color), category=category, name=name),
+        Pose(point=Point(x=xy[0], y=xy[1], z=h / 2)))
+
+
+def create_movable(world, supporter=None, xy=(0, 0), movable_category='VeggieCabbage',
+                   category=None, name='cabbage'):
+    # cabbage = world.add_box(
+    #     Moveable(create_box(.07, .07, .1, mass=mass, color=(0, 1, 0, 1)), name='cabbage'),
+    #     Pose(point=Point(x=4, y=6, z=h + .1 / 2)))
+    return world.add_object(
+        Moveable(load_asset(movable_category, x=xy[0], y=xy[1], yaw=0, floor=supporter),
+                 category=category, name=name))
+
 
 #######################################################
 
@@ -468,59 +488,22 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
 ####################################################
 
 
-def load_five_table_scene(world, w=.5, h=.9, mass=1):
-    custom_limits = ((-4, -4), (4, 4))
+def load_five_table_scene(world):
+    world.set_skip_joints()
+    fridge = create_table(world, xy=(2, 0))
+    cabbage = create_movable(world, supporter=fridge, xy=(2, 0), category='veggie')
+    egg = create_movable(world, supporter=fridge, xy=(2, -0.18),
+                         movable_category='Egg', category='egg', name='egg')
+    salter = create_movable(world, supporter=fridge, xy=(2, 0.18),
+                            movable_category='Salter', category='salter', name='salter')
 
-    fridge = world.add_box(
-        Supporter(create_box(w, w, h, color=(.75, .75, .75, 1)), name='fridge'),
-        Pose(point=Point(2, 0, h / 2)))
+    sink = create_table(world, xy=(0, 2), color=(.25, .25, .75, 1), category='sink', name='sink')
+    plate = create_movable(world, supporter=sink, xy=(0, 2),
+                           movable_category='Plate', category='plate', name='plate')
 
-    # egg = world.add_box(
-    #     Moveable(create_box(.07, .07, .1, mass=mass, color=(1, 1, 0, 1)), category='egg', name='egg'),
-    #     Pose(point=Point(2, -0.18, h + .1 / 2)))
-    #
-    # cabbage = world.add_box(
-    #     Moveable(create_box(.07, .07, .1, mass=mass, color=(0, 1, 0, 1)), category='veggie', name='cabbage'),
-    #     Pose(point=Point(2, 0, h + .1 / 2)))
-    #
-    # salter = world.add_box(
-    #     Moveable(create_box(.07, .07, .1, mass=mass, color=(0, 0, 0, 1)), category='salter', name='salter'),
-    #     Pose(point=Point(2, 0.18, h + .1 / 2)))
-    #
-    # plate = world.add_box(
-    #     Moveable(create_box(.07, .07, .1, mass=mass, color=(0.4, 0.4, 0.4, 1)), category='plate', name='plate'),
-    #     Pose(point=Point(2 + 0.18, 0, h + .1 / 2)))
-
-    sink = world.add_box(
-        Supporter(create_box(w, w, h, color=(.25, .25, .75, 1)), category='sink', name='sink'),
-        Pose(point=Point(0, 2, h / 2)))
-
-    stove = world.add_box(
-        Supporter(create_box(w, w, h, color=(.75, .25, .25, 1)), category='stove', name='stove'),
-        Pose(point=Point(0, -2, h / 2)))
-
-    counter = world.add_box(
-        Supporter(create_box(w, w, h, color=(.25, .75, .25, 1)), category='counter', name='counter'),
-        Pose(point=Point(-2, 2, h / 2)))
-
-    table = world.add_box(
-        Supporter(create_box(w, w, h, color=(.75, .75, .25, 1)), category='table', name='table'),
-        Pose(point=Point(-2, -2, h / 2)))
-
-    egg = world.add_object(
-        Moveable(load_asset('Egg', x=2, y=-0.18, yaw=0, floor=fridge),
-                 category='egg', name='egg'))
-    cabbage = world.add_object(
-        Moveable(load_asset('VeggieCabbage', x=2, y=0, yaw=0, floor=fridge),
-                 category='veggie', name='cabbage'))
-    salter = world.add_object(
-        Moveable(load_asset('Salter', x=2, y=0.18, yaw=0, floor=fridge),
-                 category='salter', name='salter'))
-    plate = world.add_object(
-        Moveable(load_asset('Plate', x=0, y=2, yaw=0, floor=sink),
-                 category='plate', name='plate'))
-
-    robot = create_pr2_robot(world, custom_limits=custom_limits)
+    stove = create_table(world, xy=(0, -2), color=(.75, .25, .25, 1), category='stove', name='stove')
+    counter = create_table(world, xy=(-2, 2), color=(.25, .75, .25, 1), category='counter', name='counter')
+    table = create_table(world, xy=(-2, -2), color=(.75, .75, .25, 1), category='table', name='table')
     return cabbage
 
 
@@ -634,6 +617,7 @@ def load_cart_regions(world, w=.5, h=.9, mass=1):
 
     return cabbage, kitchen, laundry_room, storage, cart, marker
 
+
 def load_blocked_kitchen(world, w=.5, h=.9, mass=1, DOOR_GAP=1.9):
     table = world.add_object(
         Object(create_box(w, w, h, color=(.75, .75, .75, 1)), category='supporter', name='table'),
@@ -652,6 +636,7 @@ def load_blocked_kitchen(world, w=.5, h=.9, mass=1, DOOR_GAP=1.9):
 
     return cabbage, cart, marker
 
+
 def load_blocked_sink(world, w=.5, h=.9, mass=1, DOOR_GAP=1.9):
     sink = world.add_object(
         Supporter(create_box(w, w, h, color=(.25, .25, .75, 1)), category='sink'),
@@ -665,6 +650,7 @@ def load_blocked_sink(world, w=.5, h=.9, mass=1, DOOR_GAP=1.9):
     cart2, marker2 = load_cart(world, cart_x=-0.25, cart_y=-3, marker_name='marker2')
 
     return sink, cart2, marker2
+
 
 def load_blocked_stove(world, w=.5, h=.9, mass=1, DOOR_GAP=1.9):
     stove = world.add_object(
@@ -740,6 +726,7 @@ def load_basin_faucet(world):
     left_knob = name_to_body('joint_faucet_0')
     return faucet, left_knob
 
+
 def load_kitchen_mechanism(world):
     name_to_body = world.name_to_body
     name_to_object = world.name_to_object
@@ -756,6 +743,7 @@ def load_kitchen_mechanism(world):
     name_to_object('joint_faucet_0').add_controlled(name_to_body('basin_bottom'))
     name_to_object('knob_joint_2').add_controlled(name_to_body('braiser_bottom'))
 
+
 def load_kitchen_mechanism_stove(world):
     name_to_body = world.name_to_body
     name_to_object = world.name_to_object
@@ -769,6 +757,7 @@ def load_kitchen_mechanism_stove(world):
         world.add_joints_by_keyword('oven', v, 'knob')
         world.add_to_cat(name_to_body(k), 'HeatingSurface')
         name_to_object(v).add_controlled(name_to_body(k))
+
 
 def load_gripper_test_scene(world):
     surfaces = {
@@ -789,6 +778,7 @@ def load_gripper_test_scene(world):
     world.add_to_cat(turkey, 'moveable')
     world.add_to_cat(lid, 'moveable')
     return pot, lid, turkey
+
 
 def load_cabinet_test_scene(world, RANDOM_INSTANCE=False, MORE_MOVABLE=False, verbose=True):
     surfaces = {

@@ -49,9 +49,6 @@ def get_base_limits(robot):
 
 class Pose(object):
     num = count()
-    #def __init__(self, position, orientation):
-    #    self.position = position
-    #    self.orientation = orientation
     def __init__(self, body, value=None, support=None, init=False, index=None):
         self.body = body
         if value is None:
@@ -59,9 +56,10 @@ class Pose(object):
         self.value = tuple(value)
         self.support = support
         self.init = init
-        if index == None:
+        if index is None:
             index = next(self.num)
         self.index = index
+        self.confs = tuple([])
     @property
     def bodies(self):
         return flatten_links(self.body)
@@ -826,13 +824,15 @@ def distance_fn(q1, q2):
     distance = get_distance(q1.values[:2], q2.values[:2])
     return BASE_CONSTANT + distance / BASE_VELOCITY
 
+
 def move_cost_fn(t):
     distance = t.distance(distance_fn=lambda q1, q2: get_distance(q1[:2], q2[:2]))
     return BASE_CONSTANT + distance / BASE_VELOCITY
 
+
 def get_cfree_pose_pose_test(collisions=True, **kwargs):
     def test(b1, p1, b2, p2):
-        if not collisions or (b1 == b2):
+        if not collisions or (b1 == b2) or b2 in ['@world']:
             return True
         p1.assign()
         p2.assign()
@@ -862,7 +862,7 @@ def get_cfree_conf_position_test(collisions=True, **kwargs):
 
 def get_cfree_obj_approach_pose_test(collisions=True):
     def test(b1, p1, g1, b2, p2):
-        if not collisions or (b1 == b2):
+        if not collisions or (b1 == b2) or b2 in ['@world']:
             return True
         p2.assign()
         grasp_pose = multiply(p1.value, invert(g1.value))
@@ -880,7 +880,7 @@ def get_cfree_approach_pose_test(problem, collisions=True):
     arm = 'left'
     gripper = problem.get_gripper()
     def test(b1, p1, g1, b2, p2):
-        if not collisions or (b1 == b2):
+        if not collisions or (b1 == b2) or b2 in ['@world']:
             return True
         p2.assign()
         for _ in iterate_approach_path(problem.robot, arm, gripper, p1, g1, body=b1):
