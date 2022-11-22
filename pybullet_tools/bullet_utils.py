@@ -1021,11 +1021,13 @@ def get_rotation_matrix(body):
         urdf_file = dirname(get_collision_data(body, 0)[0].filename.decode())
         urdf_file = urdf_file.replace('/textured_objs', '')
         rpy = untangle.parse(join(urdf_file, 'mobility.urdf')).robot.joint.origin['rpy'].split(' ')
-        rpy = [eval(e) for e in rpy]
-        if equal(rpy, [1.57, 1.57, -1.57], epsilon=0.1):
+        rpy = tuple([eval(e) for e in rpy])
+        if equal(rpy, (1.57, 1.57, -1.57), epsilon=0.1):
             r = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
-        # elif equal(rpy, [3.14, 3.14, -1.57], epsilon=0.1):
-        #     r = Pose(euler=Euler(math.pi, 0, -math.pi / 2))
+        elif equal(rpy, (3.14, 3.14, -1.57), epsilon=0.1):
+            r = Pose(euler=Euler(0, 0, -math.pi / 2))
+        elif equal(rpy, (1.57, 0, -1.57), epsilon=0.1):
+            r = Pose(euler=Euler(math.pi/2, 0, -math.pi / 2))
     return r
 
 
@@ -1107,8 +1109,6 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                     HANDLE_FILTER=False, LENGTH_VARIANTS=False,
                     visualize=False, RETAIN_ALL=False, verbose=False,
                     collisions=False, num_samples=6, debug_del=False):
-    from pybullet_tools.flying_gripper_utils import set_se3_conf, create_fe_gripper, se3_from_pose, \
-        get_cloned_se3_conf
     body_name = (body, link) if link is not None else body
     title = f'bullet_utils.get_hand_grasps({body_name}) | '
     dist = grasp_length
@@ -1116,8 +1116,10 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
 
     body_pose, aabb, handles = draw_fitted_box(body, link=link, verbose=verbose, draw_centroid=False)
     if link is None:
-        body_pose = multiply(body_pose, invert(Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))))
-    else: ## for handle grasps, use the original pose of handle_link
+        r = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
+        # r = get_rotation_matrix(body)
+        body_pose = multiply(body_pose, invert(r)) ##
+    else:  ## for handle grasps, use the original pose of handle_link
         body_pose = multiply(body_pose, invert(robot.tool_from_hand))
         if verbose:
             print(f'{title}hand_link = {link} | body_pose = multiply(body_pose, invert(robot.tool_from_hand)) = {nice(body_pose)}')

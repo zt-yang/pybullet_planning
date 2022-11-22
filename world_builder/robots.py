@@ -9,7 +9,7 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
     interpolate_poses, Pose, Euler, quat_from_euler, set_renderer, get_bodies, get_all_links
 
 from pybullet_tools.bullet_utils import equal, nice, get_gripper_direction, set_camera_target_body, Attachment, \
-    BASE_LIMITS
+    BASE_LIMITS, get_rotation_matrix
 from pybullet_tools.pr2_primitives import APPROACH_DISTANCE, Conf, Grasp, get_base_custom_limits
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, close_until_collision, TOP_HOLDING_LEFT_ARM, \
     SIDE_HOLDING_LEFT_ARM
@@ -84,7 +84,6 @@ class RobotAPI(Robot):
         return self.custom_limits
 
     def get_body_pose(self, body_pose, body=None, verbose=False):
-        T = self.tool_from_hand
         title = f'    robot.get_body_pose({nice(body_pose)}, body={body})'
 
         ## if body_pose is handle link pose and body is (body, joint)
@@ -109,7 +108,8 @@ class RobotAPI(Robot):
                 body_pose = get_pose(b)
                 if verbose: print(f'{title} | actually given body, body_pose = get_pose(b) = {nice(body_pose)}')
 
-        new_body_pose = multiply(body_pose, T)
+        r = get_rotation_matrix(body) if body is not None else self.tool_from_hand
+        new_body_pose = multiply(body_pose, r)  ##
         if verbose: print(f'{title} | multiply(body_pose, self.tool_from_hand) = {nice(new_body_pose)}')
         return new_body_pose
 

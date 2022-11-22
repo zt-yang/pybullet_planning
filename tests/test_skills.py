@@ -171,7 +171,7 @@ def test_grasps(categories=[], robot='feg'):
     problem = State(world, grasp_types=robot.grasp_types)  ## , 'side' , 'top'
     tpt = math.pi/4 if 'Plate' not in categories else None
     funk = get_grasp_list_gen(problem, collisions=True, visualize=False,
-                              RETAIN_ALL=False, top_grasp_tolerance=tpt)
+                              RETAIN_ALL=False, top_grasp_tolerance=tpt, verbose=True)
 
     def test_grasp(body):
         set_renderer(True)
@@ -732,7 +732,7 @@ if __name__ == '__main__':
 
     ## --- grasps related ---
     robot = 'pr2' ## 'feg' | 'pr2'
-    test_grasps(['BraiserLid'], robot)
+    test_grasps(['Plate'], robot)  ## BraiserLid
     ## 'box', 'Bottle', 'Stapler', 'Camera', 'Glasses', 'Food', 'MiniFridge', 'KitchenCounter'
     # test_handle_grasps_counter()
     # test_handle_grasps(robot, category='MiniFridge')
