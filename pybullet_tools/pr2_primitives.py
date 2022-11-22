@@ -799,8 +799,10 @@ def get_target_path(trajectory):
 
 #######################################################
 
+
 BASE_CONSTANT = 1
 BASE_VELOCITY = 0.25
+
 
 def get_base_custom_limits(robot, base_limits, yaw_limit=None):
     if len(base_limits[0]) == 2:
@@ -819,6 +821,7 @@ def get_base_custom_limits(robot, base_limits, yaw_limit=None):
     if len(base_limits[0]) == 3:
         custom_limits[joint_from_name(robot, 'torso_lift_joint')] = z_limits
     return custom_limits
+
 
 def distance_fn(q1, q2):
     distance = get_distance(q1.values[:2], q2.values[:2])

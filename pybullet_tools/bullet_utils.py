@@ -630,6 +630,7 @@ def add_attachment(state=None, obj=None, parent=-1, parent_link=None, attach_dis
 
 
 def create_attachment(parent, parent_link, child, child_link=None, child_joint=None, OBJ=False):
+    # print(f'      create_attachment({parent}, {parent_link}, {parent_link})')
     parent_link_pose = get_link_pose(parent, parent_link)
     child_pose = get_pose(child)
     grasp_pose = multiply(invert(parent_link_pose), child_pose)
@@ -1018,6 +1019,7 @@ def get_rotation_matrix(body):
     r = unit_pose()
     if set(get_all_links(body)) == {0, -1}:
         urdf_file = dirname(get_collision_data(body, 0)[0].filename.decode())
+        urdf_file = urdf_file.replace('/textured_objs', '')
         rpy = untangle.parse(join(urdf_file, 'mobility.urdf')).robot.joint.origin['rpy'].split(' ')
         rpy = [eval(e) for e in rpy]
         if equal(rpy, [1.57, 1.57, -1.57], epsilon=0.1):

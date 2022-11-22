@@ -30,7 +30,7 @@ from pybullet_tools.flying_gripper_utils import set_se3_conf
 from pddlstream.language.constants import AND, PDDLProblem
 
 from world_builder.entities import Space
-from world_builder.loaders import create_gripper_robot, create_pr2_robot
+from world_builder.robot_builders import create_pr2_robot, create_gripper_robot
 from world_builder.robots import RobotAPI
 
 from lisdf_tools.lisdf_planning import pddl_to_init_goal

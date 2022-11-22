@@ -30,7 +30,7 @@ from pybullet_tools.flying_gripper_utils import se3_from_pose, \
     pose_from_se3, se3_ik, set_cloned_se3_conf, create_fe_gripper, set_se3_conf
 
 from world_builder.world import State
-from world_builder.loaders import create_gripper_robot, create_pr2_robot
+from world_builder.robot_builders import create_gripper_robot, create_pr2_robot
 from world_builder.utils import load_asset
 from world_builder.utils import get_instances as get_instances_helper
 from world_builder.partnet_scales import MODEL_SCALES as TEST_MODELS
@@ -732,9 +732,9 @@ if __name__ == '__main__':
 
     ## --- grasps related ---
     robot = 'pr2' ## 'feg' | 'pr2'
-    # test_grasps(['Plate'], robot)
+    test_grasps(['BraiserLid'], robot)
     ## 'box', 'Bottle', 'Stapler', 'Camera', 'Glasses', 'Food', 'MiniFridge', 'KitchenCounter'
-    test_handle_grasps_counter()
+    # test_handle_grasps_counter()
     # test_handle_grasps(robot, category='MiniFridge')
     # test_handle_grasps(robot, category='MiniFridgeDoorless')
     # test_pick_place_counter(robot)
