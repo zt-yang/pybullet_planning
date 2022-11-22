@@ -114,11 +114,12 @@ class RobotAPI(Robot):
         return new_body_pose
 
     def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
+        ## those primitive shapes
         if body is not None and isinstance(body, int) and len(get_all_links(body)) == 1:
             from pybullet_tools.pr2_primitives import get_tool_from_root
-            tool_from_root = multiply(((0, 0.025, 0.025), unit_quat()),
-                                      self.tool_from_hand,
+            tool_from_root = multiply(((0, 0.025, 0.025), unit_quat()), self.tool_from_hand,
                                       get_tool_from_root(self.body, arm))  ##
+        ## those urdf files made from one .obj file
         else:
             body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
             tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))

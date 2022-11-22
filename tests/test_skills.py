@@ -176,6 +176,7 @@ def test_grasps(categories=[], robot='feg'):
     def test_grasp(body):
         set_renderer(True)
         body_pose = get_pose(body)  ## multiply(get_pose(body), Pose(euler=Euler(math.pi/2, 0, -math.pi/2)))
+        print('body_pose', nice(body_pose))
         outputs = funk(body)
         if isinstance(outputs, list):
             print(f'grasps on body {body}:', outputs)
@@ -259,6 +260,7 @@ def load_body(path, scale, pose_2d=(0,0), random_yaw=False):
         body = load_model(file, scale=scale)
         if isinstance(body, tuple): body = body[0]
     pose = pose_from_2d(body, pose_2d, random_yaw=random_yaw)
+    pose = (pose[0], unit_quat())
     set_pose(body, pose)
     return body, file
 

@@ -86,7 +86,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'inverse-reachability': from_gen_fn(
             get_ik_gen(p, collisions=c, teleport=t, ir_only=True, custom_limits=l,
                        learned=False, verbose=False, visualize=False)),
-        'inverse-kinematics': from_fn(get_ik_fn(p, collisions=motion_collisions, teleport=t, verbose=False, ACONF=False)),
+        'inverse-kinematics': from_fn(get_ik_fn(p, collisions=motion_collisions, teleport=t, verbose=True, ACONF=False)),
         'plan-base-motion': from_fn(get_base_motion_gen(p, collisions=base_collisions, teleport=t, custom_limits=l)),
 
         'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(collisions=c)),
@@ -888,6 +888,7 @@ def test_grasps(state, name='cabbage', visualize=True):
     if 'left' in robot.joint_groups:
         if visualize:
             body_pose = get_pose(body)
+            print('body_pose', nice(body_pose))
             visualize_grasps(state, outputs, body_pose)
         print(f'{title}grasps:', outputs)
         goals = [("AtGrasp", 'left', body, outputs[1][0])]
@@ -917,6 +918,7 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=Fal
     def visualize_grasp(grasp, index=0):
         w = grasp.grasp_width
         if RETAIN_ALL:
+            print(' grasp.value', nice(grasp.value))
             gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, body=grasp.body,
                                                   color=colors[index%len(colors)], width=w)
             if collisions and collided(gripper_grasp, state.obstacles, verbose=True):

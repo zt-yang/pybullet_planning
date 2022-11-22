@@ -412,7 +412,7 @@ def load_five_table_scene(world):
     salter = create_movable(world, supporter=fridge, xy=(2, 0.18),
                             movable_category='Salter', category='salter', name='salter')
 
-    sink = create_table(world, xy=(0, 2), color=(.25, .25, .75, 1), category='sink', name='sink')
+    sink = create_table(world, xy=(0, 2), color=(.25, .25, .75, 1), category='sink', name='sink', w=0.3)
     plate = create_movable(world, supporter=sink, xy=(0, 2),
                            movable_category='Plate', category='plate', name='plate')
 

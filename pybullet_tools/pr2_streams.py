@@ -14,7 +14,8 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     RED, remove_body, aabb2d_from_aabb, aabb_overlap, aabb_contains_point, get_aabb_center, get_link_name, \
     get_links, check_initial_end, get_collision_fn, BLUE, WHITE, TAN, GREY, YELLOW, aabb_contains_aabb
 
-from pybullet_tools.bullet_utils import check_cfree_gripper, multiply, has_tracik
+from pybullet_tools.bullet_utils import check_cfree_gripper, multiply, has_tracik, set_camera_target_body, \
+    get_rotation_matrix
 from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics
 from pybullet_tools.ikfast.utils import USE_CURRENT
 from pybullet_tools.pr2_primitives import Grasp, \
@@ -224,8 +225,9 @@ def solve_nearby_ik(robot, arm, approach_pose, custom_limits={}):
 
 def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbose=False, ACONF=False):
     robot = problem.robot
-    obstacles = problem.fixed if collisions else []
     world = problem.world
+    obstacles = problem.fixed if collisions else []
+    ignored_pairs = world.ignored_pairs
     world_saver = WorldSaver()
     title = 'pr2_streams.get_ik_fn:\t'
 
@@ -250,17 +252,19 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
         if hasattr(world, 'BODY_TO_OBJECT') and world.BODY_TO_OBJECT[body].grasp_parent != None:
             addons.append(world.BODY_TO_OBJECT[body].grasp_parent)
         addon_obstacles = obstacles + addons if collisions else []
+        print(title, 'addon_obstacles', addon_obstacles)
 
         approach_obstacles = {obst for obst in obstacles if not is_placement(body, obst)}
         # approach_obstacles = problem.world.refine_marker_obstacles(obj, approach_obstacles)  ## for steerables
 
-        # gripper_pose = multiply(pose_value, invert(grasp.value))
-        # #approach_pose = multiply(grasp.approach, gripper_pose)
-        # approach_pose = multiply(pose_value, invert(grasp.approach))
-
         tool_from_root = get_tool_from_root(robot, arm)
         gripper_pose = multiply(robot.get_grasp_pose(pose_value, grasp.value, body=obj), invert(tool_from_root))
         approach_pose = multiply(robot.get_grasp_pose(pose_value, grasp.approach, body=obj), invert(tool_from_root))
+
+        # print('grasp_value', nice(grasp.value))
+        # gripper_grasp = robot.visualize_grasp(pose_value, grasp.approach, body=obj)
+        # set_camera_target_body(gripper_grasp)
+        # wait_unlocked()
 
         arm_link = get_gripper_link(robot, arm)
         arm_joints = get_arm_joints(robot, arm)
@@ -279,7 +283,8 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
             grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose, custom_limits=custom_limits) #, upper_limits=USE_CURRENT)
                                                 #nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
 
-        if (grasp_conf is None) or collided(robot, addon_obstacles, articulated=False): ## approach_obstacles): # [obj]
+        if (grasp_conf is None) or collided(robot, addon_obstacles, articulated=False,
+                                            verbose=verbose, ignored_pairs=ignored_pairs, min_num_pts=3): ## approach_obstacles): # [obj]
             #wait_unlocked()
             if verbose:
                 if grasp_conf != None:
@@ -308,7 +313,8 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
             approach_conf = pr2_inverse_kinematics(robot, arm, approach_pose, custom_limits=custom_limits,
                                                    upper_limits=USE_CURRENT, nearby_conf=USE_CURRENT)
             #approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits)
-        if (approach_conf is None) or collided(robot, addon_obstacles, articulated=False): ##
+        if (approach_conf is None) or collided(robot, addon_obstacles, articulated=False,
+                                               verbose=verbose, ignored_pairs=ignored_pairs, min_num_pts=3): ##
             if verbose:
                 if approach_conf != None:
                     approach_conf = nice(approach_conf)

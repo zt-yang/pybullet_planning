@@ -138,6 +138,10 @@ class World(object):
             a = self.cat_to_bodies('counter')[0]
             b = self.cat_to_bodies('oven')[0]
             found.extend([(a, b), (b, a)])
+
+        # plate = self.name_to_body('plate')
+        # if plate is not None:
+        #     found.append([(plate, self.robot.body), (self.robot.body, plate)])
         return found
 
     def get_name(self, body):
