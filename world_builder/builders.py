@@ -8,9 +8,9 @@ import pybullet as p
 from .world import World, State
 from .entities import Object, Region, Environment, Robot, Camera, Floor, Stove,\
     Surface, Moveable, Supporter, Steerable, Door
-from .loaders import create_pr2_robot, load_rooms, load_cart, load_cart_regions, load_blocked_kitchen, \
+from .loaders import load_rooms, load_cart, load_cart_regions, load_blocked_kitchen, \
     load_blocked_sink, load_blocked_stove, load_floor_plan, load_experiment_objects, load_pot_lid, load_basin_faucet, \
-    load_kitchen_mechanism, create_gripper_robot, load_cabinet_test_scene, load_random_mini_kitchen_counter, \
+    load_kitchen_mechanism, load_cabinet_test_scene, load_random_mini_kitchen_counter, \
     load_another_table, load_another_fridge_food, random_set_doors, ensure_robot_cfree, load_kitchen_mini_scene
 from pybullet_tools.utils import Pose, Euler, PI, create_box, TAN, Point, set_camera_pose, link_from_name, \
     connect, enable_preview, draw_pose, unit_pose, set_all_static, wait_if_gui, reset_simulation, get_aabb
@@ -18,6 +18,7 @@ from pybullet_tools.utils import Pose, Euler, PI, create_box, TAN, Point, set_ca
 from pybullet_tools.bullet_utils import set_camera_target_body, set_camera_target_robot, draw_collision_shapes, \
     open_joint
 from world_builder.world_generator import EXP_PATH
+from world_builder.robot_builders import maybe_add_robot, create_gripper_robot, create_pr2_robot
 
 
 def set_time_seed():
@@ -27,27 +28,6 @@ def set_time_seed():
     np.random.seed(seed)
     random.seed(seed)
     return seed
-
-
-def get_robot_builder(builder_name):
-    if builder_name == 'build_fridge_domain_robot':
-        return build_fridge_domain_robot
-    elif builder_name == 'build_table_domain_robot':
-        return build_table_domain_robot
-    return None
-
-############################################
-
-
-def maybe_add_robot(world, template_dir=None):
-    config_file = join(template_dir, 'planning_config.json')
-    planning_config = json.load(open(config_file, 'r'))
-    if 'robot_builder' not in planning_config:
-        return
-    custom_limits = planning_config['base_limits']
-    robot_name = planning_config['robot_name']
-    robot_builder = get_robot_builder(planning_config['robot_builder'])
-    robot_builder(world, robot_name=robot_name, custom_limits=custom_limits)
 
 
 def create_pybullet_world(args, builder,
@@ -262,42 +242,6 @@ def test_feg_pick(world, floorplan='counter.svg', verbose=True):
     goal = random.choice(goal_template)
 
     return goal
-
-############################################
-
-
-def build_table_domain_robot(world, robot_name, custom_limits=None, initial_q=None):
-    """ simplified cooking domain """
-    if robot_name == 'feg':
-        if custom_limits is None:
-            custom_limits = {0: (0, 4), 1: (3, 12), 2: (0, 2)}
-        if initial_q is None:
-            initial_q = [0.9, 8, 0.7, 0, -math.pi / 2, 0]
-        robot = create_gripper_robot(world, custom_limits, initial_q=initial_q)
-    else:
-        if custom_limits is None:
-            custom_limits = ((0, 0), (8, 8))
-        if initial_q is None:
-            initial_q = (1.79, 6, PI / 2 + PI / 2)
-        robot = create_pr2_robot(world, base_q=initial_q, custom_limits=custom_limits,
-                                 USE_TORSO=False, DRAW_BASE_LIMITS=True)
-    return robot
-
-
-def build_fridge_domain_robot(world, robot_name, custom_limits=None):
-    """ counter and fridge in the (6, 6) range """
-    x, y = (5, 3)
-    if robot_name == 'feg':
-        if custom_limits is None:
-            custom_limits = {0: (0, 6), 1: (0, 6), 2: (0, 2)}
-        robot = create_gripper_robot(world, custom_limits, initial_q=[x, y, 0.7, 0, -math.pi / 2, 0])
-        robot.set_spawn_range(((2.5, 2, 0.5), (3.8, 3.5, 1.9)))
-    else:
-        if custom_limits is None:
-            custom_limits = ((0, 0, 0), (6, 6, 1.5))
-        robot = create_pr2_robot(world, custom_limits=custom_limits, base_q=(x, y, PI / 2 + PI / 2))
-        robot.set_spawn_range(((4.2, 2, 0.5), (5, 3.5, 1.9)))
-    return robot
 
 
 ############################################

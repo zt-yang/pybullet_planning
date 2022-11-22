@@ -617,7 +617,7 @@ class World(object):
             obj.set_pose(((0.4, 6.4, z), quat))
 
         ## ---------- reachability hacks for PR2
-        if False and 'pr2' in self.robot.name:
+        if 'pr2' in self.robot.name:
 
             ## hack to be closer to edge
             if 'shelf' in surface:
@@ -639,6 +639,7 @@ class World(object):
                 if y > 9: y = 8.9
                 obj.set_pose(((0.7, y, z), quat))
 
+        surface_obj.attach_obj(obj)
         if OAO: ## one and only
             self.remove_body_from_planning(self.name_to_body(surface))
 

@@ -4,21 +4,18 @@ import numpy as np
 import math
 import os
 import string
-import time
 
-import pybullet as p
-from .utils import LIGHT_GREY, read_xml, load_asset, FLOOR_HEIGHT, WALL_HEIGHT, \
+from world_builder.utils import LIGHT_GREY, read_xml, load_asset, FLOOR_HEIGHT, WALL_HEIGHT, \
     find_point_for_single_push, ASSET_PATH
 
-from .world import World, State
-from .entities import Object, Region, Environment, Robot, Camera, Floor, Stove, Supporter,\
+from world_builder.world import World, State
+from world_builder.entities import Object, Region, Environment, Robot, Camera, Floor, Stove, Supporter,\
     Surface, Moveable, Space, Steerable
-from .robots import PR2Robot, FEGripper
+from world_builder.robots import PR2Robot, FEGripper
+from world_builder.robot_builders import create_pr2_robot
 
 import sys
-from pybullet_tools.pr2_utils import draw_viewcone, get_viewcone, get_group_conf, set_group_conf, get_other_arm, \
-    get_carry_conf, set_arm_conf, open_arm, close_arm, arm_conf, REST_LEFT_ARM
-from pybullet_tools.pr2_problems import create_pr2, create_table, create_floor
+from pybullet_tools.pr2_problems import create_table, create_floor
 from pybullet_tools.pr2_primitives import get_base_custom_limits
 from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, HideOutput, load_model, TURTLEBOT_URDF, \
     set_all_color, dump_body, draw_base_limits, multiply, Pose, Euler, PI, draw_pose, unit_pose, create_box, TAN, Point, \
@@ -28,7 +25,8 @@ from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, H
     get_pose, get_joint_position, enable_gravity, enable_real_time, get_links, set_color, dump_link, draw_link_name, \
     get_link_pose, get_aabb, get_link_name, sample_aabb, aabb_contains_aabb, aabb2d_from_aabb, sample_placement, \
     aabb_overlap, get_links, get_collision_data, get_visual_data, link_from_name, body_collision, get_closest_points, \
-    load_pybullet, FLOOR_URDF, get_aabb_center, AABB, INF, clip, aabb_union, get_aabb_center, Pose, Euler, get_box_geometry, \
+    load_pybullet, FLOOR_URDF, get_aabb_center, AABB, INF, clip, aabb_union, get_aabb_center, Pose, Euler, \
+    get_box_geometry, \
     get_aabb_extent, multiply, GREY, create_shape_array, create_body, STATIC_MASS, set_renderer, quat_from_euler, \
     get_joint_name, wait_for_user, draw_aabb, get_bodies, euler_from_quat
 from pybullet_tools.bullet_utils import place_body, add_body, Pose2d, nice, OBJ_YAWS, \
@@ -39,8 +37,9 @@ from pybullet_tools.bullet_utils import place_body, add_body, Pose2d, nice, OBJ_
 
 OBJ = '?obj'
 
-BASE_VELOCITIES = np.array([1., 1., math.radians(180)]) / 1. # per second
-BASE_RESOLUTIONS = np.array([0.05, 0.05, math.radians(10)]) # from examples.pybullet.namo.stream import BASE_RESOLUTIONS
+
+BASE_VELOCITIES = np.array([1., 1., math.radians(180)]) / 1.  # per second
+BASE_RESOLUTIONS = np.array([0.05, 0.05, math.radians(10)])  # from examples.pybullet.namo.stream import BASE_RESOLUTIONS
 zero_limits = 0 * np.ones(2)
 half_limits = 12 * np.ones(2)
 BASE_LIMITS = (-half_limits, +half_limits) ## (zero_limits, +half_limits) ##
@@ -56,90 +55,6 @@ GRASPABLES = ['BraiserLid', 'Egg', 'VeggieCabbage', 'MeatTurkeyLeg', 'VeggieGree
                         'VeggieZucchini', 'VeggiePotato', 'VeggieCauliflower',
                         'MeatChicken']
 GRASPABLES = [o.lower() for o in GRASPABLES]
-
-#######################################################
-
-
-def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
-    other_arm = get_other_arm(arm)
-    if not DUAL_ARM:
-        initial_conf = get_carry_conf(arm, grasp_type)
-        set_arm_conf(pr2, arm, initial_conf)
-        open_arm(pr2, arm)
-        set_arm_conf(pr2, other_arm, arm_conf(other_arm, REST_LEFT_ARM))
-        close_arm(pr2, other_arm)
-    else:
-        for a in [arm, other_arm]:
-            initial_conf = get_carry_conf(a, grasp_type)
-            set_arm_conf(pr2, a, initial_conf)
-            open_arm(pr2, a)
-
-
-def create_pr2_robot(world, base_q=(0,0,0),
-                     DUAL_ARM=False, USE_TORSO=True,
-                     custom_limits=BASE_LIMITS,
-                     resolutions=BASE_RESOLUTIONS,
-                     DRAW_BASE_LIMITS=False,
-                     max_velocities=BASE_VELOCITIES, robot=None):
-
-    if robot is None:
-        with LockRenderer(lock=True):
-            with HideOutput(enable=True):
-                robot = create_pr2()
-                set_pr2_ready(robot, DUAL_ARM=DUAL_ARM)
-        if len(base_q) == 3:
-            set_group_conf(robot, 'base', base_q)
-        elif len(base_q) == 4:
-            set_group_conf(robot, 'base-torso', base_q)
-
-    with np.errstate(divide='ignore'):
-        weights = np.reciprocal(resolutions)
-
-    if isinstance(custom_limits, dict):
-        custom_limits = np.asarray(list(custom_limits.values())).T.tolist()
-
-    if DRAW_BASE_LIMITS:
-        draw_base_limits(custom_limits)
-    robot = PR2Robot(robot, base_link=BASE_LINK, joints=BASE_JOINTS,
-                     DUAL_ARM=DUAL_ARM, USE_TORSO=USE_TORSO,
-                     custom_limits=get_base_custom_limits(robot, custom_limits),
-                     resolutions=resolutions, weights=weights)
-    world.add_robot(robot, max_velocities=max_velocities)
-
-    # print('initial base conf', get_group_conf(robot, 'base'))
-    # set_camera_target_robot(robot, FRONT=True)
-
-    camera = Camera(robot, camera_frame=CAMERA_FRAME, camera_matrix=CAMERA_MATRIX, max_depth=2.5, draw_frame=EYE_FRAME)
-    robot.cameras.append(camera)
-
-    ## don't show depth and segmentation data yet
-    # if args.camera: robot.cameras[-1].get_image(segment=args.segment)
-
-    return robot
-
-
-from pybullet_tools.flying_gripper_utils import create_fe_gripper, plan_se3_motion, Problem, \
-    get_free_motion_gen, set_gripper_positions, get_se3_joints, set_gripper_positions, \
-    set_se3_conf ## se3_from_pose,
-
-
-def create_gripper_robot(world, custom_limits, initial_q=(0, 0, 0, 0, 0, 0), robot=None):
-    from pybullet_tools.flying_gripper_utils import BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_LINK
-
-    if robot is None:
-        with LockRenderer(lock=True):
-            with HideOutput(enable=True):
-                robot = create_fe_gripper()
-        set_se3_conf(robot, initial_q)
-
-    with np.errstate(divide='ignore'):
-        weights = np.reciprocal(BASE_RESOLUTIONS)
-    robot = FEGripper(robot, base_link=BASE_LINK, joints=get_se3_joints(robot),
-                  custom_limits=custom_limits, resolutions=BASE_RESOLUTIONS, weights=weights)
-    world.add_robot(robot, max_velocities=BASE_VELOCITIES)
-
-    return robot
-
 
 ######################################################
 
@@ -507,20 +422,20 @@ def load_five_table_scene(world):
     return cabbage
 
 
-def load_full_kitchen(world, name='eggblock', color=TAN, **kwargs):
+def load_full_kitchen(world, **kwargs):
     world.set_skip_joints()
 
+    custom_limits = ((0, 4), (4, 13))
+    robot = create_pr2_robot(world, base_q=(1.79, 6, PI / 2 + PI / 2),
+                             custom_limits=custom_limits, USE_TORSO=True)
+
     floor = load_floor_plan(world, plan_name='kitchen_v2.svg', **kwargs)  ## studio0, studio0
-    cabbage = load_experiment_objects(world, CABBAGE_ONLY=True, name=name, color=color)
+    cabbage = load_experiment_objects(world, CABBAGE_ONLY=True)
     counter = world.name_to_object('indigo_tmp')
     counter.place_obj(cabbage)
     (_, y, z), _ = cabbage.get_pose()
     cabbage.set_pose(Pose(point=Point(x=0.85, y=y, z=z)))
     world.remove_object(floor)
-
-    custom_limits = ((0, 4), (4, 13))
-    robot = create_pr2_robot(world, base_q=(1.79, 6, PI / 2 + PI / 2),
-                             custom_limits=custom_limits, USE_TORSO=True)
 
     lid = world.name_to_body('braiserlid')
     world.put_on_surface(lid, 'braiserbody')

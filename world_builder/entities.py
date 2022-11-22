@@ -75,6 +75,9 @@ class Object(Index):
     def __init__(self, body, joint=None, link=None, category=None, name=None,
                  collision=True, verbose=False):
 
+        if isinstance(body, Object):
+            body = body.body
+
         self.is_box = False
         if isinstance(body, tuple) and isinstance(body[1], str):
             if len(body) == 4:
@@ -157,7 +160,7 @@ class Object(Index):
         if isinstance(obj, str):
             obj = self.place_new_obj(obj, max_trial=max_trial)
 
-        if xyzyaw is None:
+        if xyzyaw is not None:
             x, y, z, yaw = xyzyaw
             obj.set_pose(Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw)))
 
