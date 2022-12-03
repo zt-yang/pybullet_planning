@@ -212,6 +212,10 @@ def get_file_by_category(category, RANDOM_INSTANCE=False, SAMPLING=False):
 
     else:
         parent = get_parent_category(category)
+        cats = [c for c in listdir(join(ASSET_PATH, 'models', parent)) if c.lower() == category.lower()]
+        if len(cats) > 0:
+            category = cats[0]
+
         if parent is not None:
             file = join(ASSET_PATH, 'models', parent, category, 'mobility.urdf')
 
