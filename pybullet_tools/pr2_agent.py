@@ -17,13 +17,15 @@ from pybullet_tools.pr2_streams import get_stable_gen, Position, get_pose_in_spa
     get_pull_marker_random_motion_gen, get_ik_ungrasp_handle_gen, get_pose_in_region_test, \
     get_cfree_btraj_pose_test, get_joint_position_open_gen, get_ik_ungrasp_mark_gen, \
     sample_joint_position_open_list_gen, get_ik_gen, get_ik_fn
+    # , get_cfree_pose_pose_rel_test, get_cfree_approach_pose_rel_test
 
 from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
-    get_ik_ir_gen, get_motion_gen, get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
-    move_cost_fn, Attach, Detach, Clean, Cook, control_commands, \
+    get_ik_ir_gen, get_motion_gen, \
+    move_cost_fn, Attach, Detach, Clean, Cook, \
     get_gripper_joints, GripperCommand, apply_commands, State, Trajectory, Simultaneous, create_trajectory
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, get_handle_grasp_list_gen, \
-    get_handle_grasp_gen, get_compute_pose_kin
+    get_handle_grasp_gen, get_compute_pose_kin, get_compute_pose_rel_kin, \
+    get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
     set_camera_target_robot, nice, BASE_LIMITS, get_file_short_name, get_root_links, collided
 from pybullet_tools.pr2_problems import create_pr2
@@ -83,16 +85,20 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False,
                                                        top_grasp_tolerance=PI/4)), # TODO: collisions
         'compute-pose-kin': from_fn(get_compute_pose_kin()),
+        'compute-pose-rel-kin': from_fn(get_compute_pose_rel_kin()),
         'inverse-reachability': from_gen_fn(
             get_ik_gen(p, collisions=c, teleport=t, ir_only=True, custom_limits=l,
                        learned=False, verbose=False, visualize=False)),
         'inverse-kinematics': from_fn(get_ik_fn(p, collisions=motion_collisions, teleport=t, verbose=True, ACONF=False)),
         'plan-base-motion': from_fn(get_base_motion_gen(p, collisions=base_collisions, teleport=t, custom_limits=l)),
 
-        'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(collisions=c)),
+        'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(p.robot, collisions=c)),
         'test-cfree-approach-pose': from_test(get_cfree_approach_pose_test(p, collisions=c)),
+        # 'test-cfree-pose-pose-rel': from_test(get_cfree_pose_pose_rel_test(collisions=c)),
+        # 'test-cfree-approach-pose-rel': from_test(get_cfree_approach_pose_rel_test(p, collisions=c)),
+
         'test-cfree-traj-pose': from_test(get_cfree_traj_pose_test(p.robot, collisions=c)),
-        'test-cfree-traj-position': from_test(universe_test),
+        # 'test-cfree-traj-position': from_test(universe_test),
         'test-cfree-btraj-pose': from_test(get_cfree_btraj_pose_test(p.robot, collisions=c)),
 
         'get-joint-position-open': from_gen_fn(sample_joint_position_open_list_gen(p)),
@@ -455,6 +461,7 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
                                custom_limits=BASE_LIMITS,
                                init_facts=[], ## avoid duplicates
                                facts=[],  ## completely overwrite
+                               objects=None,  ## only some objects included in planning
                                collisions=True, teleport=False, PRINT=True, print_fn=None,
                                **kwargs):
     if print_fn is None:
@@ -474,7 +481,7 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     world.summarize_all_objects(print_fn=print_fn)
 
     if len(facts) == 0:
-        facts = state.get_facts(init_facts)
+        facts = state.get_facts(init_facts=init_facts, objects=objects)
     init = facts
 
     if PRINT:

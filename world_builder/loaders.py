@@ -598,6 +598,7 @@ def load_pot_lid(world):
 
     lid = name_to_body('braiserlid')
     world.put_on_surface(lid, 'braiserbody')
+    world.add_not_stackable(lid, bottom)
     world.add_to_cat(lid, 'moveable')
 
     return bottom, lid
@@ -1270,7 +1271,10 @@ def load_another_fridge_food(world, movable_category='food', table_name='table',
 
 
 def load_kitchen_mini_scene(world, **kwargs):
-    """ implemented by Felix for the FEG gripper """
+    """ inspired by Felix's environment for the FEG gripper """
+    set_camera_pose(camera_point=[3, 0, 3], target_point=[0, 0, 1])
+    draw_pose(unit_pose())
+
     # load floor
     FLOOR_HEIGHT = 1e-3
     FLOOR_WIDTH = 4
@@ -1285,7 +1289,8 @@ def load_kitchen_mini_scene(world, **kwargs):
     WALL_LENGTH = FLOOR_LENGTH
     wall = world.add_object(
         Supporter(
-            create_box(w=round(WALL_WIDTH, 1), l=round(WALL_LENGTH, 1), h=WALL_HEIGHT, color=WHITE, collision=True)),
+            create_box(w=round(WALL_WIDTH, 1), l=round(WALL_LENGTH, 1), h=WALL_HEIGHT, color=WHITE, collision=True),
+             name='wall'),
         Pose(point=Point(x=round(-0.5 * WALL_WIDTH, 1), y=round(0, 1), z=0.5 * WALL_HEIGHT)))
 
     # sample ordering of fridge, oven, dishwasher
@@ -1308,12 +1313,12 @@ def load_kitchen_mini_scene(world, **kwargs):
         else:
             fixtures.insert(0, None)
         if if_fridge:
-            fixtures.append('fridge')
+            fixtures.append('minifridge')
         else:
             fixtures.append(None)
     else:
         if if_fridge:
-            fixtures.insert(0, 'fridge')
+            fixtures.insert(0, 'minifridge')
         else:
             fixtures.insert(0, None)
         if if_oven:
@@ -1396,7 +1401,7 @@ def load_kitchen_mini_scene(world, **kwargs):
     # microwave = world.name_to_body('microwave')
     # world.put_on_surface(microwave, counter)
     microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random())
-    microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=180)))
+    microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)))
 
     # add pot
     pot = counter.place_new_obj('kitchenpot', scale=0.2)
@@ -1405,28 +1410,40 @@ def load_kitchen_mini_scene(world, **kwargs):
     # add shelf
     SHELF_HEIGHT = 0.05
     SHELF_WIDTH = 0.5
-    MIN_SHELF_LENGTH = 1
+    MIN_SHELF_LENGTH = 1.5
     min_shelf_y = min_counter_y + random.random() * (max_counter_y - min_counter_y - MIN_SHELF_LENGTH)
     max_shelf_y = max_counter_y - random.random() * (max_counter_y - min_shelf_y - MIN_SHELF_LENGTH)
     SHELF_LENGTH = max_shelf_y - min_shelf_y
 
     shelf = world.add_object(
         Supporter(create_box(w=SHELF_WIDTH, l=SHELF_LENGTH, h=SHELF_HEIGHT, color=GREY, collision=True)),
-        Pose(point=Point(x=0.5 * SHELF_WIDTH, y=(max_shelf_y + min_shelf_y) / 2, z=1.5)))
+        Pose(point=Point(x=0.5 * SHELF_WIDTH, y=(max_shelf_y + min_shelf_y) / 2, z=2)))
 
     # add food
+    x_food_min = 0.5
     food_ids = []
     for i in range(5):
-        food_ids.append(counter.place_new_obj('food'))
-        food_ids[i].set_pose(Pose(point=food_ids[i].get_pose()[0]))
+        obj = counter.place_new_obj('food', RANDOM_INSTANCE=True)
+        (x, y, z), r = obj.get_pose()
+        x = min([x_food_min, x])
+        obj.set_pose(((x, y, z), r))
+        food_ids.append(obj)
 
     # add bottle
     bottle_ids = []
     for i in range(3):
-        bottle_ids.append(shelf.place_new_obj('bottle'))
-        bottle_ids[i].set_pose(Pose(point=bottle_ids[i].get_pose()[0]))
+        obj = shelf.place_new_obj('bottle', RANDOM_INSTANCE=True)
+        bottle_ids.append(obj)
 
     # add camera
     camera_pose = Pose(point=Point(x=4.2, y=0, z=2.5), euler=Euler(roll=PI / 2 + PI / 8, pitch=0, yaw=-PI / 2))
     world.add_camera(camera_pose)
     # rgb, depth, segmented, view_pose, camera_matrix = world.camera.get_image()
+
+    # world.summarize_all_objects()
+    objects = [food_ids[0], counter.body, shelf.body, world.robot]
+    exclude_from_planning = [o for o in get_bodies() if o not in objects]
+    for o in exclude_from_planning:
+        world.remove_body_from_planning(o)
+
+    return food_ids[0], shelf.body

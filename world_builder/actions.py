@@ -573,7 +573,8 @@ def get_primitive_actions(action, world, teleport=False):
         if '_rel' in name:
             a, o, p, rp, o2, p2, g, _, t = args
         else:
-            a, o, p, g, _, t = args
+            a, o, p, g = args[:4]
+            t = args[-1]
         t = get_traj(t)
         close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
         attach = AttachObjectAction(a, g, o)
@@ -595,7 +596,7 @@ def get_primitive_actions(action, world, teleport=False):
         new_commands = t + [close_gripper, attach, attach2]
 
     elif name == 'pick_hand':
-        a, o, p, g, _, _, t = args[:7]
+        a, o, p, g, _, t = args[:6]
         t = get_traj(t)
         close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
         attach = AttachObjectAction(a, g, o)
@@ -635,7 +636,7 @@ def get_primitive_actions(action, world, teleport=False):
         new_commands = [detach, detach2, open_gripper] + t[::-1]
 
     elif name == 'place_hand':
-        a, o, p, g, _, _, t = args[:7]
+        a, o, p, g, _, t = args[:6]
         t = get_traj(t)
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
         detach = DetachObjectAction(a, o)

@@ -18,7 +18,7 @@ from pybullet_tools.bullet_utils import check_cfree_gripper, multiply, has_traci
     get_rotation_matrix
 from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics
 from pybullet_tools.ikfast.utils import USE_CURRENT
-from pybullet_tools.pr2_primitives import Grasp, \
+from pybullet_tools.pr2_primitives import Grasp, iterate_approach_path, \
     APPROACH_DISTANCE, TOP_HOLDING_LEFT_ARM, get_tool_from_root, Conf, Commands, create_trajectory, \
     Trajectory, State
 from pybullet_tools.pr2_problems import create_pr2
@@ -1505,3 +1505,33 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
                 #if not p.init:
                 #    return
     return gen
+#
+#
+# ################################################################################
+#
+#
+# def get_cfree_pose_pose_rel_test(collisions=True, **kwargs):
+#     def test(b1, p1, b2, p2, b3):
+#         if not collisions or (b1 == b2) or b2 in ['@world']:
+#             return True
+#         p1.assign()
+#         p2.assign()
+#         return not pairwise_collision(b1, b2, **kwargs) #, max_distance=0.001)
+#     return test
+#
+#
+# def get_cfree_approach_pose_rel_test(problem, collisions=True):
+#     # TODO: apply this before inverse kinematics as well
+#     arm = 'left'
+#     gripper = problem.get_gripper()
+#     def test(b1, p1, g1, b2, p2):
+#         if not collisions or (b1 == b2) or b2 in ['@world']:
+#             return True
+#         p2.assign()
+#         for _ in iterate_approach_path(problem.robot, arm, gripper, p1, g1, body=b1):
+#             if pairwise_collision(b1, b2) or pairwise_collision(gripper, b2):
+#                 return False
+#         return True
+#     return test
+#
+

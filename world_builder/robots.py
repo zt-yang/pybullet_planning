@@ -400,6 +400,10 @@ class FEGripper(RobotAPI):
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
     finger_link = 8  ## for detecting if a grasp is pointing upwards
 
+    def get_pose(self):
+        from pybullet_tools.flying_gripper_utils import get_se3_conf
+        return get_se3_conf(self.body)
+
     def create_gripper(self, arm='hand', visual=True, color=None):
         from pybullet_tools.utils import unit_pose
         gripper = clone_body(self.body, visual=False, collision=True)
@@ -570,8 +574,8 @@ class FEGripper(RobotAPI):
         return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
 
     def get_stream_info(self):
-        # from pybullet_tools.flying_gripper_agent import get_stream_info
-        from pybullet_tools.pr2_agent import get_stream_info
+        from pybullet_tools.flying_gripper_agent import get_stream_info
+        # from pybullet_tools.pr2_agent import get_stream_info
         return get_stream_info()
 
     def get_base_joints(self):

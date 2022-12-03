@@ -11,11 +11,11 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     pairwise_collision, sample_placement, get_pose, Point, Euler, set_joint_position, \
     BASE_LINK, get_joint_position, get_aabb, quat_from_euler, flatten_links, multiply, \
     get_joint_limits, unit_pose, point_from_pose, draw_point, PI, quat_from_pose, angle_between, \
-    tform_point
+    tform_point, interpolate_poses, draw_pose, RED, remove_handles
 from pybullet_tools.pr2_primitives import Pose
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, is_contained, \
-    visualize_point, collided, sample_pose, xyzyaw_to_pose
+    visualize_point, collided, sample_pose, xyzyaw_to_pose, ObjAttachment
 
 
 class Position(object):
@@ -149,6 +149,26 @@ def get_compute_pose_kin():
     return fn
 
 
+def get_compute_pose_rel_kin():
+    def fn(o1, p1, o2, p2):
+        if o1 == o2:
+            return None
+        p2.assign()
+        p1.assign()
+        if isinstance(o2, tuple):  ## TODO: is this possible?
+            parent, parent_link = o2
+            parent_link_pose = get_link_pose(parent, parent_link)
+        else:
+            parent = o2
+            parent_link = BASE_LINK
+            parent_link_pose = p2.value
+        rel_pose = multiply(invert(parent_link_pose), p1.value)
+        attachment = ObjAttachment(parent, parent_link, rel_pose, o1)
+        rp = pose_from_attachment(attachment)
+        return (rp,)
+    return fn
+
+
 """ ==============================================================
 
             Sampling placement ?p
@@ -192,8 +212,12 @@ def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False,
 
             p = Pose(body, body_pose, surface)
             p.assign()
-            if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, surface}):
+            obs = [obst for obst in obstacles if obst not in {body, surface}]
+            result = collided(body, obs, verbose=True)
+            if not result:
                 yield (p,)
+            else:
+                print('Collided | get_stable_gen', result)
     return gen
 
 
@@ -522,7 +546,7 @@ def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
     obstacles = problem.fixed if collisions else []
     world = problem.world
     robot = problem.robot
-    title = 'pr2_streams.get_handle_grasp_gen |'
+    title = 'general_streams.get_handle_grasp_gen |'
     def fn(body_joint):
         body, joint = body_joint
         handle_link = get_handle_link(body_joint)
@@ -595,22 +619,107 @@ def get_pose_from_attachment(problem):
 """
 
 
+def get_cfree_pose_pose_test(robot, collisions=True, **kwargs):
+    def test(b1, p1, b2, p2, fluents=[]):
+        if not collisions or (b1 == b2) or b2 in ['@world']:
+            return True
+        if fluents:
+            attachments = process_motion_fluents(fluents, robot)
+        p1.assign()
+        p2.assign()
+        return not pairwise_collision(b1, b2, **kwargs) #, max_distance=0.001)
+    return test
+
+
+def get_cfree_obj_approach_pose_test(robot, collisions=True):
+    def test(b1, p1, g1, b2, p2, fluents=[]):
+        if not collisions or (b1 == b2) or b2 in ['@world']:
+            return True
+        if fluents:
+            attachments = process_motion_fluents(fluents, robot)
+        p2.assign()
+        grasp_pose = multiply(p1.value, invert(g1.value))
+        approach_pose = multiply(p1.value, invert(g1.approach), g1.value)
+        for obj_pose in interpolate_poses(grasp_pose, approach_pose):
+            set_pose(b1, obj_pose)
+            if pairwise_collision(b1, b2):
+                return False
+        return True
+    return test
+
+
 def get_cfree_approach_pose_test(problem, collisions=True):
     # TODO: apply this before inverse kinematics as well
     arm = 'left'
+    gripper = problem.get_gripper()
     obstacles = problem.fixed
-
-    def test(b1, p1, g1, b2, p2):
-        if not collisions or (b1 == b2):
+    robot = problem.robot
+    def test(b1, p1, g1, b2, p2, fluents=[]):
+        if not collisions or (b1 == b2) or b2 in ['@world']:
             return True
+        if fluents:
+            attachments = process_motion_fluents(fluents, robot)
         p2.assign()
-        gripper = problem.get_gripper()
         result = False
-        for _ in problem.robot.iterate_approach_path(arm, gripper, p1, g1, obstacles=obstacles,  body=b1):
+        for _ in problem.robot.iterate_approach_path(arm, gripper, p1, g1, obstacles=obstacles, body=b1):
             if pairwise_collision(b1, b2) or pairwise_collision(gripper, b2):
                 result = False
                 break
             result = True
+        return result
+    return test
+
+
+def get_cfree_traj_pose_test(robot, collisions=True, verbose=False, visualize=False):
+    def test(c, b2, p2, fluents=[]):
+        from pybullet_tools.utils import set_renderer
+        from pybullet_tools.bullet_utils import set_camera_target_body
+        from pybullet_tools.flying_gripper_utils import pose_from_se3
+        # TODO: infer robot from c
+        if not collisions:
+            return True
+        if fluents:
+            attachments = process_motion_fluents(fluents, robot)
+        state = c.assign()
+        if b2 in state.attachments:
+            return True
+        p2.assign()
+
+        handles = []
+        if visualize:
+            for conf in c.commands[0].path:
+                pose = pose_from_se3(conf.values)
+                handles.extend(draw_pose(pose))
+
+        if verbose:
+            robot_pose = robot.get_pose()
+            # print('    get_cfree_traj_pose_test   \   base conf of robot', nice(robot_pose))
+        count = 0
+        length = len(c.commands[0].path)
+        result = True
+        for _ in c.apply(state):
+            count += 1
+            if count == length > 10:
+                continue
+            title = f'      [step {count}/{length}] collision '
+            state.assign()
+            for b1 in state.attachments:
+                if pairwise_collision(b1, b2):
+                    if verbose:
+                        print(f'{title}with {b1}, {b2}')
+                        print(f'         pose of {b1}', nice(get_pose(b1)))
+                        print(f'         pose of {b2}', nice(get_pose(b2)))
+                    #wait_for_user()
+                    result = False
+            if pairwise_collision(robot, b2):
+                if verbose:
+                    print(f'{title}{robot}, {b2} (attachments = {state.attachments})')
+                    print(f'         base conf of robot', nice(robot.get_pose()))
+                    print(f'         pose of {b2}', nice(get_pose(b2)))
+                result = False
+        # TODO: just check collisions with moving links
+        if visualize:
+            remove_handles(handles)
         return result
     return test
 

@@ -619,8 +619,8 @@ def add_attachment(state=None, obj=None, parent=-1, parent_link=None, attach_dis
 
     collision_infos = get_closest_points(parent, obj, link1=link1, max_distance=INF)
     min_distance = min([INF] + [info.contactDistance for info in collision_infos])
-    if attach_distance == None or (min_distance < attach_distance):  ## (obj not in new_attachments) and
-        if joint != None:
+    if attach_distance is None or (min_distance < attach_distance):  ## (obj not in new_attachments) and
+        if joint is not None:
             attachment = create_attachment(parent, parent_link, obj,
                                            child_link=link1, child_joint=joint)
         else:
@@ -1017,10 +1017,20 @@ def fit_dimensions(body, body_pose=unit_pose()):
 def get_rotation_matrix(body):
     import untangle
     r = unit_pose()
-    if set(get_all_links(body)) == {0, -1}:
-        urdf_file = dirname(get_collision_data(body, 0)[0].filename.decode())
+    collision_data = get_collision_data(body, 0)
+    # if set(get_all_links(body)) == {0, -1}:
+    if len(collision_data) > 0:
+        urdf_file = dirname(collision_data[0].filename.decode())
         urdf_file = urdf_file.replace('/textured_objs', '')
-        rpy = untangle.parse(join(urdf_file, 'mobility.urdf')).robot.joint.origin['rpy'].split(' ')
+        joints = untangle.parse(join(urdf_file, 'mobility.urdf')).robot.joint
+        if isinstance(joints, list):
+            for j in joints:
+                if j.parent['link'] == 'base':
+                    joint = j
+                    break
+        else:
+            joint = joints
+        rpy = joint.origin['rpy'].split(' ')
         rpy = tuple([eval(e) for e in rpy])
         if equal(rpy, (1.57, 1.57, -1.57), epsilon=0.1):
             r = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
@@ -1610,7 +1620,7 @@ def get_door_links(body, joint):
     return links
 
 
-def sort_body_parts(bodies):
+def sort_body_parts(bodies, existing=[]):
     indices = []
     links = {}
     joints = {}
@@ -1619,16 +1629,21 @@ def sort_body_parts(bodies):
             if body[0] not in joints:
                 joints[body[0]] = []
             joints[body[0]].append(body)
+            b = body[0]
         elif isinstance(body, tuple) and len(body) == 3:
             if body[0] not in links:
                 links[body[0]] = []
             links[body[0]].append(body)
+            b = body[0]
         else:
-            indices.append(body)
+            b = body
+        if b not in indices:
+            indices.append(b)
 
     sorted_bodies = []
     for body in indices:
-        sorted_bodies.append(body)
+        if body not in existing:
+            sorted_bodies.append(body)
         if body in joints:
             bodies = joints[body]
             bodies.sort()
@@ -1786,7 +1801,7 @@ def clone_body_link(body, link, collision=True, visual=True, client=None):
     return new_body
 
 
-def colorize_link(body, link, transparency=0.5):
+def colorize_link(body, link=0, transparency=0.5):
     body_color = apply_alpha(0.9 * np.ones(3))
     link_color = np.array(body_color) + np.random.normal(0, 1e-2, 4)  # TODO: clip
     link_color = apply_alpha(link_color, alpha=transparency)
@@ -1824,12 +1839,16 @@ def colorize_world(fixed, transparency=0.5):
     return colored
 
 
-def draw_base_limits(custom_limits, **kwargs):
+def draw_base_limits(custom_limits, z=1e-2, **kwargs):
+    if isinstance(custom_limits, dict):
+        x_min, x_max = custom_limits[0]
+        y_min, y_max = custom_limits[1]
+        custom_limits = ((x_min, y_min), (x_max, y_max))
     if len(custom_limits[0]) == 3:
         draw_aabb(AABB(custom_limits[0], custom_limits[1]), **kwargs)
     elif len(custom_limits[0]) == 2:
         (x1, y1), (x2, y2) = custom_limits
-        p1, p2, p3, p4 = [(x1, y1, 0), (x1, y2, 0), (x2, y2, 0), (x2, y1, 0)]
+        p1, p2, p3, p4 = [(x1, y1, z), (x1, y2, z), (x2, y2, z), (x2, y1, z)]
         points = [(p1, p2), (p2, p3), (p3, p4), (p4, p1)]
         [add_line(p1, p2, **kwargs) for p1, p2 in points]
 

@@ -36,7 +36,7 @@ from pybullet_tools.pr2_utils import draw_viewcone, get_viewcone, get_group_conf
     get_carry_conf, set_arm_conf, open_arm, close_arm, arm_conf, REST_LEFT_ARM
 from pybullet_tools.bullet_utils import set_pr2_ready, BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, \
     draw_base_limits, BASE_LIMITS, CAMERA_FRAME, CAMERA_MATRIX, EYE_FRAME, collided
-from pybullet_tools.utils import LockRenderer, HideOutput, draw_base_limits, PI
+from pybullet_tools.utils import LockRenderer, HideOutput, PI
 
 
 def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
@@ -54,12 +54,10 @@ def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
             open_arm(pr2, a)
 
 
-def create_pr2_robot(world, base_q=(0, 0, 0),
-                     DUAL_ARM=False, USE_TORSO=True,
-                     custom_limits=BASE_LIMITS,
-                     resolutions=BASE_RESOLUTIONS,
-                     DRAW_BASE_LIMITS=False,
-                     max_velocities=BASE_VELOCITIES, robot=None):
+def create_pr2_robot(world, base_q=(0, 0, 0), DUAL_ARM=False, USE_TORSO=True,
+                     custom_limits=BASE_LIMITS, resolutions=BASE_RESOLUTIONS,
+                     DRAW_BASE_LIMITS=False, max_velocities=BASE_VELOCITIES,
+                     robot=None):
 
     if robot is None:
         with LockRenderer(lock=True):
@@ -79,6 +77,7 @@ def create_pr2_robot(world, base_q=(0, 0, 0),
 
     if DRAW_BASE_LIMITS:
         draw_base_limits(custom_limits)
+
     robot = PR2Robot(robot, base_link=BASE_LINK, joints=BASE_JOINTS,
                      DUAL_ARM=DUAL_ARM, USE_TORSO=USE_TORSO,
                      custom_limits=get_base_custom_limits(robot, custom_limits),
@@ -100,12 +99,11 @@ def create_pr2_robot(world, base_q=(0, 0, 0),
 #######################################################
 
 
-from pybullet_tools.flying_gripper_utils import create_fe_gripper, plan_se3_motion, Problem, \
-    get_free_motion_gen, set_gripper_positions, get_se3_joints, set_gripper_positions, \
-    set_se3_conf ## se3_from_pose,
+from pybullet_tools.flying_gripper_utils import create_fe_gripper, get_se3_joints, set_se3_conf
 
 
-def create_gripper_robot(world, custom_limits, initial_q=(0, 0, 0, 0, 0, 0), robot=None):
+def create_gripper_robot(world, custom_limits, initial_q=(0, 0, 0, 0, 0, 0),
+                         DRAW_BASE_LIMITS=False, robot=None):
     from pybullet_tools.flying_gripper_utils import BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_LINK
 
     if robot is None:
@@ -120,43 +118,45 @@ def create_gripper_robot(world, custom_limits, initial_q=(0, 0, 0, 0, 0, 0), rob
                   custom_limits=custom_limits, resolutions=BASE_RESOLUTIONS, weights=weights)
     world.add_robot(robot, max_velocities=BASE_VELOCITIES)
 
+    if DRAW_BASE_LIMITS:
+        draw_base_limits(custom_limits)
     return robot
 
 
 #######################################################
 
 
-def build_table_domain_robot(world, robot_name, custom_limits=None, initial_q=None):
+def build_table_domain_robot(world, robot_name, custom_limits=None, initial_q=None, **kwargs):
     from world_builder.builders import create_gripper_robot, create_pr2_robot
     """ simplified cooking domain """
     if robot_name == 'feg':
         if custom_limits is None:
-            custom_limits = {0: (0, 4), 1: (3, 12), 2: (0, 2)}
+            custom_limits = {0: (0, 8), 1: (0, 8), 2: (0, 2)}
         if initial_q is None:
-            initial_q = [0.9, 8, 0.7, 0, -math.pi / 2, 0]
-        robot = create_gripper_robot(world, custom_limits, initial_q=initial_q)
+            initial_q = [0, 0, 0, 0, -math.pi / 2, 0]
+        robot = create_gripper_robot(world, custom_limits, initial_q=initial_q, **kwargs)
     else:
         if custom_limits is None:
             custom_limits = ((0, 0), (8, 8))
         if initial_q is None:
             initial_q = (1.79, 6, PI / 2 + PI / 2)
         robot = create_pr2_robot(world, base_q=initial_q, custom_limits=custom_limits,
-                                 USE_TORSO=False, DRAW_BASE_LIMITS=True)
+                                 USE_TORSO=False, DRAW_BASE_LIMITS=True, **kwargs)
     return robot
 
 
-def build_fridge_domain_robot(world, robot_name, custom_limits=None):
+def build_fridge_domain_robot(world, robot_name, custom_limits=None, **kwargs):
     """ counter and fridge in the (6, 6) range """
     x, y = (5, 3)
     if robot_name == 'feg':
         if custom_limits is None:
             custom_limits = {0: (0, 6), 1: (0, 6), 2: (0, 2)}
-        robot = create_gripper_robot(world, custom_limits, initial_q=[x, y, 0.7, 0, -math.pi / 2, 0])
+        robot = create_gripper_robot(world, custom_limits, initial_q=[x, y, 0.7, 0, -math.pi / 2, 0], **kwargs)
         robot.set_spawn_range(((2.5, 2, 0.5), (3.8, 3.5, 1.9)))
     else:
         if custom_limits is None:
             custom_limits = ((0, 0, 0), (6, 6, 1.5))
-        robot = create_pr2_robot(world, custom_limits=custom_limits, base_q=(x, y, PI / 2 + PI / 2))
+        robot = create_pr2_robot(world, custom_limits=custom_limits, base_q=(x, y, PI / 2 + PI / 2), **kwargs)
         robot.set_spawn_range(((4.2, 2, 0.5), (5, 3.5, 1.9)))
     return robot
 

@@ -301,7 +301,7 @@ def get_free_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
 
         saver.restore()
         q1.assign()
-        set_renderer(visualize)
+        # set_renderer(visualize)
         print('flying_gripper_utils.get_free_motion_gen with obstacles', obstacles)
         raw_path = plan_se3_motion(robot, q1.values, q2.values, obstacles=obstacles,
                                    custom_limits=custom_limits)
@@ -322,10 +322,14 @@ def get_free_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
         return (cmd,)
     return fn
 
+
 def subsample_path(path, order=2, max_len=10, min_len=3):
     return path[::order]
 
+
 APPROACH_PATH = {}
+
+
 def get_approach_path(robot, o, g, obstacles=[], verbose=False, custom_limits={}):
     title = 'flying_gripper_utils.get_approach_path |'
     body_pose = robot.get_body_pose(o, verbose=False)
@@ -352,7 +356,7 @@ def get_approach_path(robot, o, g, obstacles=[], verbose=False, custom_limits={}
         set_renderer(True)
     raw_path = plan_se3_motion(robot, q1.values, q2.values, obstacles=obstacles,
                                custom_limits=custom_limits)  ## , attachments=attachments.values()
-    if raw_path == None or seconf2 == None:
+    if raw_path is None or seconf2 is None:
         APPROACH_PATH[key] = None
         return None
     ## to prevent the strange twisting motion
@@ -362,12 +366,15 @@ def get_approach_path(robot, o, g, obstacles=[], verbose=False, custom_limits={}
         conf = list(conf)
         conf[3:] = list(seconf2)[3:]
         path += [Conf(robot, get_se3_joints(robot), conf)]
+
     APPROACH_PATH[key] = path
     # if verbose:
     #     print(f'{title} | put in cache for key {key}')
     return path
 
-def get_ik_fn(problem, teleport=False, verbose=False, custom_limits={}, **kwargs):
+
+def get_ik_fn(problem, teleport=False, verbose=False,
+              custom_limits={}, end_conf=False, **kwargs):
     robot = problem.robot
     obstacles = problem.fixed
     def fn(a, o, p, g, fluents=[]):
@@ -383,7 +390,9 @@ def get_ik_fn(problem, teleport=False, verbose=False, custom_limits={}, **kwargs
         q1 = path[0]
         q2 = path[-1]
         cmd = Commands(State(attachments=attachments), savers=[BodySaver(robot)], commands=[t])
-        return (q1, q2, cmd)
+        if end_conf:
+            return (q1, q2, cmd)
+        return (q1, cmd)
     return fn
 
 
@@ -403,7 +412,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         if pst1.value == pst2.value:
             return None
 
-        set_renderer(False)
+        # set_renderer(False)
         saver.restore()
         pst1.assign()
         q1.assign()
@@ -496,7 +505,7 @@ def get_reachable_test(problem, custom_limits={}, visualize=False):
     def test(o, p, g, q, fluents=[]):
         if fluents:
             attachments = process_motion_fluents(fluents, robot)
-        set_renderer(False)
+        # set_renderer(False)
         with ConfSaver(robot):
             p.assign()
             q.assign()
@@ -520,7 +529,7 @@ def get_reachable_test(problem, custom_limits={}, visualize=False):
                     set_cloned_se3_conf(robot, gripper, conf)
                     set_camera_target_body(gripper, dx=0.5, dy=-0.5, dz=0.5)  ## look top down
                     remove_body(gripper)
-                    set_renderer(False)
+                    # set_renderer(False)
 
             print(f'       flying_gripper_utils.get_reachable_test({o}, {p}, {q}, {g}) ->\t {result}')
         return result
@@ -532,9 +541,18 @@ from pybullet_tools.utils import VideoSaver
 from os.path import join
 import math
 
-def quick_demo(state, custom_limits):
-    world = state.world
-    robot = create_fe_gripper()
+
+def quick_demo(world, custom_limits):
+    from pybullet_tools.utils import set_all_static
+    from world_builder.world import State
+    from world_builder.robot_builders import build_table_domain_robot
+    robot = build_table_domain_robot(world, 'feg')
+    # robot = create_fe_gripper()
+
+    set_all_static()
+    state = State(world)
+    world.summarize_all_objects()
+
     problem = Problem(robot, state.fixed)
     lid = world.name_to_body('lid')
     # set_camera_target_body(lid, dx=0.6, dy=0.6, dz=0.3)
@@ -544,8 +562,8 @@ def quick_demo(state, custom_limits):
     g_sampler = get_grasp_list_gen(state)
     outputs = g_sampler(lid)
     g = outputs[0][0]
-    body_pose = get_pose(lid)
-    approach_pose = multiply(body_pose, invert(g.approach), Pose(point=(0, 0, -0.05), euler=[0, math.pi / 2, 0]))
+    body_pose = robot.get_body_pose(lid, verbose=False)
+    approach_pose = multiply(body_pose, g.approach)
 
     ## set approach pose as goal pose
 
@@ -573,3 +591,4 @@ def quick_demo(state, custom_limits):
 
     # wait_if_gui('end?')
     sys.exit()
+

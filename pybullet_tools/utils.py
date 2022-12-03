@@ -1862,7 +1862,7 @@ def get_pose(body):
             try:
                 return p.getBasePositionAndOrientation(body, physicsClientId=CLIENT)
             except:
-                print(f'bullet.get_pose({body}) | ppybullet.error: GetBasePositionAndOrientation failed. {k}')
+                print(f'get_pose({body}) | ppybullet.error: GetBasePositionAndOrientation failed. {k}')
             k += 1
     return unit_pose()
 

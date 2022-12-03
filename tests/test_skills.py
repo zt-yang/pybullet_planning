@@ -250,7 +250,7 @@ def test_grasps(categories=[], robot='feg'):
     disconnect()
 
 
-def load_body(path, scale, pose_2d=(0,0), random_yaw=False):
+def load_body(path, scale, pose_2d=(0, 0), random_yaw=False):
     file = join(path, 'mobility.urdf')
     # if 'MiniFridge' in file:
     #     file = file[file.index('../')+2:]
@@ -260,7 +260,7 @@ def load_body(path, scale, pose_2d=(0,0), random_yaw=False):
         body = load_model(file, scale=scale)
         if isinstance(body, tuple): body = body[0]
     pose = pose_from_2d(body, pose_2d, random_yaw=random_yaw)
-    pose = (pose[0], unit_quat())
+    # pose = (pose[0], unit_quat())
     set_pose(body, pose)
     return body, file
 
@@ -733,11 +733,11 @@ if __name__ == '__main__':
     # test_torso()
 
     ## --- grasps related ---
-    robot = 'pr2' ## 'feg' | 'pr2'
-    test_grasps(['Plate'], robot)  ## BraiserLid
+    robot = 'feg' ## 'feg' | 'pr2'
+    test_grasps(['MeatTurkeyLeg'], robot)  ## BraiserLid
     ## 'box', 'Bottle', 'Stapler', 'Camera', 'Glasses', 'Food', 'MiniFridge', 'KitchenCounter'
     # test_handle_grasps_counter()
-    # test_handle_grasps(robot, category='MiniFridge')
+    test_handle_grasps(robot, category='MiniFridge')
     # test_handle_grasps(robot, category='MiniFridgeDoorless')
     # test_pick_place_counter(robot)
 

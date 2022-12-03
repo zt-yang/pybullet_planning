@@ -60,6 +60,7 @@ class World(object):
         self.articulated_parts = {k: [] for k in ['door', 'drawer', 'knob', 'button']}
         self.REMOVED_BODY_TO_OBJECT = {}
         self.non_planning_objects = []
+        self.not_stackable = {}
 
         ## for visualization
         self.handles = []
@@ -87,9 +88,24 @@ class World(object):
     def add_handles(self, handles):
         self.handles.extend(handles)
 
-    def make_link_transparent(self, name, transparency=0.5):
-        obj = self.name_to_object(name)
-        colorize_link(obj.body, obj.link, transparency=transparency)
+    def add_not_stackable(self, body, surface):
+        if body not in self.not_stackable:
+            self.not_stackable[body] = []
+        self.not_stackable[body].append(surface)
+
+    def check_not_stackable(self, body, surface):
+        return body in self.not_stackable and surface in self.not_stackable[body]
+
+    def make_transparent(self, name, transparency=0.5):
+        if isinstance(name, str):
+            obj = self.name_to_object(name)
+            colorize_link(obj.body, obj.link, transparency=transparency)
+        elif isinstance(name, int):
+            colorize_link(name, transparency=transparency)
+        elif isinstance(name, tuple):
+            colorize_link(name[0], name[-1], transparency=transparency)
+        elif isinstance(name, Object):
+            colorize_link(name.body, name.link, transparency=transparency)
 
     def make_doors_transparent(self, transparency=0.5):
         colorize_world(self.fixed, transparency)
@@ -129,6 +145,7 @@ class World(object):
     def fixed(self):
         objs = [obj for obj in self.objects if not isinstance(obj, tuple)]
         objs = [o for o in objs if o not in self.floors and o not in self.movable]
+        objs += [o for o in self.non_planning_objects if isinstance(o, int) and o not in objs]
         return objs
 
     @property
@@ -389,8 +406,10 @@ class World(object):
         print_fn(f'PART I: world objects | {self.summarize_all_types()} | obstacles({len(self.fixed)}) = {self.fixed}')
         print_fn('----------------')
         bodies = [self.robot] + sort_body_parts(BODY_TO_OBJECT.keys())
-        bodies += sort_body_parts(REMOVED_BODY_TO_OBJECT.keys())
-        print_not = False
+        bodies += sort_body_parts(REMOVED_BODY_TO_OBJECT.keys(), bodies)
+        static_bodies = [b for b in get_bodies() if b not in bodies]
+        bodies += static_bodies
+        print_not = print_not_2 = False
         for body in bodies:
             if body in ROBOT_TO_OBJECT:
                 object = ROBOT_TO_OBJECT[body]
@@ -410,13 +429,13 @@ class World(object):
 
             line = f'{body}\t  |  {typ_str}: {object.name}'
             if isinstance(body, tuple) and len(body) == 2:
-                body, joint = body
-                pose = get_joint_position(body, joint)
+                b, j = body
+                pose = get_joint_position(b, j)
                 if hasattr(object, 'handle_link') and object.handle_link is not None:
-                    line += f'\t|  Handle: {get_link_name(body, object.handle_link)}'
+                    line += f'\t|  Handle: {get_link_name(b, object.handle_link)}'
             elif isinstance(body, tuple) and len(body) == 3:
-                body, _, link = body
-                pose = get_link_pose(body, link)
+                b, _, l = body
+                pose = get_link_pose(b, l)
             else:
                 pose = get_pose(body)
             line += f"\t|  Pose: {nice(pose)}"
@@ -426,20 +445,46 @@ class World(object):
                     print_fn('----------------')
                     print_not = True
                 line += f"\t (excluded from planning)"
+            elif body in static_bodies:
+                if not print_not_2:
+                    print_fn('----------------')
+                    print_not_2 = True
+                line += f"\t (static world objects)"
 
             print_fn(line)
         print_fn('----------------')
 
+    def get_all_obj_in_body(self, body):
+        object = self.BODY_TO_OBJECT[body]
+        bodies = [body]
+        if object.doors is not None:
+            bodies += [(body, j) for j in object.doors]
+        if object.drawers is not None:
+            bodies += [(body, j) for j in object.drawers]
+        bodies += [(body, None, l) for l in object.surfaces + object.spaces]
+        bodies += [bb for bb in self.BODY_TO_OBJECT.keys() if
+                   isinstance(bb, tuple) and bb[0] == body and bb not in bodies]
+        return bodies
+
     def remove_body_from_planning(self, body):
         if body is None: return
-        category = self.BODY_TO_OBJECT[body].category
-        obj = self.BODY_TO_OBJECT.pop(body)
-        self.OBJECTS_BY_CATEGORY[category] = [
-            o for o in self.OBJECTS_BY_CATEGORY[category] if not
-            (o.body == obj.body and o.link == obj.link and o.joint == obj.joint)
-        ]
-        self.REMOVED_BODY_TO_OBJECT[body] = obj
-        self.non_planning_objects.append(body)
+        bodies = self.get_all_obj_in_body(body)
+        for body in bodies:
+            category = self.BODY_TO_OBJECT[body].category
+            obj = self.BODY_TO_OBJECT.pop(body)
+            self.OBJECTS_BY_CATEGORY[category] = [
+                o for o in self.OBJECTS_BY_CATEGORY[category] if not
+                (o.body == obj.body and o.link == obj.link and o.joint == obj.joint)
+            ]
+            self.REMOVED_BODY_TO_OBJECT[body] = obj
+            self.non_planning_objects.append(body)
+
+    def remove_category_from_planning(self, category, exceptions=[]):
+        bodies = self.cat_to_bodies(category)
+        for body in bodies:
+            if body in exceptions:
+                continue
+            self.remove_body_from_planning(body)
 
     def remove_body_attachment(self, body):
         obj = self.BODY_TO_OBJECT[body]
@@ -452,13 +497,7 @@ class World(object):
         body = object.body
 
         ## remove all objects initiated by the body
-        bodies = [body]
-        if object.doors is not None:
-            bodies += [(body, j) for j in object.doors]
-        if object.drawers is not None:
-            bodies += [(body, j) for j in object.drawers]
-        bodies += [(body, None, l) for l in object.surfaces + object.spaces]
-        bodies += [bb for bb in self.BODY_TO_OBJECT.keys() if isinstance(bb, tuple) and bb[0] == body and bb not in bodies]
+        bodies = self.get_all_obj_in_body(body)
         for b in bodies:
             if b in self.BODY_TO_OBJECT:
                 obj = self.BODY_TO_OBJECT.pop(b)
@@ -473,6 +512,8 @@ class World(object):
                     surface = obj.supporting_surface
                     surface.supported_objects.remove(obj)
 
+        if object in self.ATTACHMENTS:
+            self.ATTACHMENTS.pop(object)
         remove_body(body)
 
     def body_to_name(self, body):
@@ -524,8 +565,8 @@ class World(object):
         for b in set(bodies):
             if b in self.BODY_TO_OBJECT:
                 filtered_bodies += [b]
-            else:
-                print(f'   world.cat_to_bodies | category {cat} found {b}')
+            # else:
+            #     print(f'   world.cat_to_bodies | category {cat} found {b}')
         return filtered_bodies
 
     def cat_to_objects(self, cat):
@@ -621,7 +662,7 @@ class World(object):
             obj.set_pose(((0.4, 6.4, z), quat))
 
         ## ---------- reachability hacks for PR2
-        if 'pr2' in self.robot.name:
+        if hasattr(self, 'robot') and 'pr2' in self.robot.name:
 
             ## hack to be closer to edge
             if 'shelf' in surface:
@@ -638,7 +679,6 @@ class World(object):
                 obj.set_pose(((a, b, z), quat))
             elif 'front_' in surface and '_stove' in surface:
                 obj.set_pose(((0.55, y, z), quat))
-
             elif 'tmp' in surface: ## egg
                 if y > 9: y = 8.9
                 obj.set_pose(((0.7, y, z), quat))
@@ -691,12 +731,26 @@ class World(object):
         body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
         return body_to_name
 
-    def get_facts(self, init_facts=[], conf_saver=None, obj_poses=None, verbose=True, use_rel_pose=True):
+    def get_facts(self, init_facts=[], conf_saver=None, obj_poses=None, verbose=True,
+                  use_rel_pose=True, objects=None):
+        def cat_to_bodies(cat):
+            ans = self.cat_to_bodies(cat)
+            if objects is not None:
+                ans = [obj for obj in ans if obj in objects]
+            return ans
+        def cat_to_objects(cat):
+            ans = self.cat_to_objects(cat)
+            if objects is not None:
+                ans = [obj for obj in ans if obj.body in objects]
+            return ans
         robot = self.robot.body
-        cat_to_bodies = self.cat_to_bodies
-        cat_to_objects = self.cat_to_objects
         name_to_body = self.name_to_body
         BODY_TO_OBJECT = self.BODY_TO_OBJECT
+
+        if 'feg' in self.robot.name or True:
+            use_rel_pose = False
+            if '@world' in self.constants:
+                self.constants.remove('@world')
 
         def get_body_pose(body):
             if obj_poses == None:
@@ -764,6 +818,8 @@ class World(object):
 
             ## potential places to put on
             for surface in cat_to_bodies('supporter') + cat_to_bodies('surface'):
+                if self.check_not_stackable(body, surface):
+                    continue
                 init += [('Stackable', body, surface)]
                 if is_placement(body, surface, below_epsilon=0.02) or \
                         BODY_TO_OBJECT[surface].is_placement(body):
@@ -1037,8 +1093,8 @@ class State(object):
         return Observation(self, robot_conf=robot_conf, obj_poses=obj_poses,
                            facts=facts, variables=variables, image=image)
 
-    def get_facts(self, init_facts=[], **kwargs):
-        init = self.world.get_facts(init_facts=init_facts, **kwargs)
+    def get_facts(self, **kwargs):
+        init = self.world.get_facts(**kwargs)
 
         ## ---- those added to state.variables[label, body]
         for k in self.variables:

@@ -146,7 +146,7 @@ class Object(Index):
 
         # set_renderer(False)
         obj = self.world.add_object(
-            Object(load_asset(obj_name.lower(), maybe=True, **kwargs), category=obj_name)
+            Moveable(load_asset(obj_name.lower(), maybe=True, **kwargs), category=obj_name)
         )
         # body = sample_obj_on_body_link_surface(obj, self.body, self.link, max_trial=max_trial)
         self.world.put_on_surface(obj, max_trial=max_trial, surface=self.shorter_name)
@@ -182,7 +182,8 @@ class Object(Index):
         if self.verbose:
             supporter_name = f"{self.__class__.__name__.capitalize()} {self.name}"
             print(f'entities.place_obj.placed {obj.name} on {supporter_name} at point {nice((x, y, z))}')
-        self.attach_obj(obj)
+
+        # self.attach_obj(obj)
         # set_renderer(True)
         return obj
 
@@ -444,7 +445,7 @@ class Space(Region):
         # obj = self.world.add_object(Object(body, category=obj_name))
 
         obj = self.world.add_object(
-            Object(load_asset(obj_name.lower(), maybe=True, scale=scale), category=obj_name)
+            Moveable(load_asset(obj_name.lower(), maybe=True, scale=scale), category=obj_name)
         )
         sample_obj_in_body_link_space(obj, self.body, self.link)
 
