@@ -89,7 +89,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'inverse-reachability': from_gen_fn(
             get_ik_gen(p, collisions=c, teleport=t, ir_only=True, custom_limits=l,
                        learned=False, verbose=False, visualize=False)),
-        'inverse-kinematics': from_fn(get_ik_fn(p, collisions=motion_collisions, teleport=t, verbose=True, ACONF=False)),
+        'inverse-kinematics': from_fn(get_ik_fn(p, collisions=motion_collisions, teleport=t, verbose=False, ACONF=False)),
         'plan-base-motion': from_fn(get_base_motion_gen(p, collisions=base_collisions, teleport=t, custom_limits=l)),
 
         'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(p.robot, collisions=c)),
