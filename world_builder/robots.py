@@ -400,9 +400,9 @@ class FEGripper(RobotAPI):
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
     finger_link = 8  ## for detecting if a grasp is pointing upwards
 
-    def get_pose(self):
-        from pybullet_tools.flying_gripper_utils import get_se3_conf
-        return get_se3_conf(self.body)
+    # def get_pose(self):
+    #     from pybullet_tools.flying_gripper_utils import get_se3_conf
+    #     return get_se3_conf(self.body)
 
     def create_gripper(self, arm='hand', visual=True, color=None):
         from pybullet_tools.utils import unit_pose
@@ -538,8 +538,8 @@ class FEGripper(RobotAPI):
     def get_carry_conf(self, arm, grasp_type, g):
         return g
 
-    def get_approach_vector(self, arm, grasp_type):
-        return APPROACH_DISTANCE/3 *get_unit_vector([0, 0, -1])
+    def get_approach_vector(self, arm, grasp_type, scale=1):
+        return APPROACH_DISTANCE/3 *get_unit_vector([0, 0, -1]) * scale
 
     def get_approach_pose(self, approach_vector, g):
         return multiply(g, (approach_vector, unit_quat()))

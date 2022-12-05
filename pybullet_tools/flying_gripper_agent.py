@@ -6,9 +6,10 @@ from pybullet_tools.general_streams import get_cfree_approach_pose_test, get_gra
     Position, get_contain_list_gen, get_pose_from_attachment, get_stable_gen, get_contain_gen
 
 from pddlstream.language.generator import from_gen_fn, from_list_fn, from_fn, from_test
+import math
 
-
-from .flying_gripper_utils import get_ik_fn, get_free_motion_gen, get_pull_door_handle_motion_gen, get_reachable_test
+from .flying_gripper_utils import get_ik_fn, get_free_motion_gen, get_pull_handle_motion_gen, \
+    get_reachable_test
 
 
 def get_stream_map(p, c, l, t, **kwargs):
@@ -19,7 +20,7 @@ def get_stream_map(p, c, l, t, **kwargs):
     stream_map = {
         'sample-pose-on': from_gen_fn(get_stable_gen(p, collisions=c)),
         'sample-pose-in': from_gen_fn(get_contain_gen(p, collisions=c, verbose=False)),
-        'sample-grasp': from_list_fn(get_grasp_list_gen(p, collisions=c, visualize=False)),
+        'sample-grasp': from_list_fn(get_grasp_list_gen(p, collisions=c, visualize=False, top_grasp_tolerance=math.pi/4)),
 
         'inverse-kinematics-hand': from_fn(get_ik_fn(p, collisions=c, teleport=t, custom_limits=l, verbose=False)),
         'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(p.robot, collisions=c)),
@@ -31,13 +32,9 @@ def get_stream_map(p, c, l, t, **kwargs):
         'get-joint-position-open': from_gen_fn(sample_joint_position_open_list_gen(p)),
         'sample-handle-grasp': from_gen_fn(get_handle_grasp_gen(p, collisions=c, verbose=False)),
 
-        'inverse-kinematics-grasp-handle': from_fn(get_ik_fn(p, collisions=c, teleport=t, end_conf=True,
+        'inverse-kinematics-grasp-handle': from_fn(get_ik_fn(p, collisions=c, teleport=t,
                                                              custom_limits=l, verbose=False)),
-
-        # 'plan-base-pull-drawer-handle': from_fn(
-        #     get_pull_drawer_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
-        'plan-base-pull-door-handle': from_fn(
-            get_pull_door_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
+        'plan-grasp-pull-handle': from_fn(get_pull_handle_motion_gen(p, collisions=c, teleport=t)),
         'get-pose-from-attachment': from_fn(get_pose_from_attachment(p)),
 
         # 'plan-arm-turn-knob-handle': from_fn(

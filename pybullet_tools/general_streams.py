@@ -563,7 +563,7 @@ def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
 
         if verbose: print(f'\n{title} grasps =', [nice(g) for g in grasps])
 
-        app = robot.get_approach_vector(arm, g_type)
+        app = robot.get_approach_vector(arm, g_type, scale=2)
         grasps = [HandleGrasp('side', body_joint, g, robot.get_approach_pose(app, g),
                               robot.get_carry_conf(arm, g_type, g)) for g in grasps]
         for grasp in grasps:
@@ -624,7 +624,7 @@ def get_cfree_pose_pose_test(robot, collisions=True, **kwargs):
         if not collisions or (b1 == b2) or b2 in ['@world']:
             return True
         if fluents:
-            attachments = process_motion_fluents(fluents, robot)
+            process_motion_fluents(fluents, robot)
         p1.assign()
         p2.assign()
         return not pairwise_collision(b1, b2, **kwargs) #, max_distance=0.001)
@@ -636,7 +636,7 @@ def get_cfree_obj_approach_pose_test(robot, collisions=True):
         if not collisions or (b1 == b2) or b2 in ['@world']:
             return True
         if fluents:
-            attachments = process_motion_fluents(fluents, robot)
+            process_motion_fluents(fluents, robot)
         p2.assign()
         grasp_pose = multiply(p1.value, invert(g1.value))
         approach_pose = multiply(p1.value, invert(g1.approach), g1.value)
@@ -658,7 +658,7 @@ def get_cfree_approach_pose_test(problem, collisions=True):
         if not collisions or (b1 == b2) or b2 in ['@world']:
             return True
         if fluents:
-            attachments = process_motion_fluents(fluents, robot)
+            process_motion_fluents(fluents, robot)
         p2.assign()
         result = False
         for _ in problem.robot.iterate_approach_path(arm, gripper, p1, g1, obstacles=obstacles, body=b1):
@@ -733,7 +733,7 @@ def get_cfree_traj_pose_test(robot, collisions=True, verbose=False, visualize=Fa
 """
 
 
-def process_motion_fluents(fluents, robot, verbose=False):
+def process_motion_fluents(fluents, robot, verbose=True):
     if verbose:
         print('Fluents:', fluents)
     attachments = []
@@ -753,6 +753,9 @@ def process_motion_fluents(fluents, robot, verbose=False):
             # a, q = args
             # q.assign()
             pass
+        elif predicate == 'atseconf':
+            [q] = args
+            q.assign()
         else:
             raise NotImplementedError(atom)
     return attachments

@@ -254,6 +254,7 @@ def save_multiple_solutions(plan_dataset, indices=None, run_dir=None,
     first_solution = None
     min_len = 10000
     solutions_log = []
+    save = has_text_utils()
     for i, (opt_solution, real_solution) in enumerate(plan_dataset):
         stream_plan, (opt_plan, preimage), opt_cost = opt_solution
         plan = None
@@ -265,18 +266,29 @@ def save_multiple_solutions(plan_dataset, indices=None, run_dir=None,
                     first_solution = real_solution
                     min_len = len(plan)
                 score = round(0.5 + min_len / (2*len(plan)), 3)
-        skeleton = get_plan_skeleton(opt_plan, indices=indices)
+        skeleton = ''
+        if save:
+            skeleton = get_plan_skeleton(opt_plan, indices=indices)
+            log = {
+                'optimistic_plan': str(opt_plan),
+                'skeleton': str(skeleton),
+                'plan': [str(a) for a in plan] if plan is not None else None,
+                'score': score
+            }
+            solutions_log.append(log)
         print(f'\n{i + 1}/{len(plan_dataset)}) Optimistic Plan: {opt_plan}\n'
               f'Skeleton: {skeleton}\nPlan: {plan}')
-        log = {
-            'optimistic_plan': str(opt_plan),
-            'skeleton': str(skeleton),
-            'plan': [str(a) for a in plan] if plan is not None else None,
-            'score': score
-        }
-        solutions_log.append(log)
-    with open(file_path, 'w') as f:
-        json.dump(solutions_log, f, indent=3)
+    if save:
+        with open(file_path, 'w') as f:
+            json.dump(solutions_log, f, indent=3)
     if first_solution is None:
         first_solution = None, 0, []
     return first_solution
+
+
+def has_text_utils():
+    try:
+        import text_utils
+    except ImportError:
+        return False
+    return True

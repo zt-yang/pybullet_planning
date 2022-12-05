@@ -691,9 +691,15 @@ def load_gripper_test_scene(world):
     set_camera_target_body(lid, dx=1.5, dy=0, dz=0.7)
 
     turkey = world.name_to_body('turkey')
+    counter = world.name_to_body('indigo_tmp')
+
     world.add_to_cat(turkey, 'moveable')
     world.add_to_cat(lid, 'moveable')
-    return pot, lid, turkey
+
+    camera_pose = ((1.7, 6.1, 1.5), (0.5, 0.5, -0.5, -0.5))
+    world.add_camera(camera_pose)
+
+    return pot, lid, turkey, counter
 
 
 def load_cabinet_test_scene(world, RANDOM_INSTANCE=False, MORE_MOVABLE=False, verbose=True):
@@ -743,6 +749,10 @@ def load_cabinet_test_scene(world, RANDOM_INSTANCE=False, MORE_MOVABLE=False, ve
         veggie = world.name_to_body('veggiecabbage')
         world.add_to_cat(veggie, 'moveable')
         world.put_on_surface(veggie, pot)
+
+    camera_pose = ((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5))
+    world.add_camera(camera_pose)
+    world.visualize_image(((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5)))
 
     return pot, lid, turkey, counter, oil, vinegar
 

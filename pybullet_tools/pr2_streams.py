@@ -206,6 +206,7 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
 
 ##################################################
 
+
 def solve_nearby_ik(robot, arm, approach_pose, custom_limits={}):
     arm_joints = get_arm_joints(robot, arm)
     grasp_conf = get_joint_positions(robot, arm_joints)

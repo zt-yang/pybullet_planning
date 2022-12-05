@@ -1883,3 +1883,11 @@ def visualize_point(point):
     body = create_box(.05, .05, .05, mass=1, color=(1, 0, 0, 1))
     set_pose(body, Pose(point=Point(x, y, z)))
     return body
+
+
+def clean_preimage(preimage):
+    new_preimage = []
+    for p in preimage:
+        if 'UniqueOptValue' not in str(p):
+            new_preimage.append(p)
+    return new_preimage

@@ -464,6 +464,7 @@ class World(object):
         bodies += [(body, None, l) for l in object.surfaces + object.spaces]
         bodies += [bb for bb in self.BODY_TO_OBJECT.keys() if
                    isinstance(bb, tuple) and bb[0] == body and bb not in bodies]
+        bodies = [b for b in bodies if b in self.BODY_TO_OBJECT]
         return bodies
 
     def remove_body_from_planning(self, body):
@@ -499,18 +500,17 @@ class World(object):
         ## remove all objects initiated by the body
         bodies = self.get_all_obj_in_body(body)
         for b in bodies:
-            if b in self.BODY_TO_OBJECT:
-                obj = self.BODY_TO_OBJECT.pop(b)
+            obj = self.BODY_TO_OBJECT.pop(b)
 
-                # so cat_to_bodies('moveable') won't find it
-                for cat in obj.categories:
-                    self.OBJECTS_BY_CATEGORY[cat] = [
-                        o for o in self.OBJECTS_BY_CATEGORY[cat] if not
-                        (o.body == obj.body and o.link == obj.link and o.joint == obj.joint)
-                    ]
-                if hasattr(obj, 'supporting_surface') and isinstance(obj.supporting_surface, Surface):
-                    surface = obj.supporting_surface
-                    surface.supported_objects.remove(obj)
+            # so cat_to_bodies('moveable') won't find it
+            for cat in obj.categories:
+                self.OBJECTS_BY_CATEGORY[cat] = [
+                    o for o in self.OBJECTS_BY_CATEGORY[cat] if not
+                    (o.body == obj.body and o.link == obj.link and o.joint == obj.joint)
+                ]
+            if hasattr(obj, 'supporting_surface') and isinstance(obj.supporting_surface, Surface):
+                surface = obj.supporting_surface
+                surface.supported_objects.remove(obj)
 
         if object in self.ATTACHMENTS:
             self.ATTACHMENTS.pop(object)
@@ -957,6 +957,9 @@ class World(object):
             self.visualize_image(img_dir=output_dir, rgb=True)
         if save_depth:
             self.visualize_image(img_dir=output_dir)
+
+    def get_type(self, body):
+        return [self.BODY_TO_OBJECT[body].category]
 
     @property
     def max_delta(self):

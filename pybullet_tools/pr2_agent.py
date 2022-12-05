@@ -27,7 +27,7 @@ from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_
     get_handle_grasp_gen, get_compute_pose_kin, get_compute_pose_rel_kin, \
     get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
-    set_camera_target_robot, nice, BASE_LIMITS, get_file_short_name, get_root_links, collided
+    set_camera_target_robot, nice, BASE_LIMITS, get_file_short_name, get_root_links, collided, clean_preimage
 from pybullet_tools.pr2_problems import create_pr2
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, create_gripper, set_group_conf
 from pybullet_tools.utils import connect, disconnect, wait_if_gui, LockRenderer, HideOutput, get_client, \
@@ -202,7 +202,6 @@ def get_stream_info(unique=False):
         'sample-pose-inside': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e-1),
 
         'inverse-kinematics': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
-
         'inverse-kinematics-grasp-handle': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
         'inverse-kinematics-ungrasp-handle': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
         'plan-base-pull-door-handle': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
@@ -577,7 +576,7 @@ from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, st
 
 def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False, lock=False,
               max_time=INF, downward_time=10, evaluation_time=10,
-              max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=1,
+              max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=0,
               visualize=False, **kwargs):
     # skeleton = [
     #     ('grasp_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
@@ -590,7 +589,7 @@ def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False, lock=Fals
     constraints = PlanConstraints(max_cost=max_cost + 1)  # TODO: plus 1 in action costs?
 
     if collect_dataset:
-        max_solutions = 6 if max_solutions==1 else max_solutions
+        max_solutions = 6 if max_solutions == 0 else max_solutions
     diverse = diverse or collect_dataset
 
     if diverse:
@@ -769,7 +768,7 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
     time_log = {'planning': round(time.time()-start_time, 4)}
     start_time = time.time()
     if plan is not None:
-        preimage = evaluations.preimage_facts
+        preimage = clean_preimage(evaluations.preimage_facts)
 
         ## ------ debug why can't find action skeleton
         ## test_grasp_ik(state, state.get_facts()+preimage, name='eggblock')

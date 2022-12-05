@@ -102,9 +102,11 @@ def create_pr2_robot(world, base_q=(0, 0, 0), DUAL_ARM=False, USE_TORSO=True,
 from pybullet_tools.flying_gripper_utils import create_fe_gripper, get_se3_joints, set_se3_conf
 
 
-def create_gripper_robot(world, custom_limits, initial_q=(0, 0, 0, 0, 0, 0),
+def create_gripper_robot(world, custom_limits=((0, 0, 0), (6, 12, 2)),
+                         initial_q=(0, 0, 0, 0, 0, 0),
                          DRAW_BASE_LIMITS=False, robot=None):
-    from pybullet_tools.flying_gripper_utils import BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_LINK
+    from pybullet_tools.flying_gripper_utils import BASE_RESOLUTIONS, BASE_VELOCITIES, \
+        BASE_LINK, get_se3_custom_limits
 
     if robot is None:
         with LockRenderer(lock=True):
@@ -114,56 +116,68 @@ def create_gripper_robot(world, custom_limits, initial_q=(0, 0, 0, 0, 0, 0),
 
     with np.errstate(divide='ignore'):
         weights = np.reciprocal(BASE_RESOLUTIONS)
+
+    if DRAW_BASE_LIMITS:
+        draw_base_limits(custom_limits)
+    custom_limits = get_se3_custom_limits(custom_limits)
+
     robot = FEGripper(robot, base_link=BASE_LINK, joints=get_se3_joints(robot),
                   custom_limits=custom_limits, resolutions=BASE_RESOLUTIONS, weights=weights)
     world.add_robot(robot, max_velocities=BASE_VELOCITIES)
 
-    if DRAW_BASE_LIMITS:
-        draw_base_limits(custom_limits)
     return robot
 
 
 #######################################################
 
 
-def build_table_domain_robot(world, robot_name, custom_limits=None, initial_q=None, **kwargs):
-    from world_builder.builders import create_gripper_robot, create_pr2_robot
-    """ simplified cooking domain """
-    if robot_name == 'feg':
-        if custom_limits is None:
-            custom_limits = {0: (0, 8), 1: (0, 8), 2: (0, 2)}
-        if initial_q is None:
-            initial_q = [0, 0, 0, 0, -math.pi / 2, 0]
-        robot = create_gripper_robot(world, custom_limits, initial_q=initial_q, **kwargs)
-    else:
-        if custom_limits is None:
-            custom_limits = ((0, 0), (8, 8))
-        if initial_q is None:
-            initial_q = (1.79, 6, PI / 2 + PI / 2)
-        robot = create_pr2_robot(world, base_q=initial_q, custom_limits=custom_limits,
-                                 USE_TORSO=False, DRAW_BASE_LIMITS=True, **kwargs)
-    return robot
+def build_table_domain_robot(world, robot_name, **kwargs):
+    """ simplified cooking domain, pr2 no torso """
+    kwargs['initial_xy'] = (1.79, 6)
+    if 'custom_limits' not in kwargs:
+        if robot_name == 'feg':
+            kwargs['custom_limits'] = ((0, 0, 0), (8, 8, 2))
+        elif robot_name == 'pr2':
+            kwargs['custom_limits'] = ((0, 0), (8, 8))
+    return build_robot_from_args(world, robot_name, **kwargs)
 
 
-def build_fridge_domain_robot(world, robot_name, custom_limits=None, **kwargs):
+def build_fridge_domain_robot(world, robot_name, **kwargs):
     """ counter and fridge in the (6, 6) range """
-    x, y = (5, 3)
-    if robot_name == 'feg':
-        if custom_limits is None:
-            custom_limits = {0: (0, 6), 1: (0, 6), 2: (0, 2)}
-        robot = create_gripper_robot(world, custom_limits, initial_q=[x, y, 0.7, 0, -math.pi / 2, 0], **kwargs)
-        robot.set_spawn_range(((2.5, 2, 0.5), (3.8, 3.5, 1.9)))
-    else:
-        if custom_limits is None:
-            custom_limits = ((0, 0, 0), (6, 6, 1.5))
-        robot = create_pr2_robot(world, custom_limits=custom_limits, base_q=(x, y, PI / 2 + PI / 2), **kwargs)
-        robot.set_spawn_range(((4.2, 2, 0.5), (5, 3.5, 1.9)))
-    return robot
+    kwargs['initial_xy'] = (5, 3)
+    kwargs['spawn_range'] = ((4.2, 2, 0.5), (5, 3.5, 1.9))
+    if 'custom_limits' not in kwargs:
+        kwargs['custom_limits'] = ((0, 0, 0), (6, 6, 1.5))
+    return build_robot_from_args(world, robot_name, **kwargs)
 
 
-def build_robot_from_args(world, robot_name, custom_limits, **kwargs):
+def build_oven_domain_robot(world, robot_name, **kwargs):
+    """ kitchen svg, focus on the oven and cabinets """
+    kwargs['initial_xy'] = (1.5, 8)
+    if 'custom_limits' not in kwargs:
+        kwargs['custom_limits'] = ((0, 5, 0), (4, 12, 2))
+    return build_robot_from_args(world, robot_name, **kwargs)
+
+
+def build_robot_from_args(world, robot_name, **kwargs):
+    spawn_range = None
+    if 'spawn_range' in kwargs:
+        spawn_range = kwargs['spawn_range']
+        del kwargs['spawn_range']
+
     if robot_name == 'feg':
-        robot = create_gripper_robot(world, custom_limits, **kwargs)
+        if 'initial_xy' in kwargs:
+            x, y = kwargs['initial_xy']
+            del kwargs['initial_xy']
+            kwargs['initial_q'] = [x, y, 0.7, 0, -PI / 2, 0]
+        robot = create_gripper_robot(world, **kwargs)
     else:
-        robot = create_pr2_robot(world, custom_limits=custom_limits, **kwargs)
+        if 'initial_xy' in kwargs:
+            x, y = kwargs['initial_xy']
+            del kwargs['initial_xy']
+            kwargs['base_q'] = (x, y, PI)
+        robot = create_pr2_robot(world, **kwargs)
+
+    if spawn_range is not None:
+        robot.set_spawn_range(spawn_range)
     return robot

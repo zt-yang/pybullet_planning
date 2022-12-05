@@ -543,6 +543,22 @@ def get_primitive_actions(action, world, teleport=False):
         if events is not None:
             new_commands += world.get_events(o)
 
+    elif name == 'grasp_pull_handle':
+        a, o, p1, p2, g, q1, q2, t1, t2, t3 = args
+
+        t = get_traj(t1)
+        close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
+        attach = AttachObjectAction(a, g, o)
+        new_commands = t + [close_gripper, attach]
+
+        t = get_traj(t2)
+        new_commands += t
+
+        t = get_traj(t3)
+        open_gripper = GripperAction(a, extent=1, teleport=teleport)
+        detach = DetachObjectAction(a, o)
+        new_commands += [detach, open_gripper] + t[::-1]
+
     elif 'move_base' in name or 'pull_' in name:
         if 'move_base' in name:
             q1, q2, t = args[:3]
@@ -603,7 +619,8 @@ def get_primitive_actions(action, world, teleport=False):
         new_commands = t + [close_gripper, attach] + t[::-1]
 
     elif name == 'grasp_handle_hand':
-        a, o, p, g, _, _, t = args[:7]
+        """ DEPRECATED after merging grasp-pull-ungrasp """
+        a, o, p, g, _, t = args[:6]
         t = get_traj(t)
         close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
         attach = AttachObjectAction(a, g, o)
@@ -643,7 +660,8 @@ def get_primitive_actions(action, world, teleport=False):
         new_commands = t + [detach, open_gripper] + t[::-1]
 
     elif name == 'ungrasp_handle_hand':
-        a, o, p, g, _, _, t = args[:7]
+        """ DEPRECATED after merging grasp-pull-ungrasp """
+        a, o, p, g, _, t = args[:6]
         t = get_traj(t)
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
         detach = DetachObjectAction(a, o)
