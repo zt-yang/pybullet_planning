@@ -1468,6 +1468,13 @@ def load_kitchen_mini_scene(world, **kwargs):
 def load_table_stationaries(world, w=6, l=6, h=0.9):
     """ a table with a tray and some stationaries to be put on top
     """
+    # x, y = 3, 3
+    # x += np.random.normal(4, 0.2)
+    # y += np.random.normal(0, 0.2)
+    camera_point = (4, 3, 3)
+    target_point = (3, 3, 1)
+    set_camera_pose(camera_point, target_point)
+
     categories = ['EyeGlasses', 'Camera', 'Stapler', 'Medicine', 'Bottle', 'Knife']
     floor = world.add_object(
         Floor(create_box(w=w, l=l, h=FLOOR_HEIGHT, color=TAN, collision=True)),
@@ -1477,28 +1484,37 @@ def load_table_stationaries(world, w=6, l=6, h=0.9):
     counter = world.add_object(Supporter(
         load_asset('KitchenCounter', x=w/2, y=l/2, yaw=math.pi, floor=floor, h=h,
                    RANDOM_INSTANCE=True, verbose=False), category='supporter', name='counter'))
-    y = l/2 - get_aabb_extent(get_aabb(counter.body))[1] / 2 + 0.1
+    # set_camera_target_body(counter, dx=3, dy=0, dz=2)
+    aabb_ext = get_aabb_extent(get_aabb(counter.body))
+    y = l/2 - aabb_ext[1] / 2 + aabb_ext[0] / 2
     tray = world.add_object(Supporter(
-        load_asset('Tray', x=w/2, y=l/2, yaw=math.pi, floor=floor, h=h,
+        load_asset('Tray', x=w/2, y=y, yaw=math.pi, floor=counter,
                    RANDOM_INSTANCE=True, verbose=False), category='supporter', name='tray'))
+    tray_bottom = world.add_surface_by_keyword(tray, 'tray_bottom')
 
     ## --- add cabage on an external table
-    stationaries = []
+    items = []
     for cat in categories:
         item = world.add_object(Moveable(
             load_asset(cat, x=0, y=0, yaw=random.uniform(-math.pi, math.pi), RANDOM_INSTANCE=True),
             category=cat
         ))
         world.put_on_surface(item, 'counter')
-        stationaries.append(item)
+        if collided(item.body, [tray]+items, verbose=False, tag='ensure item cfree'):
+            world.put_on_surface(item, 'counter')
+        items.append(item)
 
-    x, y = 3, 3
-    x += np.random.normal(4, 0.2)
-    y += np.random.normal(0, 0.2)
-    camera_pose = ((x, y, 1.3), (0.5, 0.5, -0.5, -0.5))
-    world.add_camera(camera_pose)
-    world.visualize_image()
+    distractors = []
+    for item in items[:2]:
+        world.put_on_surface(item, 'tray_bottom')
+        if collided(item.body, [tray]+distractors, verbose=False, tag='ensure distractor cfree'):
+            world.put_on_surface(item, 'tray_bottom')
+        distractors.append(item)
 
+    items = items[2:]
+
+    ## --- almost top-down view
+    world.visualize_image(rgb=True, camera_point=camera_point, target_point=target_point)
     wait_unlocked()
 
-    return stationaries
+    return items, distractors, tray_bottom

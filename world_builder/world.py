@@ -28,7 +28,7 @@ from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_
     get_gripper_joints, GripperCommand, apply_commands, State, Command
 
 from .entities import Region, Environment, Robot, Surface, ArticulatedObjectPart, Door, Drawer, Knob, \
-    Camera, Object
+    Camera, Object, StaticCamera
 from world_builder.utils import GRASPABLES
 
 
@@ -348,8 +348,9 @@ class World(object):
             self.add_joint_object(body, j, category=category)
         return [(body, j) for j in joints]
 
-    def add_surface_by_keyword(self, body_name, link_name):
-        body = self.name_to_body(body_name)
+    def add_surface_by_keyword(self, body, link_name):
+        if isinstance(body, str):
+            body = self.name_to_body(body)
         link = link_from_name(body, link_name)
         surface = Surface(body, link=link)
         self.add_object(surface)
@@ -717,8 +718,7 @@ class World(object):
             obstacles.remove(parent)
         return obstacles
 
-    def add_camera(self, pose, img_dir=join('visualizations', 'camera_images')):
-        from .entities import StaticCamera
+    def add_camera(self, pose=unit_pose(), img_dir=join('visualizations', 'camera_images')):
         camera = StaticCamera(pose, camera_matrix=CAMERA_MATRIX, max_depth=6)
         self.cameras.append(camera)
         self.camera = camera
@@ -727,13 +727,19 @@ class World(object):
             return self.cameras[-1].get_image(segment=self.segment)
         return None
 
-    def visualize_image(self, pose=None, img_dir=None, **kwargs):
-        if pose != None:
+    def visualize_image(self, pose=None, img_dir=None, far=8, index=None,
+                        camera_point=None, target_point=None, **kwargs):
+        if not isinstance(self.camera, StaticCamera):
+            self.add_camera()
+        if pose is not None:
             self.camera.set_pose(pose)
-        if img_dir != None:
+        if index is None:
+            index = self.camera.index
+        if img_dir is not None:
             self.img_dir = img_dir
-        image = self.camera.get_image(segment=self.segment)
-        visualize_camera_image(image, self.camera.index, img_dir=self.img_dir, **kwargs)
+        image = self.camera.get_image(segment=self.segment, far=far,
+                                      camera_point=camera_point, target_point=target_point)
+        visualize_camera_image(image, index, img_dir=self.img_dir, **kwargs)
 
     def get_indices(self):
         """ for fastamp project """

@@ -144,10 +144,11 @@ def build_table_domain_robot(world, robot_name, **kwargs):
 
 def build_fridge_domain_robot(world, robot_name, **kwargs):
     """ counter and fridge in the (6, 6) range """
-    kwargs['initial_xy'] = (5, 3)
     kwargs['spawn_range'] = ((4.2, 2, 0.5), (5, 3.5, 1.9))
     if 'custom_limits' not in kwargs:
         kwargs['custom_limits'] = ((0, 0, 0), (6, 6, 1.5))
+    if 'initial_xy' not in kwargs:
+        kwargs['initial_xy'] = (5, 3)
     return build_robot_from_args(world, robot_name, **kwargs)
 
 

@@ -1438,6 +1438,7 @@ def set_camera_pose(camera_point, target_point=np.zeros(3)):
     distance = np.linalg.norm(delta_point)
     yaw = get_yaw(delta_point) - np.pi/2 # TODO: hack
     pitch = get_pitch(delta_point)
+    # print(f'\nset_camera_pose | yaw = {round(yaw, 3)}, pitch = {round(pitch, 3)}\n')
     p.resetDebugVisualizerCamera(distance, math.degrees(yaw), math.degrees(pitch),
                                  target_point, physicsClientId=CLIENT)
 

@@ -729,7 +729,7 @@ def test_vhacd():
 if __name__ == '__main__':
 
     """ --- models related --- """
-    # get_data(categories=['Knife'])
+    get_data(categories=['Tray', 'ShoppingCart', 'Cart'])
     # test_texture(category='CoffeeMachine', id='103127')
     # test_vhacd()
 

@@ -32,7 +32,8 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     YELLOW, add_line, draw_point, RED, BROWN, BLACK, BLUE, GREY, remove_handles, apply_affine, vertices_from_rigid, \
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
     parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug, set_point, has_gui, get_rigid_clusters, \
-    BASE_LINK as ROOT_LINK, link_pairs_collision, draw_collision_info, wait_unlocked, apply_alpha, set_color
+    BASE_LINK as ROOT_LINK, link_pairs_collision, draw_collision_info, wait_unlocked, apply_alpha, set_color, \
+    dimensions_from_camera_matrix, get_field_of_view, tform_point, get_image
 
 
 OBJ = '?obj'
@@ -720,6 +721,14 @@ class ObjAttachment(Attachment):
 
 
 #######################################################
+
+
+def get_camera_image_at_pose(camera_point, target_point, camera_matrix, far=5.0, **kwargs):
+    # far is the maximum depth value
+    width, height = map(int, dimensions_from_camera_matrix(camera_matrix))
+    _, vertical_fov = get_field_of_view(camera_matrix)
+    return get_image(camera_point, target_point, width=width, height=height,
+                     vertical_fov=vertical_fov, far=far, **kwargs)
 
 def set_camera_target_body(body, link=None, dx=0.5, dy=0.5, dz=0.5):
     # if isinstance(body, tuple):

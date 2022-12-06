@@ -8,7 +8,8 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
     stable_z, get_joint_descendants, get_link_children, get_joint_info, get_links, link_from_name, set_renderer, \
     get_min_limit, get_max_limit, get_link_parent, LockRenderer, HideOutput, pairwise_collisions, get_bodies, \
     remove_debug, child_link_from_joint, unit_point, tform_point, buffer_aabb, get_aabb_center
-from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_box_entity, get_instance_name
+from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_box_entity, get_instance_name, \
+    get_camera_image_at_pose
 
 import numpy as np
 
@@ -725,9 +726,13 @@ class StaticCamera(object):
     def set_pose(self, pose):
         self.pose = pose
 
-    def get_image(self, segment=True, segment_links=False, far=8, **kwargs):
+    def get_image(self, segment=True, segment_links=False, far=8,
+                  camera_point=None, target_point=None, **kwargs):
         # TODO: apply maximum depth
         self.index += 1
+        if camera_point is not None and target_point is not None:
+            return get_camera_image_at_pose(camera_point, target_point, self.camera_matrix, far=far,
+                                 tiny=False, segment=segment, segment_links=segment_links, **kwargs)
         #image = get_image(self.get_pose(), target_pos=[0, 0, 1])
         return get_image_at_pose(self.get_pose(), self.camera_matrix, far=far,
                                  tiny=False, segment=segment, segment_links=segment_links, **kwargs)
