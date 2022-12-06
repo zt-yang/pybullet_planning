@@ -212,6 +212,8 @@ def get_file_by_category(category, RANDOM_INSTANCE=False, SAMPLING=False):
 
     else:
         parent = get_parent_category(category)
+        if parent is None:
+            print('cant', category)
         cats = [c for c in listdir(join(ASSET_PATH, 'models', parent)) if c.lower() == category.lower()]
         if len(cats) > 0:
             category = cats[0]
@@ -260,8 +262,8 @@ def adjust_scale(body, category, file, w, l):
     return body
 
 
-def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=None, scale=1,
-               verbose=False, maybe=False, moveable=False,
+def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=None,
+               scale=1, verbose=False, maybe=False, moveable=False,
                RANDOM_INSTANCE=False, SAMPLING=False):
 
     if verbose: print(f"\nLoading ... {category}", end='\r')
@@ -302,17 +304,23 @@ def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=
         open_doors_drawers(body)
 
     """ ============= create an Object ============= """
-    if moveable:
-        object = Moveable(body, category=category)
-    elif category.lower() == 'food':
+    # if moveable:
+    #     object = Moveable(body, category=category)
+    # elif category.lower() == 'food':
+    #     # index = file.replace('/mobility.urdf', '')
+    #     # index = index[index.index('models/')+7:]
+    #     # index = index[index.index('/')+1:]
+    #     index = partnet_id_from_path(file)
+    #     return body, file, scale, index
+    # else:
+    #     object = Object(body, category=category)
+
+    if category.lower() == 'food':
         # index = file.replace('/mobility.urdf', '')
         # index = index[index.index('models/')+7:]
         # index = index[index.index('/')+1:]
         index = partnet_id_from_path(file)
         return body, file, scale, index
-    else:
-        object = Object(body, category=category)
-
     return body, file, scale
 
 

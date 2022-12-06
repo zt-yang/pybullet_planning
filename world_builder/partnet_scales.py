@@ -31,15 +31,15 @@ MODEL_SCALES = {
         '101352': 0.08,
         '102411': 0.1,
         '102472': 0.1,
-        '102434': 0.1,
+        # '102434': 0.1,
         '102873': 0.1,
     },
-    'Glasses': {
+    'EyeGlasses': {
         '101284': 0.15,
         '101287': 0.16,
         '101326': 0.16,
         '101293': 0.18,
-        '101328': 0.1,
+        '101328': 0.16,
     },
     'Stapler': {
         '103100': 0.15,
@@ -76,6 +76,39 @@ MODEL_SCALES = {
     },
     'Plate': {
         'SquarePlate': 0.025,
+    },
+    'Box': {
+        '100129': 0.5,
+        '100154': 0.5,
+        '100162': 0.5,
+        '100189': 0.5,
+        '100194': 0.5,
+        '100426': 0.5,
+        '100234': 0.5,
+        '100676': 0.5,
+    },
+    'Medicine': {
+        '3520': 0.05,
+        '3596': 0.1,
+        '3655': 0.1,
+        '4084': 0.05,
+        '4427': 0.05,
+        '4514': 0.05,
+        '5861': 0.05,
+        '6263': 0.05,
+    },
+    'Tray': {
+        '100191': 0.5,
+        '100685': 0.5,
+    },
+    'Knife': {
+        '101052': 0.1,
+        '101054': 0.1,
+        '101057': 0.1,
+        '101059': 0.1,
+        '101085': 0.1,
+        '101260': 0.1,
+        '102400': 0.1,
     }
 }
 MODEL_SCALES['MiniFridgeDoorless'] = MODEL_SCALES['MiniFridge']
@@ -97,7 +130,7 @@ MODEL_HEIGHTS = {
 MODEL_HEIGHTS.update({k.lower(): v for k, v in MODEL_HEIGHTS.items()})
 
 OBJ_SCALES = {
-    'OilBottle': 0.25, 'VinegarBottle': 0.25, 'Salter': 0.1, 'Knife': 0.1, 'Fork': 0.2,
+    'OilBottle': 0.25, 'VinegarBottle': 0.25, 'Salter': 0.1, 'KitchenKnife': 0.1, 'KitchenFork': 0.2,
     'Microwave': 0.7, 'Pan': 0.3, 'Pot': 0.3, 'Kettle': 0.3, 'Bottle': 0.25,
     'Egg': 0.03, 'Veggie': 0.3, 'VeggieLeaf': 0.3, 'VeggieStem': 0.3,
     'MilkBottle': 0.2, 'Toaster': 0.2, 'Bucket': 0.7, 'Cart': 1.1,

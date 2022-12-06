@@ -77,21 +77,6 @@ from pybullet_tools.pr2_agent import opt_move_cost_fn, opt_pose_fn, opt_pose_ins
 
 
 def get_stream_info(unique=False):
-    stream_info = {
-        # 'test-cfree-pose-pose': StreamInfo(p_success=1e-3, verbose=verbose),
-        # 'test-cfree-approach-pose': StreamInfo(p_success=1e-2, verbose=verbose),
-        # 'test-cfree-traj-pose': StreamInfo(p_success=1e-1, verbose=verbose),
-        # 'MoveCost': FunctionInfo(opt_move_cost_fn),
-    }
-    stream_info.update({
-        'sample-pose-on': StreamInfo(opt_gen_fn=from_fn(opt_pose_fn)),
-        'sample-pose-in': StreamInfo(opt_gen_fn=from_fn(opt_pose_inside_fn)),
-        'inverse-kinematics-hand': StreamInfo(opt_gen_fn=from_fn(opt_ik_fn)),
-        'plan-free-motion-hand': StreamInfo(opt_gen_fn=from_fn(opt_motion_fn)),
-        'get-joint-position-open': StreamInfo(opt_gen_fn=from_fn(opt_position_fn)),
-        # 'inverse-kinematics-grasp-handle': StreamInfo(opt_gen_fn=from_fn(opt_ik_grasp_fn)),
-    })
-
     # TODO: automatically populate using stream_map
     opt_gen_fn = PartialInputs(unique=unique)
     stream_info = {

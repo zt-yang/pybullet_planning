@@ -166,21 +166,6 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
 
 
 def get_stream_info(unique=False):
-    stream_info = {
-        # 'test-cfree-pose-pose': StreamInfo(p_success=1e-3, verbose=verbose),
-        # 'test-cfree-approach-pose': StreamInfo(p_success=1e-2, verbose=verbose),
-        # 'test-cfree-traj-pose': StreamInfo(p_success=1e-1, verbose=verbose),
-        'MoveCost': FunctionInfo(opt_move_cost_fn),
-    }
-    stream_info.update({
-        'sample-pose': StreamInfo(opt_gen_fn=from_fn(opt_pose_fn)),
-        'sample-pose-inside': StreamInfo(opt_gen_fn=from_fn(opt_pose_inside_fn)),
-        'inverse-kinematics': StreamInfo(opt_gen_fn=from_fn(opt_ik_fn)),
-        'plan-base-motion': StreamInfo(opt_gen_fn=from_fn(opt_motion_fn)),
-        'sample-joint-position': StreamInfo(opt_gen_fn=from_fn(opt_position_fn)),
-        # 'inverse-kinematics-grasp-handle': StreamInfo(opt_gen_fn=from_fn(opt_ik_grasp_fn)),
-    })
-
     # TODO: automatically populate using stream_map
     opt_gen_fn = PartialInputs(unique=unique)
     stream_info = {
@@ -574,7 +559,8 @@ from pybullet_tools.utils import disconnect, LockRenderer, has_gui, WorldSaver, 
 from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, str_from_object, TmpCWD
 
 
-def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False, lock=False,
+def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
+              fc=None, domain_modifier=None,
               max_time=INF, downward_time=10, evaluation_time=10,
               max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=0,
               visualize=False, **kwargs):
@@ -612,7 +598,8 @@ def solve_one(pddlstream_problem, stream_info, fc=None, diverse=False, lock=Fals
                                  max_time=max_time, verbose=True, visualize=visualize,
                                  # unit_efforts=True, effort_weight=None,
                                  unique_optimistic=True, use_feedback=use_feedback,
-                                 forbid=True, max_plans=max_plans, fc=fc,
+                                 forbid=True, max_plans=max_plans,
+                                 fc=fc, domain_modifier=domain_modifier,
                                  bind=True, max_skeletons=max_skeletons,
                                  plan_dataset=plan_dataset, evaluation_time=evaluation_time,
                                  max_solutions=max_solutions, search_sample_ratio=0, **kwargs)
@@ -712,7 +699,7 @@ def get_debug_checker(world):
 
 
 def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=False,
-                     collect_dataset=False,
+                     collect_dataset=False, domain_modifier=None,
                      profile=True, lock=False, max_time=5*50, preview=False, **kwargs):
     from pybullet_tools.logging import myprint as print
 
@@ -722,8 +709,6 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
     saver = WorldSaver()
     world = state.world
     objects = world.objects
-    print(f'Robot: {world.robot} | Objects: {world.objects}\n'
-          f'Movable: {world.movable} | Fixed: {world.fixed} | Floor: {world.floors}')
     stream_info = world.robot.get_stream_info()
 
     if has_gui():
@@ -740,7 +725,8 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
     # profiler.save()
 
     with LockRenderer(lock=lock):
-        solution = solve_one(pddlstream_problem, stream_info, fc=None,
+        solution = solve_one(pddlstream_problem, stream_info,
+                             fc=None, domain_modifier=domain_modifier,
                              collect_dataset=collect_dataset,
                              visualize=visualization, **kwargs)
 
@@ -756,7 +742,8 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
     # profiler.restore()
 
     knowledge = parse_problem(pddlstream_problem, stream_info=stream_info,
-                              constraints=PlanConstraints(), unit_costs=True, unit_efforts=True)
+                              constraints=PlanConstraints(), unit_costs=True,
+                              unit_efforts=True)
 
     plan, cost, evaluations = solution
     solved = is_plan(plan)
@@ -779,8 +766,9 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
 
         if is_plan_abstract(plan):
             from bullet.leap.hierarchical import check_preimage
-            env = check_preimage(pddlstream_problem, plan, preimage, init=pddlstream_problem.init,
-                                 objects=objects, domain_pddl=domain_pddl)
+            env = check_preimage(pddlstream_problem, plan, preimage, domain_pddl,
+                                 init=pddlstream_problem.init, objects=objects,
+                                 domain_modifier=domain_modifier)
         else:
             env = None  ## preimage
         plan_str = [str(a) for a in plan]

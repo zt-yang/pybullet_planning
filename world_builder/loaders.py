@@ -26,7 +26,7 @@ from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, H
     get_link_pose, get_aabb, get_link_name, sample_aabb, aabb_contains_aabb, aabb2d_from_aabb, sample_placement, \
     aabb_overlap, get_links, get_collision_data, get_visual_data, link_from_name, body_collision, get_closest_points, \
     load_pybullet, FLOOR_URDF, get_aabb_center, AABB, INF, clip, aabb_union, get_aabb_center, Pose, Euler, \
-    get_box_geometry, \
+    get_box_geometry, wait_unlocked, \
     get_aabb_extent, multiply, GREY, create_shape_array, create_body, STATIC_MASS, set_renderer, quat_from_euler, \
     get_joint_name, wait_for_user, draw_aabb, get_bodies, euler_from_quat
 from pybullet_tools.bullet_utils import place_body, add_body, Pose2d, nice, OBJ_YAWS, \
@@ -760,9 +760,9 @@ def load_cabinet_test_scene(world, RANDOM_INSTANCE=False, MORE_MOVABLE=False, ve
 def load_cabinet_rearrange_scene(world):
     surfaces = {
         'counter': {
-            'front_left_stove': [],
+            # 'front_left_stove': [],
             'front_right_stove': ['BraiserBody'],
-            'hitman_tmp': [],
+            # 'hitman_tmp': [],
             'indigo_tmp': ['BraiserLid', 'MeatTurkeyLeg', 'VeggieCabbage'],  ##
         }
     }
@@ -770,7 +770,7 @@ def load_cabinet_rearrange_scene(world):
         'counter': {
             'sektion': [],  ##
             'dagger': ['VinegarBottle', 'OilBottle'],  ## 'Salter',
-            'hitman_drawer_top': [],  ## 'Pan'
+            # 'hitman_drawer_top': [],  ## 'Pan'
             # 'hitman_drawer_bottom': ['Pan'],
             # 'indigo_drawer_top': ['Fork'],  ## 'Fork', 'Knife'
             # 'indigo_drawer_bottom': ['Fork', 'Knife'],
@@ -831,8 +831,8 @@ def load_feg_kitchen_dishwasher(world):
             'faucet_platform': ['Faucet']
         },
         'dishwasher': {
-            "surface_plate_left": ['PlateFat'],  ## 'VeggieTomato'
-            # "surface_plate_right": ['PlateFlat']  ## two object attached to one joint is too much
+            "surface_plate_left": ['Plate'],  ## 'VeggieTomato', 'PlateFat'
+            # "surface_plate_right": ['Plate']  ## two object attached to one joint is too much
         }
     }
     spaces = {
@@ -873,7 +873,7 @@ def load_feg_kitchen_dishwasher(world):
     # world.add_to_init(['AtAttachment', obj.body, dishwasher_door])
 
     world.open_joint_by_name('dishwasher_door')
-    obj = world.name_to_object('PlateFat')
+    obj = world.name_to_object('Plate')  ## 'PlateFat'
     obj.set_pose(((0.97, 6.23, 0.512), quat_from_euler((0, 0, math.pi))))
     world.name_to_object('surface_plate_left').attach_obj(obj)
     world.add_to_cat(obj.body, 'movable')
@@ -890,6 +890,7 @@ def load_feg_kitchen_dishwasher(world):
     # world.add_to_init(['AtAttachment', obj.body, dishwasher_door])
 
     return dishwasher_door
+
 
 def load_feg_kitchen(world):
     surfaces = {
@@ -924,18 +925,20 @@ def load_feg_kitchen(world):
     # load_kitchen_mechanism_stove(world)
 
     cabbage = world.name_to_body('cabbage')
-    chicken = world.name_to_body('turkey')
-    for ingredient in [cabbage, chicken]:
+    turkey = world.name_to_body('turkey')
+    for ingredient in [cabbage, turkey]:
         world.add_to_cat(ingredient, 'edible')
         world.add_to_cat(ingredient, 'moveable')
     world.put_on_surface(cabbage, 'shelf_bottom')
-    world.put_on_surface(chicken, 'indigo_tmp')
+    world.put_on_surface(turkey, 'indigo_tmp')
 
     lid = world.name_to_body('lid')
     world.open_joint_by_name('fridge_door', pstn=1.5)
     # world.put_on_surface(lid, 'indigo_tmp')
 
-    world.add_to_cat(chicken, 'cleaned')
+    world.add_to_cat(turkey, 'cleaned')
+
+    return cabbage, turkey, lid
 
 
 def place_in_cabinet(fridgestorage, cabbage, place=True, world=None, learned=True):
@@ -1457,3 +1460,45 @@ def load_kitchen_mini_scene(world, **kwargs):
         world.remove_body_from_planning(o)
 
     return food_ids[0], shelf.body
+
+
+#################################################################
+
+
+def load_table_stationaries(world, w=6, l=6, h=0.9):
+    """ a table with a tray and some stationaries to be put on top
+    """
+    categories = ['EyeGlasses', 'Camera', 'Stapler', 'Medicine', 'Bottle', 'Knife']
+    floor = world.add_object(
+        Floor(create_box(w=w, l=l, h=FLOOR_HEIGHT, color=TAN, collision=True)),
+        Pose(point=Point(x=w/2, y=l/2, z=-2 * FLOOR_HEIGHT)))
+
+    h = random.uniform(h-0.1, h+0.1)
+    counter = world.add_object(Supporter(
+        load_asset('KitchenCounter', x=w/2, y=l/2, yaw=math.pi, floor=floor, h=h,
+                   RANDOM_INSTANCE=True, verbose=False), category='supporter', name='counter'))
+    y = l/2 - get_aabb_extent(get_aabb(counter.body))[1] / 2 + 0.1
+    tray = world.add_object(Supporter(
+        load_asset('Tray', x=w/2, y=l/2, yaw=math.pi, floor=floor, h=h,
+                   RANDOM_INSTANCE=True, verbose=False), category='supporter', name='tray'))
+
+    ## --- add cabage on an external table
+    stationaries = []
+    for cat in categories:
+        item = world.add_object(Moveable(
+            load_asset(cat, x=0, y=0, yaw=random.uniform(-math.pi, math.pi), RANDOM_INSTANCE=True),
+            category=cat
+        ))
+        world.put_on_surface(item, 'counter')
+        stationaries.append(item)
+
+    x, y = 3, 3
+    x += np.random.normal(4, 0.2)
+    y += np.random.normal(0, 0.2)
+    camera_pose = ((x, y, 1.3), (0.5, 0.5, -0.5, -0.5))
+    world.add_camera(camera_pose)
+    world.visualize_image()
+
+    wait_unlocked()
+
+    return stationaries

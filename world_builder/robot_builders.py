@@ -155,7 +155,7 @@ def build_oven_domain_robot(world, robot_name, **kwargs):
     """ kitchen svg, focus on the oven and cabinets """
     kwargs['initial_xy'] = (1.5, 8)
     if 'custom_limits' not in kwargs:
-        kwargs['custom_limits'] = ((0, 5, 0), (4, 12, 2))
+        kwargs['custom_limits'] = ((0, 4, 0), (2.5, 10, 2))
     return build_robot_from_args(world, robot_name, **kwargs)
 
 

@@ -904,6 +904,8 @@ def summarize_facts(facts, world=None, name='Initial facts', print_fn=None):
         pred = fact[0].lower()
         if pred not in predicates:
             predicates[pred] = []
+        if pred.lower() == 'cleaningsurface':
+            print('sss')
         predicates[pred].append(fact)
     predicates = {k: v for k, v in sorted(predicates.items())}
     # predicates = {k: v for k, v in sorted(predicates.items(), key=lambda item: len(item[1][0]))}
@@ -1014,6 +1016,9 @@ def fit_dimensions(body, body_pose=unit_pose()):
     return aabb, get_aabb_center(aabb), get_aabb_extent(aabb)
 
 
+ROTATIONAL_MATRICES = {}
+
+
 def get_rotation_matrix(body):
     import untangle
     r = unit_pose()
@@ -1022,22 +1027,26 @@ def get_rotation_matrix(body):
     if len(collision_data) > 0:
         urdf_file = dirname(collision_data[0].filename.decode())
         urdf_file = urdf_file.replace('/textured_objs', '')
-        joints = untangle.parse(join(urdf_file, 'mobility.urdf')).robot.joint
-        if isinstance(joints, list):
-            for j in joints:
-                if j.parent['link'] == 'base':
-                    joint = j
-                    break
-        else:
-            joint = joints
-        rpy = joint.origin['rpy'].split(' ')
-        rpy = tuple([eval(e) for e in rpy])
-        if equal(rpy, (1.57, 1.57, -1.57), epsilon=0.1):
-            r = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
-        elif equal(rpy, (3.14, 3.14, -1.57), epsilon=0.1):
-            r = Pose(euler=Euler(0, 0, -math.pi / 2))
-        elif equal(rpy, (1.57, 0, -1.57), epsilon=0.1):
-            r = Pose(euler=Euler(math.pi/2, 0, -math.pi / 2))
+        if urdf_file not in ROTATIONAL_MATRICES:
+            print('get_rotation_matrix | urdf_file = ', urdf_file)
+            joints = untangle.parse(join(urdf_file, 'mobility.urdf')).robot.joint
+            if isinstance(joints, list):
+                for j in joints:
+                    if j.parent['link'] == 'base':
+                        joint = j
+                        break
+            else:
+                joint = joints
+            rpy = joint.origin['rpy'].split(' ')
+            rpy = tuple([eval(e) for e in rpy])
+            if equal(rpy, (1.57, 1.57, -1.57), epsilon=0.1):
+                r = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
+            elif equal(rpy, (3.14, 3.14, -1.57), epsilon=0.1):
+                r = Pose(euler=Euler(0, 0, -math.pi / 2))
+            elif equal(rpy, (1.57, 0, -1.57), epsilon=0.1):
+                r = Pose(euler=Euler(math.pi/2, 0, -math.pi / 2))
+            ROTATIONAL_MATRICES[urdf_file] = r
+        r = ROTATIONAL_MATRICES[urdf_file]
     return r
 
 
@@ -1488,7 +1497,7 @@ def find_grasp_in_db(db_file_name, instance_name, LENGTH_VARIANTS=False):
                 found = [(tuple(e[0]), quat_from_euler(e[1])) for e in data]
             elif len(data[0][1]) == 4:
                 found = [(tuple(e[0]), tuple(e[1])) for e in data]
-            print(f'bullet_utils.find_grasp_in_db returned {len(found)} grasps for ({instance_name})')
+            print(f'    bullet_utils.find_grasp_in_db returned {len(found)} grasps for ({instance_name})')
 
     return found, db, db_file
 
@@ -1512,8 +1521,12 @@ def add_grasp_in_db(db, db_file, instance_name, grasps, name=None, LENGTH_VARIAN
         key: add_grasps,
         'datetime': get_datetime()
     }
+    keys = {k: v['datetime'] for k, v in db.items()}
+    keys = sorted(keys.items(), key=lambda x: x[1])
+    db = {k: db[k] for k, v in keys}
     if isfile(db_file): os.remove(db_file)
-    dump_json(db, db_file)
+    dump_json(db, db_file, sort_dicts=False)
+    print('\n    bullet_utils.add_grasp_in_db saved', instance_name, '\n')
 
 
 def process_depth_pixels(pixels):

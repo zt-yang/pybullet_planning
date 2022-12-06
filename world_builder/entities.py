@@ -146,7 +146,7 @@ class Object(Index):
 
         # set_renderer(False)
         obj = self.world.add_object(
-            Moveable(load_asset(obj_name.lower(), maybe=True, **kwargs), category=obj_name)
+            Object(load_asset(obj_name.lower(), maybe=True, **kwargs), category=obj_name)
         )
         # body = sample_obj_on_body_link_surface(obj, self.body, self.link, max_trial=max_trial)
         self.world.put_on_surface(obj, max_trial=max_trial, surface=self.shorter_name)
@@ -403,6 +403,7 @@ class Environment(Region):
 
 #######################################################
 
+
 class Surface(Region):
     """ to support objects on top, like kitchentop and fridge shelves """
     def __init__(self, body, link, **kwargs):
@@ -485,11 +486,12 @@ class Space(Region):
 
 #######################################################
 
+
 class ArticulatedObjectPart(Object):
     def __init__(self, body, joint, min_limit=None, max_limit=None, **kwargs):
         super(ArticulatedObjectPart, self).__init__(body, joint, collision=True, **kwargs)
         self.name = get_joint_name(body, joint)
-        if min_limit == None:
+        if min_limit is None:
             min_limit = get_min_limit(body, joint)
             max_limit = get_max_limit(body, joint)
         self.min_limit = min_limit
@@ -549,21 +551,23 @@ class ArticulatedObjectPart(Object):
 
 
 class Door(ArticulatedObjectPart):
-    def __init__(self, body, **kwargs):
-        super(Door, self).__init__(body, **kwargs)
+    def __init__(self, body, joint, **kwargs):
+        super(Door, self).__init__(body, joint, **kwargs)
+
 
 class Drawer(ArticulatedObjectPart):
-    def __init__(self, body, **kwargs):
-        super(Drawer, self).__init__(body, **kwargs)
+    def __init__(self, body, joint, **kwargs):
+        super(Drawer, self).__init__(body, joint, **kwargs)
+
 
 class Knob(ArticulatedObjectPart):
-    def __init__(self, body, **kwargs):
-        super(Knob, self).__init__(body, **kwargs)
+    def __init__(self, body, joint, **kwargs):
+        super(Knob, self).__init__(body, joint, **kwargs)
         self.controlled = None
 
-    def find_handle_link(self, body, joint):
-        link = get_joint_info(body, joint).linkName.decode("utf-8")
-        return get_link_parent(body, link_from_name(body, link))
+    # def find_handle_link(self, body, joint):
+    #     link = get_joint_info(body, joint).linkName.decode("utf-8")
+    #     return get_link_parent(body, link_from_name(body, link))
 
     def add_controlled(self, body):
         self.controlled = body

@@ -464,8 +464,11 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | P
         grasps_O = get_hand_grasps(problem, body, **kwargs)
         grasps = robot.make_grasps(grasp_type, arm, body, grasps_O, collisions=collisions)
         if top_grasp_tolerance is not None:
+            ori = len(grasps)
             grasps = [grasp for grasp in grasps if is_top_grasp(
                 robot, arm, body, grasp, top_grasp_tolerance=top_grasp_tolerance)]
+            print(f'   get_grasp_gen(top_grasp_tolerance={top_grasp_tolerance})',
+                  f' selected {len(grasps)} out of {ori} grasps')
         if randomize:
             random.shuffle(grasps)
         # return [(g,) for g in grasps]
@@ -503,10 +506,13 @@ def get_grasp_list_gen(problem, collisions=True, num_samples=10, **kwargs):
 """
 
 
-def get_handle_link(body_joint):
-    from world_builder.entities import ArticulatedObjectPart
+def get_handle_link(body_joint, is_knob=False):
+    from world_builder.entities import ArticulatedObjectPart, Knob
     body, joint = body_joint
-    j = ArticulatedObjectPart(body, joint)
+    if is_knob:
+        j = Knob(body, joint)
+    else:
+        j = ArticulatedObjectPart(body, joint)
     return j.handle_link
 
 
@@ -549,7 +555,8 @@ def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
     title = 'general_streams.get_handle_grasp_gen |'
     def fn(body_joint):
         body, joint = body_joint
-        handle_link = get_handle_link(body_joint)
+        is_knob = body_joint in world.cat_to_bodies('knob')
+        handle_link = get_handle_link(body_joint, is_knob=is_knob)
         # print(f'{title} handle_link of body_joint {body_joint} is {handle_link}')
 
         g_type = 'top'
@@ -661,7 +668,7 @@ def get_cfree_approach_pose_test(problem, collisions=True):
             process_motion_fluents(fluents, robot)
         p2.assign()
         result = False
-        for _ in problem.robot.iterate_approach_path(arm, gripper, p1, g1, obstacles=obstacles, body=b1):
+        for _ in problem.robot.iterate_approach_path(arm, gripper, p1.value, g1, body=b1):
             if pairwise_collision(b1, b2) or pairwise_collision(gripper, b2):
                 result = False
                 break
@@ -733,7 +740,7 @@ def get_cfree_traj_pose_test(robot, collisions=True, verbose=False, visualize=Fa
 """
 
 
-def process_motion_fluents(fluents, robot, verbose=True):
+def process_motion_fluents(fluents, robot, verbose=False):
     if verbose:
         print('Fluents:', fluents)
     attachments = []

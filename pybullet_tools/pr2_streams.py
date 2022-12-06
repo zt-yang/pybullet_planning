@@ -253,7 +253,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
         if hasattr(world, 'BODY_TO_OBJECT') and world.BODY_TO_OBJECT[body].grasp_parent != None:
             addons.append(world.BODY_TO_OBJECT[body].grasp_parent)
         addon_obstacles = obstacles + addons if collisions else []
-        print(title, 'addon_obstacles', addon_obstacles)
+        # print(title, 'addon_obstacles', addon_obstacles)
 
         approach_obstacles = {obst for obst in obstacles if not is_placement(body, obst)}
         # approach_obstacles = problem.world.refine_marker_obstacles(obj, approach_obstacles)  ## for steerables

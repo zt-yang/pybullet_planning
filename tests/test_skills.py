@@ -167,25 +167,24 @@ def get_gap(category):
 def test_grasps(categories=[], robot='feg'):
     world = get_test_world(robot)
     robot = world.robot
-
     problem = State(world, grasp_types=robot.grasp_types)  ## , 'side' , 'top'
-    tpt = math.pi/4 if 'Plate' not in categories else None
-    funk = get_grasp_list_gen(problem, collisions=True, visualize=False,
-                              RETAIN_ALL=False, top_grasp_tolerance=tpt, verbose=True)
-
-    def test_grasp(body):
-        set_renderer(True)
-        body_pose = get_pose(body)  ## multiply(get_pose(body), Pose(euler=Euler(math.pi/2, 0, -math.pi/2)))
-        print('body_pose', nice(body_pose))
-        outputs = funk(body)
-        if isinstance(outputs, list):
-            print(f'grasps on body {body}:', outputs)
-        visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=True)
-        set_renderer(True)
-        set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
 
     i = -1
     for cat in categories:
+
+        tpt = math.pi / 4 if cat in ['Plate', 'Knife'] else None ## , 'EyeGlasses'
+        funk = get_grasp_list_gen(problem, collisions=True, visualize=False,
+                                  RETAIN_ALL=False, top_grasp_tolerance=tpt, verbose=False)
+
+        def test_grasp(body):
+            set_renderer(True)
+            body_pose = get_pose(body)  ## multiply(get_pose(body), Pose(euler=Euler(math.pi/2, 0, -math.pi/2)))
+            outputs = funk(body)
+            if isinstance(outputs, list):
+                print(f'grasps on body {body}:', outputs)
+            visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=True)
+            set_renderer(True)
+            set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
 
         if cat == 'box':
             body = create_box(0.05, 0.05, 0.05, mass=0.2, color=GREEN)
@@ -411,12 +410,12 @@ def test_placement_in(robot, category):
     disconnect()
 
 
-def test_placement_on(robot, category):
+def test_placement_on(robot, category, surface_name=None, num_samples=30):
 
     world = get_test_world(robot)
     problem = State(world)
     funk = get_stable_list_gen(problem, collisions=True, verbose=False,
-                                num_samples=30, learned_sampling=True)
+                                num_samples=num_samples, learned_sampling=True)
 
     ## load fridge
     instances = get_instances(category)
@@ -430,15 +429,21 @@ def test_placement_on(robot, category):
         (x, y) = locations[i]
         path, body, scale = load_model_instance(category, id, location=(x, y))
         # new_urdf_path, body = reload_after_vhacd(path, body, scale, id=id)
+
+        ## ---- add surface
         instance_name = get_instance_name(path)
         name = f'{category.lower()}#{id}'
         world.add_body(body, name, instance_name)
         set_camera_target_body(body, dx=1, dy=0, dz=1)
+        if surface_name is not None:
+            link = link_from_name(body, surface_name)
+            body = (body, None, link)
+            world.add_body(body, name, surface_name)
 
-        x += 1
+        ## ---- add many cabbages
         # space = clone_body(body, links=body_link[-1:], visual=True, collision=True)
         # world.add_body(space, f'{category.lower()}#{id}-{body_link}')
-
+        x += 1
         cabbage = load_asset('VeggieCabbage', x=x, y=y, z=0, yaw=0)[0]
         cabbage_name = f'cabbage#{i}-{body}'
         world.add_body(cabbage, cabbage_name)
@@ -661,22 +666,23 @@ def test_placement_counter():
     disconnect()
 
 
-def get_data(category):
+def get_data(categories):
     from world_builder.paths import PARTNET_PATH
 
-    models = get_instances(category)
+    for category in categories:
+        models = get_instances_helper(category)
 
-    target_model_path = join(ASSET_PATH, 'models', category)
-    if not isdir(target_model_path):
-        os.mkdir(target_model_path)
+        target_model_path = join(ASSET_PATH, 'models', category)
+        if not isdir(target_model_path):
+            os.mkdir(target_model_path)
 
-    if isdir(PARTNET_PATH):
-        for idx in models:
-            old_path = join(PARTNET_PATH, idx)
-            new_path = join(target_model_path, idx)
-            if isdir(old_path) and not isdir(new_path):
-                shutil.copytree(old_path, new_path)
-                print(f'copying {old_path} to {new_path}')
+        if isdir(PARTNET_PATH):
+            for idx in models:
+                old_path = join(PARTNET_PATH, idx)
+                new_path = join(target_model_path, idx)
+                if isdir(old_path) and not isdir(new_path):
+                    shutil.copytree(old_path, new_path)
+                    print(f'copying {old_path} to {new_path}')
 
 
 def test_texture(category, id):
@@ -722,27 +728,32 @@ def test_vhacd():
 
 if __name__ == '__main__':
 
-    ## --- MODELS  ---
-    # get_data(category='Salter')
+    """ --- models related --- """
+    # get_data(categories=['Knife'])
     # test_texture(category='CoffeeMachine', id='103127')
     # test_vhacd()
 
-    ## --- robot (FEGripper) related  ---
+    """ --- robot (FEGripper) related  --- """
     # test_gripper_joints()
     # test_gripper_range()
     # test_torso()
 
-    ## --- grasps related ---
-    robot = 'feg' ## 'feg' | 'pr2'
-    test_grasps(['MeatTurkeyLeg'], robot)  ## BraiserLid
-    ## 'box', 'Bottle', 'Stapler', 'Camera', 'Glasses', 'Food', 'MiniFridge', 'KitchenCounter'
+    robot = 'feg'  ## 'feg' | 'pr2'
+
+    """ --- grasps related --- """
+    test_grasps(['Tray'], robot)  ## 'EyeGlasses'
+    ## Kitchen: 'Bottle', 'Food', 'MiniFridge', 'KitchenCounter', 'BraiserLid'
+    ## Packing: 'Stapler', 'Camera', 'EyeGlasses', 'Knife', 'Tray',
+
     # test_handle_grasps_counter()
-    test_handle_grasps(robot, category='MiniFridge')
+    # test_handle_grasps(robot, category='MiniFridge')
     # test_handle_grasps(robot, category='MiniFridgeDoorless')
     # test_pick_place_counter(robot)
 
-
-    ## --- placement related  ---
+    """ --- placement related  --- """
     # test_placement_counter()  ## initial placement
-    # (robot, category='MiniFridge')  ## sampled placement
-    # test_placement_on(robot, category='KitchenCounter')  ## sampled placement
+    # test_placement_in(robot, category='MiniFridge')  ## sampled placement
+
+    # test_placement_on(robot, category='Tray', surface_name='tray_bottom')  ## sampled placement
+    ## Kitchen: 'KitchenCounter'
+

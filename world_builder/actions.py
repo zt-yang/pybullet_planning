@@ -14,7 +14,7 @@ from pybullet_tools.utils import str_from_object, get_closest_points, INF, creat
     remove_body, create_cylinder, set_all_static, wait_for_duration, remove_handles, set_renderer, \
     LockRenderer
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, get_gripper_joints
-from pybullet_tools.pr2_primitives import Trajectory, Command, Conf
+from pybullet_tools.pr2_primitives import Trajectory, Command, Conf, Trajectory, Commands
 from pybullet_tools.flying_gripper_utils import set_se3_conf
 
 from .world import State
@@ -546,18 +546,28 @@ def get_primitive_actions(action, world, teleport=False):
     elif name == 'grasp_pull_handle':
         a, o, p1, p2, g, q1, q2, t1, t2, t3 = args
 
+        ## step 1: grasp handle
         t = get_traj(t1)
         close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
         attach = AttachObjectAction(a, g, o)
         new_commands = t + [close_gripper, attach]
 
+        ## step 2: move the handle (door, drawer, knob)
         t = get_traj(t2)
         new_commands += t
 
+        ## step 3: ungrasp the handle
         t = get_traj(t3)
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
         detach = DetachObjectAction(a, o)
         new_commands += [detach, open_gripper] + t[::-1]
+
+        ## draw the whole traj
+        path = t1.commands[0].path + t2.commands[0].path + t3.commands[0].path
+        t = Trajectory(path)
+        from pybullet_tools.pr2_primitives import State
+        cmd = Commands(State(), savers=[], commands=[t])
+        get_traj(cmd)
 
     elif 'move_base' in name or 'pull_' in name:
         if 'move_base' in name:

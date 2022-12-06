@@ -168,6 +168,8 @@ class World(object):
 
     def get_debug_name(self, body):
         """ for viewing pleasure :) """
+        if isinstance(body, Object):
+            return body.debug_name
         if body in self.BODY_TO_OBJECT:
             return self.BODY_TO_OBJECT[body].debug_name
         return None
@@ -262,7 +264,7 @@ class World(object):
         else:
             self.ROBOT_TO_OBJECT[body] = object
 
-        if pose != None:
+        if pose is not None:
             add_body(object, pose)
 
         object.world = self
@@ -282,7 +284,6 @@ class World(object):
 
     def add_to_cat(self, body, cat):
         object = self.get_object(body)
-
         if cat not in self.OBJECTS_BY_CATEGORY:
             self.OBJECTS_BY_CATEGORY[cat] = []
         self.OBJECTS_BY_CATEGORY[cat].append(object)
@@ -481,10 +482,18 @@ class World(object):
             self.non_planning_objects.append(body)
 
     def remove_category_from_planning(self, category, exceptions=[]):
+        if len(exceptions) > 0 and isinstance(exceptions[0], str):
+            new_exceptions = []
+            for exception in exceptions:
+                if exception == 'braiser_bottom':
+                    print('exception', exception)
+                new_exceptions.append(self.name_to_body(exception))
+            exceptions = new_exceptions
         bodies = self.cat_to_bodies(category)
         for body in bodies:
             if body in exceptions:
                 continue
+            print('removing from planning', body)
             self.remove_body_from_planning(body)
 
     def remove_body_attachment(self, body):
@@ -530,12 +539,12 @@ class World(object):
             if name == obj.name:
                 return self.robot.body
         for body, obj in self.BODY_TO_OBJECT.items():
-            if name == obj.shorter_name:
+            if name == obj.name:
                 return body
-            if name in obj.shorter_name:
+            if name in obj.name:
                 possible[body] = obj
         if len(possible) >= 1:
-            counts = {b: len(o.shorter_name) for b, o in possible.items()}
+            counts = {b: len(o.name) for b, o in possible.items()}
             counts = dict(sorted(counts.items(), key=lambda item: item[1]))
             return list(counts.keys())[0]
             # return possible[0]
@@ -671,17 +680,19 @@ class World(object):
                 obj.set_pose(((a, b, z), quat))
                 # obj.set_pose(((1, 4.4, z), quat))
                 # obj.set_pose(((1.6, 4.5, z), quat)) ## vertical orientation
-            elif 'braiser_bottom' in surface: ## for testing
-                (a, b, c), _ = world_to_surface
-                obj.set_pose(((0.55, b, z), (0, 0, 0.36488663206619243, 0.9310519565198234)))
-            elif 'braiser' in surface:
-                (a, b, c), quat = world_to_surface
-                obj.set_pose(((a, b, z), quat))
-            elif 'front_' in surface and '_stove' in surface:
-                obj.set_pose(((0.55, y, z), quat))
             elif 'tmp' in surface: ## egg
                 if y > 9: y = 8.9
                 obj.set_pose(((0.7, y, z), quat))
+
+        ## ---------- center object
+        if 'braiser_bottom' in surface:  ## for testing
+            (a, b, c), _ = world_to_surface
+            obj.set_pose(((0.55, b, z), (0, 0, 0.36488663206619243, 0.9310519565198234)))
+        elif 'braiser' in surface:
+            (a, b, c), quat = world_to_surface
+            obj.set_pose(((a, b, z), quat))
+        elif 'front_' in surface and '_stove' in surface:
+            obj.set_pose(((0.55, y, z), quat))
 
         surface_obj.attach_obj(obj)
         if OAO: ## one and only
@@ -873,13 +884,16 @@ class World(object):
         ## ---- object types -------------
         for cat in self.OBJECTS_BY_CATEGORY:
             if cat.lower() == 'moveable': continue
-            # objects = cat_to_bodies(cat)
-            # init += [(cat, obj) for obj in objects]
-            for obj in cat_to_bodies(cat):
-                init += [(cat, obj)]
-                cat2 = f"@{cat}"
-                if cat2 in self.constants:
-                    init += [('OfType', obj, cat2)]
+            if cat in ['CleaningSurface', 'HeatingSurface', 'edible']:
+                objects = self.OBJECTS_BY_CATEGORY[cat]
+                init += [(cat, obj.pybullet_name) for obj in objects if obj.pybullet_name in BODY_TO_OBJECT]
+            else:
+                for obj in cat_to_bodies(cat):
+                    if (cat, obj) not in init:
+                        init += [(cat, obj)]
+                    cat2 = f"@{cat}"
+                    if cat2 in self.constants:
+                        init += [('OfType', obj, cat2)]
 
         ## --- for testing IK
         # lid = self.name_to_body('braiserlid')
