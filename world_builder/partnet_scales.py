@@ -19,7 +19,6 @@ MODEL_SCALES = {
         '8848': 0.11
     },
     'Bottle': {
-        # '3380': 0.2,
         '3558': 0.15,
         '3574': 0.16,
         '3614': 0.16,
@@ -43,8 +42,8 @@ MODEL_SCALES = {
     },
     'Stapler': {
         '103100': 0.15,
-        '103104': 0.16,
-        '103283': 0.16,
+        '103104': 0.15,
+        # '103283': 0.13,
         '103299': 0.14,
         '103307': 0.08,
     },
@@ -100,8 +99,8 @@ MODEL_SCALES = {
     'Tray': {
         '100191': 0.5,
         '100685': 0.5,
-        '100501': 0.5,
-        '101176': 0.5,
+        '100501': 0.3,
+        '101176': 0.3,
     },
     'Knife': {
         '101052': 0.1,
@@ -127,12 +126,17 @@ MODEL_SCALES = {
         '100509': 0.5,
         '101090': 0.5,
         '101083': 0.5,
+    },
+    'CabinetTop': {
+        # 'Chewie': 1,
+        # 'Dagger': 1,
+        'Sektion': 1,
     }
 }
 MODEL_SCALES['MiniFridgeDoorless'] = MODEL_SCALES['MiniFridge']
 MODEL_SCALES.update({k.lower(): v for k, v in MODEL_SCALES.items()})
-MODEL_SCALES['Food'].update({k.lower(): v for k, v in MODEL_SCALES['Food'].items()})
-MODEL_SCALES['Plate'].update({k.lower(): v for k, v in MODEL_SCALES['Plate'].items()})
+for c in ['Food', 'Plate', 'CabinetTop']:
+    MODEL_SCALES[c].update({k.lower(): v for k, v in MODEL_SCALES[c].items()})
 
 MODEL_HEIGHTS = {
     'KitchenCounter': {

@@ -16,13 +16,14 @@ from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, g
     BodySaver, set_pose, INF, add_parameter, irange, wait_for_duration, get_bodies, remove_body, \
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
     get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked, \
-    get_movable_joints, apply_alpha, get_all_links, set_color, get_texture, dump_body, clear_texture, get_link_name
+    get_movable_joints, apply_alpha, get_all_links, set_color, set_all_color, dump_body, clear_texture, get_link_name
 from pybullet_tools.pr2_streams import Position, get_handle_grasp_gen, pr2_grasp
 from pybullet_tools.general_streams import pose_from_attachment
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
     is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
     set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR, CAMERA_MATRIX, visualize_camera_image, equal, \
-    draw_pose2d_path, draw_pose3d_path, sort_body_parts, get_root_links, colorize_world, colorize_link
+    draw_pose2d_path, draw_pose3d_path, sort_body_parts, get_root_links, colorize_world, colorize_link, \
+    draw_fitted_box
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
     Attach, Detach, Clean, Cook, control_commands, link_from_name, \
     get_gripper_joints, GripperCommand, apply_commands, State, Command
@@ -195,6 +196,10 @@ class World(object):
         obj = self.add_object(object, pose=pose)
         obj.is_box = True
         return obj
+
+    def add_highlighter(self, body):
+        draw_fitted_box(body)
+        # set_all_color(body, (1, 0, 0, 1))
 
     def add_object(self, object, pose=None):
         OBJECTS_BY_CATEGORY = self.OBJECTS_BY_CATEGORY
@@ -653,7 +658,7 @@ class World(object):
             obj = self.BODY_TO_OBJECT[obj]
         return obj
 
-    def put_on_surface(self, obj, surface='hitman_tmp', max_trial=1, OAO=False):
+    def put_on_surface(self, obj, surface='hitman_tmp', max_trial=20, OAO=False):
         obj = self.get_object(obj)
         surface_obj = self.get_object(surface)
         surface = surface_obj.name
@@ -667,9 +672,12 @@ class World(object):
         if 'faucet_platform' in surface:
             (a, b, c), quat = world_to_surface
             obj.set_pose(((a - 0.2, b, z), quat))
-        elif 'hitman_tmp' in surface:  ## microwave or toaster
+        elif 'hitman_tmp' in surface:
             quat = (0, 0, 1, 0)  ## facing out
             obj.set_pose(((0.4, 6.4, z), quat))
+        elif obj.category in ['microwave', 'toaster']:
+            quat = (0, 0, 1, 0)  ## facing out
+            obj.set_pose((point, quat))
 
         ## ---------- reachability hacks for PR2
         if hasattr(self, 'robot') and 'pr2' in self.robot.name:

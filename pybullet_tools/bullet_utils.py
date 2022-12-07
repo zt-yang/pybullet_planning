@@ -448,11 +448,7 @@ def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_t
     # sample_placement(maybe, body, bottom_link=link)
 
     x, y, z, yaw = sample_pose(obj, aabb)
-    if isinstance(obj, str):
-        obj = obj.lower()
-        maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), maybe=True)
-    else:
-        maybe = obj
+    maybe = obj
     trial = 0
 
     ## if surface smaller than object, just put in center
@@ -465,20 +461,14 @@ def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_t
     else:
         while not aabb_contains_aabb(aabb2d_from_aabb(get_aabb(maybe)), aabb2d_from_aabb(aabb)):
             x, y, z, yaw = sample_pose(obj, aabb, get_aabb(maybe))
-            if isinstance(obj, str):
-                remove_body(maybe)
-                maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), maybe=True)
-            else:
-                pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
-                set_pose(maybe, pose)
+            pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
+            set_pose(maybe, pose)
             # print(f'sampling surface for {body}-{link}', nice(aabb2d_from_aabb(aabb)))
             trial += 1
-            if trial > max_trial: break
+            if trial > max_trial:
+                print(f'sample_obj_on_body_link_surface\t sample {obj} on {body}-{link} | exceed max trial {max_trial}')
+                break
 
-    if isinstance(obj, str):
-        remove_body(maybe)
-        maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link),
-                           moveable=True)
     if PLACEMENT_ONLY: return x, y, z, yaw
 
     # print(nice(aabb2d_from_aabb(aabb)))
@@ -855,7 +845,7 @@ def toggle_joint(body, joint):
 
 
 def open_joint(body, joint, extent=0.95, pstn=None):
-    if pstn == None:
+    if pstn is None:
         if isinstance(joint, str):
             joint = joint_from_name(body, joint)
         min_limit = get_min_limit(body, joint)

@@ -130,6 +130,12 @@ class Object(Index):
                 return True
         return False
 
+    def is_contained(self, body):
+        for o in self.supported_objects:
+            if o.body == body:
+                return True
+        return False
+
     def support_obj(self, obj):
         obj.supporting_surface = self
         if obj not in self.supported_objects:
@@ -198,8 +204,10 @@ class Object(Index):
     def __int__(self):
         if self.body is None:
             return id(self) # TODO: hack
-        if self.joint != None:
+        if self.joint is not None:
             return (self.body, self.joint)
+        # if self.link is not None:
+        #     return (self.body, None, self.link)
         return self.body
 
     def __repr__(self):
@@ -421,12 +429,6 @@ class Space(Region):
         if self.name is None:
             self.name = get_link_name(body, link)
         # self.objects_inside = []
-
-    def is_contained(self, body):
-        for o in self.supported_objects:
-            if o.body == body:
-                return True
-        return False
 
     def include_and_attach(self, obj):
         from pybullet_tools.bullet_utils import create_attachment

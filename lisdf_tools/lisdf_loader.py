@@ -183,7 +183,7 @@ class World():
                 printout += "{type}({num}), ".format(type=typ, num=num)
         return printout
 
-    def cat_to_bodies(self, cat, init):
+    def cat_to_bodies(self, cat, init=[]):
         return [f[1] for f in init if f[0].lower() == cat]
 
     def summarize_all_objects(self, init=None, print_fn=None):

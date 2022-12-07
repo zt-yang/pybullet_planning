@@ -18,7 +18,7 @@ from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, 
     set_camera_pose, wait_unlocked, disconnect, wait_if_gui, create_box, \
     SEPARATOR, get_aabb, get_pose, approximate_as_prism, draw_aabb, multiply, unit_quat, remove_body, invert, \
     Pose, get_link_pose, get_joint_limits, WHITE, RGBA, set_all_color, RED, GREEN, set_renderer, clone_body, \
-    add_text, joint_from_name, set_caching
+    add_text, joint_from_name, set_caching, Point
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, set_camera_target_body, \
     draw_bounding_lines, fit_dimensions, draw_fitted_box, get_hand_grasps, get_partnet_doors, get_partnet_spaces, \
     open_joint, get_instance_name
@@ -52,10 +52,12 @@ def get_instances(category):
     elif not keys[0].isdigit():
         keys = list(set([k.lower() for k in keys]))
         instances = {k: instances[k] for k in keys}
+        instances = dict(sorted(instances.items()))
     else:
         if len(listdir(join(ASSET_PATH, 'models', category))) > 0:
             keys = [k for k in keys if isdir(join(ASSET_PATH, 'models', category, k))]
         instances = {k: instances[k] for k in keys}
+        instances = dict(sorted(instances.items()))
     return instances
 
 
@@ -303,8 +305,17 @@ def test_handle_grasps(robot, category):
     i = 0
     locations = [(0, 2*n) for n in range(1, n+1)]
     set_camera_pose((4, 3, 2), (0, 3, 0.5))
+
+    def create_marker(xy):
+        if category.lower() in ['cabinettop']:
+            marker = create_box(0.05, 0.05, 0.07, color=RED)
+            set_pose(marker, Pose(Point(x=xy[0], y=xy[1], z=1.2)))
+
+    create_marker((0, 0))
+
     for id in instances:
-        path, body, _ = load_model_instance(category, id, location=locations[i])
+        xy = locations[i]
+        path, body, _ = load_model_instance(category, id, location=xy)
         i += 1
         instance_name = get_instance_name(path)
         world.add_body(body, f'{category.lower()}#{id}', instance_name)
@@ -312,6 +323,7 @@ def test_handle_grasps(robot, category):
 
         if 'doorless' in category.lower():
             continue
+        create_marker(xy)
 
         draw_text_label(body, id)
 
@@ -378,6 +390,7 @@ def test_placement_in(robot, category):
 
         for door in get_partnet_doors(path, body):
             open_joint(door[0], door[1])
+        set_renderer(True)
 
         for body_link in spaces:
             x += 1
@@ -729,7 +742,7 @@ def test_vhacd():
 if __name__ == '__main__':
 
     """ --- models related --- """
-    get_data(categories=['Tray', 'ShoppingCart', 'Cart'])
+    # get_data(categories=['Tray', 'ShoppingCart', 'Cart'])
     # test_texture(category='CoffeeMachine', id='103127')
     # test_vhacd()
 
@@ -741,19 +754,22 @@ if __name__ == '__main__':
     robot = 'feg'  ## 'feg' | 'pr2'
 
     """ --- grasps related --- """
-    test_grasps(['Tray'], robot)  ## 'EyeGlasses'
+    # test_grasps(['Stapler'], robot)  ## 'EyeGlasses'
     ## Kitchen: 'Bottle', 'Food', 'MiniFridge', 'KitchenCounter', 'BraiserLid'
     ## Packing: 'Stapler', 'Camera', 'EyeGlasses', 'Knife', 'Tray',
 
-    # test_handle_grasps_counter()
-    # test_handle_grasps(robot, category='MiniFridge')
-    # test_handle_grasps(robot, category='MiniFridgeDoorless')
-    # test_pick_place_counter(robot)
+    # test_handle_grasps(robot, category='CabinetTop')
+    ## Kitchen: 'MiniFridge', 'MiniFridgeDoorless', 'CabinetTop'
 
     """ --- placement related  --- """
-    # test_placement_counter()  ## initial placement
-    # test_placement_in(robot, category='MiniFridge')  ## sampled placement
+
+    test_placement_in(robot, category='CabinetTop')
+    ## Kitchen: 'MiniFridge', 'CabinetTop'
 
     # test_placement_on(robot, category='Tray', surface_name='tray_bottom')  ## sampled placement
-    ## Kitchen: 'KitchenCounter'
+    ## Kitchen: 'KitchenCounter', 'Tray' (surface_name='tray_bottom')
 
+    """ --- specific counter --- """
+    # test_placement_counter()  ## initial placement
+    # test_handle_grasps_counter()
+    # test_pick_place_counter(robot)

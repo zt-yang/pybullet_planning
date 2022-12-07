@@ -58,7 +58,7 @@ from pddlstream.language.conversion import params_from_objects
 from collections import namedtuple
 
 from world_builder.entities import Object
-from world_builder.actions import get_primitive_actions
+from world_builder.actions import get_primitive_actions, repair_skeleton
 from world_builder.world_generator import get_pddl_from_list
 
 
@@ -563,7 +563,7 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
               fc=None, domain_modifier=None,
               max_time=INF, downward_time=10, evaluation_time=10,
               max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=0,
-              visualize=False, **kwargs):
+              visualize=False, skeleton=None, **kwargs):
     # skeleton = [
     #     ('grasp_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
     #     ('pull_door_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
@@ -571,8 +571,10 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
     #     ('pick', [WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
     #     ('place', [WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
     # ]
-    # # constraints = PlanConstraints(skeletons=[skeleton], exact=False, max_cost=max_cost + 1)
-    constraints = PlanConstraints(max_cost=max_cost + 1)  # TODO: plus 1 in action costs?
+    if skeleton is not None:
+        constraints = PlanConstraints(skeletons=[repair_skeleton(skeleton)], exact=False, max_cost=max_cost + 1)
+    else:
+        constraints = PlanConstraints(max_cost=max_cost + 1)  # TODO: plus 1 in action costs?
 
     if collect_dataset:
         max_solutions = 6 if max_solutions == 0 else max_solutions
@@ -876,7 +878,7 @@ def test_grasps(state, name='cabbage', visualize=True):
         body = name
     robot = state.robot
 
-    funk = get_grasp_list_gen(state, visualize=True, RETAIN_ALL=False)
+    funk = get_grasp_list_gen(state, visualize=True, RETAIN_ALL=False, top_grasp_tolerance=PI/4)
     outputs = funk(body)
 
     if 'left' in robot.joint_groups:
@@ -891,7 +893,7 @@ def test_grasps(state, name='cabbage', visualize=True):
         from pybullet_tools.bullet_utils import collided
 
         g = outputs[0][0]
-        gripper = robot.visualize_grasp(g.body, g.approach, width=g.grasp_width)
+        gripper = robot.visualize_grasp(get_pose(g.body), g.approach, body=g.body, width=g.grasp_width)
         gripper_conf = get_cloned_se3_conf(robot, gripper)
         goals = [("AtGrasp", 'hand', body, g)]
         if visualize:

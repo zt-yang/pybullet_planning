@@ -1288,57 +1288,55 @@ def load_kitchen_mini_scene(world, **kwargs):
     set_camera_pose(camera_point=[3, 0, 3], target_point=[0, 0, 1])
     draw_pose(unit_pose())
 
-    # load floor
+    ## load floor
     FLOOR_HEIGHT = 1e-3
     FLOOR_WIDTH = 4
     FLOOR_LENGTH = 8
     floor = world.add_object(
-        Floor(create_box(w=round(FLOOR_WIDTH, 1), l=round(FLOOR_LENGTH, 1), h=FLOOR_HEIGHT, color=TAN, collision=True)),
+        Floor(create_box(w=round(FLOOR_WIDTH, 1), l=round(FLOOR_LENGTH, 1), h=FLOOR_HEIGHT, color=TAN)),
         Pose(point=Point(x=round(0.5 * FLOOR_WIDTH, 1), y=round(0, 1), z=-0.5 * FLOOR_HEIGHT)))
 
-    # load wall
+    ## load wall
     WALL_HEIGHT = 5
     WALL_WIDTH = FLOOR_HEIGHT
     WALL_LENGTH = FLOOR_LENGTH
     wall = world.add_object(
-        Supporter(
-            create_box(w=round(WALL_WIDTH, 1), l=round(WALL_LENGTH, 1), h=WALL_HEIGHT, color=WHITE, collision=True),
-             name='wall'),
+        Supporter(create_box(w=round(WALL_WIDTH, 1), l=round(WALL_LENGTH, 1), h=WALL_HEIGHT, color=WHITE), name='wall'),
         Pose(point=Point(x=round(-0.5 * WALL_WIDTH, 1), y=round(0, 1), z=0.5 * WALL_HEIGHT)))
 
-    # sample ordering of fridge, oven, dishwasher
-    if_fridge = random.randint(0, 4)  # 0: no fridge, odd: fridge, even: minifridge
-    if_minifridge = random.randint(0, 4)
-    if_oven = random.randint(0, 4)  # 80% chance of getting oven
-    if_dishwasher = random.randint(0, 4)
-
-    fixtures = [None, None]
-
-    if if_dishwasher:
-        fixtures[0] = 'dishwasher'
-    if if_minifridge:
-        fixtures[1] = 'minifridge'
-    random.shuffle(fixtures)
-
-    if random.randint(0, 1):  # oven left
-        if if_oven:
-            fixtures.insert(0, 'oven')
-        else:
-            fixtures.insert(0, None)
-        if if_fridge:
-            fixtures.append('minifridge')
-        else:
-            fixtures.append(None)
-    else:
-        if if_fridge:
-            fixtures.insert(0, 'minifridge')
-        else:
-            fixtures.insert(0, None)
-        if if_oven:
-            fixtures.append('oven')
-        else:
-            fixtures.append(None)
-
+    # ## sample ordering of minifridge, oven, dishwasher
+    # if_fridge = random.randint(0, 4)  # 0: no fridge, odd: fridge, even: minifridge
+    # if_minifridge = random.randint(0, 4)
+    # if_oven = random.randint(0, 4)  # 80% chance of getting oven
+    # if_dishwasher = random.randint(0, 4)
+    #
+    # fixtures = [None, None]
+    #
+    # if if_dishwasher:
+    #     fixtures[0] = 'dishwasher'
+    # if if_minifridge:
+    #     fixtures[1] = 'minifridge'
+    # random.shuffle(fixtures)
+    #
+    # if random.randint(0, 1):  # oven left
+    #     if if_oven:
+    #         fixtures.insert(0, 'oven')
+    #     else:
+    #         fixtures.insert(0, None)
+    #     if if_fridge:
+    #         fixtures.append('minifridge')
+    #     else:
+    #         fixtures.append(None)
+    # else:
+    #     if if_fridge:
+    #         fixtures.insert(0, 'minifridge')
+    #     else:
+    #         fixtures.insert(0, None)
+    #     if if_oven:
+    #         fixtures.append('oven')
+    #     else:
+    #         fixtures.append(None)
+    #
     # if if_fridge == 0:
     #     fixtures.append(None)
     #     random.shuffle(fixtures)
@@ -1352,6 +1350,9 @@ def load_kitchen_mini_scene(world, **kwargs):
     #         fixtures.insert(0, 'minifridge')
     #     else:
     #         fixtures.append('minifridge')
+
+    fixtures = ['minifridge', 'oven', 'dishwasher']
+    random.shuffle(fixtures)
 
     # sample placements of fixtures
     yaw = {0: 0, 90: PI / 2, 180: PI, 270: -PI / 2}[180]
@@ -1370,10 +1371,10 @@ def load_kitchen_mini_scene(world, **kwargs):
             fixture = {}
             if idx in [1, 2]:  # control height for center furniture
                 obj = Object(load_asset(cat, x=center_x, y=center_y, yaw=yaw, floor=floor,
-                                        w=w, l=l, h=center_z, RANDOM_INSTANCE=True))
+                                        w=w, l=l, h=center_z, RANDOM_INSTANCE=True), name=cat)
             else:
                 obj = Object(load_asset(cat, x=center_x, y=center_y, yaw=yaw, floor=floor,
-                                        w=w, l=l, h=2.5 * MIN_COUNTER_Z, RANDOM_INSTANCE=True))
+                                        w=w, l=l, h=2.5 * MIN_COUNTER_Z, RANDOM_INSTANCE=True), name=cat)
             fixture['id'] = world.add_object(obj)
             center_z = stable_z(obj.body, floor)
             # center_x = 1-get_aabb_extent(get_aabb(fixture['id'].body))[0]/2
@@ -1388,10 +1389,11 @@ def load_kitchen_mini_scene(world, **kwargs):
         min_counter_y = get_aabb(fixtures_cfg[fixtures[0]]['id'])[1][1]
     else:
         min_counter_y = -2
-    if fixtures[3] is not None:
-        max_counter_y = get_aabb(fixtures_cfg[fixtures[3]]['id'])[0][1]
-    else:
-        max_counter_y = 2
+    # if fixtures[3] is not None:
+    #     max_counter_y = get_aabb(fixtures_cfg[fixtures[3]]['id'])[0][1]
+    # else:
+    #     max_counter_y = 2
+    max_counter_y = 2
     min_counter_z = MIN_COUNTER_Z
     if fixtures[1] is not None:
         tmp_counter_z = get_aabb(fixtures_cfg[fixtures[1]]['id'])[1][2]
@@ -1402,26 +1404,29 @@ def load_kitchen_mini_scene(world, **kwargs):
         if tmp_counter_z > min_counter_z:
             min_counter_z = tmp_counter_z
 
-    # add counter
+    ## add counter
     COUNTER_HEIGHT = 0.05
     COUNTER_WIDTH = 1
     COUNTER_LENGTH = max_counter_y - min_counter_y
 
     counter = world.add_object(
-        Supporter(create_box(w=COUNTER_WIDTH, l=COUNTER_LENGTH, h=COUNTER_HEIGHT, color=GREY, collision=True)),
+        Supporter(create_box(w=COUNTER_WIDTH, l=COUNTER_LENGTH, h=COUNTER_HEIGHT, color=GREY, collision=True),
+                  name='counter'),
         Pose(point=Point(x=0.5 * COUNTER_WIDTH, y=(max_counter_y + min_counter_y) / 2, z=min_counter_z)))
 
+    ## add microwave
     # microwave = world.name_to_body('microwave')
     # world.put_on_surface(microwave, counter)
     microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random())
     microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)))
 
-    # add pot
+    ## add pot
     pot = counter.place_new_obj('kitchenpot', scale=0.2)
     pot.set_pose(Pose(point=pot.get_pose()[0], euler=Euler(yaw=yaw)))
 
-    # add shelf
-    SHELF_HEIGHT = 0.05
+    ## add shelf
+    SHELF_HEIGHT = 2
+    SHELF_THICKNESS = 0.05
     SHELF_WIDTH = 0.5
     MIN_SHELF_LENGTH = 1.5
     min_shelf_y = min_counter_y + random.random() * (max_counter_y - min_counter_y - MIN_SHELF_LENGTH)
@@ -1429,37 +1434,52 @@ def load_kitchen_mini_scene(world, **kwargs):
     SHELF_LENGTH = max_shelf_y - min_shelf_y
 
     shelf = world.add_object(
-        Supporter(create_box(w=SHELF_WIDTH, l=SHELF_LENGTH, h=SHELF_HEIGHT, color=GREY, collision=True)),
-        Pose(point=Point(x=0.5 * SHELF_WIDTH, y=(max_shelf_y + min_shelf_y) / 2, z=2)))
+        Supporter(create_box(w=SHELF_WIDTH, l=SHELF_LENGTH, h=SHELF_THICKNESS, color=GREY, collision=True),
+                  name='shelf'),
+        Pose(point=Point(x=0.5 * SHELF_WIDTH, y=(max_shelf_y + min_shelf_y) / 2, z=SHELF_HEIGHT)))
 
-    # add food
+    ## add cabinet next to shelf
+    if min_shelf_y > -0.5:
+        ins = random.choice(['Chewie', 'Sektion'])
+        cabinet = world.add_object(
+            Object(load_asset('CabinetTop', x=0, y=min_shelf_y, z=SHELF_HEIGHT, yaw=math.pi, RANDOM_INSTANCE=ins),
+                   category='cabinet', name='cabinet')
+            )
+    else:  ## if max_shelf_y < 0.5:
+        ins = random.choice(['Dagger'])
+        cabinet = world.add_object(
+            Object(load_asset('CabinetTop', x=0, y=max_shelf_y, z=SHELF_HEIGHT, yaw=math.pi, RANDOM_INSTANCE=ins),
+                   category='cabinet', name='cabinet')
+            )
+
+    ## add food items
     x_food_min = 0.5
     food_ids = []
-    for i in range(5):
+    for i in range(2):
         obj = counter.place_new_obj('food', RANDOM_INSTANCE=True)
         (x, y, z), r = obj.get_pose()
         x = min([x_food_min, x])
         obj.set_pose(((x, y, z), r))
         food_ids.append(obj)
 
-    # add bottle
+    ## add bottles
     bottle_ids = []
-    for i in range(3):
-        obj = shelf.place_new_obj('bottle', RANDOM_INSTANCE=True)
+    for i in range(2):
+        obj = counter.place_new_obj('bottle', RANDOM_INSTANCE=True)
         bottle_ids.append(obj)
+
+    ## add medicine
+    medicine_ids = []
+    for i in range(2):
+        obj = counter.place_new_obj('medicine', RANDOM_INSTANCE=True)
+        medicine_ids.append(obj)
 
     # add camera
     camera_pose = Pose(point=Point(x=4.2, y=0, z=2.5), euler=Euler(roll=PI / 2 + PI / 8, pitch=0, yaw=-PI / 2))
     world.add_camera(camera_pose)
     # rgb, depth, segmented, view_pose, camera_matrix = world.camera.get_image()
 
-    # world.summarize_all_objects()
-    objects = [food_ids[0], counter.body, shelf.body, world.robot]
-    exclude_from_planning = [o for o in get_bodies() if o not in objects]
-    for o in exclude_from_planning:
-        world.remove_body_from_planning(o)
-
-    return food_ids[0], shelf.body
+    return food_ids, bottle_ids, medicine_ids
 
 
 #################################################################
@@ -1471,11 +1491,13 @@ def load_table_stationaries(world, w=6, l=6, h=0.9):
     # x, y = 3, 3
     # x += np.random.normal(4, 0.2)
     # y += np.random.normal(0, 0.2)
-    camera_point = (4, 3, 3)
+    camera_point = (3.5, 3, 3)
     target_point = (3, 3, 1)
     set_camera_pose(camera_point, target_point)
 
     categories = ['EyeGlasses', 'Camera', 'Stapler', 'Medicine', 'Bottle', 'Knife']
+    random.shuffle(categories)
+
     floor = world.add_object(
         Floor(create_box(w=w, l=l, h=FLOOR_HEIGHT, color=TAN, collision=True)),
         Pose(point=Point(x=w/2, y=l/2, z=-2 * FLOOR_HEIGHT)))
@@ -1487,17 +1509,18 @@ def load_table_stationaries(world, w=6, l=6, h=0.9):
     # set_camera_target_body(counter, dx=3, dy=0, dz=2)
     aabb_ext = get_aabb_extent(get_aabb(counter.body))
     y = l/2 - aabb_ext[1] / 2 + aabb_ext[0] / 2
-    tray = world.add_object(Supporter(
+    tray = world.add_object(Object(
         load_asset('Tray', x=w/2, y=y, yaw=math.pi, floor=counter,
-                   RANDOM_INSTANCE=True, verbose=False), category='supporter', name='tray'))
+                   RANDOM_INSTANCE=True, verbose=False), name='tray'))
     tray_bottom = world.add_surface_by_keyword(tray, 'tray_bottom')
 
     ## --- add cabage on an external table
     items = []
     for cat in categories:
+        RI = '103104' if cat == 'Stapler' else True
         item = world.add_object(Moveable(
-            load_asset(cat, x=0, y=0, yaw=random.uniform(-math.pi, math.pi), RANDOM_INSTANCE=True),
-            category=cat
+            load_asset(cat, x=0, y=0, yaw=random.uniform(-math.pi, math.pi),
+                       RANDOM_INSTANCE=RI), category=cat
         ))
         world.put_on_surface(item, 'counter')
         if collided(item.body, [tray]+items, verbose=False, tag='ensure item cfree'):
@@ -1505,16 +1528,19 @@ def load_table_stationaries(world, w=6, l=6, h=0.9):
         items.append(item)
 
     distractors = []
-    for item in items[:2]:
+    k = 1 ## random.choice(range(2))
+    for item in items[:k]:
         world.put_on_surface(item, 'tray_bottom')
         if collided(item.body, [tray]+distractors, verbose=False, tag='ensure distractor cfree'):
             world.put_on_surface(item, 'tray_bottom')
         distractors.append(item)
 
-    items = items[2:]
+    items = items[k:]
 
     ## --- almost top-down view
+    camera_point = (4, 3, 3)
+    target_point = (3, 3, 1)
     world.visualize_image(rgb=True, camera_point=camera_point, target_point=target_point)
-    wait_unlocked()
+    # wait_unlocked()
 
-    return items, distractors, tray_bottom
+    return items, distractors, tray_bottom, counter

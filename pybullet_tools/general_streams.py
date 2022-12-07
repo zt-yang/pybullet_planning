@@ -11,11 +11,12 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     pairwise_collision, sample_placement, get_pose, Point, Euler, set_joint_position, \
     BASE_LINK, get_joint_position, get_aabb, quat_from_euler, flatten_links, multiply, \
     get_joint_limits, unit_pose, point_from_pose, draw_point, PI, quat_from_pose, angle_between, \
-    tform_point, interpolate_poses, draw_pose, RED, remove_handles
+    tform_point, interpolate_poses, draw_pose, RED, remove_handles, stable_z
 from pybullet_tools.pr2_primitives import Pose
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, is_contained, \
-    visualize_point, collided, sample_pose, xyzyaw_to_pose, ObjAttachment
+    visualize_point, collided, sample_pose, xyzyaw_to_pose, ObjAttachment, \
+    sample_obj_on_body_link_surface
 
 
 class Position(object):
@@ -201,6 +202,10 @@ def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False,
             surface = random.choice(surfaces) # TODO: weight by area
             if isinstance(surface, tuple): ## (body, link)
                 body_pose = sample_placement(body, surface[0], bottom_link=surface[-1], **kwargs)
+                # x, y, z, yaw = sample_obj_on_body_link_surface(
+                #     body, surface[0], surface[-1], PLACEMENT_ONLY=True, max_trial=20)
+                # z = stable_z(body, surface[0], surface[-1])
+                # body_pose = ((x, y, z), quat_from_euler(Euler(yaw=yaw)))
             else:
                 body_pose = sample_placement(body, surface, **kwargs)
             if body_pose is None:

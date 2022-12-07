@@ -726,3 +726,19 @@ def get_primitive_actions(action, world, teleport=False):
 
     return new_commands
 
+
+def repair_skeleton(skeleton):
+    from pddlstream.algorithms.constraints import WILD
+    operators = {
+        'pick_hand': 6,
+        'place_hand': 6,
+        'grasp_pull_handle': 10,
+    }
+    new_skeleton = []
+    for a in skeleton:
+        name = a[0]
+        args = a[1:]
+        if name in operators:
+            args = list(args) + [WILD] * (operators[name] - len(args))
+            new_skeleton.append(tuple([name, args]))
+    return new_skeleton
