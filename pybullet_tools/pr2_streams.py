@@ -224,7 +224,8 @@ def solve_nearby_ik(robot, arm, approach_pose, custom_limits={}):
     return approach_conf
 
 
-def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbose=False, ACONF=False):
+def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
+              ACONF=False, verbose=True, visualize=True):
     robot = problem.robot
     world = problem.world
     obstacles = problem.fixed if collisions else []
@@ -250,7 +251,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
 
         ## TODO: change to world.get_grasp_parent
         addons = [body]
-        if hasattr(world, 'BODY_TO_OBJECT') and world.BODY_TO_OBJECT[body].grasp_parent != None:
+        if hasattr(world, 'BODY_TO_OBJECT') and world.BODY_TO_OBJECT[body].grasp_parent is not None:
             addons.append(world.BODY_TO_OBJECT[body].grasp_parent)
         addon_obstacles = obstacles + addons if collisions else []
         # print(title, 'addon_obstacles', addon_obstacles)
@@ -262,10 +263,11 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
         gripper_pose = multiply(robot.get_grasp_pose(pose_value, grasp.value, body=obj), invert(tool_from_root))
         approach_pose = multiply(robot.get_grasp_pose(pose_value, grasp.approach, body=obj), invert(tool_from_root))
 
-        # print('grasp_value', nice(grasp.value))
-        # gripper_grasp = robot.visualize_grasp(pose_value, grasp.approach, body=obj)
-        # set_camera_target_body(gripper_grasp)
-        # wait_unlocked()
+        if visualize:
+            print('grasp_value', nice(grasp.value))
+            gripper_grasp = robot.visualize_grasp(pose_value, grasp.approach, body=obj)
+            set_camera_target_body(gripper_grasp)
+            # wait_unlocked()
 
         arm_link = get_gripper_link(robot, arm)
         arm_joints = get_arm_joints(robot, arm)
@@ -288,10 +290,10 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
                                             verbose=verbose, ignored_pairs=ignored_pairs, min_num_pts=3): ## approach_obstacles): # [obj]
             #wait_unlocked()
             if verbose:
-                if grasp_conf != None:
+                if grasp_conf is not None:
                     grasp_conf = nice(grasp_conf)
-                print(f'{title}Grasp IK failure | {grasp_conf} = pr2_inverse_kinematics({robot} at {nice(base_conf.values)}, '
-                      f'{arm}, {nice(gripper_pose[0])}) | pose = {pose}, grasp = {grasp}')
+                print(f'{title}Grasp IK failure | {grasp_conf} <- pr2_inverse_kinematics({robot}, {nice(base_conf.values)}, '
+                      f'{arm}, {nice(gripper_pose[0])}) | pose {pose}, grasp {grasp}')
                 for b in addon_obstacles:
                     if pairwise_collision(robot, b):
                         # set_renderer(True)

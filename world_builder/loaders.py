@@ -419,7 +419,7 @@ def load_five_table_scene(world):
     stove = create_table(world, xy=(0, -2), color=(.75, .25, .25, 1), category='stove', name='stove')
     counter = create_table(world, xy=(-2, 2), color=(.25, .75, .25, 1), category='counter', name='counter')
     table = create_table(world, xy=(-2, -2), color=(.75, .75, .25, 1), category='table', name='table')
-    return cabbage
+    return cabbage, egg, plate, salter, sink, stove, counter, table
 
 
 def load_full_kitchen(world, **kwargs):
@@ -1356,7 +1356,7 @@ def load_kitchen_mini_scene(world, **kwargs):
 
     # sample placements of fixtures
     yaw = {0: 0, 90: PI / 2, 180: PI, 270: -PI / 2}[180]
-    MIN_COUNTER_Z = 0.9
+    MIN_COUNTER_Z = 1.2
     fixtures_cfg = {}
 
     for idx, cat in enumerate(fixtures):
@@ -1403,6 +1403,7 @@ def load_kitchen_mini_scene(world, **kwargs):
         tmp_counter_z = get_aabb(fixtures_cfg[fixtures[2]]['id'])[1][2]
         if tmp_counter_z > min_counter_z:
             min_counter_z = tmp_counter_z
+    min_counter_z += 0.1
 
     ## add counter
     COUNTER_HEIGHT = 0.05
@@ -1425,7 +1426,7 @@ def load_kitchen_mini_scene(world, **kwargs):
     pot.set_pose(Pose(point=pot.get_pose()[0], euler=Euler(yaw=yaw)))
 
     ## add shelf
-    SHELF_HEIGHT = 2
+    SHELF_HEIGHT = 2.3
     SHELF_THICKNESS = 0.05
     SHELF_WIDTH = 0.5
     MIN_SHELF_LENGTH = 1.5
@@ -1470,7 +1471,7 @@ def load_kitchen_mini_scene(world, **kwargs):
 
     ## add medicine
     medicine_ids = []
-    for i in range(2):
+    for i in range(1):
         obj = counter.place_new_obj('medicine', RANDOM_INSTANCE=True)
         medicine_ids.append(obj)
 

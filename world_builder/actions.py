@@ -484,7 +484,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=False, plan=None):
 
 
 def get_primitive_actions(action, world, teleport=False):
-    def get_traj(t, sub=4):
+    def get_traj(t, sub=4, viz=True):
         world.remove_handles()
 
         ## get the confs
@@ -504,15 +504,18 @@ def get_primitive_actions(action, world, teleport=False):
         DoF = len(t.path[0].values)
         if DoF == 3:
             t = [MoveBaseAction(conf) for conf in path]
-            world.add_handles(draw_pose2d_path(confs, length=0.05))
+            if viz:
+                world.add_handles(draw_pose2d_path(confs, length=0.05))
 
         elif DoF == 4:
             t = [MoveBaseAction(conf) for conf in path]
-            world.add_handles(draw_pose3d_path(confs, length=0.05))
+            if viz:
+                world.add_handles(draw_pose3d_path(confs, length=0.05))
 
         elif DoF == 6:
             t = [MoveArmAction(conf) for conf in path]
-            world.add_handles(draw_pose3d_path(confs, length=0.05))
+            if viz:
+                world.add_handles(draw_pose3d_path(confs, length=0.05))
 
         elif DoF == 7:
             t = [MoveArmAction(conf) for conf in path]
@@ -547,17 +550,17 @@ def get_primitive_actions(action, world, teleport=False):
         a, o, p1, p2, g, q1, q2, t1, t2, t3 = args
 
         ## step 1: grasp handle
-        t = get_traj(t1)
+        t = get_traj(t1, viz=False)
         close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
         attach = AttachObjectAction(a, g, o)
         new_commands = t + [close_gripper, attach]
 
         ## step 2: move the handle (door, drawer, knob)
-        t = get_traj(t2)
+        t = get_traj(t2, viz=False)
         new_commands += t
 
         ## step 3: ungrasp the handle
-        t = get_traj(t3)
+        t = get_traj(t3, viz=False)
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
         detach = DetachObjectAction(a, o)
         new_commands += [detach, open_gripper] + t[::-1]

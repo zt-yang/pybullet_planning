@@ -133,12 +133,13 @@ def create_gripper_robot(world, custom_limits=((0, 0, 0), (6, 12, 2)),
 
 def build_table_domain_robot(world, robot_name, **kwargs):
     """ simplified cooking domain, pr2 no torso """
-    kwargs['initial_xy'] = (1.79, 6)
+    kwargs['initial_xy'] = (0, 0)
     if 'custom_limits' not in kwargs:
         if robot_name == 'feg':
-            kwargs['custom_limits'] = ((0, 0, 0), (8, 8, 2))
+            kwargs['custom_limits'] = ((-4, -4, 0), (4, 4, 2))
         elif robot_name == 'pr2':
-            kwargs['custom_limits'] = ((0, 0), (8, 8))
+            kwargs['custom_limits'] = ((-4, -4), (4, 4))
+            kwargs['USE_TORSO'] = False
     return build_robot_from_args(world, robot_name, **kwargs)
 
 

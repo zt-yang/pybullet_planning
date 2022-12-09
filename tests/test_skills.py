@@ -751,10 +751,10 @@ if __name__ == '__main__':
     # test_gripper_range()
     # test_torso()
 
-    robot = 'feg'  ## 'feg' | 'pr2'
+    robot = 'pr2'  ## 'feg' | 'pr2'
 
     """ --- grasps related --- """
-    # test_grasps(['Stapler'], robot)  ## 'EyeGlasses'
+    test_grasps(['Plate'], robot)  ## 'EyeGlasses'
     ## Kitchen: 'Bottle', 'Food', 'MiniFridge', 'KitchenCounter', 'BraiserLid'
     ## Packing: 'Stapler', 'Camera', 'EyeGlasses', 'Knife', 'Tray',
 
@@ -763,7 +763,7 @@ if __name__ == '__main__':
 
     """ --- placement related  --- """
 
-    test_placement_in(robot, category='CabinetTop')
+    # test_placement_in(robot, category='CabinetTop')
     ## Kitchen: 'MiniFridge', 'CabinetTop'
 
     # test_placement_on(robot, category='Tray', surface_name='tray_bottom')  ## sampled placement
