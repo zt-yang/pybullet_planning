@@ -793,13 +793,13 @@ if __name__ == '__main__':
     # test_gripper_range()
     # test_torso()
 
-    robot = 'feg'  ## 'feg' | 'pr2'
+    robot = 'pr2'  ## 'feg' | 'pr2'
 
     """ --- grasps related ---
     """
     # test_grasps(['MicrowaveHanging'], robot, skip_grasps=True)  ## 'EyeGlasses'
 
-    # test_handle_grasps(robot, category='CabinetTop')
+    test_handle_grasps(robot, category='MiniFridge')
     ## Kitchen: 'MiniFridge', 'MiniFridgeDoorless', 'CabinetTop'
 
     """ --- placement related  --- """
@@ -811,7 +811,7 @@ if __name__ == '__main__':
     ## Kitchen: 'KitchenCounter', 'Tray' (surface_name='tray_bottom')
 
     # test_sink_configuration(robot)
-    test_kitchen_configuration('pr2')
+    # test_kitchen_configuration('pr2')
 
     """ --- specific counter --- """
     # test_placement_counter()  ## initial placement

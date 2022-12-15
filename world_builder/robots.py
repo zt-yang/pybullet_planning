@@ -299,9 +299,9 @@ class PR2Robot(RobotAPI):
         # if grasp_type == 'side':
         #     return SIDE_HOLDING_LEFT_ARM
 
-    def get_approach_vector(self, arm, grasp_type):
+    def get_approach_vector(self, arm, grasp_type, scale=1):
         # return tuple(APPROACH_DISTANCE / 3 * get_unit_vector([0, 0, -1]))
-        return tuple(APPROACH_DISTANCE / 3 * get_unit_vector([0, 0, -1]))
+        return tuple(scale * APPROACH_DISTANCE / 3 * get_unit_vector([0, 0, -1]))
         # if grasp_type == 'top':
         #     return APPROACH_DISTANCE*get_unit_vector([1, 0, 0])
         # if grasp_type == 'side':
