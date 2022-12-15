@@ -225,7 +225,7 @@ def solve_nearby_ik(robot, arm, approach_pose, custom_limits={}):
 
 
 def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
-              ACONF=False, verbose=True, visualize=True):
+              ACONF=False, verbose=True, visualize=False):
     robot = problem.robot
     world = problem.world
     obstacles = problem.fixed if collisions else []
@@ -1266,7 +1266,7 @@ def get_base_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
                                          obstacles=obstacles, self_collisions=SELF_COLLISIONS,
                                          custom_limits=custom_limits, resolutions=None, # TODO: base resolutions
                                          use_aabb=True, cache=True,
-                                         restarts=param[0], iterations=param[1], smooth=0) # smooth=50
+                                         restarts=param[0], iterations=param[1], smooth=50) # smooth=50
                                          # restarts=4, iterations=50, smooth=50)
             # break
             num_trials -= 1

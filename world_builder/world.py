@@ -474,6 +474,19 @@ class World(object):
         bodies = [b for b in bodies if b in self.BODY_TO_OBJECT]
         return bodies
 
+    def remove_bodies_from_planning(self, goals):
+        bodies = []
+        for literal in goals:
+            for item in literal:
+                if not isinstance(item, str) and item not in bodies:
+                    if isinstance(item, Object):
+                        item = item.pybullet_name
+                    bodies.append(item)
+        all_bodies = list(self.BODY_TO_OBJECT.keys())
+        for body in all_bodies:
+            if body not in bodies:
+                self.remove_body_from_planning(body)
+
     def remove_body_from_planning(self, body):
         if body is None: return
         bodies = self.get_all_obj_in_body(body)

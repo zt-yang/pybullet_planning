@@ -6,7 +6,7 @@ import os
 import string
 
 from world_builder.utils import LIGHT_GREY, read_xml, load_asset, FLOOR_HEIGHT, WALL_HEIGHT, \
-    find_point_for_single_push, ASSET_PATH
+    find_point_for_single_push, ASSET_PATH, FURNITURE_WHITE, FURNITURE_GREY, FURNITURE_YELLOW
 
 from world_builder.world import World, State
 from world_builder.entities import Object, Region, Environment, Robot, Camera, Floor, Stove, Supporter,\
@@ -33,7 +33,7 @@ from pybullet_tools.bullet_utils import place_body, add_body, Pose2d, nice, OBJ_
     sample_obj_on_body_link_surface, sample_obj_in_body_link_space, set_camera_target_body, \
     open_joint, close_joint, set_camera_target_robot, summarize_joints, get_partnet_doors, get_partnet_spaces, \
     set_pr2_ready, BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, draw_base_limits, \
-    BASE_LIMITS, CAMERA_FRAME, CAMERA_MATRIX, EYE_FRAME, collided
+    BASE_LIMITS, CAMERA_FRAME, CAMERA_MATRIX, EYE_FRAME, collided, get_partnet_links_by_type
 
 OBJ = '?obj'
 
@@ -129,6 +129,12 @@ def create_movable(world, supporter=None, xy=(0, 0), movable_category='VeggieCab
     return world.add_object(
         Moveable(load_asset(movable_category, x=xy[0], y=xy[1], yaw=0, floor=supporter),
                  category=category, name=name))
+
+
+def create_house_floor(world, w=6, l=6, x=0.0, y=0.0):
+    return world.add_object(
+        Floor(create_box(w=w, l=l, h=FLOOR_HEIGHT, color=TAN, collision=True)),
+        Pose(point=Point(x=x, y=y, z=-2 * FLOOR_HEIGHT)))
 
 
 #######################################################
@@ -412,7 +418,7 @@ def load_five_table_scene(world):
     salter = create_movable(world, supporter=fridge, xy=(2, 0.18),
                             movable_category='Salter', category='salter', name='salter')
 
-    sink = create_table(world, xy=(0, 2), color=(.25, .25, .75, 1), category='sink', name='sink', w=0.3)
+    sink = create_table(world, xy=(0, 2), color=(.25, .25, .75, 1), category='sink', name='sink', w=0.2)
     plate = create_movable(world, supporter=sink, xy=(0, 2),
                            movable_category='Plate', category='plate', name='plate')
 
@@ -1406,12 +1412,12 @@ def load_kitchen_mini_scene(world, **kwargs):
     min_counter_z += 0.1
 
     ## add counter
-    COUNTER_HEIGHT = 0.05
+    COUNTER_THICKNESS = 0.05
     COUNTER_WIDTH = 1
     COUNTER_LENGTH = max_counter_y - min_counter_y
 
     counter = world.add_object(
-        Supporter(create_box(w=COUNTER_WIDTH, l=COUNTER_LENGTH, h=COUNTER_HEIGHT, color=GREY, collision=True),
+        Supporter(create_box(w=COUNTER_WIDTH, l=COUNTER_LENGTH, h=COUNTER_THICKNESS, color=FURNITURE_WHITE),
                   name='counter'),
         Pose(point=Point(x=0.5 * COUNTER_WIDTH, y=(max_counter_y + min_counter_y) / 2, z=min_counter_z)))
 
@@ -1435,7 +1441,7 @@ def load_kitchen_mini_scene(world, **kwargs):
     SHELF_LENGTH = max_shelf_y - min_shelf_y
 
     shelf = world.add_object(
-        Supporter(create_box(w=SHELF_WIDTH, l=SHELF_LENGTH, h=SHELF_THICKNESS, color=GREY, collision=True),
+        Supporter(create_box(w=SHELF_WIDTH, l=SHELF_LENGTH, h=SHELF_THICKNESS, color=FURNITURE_WHITE, collision=True),
                   name='shelf'),
         Pose(point=Point(x=0.5 * SHELF_WIDTH, y=(max_shelf_y + min_shelf_y) / 2, z=SHELF_HEIGHT)))
 
@@ -1453,10 +1459,27 @@ def load_kitchen_mini_scene(world, **kwargs):
                    category='cabinet', name='cabinet')
             )
 
+    food_ids, bottle_ids, medicine_ids = load_counter_moveables([counter, shelf])
+
+    # add camera
+    camera_pose = Pose(point=Point(x=4.2, y=0, z=2.5), euler=Euler(roll=PI / 2 + PI / 8, pitch=0, yaw=-PI / 2))
+    world.add_camera(camera_pose)
+    # rgb, depth, segmented, view_pose, camera_matrix = world.camera.get_image()
+    wait_unlocked()
+
+    return food_ids, bottle_ids, medicine_ids
+
+
+#################################################################
+
+
+def load_counter_moveables(counters):
+
     ## add food items
     x_food_min = 0.5
     food_ids = []
     for i in range(2):
+        counter = random.choice(counters)
         obj = counter.place_new_obj('food', RANDOM_INSTANCE=True)
         (x, y, z), r = obj.get_pose()
         x = min([x_food_min, x])
@@ -1466,24 +1489,18 @@ def load_kitchen_mini_scene(world, **kwargs):
     ## add bottles
     bottle_ids = []
     for i in range(2):
+        counter = random.choice(counters)
         obj = counter.place_new_obj('bottle', RANDOM_INSTANCE=True)
         bottle_ids.append(obj)
 
     ## add medicine
     medicine_ids = []
     for i in range(1):
+        counter = random.choice(counters)
         obj = counter.place_new_obj('medicine', RANDOM_INSTANCE=True)
         medicine_ids.append(obj)
 
-    # add camera
-    camera_pose = Pose(point=Point(x=4.2, y=0, z=2.5), euler=Euler(roll=PI / 2 + PI / 8, pitch=0, yaw=-PI / 2))
-    world.add_camera(camera_pose)
-    # rgb, depth, segmented, view_pose, camera_matrix = world.camera.get_image()
-
     return food_ids, bottle_ids, medicine_ids
-
-
-#################################################################
 
 
 def load_table_stationaries(world, w=6, l=6, h=0.9):
@@ -1542,6 +1559,258 @@ def load_table_stationaries(world, w=6, l=6, h=0.9):
     camera_point = (4, 3, 3)
     target_point = (3, 3, 1)
     world.visualize_image(rgb=True, camera_point=camera_point, target_point=target_point)
-    # wait_unlocked()
+    wait_unlocked()
 
     return items, distractors, tray_bottom, counter
+
+
+#################################################################
+
+
+def place_faucet_by_sink(faucet_obj, sink_obj, gap=0.01):
+    body = faucet_obj.body
+    base_link = get_partnet_links_by_type(faucet_obj.path, body, 'switch')[0]
+    x = get_link_pose(body, base_link)[0][0]
+    aabb = get_aabb(body, base_link)
+    lx = get_aabb_extent(aabb)[0]
+    x_new = sink_obj.aabb.lower[0] - lx / 2 - gap
+    faucet_obj.adjust_pose(dx=x_new - x)
+
+
+WALL_HEIGHT = 2.5
+WALL_WIDTH = 0.1
+COUNTER_THICKNESS = 0.05
+diswasher = 'DishwasherBox'
+
+
+def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=False):
+
+    if floor is None:
+        floor = create_house_floor(world, w=2, l=2, x=0, y=1)
+        x = 0
+
+    base = world.add_object(Object(
+        load_asset('SinkBase', x=x, y=y, yaw=math.pi, floor=floor,
+                   RANDOM_INSTANCE=True, verbose=verbose), name='sinkbase'))
+    dx = base.lx/2
+    base.adjust_pose(dx=dx)
+    x += dx
+    if base.instance_name == 'partnet_5b112266c93a711b824662341ce2b233': ##'46481'
+        x += 0.1
+
+    sink = world.add_object(Object(
+        load_asset('Sink', x=x, y=y, yaw=math.pi, floor=base.body,
+                   RANDOM_INSTANCE=True, verbose=verbose), name='sink'))
+    sink.adjust_pose(dz=-sink.height+COUNTER_THICKNESS)
+    if sink.instance_name == 'partnet_u82f2a1a8-3a4b-4dd0-8fac-6679970a9b29': ##'100685'
+        x += 0.2
+        sink.adjust_pose(dx=0.2)
+    if sink.instance_name == 'partnet_549813be-3bd8-47dd-9a49-b51432b2f14c': ##'100685'
+        x -= 0.06
+        sink.adjust_pose(dx=-0.06)
+
+    faucet = world.add_object(Object(
+        load_asset('Faucet', x=x, y=y, yaw=math.pi, floor=base.body,
+                   RANDOM_INSTANCE=True, verbose=verbose), name='faucet'))
+    place_faucet_by_sink(faucet, sink)
+    faucet.adjust_pose(dz=COUNTER_THICKNESS)
+
+    xa, ya, _ = base.aabb.lower
+    xb, yb, _ = sink.aabb.lower
+    xc, yc, z = sink.aabb.upper
+    xd, yd, _ = base.aabb.upper
+    z -= COUNTER_THICKNESS/2
+
+    padding, color = {
+        'sink_003': (0.05, FURNITURE_WHITE),
+        'sink_005': (0.02, FURNITURE_WHITE),
+        'partnet_3ac64751-e075-488d-9938-9123dc88b2b6-0': (0.02, WHITE),
+        'partnet_e60bf49d6449cf37c5924a1a5d3043b0': (0.027, FURNITURE_WHITE),  ## 101176
+        'partnet_u82f2a1a8-3a4b-4dd0-8fac-6679970a9b29': (0.027, FURNITURE_GREY),  ## 100685
+        'partnet_553c586e128708ae7649cce35db393a1': (0.03, WHITE),  ## 100501
+        'partnet_549813be-3bd8-47dd-9a49-b51432b2f14c': (0.03, FURNITURE_YELLOW),  ## 100191
+    }[sink.instance_name]
+
+    xb += padding
+    xc -= padding
+    yb += padding
+    yc -= padding
+
+    counter_x = (xd+xa)/2
+    counter_w = xd-xa
+    left_counter = create_box(w=counter_w, l=yb-ya, h=COUNTER_THICKNESS, color=color)
+    set_pose(left_counter, Pose(point=Point(x=counter_x, y=(yb+ya)/2, z=z)))
+
+    right_counter = create_box(w=counter_w, l=yd-yc, h=COUNTER_THICKNESS, color=color)
+    set_pose(right_counter, Pose(point=Point(x=counter_x, y=(yd+yc)/2, z=z)))
+
+    front_counter = create_box(w=xd-xc, l=yc-yb, h=COUNTER_THICKNESS, color=color)
+    set_pose(front_counter, Pose(point=Point(x=(xd+xc)/2, y=(yc+yb)/2, z=z)))
+
+    back_counter = create_box(w=xb-xa, l=yc-yb, h=COUNTER_THICKNESS, color=color)
+    set_pose(back_counter, Pose(point=Point(x=(xb+xa)/2, y=(yc+yb)/2, z=z)))
+
+    set_camera_target_body(sink)
+
+    return floor, base, counter_x, counter_w, z, color
+
+
+def sample_kitchen_furniture_ordering(all_necessary=True):
+    END = 'Wall'
+    T = {
+        'SinkBase': ['CabinetLower', diswasher, END],
+        'CabinetLower': ['CabinetLower', diswasher, 'OvenCounter',
+                         'CabinetTall', 'MicrowaveHanging', 'MiniFridge', END],
+        diswasher: ['CabinetLower', 'CabinetTall', 'MicrowaveHanging', 'MiniFridge', END],
+        'OvenCounter': ['CabinetLower'],
+        'CabinetTall': ['MiniFridge', END],
+        'MicrowaveHanging': ['MiniFridge', END],
+        'MiniFridge': ['CabinetTall', END],
+    }
+    ordering = ['OvenCounter']
+    left = right = 0
+    necessary = [diswasher, 'MiniFridge', 'SinkBase']
+    multiple = ['CabinetLower']
+    optional = ['CabinetTall', 'MicrowaveHanging', END]
+    while len(necessary) > 0:
+        if ordering[left] == END and ordering[right] == END:
+            if all_necessary:
+                for each in necessary:
+                    index = random.choice(range(len(ordering)))
+                    ordering.insert(index, each)
+            break
+        else:
+            if (random.random() > 0.5 and ordering[right] != END) or ordering[left] == END:
+                possibile = [m for m in T[ordering[right]] if m in necessary + multiple + optional]
+                chosen = random.choice(possibile)
+                ordering.insert(right+1, chosen)
+            else:
+                possibile = [m for m in T[ordering[left]] if m in necessary + multiple + optional]
+                chosen = random.choice(possibile)
+                ordering.insert(0, chosen)
+            right += 1
+            if chosen in necessary:
+                necessary.remove(chosen)
+    print(ordering)
+    return ordering[1:-1]
+
+
+def sample_full_kitchen(world, w=3, l=8, verbose=True):
+    floor = create_house_floor(world, w=w, l=l, x=w/2, y=l/2)
+
+    ordering = sample_kitchen_furniture_ordering()
+    while 'SinkBase' not in ordering:
+        ordering = sample_kitchen_furniture_ordering()
+
+    """ step 1: sample a sink """
+    start = ordering.index('SinkBase')
+    sink_y = l * start / len(ordering) + np.random.normal(0, 0.5)
+    floor, base, counter_x, counter_w, counter_z, color = sample_kitchen_sink(world, floor=floor, y=sink_y)
+
+    under_counter = ['SinkBase', 'CabinetLower', 'DishwasherBox']
+    on_base = ['MicrowaveHanging', 'MiniFridge']
+    full_body = ['CabinetTall', 'Fridge', 'OvenCounter']
+
+    def update_x_lower(obj, x_lower):
+        if obj.aabb.lower[0] < x_lower:
+            x_lower = obj.aabb.lower[0]
+        return x_lower
+
+    def load_furniture(category):
+        return world.add_object(Object(
+            load_asset(category, yaw=math.pi, floor=floor, RANDOM_INSTANCE=True, verbose=verbose),
+            name=category, category=category))
+
+    def load_furniture_base(furniture):
+        return world.add_object(Object(
+            load_asset('MiniFridgeBase', l=furniture.ly, yaw=math.pi, floor=floor,
+                       RANDOM_INSTANCE=True, verbose=verbose), name=f'{furniture.category}Base'))
+
+    counter_regions = []
+    right_counter_lower = right_counter_upper = base.aabb.upper[1]
+    left_counter_lower = left_counter_upper = base.aabb.lower[1]
+    x_lower = base.aabb.lower[0]
+
+    """ step 2: on the left and right of sinkbase, along with the extended counter """
+    for direction in ['+y', '-y']:
+        if direction == '+y':
+            categories = [c for c in ordering[start+1:]]
+        else:
+            categories = [c for c in ordering[:start]][::-1]
+        current = base
+        for category in categories:
+            furniture = load_furniture(category)
+
+            if category in full_body:
+                if direction == '+y':
+                    counter_regions.append([right_counter_lower, right_counter_upper])
+                else:
+                    counter_regions.append([left_counter_lower, left_counter_upper])
+
+            ## x_lower aligns with the counter and under the counter
+            if category in under_counter + full_body:
+                furniture.adjust_next_to(current, direction=direction, align='+x')
+                if direction == '+y':
+                    right_counter_upper = furniture.aabb.upper[1]
+                else:
+                    left_counter_lower = furniture.aabb.lower[1]
+
+            ## put a cabinetlower with the same y_extent as the object
+            elif category in on_base:
+                furniture_base = load_furniture_base(current)
+                furniture_base.adjust_next_to(current, direction=direction, align='+x')
+                furniture.adjust_next_to(furniture_base, direction='+z', align='+x')
+                x_lower = update_x_lower(furniture, x_lower)
+
+            x_lower = update_x_lower(furniture, x_lower)
+            current = furniture
+            if category in full_body:
+                if direction == '+y':
+                    right_counter_lower = right_counter_upper
+                else:
+                    left_counter_upper = left_counter_lower
+
+    if right_counter_lower != right_counter_upper:
+        counter_regions.append([right_counter_lower, right_counter_upper])
+    if left_counter_lower != left_counter_upper:
+        counter_regions.append([left_counter_lower, left_counter_upper])
+
+    l = right_counter_upper - left_counter_lower
+    y = (right_counter_upper + left_counter_lower) / 2
+    x = x_lower - WALL_WIDTH / 2
+    wall = world.add_object(
+        Supporter(create_box(w=WALL_WIDTH, l=l, h=WALL_HEIGHT, color=color), name='wall'),
+        Pose(point=Point(x=x, y=y, z=WALL_HEIGHT/2)))
+    floor.adjust_pose(dx=x_lower - WALL_WIDTH)
+
+    """ step 5: make all the counters """
+    counters = []
+    for lower, upper in counter_regions:
+        counters.append(world.add_object(
+            Supporter(create_box(w=counter_w, l=upper-lower,
+                                 h=COUNTER_THICKNESS, color=color), name='counter'),
+            Pose(point=Point(x=counter_x, y=(upper + lower) / 2, z=counter_z))))
+        print('lower, upper', (round(lower, 2), round(upper, 2)))
+
+    ## to cover up the wide objects
+    if x_lower < base.aabb.lower[0]:
+        x_upper = base.aabb.lower[0]
+        x = (x_upper+x_lower)/2
+        counter_regions.append([base.aabb.lower[1], base.aabb.upper[1]])
+        for lower, upper in counter_regions:
+            counters.append(world.add_object(
+                Supporter(create_box(w=x_upper-x_lower, l=upper-lower,
+                                     h=COUNTER_THICKNESS, color=color), name='counter'),
+                Pose(point=Point(x=x, y=(upper + lower) / 2, z=counter_z))))
+            print('lower, upper', (round(lower, 2), round(upper, 2)))
+
+    """ step 6: take an image """
+    set_camera_pose((4, 4, 3), (0, 4, 0))
+    wait_unlocked()
+
+
+if __name__ == '__main__':
+    ordering = sample_kitchen_furniture_ordering()
+
+
+

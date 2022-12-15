@@ -720,7 +720,8 @@ def get_camera_image_at_pose(camera_point, target_point, camera_matrix, far=5.0,
     return get_image(camera_point, target_point, width=width, height=height,
                      vertical_fov=vertical_fov, far=far, **kwargs)
 
-def set_camera_target_body(body, link=None, dx=0.5, dy=0.5, dz=0.5):
+
+def set_camera_target_body(body, link=None, dx=None, dy=None, dz=None):
     # if isinstance(body, tuple):
     #     link = BODY_TO_OBJECT[body].handle_link
     #     body = body[0]
@@ -728,6 +729,12 @@ def set_camera_target_body(body, link=None, dx=0.5, dy=0.5, dz=0.5):
     x = (aabb.upper[0] + aabb.lower[0]) / 2
     y = (aabb.upper[1] + aabb.lower[1]) / 2
     z = (aabb.upper[2] + aabb.lower[2]) / 2
+    if dx is None:
+        dx = get_aabb_extent(aabb)[0] * 2
+    if dy is None:
+        dy = get_aabb_extent(aabb)[1] * 2
+    if dz is None:
+        dz = get_aabb_extent(aabb)[2] * 2
     set_camera_pose(camera_point=[x + dx, y + dy, z + dz], target_point=[x, y, z])
 
 
@@ -1699,6 +1706,15 @@ def get_partnet_spaces(path, body):
             link = link_from_name(body, link_name)
             space_links[(body, None, link)] = part_name
     return space_links
+
+
+def get_partnet_links_by_type(path, body, keyward):
+    links = []
+    for line in get_partnet_semantics(path):
+        link_name, part_type, part_name = line.split(' ')
+        if part_name == keyward:
+            links.append(link_from_name(body, link_name))
+    return links
 
 
 def get_datetime(TO_LISDF=False):

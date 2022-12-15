@@ -131,6 +131,20 @@ def create_gripper_robot(world, custom_limits=((0, 0, 0), (6, 12, 2)),
 #######################################################
 
 
+def build_skill_domain_robot(world, robot_name, **kwargs):
+    """ simplified cooking domain, pr2 no torso """
+    if 'initial_xy' not in kwargs:
+        kwargs['initial_xy'] = (0, 0)
+    if 'DRAW_BASE_LIMITS' not in kwargs:
+        kwargs['DRAW_BASE_LIMITS'] = False
+    if 'custom_limits' not in kwargs:
+        if robot_name == 'feg':
+            kwargs['custom_limits'] = ((0, 0, 0), (2, 10, 2))
+        elif robot_name == 'pr2':
+            kwargs['custom_limits'] = ((0, 0, 0), (3, 10, 1))
+    return build_robot_from_args(world, robot_name, **kwargs)
+
+
 def build_table_domain_robot(world, robot_name, **kwargs):
     """ simplified cooking domain, pr2 no torso """
     kwargs['initial_xy'] = (0, 0)
@@ -140,6 +154,8 @@ def build_table_domain_robot(world, robot_name, **kwargs):
         elif robot_name == 'pr2':
             kwargs['custom_limits'] = ((-4, -4), (4, 4))
             kwargs['USE_TORSO'] = False
+            kwargs['custom_limits'] = ((-4, -4, 0), (4, 4, 1))
+            kwargs['USE_TORSO'] = True
     return build_robot_from_args(world, robot_name, **kwargs)
 
 
@@ -168,13 +184,13 @@ def build_robot_from_args(world, robot_name, **kwargs):
         del kwargs['spawn_range']
 
     if robot_name == 'feg':
-        if 'initial_xy' in kwargs:
+        if 'initial_q' not in kwargs and 'initial_xy' in kwargs:
             x, y = kwargs['initial_xy']
             del kwargs['initial_xy']
             kwargs['initial_q'] = [x, y, 0.7, 0, -PI / 2, 0]
         robot = create_gripper_robot(world, **kwargs)
     else:
-        if 'initial_xy' in kwargs:
+        if 'base_q' not in kwargs and 'initial_xy' in kwargs:
             x, y = kwargs['initial_xy']
             del kwargs['initial_xy']
             kwargs['base_q'] = (x, y, PI)

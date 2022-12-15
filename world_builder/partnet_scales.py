@@ -10,6 +10,7 @@ MODEL_SCALES = {
     'BottleTest': {
         # '3380': 0.2,
         '3517': 0.15,
+        '3571': 0.17,
         '3763': 0.16,
         '3933': 0.16,
         '4043': 0.18,
@@ -127,10 +128,80 @@ MODEL_SCALES = {
         '101090': 0.5,
         '101083': 0.5,
     },
+    'Faucet': {
+        '14': 0.3,
+        '148': 0.15,
+        '149': 0.3,
+        '156': 0.2,
+        '167': 0.2,
+        '168': 0.2,
+        '811': 0.2,
+        '866': 0.2,
+        '908': 0.3,
+        '929': 0.15,
+        '1280': 0.3,
+    },
+    'Kettle': {
+        '101305': 0.3,
+        '101311': 0.2,
+        '101315': 0.2,
+        '102714': 0.2,
+        '102724': 0.2,
+        '102726': 0.2,
+    },
+    'BraiserBody': {
+        '100693': 0.37,
+        '100015': 0.37,
+        '100017': 0.37,
+        '100021': 0.37,
+        '100023': 0.37,
+        '100038': 0.37,
+        '100040': 0.37,
+        '100045': 0.37,
+    },
+    'Oven': {
+        '01909': 1,
+        '101924': 1, '101940': 1, '101943': 1,
+    },
+    'OvenTop': {
+        '102055': 1,
+        '102060': 1,
+    },
+    'Toaster': {
+        '103469': 0.2,
+        '103473': 0.2,
+        '103477': 0.2,
+        '103482': 0.2,
+        '103483': 0.2,
+        '103485': 0.2,
+        '103486': 0.2,
+        '103553': 0.2,
+        '103555': 0.2,
+    },
     'CabinetTop': {
-        # 'Chewie': 1,
-        # 'Dagger': 1,
-        'Sektion': 1,
+        'Chewie': 1,
+        'Dagger': 1,
+        'Sektion': 1
+    },
+    'TrashCan': {
+        '10357': 0.2,
+        '10584': 0.2,
+        '11124': 0.2,
+        '11361': 0.2,
+        '11818': 0.2,
+        '12445': 0.2,
+        '101377': 0.2,
+        '100732': 0.2,
+    },
+    'Sink': {
+        '00003': 1.25,
+        '00005': 0.005,
+        '102379': 0.5,
+
+        '100191': 0.35,
+        '100685': 0.5,
+        '100501': 0.45,
+        '101176': 0.45,
     }
 }
 MODEL_SCALES['MiniFridgeDoorless'] = MODEL_SCALES['MiniFridge']
@@ -147,16 +218,65 @@ MODEL_HEIGHTS = {
     'KitchenMicrowave': {
         'height': 0.6,
         'models': ['7310', '7320', '7221', '7167', '7263', '7119']
-    }
+    },
+    'CabinetUpper': {
+        'height': 0.6,
+        'models': ['45621', '45526', '46108', '46889', '48381', '49182']
+    },
+    'CabinetAboveOven': {
+        'height': 0.6,
+        'models': ['46408', '46427']
+    },
+    'CabinetLower': {
+        'height': 1,
+        'models': ['35059', '41004', '45213']
+    },
+    'SinkBase': {
+        'height': 1,
+        'models': ['44781', '45305', '45332', '45354', '45463', '46120', '46481'],
+    },
+    'CabinetTall': {
+        'height': 2,
+        'models': ['45594', '46197', '46236', '46456', '46896']
+    },
+    'DeskStorage': {
+        'height': 0.6,
+        'models': ['47235', '48517', '45001']
+    },
+    'DishwasherBox': {
+        'height': 1,
+        'models': ['11622', '11700', '11826', '12259', '12414', '12428', '12553']
+    },
+    'Dishwasher': {
+        'height': 1,
+        'models': ['2085', '12065', '12349', ]
+    },
+    'Microwave': {
+        'height': 0.7,
+        'models': ['7119', '7128', '7167', '7221', '7236', '7265', '7310', '7320']
+    },
+    'MicrowaveHanging': {
+        'height': 0.6,
+        'models': ['7292', '7296', '7349']  ## '7221', '7273', '7306', '7666'
+    },
+    'MiniFridgeBase': {
+        'height': 0.6,
+        'models': ['45166', '45261', '45526', '45746', '45850', '45963', '46166']
+    },
+    'OvenCounter': {
+        'height': 1.05,
+        'models': ['101773', '101808', '101917', '101921', '101930', '102001', '102044'],
+    },
 }
 MODEL_HEIGHTS.update({k.lower(): v for k, v in MODEL_HEIGHTS.items()})
 
 OBJ_SCALES = {
-    'OilBottle': 0.25, 'VinegarBottle': 0.25, 'Salter': 0.1, 'KitchenKnife': 0.1, 'KitchenFork': 0.2,
-    'Microwave': 0.7, 'Pan': 0.3, 'Pot': 0.3, 'Kettle': 0.3, 'Bottle': 0.25,
+    'OilBottle': 0.25, 'VinegarBottle': 0.25, 'Salter': 0.1,
+    'KitchenKnife': 0.1, 'KitchenFork': 0.2,
+    'Pan': 0.3, 'Pot': 0.3, 'Bottle': 0.25,
     'Egg': 0.03, 'Veggie': 0.3, 'VeggieLeaf': 0.3, 'VeggieStem': 0.3,
-    'MilkBottle': 0.2, 'Toaster': 0.2, 'Bucket': 0.7, 'Cart': 1.1,
-    'PotBody': 0.3, 'BraiserBody': 0.37, 'BraiserLid': 0.37, 'Faucet': 0.35,
+    'MilkBottle': 0.2, 'Bucket': 0.7, 'Cart': 1.1,
+    'PotBody': 0.3, 'Faucet': 0.35,
     'VeggieCabbage': 0.005, 'MeatTurkeyLeg': 0.0007, 'VeggieTomato': 0.005,
     'VeggieZucchini': 0.01, 'VeggiePotato': 0.015, 'VeggieCauliflower': 0.008,
     'VeggieGreenPepper': 0.0003, 'VeggieArtichoke': 0.017, 'MeatChicken': 0.0008,

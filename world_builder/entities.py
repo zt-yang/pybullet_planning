@@ -7,7 +7,7 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
     add_text, AABB, Point, Euler, PI, add_line, YELLOW, BLACK, remove_handles, get_com_pose, Pose, invert, \
     stable_z, get_joint_descendants, get_link_children, get_joint_info, get_links, link_from_name, set_renderer, \
     get_min_limit, get_max_limit, get_link_parent, LockRenderer, HideOutput, pairwise_collisions, get_bodies, \
-    remove_debug, child_link_from_joint, unit_point, tform_point, buffer_aabb, get_aabb_center
+    remove_debug, child_link_from_joint, unit_point, tform_point, buffer_aabb, get_aabb_center, get_aabb_extent
 from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_box_entity, get_instance_name, \
     get_camera_image_at_pose
 
@@ -219,6 +219,56 @@ class Object(Index):
 
     def get_pose(self):
         return get_pose(self.body)
+
+    @property
+    def aabb(self):
+        return get_aabb(self.body)
+
+    @property
+    def lx(self):
+        return get_aabb_extent(self.aabb)[0]
+
+    @property
+    def ly(self):
+        return get_aabb_extent(self.aabb)[1]
+
+    @property
+    def height(self):
+        return get_aabb_extent(self.aabb)[2]
+
+    def adjust_next_to(self, other, direction='+y', align='+x'):
+        cabinet_categories = ['cabinetlower', 'cabinettall', 'minifridgebase']
+        x = y = z = None
+        if align == '+x':
+            x = other.aabb.upper[0] - self.lx / 2
+        if direction == '+y':
+            y = other.aabb.upper[1] + self.ly / 2
+            if self.category in cabinet_categories or other.category in cabinet_categories:
+                y += 0.04
+        elif direction == '-y':
+            y = other.aabb.lower[1] - self.ly / 2
+            if self.category in cabinet_categories or other.category in cabinet_categories:
+                y -= 0.04
+        elif direction == '+z':
+            z = other.aabb.upper[2] + self.height / 2
+            y = other.get_pose()[0][1]
+        self.adjust_pose(x=x, y=y, z=z)
+
+    def adjust_pose(self, x=None, y=None, z=None, dx=None, dy=None, dz=None):
+        (cx, cy, cz), r = self.get_pose()
+        if dx is not None:
+            cx += dx
+        elif x is not None:
+            cx = x
+        if dy is not None:
+            cy += dy
+        elif y is not None:
+            cy = y
+        if dz is not None:
+            cz += dz
+        elif z is not None:
+            cz = z
+        self.set_pose(((cx, cy, cz), r))
 
     def set_pose(self, conf):
         links = [get_link_name(self.body, l) for l in get_links(self.body)]

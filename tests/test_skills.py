@@ -18,7 +18,7 @@ from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, 
     set_camera_pose, wait_unlocked, disconnect, wait_if_gui, create_box, \
     SEPARATOR, get_aabb, get_pose, approximate_as_prism, draw_aabb, multiply, unit_quat, remove_body, invert, \
     Pose, get_link_pose, get_joint_limits, WHITE, RGBA, set_all_color, RED, GREEN, set_renderer, clone_body, \
-    add_text, joint_from_name, set_caching, Point
+    add_text, joint_from_name, set_caching, Point, set_random_seed, set_numpy_seed
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, set_camera_target_body, \
     draw_bounding_lines, fit_dimensions, draw_fitted_box, get_hand_grasps, get_partnet_doors, get_partnet_spaces, \
     open_joint, get_instance_name
@@ -30,21 +30,30 @@ from pybullet_tools.flying_gripper_utils import se3_from_pose, \
     pose_from_se3, se3_ik, set_cloned_se3_conf, create_fe_gripper, set_se3_conf
 
 from world_builder.world import State
+from world_builder.loaders import sample_kitchen_sink, sample_full_kitchen, create_house_floor
 from world_builder.robot_builders import create_gripper_robot, create_pr2_robot
 from world_builder.utils import load_asset
 from world_builder.utils import get_instances as get_instances_helper
 from world_builder.partnet_scales import MODEL_SCALES as TEST_MODELS
 from world_builder.partnet_scales import MODEL_HEIGHTS, OBJ_SCALES
+from world_builder.robot_builders import build_skill_domain_robot
 
 import math
 
 
 DEFAULT_TEST = 'kitchen' ## 'blocks_pick'
 
+seed = 308913
+if seed is None:
+    seed = random.randint(0, 10 ** 6 - 1)
+set_random_seed(seed)
+set_numpy_seed(seed)
+print('Seed:', seed)
+
 # ####################################
 
 
-def get_instances(category):
+def get_instances(category, get_all=False):
     instances = get_instances_helper(category)
     keys = list(instances.keys())
     if isinstance(keys[0], tuple):
@@ -54,46 +63,49 @@ def get_instances(category):
         instances = {k: instances[k] for k in keys}
         instances = dict(sorted(instances.items()))
     else:
-        if len(listdir(join(ASSET_PATH, 'models', category))) > 0:
-            keys = [k for k in keys if isdir(join(ASSET_PATH, 'models', category, k))]
+        cat_dir = join(ASSET_PATH, 'models', category)
+        if not isdir(cat_dir):
+            os.mkdir(cat_dir)
+            get_data(categories=[category])
+        if len(listdir(cat_dir)) > 0 and not get_all:
+            keys = [k for k in keys if isdir(join(cat_dir, k))]
         instances = {k: instances[k] for k in keys}
         instances = dict(sorted(instances.items()))
     return instances
 
 
-def get_test_world(robot='feg', semantic_world=False, DRAW_BASE_LIMITS=False):
+def get_test_world(robot='feg', semantic_world=False, **kwargs):
     connect(use_gui=True, shadows=False, width=1980, height=1238)  ##  , width=360, height=270
     # draw_pose(unit_pose(), length=.5)
-    set_caching(cache=False)
-    # import ipdb; ipdb.set_trace()
     # create_floor()
+    set_caching(cache=False)
     if semantic_world:
         from world_builder.world import World
         world = World()
     else:
         from lisdf_tools.lisdf_loader import World
         world = World()
-    add_robot(world, robot, DRAW_BASE_LIMITS=DRAW_BASE_LIMITS)
+    build_skill_domain_robot(world, robot, **kwargs)
     return world
 
 
-def add_robot(world, robot, DRAW_BASE_LIMITS=False):
-    if robot == 'pr2':
-        from world_builder.loaders import BASE_LIMITS as custom_limits
-        base_q = [0, -0.5, 0]
-        robot = create_pr2_robot(world, custom_limits=custom_limits,
-                                 base_q=base_q, DRAW_BASE_LIMITS=DRAW_BASE_LIMITS)
-
-    elif robot == 'feg':
-        custom_limits = {0: (-5, 5), 1: (-5, 5), 2: (0, 3)}
-        # init_q = [3, 1, 1, 0, 0, 0]
-        init_q = [0, 0, 0, 0, 0, 0]
-        # robot = create_fe_gripper(init_q=init_q)
-        # world.add_robot(robot, 'feg')
-        robot = create_gripper_robot(world, custom_limits=custom_limits,
-                                     initial_q=init_q)
-
-    return robot
+# def add_robot(world, robot, DRAW_BASE_LIMITS=False):
+#     if robot == 'pr2':
+#         from world_builder.loaders import BASE_LIMITS as custom_limits
+#         base_q = [0, -0.5, 0]
+#         robot = create_pr2_robot(world, custom_limits=custom_limits,
+#                                  base_q=base_q, DRAW_BASE_LIMITS=DRAW_BASE_LIMITS)
+#
+#     elif robot == 'feg':
+#         custom_limits = {0: (-5, 5), 1: (-5, 5), 2: (0, 3)}
+#         # init_q = [3, 1, 1, 0, 0, 0]
+#         init_q = [0, 0, 0, 0, 0, 0]
+#         # robot = create_fe_gripper(init_q=init_q)
+#         # world.add_robot(robot, 'feg')
+#         robot = create_gripper_robot(world, custom_limits=custom_limits,
+#                                      initial_q=init_q)
+#
+#     return robot
 
 
 def get_z_on_floor(body):
@@ -166,15 +178,16 @@ def get_gap(category):
     return gap
 
 
-def test_grasps(categories=[], robot='feg'):
+def test_grasps(categories=[], robot='feg', skip_grasps=False):
     world = get_test_world(robot)
+    draw_pose(unit_pose(), length=0.5)
     robot = world.robot
     problem = State(world, grasp_types=robot.grasp_types)  ## , 'side' , 'top'
 
     i = -1
     for cat in categories:
 
-        tpt = math.pi / 4 if cat in ['Plate', 'Knife'] else None ## , 'EyeGlasses'
+        tpt = math.pi / 4 if cat in ['Knife'] else None ## , 'EyeGlasses', 'Plate'
         funk = get_grasp_list_gen(problem, collisions=True, visualize=False,
                                   RETAIN_ALL=False, top_grasp_tolerance=tpt, verbose=False)
 
@@ -214,7 +227,7 @@ def test_grasps(categories=[], robot='feg'):
             instance_name = get_instance_name(abspath(path))
             obj_name = f'{cat.lower()}#{id}'
             world.add_body(body, obj_name, instance_name)
-            set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
+            set_camera_target_body(body)
             text = id.replace('veggie', '').replace('meat', '')
             draw_text_label(body, text, offset=(0, -0.2, 0.1))
 
@@ -229,7 +242,10 @@ def test_grasps(categories=[], robot='feg'):
             # grasps = get_hand_grasps(problem, body)
 
             """ test grasps """
-            test_grasp(body)
+            if skip_grasps:
+                wait_if_gui()
+            else:
+                test_grasp(body)
 
             # wait_unlocked()
 
@@ -584,7 +600,7 @@ def test_handle_grasps_counter(robot='pr2'):
     world = get_test_world(robot, semantic_world=True, DRAW_BASE_LIMITS=False)
     robot = world.robot
     floor = load_floor_plan(world, plan_name='counter.svg')
-    # robot = add_robot(world, 'feg', DRAW_BASE_LIMITS=False)
+    # robot = build_skill_domain_robot(world, 'feg')
 
     world.summarize_all_objects()
     state = State(world, grasp_types=robot.grasp_types)
@@ -637,7 +653,7 @@ def test_placement_counter():
 
     world = World()
     floor = load_floor_plan(world, plan_name='counter.svg', surfaces=surfaces, spaces=spaces)
-    robot = add_robot(world, 'feg')
+    robot = build_skill_domain_robot(world, 'feg')
 
     world.open_all_doors_drawers()
     world.summarize_all_objects()
@@ -739,10 +755,36 @@ def test_vhacd():
     print()
 
 
+def test_sink_configuration(robot):
+    world = get_test_world(robot=robot, semantic_world=True)
+    floor = create_house_floor(world, w=10, l=10, x=5, y=5)
+    target = None
+    for x in range(1, 5):
+        for y in range(1, 5):
+            base = sample_kitchen_sink(world, floor=floor, x=2*x, y=2*y)[1]
+            if x == 4 and y == 3:
+                target = base
+    set_camera_target_body(target, dx=2, dy=0, dz=4)
+    wait_unlocked()
+
+
+def test_kitchen_configuration(robot):
+    world = get_test_world(robot=robot, semantic_world=True, initial_xy=(1.5, 4))
+    sample_full_kitchen(world)
+
+
 if __name__ == '__main__':
 
+    """ ---------------- object categories -----------------
+        Kitchen Moveable: 'Bottle', 'Food', 'BraiserLid', 'Sink', 'SinkBase', 'Faucet',
+        Kitchen Furniture: 'MiniFridge', 'KitchenCounter', 'MiniFridgeBase', 
+                            'OvenCounter', 'OvenTop', 'MicrowaveHanging', 'MiniFridgeBase', 
+                            'CabinetLower', 'CabinetTall', 'CabinetUpper', 'DishwasherBox'
+        Packing:    'Stapler', 'Camera', 'EyeGlasses', 'Knife', 'Tray', 
+    ----------------- ----------------- ----------------- --------- """
+
     """ --- models related --- """
-    # get_data(categories=['Tray', 'ShoppingCart', 'Cart'])
+    # get_data(categories=['MicrowaveHanging'])
     # test_texture(category='CoffeeMachine', id='103127')
     # test_vhacd()
 
@@ -751,12 +793,11 @@ if __name__ == '__main__':
     # test_gripper_range()
     # test_torso()
 
-    robot = 'pr2'  ## 'feg' | 'pr2'
+    robot = 'feg'  ## 'feg' | 'pr2'
 
-    """ --- grasps related --- """
-    test_grasps(['Plate'], robot)  ## 'EyeGlasses'
-    ## Kitchen: 'Bottle', 'Food', 'MiniFridge', 'KitchenCounter', 'BraiserLid'
-    ## Packing: 'Stapler', 'Camera', 'EyeGlasses', 'Knife', 'Tray',
+    """ --- grasps related ---
+    """
+    # test_grasps(['MicrowaveHanging'], robot, skip_grasps=True)  ## 'EyeGlasses'
 
     # test_handle_grasps(robot, category='CabinetTop')
     ## Kitchen: 'MiniFridge', 'MiniFridgeDoorless', 'CabinetTop'
@@ -768,6 +809,9 @@ if __name__ == '__main__':
 
     # test_placement_on(robot, category='Tray', surface_name='tray_bottom')  ## sampled placement
     ## Kitchen: 'KitchenCounter', 'Tray' (surface_name='tray_bottom')
+
+    # test_sink_configuration(robot)
+    test_kitchen_configuration('pr2')
 
     """ --- specific counter --- """
     # test_placement_counter()  ## initial placement

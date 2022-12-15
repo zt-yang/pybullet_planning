@@ -18,9 +18,14 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, \
     stable_z, Pose, Point, create_box, load_model, get_joints, set_joint_position, BROWN, Euler, PI, \
     set_camera_pose, TAN, RGBA, sample_aabb, get_min_limit, get_max_limit, set_color, WHITE, get_links, \
     get_link_name, get_link_pose, euler_from_quat, get_collision_data, get_joint_name, get_joint_position
-from pybullet_tools.bullet_utils import get_scale_by_category
+from pybullet_tools.bullet_utils import get_scale_by_category, get_partnet_links_by_type
 from pybullet_tools.logging import dump_json
 from world_builder.paths import ASSET_PATH
+
+
+FURNITURE_WHITE = RGBA(0.85, 0.85, 0.85, 1)
+FURNITURE_GREY = RGBA(0.4, 0.4, 0.4, 1)
+FURNITURE_YELLOW = RGBA(221/255, 187/255, 123/255, 1)
 
 LIGHT_GREY = RGBA(0.5, 0.5, 0.5, 0.6)
 DARK_GREEN = RGBA(35/255, 66/255, 0, 1)
@@ -103,7 +108,7 @@ def get_model_scale(file, l=None, w=None, h=None, scale=1, category=None):
     #     print(file, l, w)
 
     ## ------- Case 1: no restrictions or directly given scale
-    if w is None and h is None:
+    if w is None and l is None and h is None:
         return scale
 
     ## --- load and adjust
@@ -115,9 +120,14 @@ def get_model_scale(file, l=None, w=None, h=None, scale=1, category=None):
     extent = get_aabb_extent(aabb)
 
     ## ------- Case 2: given width and length of object
-    if w is not None:
+    if w is not None or l is not None:
         width, length = extent[:2]
-        scale = min(l / length, w / width) ## unable to construct
+        if w is None:
+            scale = l / length
+        elif l is None:
+            scale = w / width
+        else:
+            scale = min(l / length, w / width) ## unable to reconstruct
 
     ## ------ Case 3: given height of object
     elif h is not None:
