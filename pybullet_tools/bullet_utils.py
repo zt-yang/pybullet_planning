@@ -910,8 +910,6 @@ def summarize_facts(facts, world=None, name='Initial facts', print_fn=None):
         pred = fact[0].lower()
         if pred not in predicates:
             predicates[pred] = []
-        if pred.lower() == 'cleaningsurface':
-            print('sss')
         predicates[pred].append(fact)
     predicates = {k: v for k, v in sorted(predicates.items())}
     # predicates = {k: v for k, v in sorted(predicates.items(), key=lambda item: len(item[1][0]))}

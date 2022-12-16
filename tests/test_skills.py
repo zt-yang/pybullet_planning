@@ -43,7 +43,7 @@ import math
 
 DEFAULT_TEST = 'kitchen' ## 'blocks_pick'
 
-seed = 308913
+seed = None
 if seed is None:
     seed = random.randint(0, 10 ** 6 - 1)
 set_random_seed(seed)
@@ -799,7 +799,7 @@ if __name__ == '__main__':
     """
     # test_grasps(['MicrowaveHanging'], robot, skip_grasps=True)  ## 'EyeGlasses'
 
-    test_handle_grasps(robot, category='MiniFridge')
+    # test_handle_grasps(robot, category='MiniFridge')
     ## Kitchen: 'MiniFridge', 'MiniFridgeDoorless', 'CabinetTop'
 
     """ --- placement related  --- """
@@ -811,7 +811,7 @@ if __name__ == '__main__':
     ## Kitchen: 'KitchenCounter', 'Tray' (surface_name='tray_bottom')
 
     # test_sink_configuration(robot)
-    # test_kitchen_configuration('pr2')
+    test_kitchen_configuration(robot)
 
     """ --- specific counter --- """
     # test_placement_counter()  ## initial placement
