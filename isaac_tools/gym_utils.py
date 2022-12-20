@@ -24,12 +24,14 @@ ASSET_PATH = join(dirname(__file__), '..', 'assets')
 
 
 def load_one_world(gym_world, lisdf_dir, offset=None, robots=True, world_index=None,
-                   update_viewer=True, **kwargs):
+                   update_viewer=True, test_camera_pose=False, **kwargs):
     for name, path, scale, is_fixed, pose, positions in load_lisdf(lisdf_dir, robots=robots, **kwargs):
         # if 'veggiegreenpepper' in name or 'meatturkeyleg' in name or 'veggietomato' in name:
         #     print('!!! skipping', name)
         #     continue
         is_robot = test_is_robot(name)
+        if test_camera_pose and not is_robot:
+            continue
         asset = gym_world.simulator.load_asset(
             asset_file=path, root=None, fixed_base=is_fixed or is_robot,  # y_up=is_robot,
             gravity_comp=is_robot, collapse=False, vhacd=False)
@@ -128,15 +130,16 @@ def load_envs_isaacgym(ori_dirs, robots=True, pause=False, num_rows=5, num_cols=
                         camera_width=2560, camera_height=1600, **kwargs):
     sys.path.append('/home/yang/Documents/playground/srl_stream/src')
     from srl_stream.gym_world import create_single_world, default_arguments
+    world_size = 6
 
-    gym_world = create_single_world(args=default_arguments(use_gpu=False), spacing=5.)
+    gym_world = create_single_world(args=default_arguments(use_gpu=False), spacing=world_size)
     gym_world.set_viewer_target(camera_point, target=camera_target)
 
     camera = gym_world.create_camera(width=camera_width, height=camera_height, fov=60)
     gym_world.set_camera_target(camera, camera_point, camera_target)
 
     world_size = 6
-    num_worlds = min(num_rows * num_cols, 25)
+    num_worlds = num_rows * num_cols  ## min(, 25)
     offsets = []
     for i in range(num_worlds):
         ori_dir = ori_dirs[i]
