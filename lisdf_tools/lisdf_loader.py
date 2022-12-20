@@ -54,7 +54,7 @@ class World():
         self.camera = None
         self.robot = None
         self.movable = None
-        self.fixed = None
+        self.fixed = []
         self.floors = None
         self.body_types = {}
 
@@ -80,7 +80,7 @@ class World():
         self.handles.extend(handles)
 
     def make_doors_transparent(self, transparency=0.5):
-        if self.fixed is None:
+        if len(self.fixed) == 0:
             self.check_world_obstacles()
         self.colored_links = colorize_world(self.fixed, transparency)
 
