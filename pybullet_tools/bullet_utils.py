@@ -1535,7 +1535,14 @@ def find_grasp_in_db(db_file, instance_name, LENGTH_VARIANTS=False, scale=None):
 
             ## scale the grasps
             if scale is not None and scale != all_data['scale']:
-                found = [(tuple(scale * np.array(p)), q) for p, q in found]
+                # found = [(tuple(scale/all_data['scale'] * np.array(p)), q) for p, q in found]
+                new_found = []
+                for p, q in found:
+                    p = np.array(p)
+                    p[:2] *= scale / all_data['scale']
+                    p[2] *= scale * 1.4 / all_data['scale']
+                    new_found.append((tuple(p), q))
+                found = new_found
     return found, db, db_file
 
 

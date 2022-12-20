@@ -360,6 +360,8 @@ def test_handle_grasps(robot, category):
             visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=True)
             set_camera_target_body(body, dx=2, dy=1, dz=1)
 
+        wait_if_gui('Next?')
+
     set_camera_pose((8, 8, 2), (0, 8, 1))
     wait_if_gui('Finish?')
     disconnect()
@@ -826,7 +828,7 @@ if __name__ == '__main__':
     # test_gripper_range()
     # test_torso()
 
-    robot = 'feg'  ## 'feg' | 'pr2'
+    robot = 'pr2'  ## 'feg' | 'pr2'
 
     """ --- grasps related ---
     """
