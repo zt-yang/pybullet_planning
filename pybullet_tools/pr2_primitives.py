@@ -356,6 +356,7 @@ class Cook(Command):
 ##################################################
 
 def get_grasp_gen(problem, collisions=False, randomize=True):
+    world = problem.world
     for grasp_type in problem.grasp_types:
         if grasp_type not in GET_GRASPS:
             raise ValueError('Unexpected grasp type:', grasp_type)
@@ -379,7 +380,7 @@ def get_grasp_gen(problem, collisions=False, randomize=True):
             from .bullet_utils import get_hand_grasps
             approach_vector = APPROACH_DISTANCE*get_unit_vector([0, 0, -1])
             grasps.extend(Grasp('hand', body, g, multiply(g, (approach_vector, unit_quat())), g)
-                          for g in get_hand_grasps(problem, body))
+                          for g in get_hand_grasps(world, body))
         filtered_grasps = []
         for grasp in grasps:
             grasp_width = problem.robot.compute_grasp_width(arm, body, grasp.value, body=body) if collisions else 0.0
@@ -831,4 +832,3 @@ def distance_fn(q1, q2):
 def move_cost_fn(t):
     distance = t.distance(distance_fn=lambda q1, q2: get_distance(q1[:2], q2[:2]))
     return BASE_CONSTANT + distance / BASE_VELOCITY
-

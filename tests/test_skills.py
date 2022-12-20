@@ -21,7 +21,7 @@ from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, 
     add_text, joint_from_name, set_caching, Point, set_random_seed, set_numpy_seed
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, set_camera_target_body, \
     draw_bounding_lines, fit_dimensions, draw_fitted_box, get_hand_grasps, get_partnet_doors, get_partnet_spaces, \
-    open_joint, get_instance_name
+    open_joint, get_instance_name, get_grasp_db_file
 from pybullet_tools.pr2_agent import get_stream_info, post_process, move_cost_fn, \
     visualize_grasps_by_quat, visualize_grasps
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, \
@@ -178,7 +178,7 @@ def get_gap(category):
     return gap
 
 
-def test_grasps(categories=[], robot='feg', skip_grasps=False):
+def test_grasps(robot='feg', categories=[], skip_grasps=False):
     world = get_test_world(robot)
     draw_pose(unit_pose(), length=0.5)
     robot = world.robot
@@ -239,7 +239,7 @@ def test_grasps(categories=[], robot='feg', skip_grasps=False):
             # test_robot_rotation(body, world.robot)
             # test_spatial_algebra(body, world.robot)
             # draw_fitted_box(body, draw_centroid=True)
-            # grasps = get_hand_grasps(problem, body)
+            # grasps = get_hand_grasps(world, body)
 
             """ test grasps """
             if skip_grasps:
@@ -282,15 +282,19 @@ def load_body(path, scale, pose_2d=(0, 0), random_yaw=False):
     return body, file
 
 
-def load_model_instance(category, id, scale=1, location = (0, 0)):
-    from world_builder.utils import get_model_scale
-
+def get_model_path(category, id):
     models_path = join(ASSET_PATH, 'models')
     category = [c for c in listdir(models_path) if c.lower() == category.lower()][0]
     if not id.isdigit():
         id = [i for i in listdir(join(models_path, category)) if i.lower() == id.lower()][0]
     path = join(models_path, category, id)
+    return path
 
+
+def load_model_instance(category, id, scale=1, location = (0, 0)):
+    from world_builder.utils import get_model_scale
+
+    path = get_model_path(category, id)
     if category in MODEL_HEIGHTS:
         height = MODEL_HEIGHTS[category]['height']
         scale = get_model_scale(path, h=height)
@@ -603,7 +607,7 @@ def test_handle_grasps_counter(robot='pr2'):
     # robot = build_skill_domain_robot(world, 'feg')
 
     world.summarize_all_objects()
-    state = State(world, grasp_types=robot.grasp_types)
+    # state = State(world, grasp_types=robot.grasp_types)
     joints = world.cat_to_bodies('drawer')
     # joints = [(6, 1)]
 
@@ -614,7 +618,7 @@ def test_handle_grasps_counter(robot='pr2'):
         body, joint = body_joint
         set_camera_target_body(body, link=link, dx=0.5, dy=0.5, dz=0.5)
         draw_fitted_box(body, link=link, draw_centroid=True)
-        grasps = get_hand_grasps(state, body, link=link, visualize=False,
+        grasps = get_hand_grasps(world, body, link=link, visualize=False,
                                  RETAIN_ALL=True, HANDLE_FILTER=True, LENGTH_VARIANTS=True)
         set_camera_target_body(body, link=link, dx=0.5, dy=0.5, dz=0.5)
 
@@ -676,14 +680,14 @@ def test_placement_counter():
             draw_fitted_box(body, draw_centroid=False)
             set_camera_target_body(body, dx=0.5, dy=0, dz=0)
             set_camera_target_body(body, dx=0.5, dy=0, dz=0)
-            grasps = get_hand_grasps(state, body, visualize=True, RETAIN_ALL=True)
+            grasps = get_hand_grasps(world, body, visualize=True, RETAIN_ALL=True)
 
         # if rg in spaces:
         #     body = r.place_new_obj('MeatTurkeyLeg').body
         #     draw_fitted_box(body, draw_centroid=False)
         #     set_camera_target_body(body, dx=0.1, dy=0, dz=0.5)
         #     set_camera_target_body(body, dx=0.1, dy=0, dz=0.5)
-        #     # grasps = get_hand_grasps(state, body, visualize=False, RETAIN_ALL=False)
+        #     # grasps = get_hand_grasps(world, body, visualize=False, RETAIN_ALL=False)
         #
         #     outputs = funk(body)
         #     print(f'grasps on body {body}:', outputs)
@@ -773,14 +777,43 @@ def test_kitchen_configuration(robot):
     sample_full_kitchen(world)
 
 
+def add_scale_to_grasp_file(robot, category):
+    from pybullet_tools.logging import dump_json
+    from pprint import pprint
+
+    ## find all instance, scale, and instance names
+    instances = get_instances(category)
+    instance_names = {}
+    for id, scale in instances.items():
+        path = get_model_path(category, id)
+        name = get_instance_name(join(path, 'mobility.urdf'))
+        instance_names[name] = (id, scale)
+
+    ## find the grasp file of the robot and add scale
+    db_file = get_grasp_db_file(robot)
+    db = json.load(open(db_file, 'r'))
+    updates = {}
+    for key, data in db.items():
+        for name in instance_names:
+            if key.startswith(name):
+                id, data['scale'] = instance_names[name]
+                if data['name'] == 'None':
+                    data['name'] = f"{category}/{id}"
+                updates[key] = data
+    pprint(updates)
+    db.update(updates)
+    if isfile(db_file): os.remove(db_file)
+    dump_json(db, db_file, sort_dicts=False)
+
+
 if __name__ == '__main__':
 
     """ ---------------- object categories -----------------
         Kitchen Moveable: 'Bottle', 'Food', 'BraiserLid', 'Sink', 'SinkBase', 'Faucet',
-        Kitchen Furniture: 'MiniFridge', 'KitchenCounter', 'MiniFridgeBase', 
-                            'OvenCounter', 'OvenTop', 'MicrowaveHanging', 'MiniFridgeBase', 
+        Kitchen Furniture: 'MiniFridge', 'KitchenCounter', 'MiniFridgeBase',
+                            'OvenCounter', 'OvenTop', 'MicrowaveHanging', 'MiniFridgeBase',
                             'CabinetLower', 'CabinetTall', 'CabinetUpper', 'DishwasherBox'
-        Packing:    'Stapler', 'Camera', 'EyeGlasses', 'Knife', 'Tray', 
+        Packing:    'Stapler', 'Camera', 'EyeGlasses', 'Knife', 'Tray',
     ----------------- ----------------- ----------------- --------- """
 
     """ --- models related --- """
@@ -793,13 +826,14 @@ if __name__ == '__main__':
     # test_gripper_range()
     # test_torso()
 
-    robot = 'pr2'  ## 'feg' | 'pr2'
+    robot = 'feg'  ## 'feg' | 'pr2'
 
     """ --- grasps related ---
     """
-    # test_grasps(['MicrowaveHanging'], robot, skip_grasps=True)  ## 'EyeGlasses'
+    # test_grasps(robot, ['MiniFridge'], skip_grasps=False)  ## 'EyeGlasses'
 
-    # test_handle_grasps(robot, category='MiniFridge')
+    # add_scale_to_grasp_file(robot, category='MiniFridge')
+    test_handle_grasps(robot, category='MiniFridge')
     ## Kitchen: 'MiniFridge', 'MiniFridgeDoorless', 'CabinetTop'
 
     """ --- placement related  --- """
@@ -811,7 +845,7 @@ if __name__ == '__main__':
     ## Kitchen: 'KitchenCounter', 'Tray' (surface_name='tray_bottom')
 
     # test_sink_configuration(robot)
-    test_kitchen_configuration(robot)
+    # test_kitchen_configuration(robot)
 
     """ --- specific counter --- """
     # test_placement_counter()  ## initial placement

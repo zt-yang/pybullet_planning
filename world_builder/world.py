@@ -1016,6 +1016,8 @@ class World(object):
     def get_type(self, body):
         return [self.BODY_TO_OBJECT[body].category]
 
+    # def get_scale(self, ):
+
     @property
     def max_delta(self):
         return self.max_velocities * self.time_step
