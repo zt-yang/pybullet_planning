@@ -3,7 +3,8 @@ import time
 from itertools import product
 from collections import defaultdict
 import copy
-from os.path import join, isdir, abspath, basename
+import shutil
+from os.path import join, isdir, abspath, basename, isfile
 import os
 import json
 import numpy as np
@@ -969,7 +970,7 @@ class World(object):
         from world_builder.world_generator import to_lisdf
         to_lisdf(self, join(output_dir, 'scene.lisdf'), verbose=verbose, **kwargs)
 
-    def save_planning_config(self, output_dir, template_dir=None):
+    def save_planning_config(self, output_dir, template_dir=None, domain=None, stream=None, problem=None):
         from world_builder.world_generator import get_config_from_template
         """ planning related files and params are referred to in template directory """
         config = self.get_planning_config()
@@ -981,10 +982,16 @@ class World(object):
                 'domain': abspath(join(template_dir, 'domain.pddl')),
                 'stream': abspath(join(template_dir, 'stream.pddl')),
             })
+        elif domain is not None:
+            config.update({
+                'domain': domain,
+                'stream': stream,
+            })
         with open(join(output_dir, 'planning_config.json'), 'w') as f:
             json.dump(config, f, indent=4)
 
     def save_test_case(self, goal, output_dir, template_dir=None, init=None,
+                       domain=None, stream=None, problem=None,
                        save_rgb=False, save_depth=False, **kwargs):
         if not isdir(output_dir):
             os.makedirs(output_dir, exist_ok=True)
@@ -992,8 +999,15 @@ class World(object):
 
         self.save_lisdf(output_dir, world_name=world_name, **kwargs)
         self.save_problem_pddl(goal, output_dir, world_name=world_name, init=init)
-        self.save_planning_config(output_dir, template_dir=template_dir)
+        self.save_planning_config(output_dir, template_dir=template_dir,
+                                  domain=domain, stream=stream, problem=problem)
 
+        ## move other log files:
+        for suffix in ['log.txt', 'commands.pkl', 'time.json']:
+            if isfile(f"{output_dir}_{suffix}"):
+                shutil.move(f"{output_dir}_{suffix}", join(output_dir, suffix))
+
+        ## save the end image
         if save_rgb:
             self.visualize_image(img_dir=output_dir, rgb=True)
         if save_depth:
@@ -1001,6 +1015,8 @@ class World(object):
 
     def get_type(self, body):
         return [self.BODY_TO_OBJECT[body].category]
+
+    # def get_scale(self, ):
 
     @property
     def max_delta(self):

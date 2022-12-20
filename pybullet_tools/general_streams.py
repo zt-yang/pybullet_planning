@@ -461,12 +461,13 @@ def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=
 def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | PI/4 | INF
                   randomize=True, **kwargs):
     robot = problem.robot
+    world = problem.world
     grasp_type = 'hand'
     arm = 'left'
 
     def fn(body):
         from .bullet_utils import get_hand_grasps
-        grasps_O = get_hand_grasps(problem, body, **kwargs)
+        grasps_O = get_hand_grasps(world, body, **kwargs)
         grasps = robot.make_grasps(grasp_type, arm, body, grasps_O, collisions=collisions)
         if top_grasp_tolerance is not None:
             ori = len(grasps)
@@ -570,7 +571,7 @@ def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
             arm = 'left'
         from bullet_utils import get_hand_grasps
 
-        grasps = get_hand_grasps(problem, body, link=handle_link, HANDLE_FILTER=True,
+        grasps = get_hand_grasps(world, body, link=handle_link, HANDLE_FILTER=True,
                     visualize=visualize, RETAIN_ALL=False, LENGTH_VARIANTS=True, verbose=verbose)
 
         if verbose: print(f'\n{title} grasps =', [nice(g) for g in grasps])

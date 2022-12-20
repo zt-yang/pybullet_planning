@@ -910,8 +910,6 @@ def summarize_facts(facts, world=None, name='Initial facts', print_fn=None):
         pred = fact[0].lower()
         if pred not in predicates:
             predicates[pred] = []
-        if pred.lower() == 'cleaningsurface':
-            print('sss')
         predicates[pred].append(fact)
     predicates = {k: v for k, v in sorted(predicates.items())}
     # predicates = {k: v for k, v in sorted(predicates.items(), key=lambda item: len(item[1][0]))}
@@ -1056,12 +1054,18 @@ def get_rotation_matrix(body):
     return r
 
 
+def get_model_pose(body, link=None):
+    if link is None:
+        body_pose = multiply(get_pose(body), get_rotation_matrix(body))
+    else:
+        body_pose = get_link_pose(body, link)
+    return body_pose
+
+
 def get_model_points(body, link=None, verbose=False):
     if link is None:
-        body_pose = multiply(get_pose(body), get_rotation_matrix(body))  ##
         links = get_links(body)
     else:
-        body_pose = get_link_pose(body, link)  ##
         if verbose:
             print(f'bullet_utils.draw_fitted_box | body_pose = get_link_pose({body}, {link}) = {nice(body_pose)}')
         links = [link]
@@ -1072,11 +1076,12 @@ def get_model_points(body, link=None, verbose=False):
         if len(vv) > 0:
             new_vertices = apply_affine(unit_pose(), vv)
             vertices.extend(new_vertices)
-    return body_pose, vertices
+    return vertices
 
 
 def draw_points(body, link=None):
-    body_pose, vertices = get_model_points(body, link)
+    body_pose = get_model_pose(body, link)
+    vertices = get_model_points(body, link)
     vertices = apply_affine(body_pose, vertices)
     handles = []
     num_vertices = 40
@@ -1095,7 +1100,8 @@ def is_box_entity(body, link=-1):
 
 
 def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False, **kwargs):
-    body_pose, vertices = get_model_points(body, link=link, verbose=verbose)
+    body_pose = get_model_pose(body, link)
+    vertices = get_model_points(body, link=link, verbose=verbose)
     if link is None:  link = -1
     data = get_collision_data(body, link)
     if len(data) == 0 or data[0].geometry_type == p.GEOM_MESH:
@@ -1106,7 +1112,7 @@ def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False, **kwarg
     handles = draw_bounding_box(aabb, body_pose, **kwargs)
     if draw_centroid:
         handles.extend(draw_face_points(aabb, body_pose, dist=0.04))
-    return body_pose, aabb, handles
+    return aabb, handles
 
 
 def draw_bounding_box(aabb, body_pose, **kwargs):
@@ -1130,16 +1136,41 @@ def draw_face_points(aabb, body_pose, dist=0.08):
     return handles
 
 
-def get_hand_grasps(state, body, link=None, grasp_length=0.1,
+def get_loaded_scale(body):
+    data = get_collision_data(body, 0)
+    scale = None
+    if len(data) > 0:
+        scale = data[0].dimensions[0]
+    else:
+        print('get_scale | no collision data for body', body)
+        wait_unlocked()
+    return scale
+
+
+def get_grasp_db_file(robot):
+    if isinstance(robot, str):
+        robot_name = {'pr2': 'PR2Robot', 'feg': 'FEGripper'}[robot]
+    else:
+        robot_name = robot.__class__.__name__
+    db_file_name = f'hand_grasps_{robot_name}.json'
+    db_file = abspath(join(dirname(__file__), '..', 'databases', db_file_name))
+    return db_file
+
+
+def get_hand_grasps(world, body, link=None, grasp_length=0.1,
                     HANDLE_FILTER=False, LENGTH_VARIANTS=False,
                     visualize=False, RETAIN_ALL=False, verbose=False,
                     collisions=False, num_samples=6, debug_del=False):
     body_name = (body, link) if link is not None else body
     title = f'bullet_utils.get_hand_grasps({body_name}) | '
     dist = grasp_length
-    robot = state.robot
+    robot = world.robot
+    scale = get_loaded_scale(body)
+    body_pose = get_model_pose(body, link=link)
 
-    body_pose, aabb, handles = draw_fitted_box(body, link=link, verbose=verbose, draw_centroid=False)
+    if visualize or True:
+        aabb, handles = draw_fitted_box(body, link=link, verbose=verbose, draw_centroid=False)
+
     if link is None:
         r = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
         # r = get_rotation_matrix(body)
@@ -1149,11 +1180,11 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
         if verbose:
             print(f'{title}hand_link = {link} | body_pose = multiply(body_pose, invert(robot.tool_from_hand)) = {nice(body_pose)}')
 
-    instance_name = state.world.get_instance_name(body_name)
+    instance_name = world.get_instance_name(body_name)
     if instance_name is not None:
-        grasp_db_name = f'hand_grasps_{robot.__class__.__name__}.json'  ## 'hand_grasps.json'
-        found, db, db_file = find_grasp_in_db(grasp_db_name, instance_name,
-                                              LENGTH_VARIANTS=LENGTH_VARIANTS)
+        grasp_db_file = get_grasp_db_file(robot)
+        found, db, db_file = find_grasp_in_db(grasp_db_file, instance_name,
+                                              LENGTH_VARIANTS=LENGTH_VARIANTS, scale=scale)
         if found is not None:
             if visualize:
                 bodies = []
@@ -1168,7 +1199,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
             remove_handles(handles)
             return found
 
-    obstacles = state.fixed
+    obstacles = world.fixed
     if body not in obstacles:
         obstacles += [body]
 
@@ -1190,7 +1221,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
         grasps = []
         grasp = multiply(Pose(point=f), Pose(euler=r))
 
-        result, aabb, gripper = check_cfree_gripper(grasp, state.world, body_pose, obstacles, verbose=verbose, body=body,
+        result, aabb, gripper = check_cfree_gripper(grasp, world, body_pose, obstacles, verbose=verbose, body=body,
                                                     visualize=visualize, RETAIN_ALL=RETAIN_ALL, collisions=collisions)
         if result:  ##  and check_new(aabbs, aabb):
             grasps += [grasp]
@@ -1209,7 +1240,7 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
                 dl_candidates = [dl_max, -dl_max]
                 for dl in dl_candidates:
                     grasp_dl = robot.mod_grasp_along_handle(grasp, dl)
-                    result, aabb, gripper_dl = check_cfree_gripper(grasp, state.world, body_pose, obstacles, body=body,
+                    result, aabb, gripper_dl = check_cfree_gripper(grasp, world, body_pose, obstacles, body=body,
                                                                    verbose=verbose, collisions=collisions,
                                                                    visualize=visualize, RETAIN_ALL=RETAIN_ALL)
                     if result:  ## and check_new(aabbs, aabb):
@@ -1286,8 +1317,8 @@ def get_hand_grasps(state, body, link=None, grasp_length=0.1,
 
     ## lastly store the newly sampled grasps
     if instance_name is not None:
-        add_grasp_in_db(db, db_file, instance_name, grasps, name=state.world.get_name(body_name),
-                        LENGTH_VARIANTS=LENGTH_VARIANTS)
+        add_grasp_in_db(db, db_file, instance_name, grasps, name=world.get_name(body_name),
+                        LENGTH_VARIANTS=LENGTH_VARIANTS, scale=scale)
     remove_handles(handles)
     # if len(grasps) > num_samples:
     #     random.shuffle(grasps)
@@ -1482,19 +1513,16 @@ def get_instance_name(path):
     return None
 
 
-def find_grasp_in_db(db_file_name, instance_name, LENGTH_VARIANTS=False):
+def find_grasp_in_db(db_file, instance_name, LENGTH_VARIANTS=False, scale=None):
     """ find saved json files, prioritize databases/ subdir """
-    db_file = dirname(abspath(__file__))
-    db_file = join(db_file, '..', 'databases')
-    db_file = join(db_file, db_file_name)
     db = json.load(open(db_file, 'r')) if isfile(db_file) else {}
 
     found = None
     if instance_name in db:
-        data = db[instance_name]
+        all_data = db[instance_name]
         ## the newest format has attr including 'name', 'grasps', 'grasps_length_variants'
-        if isinstance(data, dict):
-            data = data['grasps'] if not LENGTH_VARIANTS else data['grasps_l']
+        if isinstance(all_data, dict):
+            data = all_data['grasps'] if not LENGTH_VARIANTS else all_data['grasps_l']
         if len(data) > 0:
             ## the newest format has poses written as (x, y, z, roll, pitch, row)
             if len(data[0]) == 6:
@@ -1505,10 +1533,14 @@ def find_grasp_in_db(db_file_name, instance_name, LENGTH_VARIANTS=False):
                 found = [(tuple(e[0]), tuple(e[1])) for e in data]
             print(f'    bullet_utils.find_grasp_in_db returned {len(found)} grasps for ({instance_name})')
 
+            ## scale the grasps
+            if scale is not None and scale != all_data['scale']:
+                found = [(tuple(scale * np.array(p)), q) for p, q in found]
     return found, db, db_file
 
 
-def add_grasp_in_db(db, db_file, instance_name, grasps, name=None, LENGTH_VARIANTS=False):
+def add_grasp_in_db(db, db_file, instance_name, grasps, name=None,
+                    LENGTH_VARIANTS=False, scale=None):
     if instance_name is None: return
 
     key = 'grasps' if not LENGTH_VARIANTS else 'grasps_l'
@@ -1525,7 +1557,8 @@ def add_grasp_in_db(db, db_file, instance_name, grasps, name=None, LENGTH_VARIAN
     db[instance_name] = {
         'name': name,
         key: add_grasps,
-        'datetime': get_datetime()
+        'datetime': get_datetime(),
+        'scale': scale,
     }
     keys = {k: v['datetime'] for k, v in db.items()}
     keys = sorted(keys.items(), key=lambda x: x[1])

@@ -49,7 +49,7 @@ MODEL_SCALES = {
         '103307': 0.08,
     },
     'MiniFridge': {
-        '10797': 1,
+        '10797': 0.4,
         '10849': 1,
         '11178': 1,
         '11231': 1,
@@ -149,15 +149,18 @@ MODEL_SCALES = {
         '102724': 0.2,
         '102726': 0.2,
     },
+    'BraiserLid': {
+        '100693': 0.259,
+    },
     'BraiserBody': {
-        '100693': 0.37,
-        '100015': 0.37,
-        '100017': 0.37,
-        '100021': 0.37,
-        '100023': 0.37,
-        '100038': 0.37,
-        '100040': 0.37,
-        '100045': 0.37,
+        '100693': 0.259,
+        '100015': 0.259,
+        '100017': 0.259,
+        '100021': 0.259,
+        '100023': 0.259,
+        '100038': 0.259,
+        '100040': 0.259,
+        '100045': 0.259,
     },
     'Oven': {
         '01909': 1,
@@ -275,11 +278,10 @@ OBJ_SCALES = {
     'KitchenKnife': 0.1, 'KitchenFork': 0.2,
     'Pan': 0.3, 'Pot': 0.3, 'Bottle': 0.25,
     'Egg': 0.03, 'Veggie': 0.3, 'VeggieLeaf': 0.3, 'VeggieStem': 0.3,
-    'MilkBottle': 0.2, 'Bucket': 0.7, 'Cart': 1.1,
-    'PotBody': 0.3, 'Faucet': 0.35,
+    'MilkBottle': 0.2, 'Bucket': 0.7, 'Cart': 1.1, 'PotBody': 0.3,
+    'PlateFat': 0.8, 'PlateFlat': 0.8,
     'VeggieCabbage': 0.005, 'MeatTurkeyLeg': 0.0007, 'VeggieTomato': 0.005,
     'VeggieZucchini': 0.01, 'VeggiePotato': 0.015, 'VeggieCauliflower': 0.008,
     'VeggieGreenPepper': 0.0003, 'VeggieArtichoke': 0.017, 'MeatChicken': 0.0008,
-    'PlateFat': 0.8, 'PlateFlat': 0.8
 }
 OBJ_SCALES = {k.lower(): v * 0.7 for k, v in OBJ_SCALES.items()}

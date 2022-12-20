@@ -488,6 +488,7 @@ class Space(Region):
         attachment = create_attachment(self, self.link, obj, OBJ=True)
         print('entities.include_and_attach\t', attachment)
         self.world.ATTACHMENTS[obj] = attachment
+        # obj.supporting_surface = self
 
     def place_new_obj(self, obj_name, max_trial=8, verbose=False, scale=1):
         from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, open_joint

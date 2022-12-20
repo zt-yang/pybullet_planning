@@ -350,7 +350,7 @@ def sample_fridges_tables_scene(world, movable_category='food', verbose=True, **
 def sample_fridges_tables_goal(world, movable_category='food'):
     food = random.choice(world.cat_to_objects(movable_category))
     spaces = world.cat_to_objects('space')
-    other = [s for s in spaces if s != food.suppoting_surface][0]
+    other = [s for s in spaces if s != food.supporting_surface][0]
 
     arm = world.robot.arms[0]
 
