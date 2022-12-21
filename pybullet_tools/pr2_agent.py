@@ -573,6 +573,9 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
     #     ('place', [WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
     # ]
     if skeleton is not None:
+        print('-' * 100)
+        print('\n'.join([str(s) for s in skeleton]))
+        print('-' * 100) 
         constraints = PlanConstraints(skeletons=[repair_skeleton(skeleton)], exact=False, max_cost=max_cost + 1)
     else:
         constraints = PlanConstraints(max_cost=max_cost + 1)  # TODO: plus 1 in action costs?

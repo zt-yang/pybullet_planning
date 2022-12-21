@@ -1243,6 +1243,7 @@ def get_base_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
     robot = problem.robot
     saver = BodySaver(robot)
     obstacles = problem.fixed if collisions else []
+
     def fn(bq1, bq2, fluents=[], context=None):
         #print(context) # NOTE(caelan): should be None
         saver.restore()

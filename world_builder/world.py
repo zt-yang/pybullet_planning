@@ -264,7 +264,7 @@ class World(object):
         ## object
         elif not isinstance(object, Robot):
             BODY_TO_OBJECT[body] = object
-            self.get_doors_drawers(object.body)
+            self.get_doors_drawers(object.body, skippable=True)
 
         ## robot
         else:
@@ -324,15 +324,15 @@ class World(object):
                 self.add_to_cat(knob, 'joint')
         return joints
 
-    def get_doors_drawers(self, body):
+    def get_doors_drawers(self, body, skippable=False):
         obj = self.BODY_TO_OBJECT[body]
-        if obj.doors is not None:
+        if skippable and obj.doors is not None:
             return obj.doors, obj.drawers, obj.knobs
 
         doors = []
         drawers = []
         knobs = []
-        if not self.SKIP_JOINTS:
+        if not skippable or not self.SKIP_JOINTS:
             for joint in get_joints(body):
                 joints = self.add_joint_object(body, joint)
                 doors.extend(joints['door'])
@@ -448,6 +448,8 @@ class World(object):
             line += f"\t|  Pose: {nice(pose)}"
 
             if body in REMOVED_BODY_TO_OBJECT:
+                if object.category in ['filler']:
+                    continue
                 if not print_not:
                     print_fn('----------------')
                     print_not = True
@@ -476,7 +478,7 @@ class World(object):
         bodies = [b for b in bodies if b in self.BODY_TO_OBJECT]
         return bodies
 
-    def remove_bodies_from_planning(self, goals):
+    def remove_bodies_from_planning(self, goals=[], exceptions=[]):
         bodies = []
         for literal in goals:
             for item in literal:
@@ -488,7 +490,7 @@ class World(object):
                         bodies.append(item[0])
         all_bodies = list(self.BODY_TO_OBJECT.keys())
         for body in all_bodies:
-            if body not in bodies:
+            if body not in bodies and body not in exceptions:
                 self.remove_body_from_planning(body)
 
     def remove_body_from_planning(self, body):
@@ -631,14 +633,16 @@ class World(object):
         self.assign_attachment(body)
 
     def open_doors_drawers(self, body, ADD_JOINT=True):
-        doors, drawers, knobs = self.get_doors_drawers(body, SKIP=False)
+        doors, drawers, knobs = self.get_doors_drawers(body, skippable=True)
         for joint in doors + drawers:
+            if isinstance(joint, tuple):
+                body, joint = joint
             self.open_joint(body, joint, extent=1)
             if not ADD_JOINT:
                 self.remove_object(joint)
 
     def close_doors_drawers(self, body, ADD_JOINT=True):
-        doors, drawers, knobs = self.get_doors_drawers(body, SKIP=False)
+        doors, drawers, knobs = self.get_doors_drawers(body, skippable=True)
         for joint in doors + drawers:
             self.close_joint(body, joint)
             if not ADD_JOINT:
@@ -780,12 +784,12 @@ class World(object):
         def cat_to_bodies(cat):
             ans = self.cat_to_bodies(cat)
             if objects is not None:
-                ans = [obj for obj in ans if obj in objects]
+                ans = [obj for obj in ans if obj in set(objects)]
             return ans
         def cat_to_objects(cat):
             ans = self.cat_to_objects(cat)
             if objects is not None:
-                ans = [obj for obj in ans if obj.body in objects]
+                ans = [obj for obj in ans if obj.body in set(objects)]
             return ans
         robot = self.robot.body
         name_to_body = self.name_to_body
@@ -917,7 +921,7 @@ class World(object):
         ## ---- object types -------------
         for cat in self.OBJECTS_BY_CATEGORY:
             if cat.lower() == 'moveable': continue
-            if cat in ['CleaningSurface', 'HeatingSurface', 'edible']:
+            if cat in ['CleaningSurface', 'HeatingSurface']:
                 objects = self.OBJECTS_BY_CATEGORY[cat]
                 init += [(cat, obj.pybullet_name) for obj in objects if obj.pybullet_name in BODY_TO_OBJECT]
             else:
@@ -1061,6 +1065,7 @@ class State(object):
         if self.gripper is None:
             self.gripper = self.robot.create_gripper(arm=arm, visual=visual)
         return self.gripper
+
     def remove_gripper(self):
         if self.gripper is not None:
             remove_body(self.gripper)
@@ -1069,44 +1074,58 @@ class State(object):
     @property
     def robot(self):
         return self.world.robot # TODO: use facts instead
+
     @property
     def robots(self):
         return [self.world.robot]
+
     @property
     def bodies(self):
         return [self.robot] + self.objects
+
     @property
     def regions(self):
         return [obj for obj in self.objects if isinstance(obj, Region)]
+
     @property
     def floors(self):
         return self.world.floors
+
     @property
     def fixed(self):   ## or the robot will go through tables
-        objs = [obj for obj in self.objects if obj not in self.movable]
-        if hasattr(self.world, 'BODY_TO_OBJECT'):  ## some objects are not in planning
-            objs = [o for o in self.world.objects if o in objs and \
-                    self.world.BODY_TO_OBJECT[o].category != 'floor']
-        return objs
+        return self.world.fixed
+        # objs = [obj for obj in self.objects if obj not in self.movable]
+        # if hasattr(self.world, 'BODY_TO_OBJECT'):  ## some objects are not in planning
+        #     objs = [o for o in self.world.objects if o in objs and \
+        #             self.world.BODY_TO_OBJECT[o].category != 'floor']
+        # return objs
         # return [obj for obj in self.objects if isinstance(obj, Region) or isinstance(obj, Environment)]
+
     @property
     def movable(self): ## include steerables if want to exclude them when doing base motion plannig
         return self.world.movable
         # return [self.robot] + self.world.cat_to_bodies('moveable') ## + self.world.cat_to_bodies('steerable')
         # return [obj for obj in self.objects if obj not in self.fixed]
+
     @property
     def obstacles(self):
-        return {obj for obj in self.objects if obj not in self.regions} - set(self.attachments)
+        return {obj for obj in self.objects + self.world.fixed if obj not in self.regions} \
+            - set(self.attachments)
+
     @property
     def ignored_pairs(self):
         return self.world.ignored_pairs
+
     def restore(self): # TODO: could extend WorldSaver
         self.saver.restore()
+
     def scramble(self):
         set_zero_world(self.bodies)
+
     def copy(self): # __copy__
         return State(self.world, objects=self.objects, attachments=self.attachments,
                      facts=self.facts, variables=self.variables) # TODO: use instead of new_state
+
     def new_state(self, objects=None, attachments=None, facts=None, variables=None):
         # TODO: could also just update the current state
         if objects is None:
@@ -1118,13 +1137,16 @@ class State(object):
         if variables is None:
             variables = self.variables
         return State(self.world, objects=objects, attachments=attachments, facts=facts, variables=variables)
+
     def assign(self):
         # TODO: topological sort
         for attachment in self.attachments.values():
             attachment.assign()
         return self
+
     def filter_facts(self, predicate): # TODO: predicates
         return [fact[1:] for fact in self.facts if fact[0].lower() == predicate.lower()]
+
     def apply_action(self, action): # Transition model
         if action is None:
             return self
@@ -1132,6 +1154,7 @@ class State(object):
             print('world.apply action')
         # assert isinstance(action, Action)
         return action.transition(self.copy())
+
     def camera_observation(self, include_rgb=False, include_depth=False, include_segment=False):
         if not (self.world.amera or include_rgb or include_depth or include_segment):
             return None
@@ -1145,6 +1168,7 @@ class State(object):
         if not include_segment:
             seg = None
         return CameraImage(rgb, depth, seg, pose, matrix)
+
     def sample_observation(self, include_conf=False, include_poses=False,
                            include_facts=False, include_variables=False, **kwargs): # Observation model
         # TODO: could technically also not require robot, camera_pose, or camera_matrix
@@ -1173,6 +1197,7 @@ class State(object):
         return '{}{}'.format(self.__class__.__name__, self.objects)
 
 #######################################################
+
 
 class Outcome(object):
     def __init__(self, collisions=[], violations=[]):
@@ -1357,7 +1382,9 @@ class Agent(Process): # Decision
     def policy(self, observation): # Operates indirectly on the state
         raise NotImplementedError()
 
+
 #######################################################
+
 
 def evolve_processes(state, processes=[], max_steps=INF, ONCE=False, verbose=False):
     # TODO: explicitly separate into exogenous and agent?

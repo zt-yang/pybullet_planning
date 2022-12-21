@@ -736,6 +736,13 @@ def repair_skeleton(skeleton):
         'pick_hand': 6,
         'place_hand': 6,
         'grasp_pull_handle': 10,
+
+        'pick': 6,
+        'place': 6,
+        'declare_store_in_space': 2,
+        'grasp_handle': 8,
+        'ungrasp_handle': 8,
+        'pull_door_handle': 11,
     }
     new_skeleton = []
     for a in skeleton:

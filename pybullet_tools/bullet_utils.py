@@ -1541,7 +1541,7 @@ def find_grasp_in_db(db_file, instance_name, LENGTH_VARIANTS=False, scale=None):
     if instance_name in db:
         all_data = db[instance_name]
         ## the newest format has attr including 'name', 'grasps', 'grasps_length_variants'
-        if '::' not in instance_name or scale == all_data['scale']:
+        if '::' not in instance_name or ('scale' in all_data and scale == all_data['scale']):
             data = all_data['grasps'] if not LENGTH_VARIANTS else all_data['grasps_l']
             if len(data) > 0:
                 found = rewrite_grasps(data)
@@ -1750,7 +1750,7 @@ def get_partnet_doors(path, body):
     body_joints = {}
     for line in get_partnet_semantics(path):
         link_name, part_type, part_name = line.split(' ')
-        if part_type == 'hinge' and part_name == 'door':
+        if part_type == 'hinge' and part_name in ['door', 'rotation_door']:
             link = link_from_name(body, link_name)
             joint = parent_joint_from_link(link)
             joint_name = line.replace(' ', '--')

@@ -115,7 +115,8 @@ def create_room(color=GREY, *args, **kwargs):
 #######################################################
 
 
-def create_table(world, xy=(0, 0), color=(.75, .75, .75, 1), category='supporter', name='table', w=0.5, h=0.9):
+def create_table(world, w=0.5, h=0.9, xy=(0, 0), color=(.75, .75, .75, 1),
+                 category='supporter', name='table'):
     return world.add_box(
         Supporter(create_box(w, w, h, color=color), category=category, name=name),
         Pose(point=Point(x=xy[0], y=xy[1], z=h / 2)))
@@ -1049,18 +1050,19 @@ def load_random_mini_kitchen_counter(world, movable_category='food', w=6, l=6, h
 
 
 def load_storage_mechanism(world, obj):
+    space = None
     ## --- ADD EACH DOOR JOINT
-    minifridge_doors = get_partnet_doors(obj.path, obj.body)
-    for b, j in minifridge_doors:
+    doors = get_partnet_doors(obj.path, obj.body)
+    for b, j in doors:
         world.add_joint_object(b, j, 'door')
         obj.doors.append((b, j))
 
     ## --- ADD ONE SPACE TO BE PUT INTO
-    minifridge_spaces = get_partnet_spaces(obj.path, obj.body)
-    for b, _, l in minifridge_spaces:
-        fridgestorage = world.add_object(Space(b, l, name=f'{obj.category}_storage'))
+    spaces = get_partnet_spaces(obj.path, obj.body)
+    for b, _, l in spaces:
+        space = world.add_object(Space(b, l, name=f'{obj.category}_storage'))
         break
-    return minifridge_doors, fridgestorage
+    return doors, space
 
 
 def load_fridge_with_food_on_surface(world, counter, name='minifridge',
@@ -1452,7 +1454,7 @@ def load_kitchen_mini_scene(world, **kwargs):
                    category='cabinet', name='cabinet')
             )
 
-    food_ids, bottle_ids, medicine_ids = load_counter_moveables([counter, shelf])
+    food_ids, bottle_ids, medicine_ids = load_counter_moveables(world, [counter, shelf])
 
     # add camera
     camera_pose = Pose(point=Point(x=4.2, y=0, z=2.5), euler=Euler(roll=PI / 2 + PI / 8, pitch=0, yaw=-PI / 2))
@@ -1466,32 +1468,48 @@ def load_kitchen_mini_scene(world, **kwargs):
 #################################################################
 
 
-def load_counter_moveables(counters):
+def load_counter_moveables(world, counters, x_food_min=0.5, obstables=[]):
+
+    def place_on_counter(obj_name, category=None):
+        counter = random.choice(counters)
+        obj = counter.place_new_obj(obj_name, category=category, RANDOM_INSTANCE=True)
+        (x, y, z), r = obj.get_pose()
+        ## scale the x to a reachable range
+        x_max = counter.aabb().upper[0]
+        x_new = x_max - (x_max - x_food_min) * (x_max - x) / counter.lx
+        obj.set_pose(((x_new, y, z), r))
+        counter.attach_obj(obj)
+        return obj
+
+    def ensure_cfree(obj, obstables):
+        while collided(obj, obstables):
+            world.remove_object(obj)
+            obj = place_on_counter(obj.category)
+        return obj
 
     ## add food items
-    x_food_min = 0.5
     food_ids = []
     for i in range(2):
-        counter = random.choice(counters)
-        obj = counter.place_new_obj('food', RANDOM_INSTANCE=True)
-        (x, y, z), r = obj.get_pose()
-        x = min([x_food_min, x])
-        obj.set_pose(((x, y, z), r))
+        obj = place_on_counter('food', category='edible')
+        obj = ensure_cfree(obj, obstables)
         food_ids.append(obj)
+        obstables.append(obj.body)
 
     ## add bottles
     bottle_ids = []
     for i in range(2):
-        counter = random.choice(counters)
-        obj = counter.place_new_obj('bottle', RANDOM_INSTANCE=True)
+        obj = place_on_counter('bottle')
+        obj = ensure_cfree(obj, obstables)
         bottle_ids.append(obj)
+        obstables.append(obj.body)
 
     ## add medicine
     medicine_ids = []
     for i in range(1):
-        counter = random.choice(counters)
-        obj = counter.place_new_obj('medicine', RANDOM_INSTANCE=True)
+        obj = place_on_counter('medicine')
+        obj = ensure_cfree(obj, obstables)
         medicine_ids.append(obj)
+        obstables.append(obj.body)
 
     return food_ids, bottle_ids, medicine_ids
 
@@ -1632,20 +1650,24 @@ def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=False):
     counter_x = (xd+xa)/2
     counter_w = xd-xa
     left_counter = create_box(w=counter_w, l=yb-ya, h=COUNTER_THICKNESS, color=color)
-    set_pose(left_counter, Pose(point=Point(x=counter_x, y=(yb+ya)/2, z=z)))
+    left_counter = world.add_object(Supporter(left_counter, name='sink_counter_left'),
+                     Pose(point=Point(x=counter_x, y=(yb+ya)/2, z=z)))
 
     right_counter = create_box(w=counter_w, l=yd-yc, h=COUNTER_THICKNESS, color=color)
-    set_pose(right_counter, Pose(point=Point(x=counter_x, y=(yd+yc)/2, z=z)))
+    right_counter = world.add_object(Supporter(right_counter, name='sink_counter_right'),
+                     Pose(point=Point(x=counter_x, y=(yd+yc)/2, z=z)))
 
     front_counter = create_box(w=xd-xc, l=yc-yb, h=COUNTER_THICKNESS, color=color)
-    set_pose(front_counter, Pose(point=Point(x=(xd+xc)/2, y=(yc+yb)/2, z=z)))
+    world.add_object(Object(front_counter, name='sink_counter_front', category='filler'),
+                     Pose(point=Point(x=(xd+xc)/2, y=(yc+yb)/2, z=z)))
 
     back_counter = create_box(w=xb-xa, l=yc-yb, h=COUNTER_THICKNESS, color=color)
-    set_pose(back_counter, Pose(point=Point(x=(xb+xa)/2, y=(yc+yb)/2, z=z)))
+    world.add_object(Object(back_counter, name='sink_counter_back', category='filler'),
+                     Pose(point=Point(x=(xb+xa)/2, y=(yc+yb)/2, z=z)))
 
     set_camera_target_body(sink)
 
-    return floor, base, counter_x, counter_w, z, color
+    return floor, base, counter_x, counter_w, z, color, [left_counter, right_counter]
 
 
 def sample_kitchen_furniture_ordering(all_necessary=True):
@@ -1688,7 +1710,82 @@ def sample_kitchen_furniture_ordering(all_necessary=True):
     return ordering[1:-1]
 
 
+def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.8,
+                                     obstacles=[], verbose=False):
+    cabinets, shelves = [], []
+    cabi_type = 'CabinetTop'
+
+    def add_wall_fillings(cabinet, color=FURNITURE_WHITE):
+        xa = x_min  ## counter.aabb().lower[0]
+        xb, ya, za = cabinet.aabb().lower
+        _, yb, zb = cabinet.aabb().upper
+        d = COUNTER_THICKNESS
+        # xb += 0.003
+        zb -= 0.003
+        ya += 0.003
+        yb -= 0.003
+
+        left = create_box(w=xb - xa, l=d, h=zb - za, color=color)
+        # set_pose(left, Pose(point=Point(x=(xa + xb) / 2, y=ya + d / 2, z=(za + zb) / 2)))
+        world.add_object(Object(left, name='cabinettop_filler_left', category='filler'),
+                         Pose(point=Point(x=(xa + xb) / 2, y=ya + d / 2, z=(za + zb) / 2)))
+
+        right = create_box(w=xb - xa, l=d, h=zb - za, color=color)
+        world.add_object(Object(right, name='cabinettop_filler_right', category='filler'),
+                         Pose(point=Point(x=(xa + xb) / 2, y=yb - d / 2, z=(za + zb) / 2)))
+
+        top = create_box(w=xb - xa, l=(yb - ya - 2 * d), h=d, color=color)
+        world.add_object(Object(top, name='cabinettop_filler_top', category='filler'),
+                         Pose(point=Point(x=(xa + xb) / 2, y=(ya + yb) / 2, z=zb - d / 2)))
+
+        bottom = create_box(w=xb - xa, l=(yb - ya - 2 * d), h=d, color=color)
+        world.add_object(Object(bottom, name='cabinettop_filler_bottom', category='filler'),
+                         Pose(point=Point(x=(xa + xb) / 2, y=(ya + yb) / 2, z=za + d / 2)))
+
+    def place_cabinet(selected_counters, cabi_type=cabi_type, cabi_ins=[]):
+        counter = random.choice(selected_counters)
+        ins = random.choice(cabi_ins)
+        cabinet = world.add_object(
+            Object(load_asset(cabi_type, yaw=math.pi, RANDOM_INSTANCE=ins),
+                   category=cabi_type, name=cabi_type)
+        )
+        cabinet.adjust_next_to(counter, direction='+z', align='+x', dz=dz)
+        return cabinet
+
+    def ensure_cfree(obj, obstables, selected_counters, **kwargs):
+        while collided(obj, obstables) or obj.aabb().upper[1] > y_max or obj.aabb().lower[1] < y_min:
+            world.remove_object(obj)
+            obj = place_cabinet(selected_counters, **kwargs)
+        return obj
+
+    def add_cabinets_shelves(selected_counters, obstables=[], **kwargs):
+        cabinet = place_cabinet(selected_counters, **kwargs)
+        cabinet = ensure_cfree(cabinet, obstables, selected_counters, **kwargs)
+        add_wall_fillings(cabinet)
+        cabinets.append(cabinet)
+
+    # ## load ultra wide CabinetTop
+    # wide_counters = [c for c in counters if c.ly > 1.149]
+    # if len(wide_counters) > 0:
+    #     add_cabinets_shelves(wide_counters, cabi_type, ['Sektion'])
+    #
+    # ## load wide CabinetTop
+    # wide_counters = [c for c in counters if 1.149 > c.ly > 0.768]
+    # if len(wide_counters) > 0:
+    #     add_cabinets_shelves(wide_counters, cabi_type, ['Chewie', 'Dagger'])
+
+    add_cabinets_shelves(counters, obstables=obstacles, cabi_type=cabi_type,
+                         cabi_ins=['Sektion', 'Chewie', 'Dagger'])
+
+    return cabinets, shelves
+
+
 def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
+    h_lower_cabinets = 1
+    dh_cabinets = 0.8
+    h_upper_cabinets = 0.768
+    wall_height = h_lower_cabinets + dh_cabinets + h_upper_cabinets + COUNTER_THICKNESS
+
     floor = create_house_floor(world, w=w, l=l, x=w/2, y=l/2)
 
     ordering = sample_kitchen_furniture_ordering()
@@ -1698,11 +1795,13 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     """ step 1: sample a sink """
     start = ordering.index('SinkBase')
     sink_y = l * start / len(ordering) + np.random.normal(0, 0.5)
-    floor, base, counter_x, counter_w, counter_z, color = sample_kitchen_sink(world, floor=floor, y=sink_y)
+    floor, base, counter_x, counter_w, counter_z, color, counters = \
+        sample_kitchen_sink(world, floor=floor, y=sink_y)
 
     under_counter = ['SinkBase', 'CabinetLower', 'DishwasherBox']
     on_base = ['MicrowaveHanging', 'MiniFridge']
     full_body = ['CabinetTall', 'Fridge', 'OvenCounter']
+    tall_body = ['CabinetTall', 'Fridge']
 
     def update_x_lower(obj, x_lower):
         if obj.aabb().lower[0] < x_lower:
@@ -1720,11 +1819,12 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
                        RANDOM_INSTANCE=True, verbose=verbose), name=f'{furniture.category}Base'))
 
     counter_regions = []
+    tall_obstacles = []
     right_counter_lower = right_counter_upper = base.aabb().upper[1]
     left_counter_lower = left_counter_upper = base.aabb().lower[1]
     x_lower = base.aabb().lower[0]
 
-    """ step 2: on the left and right of sinkbase, along with the extended counter """
+    """ step 2: on the left and right of sink base, along with the extended counter """
     for direction in ['+y', '-y']:
         if direction == '+y':
             categories = [c for c in ordering[start+1:]]
@@ -1733,6 +1833,8 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
         current = base
         for category in categories:
             furniture = load_furniture(category)
+            if furniture in tall_body:
+                tall_obstacles.append(furniture)
 
             if category in full_body + on_base:
                 if direction == '+y' and right_counter_lower != right_counter_upper:
@@ -1777,12 +1879,11 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     y = (right_counter_upper + left_counter_lower) / 2
     x = x_lower - WALL_WIDTH / 2
     wall = world.add_object(
-        Supporter(create_box(w=WALL_WIDTH, l=l, h=WALL_HEIGHT, color=color), name='wall'),
-        Pose(point=Point(x=x, y=y, z=WALL_HEIGHT/2)))
+        Supporter(create_box(w=WALL_WIDTH, l=l, h=wall_height, color=color), name='wall'),
+        Pose(point=Point(x=x, y=y, z=wall_height/2)))
     floor.adjust_pose(dx=x_lower - WALL_WIDTH)
 
-    """ step 5: make all the counters """
-    counters = []
+    """ step 3: make all the counters """
     for lower, upper in counter_regions:
         counters.append(world.add_object(
             Supporter(create_box(w=counter_w, l=upper-lower,
@@ -1802,15 +1903,29 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
                 Pose(point=Point(x=x, y=(upper + lower) / 2, z=counter_z)))
             # print('lower, upper', (round(lower, 2), round(upper, 2)))
 
-    # """ step 5: place electronics and movables on counters """
+    """ step 4: put upper cabinets and shelves """
+    cabinets, shelves = load_full_kitchen_upper_cabinets(world, counters, x_lower,
+                                                         left_counter_lower, right_counter_upper,
+                                                         dz=dh_cabinets, obstacles=tall_obstacles)
+
+    """ step 5: place electronics and movables on counters """
+    obstables = []
     if 'MicrowaveHanging' not in ordering:
         wide_counters = [c for c in counters if c.ly > 0.66]
         if len(wide_counters) > 0:
             counter = wide_counters[0]
             microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random())
             microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)))
+            obstables.append(microwave)
 
-    food_ids, bottle_ids, medicine_ids = load_counter_moveables(counters)
+    x_food_min = base.aabb().upper[0] - 0.3
+    counters.append(world.name_to_object('OvenCounter'))
+    for c in counters:
+        mx, my, z = c.aabb().upper
+        aabb = AABB(lower=(x_food_min, c.aabb().lower[1], z), upper=(mx, my, z + 0.1))
+        draw_aabb(aabb)
+    food_ids, bottle_ids, medicine_ids = \
+        load_counter_moveables(world, counters, x_food_min=x_food_min, obstables=obstables)
     moveables = food_ids + bottle_ids + medicine_ids
 
     """ step 6: take an image """
@@ -1819,7 +1934,8 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
         wait_unlocked()
 
     load_storage_mechanism(world, world.name_to_object('minifridge'))
-    return moveables
+    load_storage_mechanism(world, world.name_to_object('cabinettop'))
+    return moveables, cabinets
 
 
 if __name__ == '__main__':

@@ -63,7 +63,7 @@ MODEL_SCALES = {
         'VeggieZucchini': 0.01,
         'VeggieSweetPotato': 0.015,
         'VeggiePotato': 0.013,
-        'VeggieCauliflower': 0.008,
+        # 'VeggieCauliflower': 0.0056,
         'VeggieArtichoke': 0.014,
         'VeggieGreenPepper': 0.0005,
         'VeggieTomato': 0.008,
@@ -228,7 +228,7 @@ MODEL_HEIGHTS = {
                    '25959', '26608', '26387', '26800', '26657', '24152']
     },
     'CabinetUpper': {
-        'height': 0.6,
+        'height': 0.768,
         'models': ['45621', '45526', '46108', '46889', '48381', '49182']
     },
     'CabinetAboveOven': {
@@ -281,8 +281,8 @@ OBJ_SCALES = {
     'Egg': 0.03, 'Veggie': 0.3, 'VeggieLeaf': 0.3, 'VeggieStem': 0.3,
     'MilkBottle': 0.2, 'Bucket': 0.7, 'Cart': 1.1, 'PotBody': 0.3,
     'PlateFat': 0.8, 'PlateFlat': 0.8,
-    'VeggieCabbage': 0.005, 'MeatTurkeyLeg': 0.0007, 'VeggieTomato': 0.005,
-    'VeggieZucchini': 0.01, 'VeggiePotato': 0.015, 'VeggieCauliflower': 0.008,
-    'VeggieGreenPepper': 0.0003, 'VeggieArtichoke': 0.017, 'MeatChicken': 0.0008,
+    # 'VeggieCabbage': 0.005, 'MeatTurkeyLeg': 0.0007, 'VeggieTomato': 0.005,
+    # 'VeggieZucchini': 0.01, 'VeggiePotato': 0.015, 'VeggieCauliflower': 0.008,
+    # 'VeggieGreenPepper': 0.0003, 'VeggieArtichoke': 0.017, 'MeatChicken': 0.0008,
 }
 OBJ_SCALES = {k.lower(): v * 0.7 for k, v in OBJ_SCALES.items()}

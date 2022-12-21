@@ -147,13 +147,16 @@ class Object(Index):
         self.world.ATTACHMENTS[obj] = create_attachment(self, link, obj, OBJ=True)
         obj.change_supporting_surface(self)
 
-    def place_new_obj(self, obj_name, max_trial=8, **kwargs):
+    def place_new_obj(self, obj_name, category=None, max_trial=8, **kwargs):
         from pybullet_tools.bullet_utils import sample_obj_on_body_link_surface
         from world_builder.utils import load_asset
 
+        if category is None:
+            category = obj_name
+
         # set_renderer(False)
         obj = self.world.add_object(
-            Object(load_asset(obj_name.lower(), maybe=True, **kwargs), category=obj_name)
+            Object(load_asset(obj_name.lower(), maybe=True, **kwargs), category=category)
         )
         # body = sample_obj_on_body_link_surface(obj, self.body, self.link, max_trial=max_trial)
         self.world.put_on_surface(obj, max_trial=max_trial, surface=self.shorter_name)
@@ -235,24 +238,29 @@ class Object(Index):
     def height(self):
         return get_aabb_extent(self.aabb())[2]
 
-    def adjust_next_to(self, other, direction='+y', align='+x'):
+    def adjust_next_to(self, other, direction='+y', align='+x', dz=0):
         cabinet_categories = ['cabinetlower', 'cabinettall', 'minifridgebase',
                               'dishwasherbox', 'dishwasher']
+        cx, cy, cz = self.get_pose()[0]
         x = y = z = None
         if align == '+x':
             # x = other.aabb().upper[0] - self.lx / 2
-            x = other.aabb().upper[0] - (self.aabb().upper[0] - self.get_pose()[0][0])
+            x = other.aabb().upper[0] - (self.aabb().upper[0] - cx)
         if direction == '+y':
-            y = other.aabb().upper[1] + self.ly / 2
+            # y = other.aabb().upper[1] + self.ly / 2
+            y = other.aabb().upper[1] + (cy - self.aabb().lower[1])
             if self.category in cabinet_categories or other.category in cabinet_categories:
                 y += 0.04
         elif direction == '-y':
-            y = other.aabb().lower[1] - self.ly / 2
+            # y = other.aabb().lower[1] - self.ly / 2
+            y = other.aabb().lower[1] - (self.aabb().upper[1] - cy)
             if self.category in cabinet_categories or other.category in cabinet_categories:
                 y -= 0.04
         elif direction == '+z':
-            z = other.aabb().upper[2] + self.height / 2
-            y = other.get_pose()[0][1]
+            # z = other.aabb().upper[2] + self.height / 2 + dz
+            # y = other.get_pose()[0][1]
+            z = other.aabb().upper[2] + (cz - self.aabb().lower[2]) + dz
+            y = other.aabb().lower[1] + (cy - self.aabb().lower[1])
         self.adjust_pose(x=x, y=y, z=z)
         # print('adjust_next_to | other', other.aabb().upper[0], 'self', self.aabb().upper[0])
 
@@ -287,12 +295,15 @@ class Object(Index):
             return int(joint)
         except ValueError:
             return joint_from_name(self.body, joint)
+
     def get_joints(self, joints=None):
         if joints is None:
             return get_movable_joints(self.body) # get_joints | get_movable_joints
         return tuple(map(self.get_joint, joints))
+
     def get_joint_position(self, *args, **kwags):
         return get_joint_positions(self.body, [self.get_joint(*args, **kwags)])[0]
+
     def get_joint_positions(self, *args, **kwags):
         return get_joint_positions(self.body, self.get_joints(*args, **kwags))
 
@@ -318,16 +329,19 @@ class Object(Index):
         except ValueError:
             return link_from_name(self.body, link)
     #link_from_name = get_link
+
     def get_links(self, links=None):
         if links is None:
             return get_all_links(self.body)
         return tuple(map(self.get_joint, links))
+
     def get_link_pose(self, link=BASE_LINK):
         return get_link_pose(self.body, self.get_link(link))
 
     def create_saver(self, **kwargs):
         # TODO: inherit from saver
         return BodySaver(self.body, **kwargs)
+
     def get_link_oobb(self, link, index=0):
         # TODO: get_trimesh_oobb
         link = self.get_link(link)
@@ -336,8 +350,10 @@ class Object(Index):
         surface_oobb = tform_oobb(pose, oobb_from_data(surface_data))
         # draw_oobb(surface_oobb, color=RED)
         return surface_oobb
+
     def get_link_aabb(self, *args, **kwargs):
         return aabb_from_oobb(self.get_link_oobb(*args, **kwargs))
+
     def get_aabb(self, *args, **kwargs):
         # TODO: is there an easier way to to bind all of these methods?
         return get_aabb(self.body, *args, **kwargs)
@@ -363,6 +379,7 @@ class Object(Index):
             handles.append(add_text(label, position=position, parent=self.body, parent_link=child_link))
         self.handles.extend(handles)
         return handles
+
     def draw(self, text=None, **kwargs):
         if text is None:
             text = f':{self.body}'
@@ -374,9 +391,11 @@ class Object(Index):
         if not isinstance(self, Robot):
             self.draw_joints()
         return self.handles
+
     def erase(self):
         remove_handles(self.handles)
         self.handles = []
+
     def add_text(self, text):
         if self.text_handle != None:
             # p.removeUserDebugItem(self.text_handle)
@@ -387,19 +406,24 @@ class Object(Index):
         #                    lifeTime=0, parentObjectUniqueId=self.body, parentLinkIndex=-1)
         self.text_handle = add_text(self.text, position=(0, 0, .5), color=(1, 0, 0),
                            lifetime=0, parent=self.body)
+
     def is_active(self):
         return self.body is not None
+
     def remove(self): # TODO: overload del
         self.erase()
         if self.is_active():
             remove_body(self.body)
             self.body = None
+
     def add_grasp_marker(self, object):
         if object not in self.grasp_markers:
             self.grasp_markers.append(object)
         self.world.BODY_TO_OBJECT[object].grasp_parent = self.body
+
     def add_events(self, events):
         self.events.extend(events)
+
     def add_event(self, event):
         self.events.append(event)
 
@@ -425,31 +449,38 @@ class Object(Index):
     @property
     def shorter_name(self):
         return self.name.replace('counter#1--', '')
+
     @property
     def debug_name(self):
         return f'{self.name}|{self.pybullet_name}'
         # return f'{self.shorter_name}|{self.body}'
 
+
 class Moveable(Object):
     def __init__(self, body, **kwargs):
         super(Moveable, self).__init__(body, collision=False, **kwargs)
 
+
 class Steerable(Object):
     def __init__(self, body, **kwargs):
         super(Steerable, self).__init__(body, collision=False, **kwargs)
+
 
 class Supporter(Object):
     def __init__(self, body, **kwargs):
         super(Supporter, self).__init__(body, collision=False, **kwargs)
         self.supported_objects = []
 
+
 class Region(Object):
     def __init__(self, body, **kwargs):
        super(Region, self).__init__(body, collision=False, **kwargs)
 
+
 class Stove(Region):
     def __init__(self, body, **kwargs):
         super(Stove, self).__init__(body, **kwargs)
+
 
 class Floor(Region):
     def __init__(self, body, **kwargs):
@@ -457,6 +488,7 @@ class Floor(Region):
         self.category = 'floor'
         self.name = 'floor1'
         self.is_box = True
+
 
 class Environment(Region):
     def __init__(self, body, **kwargs):
@@ -492,17 +524,16 @@ class Space(Region):
         self.world.ATTACHMENTS[obj] = attachment
         # obj.supporting_surface = self
 
-    def place_new_obj(self, obj_name, max_trial=8, verbose=False, scale=1):
+    def place_new_obj(self, obj_name, category=None, max_trial=8, verbose=False, scale=1):
         from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, open_joint
         from world_builder.utils import load_asset
 
         # self.world.open_doors_drawers(self.body)
-
-        # body = sample_obj_in_body_link_space(obj_name, self.body, self.link, verbose=verbose)
-        # obj = self.world.add_object(Object(body, category=obj_name))
+        if category is None:
+            category = obj_name
 
         obj = self.world.add_object(
-            Moveable(load_asset(obj_name.lower(), maybe=True, scale=scale), category=obj_name)
+            Moveable(load_asset(obj_name.lower(), maybe=True, scale=scale), category=category)
         )
         sample_obj_in_body_link_space(obj, self.body, self.link)
 

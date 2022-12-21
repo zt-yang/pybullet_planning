@@ -243,7 +243,8 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
 
             """ test grasps """
             if skip_grasps:
-                print('length', get_aabb_extent(get_aabb(body))[1])
+                print('length', round(get_aabb_extent(get_aabb(body))[1], 3))
+                print('height', round(get_aabb_extent(get_aabb(body))[2], 3))
                 wait_if_gui()
             else:
                 test_grasp(body)
@@ -833,10 +834,10 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    test_grasps(robot, ['Microwave'], skip_grasps=True)  ## 'EyeGlasses'
+    # test_grasps(robot, ['CabinetTop'], skip_grasps=True)  ## 'EyeGlasses'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
-    # test_handle_grasps(robot, category='MiniFridge')
+    # test_handle_grasps(robot, category='CabinetUpper')
     ## Kitchen: 'MiniFridge', 'MiniFridgeDoorless', 'CabinetTop'
 
     """ --- placement related  --- """
@@ -848,7 +849,7 @@ if __name__ == '__main__':
     ## Kitchen: 'KitchenCounter', 'Tray' (surface_name='tray_bottom')
 
     # test_sink_configuration(robot)
-    # test_kitchen_configuration(robot)
+    test_kitchen_configuration(robot)
 
     """ --- specific counter --- """
     # test_placement_counter()  ## initial placement
