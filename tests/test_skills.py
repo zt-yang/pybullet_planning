@@ -243,6 +243,7 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
 
             """ test grasps """
             if skip_grasps:
+                print('length', get_aabb_extent(get_aabb(body))[1])
                 wait_if_gui()
             else:
                 test_grasp(body)
@@ -819,7 +820,7 @@ if __name__ == '__main__':
     ----------------- ----------------- ----------------- --------- """
 
     """ --- models related --- """
-    # get_data(categories=['MicrowaveHanging'])
+    # get_data(categories=['Microwave'])
     # test_texture(category='CoffeeMachine', id='103127')
     # test_vhacd()
 
@@ -832,10 +833,10 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    # test_grasps(robot, ['MiniFridge'], skip_grasps=False)  ## 'EyeGlasses'
+    test_grasps(robot, ['Microwave'], skip_grasps=True)  ## 'EyeGlasses'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
-    test_handle_grasps(robot, category='MiniFridge')
+    # test_handle_grasps(robot, category='MiniFridge')
     ## Kitchen: 'MiniFridge', 'MiniFridgeDoorless', 'CabinetTop'
 
     """ --- placement related  --- """

@@ -1048,6 +1048,21 @@ def load_random_mini_kitchen_counter(world, movable_category='food', w=6, l=6, h
     return minifridge_doors
 
 
+def load_storage_mechanism(world, obj):
+    ## --- ADD EACH DOOR JOINT
+    minifridge_doors = get_partnet_doors(obj.path, obj.body)
+    for b, j in minifridge_doors:
+        world.add_joint_object(b, j, 'door')
+        obj.doors.append((b, j))
+
+    ## --- ADD ONE SPACE TO BE PUT INTO
+    minifridge_spaces = get_partnet_spaces(obj.path, obj.body)
+    for b, _, l in minifridge_spaces:
+        fridgestorage = world.add_object(Space(b, l, name=f'{obj.category}_storage'))
+        break
+    return minifridge_doors, fridgestorage
+
+
 def load_fridge_with_food_on_surface(world, counter, name='minifridge',
                                      cabbage=None, SAMPLING=False):
     (x, y, _), _ = get_pose(counter)
@@ -1070,31 +1085,9 @@ def load_fridge_with_food_on_surface(world, counter, name='minifridge',
 
     set_camera_target_body(minifridge, dx=2, dy=0, dz=2)
 
-    ## --- ADD EACH DOOR JOINT
-    minifridge_doors = get_partnet_doors(minifridge.path, minifridge.body)
-    for door_joint in minifridge_doors:
-        world.add_joint_object(door_joint[0], door_joint[1], 'door')
-    # world.add_joints_by_keyword('minifridge', category='door')
-
-    ## --- ADD ONE SPACE TO BE PUT INTO
-    minifridge_spaces = get_partnet_spaces(minifridge.path, minifridge.body)
-    for b, _, l in minifridge_spaces:
-        fridgestorage = world.add_object(Space(b, l, name=f'{name}storage'))
-
-        if cabbage is not None:
-
-            # ## --- PICK FROM THE STORAGE
-            # fridgestorage.place_obj(cabbage)
-            # (x0, y0, z0), quat0 = get_pose(cabbage)
-            # y0 = max(y0, get_aabb(b, link=l).lower[0] + 0.5)
-            # y0 = min(y0, get_aabb(b, link=l).upper[0] - 0.5)
-            # offset = get_aabb_extent(get_aabb(cabbage))[0] / 2 + random.uniform(0.05, 0.15) ## 0.05
-            # x0 = get_aabb(b, link=l).upper[0] - offset
-            # set_pose(cabbage, ((x0, y0, z0), quat0))
-            # fridgestorage.include_and_attach(cabbage)
-
-            place_in_cabinet(fridgestorage, cabbage)
-        break
+    minifridge_doors, fridgestorage = load_storage_mechanism(world, minifridge)
+    if cabbage is not None:
+        place_in_cabinet(fridgestorage, cabbage)
 
     return list(minifridge_doors.keys())
 
@@ -1573,7 +1566,7 @@ def place_faucet_by_sink(faucet_obj, sink_obj, gap=0.01):
     x = get_link_pose(body, base_link)[0][0]
     aabb = get_aabb(body, base_link)
     lx = get_aabb_extent(aabb)[0]
-    x_new = sink_obj.aabb.lower[0] - lx / 2 - gap
+    x_new = sink_obj.aabb().lower[0] - lx / 2 - gap
     faucet_obj.adjust_pose(dx=x_new - x)
 
 
@@ -1615,10 +1608,10 @@ def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=False):
     place_faucet_by_sink(faucet, sink)
     faucet.adjust_pose(dz=COUNTER_THICKNESS)
 
-    xa, ya, _ = base.aabb.lower
-    xb, yb, _ = sink.aabb.lower
-    xc, yc, z = sink.aabb.upper
-    xd, yd, _ = base.aabb.upper
+    xa, ya, _ = base.aabb().lower
+    xb, yb, _ = sink.aabb().lower
+    xc, yc, z = sink.aabb().upper
+    xd, yd, _ = base.aabb().upper
     z -= COUNTER_THICKNESS/2
 
     padding, color = {
@@ -1676,7 +1669,7 @@ def sample_kitchen_furniture_ordering(all_necessary=True):
         if ordering[left] == END and ordering[right] == END:
             if all_necessary:
                 for each in necessary:
-                    index = random.choice(range(len(ordering)))
+                    index = random.choice(range(1, len(ordering)-1))
                     ordering.insert(index, each)
             break
         else:
@@ -1695,7 +1688,7 @@ def sample_kitchen_furniture_ordering(all_necessary=True):
     return ordering[1:-1]
 
 
-def sample_full_kitchen(world, w=3, l=8, verbose=True):
+def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     floor = create_house_floor(world, w=w, l=l, x=w/2, y=l/2)
 
     ordering = sample_kitchen_furniture_ordering()
@@ -1712,8 +1705,8 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True):
     full_body = ['CabinetTall', 'Fridge', 'OvenCounter']
 
     def update_x_lower(obj, x_lower):
-        if obj.aabb.lower[0] < x_lower:
-            x_lower = obj.aabb.lower[0]
+        if obj.aabb().lower[0] < x_lower:
+            x_lower = obj.aabb().lower[0]
         return x_lower
 
     def load_furniture(category):
@@ -1727,9 +1720,9 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True):
                        RANDOM_INSTANCE=True, verbose=verbose), name=f'{furniture.category}Base'))
 
     counter_regions = []
-    right_counter_lower = right_counter_upper = base.aabb.upper[1]
-    left_counter_lower = left_counter_upper = base.aabb.lower[1]
-    x_lower = base.aabb.lower[0]
+    right_counter_lower = right_counter_upper = base.aabb().upper[1]
+    left_counter_lower = left_counter_upper = base.aabb().lower[1]
+    x_lower = base.aabb().lower[0]
 
     """ step 2: on the left and right of sinkbase, along with the extended counter """
     for direction in ['+y', '-y']:
@@ -1741,34 +1734,39 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True):
         for category in categories:
             furniture = load_furniture(category)
 
-            if category in full_body:
-                if direction == '+y':
+            if category in full_body + on_base:
+                if direction == '+y' and right_counter_lower != right_counter_upper:
                     counter_regions.append([right_counter_lower, right_counter_upper])
-                else:
+                elif direction == '-y' and left_counter_lower != left_counter_upper:
                     counter_regions.append([left_counter_lower, left_counter_upper])
 
             ## x_lower aligns with the counter and under the counter
             if category in under_counter + full_body:
                 furniture.adjust_next_to(current, direction=direction, align='+x')
-                if direction == '+y':
-                    right_counter_upper = furniture.aabb.upper[1]
-                else:
-                    left_counter_lower = furniture.aabb.lower[1]
 
             ## put a cabinetlower with the same y_extent as the object
             elif category in on_base:
-                furniture_base = load_furniture_base(current)
+                furniture_base = load_furniture_base(furniture)
                 furniture_base.adjust_next_to(current, direction=direction, align='+x')
                 furniture.adjust_next_to(furniture_base, direction='+z', align='+x')
                 x_lower = update_x_lower(furniture, x_lower)
 
+            if direction == '+y':
+                right_counter_upper = furniture.aabb().upper[1]
+            else:
+                left_counter_lower = furniture.aabb().lower[1]
+
             x_lower = update_x_lower(furniture, x_lower)
             current = furniture
-            if category in full_body:
+            if category in full_body + on_base:
                 if direction == '+y':
                     right_counter_lower = right_counter_upper
                 else:
                     left_counter_upper = left_counter_lower
+            # if direction == '+y':
+            #     right_most = furniture.aabb().upper[1]
+            # else:
+            #     left_most = furniture.aabb().lower[1]
 
     if right_counter_lower != right_counter_upper:
         counter_regions.append([right_counter_lower, right_counter_upper])
@@ -1790,27 +1788,39 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True):
             Supporter(create_box(w=counter_w, l=upper-lower,
                                  h=COUNTER_THICKNESS, color=color), name='counter'),
             Pose(point=Point(x=counter_x, y=(upper + lower) / 2, z=counter_z))))
-        print('lower, upper', (round(lower, 2), round(upper, 2)))
+        # print('lower, upper', (round(lower, 2), round(upper, 2)))
 
     ## to cover up the wide objects
-    if x_lower < base.aabb.lower[0]:
-        x_upper = base.aabb.lower[0]
+    if x_lower < base.aabb().lower[0]:
+        x_upper = base.aabb().lower[0]
         x = (x_upper+x_lower)/2
-        counter_regions.append([base.aabb.lower[1], base.aabb.upper[1]])
+        counter_regions.append([base.aabb().lower[1], base.aabb().upper[1]])
         for lower, upper in counter_regions:
-            counters.append(world.add_object(
-                Supporter(create_box(w=x_upper-x_lower, l=upper-lower,
+            world.add_object(
+                Supporter(create_box(w=x_upper - x_lower, l=upper - lower,
                                      h=COUNTER_THICKNESS, color=color), name='counter'),
-                Pose(point=Point(x=x, y=(upper + lower) / 2, z=counter_z))))
-            print('lower, upper', (round(lower, 2), round(upper, 2)))
+                Pose(point=Point(x=x, y=(upper + lower) / 2, z=counter_z)))
+            # print('lower, upper', (round(lower, 2), round(upper, 2)))
+
+    # """ step 5: place electronics and movables on counters """
+    if 'MicrowaveHanging' not in ordering:
+        wide_counters = [c for c in counters if c.ly > 0.66]
+        if len(wide_counters) > 0:
+            counter = wide_counters[0]
+            microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random())
+            microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)))
+
+    food_ids, bottle_ids, medicine_ids = load_counter_moveables(counters)
+    moveables = food_ids + bottle_ids + medicine_ids
 
     """ step 6: take an image """
     set_camera_pose((4, 4, 3), (0, 4, 0))
-    wait_unlocked()
+    if pause:
+        wait_unlocked()
+
+    load_storage_mechanism(world, world.name_to_object('minifridge'))
+    return moveables
 
 
 if __name__ == '__main__':
     ordering = sample_kitchen_furniture_ordering()
-
-
-

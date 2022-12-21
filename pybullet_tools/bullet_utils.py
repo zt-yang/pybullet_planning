@@ -1330,9 +1330,17 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
                         min_num_pts=40, RETAIN_ALL=False, verbose=False, collisions=False):
     from pybullet_tools.flying_gripper_utils import get_cloned_se3_conf
     robot = world.robot
+
+    ################# for debugging ################
+    # possible = [(3.1416, -0.0, 0.0), (3.1416, -0.0, 3.1416)]
+    # for p in possible:
+    #     if equal(quat_from_euler(p), grasp[1], 0.01):
+    #         visualize = True
+    ################################################
+
     # print(f'bullet_utils.check_cfree_gripper(object_pose={nice(object_pose)}) before robot.visualize_grasp')
     gripper_grasp = robot.visualize_grasp(object_pose, grasp, color=color, verbose=verbose)
-    if gripper_grasp == None:
+    if gripper_grasp is None:
         return False, None, None
 
     if visualize: ## and not firstly: ## somtimes cameras blocked by robot, need to change dx, dy
@@ -1517,32 +1525,40 @@ def find_grasp_in_db(db_file, instance_name, LENGTH_VARIANTS=False, scale=None):
     """ find saved json files, prioritize databases/ subdir """
     db = json.load(open(db_file, 'r')) if isfile(db_file) else {}
 
+    def rewrite_grasps(data):
+        ## the newest format has poses written as (x, y, z, roll, pitch, row)
+        if len(data[0]) == 6:
+            found = [(tuple(e[:3]), quat_from_euler(e[3:])) for e in data]
+        elif len(data[0][1]) == 3:
+            found = [(tuple(e[0]), quat_from_euler(e[1])) for e in data]
+        elif len(data[0][1]) == 4:
+            found = [(tuple(e[0]), tuple(e[1])) for e in data]
+        print(f'    bullet_utils.find_grasp_in_db returned {len(found)}'
+              f' grasps for {instance_name} | scale = {scale}')
+        return found
+
     found = None
     if instance_name in db:
         all_data = db[instance_name]
         ## the newest format has attr including 'name', 'grasps', 'grasps_length_variants'
-        if isinstance(all_data, dict):
+        if '::' not in instance_name or scale == all_data['scale']:
             data = all_data['grasps'] if not LENGTH_VARIANTS else all_data['grasps_l']
-        if len(data) > 0:
-            ## the newest format has poses written as (x, y, z, roll, pitch, row)
-            if len(data[0]) == 6:
-                found = [(tuple(e[:3]), quat_from_euler(e[3:])) for e in data]
-            elif len(data[0][1]) == 3:
-                found = [(tuple(e[0]), quat_from_euler(e[1])) for e in data]
-            elif len(data[0][1]) == 4:
-                found = [(tuple(e[0]), tuple(e[1])) for e in data]
-            print(f'    bullet_utils.find_grasp_in_db returned {len(found)} grasps for ({instance_name})')
+            if len(data) > 0:
+                found = rewrite_grasps(data)
+                ## scale the grasps for object grasps but not handle grasps
+                if scale is not None and 'scale' in all_data and scale != all_data['scale']:
+                    found = [(tuple(scale/all_data['scale'] * np.array(p)), q) for p, q in found]
+                    # new_found = []
+                    # for p, q in found:
+                    #     p = np.array(p)
+                    #     p[:2] *= scale / all_data['scale']
+                    #     p[2] *= scale * 1.4 / all_data['scale']
+                    #     new_found.append((tuple(p), q))
+                    # found = new_found
+        elif 'other_scales' in all_data and str(scale) in all_data['other_scales']:
+            data = all_data['other_scales'][str(scale)]
+            found = rewrite_grasps(data)
 
-            ## scale the grasps
-            if scale is not None and scale != all_data['scale']:
-                # found = [(tuple(scale/all_data['scale'] * np.array(p)), q) for p, q in found]
-                new_found = []
-                for p, q in found:
-                    p = np.array(p)
-                    p[:2] *= scale / all_data['scale']
-                    p[2] *= scale * 1.4 / all_data['scale']
-                    new_found.append((tuple(p), q))
-                found = new_found
     return found, db, db_file
 
 
@@ -1561,12 +1577,17 @@ def add_grasp_in_db(db, db_file, instance_name, grasps, name=None,
     if name is None:
         name = 'None'
 
-    db[instance_name] = {
-        'name': name,
-        key: add_grasps,
-        'datetime': get_datetime(),
-        'scale': scale,
-    }
+    if instance_name in db:
+        if 'other_scales' not in db[instance_name]:
+            db[instance_name]['other_scales'] = {}
+        db[instance_name]['other_scales'][str(scale)] = add_grasps
+    else:
+        db[instance_name] = {
+            'name': name,
+            key: add_grasps,
+            'datetime': get_datetime(),
+            'scale': scale,
+        }
     keys = {k: v['datetime'] for k, v in db.items()}
     keys = sorted(keys.items(), key=lambda x: x[1])
     db = {k: db[k] for k, v in keys}

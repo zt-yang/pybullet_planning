@@ -324,9 +324,7 @@ class World(object):
                 self.add_to_cat(knob, 'joint')
         return joints
 
-    def get_doors_drawers(self, body, SKIP=True):
-        if self.SKIP_JOINTS:  ## SKIP and
-            return [], [], []
+    def get_doors_drawers(self, body):
         obj = self.BODY_TO_OBJECT[body]
         if obj.doors is not None:
             return obj.doors, obj.drawers, obj.knobs
@@ -334,11 +332,12 @@ class World(object):
         doors = []
         drawers = []
         knobs = []
-        for joint in get_joints(body):
-            joints = self.add_joint_object(body, joint)
-            doors.extend(joints['door'])
-            drawers.extend(joints['drawer'])
-            knobs.extend(joints['knob'])
+        if not self.SKIP_JOINTS:
+            for joint in get_joints(body):
+                joints = self.add_joint_object(body, joint)
+                doors.extend(joints['door'])
+                drawers.extend(joints['drawer'])
+                knobs.extend(joints['knob'])
 
         obj.doors = doors
         obj.drawers = drawers
@@ -416,7 +415,7 @@ class World(object):
         bodies = [self.robot] + sort_body_parts(BODY_TO_OBJECT.keys())
         bodies += sort_body_parts(REMOVED_BODY_TO_OBJECT.keys(), bodies)
         static_bodies = [b for b in get_bodies() if b not in bodies]
-        bodies += static_bodies
+        # bodies += static_bodies
         print_not = print_not_2 = False
         for body in bodies:
             if body in ROBOT_TO_OBJECT:
@@ -463,11 +462,13 @@ class World(object):
         print_fn('----------------')
 
     def get_all_obj_in_body(self, body):
+        if isinstance(body, tuple):
+            return [body]
         object = self.BODY_TO_OBJECT[body]
         bodies = [body]
-        if object.doors is not None:
+        if len(object.doors) > 0:
             bodies += [(body, j) for j in object.doors]
-        if object.drawers is not None:
+        if len(object.drawers) > 0:
             bodies += [(body, j) for j in object.drawers]
         bodies += [(body, None, l) for l in object.surfaces + object.spaces]
         bodies += [bb for bb in self.BODY_TO_OBJECT.keys() if
@@ -483,6 +484,8 @@ class World(object):
                     if isinstance(item, Object):
                         item = item.pybullet_name
                     bodies.append(item)
+                    if isinstance(item, tuple):
+                        bodies.append(item[0])
         all_bodies = list(self.BODY_TO_OBJECT.keys())
         for body in all_bodies:
             if body not in bodies:
@@ -492,6 +495,8 @@ class World(object):
         if body is None: return
         bodies = self.get_all_obj_in_body(body)
         for body in bodies:
+            if body not in self.BODY_TO_OBJECT:
+                continue
             category = self.BODY_TO_OBJECT[body].category
             obj = self.BODY_TO_OBJECT.pop(body)
             self.OBJECTS_BY_CATEGORY[category] = [

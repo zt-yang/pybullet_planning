@@ -220,39 +220,41 @@ class Object(Index):
     def get_pose(self):
         return get_pose(self.body)
 
-    @property
     def aabb(self):
         return get_aabb(self.body)
 
     @property
     def lx(self):
-        return get_aabb_extent(self.aabb)[0]
+        return get_aabb_extent(self.aabb())[0]
 
     @property
     def ly(self):
-        return get_aabb_extent(self.aabb)[1]
+        return get_aabb_extent(self.aabb())[1]
 
     @property
     def height(self):
-        return get_aabb_extent(self.aabb)[2]
+        return get_aabb_extent(self.aabb())[2]
 
     def adjust_next_to(self, other, direction='+y', align='+x'):
-        cabinet_categories = ['cabinetlower', 'cabinettall', 'minifridgebase']
+        cabinet_categories = ['cabinetlower', 'cabinettall', 'minifridgebase',
+                              'dishwasherbox', 'dishwasher']
         x = y = z = None
         if align == '+x':
-            x = other.aabb.upper[0] - self.lx / 2
+            # x = other.aabb().upper[0] - self.lx / 2
+            x = other.aabb().upper[0] - (self.aabb().upper[0] - self.get_pose()[0][0])
         if direction == '+y':
-            y = other.aabb.upper[1] + self.ly / 2
+            y = other.aabb().upper[1] + self.ly / 2
             if self.category in cabinet_categories or other.category in cabinet_categories:
                 y += 0.04
         elif direction == '-y':
-            y = other.aabb.lower[1] - self.ly / 2
+            y = other.aabb().lower[1] - self.ly / 2
             if self.category in cabinet_categories or other.category in cabinet_categories:
                 y -= 0.04
         elif direction == '+z':
-            z = other.aabb.upper[2] + self.height / 2
+            z = other.aabb().upper[2] + self.height / 2
             y = other.get_pose()[0][1]
         self.adjust_pose(x=x, y=y, z=z)
+        # print('adjust_next_to | other', other.aabb().upper[0], 'self', self.aabb().upper[0])
 
     def adjust_pose(self, x=None, y=None, z=None, dx=None, dy=None, dz=None):
         (cx, cy, cz), r = self.get_pose()

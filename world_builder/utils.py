@@ -123,16 +123,16 @@ def get_model_scale(file, l=None, w=None, h=None, scale=1, category=None):
     if w is not None or l is not None:
         width, length = extent[:2]
         if w is None:
-            scale = l / length
+            scale *= l / length
         elif l is None:
-            scale = w / width
+            scale *= w / width
         else:
-            scale = min(l / length, w / width) ## unable to reconstruct
+            scale *= min(l / length, w / width) ## unable to reconstruct
 
     ## ------ Case 3: given height of object
     elif h is not None:
         height = extent[2]
-        scale = h/height
+        scale *= h / height
 
     ## ------ Case N: exceptions
     if category is not None:
