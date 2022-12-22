@@ -763,15 +763,22 @@ def test_vhacd():
     print()
 
 
-def test_sink_configuration(robot):
+def test_sink_configuration(robot, pause=False):
     world = get_test_world(robot=robot, semantic_world=True)
     floor = create_house_floor(world, w=10, l=10, x=5, y=5)
     target = None
     for x in range(1, 5):
         for y in range(1, 5):
             base = sample_kitchen_sink(world, floor=floor, x=2*x, y=2*y)[1]
+            mx, my, mz = base.aabb().upper
+            ny = base.aabb().lower[1]
+            aabb = AABB(lower=(mx - 0.3, ny, mz), upper=(mx, my, mz + 0.1))
+            draw_aabb(aabb)
             if x == 4 and y == 3:
                 target = base
+            if pause:
+                set_camera_target_body(base, dx=0.1, dy=0, dz=1.5)
+                wait_unlocked()
     set_camera_target_body(target, dx=2, dy=0, dz=4)
     wait_unlocked()
 
@@ -848,8 +855,8 @@ if __name__ == '__main__':
     # test_placement_on(robot, category='Tray', surface_name='tray_bottom')  ## sampled placement
     ## Kitchen: 'KitchenCounter', 'Tray' (surface_name='tray_bottom')
 
-    # test_sink_configuration(robot)
-    test_kitchen_configuration(robot)
+    test_sink_configuration(robot, pause=True)
+    # test_kitchen_configuration(robot)
 
     """ --- specific counter --- """
     # test_placement_counter()  ## initial placement

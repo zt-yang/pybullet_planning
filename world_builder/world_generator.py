@@ -170,6 +170,8 @@ def to_lisdf(world, output_dir, world_name=None, verbose=True, **kwargs):
     for body in bodies:
         if body in world.BODY_TO_OBJECT:
             obj = world.BODY_TO_OBJECT[body]
+        elif body in world.REMOVED_BODY_TO_OBJECT:
+            obj = world.REMOVED_BODY_TO_OBJECT[body]
         elif body in world.ROBOT_TO_OBJECT:
             obj = world.ROBOT_TO_OBJECT[body]
         else:
@@ -227,8 +229,8 @@ def to_lisdf(world, output_dir, world_name=None, verbose=True, **kwargs):
             #     file, scale = get_file_scale(obj.name)
 
             """ useful but not used """
-            # if '/home/' in file:
-            #     file = '../..' + file[file.index('/assets'):]
+            if '/home/' in file:
+                file = '../..' + file[file.index('/assets'):]
             # else:
             #     if exp_name != None:
             #         file = file.replace('../assets/', '../../assets/')
@@ -333,32 +335,27 @@ def clean_domain_pddl(pddl_str, all_pred_names):
     return pddl_str
 
 
-def save_to_outputs_folder(outpath, exp_path, data_generation=False, multiple_solutions=False):
+def save_to_outputs_folder(output_path, data_path, data_generation=False, multiple_solutions=False):
     if data_generation:
         original = 'visualizations'
         if isfile(join(original, 'log.json')):
             for subdir in ['constraint_networks', 'stream_plans']:
                 if len(listdir(join(original, subdir))) < 1: continue
-                shutil.move(join(original, subdir), join(outpath, subdir))
+                shutil.move(join(original, subdir), join(output_path, subdir))
             for subfile in ['log.json']:
-                shutil.move(join(original, subfile), join(outpath, subfile))
-        else:
-            new_outpath = f"{outpath}_failed"
-            shutil.move(outpath, new_outpath)
-            outpath = new_outpath
+                shutil.move(join(original, subfile), join(output_path, subfile))
+        # else:
+        #     new_outpath = f"{outpath}_failed"
+        #     shutil.move(outpath, new_outpath)
+        #     outpath = new_outpath
 
     """ =========== move to data collection folder =========== """
-    ## 'one_fridge_pick_pr2'
-    data_path = outpath.replace('test_cases', join('outputs', 'one_fridge_pick_pr2'))
-    shutil.move(outpath, data_path)
+    # ## 'one_fridge_pick_pr2'
+    # data_path = outpath.replace('test_cases', join('outputs', 'one_fridge_pick_pr2'))
+    shutil.move(output_path, data_path)
+    shutil.move(join(data_path, 'time.json'), join(data_path, 'plan.json'))
 
     """ =========== move the log and plan =========== """
-    if exp_path is None:
-        return # TODO(caelan): happens when an empty plan
-    exp_path = exp_path.replace('.mp4', '')
-    shutil.move(f"{exp_path}_log.txt", join(data_path, 'log.txt'))
-    shutil.move(f"{exp_path}_time.json", join(data_path, 'plan.json'))
-    shutil.move(f"{exp_path}_commands.pkl", join(data_path, 'commands.pkl'))
     if multiple_solutions:
         shutil.move(f"multiple_solutions.json", join(data_path, 'multiple_solutions.json'))
 

@@ -1612,13 +1612,14 @@ def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=False):
     sink = world.add_object(Object(
         load_asset('Sink', x=x, y=y, yaw=math.pi, floor=base.body,
                    RANDOM_INSTANCE=True, verbose=verbose), name='sink'))
-    sink.adjust_pose(dz=-sink.height+COUNTER_THICKNESS)
+    dx = (base.aabb().upper[0] - sink.aabb().lower[0]) - 0.05
+    sink.adjust_pose(dx=dx, dz=-sink.height+COUNTER_THICKNESS)
     if sink.instance_name == 'partnet_u82f2a1a8-3a4b-4dd0-8fac-6679970a9b29': ##'100685'
         x += 0.2
-        sink.adjust_pose(dx=0.2)
+        # sink.adjust_pose(dx=0.2)
     if sink.instance_name == 'partnet_549813be-3bd8-47dd-9a49-b51432b2f14c': ##'100685'
         x -= 0.06
-        sink.adjust_pose(dx=-0.06)
+        # sink.adjust_pose(dx=-0.06)
 
     faucet = world.add_object(Object(
         load_asset('Faucet', x=x, y=y, yaw=math.pi, floor=base.body,
