@@ -267,6 +267,9 @@ def save_multiple_solutions(plan_dataset, indices=None, run_dir=None,
                     min_len = len(plan)
                 score = round(0.5 + min_len / (2*len(plan)), 3)
         skeleton = ''
+        ## in HPN mode
+        if '-no--' in str(opt_plan):
+            save = True
         if save:
             skeleton = get_plan_skeleton(opt_plan, indices=indices)
             log = {
