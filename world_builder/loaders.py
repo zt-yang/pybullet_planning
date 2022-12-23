@@ -1612,8 +1612,9 @@ def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=False):
     sink = world.add_object(Object(
         load_asset('Sink', x=x, y=y, yaw=math.pi, floor=base.body,
                    RANDOM_INSTANCE=True, verbose=verbose), name='sink'))
-    dx = (base.aabb().upper[0] - sink.aabb().lower[0]) - 0.05
-    sink.adjust_pose(dx=dx, dz=-sink.height+COUNTER_THICKNESS)
+    dx = (base.aabb().upper[0] - sink.aabb().upper[0]) - 0.05
+    dy = sink.ly/2 - (sink.aabb().upper[1] - y)
+    sink.adjust_pose(dx=dx, dy=dy, dz=-sink.height+COUNTER_THICKNESS)
     if sink.instance_name == 'partnet_u82f2a1a8-3a4b-4dd0-8fac-6679970a9b29': ##'100685'
         x += 0.2
         # sink.adjust_pose(dx=0.2)
