@@ -15,7 +15,7 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     get_links, check_initial_end, get_collision_fn, BLUE, WHITE, TAN, GREY, YELLOW, aabb_contains_aabb
 
 from pybullet_tools.bullet_utils import check_cfree_gripper, multiply, has_tracik, set_camera_target_body, \
-    get_rotation_matrix
+    visualize_bconf
 from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics
 from pybullet_tools.ikfast.utils import USE_CURRENT
 from pybullet_tools.pr2_primitives import Grasp, iterate_approach_path, \
@@ -40,7 +40,7 @@ LINK_POSE_TO_JOINT_POSITION = {}
 
 
 def pr2_grasp(body, value, grasp_type=None):
-    if grasp_type == None:
+    if grasp_type is None:
         euler = euler_from_quat(value[1])
         grasp_type = 'top'
         if euler[0] == euler[1] == 0:
@@ -1388,7 +1388,7 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
         if collided(gripper_grasp, obstacles, articulated=True): # w is not None
             #wait_unlocked()
             #robot.remove_gripper(gripper_grasp)
-            print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
+            if verbose: print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
             return
         #robot.remove_gripper(gripper_grasp)
         # Fix grasps
@@ -1413,7 +1413,7 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
             for conf in ik_solver.generate(gripper_pose): # TODO: islice
                 joint_state = dict(zip(ik_solver.joints, conf))
                 if max_attempts <= attempts:
-                    print(f'{get_ik_gen.__name__} timed out after {attempts} attempts!')
+                    if verbose: print(f'{get_ik_gen.__name__} timed out after {attempts} attempts!')
                     #wait_unlocked()
                     if soft_failures:
                         attempts = 0

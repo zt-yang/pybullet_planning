@@ -756,6 +756,8 @@ class ConfSaver(Saver):
     def restore(self):
         #set_configuration(self.body, self.conf)
         #set_joint_positions(self.body, self.joints, self.positions)
+        if len(self.joints) != len(self.positions):
+            print('why not equal')
         set_joint_states(self.body, self.joints, self.positions, self.velocities)
         #set_joint_velocities(self.body, self.joints, self.velocities)
 
@@ -2087,6 +2089,8 @@ def set_joint_position(body, joint, value):
 def set_joint_states(body, joints, positions, velocities):
     assert len(joints) == len(positions) == len(velocities)
     for joint, position, velocity in zip(joints, positions, velocities):
+        if joint not in get_joints(body):
+            continue
         set_joint_state(body, joint, position, velocity)
 
 def set_joint_positions(body, joints, values):

@@ -1008,7 +1008,7 @@ def fit_dimensions(body, body_pose=unit_pose()):
 ROTATIONAL_MATRICES = {}
 
 
-def get_rotation_matrix(body):
+def get_rotation_matrix(body, verbose=True):
     import untangle
     r = unit_pose()
     collision_data = get_collision_data(body, 0)
@@ -1017,7 +1017,8 @@ def get_rotation_matrix(body):
         urdf_file = dirname(collision_data[0].filename.decode())
         urdf_file = urdf_file.replace('/textured_objs', '')
         if urdf_file not in ROTATIONAL_MATRICES:
-            print('get_rotation_matrix | urdf_file = ', urdf_file)
+            if verbose:
+                print('get_rotation_matrix | urdf_file = ', urdf_file)
             joints = untangle.parse(join(urdf_file, 'mobility.urdf')).robot.joint
             if isinstance(joints, list):
                 for j in joints:
@@ -1039,15 +1040,15 @@ def get_rotation_matrix(body):
     return r
 
 
-def get_model_pose(body, link=None):
+def get_model_pose(body, link=None, **kwargs):
     if link is None:
-        body_pose = multiply(get_pose(body), get_rotation_matrix(body))
+        body_pose = multiply(get_pose(body), get_rotation_matrix(body, **kwargs))
     else:
         body_pose = get_link_pose(body, link)
     return body_pose
 
 
-def get_model_points(body, link=None, verbose=False):
+def get_model_points(body, link=None):
     if link is None:
         links = get_links(body)
     else:
@@ -1062,9 +1063,9 @@ def get_model_points(body, link=None, verbose=False):
     return vertices
 
 
-def draw_points(body, link=None):
-    body_pose = get_model_pose(body, link)
-    vertices = get_model_points(body, link)
+def draw_points(body, link=None, **kwargs):
+    body_pose = get_model_pose(body, link=link, **kwargs)
+    vertices = get_model_points(body, link=link)
     vertices = apply_affine(body_pose, vertices)
     handles = []
     num_vertices = 40
@@ -1082,9 +1083,9 @@ def is_box_entity(body, link=-1):
     return len(data) != 0 and data[0].geometry_type == p.GEOM_BOX
 
 
-def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False, **kwargs):
-    body_pose = get_model_pose(body, link)
-    vertices = get_model_points(body, link=link, verbose=verbose)
+def draw_fitted_box(body, link=None, draw_box=False, draw_centroid=False, verbose=False, **kwargs):
+    body_pose = get_model_pose(body, link=link, verbose=verbose)
+    vertices = get_model_points(body, link=link)
     if link is None:  link = -1
     data = get_collision_data(body, link)
     if len(data) == 0 or data[0].geometry_type == p.GEOM_MESH:
@@ -1092,9 +1093,11 @@ def draw_fitted_box(body, link=None, draw_centroid=False, verbose=False, **kwarg
     else: ## if data.geometry_typep == p.GEOM_BOX:
         aabb = get_aabb(body)
     # TODO(caelan): global DRAW variable that disables
-    handles = draw_bounding_box(aabb, body_pose, **kwargs)
+    handles = []
+    if draw_box:
+        handles += draw_bounding_box(aabb, body_pose, **kwargs)
     if draw_centroid:
-        handles.extend(draw_face_points(aabb, body_pose, dist=0.04))
+        handles += draw_face_points(aabb, body_pose, dist=0.04)
     return aabb, handles
 
 
@@ -1142,17 +1145,16 @@ def get_grasp_db_file(robot):
 
 def get_hand_grasps(world, body, link=None, grasp_length=0.1,
                     HANDLE_FILTER=False, LENGTH_VARIANTS=False,
-                    visualize=False, RETAIN_ALL=False, verbose=False,
-                    collisions=False, num_samples=6, debug_del=False):
+                    visualize=False, RETAIN_ALL=False, verbose=True,
+                    collisions=False, debug_del=False):
     body_name = (body, link) if link is not None else body
     title = f'bullet_utils.get_hand_grasps({body_name}) | '
     dist = grasp_length
     robot = world.robot
     scale = get_loaded_scale(body)
-    body_pose = get_model_pose(body, link=link)
+    body_pose = get_model_pose(body, link=link, verbose=verbose)
 
-    if visualize or True:
-        aabb, handles = draw_fitted_box(body, link=link, verbose=verbose, draw_centroid=False)
+    aabb, handles = draw_fitted_box(body, link=link, verbose=verbose, draw_box=False, draw_centroid=False)
 
     if link is None:
         r = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
@@ -1160,13 +1162,11 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
         body_pose = multiply(body_pose, invert(r)) ##
     else:  ## for handle grasps, use the original pose of handle_link
         body_pose = multiply(body_pose, invert(robot.tool_from_hand))
-        if verbose:
-            print(f'{title}hand_link = {link} | body_pose = multiply(body_pose, invert(robot.tool_from_hand)) = {nice(body_pose)}')
 
     instance_name = world.get_instance_name(body_name)
     if instance_name is not None:
         grasp_db_file = get_grasp_db_file(robot)
-        found, db, db_file = find_grasp_in_db(grasp_db_file, instance_name,
+        found, db, db_file = find_grasp_in_db(grasp_db_file, instance_name, verbose=verbose,
                                               LENGTH_VARIANTS=LENGTH_VARIANTS, scale=scale)
         if found is not None:
             if visualize:
@@ -1294,9 +1294,10 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
         #     print('bullet_utils.get_hand_grasps')
 
     # set_renderer(True)
-    print(f"{title} ({len(grasps)}) {[nice(g) for g in grasps]}")
-    if len(grasps) == 0:
-        print(title, 'no grasps found')
+    if verbose:
+        print(f"{title} ({len(grasps)}) {[nice(g) for g in grasps]}")
+        if len(grasps) == 0:
+            print(title, 'no grasps found')
 
     ## lastly store the newly sampled grasps
     if instance_name is not None:
@@ -1504,7 +1505,7 @@ def get_instance_name(path):
     return None
 
 
-def find_grasp_in_db(db_file, instance_name, LENGTH_VARIANTS=False, scale=None):
+def find_grasp_in_db(db_file, instance_name, LENGTH_VARIANTS=False, scale=None, verbose=True):
     """ find saved json files, prioritize databases/ subdir """
     db = json.load(open(db_file, 'r')) if isfile(db_file) else {}
 
@@ -1516,8 +1517,9 @@ def find_grasp_in_db(db_file, instance_name, LENGTH_VARIANTS=False, scale=None):
             found = [(tuple(e[0]), quat_from_euler(e[1])) for e in data]
         elif len(data[0][1]) == 4:
             found = [(tuple(e[0]), tuple(e[1])) for e in data]
-        print(f'    bullet_utils.find_grasp_in_db returned {len(found)}'
-              f' grasps for {instance_name} | scale = {scale}')
+        if verbose:
+            print(f'    bullet_utils.find_grasp_in_db returned {len(found)}'
+                f' grasps for {instance_name} | scale = {scale}')
         return found
 
     found = None

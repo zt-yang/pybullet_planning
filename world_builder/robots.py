@@ -3,17 +3,18 @@ import random
 from .entities import Robot
 
 from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color, TRANSPARENT, \
-    link_from_name, get_link_subtree, get_joints, is_movable, multiply, invert, \
+    link_from_name, get_link_subtree, get_joints, is_movable, multiply, invert, LockRenderer, \
     set_joint_positions, set_pose, GREEN, dump_body, get_pose, remove_body, PoseSaver, \
     ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles, \
-    interpolate_poses, Pose, Euler, quat_from_euler, set_renderer, get_bodies, get_all_links
+    interpolate_poses, Pose, Euler, quat_from_euler, set_renderer, get_bodies, get_all_links, PI, \
+    WorldSaver
 
 from pybullet_tools.bullet_utils import equal, nice, get_gripper_direction, set_camera_target_body, Attachment, \
     BASE_LIMITS, get_rotation_matrix
 from pybullet_tools.pr2_primitives import APPROACH_DISTANCE, Conf, Grasp, get_base_custom_limits
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, close_until_collision, TOP_HOLDING_LEFT_ARM, \
     SIDE_HOLDING_LEFT_ARM
-from pybullet_tools.general_streams import get_handle_link
+from pybullet_tools.general_streams import get_handle_link, get_grasp_list_gen
 
 
 class RobotAPI(Robot):
@@ -110,7 +111,7 @@ class RobotAPI(Robot):
 
         r = get_rotation_matrix(body) if body is not None else self.tool_from_hand
         new_body_pose = multiply(body_pose, r)  ##
-        if verbose: print(f'{title} | multiply(body_pose, self.tool_from_hand) = {nice(new_body_pose)}')
+        # if verbose: print(f'{title} | multiply(body_pose, self.tool_from_hand) = {nice(new_body_pose)}')
         return new_body_pose
 
     def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
@@ -148,8 +149,7 @@ class PR2Robot(RobotAPI):
         return get_arm_joints(self.body, arm)
 
     def get_init(self, init_facts=[], conf_saver=None):
-        from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints, \
-            get_group_conf, get_top_grasps, get_side_grasps
+        from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints
 
         robot = self.body
 
@@ -391,6 +391,48 @@ class PR2Robot(RobotAPI):
         from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES
         return PR2_TOOL_FRAMES[a]
 
+    def get_base_conf(self):
+        from pybullet_tools.pr2_utils import get_group_joints
+        base_joints = get_group_joints(self.body, self.base_group)
+        q = get_joint_positions(self.body, base_joints)
+        return Conf(self.body, base_joints, q)
+
+    def check_reachability(self, body, state):
+        from pybullet_tools.pr2_primitives import Pose
+        from pybullet_tools.pr2_streams import get_ik_gen
+
+        # context_saver = WorldSaver(bodies=[state.world.robot])
+        q = self.get_base_conf()
+
+        def restore():
+            # context_saver.restore()
+            remove_body(state.gripper)
+            state.gripper = None
+            q.assign()
+
+        print('get_bodies  | before', len(get_bodies()))
+        with LockRenderer(True):
+            pose = Pose(body, get_pose(body))
+            funk = get_grasp_list_gen(state, verbose=False, visualize=False, top_grasp_tolerance=PI / 4)
+            outputs = funk(body)
+
+            funk2 = get_ik_gen(state, collisions=True, teleport=False, ir_only=True, learned=False,
+                               custom_limits=state.robot.custom_limits, verbose=False, visualize=False)
+            for (grasp, ) in outputs:
+                gen = funk2(self.arms[0], body, pose, grasp)
+                try:
+                    result = next(gen)
+                    if result is not None:
+                        restore()
+                        print('get_bodies  | after', len(get_bodies()))
+                        return True
+                except Exception:
+                    pass
+
+            restore()
+            print('get_bodies  | after', len(get_bodies()))
+            return False
+
 
 class FEGripper(RobotAPI):
 
@@ -488,7 +530,7 @@ class FEGripper(RobotAPI):
 
         if verbose:
             remove_handles(handles)
-        if grasp_conf == None:
+        if grasp_conf is None:
             return None
 
         # set_pose(self.body, grasp_pose) ## wrong!

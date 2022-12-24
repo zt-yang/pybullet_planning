@@ -1470,6 +1470,9 @@ def load_kitchen_mini_scene(world, **kwargs):
 
 def load_counter_moveables(world, counters, x_food_min=0.5, obstables=[]):
 
+    robot = world.robot
+    state = State(world, robot.grasp_types)
+
     def place_on_counter(obj_name, category=None):
         counter = random.choice(counters)
         obj = counter.place_new_obj(obj_name, category=category, RANDOM_INSTANCE=True)
@@ -1481,17 +1484,17 @@ def load_counter_moveables(world, counters, x_food_min=0.5, obstables=[]):
         counter.attach_obj(obj)
         return obj
 
-    def ensure_cfree(obj, obstables):
-        while collided_around(obj, obstables):
+    def ensure_cfree(obj, obstables, obj_name, category=None):
+        while collided_around(obj, obstables) or not robot.check_reachability(obj, state):
             world.remove_object(obj)
-            obj = place_on_counter(obj.category)
+            obj = place_on_counter(obj_name, category)
         return obj
 
     ## add food items
     food_ids = []
     for i in range(2):
         obj = place_on_counter('food', category='edible')
-        obj = ensure_cfree(obj, obstables)
+        obj = ensure_cfree(obj, obstables, obj_name='food', category='edible')
         food_ids.append(obj)
         obstables.append(obj.body)
 
@@ -1499,7 +1502,7 @@ def load_counter_moveables(world, counters, x_food_min=0.5, obstables=[]):
     bottle_ids = []
     for i in range(2):
         obj = place_on_counter('bottle')
-        obj = ensure_cfree(obj, obstables)
+        obj = ensure_cfree(obj, obstables, obj_name='bottle')
         bottle_ids.append(obj)
         obstables.append(obj.body)
 
@@ -1507,7 +1510,7 @@ def load_counter_moveables(world, counters, x_food_min=0.5, obstables=[]):
     medicine_ids = []
     for i in range(1):
         obj = place_on_counter('medicine')
-        obj = ensure_cfree(obj, obstables)
+        obj = ensure_cfree(obj, obstables, obj_name='medicine')
         medicine_ids.append(obj)
         obstables.append(obj.body)
 
@@ -1594,7 +1597,7 @@ COUNTER_THICKNESS = 0.05
 diswasher = 'DishwasherBox'
 
 
-def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=False):
+def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=True):
 
     if floor is None:
         floor = create_house_floor(world, w=2, l=2, x=0, y=1)
@@ -1910,6 +1913,10 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
                                                          left_counter_lower, right_counter_upper,
                                                          dz=dh_cabinets, obstacles=tall_obstacles)
 
+    """ step 5: add additional surfaces in furniture """
+    sink = world.name_to_object('sink')
+    sink_bottom = world.add_surface_by_keyword(sink, 'sink_bottom')
+
     """ step 5: place electronics and movables on counters """
     obstables = []
     if 'MicrowaveHanging' not in ordering:
@@ -1921,7 +1928,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
             obstables.append(microwave)
 
     x_food_min = base.aabb().upper[0] - 0.3
-    counters.append(world.name_to_object('OvenCounter'))
+    counters.extend([world.name_to_object('OvenCounter'), sink_bottom])
     for c in counters:
         mx, my, z = c.aabb().upper
         aabb = AABB(lower=(x_food_min, c.aabb().lower[1], z), upper=(mx, my, z + 0.1))

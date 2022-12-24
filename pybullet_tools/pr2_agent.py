@@ -882,7 +882,7 @@ def test_grasps(state, name='cabbage', visualize=True):
         body = name
     robot = state.robot
 
-    funk = get_grasp_list_gen(state, visualize=True, RETAIN_ALL=False, top_grasp_tolerance=PI/4)
+    funk = get_grasp_list_gen(state, verbose=True, visualize=True, RETAIN_ALL=False, top_grasp_tolerance=PI/4)
     outputs = funk(body)
 
     if 'left' in robot.joint_groups:

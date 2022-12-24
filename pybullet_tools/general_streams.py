@@ -459,7 +459,7 @@ def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=
 
 
 def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | PI/4 | INF
-                  randomize=True, **kwargs):
+                  randomize=True, verbose=True, **kwargs):
     robot = problem.robot
     world = problem.world
     grasp_type = 'hand'
@@ -467,14 +467,15 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | P
 
     def fn(body):
         from .bullet_utils import get_hand_grasps
-        grasps_O = get_hand_grasps(world, body, **kwargs)
+        grasps_O = get_hand_grasps(world, body, verbose=verbose, **kwargs)
         grasps = robot.make_grasps(grasp_type, arm, body, grasps_O, collisions=collisions)
         if top_grasp_tolerance is not None:
             ori = len(grasps)
             grasps = [grasp for grasp in grasps if is_top_grasp(
                 robot, arm, body, grasp, top_grasp_tolerance=top_grasp_tolerance)]
-            print(f'   get_grasp_gen(top_grasp_tolerance={top_grasp_tolerance})',
-                  f' selected {len(grasps)} out of {ori} grasps')
+            if verbose:
+                print(f'   get_grasp_gen(top_grasp_tolerance={top_grasp_tolerance})',
+                      f' selected {len(grasps)} out of {ori} grasps')
         if randomize:
             random.shuffle(grasps)
         # return [(g,) for g in grasps]

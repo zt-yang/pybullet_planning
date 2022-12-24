@@ -30,7 +30,8 @@ from pybullet_tools.flying_gripper_utils import se3_from_pose, \
     pose_from_se3, se3_ik, set_cloned_se3_conf, create_fe_gripper, set_se3_conf
 
 from world_builder.world import State
-from world_builder.loaders import sample_kitchen_sink, sample_full_kitchen, create_house_floor
+from world_builder.loaders import sample_kitchen_sink, sample_full_kitchen, create_house_floor, create_table, \
+    create_movable
 from world_builder.robot_builders import create_gripper_robot, create_pr2_robot
 from world_builder.utils import load_asset
 from world_builder.utils import get_instances as get_instances_helper
@@ -817,6 +818,20 @@ def add_scale_to_grasp_file(robot, category):
     dump_json(db, db_file, sort_dicts=False)
 
 
+def test_reachability(robot):
+    world = get_test_world(robot=robot, semantic_world=True, custom_limits=((-4, -4), (4, 4)))
+    robot = world.robot
+    state = State(world, grasp_types=robot.grasp_types)
+
+    for w, xy in [(0.3, (0, 0)), (0.5, (2, 2))]:
+        table1 = create_table(world, w=w, xy=xy)
+        movable1 = create_movable(world, table1, xy=xy)
+        result = robot.check_reachability(movable1, state)
+        print('w', w, result)
+
+    wait_unlocked()
+
+
 if __name__ == '__main__':
 
     """ ---------------- object categories -----------------
@@ -833,11 +848,11 @@ if __name__ == '__main__':
     # test_vhacd()
 
     """ --- robot (FEGripper) related  --- """
+    robot = 'pr2'  ## 'feg' | 'pr2'
     # test_gripper_joints()
     # test_gripper_range()
     # test_torso()
-
-    robot = 'pr2'  ## 'feg' | 'pr2'
+    test_reachability(robot)
 
     """ --- grasps related ---
     """
@@ -853,7 +868,7 @@ if __name__ == '__main__':
             'Sink' (surface_name='sink_bottom'),
     """
     # test_placement_in(robot, category='CabinetTop')
-    test_placement_on(robot, category='Sink', surface_name='sink_bottom')
+    # test_placement_on(robot, category='Sink', surface_name='sink_bottom')
 
     # test_sink_configuration(robot, pause=True)
     # test_kitchen_configuration(robot)

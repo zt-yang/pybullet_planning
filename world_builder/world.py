@@ -448,8 +448,8 @@ class World(object):
             line += f"\t|  Pose: {nice(pose)}"
 
             if body in REMOVED_BODY_TO_OBJECT:
-                if object.category in ['filler']:
-                    continue
+                # if object.category in ['filler']:
+                #     continue
                 if not print_not:
                     print_fn('----------------')
                     print_not = True
@@ -480,14 +480,15 @@ class World(object):
 
     def remove_bodies_from_planning(self, goals=[], exceptions=[]):
         bodies = []
-        for literal in goals:
-            for item in literal:
-                if not isinstance(item, str) and item not in bodies:
-                    if isinstance(item, Object):
-                        item = item.pybullet_name
-                    bodies.append(item)
-                    if isinstance(item, tuple):
-                        bodies.append(item[0])
+        if isinstance(goals, list):
+            for literal in goals:
+                for item in literal:
+                    if not isinstance(item, str) and item not in bodies:
+                        if isinstance(item, Object):
+                            item = item.pybullet_name
+                        bodies.append(item)
+                        if isinstance(item, tuple):
+                            bodies.append(item[0])
         all_bodies = list(self.BODY_TO_OBJECT.keys())
         for body in all_bodies:
             if body not in bodies and body not in exceptions:
