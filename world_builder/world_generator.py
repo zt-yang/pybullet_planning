@@ -9,9 +9,8 @@ from os.path import join, isdir, isfile, dirname, abspath, basename
 from os import listdir
 
 from pybullet_tools.utils import get_bodies, euler_from_quat, get_collision_data, get_joint_name, \
-    get_joint_position, get_camera, joint_from_name, get_color, disconnect, reset_simulation
-from pybullet_tools.pr2_utils import get_arm_joints, get_group_joints, PR2_GROUPS
-from pybullet_tools.bullet_utils import get_readable_list, LINK_STR, get_scale_by_category, nice
+    get_joint_position, get_camera, joint_from_name, get_color, reset_simulation
+from pybullet_tools.bullet_utils import get_readable_list, LINK_STR, nice
 from .entities import Robot, LINK_STR
 from .utils import read_xml, get_file_by_category, get_model_scale
 

@@ -847,15 +847,15 @@ if __name__ == '__main__':
     # test_handle_grasps(robot, category='CabinetUpper')
     ## Kitchen: 'MiniFridge', 'MiniFridgeDoorless', 'CabinetTop'
 
-    """ --- placement related  --- """
-
+    """ --- placement related  --- 
+        IN: 'MiniFridge', 'CabinetTop'
+        ON: 'KitchenCounter', 'Tray' (surface_name='tray_bottom'),
+            'Sink' (surface_name='sink_bottom'),
+    """
     # test_placement_in(robot, category='CabinetTop')
-    ## Kitchen: 'MiniFridge', 'CabinetTop'
+    test_placement_on(robot, category='Sink', surface_name='sink_bottom')
 
-    # test_placement_on(robot, category='Tray', surface_name='tray_bottom')  ## sampled placement
-    ## Kitchen: 'KitchenCounter', 'Tray' (surface_name='tray_bottom')
-
-    test_sink_configuration(robot, pause=True)
+    # test_sink_configuration(robot, pause=True)
     # test_kitchen_configuration(robot)
 
     """ --- specific counter --- """

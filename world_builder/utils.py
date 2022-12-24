@@ -18,7 +18,7 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, \
     stable_z, Pose, Point, create_box, load_model, get_joints, set_joint_position, BROWN, Euler, PI, \
     set_camera_pose, TAN, RGBA, sample_aabb, get_min_limit, get_max_limit, set_color, WHITE, get_links, \
     get_link_name, get_link_pose, euler_from_quat, get_collision_data, get_joint_name, get_joint_position
-from pybullet_tools.bullet_utils import get_scale_by_category, get_partnet_links_by_type
+from pybullet_tools.bullet_utils import get_partnet_links_by_type
 from pybullet_tools.logging import dump_json
 from world_builder.paths import ASSET_PATH
 
@@ -237,6 +237,38 @@ def get_file_by_category(category, RANDOM_INSTANCE=False, SAMPLING=False):
             if not isfile(file):
                 file = join(asset_root, f'{category}.sdf')
     return file
+
+
+def get_scale_by_category(file=None, category=None, scale=1):
+    from world_builder.partnet_scales import MODEL_HEIGHTS, MODEL_SCALES, OBJ_SCALES
+
+    cat = category.lower()
+
+    ## general category-level
+    if category is not None:
+        if cat in OBJ_SCALES:
+            scale = OBJ_SCALES[cat]
+
+    ## specific instance-level
+    if file is not None:
+        if category in MODEL_HEIGHTS:
+            height = MODEL_HEIGHTS[category]['height']
+            # print('bullet_utils.get_scale_by_category', file)
+            scale = get_model_scale(file, h=height)
+        elif category in MODEL_SCALES:
+            f = file.lower()
+            f = f[f.index(cat) + len(cat) + 1:]
+            id = f[:f.index('/')]
+            if id in MODEL_SCALES[category]:
+                scale = MODEL_SCALES[category][id]
+        else:
+            parent = get_parent_category(category)
+            if parent is None:
+                print('cant', category)
+            if parent in MODEL_SCALES:
+                scale = MODEL_SCALES[parent][category]
+
+    return scale
 
 
 def get_parent_category(category):

@@ -316,8 +316,33 @@ def articulated_collisions(obj, obstacles, **kwargs): # TODO: articulated_collis
     return False
 
 
-def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=False, visualize=False, min_num_pts=0,
-             use_aabb=True, ignored_pairs=[], **kwargs):
+def collided_around(obj, obstacles, padding=0.05, **kwargs):
+    """ if obj is collided within 0.2 away from its area """
+    (x, y, z), quat = get_pose(obj)
+    # lx, ly, _ = get_aabb_extent(get_aabb(obj))
+    lx = ly = padding
+
+    # aabb = get_aabb(obj)
+    # draw_aabb(aabb)
+    # x_lower, y_lower, _ = aabb.lower
+    # x_upper, y_upper, z_upper = aabb.upper
+    # aabb = AABB(lower=(x_lower-lx, y_lower-ly, z_upper),
+    #             upper=(x_upper+lx, y_upper+ly, z_upper+0.1))
+    # set_camera_target_body(obj, dx=0.5, dy=0.5, dz=0.5)
+    # draw_aabb(aabb)
+    # wait_unlocked()
+
+    for i, j in [(0, 0), (-1, 0), (1, 0), (0, -1), (0, 1)]:
+        new_x = x + i * lx
+        new_y = y + j * ly
+        set_pose(obj, ((new_x, new_y, z), quat))
+        if collided(obj, obstacles, **kwargs):
+            return True
+    return False
+
+
+def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=False,
+             visualize=False, min_num_pts=0, use_aabb=True, ignored_pairs=[], **kwargs):
     prefix = 'bullet_utils.collided '
     if len(tag) > 0: prefix += f'( {tag} )'
 
@@ -374,33 +399,6 @@ def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=Fals
 OBJ_YAWS = {
     'Microwave': PI, 'Toaster': PI / 2
 }
-
-
-def get_scale_by_category(file=None, category=None, scale=1):
-    from world_builder.partnet_scales import MODEL_HEIGHTS, MODEL_SCALES, OBJ_SCALES
-    from world_builder.utils import get_model_scale
-
-    cat = category.lower()
-
-    ## general category-level
-    if category is not None:
-        if cat in OBJ_SCALES:
-            scale = OBJ_SCALES[cat]
-
-    ## specific instance-level
-    if file is not None:
-        if category in MODEL_HEIGHTS:
-            height = MODEL_HEIGHTS[category]['height']
-            # print('bullet_utils.get_scale_by_category', file)
-            scale = get_model_scale(file, h=height)
-        elif category in MODEL_SCALES:
-            f = file.lower()
-            f = f[f.index(cat)+len(cat)+1:]
-            id = f[:f.index('/')]
-            if id in MODEL_SCALES[category]:
-                scale = MODEL_SCALES[category][id]
-
-    return scale
 
 
 def sample_pose(obj, aabb, obj_aabb=None, yaws=OBJ_YAWS):
@@ -488,11 +486,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
     # draw_aabb(aabb)
 
     x, y, z, yaw = sample_pose(obj, aabb, obj_aabb=get_aabb(obj))
-    if isinstance(obj, str):
-        obj = obj.lower()
-        maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, maybe=True)
-    else:
-        maybe = obj
+    maybe = obj
     handles = draw_fitted_box(maybe)[-1] if draw else []
 
     # def contained(maybe):
@@ -503,12 +497,8 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
     def sample_one(maybe, handles):
         x, y, z, yaw = sample_pose(obj, aabb, get_aabb(maybe))
         z += 0.01
-        if isinstance(obj, str):
-            remove_body(maybe)
-            maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, maybe=True)
-        else:
-            pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
-            set_pose(maybe, pose)
+        pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
+        set_pose(maybe, pose)
 
         remove_handles(handles)
         handles = draw_fitted_box(maybe)[-1] if draw else []
@@ -576,11 +566,6 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
         maybe, pose, handles = sample_maybe(body, maybe, pose, handles)
         result = adjust_z(body, maybe, pose, handles)
     maybe, (x, y, z, yaw), handles = result
-
-    if isinstance(obj, str):
-        remove_body(maybe)
-        maybe = load_asset(obj, x=x, y=y, yaw=yaw, z=z, moveable=True)
-        # maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, z=round(z, 1), scale=scales[obj], moveable=True)
 
     remove_handles(handles)
     #set_renderer(True)
@@ -1066,8 +1051,6 @@ def get_model_points(body, link=None, verbose=False):
     if link is None:
         links = get_links(body)
     else:
-        if verbose:
-            print(f'bullet_utils.draw_fitted_box | body_pose = get_link_pose({body}, {link}) = {nice(body_pose)}')
         links = [link]
 
     vertices = []

@@ -33,7 +33,7 @@ from pybullet_tools.bullet_utils import place_body, add_body, Pose2d, nice, OBJ_
     sample_obj_on_body_link_surface, sample_obj_in_body_link_space, set_camera_target_body, \
     open_joint, close_joint, set_camera_target_robot, summarize_joints, get_partnet_doors, get_partnet_spaces, \
     set_pr2_ready, BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, draw_base_limits, \
-    BASE_LIMITS, CAMERA_FRAME, CAMERA_MATRIX, EYE_FRAME, collided, get_partnet_links_by_type
+    collided_around, collided, get_partnet_links_by_type
 
 OBJ = '?obj'
 
@@ -650,7 +650,7 @@ def load_basin_faucet(world):
     return faucet, left_knob
 
 
-def load_kitchen_mechanism(world):
+def load_kitchen_mechanism(world, sink_name='sink'):
     name_to_body = world.name_to_body
     name_to_object = world.name_to_object
 
@@ -661,9 +661,9 @@ def load_kitchen_mechanism(world):
     world.add_joints_by_keyword('oven', 'knob_joint_2', 'knob')
     world.remove_body_from_planning(name_to_body('hitman_tmp'))
 
-    world.add_to_cat(name_to_body('basin_bottom'), 'CleaningSurface')
+    world.add_to_cat(name_to_body(f'{sink_name}_bottom'), 'CleaningSurface')
     world.add_to_cat(name_to_body('braiser_bottom'), 'HeatingSurface')
-    name_to_object('joint_faucet_0').add_controlled(name_to_body('basin_bottom'))
+    name_to_object('joint_faucet_0').add_controlled(name_to_body(f'{sink_name}_bottom'))
     name_to_object('knob_joint_2').add_controlled(name_to_body('braiser_bottom'))
 
 
@@ -1482,7 +1482,7 @@ def load_counter_moveables(world, counters, x_food_min=0.5, obstables=[]):
         return obj
 
     def ensure_cfree(obj, obstables):
-        while collided(obj, obstables):
+        while collided_around(obj, obstables):
             world.remove_object(obj)
             obj = place_on_counter(obj.category)
         return obj
