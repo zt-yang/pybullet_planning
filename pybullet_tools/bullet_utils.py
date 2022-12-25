@@ -1143,6 +1143,18 @@ def get_grasp_db_file(robot):
     return db_file
 
 
+def check_grasp_link(world, body, link):
+    """ some movables, like pot and pot lid, have specific links for grasp """
+    from world_builder.world import World
+    using_grasp_link = False
+    if isinstance(world, World) and link is None:
+        grasp_link = get_grasp_link()
+        if grasp_link is not None:
+            link = grasp_link
+            using_grasp_link = True
+    return using_grasp_link, link
+
+
 def get_hand_grasps(world, body, link=None, grasp_length=0.1,
                     HANDLE_FILTER=False, LENGTH_VARIANTS=False,
                     visualize=False, RETAIN_ALL=False, verbose=True,
@@ -1152,9 +1164,12 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
     dist = grasp_length
     robot = world.robot
     scale = get_loaded_scale(body)
+
+    # using_grasp_link, link = check_grasp_link(world, body, link)
+
     body_pose = get_model_pose(body, link=link, verbose=verbose)
 
-    aabb, handles = draw_fitted_box(body, link=link, verbose=verbose, draw_box=False, draw_centroid=False)
+    aabb, handles = draw_fitted_box(body, link=link, verbose=verbose, draw_box=True, draw_centroid=False)
 
     if link is None:
         r = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
@@ -1727,14 +1742,14 @@ def get_partnet_semantics(path):
     lines = []
     with open(file, 'r') as f:
         for line in f.readlines():
-            lines.append(line.replace('\n', ''))
+            lines.append(line.replace('\n', '').split(' '))
     return lines
 
 
 def get_partnet_doors(path, body):
     body_joints = {}
     for line in get_partnet_semantics(path):
-        link_name, part_type, part_name = line.split(' ')
+        link_name, part_type, part_name = line
         if part_type == 'hinge' and part_name in ['door', 'rotation_door']:
             link = link_from_name(body, link_name)
             joint = parent_joint_from_link(link)
@@ -1747,7 +1762,7 @@ def get_partnet_doors(path, body):
 def get_partnet_spaces(path, body):
     space_links = {}
     for line in get_partnet_semantics(path):
-        link_name, part_type, part_name = line.split(' ')
+        link_name, part_type, part_name = line
         if '_body' in part_name:
             link = link_from_name(body, link_name)
             space_links[(body, None, link)] = part_name
@@ -1757,10 +1772,17 @@ def get_partnet_spaces(path, body):
 def get_partnet_links_by_type(path, body, keyward):
     links = []
     for line in get_partnet_semantics(path):
-        link_name, part_type, part_name = line.split(' ')
-        if part_name == keyward:
-            links.append(link_from_name(body, link_name))
+        if line[-1] == keyward:
+            links.append(link_from_name(body, line[0]))
     return links
+
+
+def get_grasp_link(path, body):
+    link = None
+    for line in get_partnet_semantics(path):
+        if line[-1] == 'grasp_link':
+            link = link_from_name(body, line[0])
+    return link
 
 
 def get_datetime(TO_LISDF=False):

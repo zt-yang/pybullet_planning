@@ -181,7 +181,7 @@ def get_gap(category):
 
 def test_grasps(robot='feg', categories=[], skip_grasps=False):
     world = get_test_world(robot)
-    draw_pose(unit_pose(), length=0.5)
+    draw_pose(unit_pose(), length=10)
     robot = world.robot
     problem = State(world, grasp_types=robot.grasp_types)  ## , 'side' , 'top'
 
@@ -190,7 +190,7 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
 
         tpt = math.pi / 4 if cat in ['Knife'] else None ## , 'EyeGlasses', 'Plate'
         funk = get_grasp_list_gen(problem, collisions=True, visualize=False,
-                                  RETAIN_ALL=False, top_grasp_tolerance=tpt, verbose=False)
+                                  RETAIN_ALL=False, top_grasp_tolerance=tpt, verbose=True)
 
         def test_grasp(body):
             set_renderer(True)
@@ -215,8 +215,6 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
         locations = [(i, get_gap(cat) * n) for n in range(1, n+1)]
         j = -1
         for id, scale in instances.items():
-            # if id not in ['10849']:
-            #     continue
             j += 1
             if isinstance(id, tuple):
                 cat, id = id
@@ -231,6 +229,11 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
             set_camera_target_body(body)
             text = id.replace('veggie', '').replace('meat', '')
             draw_text_label(body, text, offset=(0, -0.2, 0.1))
+
+            # if cat == 'BraiserBody':
+            #     pose = get_pose(body)
+            #     _, body, _ = load_model_instance('BraiserLid', id, scale=scale, location=locations[j])
+            #     set_pose(body, pose)
 
             """ --- fixing texture issues ---"""
             # world.add_joints_by_keyword(obj_name)
@@ -250,7 +253,7 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
             else:
                 test_grasp(body)
 
-            # wait_unlocked()
+            wait_unlocked()
 
         if len(categories) > 1:
             wait_if_gui(f'------------- Next object category? finished ({i+1}/{len(categories)})')
@@ -843,7 +846,7 @@ if __name__ == '__main__':
     ----------------- ----------------- ----------------- --------- """
 
     """ --- models related --- """
-    # get_data(categories=['Microwave'])
+    # get_data(categories=['BraiserBody'])
     # test_texture(category='CoffeeMachine', id='103127')
     # test_vhacd()
 
@@ -852,11 +855,11 @@ if __name__ == '__main__':
     # test_gripper_joints()
     # test_gripper_range()
     # test_torso()
-    test_reachability(robot)
+    # test_reachability(robot)
 
     """ --- grasps related ---
     """
-    # test_grasps(robot, ['CabinetTop'], skip_grasps=True)  ## 'EyeGlasses'
+    test_grasps(robot, ['BraiserBody'], skip_grasps=False)  ## 'EyeGlasses'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # test_handle_grasps(robot, category='CabinetUpper')
