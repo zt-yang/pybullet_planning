@@ -1793,6 +1793,8 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
 
 def load_braiser(world, supporter, x_min):
     braiser = supporter.place_new_obj('BraiserBody', RANDOM_INSTANCE=True)
+    set_camera_target_body(braiser)
+    wait_unlocked()
     adjust_for_reachability(braiser, supporter, x_min)
 
     lid = braiser.place_new_obj('BraiserLid', max_trial=1, RANDOM_INSTANCE=braiser.mobility_id)
@@ -1800,7 +1802,7 @@ def load_braiser(world, supporter, x_min):
     braiser.attach_obj(lid)
 
     set_camera_target_body(braiser)
-    # wait_unlocked()
+    wait_unlocked()
 
     braiser_bottom = world.add_surface_by_keyword(braiser, 'braiser_bottom')
     return braiser_bottom
