@@ -1964,7 +1964,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
 
     """ step 6: take an image """
     set_camera_pose((4, 4, 3), (0, 4, 0))
-    if pause:
+    if pause or True:
         wait_unlocked()
 
     load_storage_mechanism(world, world.name_to_object('minifridge'))
