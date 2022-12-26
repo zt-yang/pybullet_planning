@@ -1738,7 +1738,7 @@ def get_partnet_doors(path, body):
         if part_type == 'hinge' and part_name in ['door', 'rotation_door']:
             link = link_from_name(body, link_name)
             joint = parent_joint_from_link(link)
-            joint_name = line.replace(' ', '--')
+            joint_name = '--'.join(line)
             body_joint = (body, joint)
             body_joints[body_joint] = joint_name
     return body_joints
