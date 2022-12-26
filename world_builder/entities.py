@@ -77,8 +77,6 @@ class Object(Index):
     def __init__(self, body, joint=None, link=None, category=None, name=None,
                  collision=True, verbose=False):
 
-        if category is not None and 'cabinettop' == category.lower():
-            print('sss')
         if isinstance(body, Object):
             body = body.body
 
