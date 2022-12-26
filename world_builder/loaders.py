@@ -1489,7 +1489,7 @@ def load_counter_moveables(world, counters, x_min=0.5, obstables=[]):
         return obj
 
     def ensure_cfree(obj, obstables, obj_name, category=None):
-        print('random seed', np.random.get_state()[-3], obj)
+        s = np.random.get_state()[-3]
         while collided_around(obj, obstables) or not robot.check_reachability(obj, state):
             world.remove_object(obj)
             obj = place_on_counter(obj_name, category)
