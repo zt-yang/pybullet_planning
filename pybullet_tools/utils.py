@@ -3284,7 +3284,7 @@ def aabb_contains_point(point, container):
 
 def sample_aabb(aabb):
     lower, upper = aabb
-    print(np.random.get_state())
+    print('random seed', np.random.get_state()[-3])
     return np.random.uniform(lower, upper)
 
 def get_bodies_in_region(aabb):
