@@ -1470,6 +1470,7 @@ def load_kitchen_mini_scene(world, **kwargs):
 
 def adjust_for_reachability(obj, counter, x_min):
     (x, y, z), r = obj.get_pose()
+    x_min -= (y - obj.aabb().lower[1])
     ## scale the x to a reachable range
     x_max = counter.aabb().upper[0]
     x_new = x_max - (x_max - x_min) * (x_max - x) / counter.lx
@@ -1489,7 +1490,7 @@ def load_counter_moveables(world, counters, x_min=0.5, obstables=[]):
         return obj
 
     def ensure_cfree(obj, obstables, obj_name, category=None):
-        s = np.random.get_state()[-3]
+        # s = np.random.get_state()[-3]
         while collided_around(obj, obstables) or not robot.check_reachability(obj, state):
             world.remove_object(obj)
             obj = place_on_counter(obj_name, category)
