@@ -1793,7 +1793,7 @@ def load_braiser(world, supporter, x_min):
     braiser = supporter.place_new_obj('BraiserBody', RANDOM_INSTANCE=True)
     adjust_for_reachability(braiser, supporter, x_min)
 
-    lid = braiser.place_new_obj('BraiserLid', RANDOM_INSTANCE=braiser.mobility_id)
+    lid = braiser.place_new_obj('BraiserLid', max_trial=1, RANDOM_INSTANCE=braiser.mobility_id)
     lid.set_pose(get_pose(braiser))
     braiser.attach_obj(lid)
 
@@ -1957,10 +1957,13 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
 
     braiser_bottom = load_braiser(world, oven, x_min=x_food_min)
 
-    counters.extend([sink_bottom, braiser_bottom])
+    ## first load objects into reachable places
+    counters.extend([sink_bottom])
     food_ids, bottle_ids, medicine_ids = \
         load_counter_moveables(world, counters, x_min=x_food_min, obstables=obstables)
     moveables = food_ids + bottle_ids + medicine_ids
+
+    ## then load objects into hidden placed
 
     """ step 6: take an image """
     set_camera_pose((4, 4, 3), (0, 4, 0))
@@ -1968,7 +1971,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
         wait_unlocked()
 
     load_storage_mechanism(world, world.name_to_object('minifridge'))
-    load_storage_mechanism(world, world.name_to_object('cabinettop'))
+    load_storage_mechanism(world, world.cat_to_objects('cabinettop')[0])
     return moveables, cabinets
 
 

@@ -156,6 +156,7 @@ def partnet_id_from_path(path):
 
 
 def get_sampled_file(SAMPLING, category, ids):
+    from world_builder.entities import Object
     dists = json.load(open(SAMPLER_DB, 'r'))
     dist = None
     if isinstance(SAMPLING, Object):
@@ -357,12 +358,12 @@ def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=
     # else:
     #     object = Object(body, category=category)
 
-    if category.lower() == 'food':
-        # index = file.replace('/mobility.urdf', '')
-        # index = index[index.index('models/')+7:]
-        # index = index[index.index('/')+1:]
-        index = partnet_id_from_path(file)
-        return body, file, scale, index
+    # if category.lower() == 'food':
+    #     # index = file.replace('/mobility.urdf', '')
+    #     # index = index[index.index('models/')+7:]
+    #     # index = index[index.index('/')+1:]
+    #     index = partnet_id_from_path(file)
+    #     return body, file, scale, index
     return body, file, scale
 
 

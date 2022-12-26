@@ -188,6 +188,9 @@ class World(object):
             return self.instance_names[body]
         elif body in self.BODY_TO_OBJECT:
             return self.BODY_TO_OBJECT[body].instance_name
+        elif body in self.REMOVED_BODY_TO_OBJECT:
+            print(f'\n\n\n trying to get instance_name of non-planning objects {body}\n\n\n')
+            return self.REMOVED_BODY_TO_OBJECT[body].instance_name
         return None
 
     def get_events(self, body):
@@ -480,15 +483,16 @@ class World(object):
 
     def remove_bodies_from_planning(self, goals=[], exceptions=[]):
         bodies = []
-        if isinstance(goals, list):
-            for literal in goals:
-                for item in literal:
-                    if not isinstance(item, str) and item not in bodies:
-                        if isinstance(item, Object):
-                            item = item.pybullet_name
-                        bodies.append(item)
-                        if isinstance(item, tuple):
-                            bodies.append(item[0])
+        if isinstance(goals, tuple):
+            goals = [goals]
+        for literal in goals:
+            for item in literal:
+                if not isinstance(item, str) and item not in bodies:
+                    if isinstance(item, Object):
+                        item = item.pybullet_name
+                    bodies.append(item)
+                    if isinstance(item, tuple):
+                        bodies.append(item[0])
         all_bodies = list(self.BODY_TO_OBJECT.keys())
         for body in all_bodies:
             if body not in bodies and body not in exceptions:
@@ -579,7 +583,7 @@ class World(object):
         return None
 
     def name_to_object(self, name):
-        if self.name_to_body(name) == None:
+        if self.name_to_body(name) is None:
             return name  ## object doesn't exist
         return self.BODY_TO_OBJECT[self.name_to_body(name)]
 

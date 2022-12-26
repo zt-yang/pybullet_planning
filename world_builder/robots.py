@@ -410,7 +410,6 @@ class PR2Robot(RobotAPI):
             state.gripper = None
             q.assign()
 
-        print('get_bodies  | before', len(get_bodies()))
         with LockRenderer(True):
             pose = Pose(body, get_pose(body))
             funk = get_grasp_list_gen(state, verbose=False, visualize=False, top_grasp_tolerance=PI / 4)
@@ -424,13 +423,11 @@ class PR2Robot(RobotAPI):
                     result = next(gen)
                     if result is not None:
                         restore()
-                        print('get_bodies  | after', len(get_bodies()))
                         return True
                 except Exception:
                     pass
 
             restore()
-            print('get_bodies  | after', len(get_bodies()))
             return False
 
 

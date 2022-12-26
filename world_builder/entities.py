@@ -77,17 +77,19 @@ class Object(Index):
     def __init__(self, body, joint=None, link=None, category=None, name=None,
                  collision=True, verbose=False):
 
+        if category is not None and 'cabinettop' == category.lower():
+            print('sss')
         if isinstance(body, Object):
             body = body.body
 
         self.is_box = False
         if isinstance(body, tuple) and isinstance(body[1], str):
-            if len(body) == 4:
-                name = body[-1]
             body, path, scale = body[:3]
             self.path = path
             self.scale = scale
             self.mobility_id = get_mobility_id(path)
+            if not self.mobility_id.isdigit():
+                name = self.mobility_id
             self.instance_name = get_instance_name(path)
         elif is_box_entity(body):
             self.is_box = True
