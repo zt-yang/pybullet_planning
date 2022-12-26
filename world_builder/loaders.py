@@ -1956,7 +1956,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
 
     counters.extend([sink_bottom, braiser_bottom])
     food_ids, bottle_ids, medicine_ids = \
-        load_counter_moveables(world, counters, xd_min=x_food_min, obstables=obstables)
+        load_counter_moveables(world, counters, x_min=x_food_min, obstables=obstables)
     moveables = food_ids + bottle_ids + medicine_ids
 
     """ step 6: take an image """
