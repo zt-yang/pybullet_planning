@@ -253,7 +253,7 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
             else:
                 test_grasp(body)
 
-            wait_unlocked()
+            # wait_unlocked()
 
         if len(categories) > 1:
             wait_if_gui(f'------------- Next object category? finished ({i+1}/{len(categories)})')
@@ -750,21 +750,35 @@ def test_pick_place_counter(robot):
     load_random_mini_kitchen_counter(world)
 
 
-def test_vhacd():
-    from pybullet_tools.utils import process_urdf, TEMP_URDF_DIR
+def test_vhacd(category, visualize=False):
+    from pybullet_tools.utils import process_urdf
+    TEMP_OBJ_DIR = 'vhacd'
+    instances = get_instances(category)
+    if visualize:
+        world = get_test_world()
+        x, y = 0, 0
 
-    urdf_path = '../assets/models/MiniFridge/11709/mobility.urdf'
+    instances = ['100021']
 
-    world = get_test_world()
-    body = load_pybullet(urdf_path)
-    set_pose(body, ((0, 0, 0), unit_quat()))
+    for idx in instances:
+        urdf_path = f'../../assets/models/{category}/{idx}/mobility.urdf'
 
-    new_urdf_path = process_urdf(urdf_path)
-    body = load_pybullet(new_urdf_path)
-    set_pose(body, ((0, 2, 0), unit_quat()))
+        if visualize:
+            body = load_pybullet(urdf_path)
+            set_pose(body, ((x, y, 0), unit_quat()))
 
-    set_camera_target_body(body, dx=1, dy=1, dz=1)
-    print()
+        new_urdf_path = process_urdf(urdf_path)
+
+        if visualize:
+            body = load_pybullet(new_urdf_path)
+            set_pose(body, ((x+2, y, 0), unit_quat()))
+
+            set_camera_target_body(body, dx=1, dy=1, dz=1)
+            wait_unlocked()
+            y += 2
+        else:
+            shutil.move(new_urdf_path, new_urdf_path.replace('mobility.urdf', f'{idx}.urdf'))
+            shutil.move(TEMP_OBJ_DIR, urdf_path.replace('mobility.urdf', TEMP_OBJ_DIR))
 
 
 def test_sink_configuration(robot, pause=False):
@@ -848,7 +862,7 @@ if __name__ == '__main__':
     """ --- models related --- """
     # get_data(categories=['BraiserBody'])
     # test_texture(category='CoffeeMachine', id='103127')
-    # test_vhacd()
+    # test_vhacd(category='BraiserBody')
 
     """ --- robot (FEGripper) related  --- """
     robot = 'pr2'  ## 'feg' | 'pr2'
@@ -859,7 +873,7 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    test_grasps(robot, ['BraiserBody'], skip_grasps=False)  ## 'EyeGlasses'
+    # test_grasps(robot, ['BraiserBody'], skip_grasps=False)  ## 'EyeGlasses'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # test_handle_grasps(robot, category='CabinetUpper')
@@ -867,11 +881,16 @@ if __name__ == '__main__':
 
     """ --- placement related  --- 
         IN: 'MiniFridge', 'CabinetTop'
-        ON: 'KitchenCounter', 'Tray' (surface_name='tray_bottom'),
-            'Sink' (surface_name='sink_bottom'),
     """
     # test_placement_in(robot, category='CabinetTop')
-    # test_placement_on(robot, category='Sink', surface_name='sink_bottom')
+
+    """ --- placement related  --- 
+        ON: 'KitchenCounter', 
+            'Tray' (surface_name='tray_bottom'),
+            'Sink' (surface_name='sink_bottom'),
+            'BraiserBody' (surface_name='braiser_bottom'),
+    """
+    test_placement_on(robot, category='BraiserBody', surface_name='braiser_bottom')
 
     # test_sink_configuration(robot, pause=True)
     # test_kitchen_configuration(robot)

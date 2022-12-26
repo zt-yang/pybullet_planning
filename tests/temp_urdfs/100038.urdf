@@ -1,0 +1,241 @@
+<?xml version='1.0' encoding='ASCII'?>
+<robot name="partnet_7c4df032-d578-4bfb-958e-a7c7c31d655f-body">
+  <link name="base">
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 -0.0 0.0"/>
+      <mass value="1.0"/>
+      <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+    </inertial>
+    <visual name="base_body-2">
+      <geometry>
+        <mesh filename="../../assets/models/BraiserBody/100038/textured_objs/original-13.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </visual>
+    <visual name="base_body-2">
+      <geometry>
+        <mesh filename="../../assets/models/BraiserBody/100038/textured_objs/original-10.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </visual>
+    <visual name="base_body-2">
+      <geometry>
+        <mesh filename="../../assets/models/BraiserBody/100038/textured_objs/original-8.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </visual>
+    <visual name="base_body-2">
+      <geometry>
+        <mesh filename="../../assets/models/BraiserBody/100038/textured_objs/original-11.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </visual>
+    <visual name="base_body-2">
+      <geometry>
+        <mesh filename="../../assets/models/BraiserBody/100038/textured_objs/original-14.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </visual>
+    <visual name="bottom">
+      <geometry>
+        <mesh filename="../../assets/models/BraiserBody/100038/textured_objs/original-8-bottom.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+      <material name="Transparent">
+        <color rgba="1.0 1.0 1.0 0.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-13_vhacd_3091802733_part-0.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-13_vhacd_3091802733_part-1.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-10_vhacd_3090819690_part-0.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-10_vhacd_3090819690_part-1.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-8_vhacd_2392599105_part-0.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-8_vhacd_2392599105_part-1.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-8_vhacd_2392599105_part-2.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-8_vhacd_2392599105_part-3.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-8_vhacd_2392599105_part-4.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-8_vhacd_2392599105_part-5.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-8_vhacd_2392599105_part-6.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-8_vhacd_2392599105_part-7.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-8_vhacd_2392599105_part-8.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-8_vhacd_2392599105_part-9.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-8_vhacd_2392599105_part-10.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-8_vhacd_2392599105_part-11.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-11_vhacd_3091147371_part-0.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-11_vhacd_3091147371_part-1.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-11_vhacd_3091147371_part-2.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-11_vhacd_3091147371_part-3.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-11_vhacd_3091147371_part-4.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-11_vhacd_3091147371_part-5.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-11_vhacd_3091147371_part-6.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-14_vhacd_3092130414_part-0.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-14_vhacd_3092130414_part-1.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-14_vhacd_3092130414_part-2.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-14_vhacd_3092130414_part-3.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-14_vhacd_3092130414_part-4.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-14_vhacd_3092130414_part-5.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-14_vhacd_3092130414_part-6.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="vhacd/original-14_vhacd_3092130414_part-7.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="../../assets/models/BraiserBody/100038/textured_objs/original-8-bottom.obj"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 -0.0 -1.570796326794897"/>
+    </collision>
+  </link>
+</robot>

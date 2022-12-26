@@ -1015,7 +1015,7 @@ def get_rotation_matrix(body, verbose=True):
     # if set(get_all_links(body)) == {0, -1}:
     if len(collision_data) > 0:
         urdf_file = dirname(collision_data[0].filename.decode())
-        urdf_file = urdf_file.replace('/textured_objs', '')
+        urdf_file = urdf_file.replace('/textured_objs', '').replace('/vhacd', '')
         if urdf_file not in ROTATIONAL_MATRICES:
             if verbose:
                 print('get_rotation_matrix | urdf_file = ', urdf_file)
