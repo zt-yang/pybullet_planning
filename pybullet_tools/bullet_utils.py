@@ -1505,21 +1505,6 @@ def get_gripper_direction(pose, epsilon=0.01):
     return None
 
 
-def get_instance_name(path):
-    if not isfile(path): return None
-    rows = open(path, 'r').readlines()
-    if len(rows) > 50: rows = rows[:50]
-
-    def from_line(r):
-        r = r.replace('\n', '')[13:]
-        return r[:r.index('"')]
-
-    name = [from_line(r) for r in rows if '<robot name="' in r]
-    if len(name) == 1:
-        return name[0]
-    return None
-
-
 def find_grasp_in_db(db_file, instance_name, LENGTH_VARIANTS=False, scale=None, verbose=True):
     """ find saved json files, prioritize databases/ subdir """
     db = json.load(open(db_file, 'r')) if isfile(db_file) else {}

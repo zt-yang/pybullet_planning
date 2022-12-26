@@ -21,7 +21,7 @@ from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, 
     add_text, joint_from_name, set_caching, Point, set_random_seed, set_numpy_seed
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, set_camera_target_body, \
     draw_bounding_lines, fit_dimensions, draw_fitted_box, get_hand_grasps, get_partnet_doors, get_partnet_spaces, \
-    open_joint, get_instance_name, get_grasp_db_file
+    open_joint, get_grasp_db_file
 from pybullet_tools.pr2_agent import get_stream_info, post_process, move_cost_fn, \
     visualize_grasps_by_quat, visualize_grasps
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, \
@@ -33,7 +33,7 @@ from world_builder.world import State
 from world_builder.loaders import sample_kitchen_sink, sample_full_kitchen, create_house_floor, create_table, \
     create_movable
 from world_builder.robot_builders import create_gripper_robot, create_pr2_robot
-from world_builder.utils import load_asset
+from world_builder.utils import load_asset, get_instance_name
 from world_builder.utils import get_instances as get_instances_helper
 from world_builder.partnet_scales import MODEL_SCALES as TEST_MODELS
 from world_builder.partnet_scales import MODEL_HEIGHTS, OBJ_SCALES
@@ -890,10 +890,10 @@ if __name__ == '__main__':
             'Sink' (surface_name='sink_bottom'),
             'BraiserBody' (surface_name='braiser_bottom'),
     """
-    test_placement_on(robot, category='BraiserBody', surface_name='braiser_bottom')
+    # test_placement_on(robot, category='BraiserBody', surface_name='braiser_bottom')
 
     # test_sink_configuration(robot, pause=True)
-    # test_kitchen_configuration(robot)
+    test_kitchen_configuration(robot)
 
     """ --- specific counter --- """
     # test_placement_counter()  ## initial placement

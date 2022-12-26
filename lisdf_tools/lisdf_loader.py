@@ -22,7 +22,7 @@ from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove
     set_joint_positions, get_links, get_joints, get_joint_name, get_body_name, link_from_name, \
     parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK, read, get_client, \
     reset_simulation, get_movable_joints, JOINT_TYPES, get_joint_type, is_movable, get_camera_matrix
-from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link, get_instance_name, \
+from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link, \
     toggle_joint, get_door_links, set_camera_target_body, colorize_world
 from pybullet_tools.pr2_streams import get_handle_link
 from pybullet_tools.flying_gripper_utils import set_se3_conf
@@ -31,7 +31,7 @@ from pddlstream.language.constants import AND, PDDLProblem
 
 from world_builder.entities import Space
 from world_builder.robot_builders import create_pr2_robot, create_gripper_robot
-from world_builder.robots import RobotAPI
+from world_builder.utils import get_instance_name
 
 from lisdf_tools.lisdf_planning import pddl_to_init_goal
 

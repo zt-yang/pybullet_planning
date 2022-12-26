@@ -1468,7 +1468,16 @@ def load_kitchen_mini_scene(world, **kwargs):
 #################################################################
 
 
-def load_counter_moveables(world, counters, x_food_min=0.5, obstables=[]):
+def adjust_for_reachability(obj, counter, x_min):
+    (x, y, z), r = obj.get_pose()
+    ## scale the x to a reachable range
+    x_max = counter.aabb().upper[0]
+    x_new = x_max - (x_max - x_min) * (x_max - x) / counter.lx
+    obj.set_pose(((x_new, y, z), r))
+    counter.attach_obj(obj)
+
+
+def load_counter_moveables(world, counters, x_min=0.5, obstables=[]):
 
     robot = world.robot
     state = State(world, robot.grasp_types)
@@ -1476,12 +1485,7 @@ def load_counter_moveables(world, counters, x_food_min=0.5, obstables=[]):
     def place_on_counter(obj_name, category=None):
         counter = random.choice(counters)
         obj = counter.place_new_obj(obj_name, category=category, RANDOM_INSTANCE=True)
-        (x, y, z), r = obj.get_pose()
-        ## scale the x to a reachable range
-        x_max = counter.aabb().upper[0]
-        x_new = x_max - (x_max - x_food_min) * (x_max - x) / counter.lx
-        obj.set_pose(((x_new, y, z), r))
-        counter.attach_obj(obj)
+        adjust_for_reachability(obj, counter, x_min)
         return obj
 
     def ensure_cfree(obj, obstables, obj_name, category=None):
@@ -1785,6 +1789,18 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
     return cabinets, shelves
 
 
+def load_braiser(world, supporter, x_min):
+    braiser = supporter.place_new_obj('BraiserBody', RANDOM_INSTANCE=True)
+    adjust_for_reachability(braiser, supporter, x_min)
+
+    lid = supporter.place_new_obj('BraiserLid', RANDOM_INSTANCE=braiser.mobility_id)
+    lid.set_pose(get_pose(braiser))
+    set_camera_target_body(braiser)
+
+    braiser_bottom = world.add_surface_by_keyword(braiser, 'braiser_bottom')
+    return braiser_bottom
+
+
 def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     h_lower_cabinets = 1
     dh_cabinets = 0.8
@@ -1918,6 +1934,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     sink_bottom = world.add_surface_by_keyword(sink, 'sink_bottom')
 
     """ step 5: place electronics and movables on counters """
+    x_food_min = base.aabb().upper[0] - 0.3
     obstables = []
     if 'MicrowaveHanging' not in ordering:
         wide_counters = [c for c in counters if c.ly > 0.66]
@@ -1927,14 +1944,19 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
             microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)))
             obstables.append(microwave)
 
-    x_food_min = base.aabb().upper[0] - 0.3
-    counters.extend([world.name_to_object('OvenCounter'), sink_bottom])
+    ## draw boundary of loading movales
+    oven = world.name_to_object('OvenCounter')
+    counters.extend([oven])
     for c in counters:
         mx, my, z = c.aabb().upper
         aabb = AABB(lower=(x_food_min, c.aabb().lower[1], z), upper=(mx, my, z + 0.1))
         draw_aabb(aabb)
+
+    braiser_bottom = load_braiser(world, oven, x_min=x_food_min)
+
+    counters.extend([sink_bottom, braiser_bottom])
     food_ids, bottle_ids, medicine_ids = \
-        load_counter_moveables(world, counters, x_food_min=x_food_min, obstables=obstables)
+        load_counter_moveables(world, counters, xd_min=x_food_min, obstables=obstables)
     moveables = food_ids + bottle_ids + medicine_ids
 
     """ step 6: take an image """

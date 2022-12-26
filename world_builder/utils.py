@@ -8,7 +8,6 @@ from os import listdir
 import json
 import random
 
-from .entities import Object, Floor, Moveable
 from pybullet_tools.utils import unit_pose, get_aabb_extent, \
     set_pose, get_movable_joints, draw_pose, pose_from_pose2d, set_velocity, set_joint_states, get_bodies, \
     flatten, INF, inf_generator, get_time_step, get_all_links, get_visual_data, pose2d_from_pose, multiply, invert, \
@@ -368,6 +367,7 @@ def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=
 
 
 def world_of_models(floor_width=5, floor_length = 5):
+    from world_builder.entities import Floor
     from pybullet_tools.bullet_utils import add_body
     set_camera_pose(camera_point=[floor_width, 0., 5], target_point=[1., 0, 1.])
     floor = add_body(Floor(create_box(w=floor_width*2, l=floor_length*2, h=FLOOR_HEIGHT, color=TAN, collision=True)),
@@ -419,6 +419,7 @@ def find_point_for_single_push(body):
 
 
 def visualize_point(point, world):
+    from .entities import Moveable
     z = 0
     if len(point) == 3:
         x, y, z = point
@@ -449,3 +450,28 @@ def get_instances(category):
         else:
             print(f'world_builder.utils.get_instances({category}) didnt find any models')
             assert NotImplementedError()
+
+
+def get_instance_name(path):
+    if not isfile(path): return None
+    rows = open(path, 'r').readlines()
+    if len(rows) > 50: rows = rows[:50]
+
+    def from_line(r):
+        r = r.replace('\n', '')[13:]
+        return r[:r.index('"')]
+
+    name = [from_line(r) for r in rows if '<robot name="' in r]
+    if len(name) == 1:
+        return name[0]
+    return None
+
+
+def get_mobility_id(path):
+    if not path.endswith('mobility.urdf'):
+        return None
+    idx = dirname(path)
+    idx = idx.replace(dirname(idx), '')
+    return idx[1:]
+
+

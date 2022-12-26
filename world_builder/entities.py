@@ -8,8 +8,9 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
     stable_z, get_joint_descendants, get_link_children, get_joint_info, get_links, link_from_name, set_renderer, \
     get_min_limit, get_max_limit, get_link_parent, LockRenderer, HideOutput, pairwise_collisions, get_bodies, \
     remove_debug, child_link_from_joint, unit_point, tform_point, buffer_aabb, get_aabb_center, get_aabb_extent
-from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_box_entity, get_instance_name, \
+from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_box_entity, \
     get_camera_image_at_pose
+from world_builder.utils import get_mobility_id, get_instance_name
 
 import numpy as np
 
@@ -86,6 +87,7 @@ class Object(Index):
             body, path, scale = body[:3]
             self.path = path
             self.scale = scale
+            self.mobility_id = get_mobility_id(path)
             self.instance_name = get_instance_name(path)
         elif is_box_entity(body):
             self.is_box = True
@@ -156,7 +158,8 @@ class Object(Index):
 
         # set_renderer(False)
         obj = self.world.add_object(
-            Object(load_asset(obj_name.lower(), maybe=True, **kwargs), category=category)
+            Object(load_asset(obj_name.lower(), maybe=True, **kwargs),
+                   category=category)
         )
         # body = sample_obj_on_body_link_surface(obj, self.body, self.link, max_trial=max_trial)
         self.world.put_on_surface(obj, max_trial=max_trial, surface=self.shorter_name)
