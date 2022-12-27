@@ -1804,13 +1804,13 @@ def load_braiser(world, supporter, x_min):
     braiser = supporter.place_new_obj('BraiserBody', RANDOM_INSTANCE=True)
     set_camera_target_body(braiser)
     adjust_for_reachability(braiser, supporter, x_min)
+    set_camera_target_body(braiser)
+    wait_unlocked()
 
     lid = braiser.place_new_obj('BraiserLid', max_trial=1, RANDOM_INSTANCE=braiser.mobility_id)
     world.make_transparent(lid)
     lid.set_pose(get_pose(braiser))
     braiser.attach_obj(lid)
-
-    set_camera_target_body(braiser)
 
     braiser_bottom = world.add_surface_by_keyword(braiser, 'braiser_bottom')
     return braiser, braiser_bottom
