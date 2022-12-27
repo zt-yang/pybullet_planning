@@ -33,7 +33,7 @@ from pybullet_tools.bullet_utils import place_body, add_body, Pose2d, nice, OBJ_
     sample_obj_on_body_link_surface, sample_obj_in_body_link_space, set_camera_target_body, \
     open_joint, close_joint, set_camera_target_robot, summarize_joints, get_partnet_doors, get_partnet_spaces, \
     set_pr2_ready, BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, draw_base_limits, \
-    collided_around, collided, get_partnet_links_by_type
+    collided_around, collided, get_partnet_links_by_type, aabb_larger
 
 OBJ = '?obj'
 
@@ -1482,6 +1482,12 @@ def load_counter_moveables(world, counters, x_min=0.5, obstables=[]):
 
     robot = world.robot
     state = State(world, robot.grasp_types)
+    size_matter = len(obstables) > 0 and obstables[-1].name == 'braiser_bottom'
+    satisfied = []
+
+    def check_size_matter(obj):
+        if size_matter and aabb_larger(obstables[-1], obj):
+            satisfied.append(obj)
 
     def place_on_counter(obj_name, category=None):
         counter = random.choice(counters)
@@ -1491,15 +1497,18 @@ def load_counter_moveables(world, counters, x_min=0.5, obstables=[]):
 
     def ensure_cfree(obj, obstables, obj_name, category=None):
         # s = np.random.get_state()[-3]
-        while collided_around(obj, obstables) or not robot.check_reachability(obj, state):
+        while collided_around(obj, obstables) or not robot.check_reachability(obj, state) \
+                or (obj_name == 'food' and size_matter and len(satisfied) == 0):
             world.remove_object(obj)
             obj = place_on_counter(obj_name, category)
+            check_size_matter(obj)
         return obj
 
     ## add food items
     food_ids = []
     for i in range(2):
         obj = place_on_counter('food', category='edible')
+        check_size_matter(obj)
         obj = ensure_cfree(obj, obstables, obj_name='food', category='edible')
         food_ids.append(obj)
         obstables.append(obj.body)
@@ -1804,7 +1813,7 @@ def load_braiser(world, supporter, x_min):
     set_camera_target_body(braiser)
 
     braiser_bottom = world.add_surface_by_keyword(braiser, 'braiser_bottom')
-    return braiser_bottom
+    return braiser, braiser_bottom
 
 
 def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
@@ -1874,10 +1883,14 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
                 furniture.adjust_next_to(current, direction=direction, align='+x')
 
             ## put a cabinetlower with the same y_extent as the object
-            elif category in on_base and furniture.mobility_id not in ['11178', '11231', '11709']:
-                furniture_base = load_furniture_base(furniture)
-                furniture_base.adjust_next_to(current, direction=direction, align='+x')
-                furniture.adjust_next_to(furniture_base, direction='+z', align='+x')
+            elif category in on_base:
+                if furniture.mobility_id not in ['11178', '11231', '11709']:
+                    furniture_base = load_furniture_base(furniture)
+                    furniture_base.adjust_next_to(current, direction=direction, align='+x')
+                    furniture.adjust_next_to(furniture_base, direction='+z', align='+x')
+                    x_lower = update_x_lower(furniture_base, x_lower)
+                else:
+                    furniture.adjust_next_to(current, direction=direction, align='+x')
                 x_lower = update_x_lower(furniture, x_lower)
 
             if direction == '+y':
@@ -1958,7 +1971,8 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
         aabb = AABB(lower=(x_food_min, c.aabb().lower[1], z), upper=(mx, my, z + 0.1))
         draw_aabb(aabb)
 
-    braiser_bottom = load_braiser(world, oven, x_min=x_food_min)
+    braiser, braiser_bottom = load_braiser(world, oven, x_min=x_food_min)
+    obstables.extend([braiser, braiser_bottom])
 
     ## first load objects into reachable places
     counters.extend([sink_bottom])

@@ -1972,3 +1972,14 @@ def clean_preimage(preimage):
         if 'UniqueOptValue' not in str(p):
             new_preimage.append(p)
     return new_preimage
+
+
+def aabb_larger(one, two):
+    if isinstance(one, tuple):
+        lx, ly, _ = get_aabb_extent(get_aabb(one[0], one[1]))
+    else:
+        lx, ly, _ = get_aabb_extent(get_aabb(one))
+    smaller = min(lx, ly)
+    lx, ly, _ = get_aabb_extent(get_aabb(two))
+    larger = max(lx, ly)
+    return smaller > larger
