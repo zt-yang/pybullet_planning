@@ -253,7 +253,7 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
             else:
                 test_grasp(body)
 
-            # wait_unlocked()
+            wait_unlocked()
 
         if len(categories) > 1:
             wait_if_gui(f'------------- Next object category? finished ({i+1}/{len(categories)})')

@@ -1470,9 +1470,9 @@ def load_kitchen_mini_scene(world, **kwargs):
 
 def adjust_for_reachability(obj, counter, x_min):
     (x, y, z), r = obj.get_pose()
-    x_min -= (y - obj.aabb().lower[1])
+    x_min += (y - obj.aabb().lower[1])
     ## scale the x to a reachable range
-    x_max = counter.aabb().upper[0]
+    x_max = counter.aabb().upper[0] - (obj.aabb().upper[0] - x)
     x_new = x_max - (x_max - x_min) * (x_max - x) / counter.lx
     obj.set_pose(((x_new, y, z), r))
     counter.attach_obj(obj)
@@ -1794,15 +1794,14 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
 def load_braiser(world, supporter, x_min):
     braiser = supporter.place_new_obj('BraiserBody', RANDOM_INSTANCE=True)
     set_camera_target_body(braiser)
-    wait_unlocked()
     adjust_for_reachability(braiser, supporter, x_min)
 
     lid = braiser.place_new_obj('BraiserLid', max_trial=1, RANDOM_INSTANCE=braiser.mobility_id)
+    world.make_transparent(lid)
     lid.set_pose(get_pose(braiser))
     braiser.attach_obj(lid)
 
     set_camera_target_body(braiser)
-    wait_unlocked()
 
     braiser_bottom = world.add_surface_by_keyword(braiser, 'braiser_bottom')
     return braiser_bottom
