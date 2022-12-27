@@ -1828,7 +1828,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     under_counter = ['SinkBase', 'CabinetLower', 'DishwasherBox']
     on_base = ['MicrowaveHanging', 'MiniFridge']
     full_body = ['CabinetTall', 'Fridge', 'OvenCounter']
-    tall_body = ['CabinetTall', 'Fridge']
+    tall_body = ['CabinetTall', 'Fridge', 'MiniFridge']
 
     def update_x_lower(obj, x_lower):
         if obj.aabb().lower[0] < x_lower:
@@ -1860,7 +1860,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
         current = base
         for category in categories:
             furniture = load_furniture(category)
-            if furniture in tall_body:
+            if category in tall_body:
                 tall_obstacles.append(furniture)
 
             if category in full_body + on_base:
@@ -1874,7 +1874,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
                 furniture.adjust_next_to(current, direction=direction, align='+x')
 
             ## put a cabinetlower with the same y_extent as the object
-            elif category in on_base:
+            elif category in on_base and furniture.mobility_id not in ['11178', '11231', '11709']:
                 furniture_base = load_furniture_base(furniture)
                 furniture_base.adjust_next_to(current, direction=direction, align='+x')
                 furniture.adjust_next_to(furniture_base, direction='+z', align='+x')
