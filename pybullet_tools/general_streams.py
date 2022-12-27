@@ -11,7 +11,8 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     pairwise_collision, sample_placement, get_pose, Point, Euler, set_joint_position, \
     BASE_LINK, get_joint_position, get_aabb, quat_from_euler, flatten_links, multiply, \
     get_joint_limits, unit_pose, point_from_pose, draw_point, PI, quat_from_pose, angle_between, \
-    tform_point, interpolate_poses, draw_pose, RED, remove_handles, stable_z
+    tform_point, interpolate_poses, draw_pose, RED, remove_handles, stable_z, wait_unlocked, \
+    get_aabb_center
 from pybullet_tools.pr2_primitives import Pose
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, is_contained, \
@@ -218,20 +219,21 @@ def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False,
             p = Pose(body, body_pose, surface)
             p.assign()
             obs = [obst for obst in obstacles if obst not in {body, surface}]
-            result = collided(body, obs, verbose=True)
+            result = collided(body, obs, verbose=True, visualize=True, tag='stable_gen')
             if not result:
                 yield (p,)
             else:
-                print('Collided | get_stable_gen', result)
+                print('general_streams.get_stable_gen collided')
+                wait_unlocked()
     return gen
 
 
 def learned_pose_sampler(world, body, surface, body_pose):
     ## hack to reduce planning time
-    if 'eggblock' in world.get_name(body) and 'braiser_bottom' in world.get_name(surface):
-        (x, y, z), quat = body_pose
-        x = 0.55
-        body_pose = (x, y, z), quat
+    if 'braiser_bottom' in world.get_name(surface):
+        (_, _, z), quat = body_pose
+        x, y, _ = get_aabb_center(get_aabb(surface[0], link=surface[-1]))
+        body_pose = (x, y, z+0.01), quat
     return body_pose
 
 

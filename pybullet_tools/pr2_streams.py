@@ -1430,13 +1430,12 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
                 bq.assign()
 
                 set_joint_positions(robot, arm_joints, default_conf)
-                if collided(robot, obstacles, articulated=True):
+                if collided(robot, obstacles, articulated=True, tag='ik_default_conf'):
                     # wait_unlocked()
                     continue
 
                 ik_solver.set_conf(conf)
-                if collided(robot, obstacles, articulated=True):
-                    # wait_unlocked()
+                if collided(robot, obstacles, articulated=True, tag='ik_final_conf'):
                     continue
 
                 if visualize:

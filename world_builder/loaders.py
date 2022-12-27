@@ -1,5 +1,6 @@
 import random
 
+import copy
 import numpy as np
 import math
 import os
@@ -1491,6 +1492,8 @@ def load_counter_moveables(world, counters, x_min=0.5, obstables=[]):
 
     def place_on_counter(obj_name, category=None):
         counter = random.choice(counters)
+        # if obj_name in ['meatturkeyleg', 'food']:
+        #     print('ssss')
         obj = counter.place_new_obj(obj_name, category=category, RANDOM_INSTANCE=True)
         adjust_for_reachability(obj, counter, x_min)
         return obj
@@ -1800,14 +1803,13 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
     return cabinets, shelves
 
 
-def load_braiser(world, supporter, x_min):
-    braiser = supporter.place_new_obj('BraiserBody', RANDOM_INSTANCE=True)
+def load_braiser(world, supporter, x_min, verbose=True):
+    braiser = supporter.place_new_obj('BraiserBody', RANDOM_INSTANCE=True, verbose=verbose)
     set_camera_target_body(braiser)
     adjust_for_reachability(braiser, supporter, x_min)
     set_camera_target_body(braiser)
-    wait_unlocked()
 
-    lid = braiser.place_new_obj('BraiserLid', max_trial=1, RANDOM_INSTANCE=braiser.mobility_id)
+    lid = braiser.place_new_obj('BraiserLid', max_trial=1, RANDOM_INSTANCE=braiser.mobility_id, verbose=verbose)
     world.make_transparent(lid)
     lid.set_pose(get_pose(braiser))
     braiser.attach_obj(lid)
@@ -1953,6 +1955,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     sink_bottom = world.add_surface_by_keyword(sink, 'sink_bottom')
 
     """ step 5: place electronics and movables on counters """
+    only_counters = copy.deepcopy(counters)
     x_food_min = base.aabb().upper[0] - 0.3
     obstables = []
     if 'MicrowaveHanging' not in ordering:
@@ -1984,12 +1987,13 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
 
     """ step 6: take an image """
     set_camera_pose((4, 4, 3), (0, 4, 0))
-    if pause or True:
-        wait_unlocked()
 
     load_storage_mechanism(world, world.name_to_object('minifridge'))
     load_storage_mechanism(world, world.cat_to_objects('cabinettop')[0])
-    return moveables, cabinets
+
+    if pause:
+        wait_unlocked()
+    return moveables, cabinets, only_counters
 
 
 if __name__ == '__main__':

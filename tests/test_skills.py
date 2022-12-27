@@ -21,7 +21,7 @@ from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, 
     add_text, joint_from_name, set_caching, Point, set_random_seed, set_numpy_seed
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, set_camera_target_body, \
     draw_bounding_lines, fit_dimensions, draw_fitted_box, get_hand_grasps, get_partnet_doors, get_partnet_spaces, \
-    open_joint, get_grasp_db_file
+    open_joint, get_grasp_db_file, draw_points
 from pybullet_tools.pr2_agent import get_stream_info, post_process, move_cost_fn, \
     visualize_grasps_by_quat, visualize_grasps
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, \
@@ -231,9 +231,11 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
             draw_text_label(body, text, offset=(0, -0.2, 0.1))
 
             # if cat == 'BraiserBody':
-            #     pose = get_pose(body)
-            #     _, body, _ = load_model_instance('BraiserLid', id, scale=scale, location=locations[j])
-            #     set_pose(body, pose)
+            #     draw_points(body, size=0.05)
+            #     set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
+                # pose = get_pose(body)
+                # _, body, _ = load_model_instance('BraiserLid', id, scale=scale, location=locations[j])
+                # set_pose(body, pose)
 
             """ --- fixing texture issues ---"""
             # world.add_joints_by_keyword(obj_name)
@@ -873,7 +875,7 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    # test_grasps(robot, ['BraiserBody'], skip_grasps=False)  ## 'EyeGlasses'
+    test_grasps(robot, ['BraiserBody'], skip_grasps=False)  ## 'EyeGlasses'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # test_handle_grasps(robot, category='CabinetUpper')
@@ -893,7 +895,7 @@ if __name__ == '__main__':
     # test_placement_on(robot, category='BraiserBody', surface_name='braiser_bottom')
 
     # test_sink_configuration(robot, pause=True)
-    test_kitchen_configuration(robot)
+    # test_kitchen_configuration(robot)
 
     """ --- specific counter --- """
     # test_placement_counter()  ## initial placement

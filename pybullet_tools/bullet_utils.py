@@ -1063,7 +1063,7 @@ def get_model_points(body, link=None):
     return vertices
 
 
-def draw_points(body, link=None, **kwargs):
+def draw_points(body, link=None, size=0.2, **kwargs):
     body_pose = get_model_pose(body, link=link, **kwargs)
     vertices = get_model_points(body, link=link)
     vertices = apply_affine(body_pose, vertices)
@@ -1073,7 +1073,7 @@ def draw_points(body, link=None, **kwargs):
         gap = int(len(vertices)/num_vertices)
         vertices = vertices[::gap]
     for v in vertices:
-        handles.append(draw_point(v, size=0.2, color=RED))
+        handles.append(draw_point(v, size=size, color=RED))
     return handles
 
 
