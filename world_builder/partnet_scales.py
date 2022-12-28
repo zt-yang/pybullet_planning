@@ -274,7 +274,7 @@ MODEL_HEIGHTS = {
     },
     'OvenCounter': {
         'height': 1.05,
-        'models': ['101773', '101808', '101917', '101921', '101930', '102018', '102044'],
+        'models': ['101773', '101808', '101917', '101921', '101930', '102044'],
     },
 }
 MODEL_HEIGHTS.update({k.lower(): v for k, v in MODEL_HEIGHTS.items()})
