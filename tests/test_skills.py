@@ -54,24 +54,12 @@ print('Seed:', seed)
 # ####################################
 
 
-def get_instances(category, get_all=False):
-    instances = get_instances_helper(category)
-    keys = list(instances.keys())
-    if isinstance(keys[0], tuple):
-        instances = instances
-    elif not keys[0].isdigit():
-        keys = list(set([k.lower() for k in keys]))
-        instances = {k: instances[k] for k in keys}
-        instances = dict(sorted(instances.items()))
-    else:
-        cat_dir = join(ASSET_PATH, 'models', category)
-        if not isdir(cat_dir):
-            os.mkdir(cat_dir)
-            get_data(categories=[category])
-        if len(listdir(cat_dir)) > 0 and not get_all:
-            keys = [k for k in keys if isdir(join(cat_dir, k))]
-        instances = {k: instances[k] for k in keys}
-        instances = dict(sorted(instances.items()))
+def get_instances(category, **kwargs):
+    cat_dir = join(ASSET_PATH, 'models', category)
+    if not isdir(cat_dir):
+        os.mkdir(cat_dir)
+        get_data(categories=[category])
+    instances = get_instances_helper(category, **kwargs)
     return instances
 
 
@@ -88,25 +76,6 @@ def get_test_world(robot='feg', semantic_world=False, **kwargs):
         world = World()
     build_skill_domain_robot(world, robot, **kwargs)
     return world
-
-
-# def add_robot(world, robot, DRAW_BASE_LIMITS=False):
-#     if robot == 'pr2':
-#         from world_builder.loaders import BASE_LIMITS as custom_limits
-#         base_q = [0, -0.5, 0]
-#         robot = create_pr2_robot(world, custom_limits=custom_limits,
-#                                  base_q=base_q, DRAW_BASE_LIMITS=DRAW_BASE_LIMITS)
-#
-#     elif robot == 'feg':
-#         custom_limits = {0: (-5, 5), 1: (-5, 5), 2: (0, 3)}
-#         # init_q = [3, 1, 1, 0, 0, 0]
-#         init_q = [0, 0, 0, 0, 0, 0]
-#         # robot = create_fe_gripper(init_q=init_q)
-#         # world.add_robot(robot, 'feg')
-#         robot = create_gripper_robot(world, custom_limits=custom_limits,
-#                                      initial_q=init_q)
-#
-#     return robot
 
 
 def get_z_on_floor(body):

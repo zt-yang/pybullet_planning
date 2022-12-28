@@ -431,26 +431,48 @@ def visualize_point(point, world):
         Pose(point=Point(x, y, z)))
 
 
-def get_instances(category):
+def sort_instances(category, instances, get_all=False):
+    keys = list(instances.keys())
+    if not get_all:
+        cat_dir = join(ASSET_PATH, 'models', category)
+        if not isdir(cat_dir):
+            return {}
+        elif len(listdir(cat_dir)) > 0:
+            keys = [k for k in keys if isdir(join(cat_dir, k))]
+    if isinstance(keys[0], tuple):
+        instances = instances
+    elif not keys[0].isdigit():
+        keys = list(set([k for k in keys]))
+        instances = {k: instances[k] for k in keys}
+        instances = dict(sorted(instances.items()))
+    else:
+        instances = {k: instances[k] for k in keys}
+        instances = dict(sorted(instances.items()))
+    return instances
+
+
+def get_instances(category, **kwargs):
     from world_builder.partnet_scales import MODEL_SCALES, MODEL_HEIGHTS, OBJ_SCALES
     if category in MODEL_SCALES:
-        return MODEL_SCALES[category]
+        instances = MODEL_SCALES[category]
     elif category in MODEL_HEIGHTS:
         instances = MODEL_HEIGHTS[category]['models']
-        return {k: 1 for k in instances}
+        instances = {k: 1 for k in instances}
     else:
         parent = get_parent_category(category)
         if parent is not None and parent in MODEL_SCALES:
-            return {(parent, k): v for k, v in MODEL_SCALES[parent].items() if k == category}
+            instances = {(parent, k): v for k, v in MODEL_SCALES[parent].items() if k == category}
         elif category.lower() in OBJ_SCALES:
             scale = OBJ_SCALES[category.lower()]
             category = [c for c in listdir(join(ASSET_PATH, 'models')) if c.lower() == category.lower()][0]
             asset_root = join(ASSET_PATH, 'models', category)
             indices = [f for f in listdir(join(asset_root)) if isdir(join(asset_root, f))]
-            return {k : scale for k in indices}
+            instances = {k : scale for k in indices}
         else:
+            instances = []
             print(f'world_builder.utils.get_instances({category}) didnt find any models')
             assert NotImplementedError()
+    return sort_instances(category, instances, **kwargs)
 
 
 def get_instance_name(path):
