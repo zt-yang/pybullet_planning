@@ -26,15 +26,16 @@ ASSET_PATH = join(dirname(__file__), '..', 'assets')
 def load_one_world(gym_world, lisdf_dir, offset=None, robots=True, world_index=None,
                    update_viewer=True, test_camera_pose=False, **kwargs):
     for name, path, scale, is_fixed, pose, positions in load_lisdf(lisdf_dir, robots=robots, **kwargs):
-        # if 'veggiegreenpepper' in name or 'meatturkeyleg' in name or 'veggietomato' in name:
-        #     print('!!! skipping', name)
-        #     continue
         is_robot = test_is_robot(name)
         if test_camera_pose and not is_robot:
             continue
-        asset = gym_world.simulator.load_asset(
-            asset_file=path, root=None, fixed_base=is_fixed or is_robot,  # y_up=is_robot,
-            gravity_comp=is_robot, collapse=False, vhacd=False)
+        if isinstance(path, tuple):
+            w, l, h = path
+            asset = gym_world.simulator.box_asset(w, length=l, height=h, fixed_base=True)
+        else:
+            asset = gym_world.simulator.load_asset(
+                asset_file=path, root=None, fixed_base=is_fixed or is_robot,  # y_up=is_robot,
+                gravity_comp=is_robot, collapse=False, vhacd=False)
         if world_index is not None:
             name = f'w{world_index}_{name}'
         print(f"Name: {name} | Fixed: {is_fixed} | Scale: {scale:.3f} | Path: {path}")

@@ -21,12 +21,17 @@ def load_lisdf(lisdf_dir, scene_scale=1., robots=False, skip=[], verbose=False):
         model_states = world_xml.state.model
         model_states = {s['name']: {j['name']: eval(j.angle.cdata) for j in s.joint} for s in model_states}
 
-    for obj_xml in world_xml.include:
+    skip += ['floor1']
+    for obj_xml in world_xml.include + world_xml.model:
         name = obj_xml._attributes["name"]
         if (name in skip) or (not robots and test_is_robot(name)): # TODO: generalize
             continue
 
-        path = abspath(join(dirname(lisdf_path), obj_xml.uri.cdata))
+        if hasattr(obj_xml, "uri"):
+            path = abspath(join(dirname(lisdf_path), obj_xml.uri.cdata))
+        else:
+            path = tuple([eval(n) for n in obj_xml.link.collision.geometry.box.size.cdata.split(' ')])
+
         if hasattr(obj_xml, "scale"):
             scale = scene_scale * float(obj_xml.scale.cdata)
         else:
@@ -47,6 +52,7 @@ def load_lisdf(lisdf_dir, scene_scale=1., robots=False, skip=[], verbose=False):
         positions = model_states[name] if name in model_states else {}
 
         yield name, path, scale, is_fixed, pose, positions
+
 
 ##################################################
 
