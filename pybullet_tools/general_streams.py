@@ -179,13 +179,17 @@ def get_compute_pose_rel_kin():
 """
 
 
-def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False,
+def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False, visualize=False,
                    learned_sampling=True, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
     obstacles = problem.fixed if collisions else []
     world = problem.world
+    robot = world.robot
 
-    def gen(body, surface):
+    def gen(body, surface):  ## , fluents=[] ## RuntimeError: Fluent streams certified facts cannot be domain facts
+        # if fluents:
+        #     attachments = process_motion_fluents(fluents, robot)
+
         if surface is None:
             surfaces = problem.surfaces
         else:
@@ -219,12 +223,13 @@ def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False,
             p = Pose(body, body_pose, surface)
             p.assign()
             obs = [obst for obst in obstacles if obst not in {body, surface}]
-            result = collided(body, obs, verbose=True, visualize=True, tag='stable_gen')
+            result = collided(body, obs, verbose=True, visualize=visualize, tag='stable_gen')
             if not result:
                 yield (p,)
             else:
                 print('general_streams.get_stable_gen collided')
-                wait_unlocked()
+                if visualize:
+                    wait_unlocked()
     return gen
 
 

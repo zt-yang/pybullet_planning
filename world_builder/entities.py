@@ -149,7 +149,7 @@ class Object(Index):
         self.world.ATTACHMENTS[obj] = create_attachment(self, link, obj, OBJ=True)
         obj.change_supporting_surface(self)
 
-    def place_new_obj(self, obj_name, category=None, max_trial=8, **kwargs):
+    def place_new_obj(self, obj_name, category=None, name=None, max_trial=8, **kwargs):
         from pybullet_tools.bullet_utils import sample_obj_on_body_link_surface
         from world_builder.utils import load_asset
 
@@ -158,7 +158,8 @@ class Object(Index):
 
         # set_renderer(False)
         obj = self.world.add_object(
-            Object(load_asset(obj_name.lower(), maybe=True, **kwargs), category=category)
+            Object(load_asset(obj_name.lower(), maybe=True, **kwargs),
+                   category=category, name=name)
         )
         # body = sample_obj_on_body_link_surface(obj, self.body, self.link, max_trial=max_trial)
         self.world.put_on_surface(obj, max_trial=max_trial, surface=self.shorter_name)

@@ -1482,7 +1482,8 @@ def adjust_for_reachability(obj, counter, x_min):
 def load_counter_moveables(world, counters, x_min=0.5, obstables=[]):
 
     robot = world.robot
-    state = State(world, robot.grasp_types)
+    old_world = copy.deepcopy(world)
+    state = State(old_world, robot.grasp_types)
     size_matter = len(obstables) > 0 and obstables[-1].name == 'braiser_bottom'
     satisfied = []
 
@@ -1787,7 +1788,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
         add_wall_fillings(cabinet)
         cabinets.append(cabinet)
 
-    # ## load ultra wide CabinetTop
+    # ## load ultra-wide CabinetTop
     # wide_counters = [c for c in counters if c.ly > 1.149]
     # if len(wide_counters) > 0:
     #     add_cabinets_shelves(wide_counters, cabi_type, ['Sektion'])
@@ -1809,7 +1810,8 @@ def load_braiser(world, supporter, x_min, verbose=True):
     adjust_for_reachability(braiser, supporter, x_min)
     set_camera_target_body(braiser)
 
-    lid = braiser.place_new_obj('BraiserLid', max_trial=1, RANDOM_INSTANCE=braiser.mobility_id, verbose=verbose)
+    lid = braiser.place_new_obj('BraiserLid', category='moveable', name='BraiserLid', max_trial=1,
+                                RANDOM_INSTANCE=braiser.mobility_id, verbose=verbose)
     world.make_transparent(lid)
     lid.set_pose(get_pose(braiser))
     braiser.attach_obj(lid)
