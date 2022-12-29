@@ -199,9 +199,10 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
             text = id.replace('veggie', '').replace('meat', '')
             draw_text_label(body, text, offset=(0, -0.2, 0.1))
 
-            # if cat == 'BraiserBody':
-            #     draw_points(body, size=0.05)
-            #     set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
+            if cat == 'BraiserBody':
+                print('get_aabb_extent', nice(get_aabb_extent(get_aabb(body))))
+                # draw_points(body, size=0.05)
+                # set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
                 # pose = get_pose(body)
                 # _, body, _ = load_model_instance('BraiserLid', id, scale=scale, location=locations[j])
                 # set_pose(body, pose)
@@ -844,7 +845,7 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    test_grasps(robot, ['BraiserBody'], skip_grasps=False)  ## 'EyeGlasses'
+    test_grasps(robot, ['BraiserLid'], skip_grasps=False)  ## 'EyeGlasses'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # test_handle_grasps(robot, category='CabinetUpper')

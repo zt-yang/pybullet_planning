@@ -3,6 +3,7 @@ import random
 import copy
 import numpy as np
 import math
+import time
 import os
 import string
 
@@ -950,7 +951,6 @@ def load_feg_kitchen(world):
 
 
 def place_in_cabinet(fridgestorage, cabbage, place=True, world=None, learned=True):
-    # random.seed(time.time())
     if not isinstance(fridgestorage, tuple):
         b = fridgestorage.body
         l = fridgestorage.link
@@ -1479,16 +1479,18 @@ def adjust_for_reachability(obj, counter, x_min):
     counter.attach_obj(obj)
 
 
-def load_counter_moveables(world, counters, x_min=0.5, obstables=[]):
-
+def load_counter_moveables(world, counters, x_min=0.5, obstacles=[]):
+    start = time.time()
     robot = world.robot
     old_world = copy.deepcopy(world)
     state = State(old_world, robot.grasp_types)
-    size_matter = len(obstables) > 0 and obstables[-1].name == 'braiser_bottom'
+    size_matter = len(obstacles) > 0 and obstacles[-1].name == 'braiser_bottom'
     satisfied = []
 
+    print('load_counter_moveables(obstacles={})'.format([o.name for o in obstacles]))
+
     def check_size_matter(obj):
-        if size_matter and aabb_larger(obstables[-1], obj):
+        if size_matter and aabb_larger(obstacles[-1], obj):
             satisfied.append(obj)
 
     def place_on_counter(obj_name, category=None):
@@ -1499,9 +1501,9 @@ def load_counter_moveables(world, counters, x_min=0.5, obstables=[]):
         adjust_for_reachability(obj, counter, x_min)
         return obj
 
-    def ensure_cfree(obj, obstables, obj_name, category=None):
+    def ensure_cfree(obj, obstacles, obj_name, category=None):
         # s = np.random.get_state()[-3]
-        while collided_around(obj, obstables) or not robot.check_reachability(obj, state) \
+        while collided(obj, obstacles) or not robot.check_reachability(obj, state) \
                 or (obj_name == 'food' and size_matter and len(satisfied) == 0):
             world.remove_object(obj)
             obj = place_on_counter(obj_name, category)
@@ -1513,25 +1515,27 @@ def load_counter_moveables(world, counters, x_min=0.5, obstables=[]):
     for i in range(2):
         obj = place_on_counter('food', category='edible')
         check_size_matter(obj)
-        obj = ensure_cfree(obj, obstables, obj_name='food', category='edible')
+        obj = ensure_cfree(obj, obstacles, obj_name='food', category='edible')
         food_ids.append(obj)
-        obstables.append(obj.body)
+        obstacles.append(obj.body)
 
     ## add bottles
     bottle_ids = []
     for i in range(2):
         obj = place_on_counter('bottle')
-        obj = ensure_cfree(obj, obstables, obj_name='bottle')
+        obj = ensure_cfree(obj, obstacles, obj_name='bottle')
         bottle_ids.append(obj)
-        obstables.append(obj.body)
+        obstacles.append(obj.body)
 
     ## add medicine
     medicine_ids = []
     for i in range(1):
         obj = place_on_counter('medicine')
-        obj = ensure_cfree(obj, obstables, obj_name='medicine')
+        obj = ensure_cfree(obj, obstacles, obj_name='medicine')
         medicine_ids.append(obj)
-        obstables.append(obj.body)
+        obstacles.append(obj.body)
+
+    print('... finished loading moveables in {}s'.format(round(time.time() - start, 2)))
 
     return food_ids, bottle_ids, medicine_ids
 
@@ -1743,28 +1747,15 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
         xa = x_min  ## counter.aabb().lower[0]
         xb, ya, za = cabinet.aabb().lower
         _, yb, zb = cabinet.aabb().upper
-        d = COUNTER_THICKNESS
-        # xb += 0.003
+        xb += 0.003
         zb -= 0.003
         ya += 0.003
         yb -= 0.003
 
-        left = create_box(w=xb - xa, l=d, h=zb - za, color=color)
-        # set_pose(left, Pose(point=Point(x=(xa + xb) / 2, y=ya + d / 2, z=(za + zb) / 2)))
-        world.add_object(Object(left, name='cabinettop_filler_left', category='filler'),
-                         Pose(point=Point(x=(xa + xb) / 2, y=ya + d / 2, z=(za + zb) / 2)))
-
-        right = create_box(w=xb - xa, l=d, h=zb - za, color=color)
-        world.add_object(Object(right, name='cabinettop_filler_right', category='filler'),
-                         Pose(point=Point(x=(xa + xb) / 2, y=yb - d / 2, z=(za + zb) / 2)))
-
-        top = create_box(w=xb - xa, l=(yb - ya - 2 * d), h=d, color=color)
-        world.add_object(Object(top, name='cabinettop_filler_top', category='filler'),
-                         Pose(point=Point(x=(xa + xb) / 2, y=(ya + yb) / 2, z=zb - d / 2)))
-
-        bottom = create_box(w=xb - xa, l=(yb - ya - 2 * d), h=d, color=color)
-        world.add_object(Object(bottom, name='cabinettop_filler_bottom', category='filler'),
-                         Pose(point=Point(x=(xa + xb) / 2, y=(ya + yb) / 2, z=za + d / 2)))
+        filler = create_box(w=xb - xa, l=yb - ya, h=zb - za, color=color)
+        world.add_object(Object(filler, name='cabinettop_filler', category='filler'),
+                         Pose(point=Point(x=(xa + xb) / 2, y=(ya + yb) / 2, z=(za + zb) / 2)))
+        world.add_ignored_pair((cabinet, filler))
 
     def place_cabinet(selected_counters, cabi_type=cabi_type, cabi_ins=[]):
         counter = random.choice(selected_counters)
@@ -1776,15 +1767,15 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
         cabinet.adjust_next_to(counter, direction='+z', align='+x', dz=dz)
         return cabinet
 
-    def ensure_cfree(obj, obstables, selected_counters, **kwargs):
-        while collided(obj, obstables) or obj.aabb().upper[1] > y_max or obj.aabb().lower[1] < y_min:
+    def ensure_cfree(obj, obstacles, selected_counters, **kwargs):
+        while collided(obj, obstacles) or obj.aabb().upper[1] > y_max or obj.aabb().lower[1] < y_min:
             world.remove_object(obj)
             obj = place_cabinet(selected_counters, **kwargs)
         return obj
 
-    def add_cabinets_shelves(selected_counters, obstables=[], **kwargs):
+    def add_cabinets_shelves(selected_counters, obstacles=[], **kwargs):
         cabinet = place_cabinet(selected_counters, **kwargs)
-        cabinet = ensure_cfree(cabinet, obstables, selected_counters, **kwargs)
+        cabinet = ensure_cfree(cabinet, obstacles, selected_counters, **kwargs)
         add_wall_fillings(cabinet)
         cabinets.append(cabinet)
 
@@ -1798,7 +1789,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
     # if len(wide_counters) > 0:
     #     add_cabinets_shelves(wide_counters, cabi_type, ['Chewie', 'Dagger'])
 
-    add_cabinets_shelves(counters, obstables=obstacles, cabi_type=cabi_type,
+    add_cabinets_shelves(counters, obstacles=obstacles, cabi_type=cabi_type,
                          cabi_ins=['Sektion', 'Chewie', 'Dagger'])
 
     return cabinets, shelves
@@ -1895,6 +1886,8 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
                     x_lower = update_x_lower(furniture_base, x_lower)
                 else:
                     furniture.adjust_next_to(current, direction=direction, align='+x')
+                    counters.append(furniture)
+                    world.add_to_cat(furniture.body, 'supporter')
                 x_lower = update_x_lower(furniture, x_lower)
 
             if direction == '+y':
@@ -1959,14 +1952,14 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     """ step 5: place electronics and movables on counters """
     only_counters = copy.deepcopy(counters)
     x_food_min = base.aabb().upper[0] - 0.3
-    obstables = []
+    obstacles = []
     if 'MicrowaveHanging' not in ordering:
         wide_counters = [c for c in counters if c.ly > 0.66]
         if len(wide_counters) > 0:
             counter = wide_counters[0]
             microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random())
             microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)))
-            obstables.append(microwave)
+            obstacles.append(microwave)
 
     ## draw boundary of loading movales
     oven = world.name_to_object('OvenCounter')
@@ -1977,12 +1970,12 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
         draw_aabb(aabb)
 
     braiser, braiser_bottom = load_braiser(world, oven, x_min=x_food_min)
-    obstables.extend([braiser, braiser_bottom])
+    obstacles.extend([braiser, braiser_bottom])
 
     ## first load objects into reachable places
     counters.extend([sink_bottom])
     food_ids, bottle_ids, medicine_ids = \
-        load_counter_moveables(world, counters, x_min=x_food_min, obstables=obstables)
+        load_counter_moveables(world, counters, x_min=x_food_min, obstacles=obstacles)
     moveables = food_ids + bottle_ids + medicine_ids
 
     ## then load objects into hidden placed
@@ -1995,7 +1988,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
 
     if pause:
         wait_unlocked()
-    return moveables, cabinets, only_counters
+    return moveables, cabinets, only_counters, obstacles, x_food_min
 
 
 if __name__ == '__main__':

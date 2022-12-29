@@ -464,7 +464,8 @@ def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_t
             # print(f'sampling surface for {body}-{link}', nice(aabb2d_from_aabb(aabb)))
             trial += 1
             if trial > max_trial:
-                print(f'sample_obj_on_body_link_surface\t sample {obj} on {body}-{link} | exceed max trial {max_trial}')
+                if max_trial > 1:
+                    print(f'sample_obj_on_body_link_surface\t sample {obj} on {body}-{link} | exceed max trial {max_trial}')
                 break
 
     if PLACEMENT_ONLY: return x, y, z, yaw
@@ -1169,7 +1170,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
 
     body_pose = get_model_pose(body, link=link, verbose=verbose)
 
-    aabb, handles = draw_fitted_box(body, link=link, verbose=verbose, draw_box=True, draw_centroid=False)
+    aabb, handles = draw_fitted_box(body, link=link, verbose=verbose, draw_box=False, draw_centroid=False)
 
     if link is None:
         r = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))

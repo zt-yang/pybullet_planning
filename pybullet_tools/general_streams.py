@@ -223,11 +223,12 @@ def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False, visua
             p = Pose(body, body_pose, surface)
             p.assign()
             obs = [obst for obst in obstacles if obst not in {body, surface}]
-            result = collided(body, obs, verbose=True, visualize=visualize, tag='stable_gen')
+            result = collided(body, obs, verbose=verbose, visualize=visualize, tag='stable_gen')
             if not result:
                 yield (p,)
             else:
-                print('general_streams.get_stable_gen collided')
+                if verbose:
+                    print('general_streams.get_stable_gen collided')
                 if visualize:
                     wait_unlocked()
     return gen
@@ -640,7 +641,7 @@ def get_pose_from_attachment(problem):
 """
 
 
-def get_cfree_pose_pose_test(robot, collisions=True, **kwargs):
+def get_cfree_pose_pose_test(robot, collisions=True, visualize=False, **kwargs):
     def test(b1, p1, b2, p2, fluents=[]):
         if not collisions or (b1 == b2) or b2 in ['@world']:
             return True
@@ -648,7 +649,10 @@ def get_cfree_pose_pose_test(robot, collisions=True, **kwargs):
             process_motion_fluents(fluents, robot)
         p1.assign()
         p2.assign()
-        return not pairwise_collision(b1, b2, **kwargs) #, max_distance=0.001)
+        result = not pairwise_collision(b1, b2, **kwargs)
+        if not result and visualize:
+            wait_unlocked()
+        return result #, max_distance=0.001)
     return test
 
 

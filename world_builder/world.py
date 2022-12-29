@@ -3,6 +3,7 @@ import time
 from itertools import product
 from collections import defaultdict
 import copy
+import random
 import shutil
 from os.path import join, isdir, abspath, basename, isfile
 import os
@@ -63,6 +64,7 @@ class World(object):
         self.REMOVED_BODY_TO_OBJECT = {}
         self.non_planning_objects = []
         self.not_stackable = {}
+        self.c_ignored_pairs = []
 
         ## for visualization
         self.handles = []
@@ -131,6 +133,10 @@ class World(object):
         self.SKIP_JOINTS = True
 
     @property
+    def max_delta(self):
+        return self.max_velocities * self.time_step
+
+    @property
     def objects(self):
         return [k for k in self.BODY_TO_OBJECT.keys() if k not in self.ROBOT_TO_OBJECT]
 
@@ -152,7 +158,7 @@ class World(object):
 
     @property
     def ignored_pairs(self):
-        found = []
+        found = self.c_ignored_pairs
         if self.floorplan is not None and 'kitchen' in self.floorplan:
             a = self.cat_to_bodies('counter')[0]
             b = self.cat_to_bodies('oven')[0]
@@ -162,6 +168,10 @@ class World(object):
         # if plate is not None:
         #     found.append([(plate, self.robot.body), (self.robot.body, plate)])
         return found
+
+    def add_ignored_pair(self, pair):
+        a, b = pair
+        self.c_ignored_pairs.extend([(a, b), (b, a)])
 
     def get_name(self, body):
         if body in self.BODY_TO_OBJECT:
@@ -493,9 +503,11 @@ class World(object):
                     bodies.append(item)
                     if isinstance(item, tuple):
                         bodies.append(item[0])
+        bodies = [str(b) for b in bodies]
+        exceptions = [str(b) for b in exceptions]
         all_bodies = list(self.BODY_TO_OBJECT.keys())
         for body in all_bodies:
-            if body not in bodies and body not in exceptions:
+            if str(body) not in bodies and str(body) not in exceptions:
                 self.remove_body_from_planning(body)
 
     def remove_body_from_planning(self, body):
@@ -1030,11 +1042,21 @@ class World(object):
     def get_type(self, body):
         return [self.BODY_TO_OBJECT[body].category]
 
-    # def get_scale(self, ):
-
-    @property
-    def max_delta(self):
-        return self.max_velocities * self.time_step
+    def find_surfaces_for_placement(self, obj, surfaces, obstacles=[]):
+        from pybullet_tools.pr2_streams import get_stable_gen
+        print('find_surface_for_placement', obj, surfaces)
+        state = State(self)
+        funk = get_stable_gen(state)
+        possible = []
+        for s in surfaces:
+            try:
+                p = next(funk(obj, s))[0]
+                possible.append(s)
+            except Exception:
+                pass
+        print(f'   find {len(possible)} out of {len(surfaces)} surfaces for {obj}', possible)
+        random.shuffle(possible)
+        return possible
 
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, self.robot)
