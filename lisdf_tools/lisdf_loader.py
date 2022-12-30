@@ -441,9 +441,10 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
         else:
             uri = join(tmp_path, f'{model.name}.sdf')
             ## TODO: when solving in parallel causes problems
-            if not isfile(uri):
-                with open(uri, 'w') as f:
-                    f.write(make_sdf_world(model.to_sdf()))
+            if isfile(uri):
+                os.remove(uri)
+            with open(uri, 'w') as f:
+                f.write(make_sdf_world(model.to_sdf()))
             category = model.links[0].name
 
         if verbose:

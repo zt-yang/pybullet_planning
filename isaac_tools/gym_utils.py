@@ -54,7 +54,7 @@ def load_one_world(gym_world, lisdf_dir, offset=None, robots=True, world_index=N
         gym_world.simulator.update_viewer()
 
 
-def load_lisdf_isaacgym(lisdf_dir, robots=True, pause=False, num_rows=5, num_cols=5,
+def load_lisdf_isaacgym(lisdf_dir, robots=True, pause=False,
                        camera_point=(8.5, 2.5, 3), camera_target=(0, 2.5, 0),
                         camera_width=2560, camera_height=1600, **kwargs):
     sys.path.append('/home/yang/Documents/playground/srl_stream/src')
