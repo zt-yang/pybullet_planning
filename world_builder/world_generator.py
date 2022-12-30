@@ -358,6 +358,10 @@ def save_to_outputs_folder(output_path, data_path, data_generation=False, multip
     if multiple_solutions:
         shutil.move(f"multiple_solutions.json", join(data_path, 'multiple_solutions.json'))
 
+    with open(join(data_path, 'plan.json'), 'r') as f:
+        if json.load(f)[0]['plan'] == 'FAILED':
+            shutil.rmtree(data_path)
+
 
 def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXIT=True,
                            floorplan=None, world_name=None, root_path=None, DEPTH_IMAGES=False):
