@@ -178,6 +178,11 @@ class World(object):
             return self.BODY_TO_OBJECT[body].name
         return None
 
+    def get_category(self, body):
+        if body in self.BODY_TO_OBJECT:
+            return self.BODY_TO_OBJECT[body].category
+        return None
+
     def get_debug_name(self, body):
         """ for viewing pleasure :) """
         if isinstance(body, Object):
@@ -492,6 +497,7 @@ class World(object):
         return bodies
 
     def remove_bodies_from_planning(self, goals=[], exceptions=[]):
+        print('remove_bodies_from_planning | exceptions =', exceptions)
         bodies = []
         if isinstance(goals, tuple):
             goals = [goals]
@@ -504,7 +510,12 @@ class World(object):
                     if isinstance(item, tuple):
                         bodies.append(item[0])
         bodies = [str(b) for b in bodies]
-        exceptions = [str(b) for b in exceptions]
+        new_exceptions = []
+        for b in exceptions:
+            if isinstance(b, Object):
+                b = b.pybullet_name
+            new_exceptions.append(str(b))
+        exceptions = new_exceptions
         all_bodies = list(self.BODY_TO_OBJECT.keys())
         for body in all_bodies:
             if str(body) not in bodies and str(body) not in exceptions:

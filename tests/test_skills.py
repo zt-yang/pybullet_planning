@@ -208,8 +208,8 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
                 # set_pose(body, pose)
 
             """ --- fixing texture issues ---"""
-            # world.add_joints_by_keyword(obj_name)
-            # world.open_all_doors()
+            world.add_joints_by_keyword(obj_name)
+            world.open_all_doors()
 
             """ test others """
             # test_robot_rotation(body, world.robot)
@@ -845,7 +845,7 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    test_grasps(robot, ['BraiserLid'], skip_grasps=False)  ## 'EyeGlasses'
+    test_grasps(robot, ['CabinetTop'], skip_grasps=True)  ## 'EyeGlasses'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # test_handle_grasps(robot, category='CabinetUpper')

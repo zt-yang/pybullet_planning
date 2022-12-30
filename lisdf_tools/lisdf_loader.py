@@ -254,6 +254,9 @@ class World():
             return self.body_types[body]
         return []
 
+    def get_category(self, body):
+        return self.get_type(body)
+
     def get_name(self, body):
         if body in self.body_to_name:
             return self.body_to_name[body]

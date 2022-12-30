@@ -1765,6 +1765,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
                    category=cabi_type, name=cabi_type)
         )
         cabinet.adjust_next_to(counter, direction='+z', align='+x', dz=dz)
+        cabinet.adjust_pose(dx=0.3)
         return cabinet
 
     def ensure_cfree(obj, obstacles, selected_counters, **kwargs):
@@ -1782,15 +1783,15 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
     # ## load ultra-wide CabinetTop
     # wide_counters = [c for c in counters if c.ly > 1.149]
     # if len(wide_counters) > 0:
-    #     add_cabinets_shelves(wide_counters, cabi_type, ['Sektion'])
+    #     add_cabinets_shelves(wide_counters, cabi_type, ['00003'])
     #
     # ## load wide CabinetTop
     # wide_counters = [c for c in counters if 1.149 > c.ly > 0.768]
     # if len(wide_counters) > 0:
-    #     add_cabinets_shelves(wide_counters, cabi_type, ['Chewie', 'Dagger'])
+    #     add_cabinets_shelves(wide_counters, cabi_type, ['00001', '00002'])
 
     add_cabinets_shelves(counters, obstacles=obstacles, cabi_type=cabi_type,
-                         cabi_ins=['Sektion', 'Chewie', 'Dagger'])
+                         cabi_ins=['00001'])  ## , '00002', '00003'
 
     return cabinets, shelves
 
@@ -1953,6 +1954,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     only_counters = copy.deepcopy(counters)
     x_food_min = base.aabb().upper[0] - 0.3
     obstacles = []
+    microwave = None
     if 'MicrowaveHanging' not in ordering:
         wide_counters = [c for c in counters if c.ly > 0.66]
         if len(wide_counters) > 0:
@@ -1960,6 +1962,11 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
             microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random())
             microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)))
             obstacles.append(microwave)
+    else:
+        microwave = world.name_to_object('MicrowaveHanging')
+    if microwave is not None:
+        counters.append(microwave)
+        world.add_to_cat(microwave.body, 'supporter')
 
     ## draw boundary of loading movales
     oven = world.name_to_object('OvenCounter')

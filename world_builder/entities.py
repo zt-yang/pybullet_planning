@@ -7,7 +7,8 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
     add_text, AABB, Point, Euler, PI, add_line, YELLOW, BLACK, remove_handles, get_com_pose, Pose, invert, \
     stable_z, get_joint_descendants, get_link_children, get_joint_info, get_links, link_from_name, set_renderer, \
     get_min_limit, get_max_limit, get_link_parent, LockRenderer, HideOutput, pairwise_collisions, get_bodies, \
-    remove_debug, child_link_from_joint, unit_point, tform_point, buffer_aabb, get_aabb_center, get_aabb_extent
+    remove_debug, child_link_from_joint, unit_point, tform_point, buffer_aabb, get_aabb_center, get_aabb_extent, \
+    quat_from_euler
 from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_box_entity, \
     get_camera_image_at_pose
 from world_builder.utils import get_mobility_id, get_instance_name
@@ -196,7 +197,7 @@ class Object(Index):
             supporter_name = f"{self.__class__.__name__.capitalize()} {self.name}"
             print(f'entities.place_obj.placed {obj.name} on {supporter_name} at point {nice((x, y, z))}')
 
-        # self.attach_obj(obj)
+        self.attach_obj(obj)
         # set_renderer(True)
         return obj
 
@@ -267,7 +268,7 @@ class Object(Index):
         self.adjust_pose(x=x, y=y, z=z)
         # print('adjust_next_to | other', other.aabb().upper[0], 'self', self.aabb().upper[0])
 
-    def adjust_pose(self, x=None, y=None, z=None, dx=None, dy=None, dz=None):
+    def adjust_pose(self, x=None, y=None, z=None, dx=None, dy=None, dz=None, theta=None):
         (cx, cy, cz), r = self.get_pose()
         if dx is not None:
             cx += dx
@@ -281,6 +282,8 @@ class Object(Index):
             cz += dz
         elif z is not None:
             cz = z
+        if theta is not None:
+            r = quat_from_euler(Euler(yaw=theta))
         self.set_pose(((cx, cy, cz), r))
 
     def set_pose(self, conf):
@@ -290,7 +293,7 @@ class Object(Index):
         else:
             set_pose(self.body, conf)
         if self.supporting_surface is not None:
-            self.change_supporting_surface(self.supporting_surface)
+            self.supporting_surface.attach_obj(self)
 
     def get_joint(self, joint): # int | str
         # TODO: unify with get_joint in pybullet-planning

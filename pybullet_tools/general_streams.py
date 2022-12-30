@@ -237,9 +237,12 @@ def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False, visua
 def learned_pose_sampler(world, body, surface, body_pose):
     ## hack to reduce planning time
     if 'braiser_bottom' in world.get_name(surface):
-        (_, _, z), quat = body_pose
+        (x, y, z), quat = body_pose
+        cx, cy, _ = get_aabb_center(get_aabb(body))
+        dx = x - cx
+        dy = y - cy
         x, y, _ = get_aabb_center(get_aabb(surface[0], link=surface[-1]))
-        body_pose = (x, y, z+0.01), quat
+        body_pose = (x+dx, y+dy, z+0.01), quat
     return body_pose
 
 
@@ -477,7 +480,7 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | P
         from .bullet_utils import get_hand_grasps
         grasps_O = get_hand_grasps(world, body, verbose=verbose, **kwargs)
         grasps = robot.make_grasps(grasp_type, arm, body, grasps_O, collisions=collisions)
-        if top_grasp_tolerance is not None:
+        if top_grasp_tolerance is not None and world.get_category(body) not in ['braiserbody']:
             ori = len(grasps)
             grasps = [grasp for grasp in grasps if is_top_grasp(
                 robot, arm, body, grasp, top_grasp_tolerance=top_grasp_tolerance)]

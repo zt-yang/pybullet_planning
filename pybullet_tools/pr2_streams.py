@@ -1414,7 +1414,7 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
                 joint_state = dict(zip(ik_solver.joints, conf))
                 if max_attempts <= attempts:
                     if verbose: print(f'{get_ik_gen.__name__} timed out after {attempts} attempts!')
-                    #wait_unlocked()
+                    # wait_unlocked()
                     if soft_failures:
                         attempts = 0
                         yield None
@@ -1430,12 +1430,13 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
                 bq.assign()
 
                 set_joint_positions(robot, arm_joints, default_conf)
-                if collided(robot, obstacles, articulated=True, tag='ik_default_conf'):
+                if collided(robot, obstacles, articulated=True, tag='ik_default_conf', verbose=verbose):
                     # wait_unlocked()
                     continue
 
                 ik_solver.set_conf(conf)
-                if collided(robot, obstacles, articulated=True, tag='ik_final_conf'):
+                if collided(robot, obstacles, articulated=True, tag='ik_final_conf',
+                            visualize=visualize, verbose=verbose):
                     continue
 
                 if visualize:
@@ -1446,6 +1447,8 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
 
                 ir_outputs = (bq,)
                 if ir_only:
+                    if visualize:
+                        [remove_body(samp) for samp in samples]
                     yield ir_outputs
                     continue
 
