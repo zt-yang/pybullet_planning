@@ -1790,8 +1790,12 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
     # if len(wide_counters) > 0:
     #     add_cabinets_shelves(wide_counters, cabi_type, ['00001', '00002'])
 
-    add_cabinets_shelves(counters, obstacles=obstacles, cabi_type=cabi_type,
-                         cabi_ins=['00001'])  ## , '00002', '00003'
+    if world.note in [1, 4]:
+        cabi_ins = ['00001']
+    else:
+        cabi_ins = ['00001', '00002', '00003']
+
+    add_cabinets_shelves(counters, obstacles=obstacles, cabi_type=cabi_type, cabi_ins=cabi_ins)
 
     return cabinets, shelves
 
@@ -1922,10 +1926,23 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     floor.adjust_pose(dx=x_lower - WALL_WIDTH)
 
     """ step 3: make all the counters """
+    sink_left = world.name_to_object('sink_counter_left')
+    sink_right = world.name_to_object('sink_counter_right')
     for lower, upper in counter_regions:
+        name = 'counter'
+        if lower == sink_right.aabb().upper[1]:
+            name = 'sink_counter_right'
+            lower = sink_right.aabb().lower[1]
+            counters.remove(sink_right)
+            world.remove_object(sink_right)
+        elif upper == sink_left.aabb().lower[1]:
+            name = 'sink_counter_left'
+            upper = sink_left.aabb().upper[1]
+            counters.remove(sink_left)
+            world.remove_object(sink_left)
         counters.append(world.add_object(
             Supporter(create_box(w=counter_w, l=upper-lower,
-                                 h=COUNTER_THICKNESS, color=color), name='counter'),
+                                 h=COUNTER_THICKNESS, color=color), name=name),
             Pose(point=Point(x=counter_x, y=(upper + lower) / 2, z=counter_z))))
         # print('lower, upper', (round(lower, 2), round(upper, 2)))
 
@@ -1936,8 +1953,9 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
         counter_regions.append([base.aabb().lower[1], base.aabb().upper[1]])
         for lower, upper in counter_regions:
             world.add_object(
-                Supporter(create_box(w=x_upper - x_lower, l=upper - lower,
-                                     h=COUNTER_THICKNESS, color=color), name='counter'),
+                Object(create_box(w=x_upper - x_lower, l=upper - lower,
+                                  h=COUNTER_THICKNESS, color=color),
+                       name='counter_back', category='filler'),
                 Pose(point=Point(x=x, y=(upper + lower) / 2, z=counter_z)))
             # print('lower, upper', (round(lower, 2), round(upper, 2)))
 

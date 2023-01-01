@@ -27,6 +27,7 @@ from pybullet_tools.pr2_utils import open_arm, arm_conf, get_gripper_link, get_a
     SIDE_HEIGHT_OFFSET, approximate_as_prism, set_group_conf
 from pybullet_tools.utils import wait_unlocked, WorldSaver
 from .general_streams import *
+import time
 
 BASE_EXTENT = 3.5 # 2.5
 BASE_LIMITS = (-BASE_EXTENT*np.ones(2), BASE_EXTENT*np.ones(2))
@@ -340,20 +341,25 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
         set_joint_positions(robot, arm_joints, approach_conf)
         #approach_conf = get_joint_positions(robot, arm_joints)
         attachment = grasp.get_attachment(problem.robot, arm)
-        attachments = {}  ## {attachment.child: attachment} TODO: problem with having (body, joint) tuple
+        attachments = {}  ## {attachment.child: attachment} ## {}  ## TODO: problem with having (body, joint) tuple
         if teleport:
             path = [default_conf, approach_conf, grasp_conf]
         else:
             resolutions = DEFAULT_RESOLUTION * np.ones(len(arm_joints))
-            grasp_path = plan_direct_joint_motion(robot, arm_joints, grasp_conf, attachments=attachments.values(),
-                                                  obstacles=approach_obstacles, self_collisions=SELF_COLLISIONS,
-                                                  use_aabb=True, cache=True,
-                                                  custom_limits=custom_limits, resolutions=resolutions/2.)
-            if grasp_path is None:
-                if verbose: print(f'{title}Grasp path failure')
-                return None
+            if is_top_grasp(robot, arm, body, grasp):
+                grasp_path = plan_direct_joint_motion(robot, arm_joints, grasp_conf, attachments=attachments.values(),
+                                                      obstacles=approach_obstacles, self_collisions=SELF_COLLISIONS,
+                                                      use_aabb=True, cache=True,
+                                                      custom_limits=custom_limits, resolutions=resolutions/2.)
+                if grasp_path is None:
+                    if verbose: print(f'{title}Grasp path failure')
+                    return None
+                dest_conf = approach_conf
+            else:
+                grasp_path = []
+                dest_conf = grasp_conf
             set_joint_positions(robot, arm_joints, default_conf)
-            approach_path = plan_joint_motion(robot, arm_joints, approach_conf, attachments=attachments.values(),
+            approach_path = plan_joint_motion(robot, arm_joints, dest_conf, attachments=attachments.values(),
                                               obstacles=obstacles, self_collisions=SELF_COLLISIONS,
                                               custom_limits=custom_limits, resolutions=resolutions,
                                               use_aabb=True, cache=True,
@@ -362,6 +368,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
                 if verbose: print(f'{title}\tApproach path failure')
                 return None
             path = approach_path + grasp_path
+
         mt = create_trajectory(robot, arm_joints, path)
         attachments = {attachment.child: attachment} ## TODO: problem with having (body, joint) tuple
         cmd = Commands(State(attachments=attachments), savers=[BodySaver(robot)], commands=[mt])
@@ -1263,7 +1270,7 @@ def get_base_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
         num_trials = len(params)  ## sometimes it can't find a path to get around the open door
         while num_trials > 0:
             param = params[-num_trials]
-            raw_path = plan_joint_motion(robot, bq2.joints, bq2.values, attachments=[],
+            raw_path = plan_joint_motion(robot, bq2.joints, bq2.values, attachments=attachments,
                                          obstacles=obstacles, self_collisions=SELF_COLLISIONS,
                                          custom_limits=custom_limits, resolutions=None, # TODO: base resolutions
                                          use_aabb=True, cache=True,
@@ -1413,7 +1420,7 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
             for conf in ik_solver.generate(gripper_pose): # TODO: islice
                 joint_state = dict(zip(ik_solver.joints, conf))
                 if max_attempts <= attempts:
-                    if verbose: print(f'{get_ik_gen.__name__} timed out after {attempts} attempts!')
+                    if verbose: print(f'{get_ik_gen.__name__} failed after {attempts} attempts!')
                     # wait_unlocked()
                     if soft_failures:
                         attempts = 0

@@ -1,4 +1,5 @@
 import math
+import time
 import random
 from .entities import Robot
 
@@ -397,26 +398,31 @@ class PR2Robot(RobotAPI):
         q = get_joint_positions(self.body, base_joints)
         return Conf(self.body, base_joints, q)
 
-    def check_reachability(self, body, state):
+    def check_reachability(self, body, state, verbose=False, timeout=3):
         from pybullet_tools.pr2_primitives import Pose
         from pybullet_tools.pr2_streams import get_ik_gen
+
+        start = time.time()
 
         # context_saver = WorldSaver(bodies=[state.world.robot])
         q = self.get_base_conf()
 
         def restore():
             # context_saver.restore()
-            remove_body(state.gripper)
-            state.gripper = None
+            # remove_body(state.gripper)
+            # state.gripper = None
             q.assign()
+            if verbose:
+                print('... finished checking feasibility in {}s'.format(round(time.time() - start, 2)))
 
         with LockRenderer(True):
             pose = Pose(body, get_pose(body))
             funk = get_grasp_list_gen(state, verbose=False, visualize=False, top_grasp_tolerance=PI / 4)
             outputs = funk(body)
 
-            funk2 = get_ik_gen(state, collisions=True, teleport=False, ir_only=True, learned=False,
-                               custom_limits=state.robot.custom_limits, verbose=False, visualize=False)
+            funk2 = get_ik_gen(state, max_attempts=10, collisions=True, teleport=False,
+                               ir_only=True, learned=False, custom_limits=state.robot.custom_limits,
+                               verbose=False, visualize=False)
             for (grasp, ) in outputs:
                 gen = funk2(self.arms[0], body, pose, grasp)
                 try:

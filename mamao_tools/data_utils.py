@@ -261,7 +261,7 @@ def save_multiple_solutions(plan_dataset, indices=None, run_dir=None,
         score = 0
         if real_solution is not None:
             plan, cost, certificate = real_solution
-            if plan is not None:
+            if plan is not None and len(plan) > 0:
                 if first_solution is None:
                     first_solution = real_solution
                     min_len = len(plan)

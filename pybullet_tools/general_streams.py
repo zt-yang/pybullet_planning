@@ -12,11 +12,11 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     BASE_LINK, get_joint_position, get_aabb, quat_from_euler, flatten_links, multiply, \
     get_joint_limits, unit_pose, point_from_pose, draw_point, PI, quat_from_pose, angle_between, \
     tform_point, interpolate_poses, draw_pose, RED, remove_handles, stable_z, wait_unlocked, \
-    get_aabb_center
+    get_aabb_center, set_renderer
 from pybullet_tools.pr2_primitives import Pose
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, is_contained, \
-    visualize_point, collided, sample_pose, xyzyaw_to_pose, ObjAttachment, \
+    visualize_point, collided, sample_pose, xyzyaw_to_pose, ObjAttachment, set_camera_target_body, \
     sample_obj_on_body_link_surface
 
 
@@ -680,13 +680,9 @@ def get_cfree_approach_pose_test(problem, collisions=True):
     # TODO: apply this before inverse kinematics as well
     arm = 'left'
     gripper = problem.get_gripper()
-    obstacles = problem.fixed
-    robot = problem.robot
-    def test(b1, p1, g1, b2, p2, fluents=[]):
+    def test(b1, p1, g1, b2, p2):
         if not collisions or (b1 == b2) or b2 in ['@world']:
             return True
-        if fluents:
-            process_motion_fluents(fluents, robot)
         p2.assign()
         result = False
         for _ in problem.robot.iterate_approach_path(arm, gripper, p1.value, g1, body=b1):
@@ -699,15 +695,11 @@ def get_cfree_approach_pose_test(problem, collisions=True):
 
 
 def get_cfree_traj_pose_test(robot, collisions=True, verbose=False, visualize=False):
-    def test(c, b2, p2, fluents=[]):
-        from pybullet_tools.utils import set_renderer
-        from pybullet_tools.bullet_utils import set_camera_target_body
+    def test(c, b2, p2):
         from pybullet_tools.flying_gripper_utils import pose_from_se3
         # TODO: infer robot from c
         if not collisions:
             return True
-        if fluents:
-            attachments = process_motion_fluents(fluents, robot)
         state = c.assign()
         if b2 in state.attachments:
             return True
@@ -719,9 +711,6 @@ def get_cfree_traj_pose_test(robot, collisions=True, verbose=False, visualize=Fa
                 pose = pose_from_se3(conf.values)
                 handles.extend(draw_pose(pose))
 
-        if verbose:
-            robot_pose = robot.get_pose()
-            # print('    get_cfree_traj_pose_test   \   base conf of robot', nice(robot_pose))
         count = 0
         length = len(c.commands[0].path)
         result = True
@@ -729,23 +718,10 @@ def get_cfree_traj_pose_test(robot, collisions=True, verbose=False, visualize=Fa
             count += 1
             if count == length > 10:
                 continue
-            title = f'      [step {count}/{length}] collision '
+            title = f'[step {count}/{length}]'
             state.assign()
-            for b1 in state.attachments:
-                if pairwise_collision(b1, b2):
-                    if verbose:
-                        print(f'{title}with {b1}, {b2}')
-                        print(f'         pose of {b1}', nice(get_pose(b1)))
-                        print(f'         pose of {b2}', nice(get_pose(b2)))
-                    #wait_for_user()
-                    result = False
-            if pairwise_collision(robot, b2):
-                if verbose:
-                    print(f'{title}{robot}, {b2} (attachments = {state.attachments})')
-                    print(f'         base conf of robot', nice(robot.get_pose()))
-                    print(f'         pose of {b2}', nice(get_pose(b2)))
+            if collided(b2, state.attachments+[robot], verbose=verbose, tag=title):
                 result = False
-        # TODO: just check collisions with moving links
         if visualize:
             remove_handles(handles)
         return result

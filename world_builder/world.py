@@ -73,6 +73,7 @@ class World(object):
         self.camera = None
         self.instance_names = {}
         self.constants = ['@movable', '@bottle', '@edible', '@world']
+        self.note = None
 
     def clear_viz(self):
         self.remove_handles()
@@ -201,6 +202,8 @@ class World(object):
         """ for looking up objects in the grasp database """
         if isinstance(body, tuple) and body in self.instance_names:
             return self.instance_names[body]
+        elif isinstance(body, Object):
+            return body.instance_name
         elif body in self.BODY_TO_OBJECT:
             return self.BODY_TO_OBJECT[body].instance_name
         elif body in self.REMOVED_BODY_TO_OBJECT:
@@ -707,6 +710,8 @@ class World(object):
             obj = self.name_to_object(obj)
         elif obj in self.BODY_TO_OBJECT:
             obj = self.BODY_TO_OBJECT[obj]
+        else:
+            obj = None
         return obj
 
     def put_on_surface(self, obj, surface='hitman_tmp', max_trial=20, OAO=False):
