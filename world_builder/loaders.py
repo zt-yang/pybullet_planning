@@ -1051,13 +1051,15 @@ def load_random_mini_kitchen_counter(world, movable_category='food', w=6, l=6, h
     return minifridge_doors
 
 
-def load_storage_mechanism(world, obj):
+def load_storage_mechanism(world, obj, epsilon=0.3):
     space = None
     ## --- ADD EACH DOOR JOINT
     doors = get_partnet_doors(obj.path, obj.body)
     for b, j in doors:
         world.add_joint_object(b, j, 'door')
         obj.doors.append((b, j))
+        if random.random() < epsilon:
+            world.open_joint(b, j, extent=0.9*random.random())
 
     ## --- ADD ONE SPACE TO BE PUT INTO
     spaces = get_partnet_spaces(obj.path, obj.body)
@@ -1480,7 +1482,7 @@ def adjust_for_reachability(obj, counter, x_min):
     counter.attach_obj(obj)
 
 
-def load_counter_moveables(world, counters, x_min=0.5, obstacles=[]):
+def load_counter_moveables(world, counters, x_min=0.5, obstacles=[], verbose=False):
     start = time.time()
     robot = world.robot
     old_world = copy.deepcopy(world)
@@ -1495,17 +1497,16 @@ def load_counter_moveables(world, counters, x_min=0.5, obstacles=[]):
             satisfied.append(obj)
 
     def place_on_counter(obj_name, category=None):
-        counter = random.choice(counters)
-        # if obj_name in ['meatturkeyleg', 'food']:
-        #     print('ssss')
+        counter = random.choice(counters[obj_name])
         obj = counter.place_new_obj(obj_name, category=category, RANDOM_INSTANCE=True)
         adjust_for_reachability(obj, counter, x_min)
         return obj
 
     def ensure_cfree(obj, obstacles, obj_name, category=None):
         # s = np.random.get_state()[-3]
-        while collided(obj, obstacles) or not robot.check_reachability(obj, state) \
-                or (obj_name == 'food' and size_matter and len(satisfied) == 0):
+        while collided(obj, obstacles, verbose=verbose) or \
+                not robot.check_reachability(obj, state, verbose=verbose) or \
+                (obj_name == 'food' and size_matter and len(satisfied) == 0):
             world.remove_object(obj)
             obj = place_on_counter(obj_name, category)
             check_size_matter(obj)
@@ -1742,7 +1743,7 @@ def sample_kitchen_furniture_ordering(all_necessary=True):
 def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.8, others=[],
                                      obstacles=[], verbose=True):
     cabinets, shelves = [], []
-    cabi_type = 'CabinetTop' if random.random() < 0 else 'CabinetUpper'
+    cabi_type = 'CabinetTop' if random.random() < 0.5 else 'CabinetUpper'
     colors = {
         '45526': HEX_to_RGB('#EDC580'),
         '45621': HEX_to_RGB('#1F0C01'),
@@ -1793,6 +1794,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
 
     def add_cabinets_shelves(selected_counters, obstacles=[], **kwargs):
         color = FURNITURE_WHITE
+        blend = []  ## cabinet overflowed to the next counter
         for num in range(random.choice([1, 2])):
             cabinet, counter = place_cabinet(selected_counters, **kwargs)
             result = ensure_cfree(cabinet, obstacles, selected_counters, **kwargs)
@@ -1805,13 +1807,11 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
             cabinets.append(cabinet)
             obstacles.append(cabinet)
             kwargs['RANDOM_INSTANCE'] = cabinet.mobility_id
-            # coverage.append((cabinet.aabb().lower[1], cabinet.aabb().upper[1]))
-        return obstacles, color, selected_counters
+            if cabinet.aabb().upper[1] > counter.aabb().upper[1]:
+                blend.append(cabinet.aabb().upper[1])
+        return obstacles, color, selected_counters, blend
 
-    def add_shelves(counters, color, obstacles=[], **kwargs):
-        ## sort counters by aabb().lower[1]
-        counters = sorted(counters, key=lambda x: x.aabb().lower[1])
-        print([(c, c.aabb().lower[1]) for c in counters])
+    def add_shelves(counters, color, bled=[], obstacles=[], **kwargs):
         new_counters = []
         last_left = counters[0].aabb().lower[1]
         last_right = counters[0].aabb().upper[1]
@@ -1825,16 +1825,19 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
         ## sort new counters by length
         new_counters = sorted(new_counters, key=lambda x: x[1] - x[0], reverse=True)
         xa = x_min
-        xb = counters[0].aabb().upper[0] - 0.1
+        xb = counters[0].aabb().upper[0]
         ya, yb = new_counters[0]
+        for b in bled:
+            if ya < b < yb:
+                ya = b
         za = counters[0].aabb().upper[2] + dz
-        za = random.uniform(za - 0.2, za)
         zb = za + COUNTER_THICKNESS
-        shelf = world.add_object(
-            Supporter(create_box(w=(xb-xa), l=(yb-ya), h=COUNTER_THICKNESS, color=color),
-                      name='shelf_lower'),
-            Pose(point=Point(x=(xb+xa)/2, y=(yb+ya)/2, z=(zb+za)/2)))
-        shelves.append(shelf)
+        if (yb-ya) > 0.2:
+            shelf = world.add_object(
+                Supporter(create_box(w=(xb-xa), l=(yb-ya), h=COUNTER_THICKNESS, color=color),
+                          name='shelf_lower'),
+                Pose(point=Point(x=(xb+xa)/2, y=(yb+ya)/2, z=(zb+za)/2)))
+            shelves.append(shelf)
         return shelves
 
     # ## load ultra-wide CabinetTop
@@ -1847,13 +1850,17 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
     # if len(wide_counters) > 0:
     #     add_cabinets_shelves(wide_counters, cabi_type, ['00001', '00002'])
 
-    ins = world.note not in [1, 4]
+    ## sort counters by aabb().lower[1]
     counters = copy.deepcopy(counters)
-    obstacles, color, selected_counters = add_cabinets_shelves(counters, obstacles=obstacles,
-                                                               cabi_type=cabi_type, RANDOM_INSTANCE=ins)
-    add_shelves(selected_counters+others, color, obstacles=obstacles)
+    counters = sorted(counters, key=lambda x: x.aabb().lower[1])
+
+    ## load cabinets
+    ins = world.note not in [1, 4]
+    obstacles, color, counters, bled = add_cabinets_shelves(counters, obstacles=obstacles,
+                                                             cabi_type=cabi_type, RANDOM_INSTANCE=ins)
+    ## then load shelves
+    add_shelves(counters+others, color, bled=bled, obstacles=obstacles)
     set_camera_target_body(cabinets[0])
-    wait_unlocked()
 
     return cabinets, shelves
 
@@ -1949,7 +1956,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
                     x_lower = update_x_lower(furniture_base, x_lower)
                 else:
                     furniture.adjust_next_to(current, direction=direction, align='+x')
-                    counters.append(furniture)
+                    # counters.append(furniture)
                     world.add_to_cat(furniture.body, 'supporter')
                 x_lower = update_x_lower(furniture, x_lower)
 
@@ -2027,7 +2034,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     sink = world.name_to_object('sink')
     sink_bottom = world.add_surface_by_keyword(sink, 'sink_bottom')
 
-    """ step 5: place electronics and movables on counters """
+    """ step 5: place electronics and cooking appliances on counters """
     only_counters = copy.deepcopy(counters)
     x_food_min = base.aabb().upper[0] - 0.3
     obstacles = []
@@ -2045,29 +2052,43 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
         counters.append(microwave)
         world.add_to_cat(microwave.body, 'supporter')
 
-    ## draw boundary of loading movales
-    counters.extend([oven])
-    for c in counters:
-        mx, my, z = c.aabb().upper
-        aabb = AABB(lower=(x_food_min, c.aabb().lower[1], z), upper=(mx, my, z + 0.1))
-        draw_aabb(aabb)
-
     braiser, braiser_bottom = load_braiser(world, oven, x_min=x_food_min)
     obstacles.extend([braiser, braiser_bottom])
 
-    ## first load objects into reachable places
-    counters.extend([sink_bottom])
-    food_ids, bottle_ids, medicine_ids = \
-        load_counter_moveables(world, counters, x_min=x_food_min, obstacles=obstacles)
-    moveables = food_ids + bottle_ids + medicine_ids
+    """ step 5: place movables on counters """
+    all_counters = {
+        'food': counters,
+        'bottle': shelves + [sink_bottom],
+        'medicine': shelves + [microwave],
+    }
+    possible = []
+    for v in all_counters.values():
+        possible.extend(v)
 
-    ## then load objects into hidden placed
+    ## draw boundary of surfaces
+    drawn = []
+    for c in possible:
+        if c in drawn: continue
+        mx, my, z = c.aabb().upper
+        aabb = AABB(lower=(x_food_min, c.aabb().lower[1], z), upper=(mx, my, z + 0.1))
+        draw_aabb(aabb)
+        drawn.append(str(c))
+
+    ## load objects into reachable places
+    food_ids, bottle_ids, medicine_ids = \
+        load_counter_moveables(world, all_counters, x_min=x_food_min, obstacles=obstacles)
+    moveables = food_ids + bottle_ids + medicine_ids
 
     """ step 6: take an image """
     set_camera_pose((4, 4, 3), (0, 4, 0))
 
-    load_storage_mechanism(world, world.name_to_object('minifridge'))
-    load_storage_mechanism(world, world.cat_to_objects('cabinettop')[0])
+    ## probility of each door being open
+    epsilon = 0
+    load_storage_mechanism(world, world.name_to_object('minifridge'), epsilon=epsilon)
+    for cabi_type in ['cabinettop', 'cabinetupper']:
+        cabi = world.cat_to_objects(cabi_type)
+        if len(cabi) > 0:
+            load_storage_mechanism(world, cabi[0], epsilon=epsilon)
 
     if pause:
         wait_unlocked()

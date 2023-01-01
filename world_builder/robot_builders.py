@@ -141,7 +141,7 @@ def build_skill_domain_robot(world, robot_name, **kwargs):
         if robot_name == 'feg':
             kwargs['custom_limits'] = ((0, 0, 0), (2, 10, 2))
         elif robot_name == 'pr2':
-            kwargs['custom_limits'] = ((0, 0, 0), (3, 10, 1))
+            kwargs['custom_limits'] = ((0, 0, 0), (3, 10, 2.4))
     return build_robot_from_args(world, robot_name, **kwargs)
 
 

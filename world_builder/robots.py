@@ -403,6 +403,8 @@ class PR2Robot(RobotAPI):
         from pybullet_tools.pr2_streams import get_ik_gen
 
         start = time.time()
+        if verbose:
+            print('... started checking feasibility for', body)
 
         # context_saver = WorldSaver(bodies=[state.world.robot])
         q = self.get_base_conf()
@@ -417,12 +419,12 @@ class PR2Robot(RobotAPI):
 
         with LockRenderer(True):
             pose = Pose(body, get_pose(body))
-            funk = get_grasp_list_gen(state, verbose=False, visualize=False, top_grasp_tolerance=PI / 4)
+            funk = get_grasp_list_gen(state, verbose=verbose, visualize=False, top_grasp_tolerance=PI / 4)
             outputs = funk(body)
 
             funk2 = get_ik_gen(state, max_attempts=10, collisions=True, teleport=False,
                                ir_only=True, learned=False, custom_limits=state.robot.custom_limits,
-                               verbose=False, visualize=False)
+                               verbose=verbose, visualize=verbose)
             for (grasp, ) in outputs:
                 gen = funk2(self.arms[0], body, pose, grasp)
                 try:

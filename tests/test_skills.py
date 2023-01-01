@@ -44,7 +44,7 @@ import math
 
 DEFAULT_TEST = 'kitchen' ## 'blocks_pick'
 
-seed = None
+seed = 807556
 if seed is None:
     seed = random.randint(0, 10 ** 6 - 1)
 set_random_seed(seed)
