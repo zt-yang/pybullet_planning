@@ -48,6 +48,8 @@ def load_one_world(gym_world, lisdf_dir, offset=None, loading_effect=False,
             name = f'w{world_index}_{name}'
 
         pose = pose_from_tform(pose)
+        if 'pr2' in name:
+            pose = (np.array([0, 0, 0]), np.array([0, 0, 0, 1]))
         if offset is not None:
             pose = (pose[0] + offset, pose[1])
 
@@ -80,7 +82,7 @@ def load_one_world(gym_world, lisdf_dir, offset=None, loading_effect=False,
             gym_world.set_color(actor, color)
 
         gym_world.set_pose(actor, pose)
-        if positions is not None and 'pr2' not in name:
+        if positions is not None:
             joint_positions = gym_world.get_joint_positions(actor)
             joint_names = gym_world.get_joint_names(actor)
             joint_positions = {joint_names[i]: joint_positions[i] for i in range(len(joint_names))}
@@ -107,6 +109,7 @@ def load_one_world(gym_world, lisdf_dir, offset=None, loading_effect=False,
                 loading_positions[name] = opened_positions
                 joint_positions = [p[0] for p in opened_positions]
             gym_world.set_joint_positions(actor, joint_positions)
+
     if update_viewer:
         gym_world.simulator.update_viewer()
     return assets, (loading_objects, loading_positions)
@@ -143,7 +146,7 @@ def load_lisdf_isaacgym(lisdf_dir, robots=True, pause=False, loading_effect=Fals
 def record_gym_world_loading_objects(gym_world, loading_objects, world_index=None,
                                      img_dir=None, verbose=False,  ## for generating gif
                                      return_wconf=True, offset=None):  ## for loading multiple
-    frames = 150
+    frames = 120
     dt = 0.01
     g = 9.8
     w0 = 0.5
@@ -157,8 +160,8 @@ def record_gym_world_loading_objects(gym_world, loading_objects, world_index=Non
     h_starts = {k: v[0]+v[1] for k, v in loading_objects.items()}
     h_ends = {k: v[0] for k, v in loading_objects.items()}
     delays = {k: random.uniform(0, 20) for k in h_ends}
-    delays['braiserbody#1'] = random.uniform(0, 15)
-    delays['braiserlid#1'] = random.uniform(15, 25)
+    delays[f'w{world_index}_braiserbody#1'] = d = random.uniform(0, 15)
+    delays[f'w{world_index}_braiserlid#1'] = d + random.uniform(2, 5)
 
     delays.update({k: [random.uniform(0, 20) for v in vv] for k, vv in loading_positions.items()})
     a = {k: [random.uniform(g/2, g) for v in vv] for k, vv in loading_positions.items()}
@@ -282,12 +285,13 @@ def update_gym_world_by_wconf(gym_world, wconf, offsets=None):
 
 
 def load_envs_isaacgym(ori_dirs, robots=True, pause=False, num_rows=5, num_cols=5, world_size=(6, 6),
-                       camera_point=(34, 12, 10), camera_target=(0, 12, 0),
+                       camera_point=(34, 12, 10), camera_target=(0, 12, 0), verbose=False, 
                         # camera_width=2560, camera_height=1600,
                         camera_width=3840, camera_height=2160,
                        loading_effect=False, **kwargs):
     sys.path.append('/home/yang/Documents/playground/srl_stream/src')
     from srl_stream.gym_world import create_single_world, default_arguments
+    from tqdm import tqdm
 
     gym_world = create_single_world(args=default_arguments(use_gpu=True), spacing=0)
     gym_world.set_viewer_target(camera_point, target=camera_target)
@@ -299,14 +303,16 @@ def load_envs_isaacgym(ori_dirs, robots=True, pause=False, num_rows=5, num_cols=
     offsets = []
     all_wconfs = []
     assets = {}
-    for i in range(num_worlds):
+    for i in tqdm(range(num_worlds)):
         ori_dir = ori_dirs[i]
-        print('------------------\n', ori_dir.replace('/home/yang/Documents/', ''), '\n')
         row = i // num_rows
         col = i % num_rows
         offset = np.asarray([col * world_size[0]*0.75, row * world_size[1]*0.75, 0])
         offsets.append(offset)
-        print(f'... load_envs_isaacgym | row, col = {(row, col)}, offset = {offset}')
+        if verbose:
+            print('------------------\n', ori_dir.replace('/home/yang/Documents/', ''), '\n')
+            print(f'... load_envs_isaacgym | row, col = {(row, col)}, offset = {offset}')
+        
         assets, loading = load_one_world(gym_world, ori_dir, offset=offset, robots=robots,
             update_viewer=False, world_index=i, loading_effect=loading_effect, assets=assets, **kwargs)
         if loading_effect:
