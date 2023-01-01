@@ -496,6 +496,13 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
             set_camera_target_body(fridge, dx=2, dy=0, dz=2)
         else:
             set_camera_pose2((camera_pose.pos, camera_pose.quat_xyzw))
+
+    planning_config = join(lisdf_dir, 'planning_config.json')
+    if isfile(planning_config):
+        body_to_name = json.load(open(planning_config, 'r'))['body_to_name']
+        for k, v in body_to_name.items():
+            if v not in bullet_world.name_to_body:
+                bullet_world.add_body(eval(k), v)
     return bullet_world
 
 

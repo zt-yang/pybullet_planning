@@ -313,9 +313,11 @@ def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=
 
     """ ============= load body by category ============= """
     file = get_file_by_category(category, RANDOM_INSTANCE=RANDOM_INSTANCE, SAMPLING=SAMPLING)
+    if verbose and file is not None:
+        print(f"Loading ...... {abspath(file)}")
+
     scale = get_scale_by_category(file=file, category=category, scale=scale)
     if file is not None:
-        if verbose: print(f"Loading ...... {abspath(file)}")
         scale = get_model_scale(file, l, w, h, scale, category)
         with HideOutput():
             body = load_model(file, scale=scale, fixed_base=True)
@@ -498,3 +500,7 @@ def get_mobility_id(path):
     return idx[1:]
 
 
+def HEX_to_RGB(color):
+    color = color.lstrip('#')
+    rgb = [int(color[i: i+2], 16)/255 for i in (0, 2, 4)] + [1]
+    return tuple(rgb)

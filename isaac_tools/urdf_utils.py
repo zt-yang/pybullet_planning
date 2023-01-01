@@ -27,21 +27,26 @@ def load_lisdf(lisdf_dir, scene_scale=1., robots=False, skip=[], verbose=False):
         if (name in skip) or (not robots and test_is_robot(name)): # TODO: generalize
             continue
 
-        if hasattr(obj_xml, "uri"):
-            path = abspath(join(dirname(lisdf_path), obj_xml.uri.cdata))
-        else:
-            path = tuple([eval(n) for n in obj_xml.link.collision.geometry.box.size.cdata.split(' ')])
-
-        if hasattr(obj_xml, "scale"):
-            scale = scene_scale * float(obj_xml.scale.cdata)
-        else:
-            scale = scene_scale
         if hasattr(obj_xml, "static"):
             is_fixed = obj_xml.static.cdata == "true"
         else:
             is_fixed = False
-        if verbose:
-            print(f"Name: {name} | Fixed: {is_fixed} | Scale: {scale:.3f} | Path: {path}")
+        if hasattr(obj_xml, "scale"):
+            scale = scene_scale * float(obj_xml.scale.cdata)
+        else:
+            scale = scene_scale
+
+        if hasattr(obj_xml, "uri"):
+            path = abspath(join(dirname(lisdf_path), obj_xml.uri.cdata))
+
+            if verbose:
+                print(f"Name: {name} | Fixed: {is_fixed} | Scale: {scale:.3f} | Path: {path}")
+        else:
+            path = tuple([eval(n) for n in obj_xml.link.collision.geometry.box.size.cdata.split(' ')])
+            color = tuple([eval(n) for n in obj_xml.link.visual.material.diffuse.cdata.split(' ')])
+            if verbose:
+                print(f"Name: {name} | Fixed: {is_fixed} | Box Size: {path} | Box Color: {color}")
+            path = (path, color)
 
         pose_data = np.array(obj_xml.pose.cdata.split(" ")).astype(float)
         position = scene_scale * pose_data[:3]

@@ -237,8 +237,8 @@ MODEL_HEIGHTS = {
         'models': ['45621', '45526', '46108', '46889', '48381', '49182']
     },
     'CabinetAboveOven': {
-        'height': 0.6,
-        'models': ['46408', '46427']
+        'height': 0.4,
+        'models': ['46408', '46427', '45633']
     },
     'CabinetLower': {
         'height': 1,
@@ -258,7 +258,7 @@ MODEL_HEIGHTS = {
     },
     'DishwasherBox': {
         'height': 1,
-        'models': ['11622', '11700', '11826', '12414', '12428', '12553']
+        'models': ['11622', '11700', '12414', '12428', '12553']  ## '11826', 
     },
     'Dishwasher': {
         'height': 1,

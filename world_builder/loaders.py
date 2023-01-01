@@ -8,7 +8,8 @@ import os
 import string
 
 from world_builder.utils import LIGHT_GREY, read_xml, load_asset, FLOOR_HEIGHT, WALL_HEIGHT, \
-    find_point_for_single_push, ASSET_PATH, FURNITURE_WHITE, FURNITURE_GREY, FURNITURE_YELLOW
+    find_point_for_single_push, ASSET_PATH, FURNITURE_WHITE, FURNITURE_GREY, FURNITURE_YELLOW, HEX_to_RGB, \
+    get_instances
 
 from world_builder.world import World, State
 from world_builder.entities import Object, Region, Environment, Robot, Camera, Floor, Stove, Supporter,\
@@ -1703,11 +1704,11 @@ def sample_kitchen_furniture_ordering(all_necessary=True):
     T = {
         'SinkBase': ['CabinetLower', diswasher, END],
         'CabinetLower': ['CabinetLower', diswasher, 'OvenCounter',
-                         'CabinetTall', 'MicrowaveHanging', 'MiniFridge', END],
-        diswasher: ['CabinetLower', 'CabinetTall', 'MicrowaveHanging', 'MiniFridge', END],
+                         'CabinetTall', 'MiniFridge', END],  ## 'MicrowaveHanging', 
+        diswasher: ['CabinetLower', 'CabinetTall', 'MiniFridge', END], ## 'MicrowaveHanging',
         'OvenCounter': ['CabinetLower'],
         'CabinetTall': ['MiniFridge', END],
-        'MicrowaveHanging': ['MiniFridge', END],
+        # 'MicrowaveHanging': ['MiniFridge', END],
         'MiniFridge': ['CabinetTall', END],
     }
     ordering = ['OvenCounter']
@@ -1738,12 +1739,23 @@ def sample_kitchen_furniture_ordering(all_necessary=True):
     return ordering[1:-1]
 
 
-def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.8,
-                                     obstacles=[], verbose=False):
+def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.8, others=[],
+                                     obstacles=[], verbose=True):
     cabinets, shelves = [], []
-    cabi_type = 'CabinetTop'
+    cabi_type = 'CabinetTop' if random.random() < 0 else 'CabinetUpper'
+    colors = {
+        '45526': HEX_to_RGB('#EDC580'),
+        '45621': HEX_to_RGB('#1F0C01'),
+        '46889': HEX_to_RGB('#A9704F'),
+        '46744': HEX_to_RGB('#160207'),
+        '48381': HEX_to_RGB('#F3D5C1'),
+        '46108': HEX_to_RGB('#EFB064'),
+        '49182': HEX_to_RGB('#FFFFFF'),
+    }
 
     def add_wall_fillings(cabinet, color=FURNITURE_WHITE):
+        if cabinet.mobility_id in colors:
+            color = colors[cabinet.mobility_id]
         xa = x_min  ## counter.aabb().lower[0]
         xb, ya, za = cabinet.aabb().lower
         _, yb, zb = cabinet.aabb().upper
@@ -1756,29 +1768,74 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
         world.add_object(Object(filler, name='cabinettop_filler', category='filler'),
                          Pose(point=Point(x=(xa + xb) / 2, y=(ya + yb) / 2, z=(za + zb) / 2)))
         world.add_ignored_pair((cabinet, filler))
+        return color
 
-    def place_cabinet(selected_counters, cabi_type=cabi_type, cabi_ins=[]):
+    def place_cabinet(selected_counters, cabi_type=cabi_type, **kwargs):
         counter = random.choice(selected_counters)
-        ins = random.choice(cabi_ins)
         cabinet = world.add_object(
-            Object(load_asset(cabi_type, yaw=math.pi, RANDOM_INSTANCE=ins),
+            Object(load_asset(cabi_type, yaw=math.pi, verbose=verbose, **kwargs),
                    category=cabi_type, name=cabi_type)
         )
         cabinet.adjust_next_to(counter, direction='+z', align='+x', dz=dz)
         cabinet.adjust_pose(dx=0.3)
-        return cabinet
+        return cabinet, counter
 
     def ensure_cfree(obj, obstacles, selected_counters, **kwargs):
+        counter = None
+        trials = 5
         while collided(obj, obstacles) or obj.aabb().upper[1] > y_max or obj.aabb().lower[1] < y_min:
             world.remove_object(obj)
-            obj = place_cabinet(selected_counters, **kwargs)
-        return obj
+            trials -= 1
+            if trials < 0:
+                return None
+            obj, counter = place_cabinet(selected_counters, **kwargs)
+        return obj, counter
 
     def add_cabinets_shelves(selected_counters, obstacles=[], **kwargs):
-        cabinet = place_cabinet(selected_counters, **kwargs)
-        cabinet = ensure_cfree(cabinet, obstacles, selected_counters, **kwargs)
-        add_wall_fillings(cabinet)
-        cabinets.append(cabinet)
+        color = FURNITURE_WHITE
+        for num in range(random.choice([1, 2])):
+            cabinet, counter = place_cabinet(selected_counters, **kwargs)
+            result = ensure_cfree(cabinet, obstacles, selected_counters, **kwargs)
+            if result is None:
+                continue
+            cabinet, counter2 = result
+            counter = counter2 if counter2 is not None else counter
+            selected_counters.remove(counter)
+            color = add_wall_fillings(cabinet)
+            cabinets.append(cabinet)
+            obstacles.append(cabinet)
+            kwargs['RANDOM_INSTANCE'] = cabinet.mobility_id
+            # coverage.append((cabinet.aabb().lower[1], cabinet.aabb().upper[1]))
+        return obstacles, color, selected_counters
+
+    def add_shelves(counters, color, obstacles=[], **kwargs):
+        ## sort counters by aabb().lower[1]
+        counters = sorted(counters, key=lambda x: x.aabb().lower[1])
+        print([(c, c.aabb().lower[1]) for c in counters])
+        new_counters = []
+        last_left = counters[0].aabb().lower[1]
+        last_right = counters[0].aabb().upper[1]
+        for i in range(1, len(counters)):
+            if last_right != counters[i].aabb().lower[1]:
+                new_counters.append((last_left, last_right))
+                last_left = counters[i].aabb().lower[1]
+            last_right = counters[i].aabb().upper[1]
+        new_counters.append((last_left, last_right))
+
+        ## sort new counters by length
+        new_counters = sorted(new_counters, key=lambda x: x[1] - x[0], reverse=True)
+        xa = x_min
+        xb = counters[0].aabb().upper[0] - 0.1
+        ya, yb = new_counters[0]
+        za = counters[0].aabb().upper[2] + dz
+        za = random.uniform(za - 0.2, za)
+        zb = za + COUNTER_THICKNESS
+        shelf = world.add_object(
+            Supporter(create_box(w=(xb-xa), l=(yb-ya), h=COUNTER_THICKNESS, color=color),
+                      name='shelf_lower'),
+            Pose(point=Point(x=(xb+xa)/2, y=(yb+ya)/2, z=(zb+za)/2)))
+        shelves.append(shelf)
+        return shelves
 
     # ## load ultra-wide CabinetTop
     # wide_counters = [c for c in counters if c.ly > 1.149]
@@ -1790,12 +1847,13 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
     # if len(wide_counters) > 0:
     #     add_cabinets_shelves(wide_counters, cabi_type, ['00001', '00002'])
 
-    if world.note in [1, 4]:
-        cabi_ins = ['00001']
-    else:
-        cabi_ins = ['00001', '00002', '00003']
-
-    add_cabinets_shelves(counters, obstacles=obstacles, cabi_type=cabi_type, cabi_ins=cabi_ins)
+    ins = world.note not in [1, 4]
+    counters = copy.deepcopy(counters)
+    obstacles, color, selected_counters = add_cabinets_shelves(counters, obstacles=obstacles,
+                                                               cabi_type=cabi_type, RANDOM_INSTANCE=ins)
+    add_shelves(selected_counters+others, color, obstacles=obstacles)
+    set_camera_target_body(cabinets[0])
+    wait_unlocked()
 
     return cabinets, shelves
 
@@ -1960,8 +2018,9 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
             # print('lower, upper', (round(lower, 2), round(upper, 2)))
 
     """ step 4: put upper cabinets and shelves """
-    cabinets, shelves = load_full_kitchen_upper_cabinets(world, counters, x_lower,
-                                                         left_counter_lower, right_counter_upper,
+    oven = world.name_to_object('OvenCounter')
+    cabinets, shelves = load_full_kitchen_upper_cabinets(world, counters, x_lower, left_counter_lower,
+                                                         right_counter_upper, others=[oven],
                                                          dz=dh_cabinets, obstacles=tall_obstacles)
 
     """ step 5: add additional surfaces in furniture """
@@ -1987,7 +2046,6 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
         world.add_to_cat(microwave.body, 'supporter')
 
     ## draw boundary of loading movales
-    oven = world.name_to_object('OvenCounter')
     counters.extend([oven])
     for c in counters:
         mx, my, z = c.aabb().upper

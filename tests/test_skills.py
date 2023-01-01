@@ -44,7 +44,7 @@ import math
 
 DEFAULT_TEST = 'kitchen' ## 'blocks_pick'
 
-seed = 901668
+seed = None
 if seed is None:
     seed = random.randint(0, 10 ** 6 - 1)
 set_random_seed(seed)
@@ -845,7 +845,7 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    test_grasps(robot, ['CabinetTop'], skip_grasps=True)  ## 'EyeGlasses'
+    # test_grasps(robot, ['CabinetTop'], skip_grasps=True)  ## 'EyeGlasses'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # test_handle_grasps(robot, category='CabinetUpper')
@@ -865,7 +865,7 @@ if __name__ == '__main__':
     # test_placement_on(robot, category='BraiserBody', surface_name='braiser_bottom')
 
     # test_sink_configuration(robot, pause=True)
-    # test_kitchen_configuration(robot)
+    test_kitchen_configuration(robot)
 
     """ --- specific counter --- """
     # test_placement_counter()  ## initial placement
