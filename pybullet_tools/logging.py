@@ -36,7 +36,6 @@ def print_in_file(string, txt_file=TXT_FILE):
         f.writelines(string)
 
 
-
 def record_results(goal, plan, planning_time, exp_name='default'):
 
     fieldnames = ['run name', 'planning time', 'plan length']

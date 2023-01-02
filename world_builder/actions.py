@@ -424,7 +424,7 @@ class MoveInSE3Action(Action):
 #######################################################
 
 
-def adapt_action(a, problem, plan):
+def adapt_action(a, problem, plan, verbose=True):
     if plan is None:
         return a
 
@@ -445,7 +445,7 @@ def adapt_action(a, problem, plan):
         bq1 = Conf(robot.body, robot.get_base_joints(), bq1)
         aq1 = get_value(act[9]) ## continuous[act[9].split('=')[0]]
         aq1 = Conf(robot.body, robot.get_arm_joints(a.arm), aq1)
-        funk = get_pull_door_handle_motion_gen(problem, collisions=False)
+        funk = get_pull_door_handle_motion_gen(problem, collisions=False, verbose=verbose)
         # set_renderer(False)
         with LockRenderer(True):
             funk(a.arm, a.object, pstn1, pstn2, a.grasp, bq1, aq1)
@@ -461,10 +461,10 @@ def apply_actions(problem, actions, time_step=0.5, verbose=False, plan=None, bod
     state_event = State(problem.world)
     for i, action in enumerate(actions):
         if verbose:
-            if 'tachObjectAction' in str(action):
-                if action.object in body_map:
-                    action.object = body_map[action.object]
             print(i, action)
+        if 'tachObjectAction' in str(action):
+            if action.object in body_map:
+                action.object = body_map[action.object]
         action = adapt_action(action, problem, plan)
         if action is None:
             continue

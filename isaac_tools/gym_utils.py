@@ -146,7 +146,7 @@ def load_lisdf_isaacgym(lisdf_dir, robots=True, pause=False, loading_effect=Fals
 def record_gym_world_loading_objects(gym_world, loading_objects, world_index=None,
                                      img_dir=None, verbose=False,  ## for generating gif
                                      return_wconf=True, offset=None):  ## for loading multiple
-    frames = 120
+    frames = 140
     dt = 0.01
     g = 9.8
     w0 = 0.5
@@ -300,6 +300,7 @@ def load_envs_isaacgym(ori_dirs, robots=True, pause=False, num_rows=5, num_cols=
     gym_world.set_camera_target(camera, camera_point, camera_target)
 
     num_worlds = num_rows * num_cols
+    scale = 0.75 if world_size[0] > 12 else 1
     offsets = []
     all_wconfs = []
     assets = {}
@@ -307,7 +308,7 @@ def load_envs_isaacgym(ori_dirs, robots=True, pause=False, num_rows=5, num_cols=
         ori_dir = ori_dirs[i]
         row = i // num_rows
         col = i % num_rows
-        offset = np.asarray([col * world_size[0]*0.75, row * world_size[1]*0.75, 0])
+        offset = np.asarray([col * world_size[0]*scale, row * world_size[1]*scale, 0])
         offsets.append(offset)
         if verbose:
             print('------------------\n', ori_dir.replace('/home/yang/Documents/', ''), '\n')
@@ -373,7 +374,8 @@ def init_isaac_world():
 
 
 def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_name='gym_replay.gif',
-                          time_step=0.5, verbose=False, plan=None, return_wconf=False, world_index=None):
+                          time_step=0.5, verbose=False, plan=None, return_wconf=False,
+                          world_index=None, body_map=None):
     """ act out the whole plan and event in the world without observation/replanning """
     from world_builder.actions import adapt_action, apply_actions
     from world_builder.world import State
@@ -390,7 +392,10 @@ def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_n
     for i, action in enumerate(commands):
         if verbose:
             print(i, action)
-        action = adapt_action(action, problem, plan)
+        if 'tachObjectAction' in str(action):
+            if action.object in body_map:
+                action.object = body_map[action.object]
+        action = adapt_action(action, problem, plan, verbose=verbose)
         if action is None:
             continue
         state_event = action.transition(state_event.copy())
@@ -420,7 +425,7 @@ def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_n
 def images_to_gif(img_dir, gif_name, filenames):
     import imageio
     start = time.time()
-    gif_file = join(img_dir, gif_name)
+    gif_file = join(img_dir, '..', gif_name)
     print(f'saving to {abspath(gif_file)} with {len(filenames)} frames')
     with imageio.get_writer(gif_file, mode='I') as writer:
         for filename in filenames:
