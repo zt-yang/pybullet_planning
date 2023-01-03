@@ -133,7 +133,7 @@ class RobotAPI(Robot):
 
 class PR2Robot(RobotAPI):
 
-    arms = ['left']
+    arms = ['left']  ## 'right'
     grasp_types = ['top', 'side']  ##
     joint_groups = ['left', 'right', 'base', 'base-torso']
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
@@ -190,7 +190,7 @@ class PR2Robot(RobotAPI):
             conf = get_arm_conf(arm)
             init += [('Arm', arm), ('AConf', arm, conf),
                      ('DefaultConf', arm, conf), ('AtAConf', arm, conf)]
-            if arm in ['left']:
+            if arm in self.arms:
                 init += [('Controllable', arm)]
 
         init += [('HandEmpty', arm) for arm in ARM_NAMES]

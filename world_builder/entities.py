@@ -8,7 +8,7 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
     stable_z, get_joint_descendants, get_link_children, get_joint_info, get_links, link_from_name, set_renderer, \
     get_min_limit, get_max_limit, get_link_parent, LockRenderer, HideOutput, pairwise_collisions, get_bodies, \
     remove_debug, child_link_from_joint, unit_point, tform_point, buffer_aabb, get_aabb_center, get_aabb_extent, \
-    quat_from_euler
+    quat_from_euler, wait_unlocked
 from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_box_entity, \
     get_camera_image_at_pose
 from world_builder.utils import get_mobility_id, get_instance_name
@@ -228,6 +228,10 @@ class Object(Index):
         return get_pose(self.body)
 
     def aabb(self):
+        if self.link is not None:
+            return get_aabb(self.body, link=self.link)
+        elif self.joint is not None:
+            return get_aabb(self.body, link=self.handle_link)
         return get_aabb(self.body)
 
     @property
@@ -242,9 +246,10 @@ class Object(Index):
     def height(self):
         return get_aabb_extent(self.aabb())[2]
 
-    def adjust_next_to(self, other, direction='+y', align='+x', dz=0):
-        cabinet_categories = ['cabinetlower', 'cabinettall', 'minifridgebase',
+    def adjust_next_to(self, other, direction='+y', align='+x', dz=0, hinge_gap=0.07):
+        cabinet_categories = ['cabinetlower', 'cabinettall', 'minifridge', 'minifridgebase',
                               'dishwasherbox', 'dishwasher']
+        gap = {}
         cx, cy, cz = self.get_pose()[0]
         x = y = z = None
         if align == '+x':
@@ -254,12 +259,14 @@ class Object(Index):
             # y = other.aabb().upper[1] + self.ly / 2
             y = other.aabb().upper[1] + (cy - self.aabb().lower[1])
             if self.category in cabinet_categories or other.category in cabinet_categories:
-                y += 0.04
+                y += hinge_gap
+                gap[other.aabb().upper[1]] = other.aabb().upper[1] + hinge_gap
         elif direction == '-y':
             # y = other.aabb().lower[1] - self.ly / 2
             y = other.aabb().lower[1] - (self.aabb().upper[1] - cy)
             if self.category in cabinet_categories or other.category in cabinet_categories:
-                y -= 0.04
+                y -= hinge_gap
+                gap[other.aabb().lower[1]] = other.aabb().lower[1] - hinge_gap
         elif direction == '+z':
             # z = other.aabb().upper[2] + self.height / 2 + dz
             # y = other.get_pose()[0][1]
@@ -267,6 +274,7 @@ class Object(Index):
             y = other.aabb().lower[1] + (cy - self.aabb().lower[1])
         self.adjust_pose(x=x, y=y, z=z)
         # print('adjust_next_to | other', other.aabb().upper[0], 'self', self.aabb().upper[0])
+        return gap
 
     def adjust_pose(self, x=None, y=None, z=None, dx=None, dy=None, dz=None, theta=None):
         (cx, cy, cz), r = self.get_pose()
@@ -549,10 +557,11 @@ class Space(Region):
 
     def place_obj(self, obj, xyzyaw=None, max_trial=8):
         from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice
+        from world_builder.robots import PR2Robot
         if isinstance(obj, str):
             obj = self.place_new_obj(obj)
 
-        if xyzyaw != None:
+        if xyzyaw is not None:
             x, y, z, yaw = xyzyaw
             obj.set_pose(Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw)))
 

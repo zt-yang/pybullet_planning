@@ -3890,8 +3890,10 @@ def get_limits_fn(body, joints, custom_limits={}, verbose=False):
         return False
     return limits_fn
 
+
 def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions=True, disabled_collisions=set(),
-                     custom_limits={}, use_aabb=False, cache=False, max_distance=MAX_DISTANCE, **kwargs):
+                     custom_limits={}, use_aabb=False, cache=False, max_distance=MAX_DISTANCE,
+                     ignored_pairs=[], **kwargs):
     # TODO: convert most of these to keyword arguments
     check_link_pairs = get_self_link_pairs(body, joints, disabled_collisions) if self_collisions else []
     moving_links = frozenset(link for link in get_moving_links(body, joints)
@@ -3941,6 +3943,8 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
         # return False
 
         for body1, body2 in product(moving_bodies, obstacles):
+            if body1.body == body2 or (body1.body, body2) in ignored_pairs:
+                continue
             if (not use_aabb or aabb_overlap(get_moving_aabb(body1), get_obstacle_aabb(body2))) \
                     and pairwise_collision(body1, body2, **kwargs):
                 #print(get_body_name(body1), get_body_name(body2))
@@ -3993,6 +3997,8 @@ def check_initial_end(start_conf, end_conf, collision_fn, verbose=False):
     # TODO: collision_fn might not accept kwargs
     if collision_fn(start_conf, verbose=verbose):
         print(f'bullet.Warning: initial configuration {nice(start_conf)} is in collision')
+        set_renderer(True)
+        # wait_unlocked()
         collision_fn(start_conf, verbose=True)
         return False
     if collision_fn(end_conf, verbose=verbose):
@@ -4003,7 +4009,7 @@ def check_initial_end(start_conf, end_conf, collision_fn, verbose=False):
 
 
 def plan_joint_motion(body, joints, end_conf, obstacles=[], attachments=[],
-                      self_collisions=True, disabled_collisions=set(),
+                      self_collisions=True, disabled_collisions=set(), ignored_pairs=[],
                       weights=None, resolutions=None, max_distance=MAX_DISTANCE,
                       use_aabb=False, cache=True, custom_limits={}, algorithm=None, **kwargs):
 
@@ -4015,8 +4021,8 @@ def plan_joint_motion(body, joints, end_conf, obstacles=[], attachments=[],
     distance_fn = get_distance_fn(body, joints, weights=weights)
     extend_fn = get_extend_fn(body, joints, resolutions=resolutions)
     collision_fn = get_collision_fn(body, joints, obstacles, attachments, self_collisions, disabled_collisions,
-                                    custom_limits=custom_limits, max_distance=max_distance,
-                                    use_aabb=use_aabb, cache=cache)
+                                    custom_limits=custom_limits, max_distance=max_distance, use_aabb=use_aabb,
+                                    cache=cache, ignored_pairs=ignored_pairs)
 
     start_conf = get_joint_positions(body, joints)
     if not check_initial_end(start_conf, end_conf, collision_fn):

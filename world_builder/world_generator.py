@@ -335,6 +335,11 @@ def clean_domain_pddl(pddl_str, all_pred_names):
 
 
 def save_to_outputs_folder(output_path, data_path, data_generation=False, multiple_solutions=False):
+
+    def move(src, des):
+        if isfile(src) or isdir(src):
+            shutil.move(src, des)
+
     if data_generation:
         original = 'visualizations'
         if isfile(join(original, 'log.json')):
@@ -351,16 +356,16 @@ def save_to_outputs_folder(output_path, data_path, data_generation=False, multip
     """ =========== move to data collection folder =========== """
     # ## 'one_fridge_pick_pr2'
     # data_path = outpath.replace('test_cases', join('outputs', 'one_fridge_pick_pr2'))
-    shutil.move(output_path, data_path)
-    shutil.move(join(data_path, 'time.json'), join(data_path, 'plan.json'))
+    move(output_path, data_path)
+    move(join(data_path, 'time.json'), join(data_path, 'plan.json'))
 
     """ =========== move the log and plan =========== """
-    if multiple_solutions:
-        shutil.move(f"multiple_solutions.json", join(data_path, 'multiple_solutions.json'))
+    move(f"multiple_solutions.json", join(data_path, 'multiple_solutions.json'))
 
-    with open(join(data_path, 'plan.json'), 'r') as f:
-        if json.load(f)[0]['plan'] == 'FAILED':
-            shutil.rmtree(data_path)
+    if isfile(join(data_path, 'plan.json')):
+        with open(join(data_path, 'plan.json'), 'r') as f:
+            if json.load(f)[0]['plan'] == 'FAILED':
+                shutil.rmtree(data_path)
 
 
 def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXIT=True,

@@ -124,11 +124,12 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
     robot = problem.robot
     world = problem.world
     obstacles = [o for o in problem.fixed if o not in problem.floors] if collisions else []
-    gripper = problem.get_gripper(visual=False)
+    grippers = [problem.get_gripper(arm=arm, visual=False) for arm in robot.arms]
     heading = f'   pr2_streams.get_ir_sampler | '
 
     def gen_fn(arm, obj, pose, grasp):
 
+        gripper = grippers[arm]
         pose.assign()
         if isinstance(obj, tuple): ## may be a (body, joint) or a body with a marker
             obj = obj[0]
@@ -237,8 +238,11 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
     def fn(arm, obj, pose, grasp, base_conf, fluents=[]):
         if fluents:
             attachments = process_motion_fluents(fluents, robot) # TODO(caelan): use attachments
+            attachments = {a.child: a for a in attachments}
         else:
             world_saver.restore()
+            attachment = grasp.get_attachment(problem.robot, arm)
+            attachments = {attachment.child: attachment} ## {}  ## TODO: problem with having (body, joint) tuple
 
         if isinstance(obj, tuple): ## may be a (body, joint) or a body with a marker
             body = obj[0]
@@ -287,7 +291,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
             grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose, custom_limits=custom_limits) #, upper_limits=USE_CURRENT)
                                                 #nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
 
-        if (grasp_conf is None) or collided(robot, addon_obstacles, articulated=False,
+        if (grasp_conf is None) or collided(robot, addon_obstacles, articulated=False, world=world,
                                             verbose=verbose, ignored_pairs=ignored_pairs, min_num_pts=3): ## approach_obstacles): # [obj]
             #wait_unlocked()
             if verbose:
@@ -295,10 +299,6 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
                     grasp_conf = nice(grasp_conf)
                 print(f'{title}Grasp IK failure | {grasp_conf} <- pr2_inverse_kinematics({robot}, {nice(base_conf.values)}, '
                       f'{arm}, {nice(gripper_pose[0])}) | pose {pose}, grasp {grasp}')
-                for b in addon_obstacles:
-                    if pairwise_collision(robot, b):
-                        # set_renderer(True)
-                        print(f'                        robot at {nice(base_conf.values)} colliding with {b} at {nice(get_pose(b))}')
             #if grasp_conf is not None:
             #    print(grasp_conf)
             #    #wait_if_gui()
@@ -317,7 +317,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
             approach_conf = pr2_inverse_kinematics(robot, arm, approach_pose, custom_limits=custom_limits,
                                                    upper_limits=USE_CURRENT, nearby_conf=USE_CURRENT)
             #approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits)
-        if (approach_conf is None) or collided(robot, addon_obstacles, articulated=False,
+        if (approach_conf is None) or collided(robot, addon_obstacles, articulated=False, world=world,
                                                verbose=verbose, ignored_pairs=ignored_pairs, min_num_pts=3): ##
             if verbose:
                 if approach_conf != None:
@@ -340,8 +340,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
 
         set_joint_positions(robot, arm_joints, approach_conf)
         #approach_conf = get_joint_positions(robot, arm_joints)
-        attachment = grasp.get_attachment(problem.robot, arm)
-        attachments = {}  ## {attachment.child: attachment} ## {}  ## TODO: problem with having (body, joint) tuple
+
         if teleport:
             path = [default_conf, approach_conf, grasp_conf]
         else:
@@ -349,7 +348,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
             if is_top_grasp(robot, arm, body, grasp):
                 grasp_path = plan_direct_joint_motion(robot, arm_joints, grasp_conf, attachments=attachments.values(),
                                                       obstacles=approach_obstacles, self_collisions=SELF_COLLISIONS,
-                                                      use_aabb=True, cache=True,
+                                                      use_aabb=True, cache=True, ignored_pairs=ignored_pairs,
                                                       custom_limits=custom_limits, resolutions=resolutions/2.)
                 if grasp_path is None:
                     if verbose: print(f'{title}Grasp path failure')
@@ -362,7 +361,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
             approach_path = plan_joint_motion(robot, arm_joints, dest_conf, attachments=attachments.values(),
                                               obstacles=obstacles, self_collisions=SELF_COLLISIONS,
                                               custom_limits=custom_limits, resolutions=resolutions,
-                                              use_aabb=True, cache=True,
+                                              use_aabb=True, cache=True, ignored_pairs=ignored_pairs,
                                               restarts=2, iterations=25, smooth=0) # smooth=25
             if approach_path is None:
                 if verbose: print(f'{title}\tApproach path failure')
@@ -370,7 +369,6 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
             path = approach_path + grasp_path
 
         mt = create_trajectory(robot, arm_joints, path)
-        attachments = {attachment.child: attachment} ## TODO: problem with having (body, joint) tuple
         cmd = Commands(State(attachments=attachments), savers=[BodySaver(robot)], commands=[mt])
 
         set_joint_positions(robot, arm_joints, default_conf)  # default_conf | sample_fn()

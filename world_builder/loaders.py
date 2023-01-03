@@ -1744,6 +1744,8 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
                                      obstacles=[], verbose=True):
     cabinets, shelves = [], []
     cabi_type = 'CabinetTop' if random.random() < 0.5 else 'CabinetUpper'
+    if world.note in [1, 4, 41]:
+        cabi_type = 'CabinetTop'
     colors = {
         '45526': HEX_to_RGB('#EDC580'),
         '45621': HEX_to_RGB('#1F0C01'),
@@ -1768,7 +1770,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
         filler = create_box(w=xb - xa, l=yb - ya, h=zb - za, color=color)
         world.add_object(Object(filler, name='cabinettop_filler', category='filler'),
                          Pose(point=Point(x=(xa + xb) / 2, y=(ya + yb) / 2, z=(za + zb) / 2)))
-        world.add_ignored_pair((cabinet, filler))
+        world.add_ignored_pair((cabinet.body, filler))
         return color
 
     def place_cabinet(selected_counters, cabi_type=cabi_type, **kwargs):
@@ -1855,7 +1857,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
     counters = sorted(counters, key=lambda x: x.aabb().lower[1])
 
     ## load cabinets
-    ins = world.note not in [1, 4]
+    ins = world.note not in [4, 41]
     obstacles, color, counters, bled = add_cabinets_shelves(counters, obstacles=obstacles,
                                                              cabi_type=cabi_type, RANDOM_INSTANCE=ins)
     ## then load shelves
@@ -1917,13 +1919,16 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     def load_furniture_base(furniture):
         return world.add_object(Object(
             load_asset('MiniFridgeBase', l=furniture.ly, yaw=math.pi, floor=floor,
-                       RANDOM_INSTANCE=True, verbose=verbose), name=f'{furniture.category}Base'))
+                       RANDOM_INSTANCE=True, verbose=verbose),
+            name=f'{furniture.category}Base', category=f'{furniture.category}Base'))
 
     counter_regions = []
     tall_obstacles = []
     right_counter_lower = right_counter_upper = base.aabb().upper[1]
     left_counter_lower = left_counter_upper = base.aabb().lower[1]
     x_lower = base.aabb().lower[0]
+
+    adjust_y = {}
 
     """ step 2: on the left and right of sink base, along with the extended counter """
     for direction in ['+y', '-y']:
@@ -1933,6 +1938,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
             categories = [c for c in ordering[:start]][::-1]
         current = base
         for category in categories:
+            adjust = {}  ## doors bump into neighbors and counters
             furniture = load_furniture(category)
             if category in tall_body:
                 tall_obstacles.append(furniture)
@@ -1945,20 +1951,22 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
 
             ## x_lower aligns with the counter and under the counter
             if category in under_counter + full_body:
-                furniture.adjust_next_to(current, direction=direction, align='+x')
+                adjust = furniture.adjust_next_to(current, direction=direction, align='+x')
 
             ## put a cabinetlower with the same y_extent as the object
             elif category in on_base:
-                if furniture.mobility_id not in ['11178', '11231', '11709']:
+                if True or furniture.mobility_id not in ['11178', '11231', '11709']:
                     furniture_base = load_furniture_base(furniture)
-                    furniture_base.adjust_next_to(current, direction=direction, align='+x')
+                    adjust = furniture_base.adjust_next_to(current, direction=direction, align='+x')
                     furniture.adjust_next_to(furniture_base, direction='+z', align='+x')
                     x_lower = update_x_lower(furniture_base, x_lower)
                 else:
-                    furniture.adjust_next_to(current, direction=direction, align='+x')
+                    adjust = furniture.adjust_next_to(current, direction=direction, align='+x')
                     # counters.append(furniture)
                     world.add_to_cat(furniture.body, 'supporter')
                 x_lower = update_x_lower(furniture, x_lower)
+
+            adjust_y.update(adjust)
 
             if direction == '+y':
                 right_counter_upper = furniture.aabb().upper[1]
@@ -1976,12 +1984,26 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
             #     right_most = furniture.aabb().upper[1]
             # else:
             #     left_most = furniture.aabb().lower[1]
-
     if right_counter_lower != right_counter_upper:
         counter_regions.append([right_counter_lower, right_counter_upper])
     if left_counter_lower != left_counter_upper:
         counter_regions.append([left_counter_lower, left_counter_upper])
 
+    ## adjust counter regions
+    new_counter_regions = []
+    for lower, upper in counter_regions:
+        original = [lower, upper]
+        if lower in adjust_y:
+            lower = adjust_y[lower]
+        if upper in adjust_y:
+            upper = adjust_y[upper]
+        new_counter_regions.append([lower, upper])
+    counter_regions = new_counter_regions
+
+    ## make doors easier to open
+    world.name_to_object('minifridge').adjust_pose(dx=0.2)
+
+    ## make wall
     l = right_counter_upper - left_counter_lower
     y = (right_counter_upper + left_counter_lower) / 2
     x = x_lower - WALL_WIDTH / 2
@@ -2090,6 +2112,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
         if len(cabi) > 0:
             load_storage_mechanism(world, cabi[0], epsilon=epsilon)
 
+    # pause = True
     if pause:
         wait_unlocked()
     return moveables, cabinets, only_counters, obstacles, x_food_min

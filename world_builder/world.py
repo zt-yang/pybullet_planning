@@ -18,7 +18,8 @@ from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, g
     BodySaver, set_pose, INF, add_parameter, irange, wait_for_duration, get_bodies, remove_body, \
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
     get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked, \
-    get_movable_joints, apply_alpha, get_all_links, set_color, set_all_color, dump_body, clear_texture, get_link_name
+    get_movable_joints, apply_alpha, get_all_links, set_color, set_all_color, dump_body, clear_texture, \
+    get_link_name, get_aabb, draw_aabb, GREY, GREEN
 from pybullet_tools.pr2_streams import Position, get_handle_grasp_gen, pr2_grasp
 from pybullet_tools.general_streams import pose_from_attachment
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
@@ -72,7 +73,7 @@ class World(object):
         self.outpath = None
         self.camera = None
         self.instance_names = {}
-        self.constants = ['@movable', '@bottle', '@edible', '@world']
+        self.constants = ['@movable', '@bottle', '@edible', '@medicine', '@world']
         self.note = None
 
     def clear_viz(self):
@@ -174,45 +175,43 @@ class World(object):
         a, b = pair
         self.c_ignored_pairs.extend([(a, b), (b, a)])
 
+    def get_attr(self, obj, attr):
+        if isinstance(obj, str):
+            obj = self.name_to_object(obj)
+        elif isinstance(obj, Object):
+            obj = obj
+        elif obj in self.BODY_TO_OBJECT:
+            obj = self.BODY_TO_OBJECT[obj]
+        elif obj in self.REMOVED_BODY_TO_OBJECT:
+            obj = self.REMOVED_BODY_TO_OBJECT[obj]
+        else: ## get readable list
+            return obj
+        if isinstance(obj, str):
+            return obj
+        return getattr(obj, attr)
+
     def get_name(self, body):
-        if body in self.BODY_TO_OBJECT:
-            return self.BODY_TO_OBJECT[body].name
-        return None
+        return self.get_attr(body, 'name')
 
     def get_category(self, body):
-        if body in self.BODY_TO_OBJECT:
-            return self.BODY_TO_OBJECT[body].category
-        return None
+        return self.get_attr(body, 'category')
 
     def get_debug_name(self, body):
         """ for viewing pleasure :) """
-        if isinstance(body, Object):
-            return body.debug_name
-        if body in self.BODY_TO_OBJECT:
-            return self.BODY_TO_OBJECT[body].debug_name
-        return None
+        return self.get_attr(body, 'debug_name')
 
     def get_lisdf_name(self, body):
         """ for recording objects in lisdf files generated """
-        if body in self.BODY_TO_OBJECT:
-            return self.BODY_TO_OBJECT[body].lisdf_name
-        return None
+        return self.get_attr(body, 'lisdf_name')
 
     def get_instance_name(self, body):
         """ for looking up objects in the grasp database """
         if isinstance(body, tuple) and body in self.instance_names:
             return self.instance_names[body]
-        elif isinstance(body, Object):
-            return body.instance_name
-        elif body in self.BODY_TO_OBJECT:
-            return self.BODY_TO_OBJECT[body].instance_name
-        elif body in self.REMOVED_BODY_TO_OBJECT:
-            print(f'\n\n\n trying to get instance_name of non-planning objects {body}\n\n\n')
-            return self.REMOVED_BODY_TO_OBJECT[body].instance_name
-        return None
+        return self.get_attr(body, 'instance_name')
 
     def get_events(self, body):
-        return self.BODY_TO_OBJECT[body].events
+        return self.get_attr(body, 'events')
 
     def add_box(self, object, pose=None):
         obj = self.add_object(object, pose=pose)
@@ -220,8 +219,16 @@ class World(object):
         return obj
 
     def add_highlighter(self, body):
-        draw_fitted_box(body)
-        # set_all_color(body, (1, 0, 0, 1))
+        if isinstance(body, Object):
+            obj = body
+            body = obj.body
+        else:
+            obj = self.BODY_TO_OBJECT[body]
+        if self.get_attr(obj, 'is_box'):
+            draw_aabb(get_aabb(body), color=GREEN)
+        else:
+            draw_fitted_box(body, draw_box=True)
+            # set_all_color(body, (1, 0, 0, 1))
 
     def add_object(self, object, pose=None):
         OBJECTS_BY_CATEGORY = self.OBJECTS_BY_CATEGORY
@@ -506,13 +513,12 @@ class World(object):
             goals = [goals]
         for literal in goals:
             for item in literal:
-                if not isinstance(item, str) and item not in bodies:
+                if not isinstance(item, str) and str(item) not in bodies:
                     if isinstance(item, Object):
                         item = item.pybullet_name
-                    bodies.append(item)
+                    bodies.append(str(item))
                     if isinstance(item, tuple):
-                        bodies.append(item[0])
-        bodies = [str(b) for b in bodies]
+                        bodies.append(str(item[0]))
         new_exceptions = []
         for b in exceptions:
             if isinstance(b, Object):
@@ -663,12 +669,12 @@ class World(object):
         open_joint(body, joint, extent=extent, pstn=pstn)
         self.assign_attachment(body)
 
-    def open_doors_drawers(self, body, ADD_JOINT=True):
+    def open_doors_drawers(self, body, ADD_JOINT=True, extent=1):
         doors, drawers, knobs = self.get_doors_drawers(body, skippable=True)
         for joint in doors + drawers:
             if isinstance(joint, tuple):
                 body, joint = joint
-            self.open_joint(body, joint, extent=1)
+            self.open_joint(body, joint, extent=extent)
             if not ADD_JOINT:
                 self.remove_object(joint)
 

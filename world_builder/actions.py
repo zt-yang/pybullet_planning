@@ -76,6 +76,7 @@ class MoveArmAction(Action):
         set_joint_positions(state.robot, self.conf.joints, self.conf.values)
         return state.new_state()
 
+
 class MoveBaseAction(MoveArmAction):
     pass
 
@@ -321,8 +322,6 @@ class ChangePositions(Action):
         self.pstn = pstn
     def transition(self, state):
         self.pstn.assign()
-        # set_renderer(True)
-        # set_renderer(True)
         return state.new_state()
 
 

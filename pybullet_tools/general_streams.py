@@ -417,12 +417,12 @@ def sample_joint_position_open_list_gen(problem, num_samples = 10):
                 higher = sometime
 
         positions = []
-        if psn2 == None or abs(psn1.value - psn2.value) > math.pi/2:
+        if psn2 is None or abs(psn1.value - psn2.value) > math.pi/2:
             # positions.append((Position(o, lower+math.pi/2), ))
             lower += math.pi/2 ## - math.pi/8
             higher = min(lower + math.pi/6, get_joint_limits(o[0], o[1])[1])
             ptns = [np.random.uniform(lower, higher) for k in range(num_samples)]
-            ptns.append(1.77)
+            ptns.append(1.57)
             positions.extend([(Position(o, p), ) for p in ptns])
         else:
             positions.append((psn2,))

@@ -845,7 +845,7 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    # test_grasps(robot, ['CabinetTop'], skip_grasps=True)  ## 'EyeGlasses'
+    test_grasps(robot, ['BraiserBody'], skip_grasps=False)  ## 'EyeGlasses'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # test_handle_grasps(robot, category='CabinetUpper')
@@ -865,7 +865,7 @@ if __name__ == '__main__':
     # test_placement_on(robot, category='BraiserBody', surface_name='braiser_bottom')
 
     # test_sink_configuration(robot, pause=True)
-    test_kitchen_configuration(robot)
+    # test_kitchen_configuration(robot)
 
     """ --- specific counter --- """
     # test_placement_counter()  ## initial placement

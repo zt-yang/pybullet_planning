@@ -341,8 +341,37 @@ def collided_around(obj, obstacles, padding=0.05, **kwargs):
     return False
 
 
+COLLISION_FILE = join(dirname(__file__), '..', '..', 'collisions.json')
+
+
+def initialize_logs():
+    from pybullet_tools.logging import TXT_FILE
+    if isfile(TXT_FILE): os.remove(TXT_FILE)
+    if isfile(COLLISION_FILE): os.remove(COLLISION_FILE)
+
+
+def log_collided(obj, obs, visualize=False):
+    # from world_builder.robots import RobotAPI
+
+    collisions = {}
+    if isfile(COLLISION_FILE):
+        collisions = json.load(open(COLLISION_FILE, 'r'))
+    key = f"({', '.join([obj, obs])})"
+    if key not in collisions:
+        collisions[key] = 0
+    collisions[key] += 1
+
+    collisions = {k: v for k, v in sorted(collisions.items(), key=lambda item: item[1], reverse=True)}
+    dump_json(collisions, COLLISION_FILE, indent=3, width=40, sort_dicts=False)
+
+    if visualize: ## and (not isinstance(obj, str) or 'pr2' not in obj):
+        set_renderer(True)
+        wait_unlocked()
+
+
 def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=False,
              visualize=False, min_num_pts=0, use_aabb=True, ignored_pairs=[], **kwargs):
+
     prefix = 'bullet_utils.collided '
     if len(tag) > 0: prefix += f'( {tag} )'
 
@@ -357,10 +386,15 @@ def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=Fals
     bodies = []
     for b in obstacles:
         if pairwise_collision(obj, b) and (obj, b) not in ignored_pairs:
+            if world is None:
+                print('sss')
+            obj_print = world.get_name(obj) if world is not None else obj
+            b_print = world.get_name(b) if world is not None else b
             if verbose:
-                print(prefix, f'obj {obj} collides with {b}')
+                print(prefix, f'obj {obj_print} collides with {b_print}')
             result = True
             bodies.append(b)
+            log_collided(obj_print, b_print)
 
     ## then find the exact links
     body_links = {}
@@ -596,13 +630,14 @@ def add_attachment(state=None, obj=None, parent=-1, parent_link=None, attach_dis
 
     collision_infos = get_closest_points(parent, obj, link1=link1, max_distance=INF)
     min_distance = min([INF] + [info.contactDistance for info in collision_infos])
-    if attach_distance is None or (min_distance < attach_distance):  ## (obj not in new_attachments) and
+    if True or attach_distance is None or (min_distance < attach_distance):  ## (obj not in new_attachments) and
         if joint is not None:
             attachment = create_attachment(parent, parent_link, obj,
                                            child_link=link1, child_joint=joint)
         else:
             attachment = create_attachment(parent, parent_link, obj)
         new_attachments[obj] = attachment  ## may overwrite older attachment
+        print('   added attachment', obj, parent, parent_link, link1, joint)
     return new_attachments
 
 
@@ -1016,6 +1051,10 @@ def get_rotation_matrix(body, verbose=True):
     # if set(get_all_links(body)) == {0, -1}:
     if len(collision_data) > 0:
         urdf_file = dirname(collision_data[0].filename.decode())
+        count = 0
+        while len(urdf_file.strip()) == 0:
+            count += 1
+            urdf_file = dirname(collision_data[count].filename.decode())
         urdf_file = urdf_file.replace('/textured_objs', '').replace('/vhacd', '')
         if urdf_file not in ROTATIONAL_MATRICES:
             if verbose:
