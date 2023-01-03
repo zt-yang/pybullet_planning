@@ -389,6 +389,15 @@ class World(object):
         self.add_object(surface)
         return surface
 
+    def summarize_supporting_surfaces(self):
+        padding = '    '
+        print('--------------- summarize_supporting_surfaces --------------')
+        print(padding, 'surface', self.cat_to_objects('surface'))
+        print(padding, 'supporter', self.cat_to_objects('supporter'))
+        for surface in set(self.cat_to_objects('surface') + self.cat_to_objects('supporter')):
+            print(padding, surface.name, surface.supported_objects)
+        print('-------------------------------------------------')
+
     def summarize_all_types(self):
         printout = ''
         for typ in ['moveable', 'surface', 'door', 'drawer']:
@@ -1066,18 +1075,25 @@ class World(object):
 
     def find_surfaces_for_placement(self, obj, surfaces, obstacles=[]):
         from pybullet_tools.pr2_streams import get_stable_gen
-        print('find_surface_for_placement', obj, surfaces)
+        self.summarize_supporting_surfaces()
+
+        def get_area(surface):
+            area = surface.ly
+            for o in surface.supported_objects:
+                area -= o.ly
+            return area
+
         state = State(self)
         funk = get_stable_gen(state)
         possible = []
         for s in surfaces:
             try:
-                p = next(funk(obj, s))[0]
+                p = next(funk(obj, copy.deepcopy(s)))[0]
                 possible.append(s)
             except Exception:
                 pass
         print(f'   find {len(possible)} out of {len(surfaces)} surfaces for {obj}', possible)
-        random.shuffle(possible)
+        possible = sorted(possible, key=get_area, reverse=True)
         return possible
 
     def __repr__(self):

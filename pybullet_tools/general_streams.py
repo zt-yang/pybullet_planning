@@ -182,6 +182,7 @@ def get_compute_pose_rel_kin():
 def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False, visualize=False,
                    learned_sampling=True, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
+    from world_builder.utils import smarter_sample_placement
     obstacles = problem.fixed if collisions else []
     world = problem.world
     robot = world.robot
@@ -189,6 +190,8 @@ def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False, visua
     def gen(body, surface):  ## , fluents=[] ## RuntimeError: Fluent streams certified facts cannot be domain facts
         # if fluents:
         #     attachments = process_motion_fluents(fluents, robot)
+
+        p0 = Pose(body, get_pose(body), surface)
 
         if surface is None:
             surfaces = problem.surfaces
@@ -207,12 +210,8 @@ def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False, visua
             surface = random.choice(surfaces) # TODO: weight by area
             if isinstance(surface, tuple): ## (body, link)
                 body_pose = sample_placement(body, surface[0], bottom_link=surface[-1], **kwargs)
-                # x, y, z, yaw = sample_obj_on_body_link_surface(
-                #     body, surface[0], surface[-1], PLACEMENT_ONLY=True, max_trial=20)
-                # z = stable_z(body, surface[0], surface[-1])
-                # body_pose = ((x, y, z), quat_from_euler(Euler(yaw=yaw)))
             else:
-                body_pose = sample_placement(body, surface, **kwargs)
+                body_pose = smarter_sample_placement(body, surface, world, **kwargs)
             if body_pose is None:
                 break
 
@@ -225,6 +224,7 @@ def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False, visua
             obs = [obst for obst in obstacles if obst not in {body, surface}]
             result = collided(body, obs, verbose=verbose, visualize=visualize, tag='stable_gen')
             if not result:
+                p0.assign()
                 yield (p,)
             else:
                 if verbose:

@@ -345,7 +345,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
             path = [default_conf, approach_conf, grasp_conf]
         else:
             resolutions = DEFAULT_RESOLUTION * np.ones(len(arm_joints))
-            if is_top_grasp(robot, arm, body, grasp):
+            if is_top_grasp(robot, arm, body, grasp) or True:
                 grasp_path = plan_direct_joint_motion(robot, arm_joints, grasp_conf, attachments=attachments.values(),
                                                       obstacles=approach_obstacles, self_collisions=SELF_COLLISIONS,
                                                       use_aabb=True, cache=True, ignored_pairs=ignored_pairs,

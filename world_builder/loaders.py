@@ -9,7 +9,7 @@ import string
 
 from world_builder.utils import LIGHT_GREY, read_xml, load_asset, FLOOR_HEIGHT, WALL_HEIGHT, \
     find_point_for_single_push, ASSET_PATH, FURNITURE_WHITE, FURNITURE_GREY, FURNITURE_YELLOW, HEX_to_RGB, \
-    get_instances
+    get_instances, adjust_for_reachability
 
 from world_builder.world import World, State
 from world_builder.entities import Object, Region, Environment, Robot, Camera, Floor, Stove, Supporter,\
@@ -1472,23 +1472,15 @@ def load_kitchen_mini_scene(world, **kwargs):
 #################################################################
 
 
-def adjust_for_reachability(obj, counter, x_min):
-    (x, y, z), r = obj.get_pose()
-    x_min += (y - obj.aabb().lower[1])
-    ## scale the x to a reachable range
-    x_max = counter.aabb().upper[0] - (obj.aabb().upper[0] - x)
-    x_new = x_max - (x_max - x_min) * (x_max - x) / counter.lx
-    obj.set_pose(((x_new, y, z), r))
-    counter.attach_obj(obj)
-
-
-def load_counter_moveables(world, counters, x_min=0.5, obstacles=[], verbose=False):
+def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=False):
     start = time.time()
     robot = world.robot
     old_world = copy.deepcopy(world)
     state = State(old_world, robot.grasp_types)
     size_matter = len(obstacles) > 0 and obstacles[-1].name == 'braiser_bottom'
     satisfied = []
+    if x_min is None:
+        x_min = counters[0].aabb().upper[0] - 0.3
 
     print('load_counter_moveables(obstacles={})'.format([o.name for o in obstacles]))
 
@@ -1867,9 +1859,13 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
     return cabinets, shelves
 
 
-def load_braiser(world, supporter, x_min, verbose=True):
+def load_braiser(world, supporter, x_min=None, verbose=True):
     braiser = supporter.place_new_obj('BraiserBody', RANDOM_INSTANCE=True, verbose=verbose)
+    braiser.adjust_pose(theta=PI)
     set_camera_target_body(braiser)
+
+    if x_min is None:
+        x_min = supporter.aabb().upper[0] - 0.3
     adjust_for_reachability(braiser, supporter, x_min)
     set_camera_target_body(braiser)
 
@@ -2015,14 +2011,16 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     """ step 3: make all the counters """
     sink_left = world.name_to_object('sink_counter_left')
     sink_right = world.name_to_object('sink_counter_right')
+    def could_connect(y1, y2, adjust_y):
+        return y1 == y2 or (y1 in adjust_y and adjust_y[y1] == y2) or (y2 in adjust_y and adjust_y[y2] == y1)
     for lower, upper in counter_regions:
         name = 'counter'
-        if lower == sink_right.aabb().upper[1]:
+        if could_connect(lower, sink_right.aabb().upper[1], adjust_y):
             name = 'sink_counter_right'
             lower = sink_right.aabb().lower[1]
             counters.remove(sink_right)
             world.remove_object(sink_right)
-        elif upper == sink_left.aabb().lower[1]:
+        elif could_connect(upper, sink_left.aabb().lower[1], adjust_y):
             name = 'sink_counter_left'
             upper = sink_left.aabb().upper[1]
             counters.remove(sink_left)
@@ -2033,7 +2031,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
             Pose(point=Point(x=counter_x, y=(upper + lower) / 2, z=counter_z))))
         # print('lower, upper', (round(lower, 2), round(upper, 2)))
 
-    ## to cover up the wide objects
+    ## to cover up the wide objects at the back
     if x_lower < base.aabb().lower[0]:
         x_upper = base.aabb().lower[0]
         x = (x_upper+x_lower)/2
@@ -2057,7 +2055,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     sink_bottom = world.add_surface_by_keyword(sink, 'sink_bottom')
 
     """ step 5: place electronics and cooking appliances on counters """
-    only_counters = copy.deepcopy(counters)
+    only_counters = [c for c in counters]
     x_food_min = base.aabb().upper[0] - 0.3
     obstacles = []
     microwave = None

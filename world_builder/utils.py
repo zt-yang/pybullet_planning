@@ -8,7 +8,7 @@ from os import listdir
 import json
 import random
 
-from pybullet_tools.utils import unit_pose, get_aabb_extent, \
+from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sample_placement_on_aabb, wait_unlocked, \
     set_pose, get_movable_joints, draw_pose, pose_from_pose2d, set_velocity, set_joint_states, get_bodies, \
     flatten, INF, inf_generator, get_time_step, get_all_links, get_visual_data, pose2d_from_pose, multiply, invert, \
     get_sample_fn, pairwise_collisions, sample_placement, is_placement, aabb_contains_point, point_from_pose, \
@@ -504,3 +504,62 @@ def HEX_to_RGB(color):
     color = color.lstrip('#')
     rgb = [int(color[i: i+2], 16)/255 for i in (0, 2, 4)] + [1]
     return tuple(rgb)
+
+
+def adjust_for_reachability(obj, counter, x_min=None, body_pose=None, return_pose=False):
+    if x_min is None:
+        x_min = counter.aabb().upper[0] - 0.3
+    if body_pose is None:
+        body_pose = obj.get_pose()
+    (x, y, z), r = body_pose
+    x_min += (y - obj.aabb().lower[1])
+    ## scale the x to a reachable range
+    x_max = counter.aabb().upper[0] - (obj.aabb().upper[0] - x)
+    x_new = x_max - (x_max - x_min) * (x_max - x) / counter.lx
+    if return_pose:
+        return (x_new, y, z), r
+    obj.set_pose(((x_new, y, z), r))
+    counter.attach_obj(obj)
+
+
+def smarter_sample_placement(body, surface, world, **kwargs):
+    from world_builder.world import World
+    if isinstance(world, World):
+        obj = world.BODY_TO_OBJECT[body]
+        surface = world.BODY_TO_OBJECT[surface]
+        xa, ya, za = surface.aabb().lower
+        xb, yb, zb = surface.aabb().upper
+        obtacles = surface.supported_objects
+        regions = [(ya, yb)]
+        for o in obtacles:
+            y1 = o.get_aabb().lower[1]
+            y2 = o.get_aabb().upper[1]
+            new_regions = []
+            for y1_, y2_ in regions:
+                if y1_ < y1 < y2 < y2_:
+                    new_regions.append((y1_, y1))
+                    new_regions.append((y2, y2_))
+                elif y1_ < y1 < y2_:
+                    new_regions.append((y1_, y1))
+                elif y1_ < y2 < y2_:
+                    new_regions.append((y2, y2_))
+                else:
+                    new_regions.append((y1_, y2_))
+            regions = new_regions
+
+        regions = sorted(regions, key=lambda r: r[1] - r[0], reverse=True)
+        body_pose = None
+        for y1, y2 in regions:
+            if y2 - y1 < obj.ly:
+                continue
+            aabb = AABB(lower=(xa, y1, za), upper=(xb, y2, zb))
+            # draw_aabb(aabb, color=RED)
+            # wait_unlocked()
+            body_pose = sample_placement_on_aabb(body, aabb, **kwargs)
+            if body_pose is not None:
+                body_pose = adjust_for_reachability(obj, surface, body_pose=body_pose, return_pose=True)
+                break
+    else:
+        body_pose = sample_placement(body, surface, **kwargs)
+    return body_pose
+

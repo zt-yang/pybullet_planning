@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import copy
 import random
 from itertools import product
 from os.path import isfile, dirname, abspath, join, isdir
@@ -33,7 +34,7 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
     parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug, set_point, has_gui, get_rigid_clusters, \
     BASE_LINK as ROOT_LINK, link_pairs_collision, draw_collision_info, wait_unlocked, apply_alpha, set_color, \
-    dimensions_from_camera_matrix, get_field_of_view, tform_point, get_image
+    dimensions_from_camera_matrix, get_field_of_view, tform_point, get_image, sample_placement_on_aabb
 
 
 OBJ = '?obj'
