@@ -669,25 +669,28 @@ class Attachment(object):
             self.parent, self.parent_link))
 
     def assign(self):
-        from .pr2_streams import LINK_POSE_TO_JOINT_POSITION
+        from .pr2_streams import LINK_POSE_TO_JOINT_POSITION as LP2JP
         # robot_base_pose = self.parent.get_positions(roundto=3)
         # robot_arm_pose = self.parent.get_positions(joint_group='left', roundto=3)  ## only left arm for now
         parent_link_pose = get_link_pose(self.parent, self.parent_link)
         child_pose = body_from_end_effector(parent_link_pose, self.grasp_pose)
-        if self.child_link == None:
+        if self.child_link is None:
             set_pose(self.child, child_pose)
-        elif self.child in LINK_POSE_TO_JOINT_POSITION:  ## pull drawer handle
-            ls = LINK_POSE_TO_JOINT_POSITION[self.child][self.child_joint]
-            for group in self.parent.joint_groups: ## ['base', 'left', 'hand']:
-                key = self.parent.get_positions(joint_group=group, roundto=3)
-                result = in_list(key, ls)
-                if result is not None:
-                    position = ls[result]
-                    set_joint_position(self.child, self.child_joint, position)
-                    # print(f'bullet.utils | Attachment | robot {key} @ {key} -> position @ {position}')
-                # elif len(key) == 4:
-                #     print('key', key)
-                #     print(ls)
+        elif self.child in LP2JP:  ## pull drawer handle
+            if self.child in LP2JP and self.child_joint in LP2JP[self.child]:
+                ls = LP2JP[self.child][self.child_joint]
+                if isinstance(self.parent, int):
+                    print('sssssss')
+                for group in self.parent.joint_groups: ## ['base', 'left', 'hand']:
+                    key = self.parent.get_positions(joint_group=group, roundto=3)
+                    result = in_list(key, ls)
+                    if result is not None:
+                        position = ls[result]
+                        set_joint_position(self.child, self.child_joint, position)
+                        # print(f'bullet.utils | Attachment | robot {key} @ {key} -> position @ {position}')
+                    # elif len(key) == 4:
+                    #     print('key', key)
+                    #     print(ls)
         return child_pose
 
     def apply_mapping(self, mapping):

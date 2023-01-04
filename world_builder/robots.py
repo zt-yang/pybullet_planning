@@ -78,9 +78,8 @@ class RobotAPI(Robot):
         if isinstance(o, tuple) and len(o) == 2:
             body, joint = o
             link = get_handle_link(o)
-            return Attachment(self.body, tool_link, grasp.value, body, child_joint=joint, child_link=link)
-
-        return Attachment(self.body, tool_link, grasp.value, grasp.body)
+            return Attachment(self, tool_link, grasp.value, body, child_joint=joint, child_link=link)
+        return Attachment(self, tool_link, grasp.value, grasp.body)
 
     def get_custom_limits(self):
         return self.custom_limits
