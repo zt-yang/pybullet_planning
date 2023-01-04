@@ -268,12 +268,6 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
         gripper_pose = multiply(robot.get_grasp_pose(pose_value, grasp.value, body=obj), invert(tool_from_root))
         approach_pose = multiply(robot.get_grasp_pose(pose_value, grasp.approach, body=obj), invert(tool_from_root))
 
-        if visualize:
-            print('grasp_value', nice(grasp.value))
-            gripper_grasp = robot.visualize_grasp(pose_value, grasp.approach, body=obj)
-            set_camera_target_body(gripper_grasp)
-            # wait_unlocked()
-
         arm_link = get_gripper_link(robot, arm)
         arm_joints = get_arm_joints(robot, arm)
 
@@ -283,6 +277,12 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
         base_conf.assign()
         open_arm(robot, arm)
         set_joint_positions(robot, arm_joints, default_conf) # default_conf | sample_fn()
+
+        if visualize:
+            print('grasp_value', nice(grasp.value))
+            gripper_grasp = robot.visualize_grasp(pose_value, grasp.approach, body=obj)
+            set_camera_target_body(gripper_grasp)
+            wait_unlocked()
 
         if base_conf.joint_state is not None:
             grasp_conf = list(map(base_conf.joint_state.get, arm_joints))
@@ -302,6 +302,8 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
             #if grasp_conf is not None:
             #    print(grasp_conf)
             #    #wait_if_gui()
+            if visualize:
+                remove_body(gripper_grasp)
             return None
         elif verbose:
             print(f'{title}Grasp IK success | {nice(grasp_conf)} = pr2_inverse_kinematics({robot} at {nice(base_conf.values)}, '
@@ -327,6 +329,8 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
                     if pairwise_collision(robot, b):
                         print(f'                        robot at {nice(base_conf.values)} colliding with {b} at {nice(get_pose(b))}')
             # wait_if_gui()
+            if visualize:
+                remove_body(gripper_grasp)
             return None
         elif verbose:
             print(f'{title}Approach IK success | sub_inverse_kinematics({robot} at {nice(base_conf.values)}, '
@@ -352,6 +356,8 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
                                                       custom_limits=custom_limits, resolutions=resolutions/2.)
                 if grasp_path is None:
                     if verbose: print(f'{title}Grasp path failure')
+                    if visualize:
+                        remove_body(gripper_grasp)
                     return None
                 dest_conf = approach_conf
             else:
@@ -365,6 +371,8 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
                                               restarts=2, iterations=25, smooth=0) # smooth=25
             if approach_path is None:
                 if verbose: print(f'{title}\tApproach path failure')
+                if visualize:
+                    remove_body(gripper_grasp)
                 return None
             path = approach_path + grasp_path
 
@@ -373,6 +381,8 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
 
         set_joint_positions(robot, arm_joints, default_conf)  # default_conf | sample_fn()
 
+        if visualize:
+            remove_body(gripper_grasp)
         if ACONF:
             return (mt.path[-1], cmd)
         return (cmd,)
