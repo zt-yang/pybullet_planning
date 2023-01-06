@@ -8,7 +8,7 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
     set_joint_positions, set_pose, GREEN, dump_body, get_pose, remove_body, PoseSaver, \
     ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles, \
     interpolate_poses, Pose, Euler, quat_from_euler, set_renderer, get_bodies, get_all_links, PI, \
-    WorldSaver
+    WorldSaver, is_darwin
 
 from pybullet_tools.bullet_utils import equal, nice, get_gripper_direction, set_camera_target_body, Attachment, \
     BASE_LIMITS, get_rotation_matrix
@@ -400,6 +400,9 @@ class PR2Robot(RobotAPI):
     def check_reachability(self, body, state, verbose=False, timeout=3):
         from pybullet_tools.pr2_primitives import Pose
         from pybullet_tools.pr2_streams import get_ik_gen
+
+        if is_darwin():
+            return True
 
         start = time.time()
         if verbose:
