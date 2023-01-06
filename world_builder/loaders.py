@@ -18,7 +18,6 @@ from world_builder.robots import PR2Robot, FEGripper
 from world_builder.robot_builders import create_pr2_robot
 
 import sys
-from pybullet_tools.pr2_problems import create_table, create_floor
 from pybullet_tools.pr2_primitives import get_base_custom_limits
 from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, HideOutput, load_model, TURTLEBOT_URDF, \
     set_all_color, dump_body, draw_base_limits, multiply, Pose, Euler, PI, draw_pose, unit_pose, create_box, TAN, Point, \
@@ -187,23 +186,9 @@ def create_hollow(category, color=GREY, *args, **kwargs):
     collision_id, visual_id = create_shape_array(geoms, poses, colors)
     return create_body(collision_id, visual_id, mass=STATIC_MASS)
 
-#######################################################
-
-def create_short_table(height=0.1, **kwargs):
-    # create_floor
-    return create_table(height=height, **kwargs)
-
-def create_rotating_door(**kwargs):
-    raise NotImplementedError()
-
-def create_sliding_door(**kwargs):
-    raise NotImplementedError()
-
-def create_drawer(**kwargs):
-    raise NotImplementedError()
-
 
 #######################################################
+
 
 def load_experiment_objects(world, w=.5, h=.7, wb=.07, hb=.1, mass=1, EXIST_PLATE=True,
                             CABBAGE_ONLY=True, name='cabbage', color=(0, 1, 0, 1)):
