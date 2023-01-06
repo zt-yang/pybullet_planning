@@ -699,7 +699,7 @@ class Attachment(object):
 
     def __repr__(self):
         name = self.__class__.__name__
-        if self.child_link == None:
+        if self.child_link is None:
             return '{}({},{})'.format(name, self.parent, self.child)
         else:
             return '{}({},{}-{})'.format(name, self.parent, self.child, self.child_link)

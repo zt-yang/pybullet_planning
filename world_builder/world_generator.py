@@ -228,7 +228,7 @@ def to_lisdf(world, output_dir, world_name=None, verbose=True, **kwargs):
             #     file, scale = get_file_scale(obj.name)
 
             """ useful but not used """
-            if '/home/' in file:
+            if '/home/' in file or '/afs/csail.mit.edu' in file:
                 file = '../..' + file[file.index('/assets'):]
             # else:
             #     if exp_name != None:
