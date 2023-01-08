@@ -348,6 +348,9 @@ COLLISION_FILE = join(dirname(__file__), '..', '..', 'collisions.json')
 def initialize_logs():
     from pybullet_tools.logging import TXT_FILE
     if isfile(TXT_FILE): os.remove(TXT_FILE)
+
+
+def initialize_collision_logs():
     if isfile(COLLISION_FILE): os.remove(COLLISION_FILE)
 
 
@@ -357,7 +360,7 @@ def log_collided(obj, obs, visualize=False):
     collisions = {}
     if isfile(COLLISION_FILE):
         collisions = json.load(open(COLLISION_FILE, 'r'))
-    key = f"({', '.join([obj, obs])})"
+    key = f"({', '.join([str(obj), str(obs)])})"
     if key not in collisions:
         collisions[key] = 0
     collisions[key] += 1

@@ -73,7 +73,7 @@ class RobotAPI(Robot):
                 filtered_grasps.append(grasp)
         return filtered_grasps
 
-    def make_attachment(self, grasp, tool_link, visualize=True):
+    def make_attachment(self, grasp, tool_link, visualize=False):
         from pybullet_tools.pr2_utils import PR2_GRIPPER_ROOTS
         o = grasp.body
         if isinstance(o, tuple) and len(o) == 2:

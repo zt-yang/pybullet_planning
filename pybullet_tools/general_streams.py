@@ -64,8 +64,8 @@ class HandleGrasp(object):
         self.carry = tuple(carry)
         if index == None: index = id(self)
         self.index = index
-    def get_attachment(self, robot, arm):
-        return robot.get_attachment(self, arm)
+    def get_attachment(self, robot, arm, **kwargs):
+        return robot.get_attachment(self, arm, **kwargs)
         # tool_link = link_from_name(robot, PR2_TOOL_FRAMES[arm])
         # return Attachment(robot, tool_link, self.value, self.body)
     def __repr__(self):
@@ -343,7 +343,7 @@ def get_contain_gen(problem, collisions=True, max_attempts=60, verbose=False, le
             p_mod = p = Pose(body, get_mod_pose(body_pose), space)
             p_mod.assign()
             obs = [obst for obst in obstacles if obst not in {body, space}]
-            if not collided(body, obs, articulated=False, verbose=True):
+            if not collided(body, obs, articulated=False, verbose=verbose, world=world):
                 p = Pose(body, body_pose, space)
                 yield (p,)
         if verbose:
