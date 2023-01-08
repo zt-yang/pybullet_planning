@@ -1745,7 +1745,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
         yb -= 0.003
 
         filler = create_box(w=xb - xa, l=yb - ya, h=zb - za, color=color)
-        world.add_object(Object(filler, name='cabinettop_filler', category='filler'),
+        world.add_object(Object(filler, name=f'{cabi_type}_filler', category='filler'),
                          Pose(point=Point(x=(xa + xb) / 2, y=(ya + yb) / 2, z=(za + zb) / 2)))
         world.add_ignored_pair((cabinet.body, filler))
         return color
@@ -2117,7 +2117,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     for cabi_type in ['cabinettop', 'cabinetupper']:
         cabi = world.cat_to_objects(cabi_type)
         if len(cabi) > 0:
-            cabi = world.name_to_object('cabinettop')
+            cabi = world.name_to_object(cabi_type)
             load_storage_mechanism(world, cabi, epsilon=epsilon)
 
     # pause = True
