@@ -3997,7 +3997,7 @@ def check_initial_end(start_conf, end_conf, collision_fn, verbose=False):
     # TODO: collision_fn might not accept kwargs
     if collision_fn(start_conf, verbose=verbose):
         print(f'bullet.Warning: initial configuration {nice(start_conf)} is in collision')
-        set_renderer(True)
+        # set_renderer(True)
         # wait_unlocked()
         collision_fn(start_conf, verbose=True)
         return False

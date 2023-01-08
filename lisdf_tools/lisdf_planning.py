@@ -50,6 +50,10 @@ class Problem():
     def obstacles(self):
         return [n for n in self.fixed if n not in self.floors]
 
+    @property
+    def ignored_pairs(self):
+        return self.world.ignored_pairs
+
     def add_init(self, init):
         pass
 
@@ -67,12 +71,17 @@ class Problem():
             self.gripper = None
 
 
-def pddl_to_init_goal(exp_dir, world):
+def pddl_to_init_goal(exp_dir, world, domain_file=None):
 
-    domain_file = join(exp_dir, 'domain.pddl')
-    if not isfile(domain_file):
-        config_file = join(exp_dir, 'planning_config.json')
-        domain_file = json.loads(open(config_file).read())['domain']
+    if domain_file is None:
+        domain_file = join(exp_dir, 'domain.pddl')
+        if not isfile(domain_file):
+            config_file = join(exp_dir, 'planning_config.json')
+            domain_file = json.loads(open(config_file).read())['domain']
+            domain_file = abspath(join(__file__, '..', '..', 'pddl', domain_file))
+            print('lisdf_planning.pddl_to_init_goal | found domain file', domain_file)
+    else:
+        domain_file = domain_file.replace('.pddl', '_noops.pddl')
 
     lisdf, domain, problem = load_all(
         join(exp_dir, 'scene.lisdf'),

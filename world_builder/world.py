@@ -176,7 +176,7 @@ class World(object):
         self.c_ignored_pairs.extend([(a, b), (b, a)])
 
     def get_attr(self, obj, attr):
-        preds = self.robot.arms + ['joint', 'door', 'drawer', 'knob', 'button']
+        preds = ['left', 'right', 'hand'] + ['joint', 'door', 'drawer', 'knob', 'button']
         if isinstance(obj, str):
             if obj.lower() in preds:
                 return obj

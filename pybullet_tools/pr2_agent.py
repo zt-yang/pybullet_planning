@@ -27,7 +27,7 @@ from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_
     get_handle_grasp_gen, get_compute_pose_kin, get_compute_pose_rel_kin, \
     get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
-    set_camera_target_robot, nice, BASE_LIMITS, get_file_short_name, get_root_links, collided, clean_preimage
+    set_camera_target_robot, nice, BASE_LIMITS, initialize_collision_logs, collided, clean_preimage
 from pybullet_tools.pr2_problems import create_pr2
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, create_gripper, set_group_conf
 from pybullet_tools.utils import connect, disconnect, wait_if_gui, LockRenderer, HideOutput, get_client, \
@@ -598,6 +598,7 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
         use_feedback = True
 
     # with Profiler():
+    initialize_collision_logs()
     set_cost_scale(cost_scale=1)
     with LockRenderer(lock=lock):
         solution = solve_focused(pddlstream_problem, stream_info=stream_info, constraints=constraints,

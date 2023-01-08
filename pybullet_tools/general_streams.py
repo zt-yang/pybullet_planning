@@ -306,6 +306,11 @@ def get_mod_pose(pose):
     return ((x, y, z+0.01), quat)
 
 
+def is_cabinet_top(world, space):
+    return 'space' in world.get_name(space) or 'storage' in world.get_name(space) \
+        or 'space' in world.get_type(space) or 'storage' in world.get_type(space)
+
+
 def get_contain_gen(problem, collisions=True, max_attempts=60, verbose=False, learned_sampling=False, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
     obstacles = problem.fixed if collisions else []
@@ -333,7 +338,7 @@ def get_contain_gen(problem, collisions=True, max_attempts=60, verbose=False, le
                 break
 
             ## special sampler for data collection
-            if 'storage' in world.get_name(space) or 'storage' in world.get_type(space) or learned_sampling:
+            if is_cabinet_top(world, space) or learned_sampling:
                 from world_builder.loaders import place_in_cabinet
                 if verbose:
                     print('use special pose sampler')

@@ -379,11 +379,13 @@ def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=Fals
     prefix = 'bullet_utils.collided '
     if len(tag) > 0: prefix += f'( {tag} )'
 
-    #return False
-    if not verbose:
-        if articulated:
-            return articulated_collisions(obj, obstacles, use_aabb=use_aabb, **kwargs)
-        return any(pairwise_collision(obj, b, use_aabb=use_aabb, **kwargs) for b in obstacles)
+    ## first get answer
+    if articulated:
+        return articulated_collisions(obj, obstacles, use_aabb=use_aabb, **kwargs)
+    # else:
+    #     result = any(pairwise_collision(obj, b, use_aabb=use_aabb, **kwargs) for b in obstacles)
+    # if not verbose:
+    #     return result
 
     result = False
     ## first find the bodies that collides with obj
