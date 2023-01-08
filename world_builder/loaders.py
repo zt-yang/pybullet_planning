@@ -1718,7 +1718,7 @@ def sample_kitchen_furniture_ordering(all_necessary=True):
 
 
 def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.8, others=[],
-                                     obstacles=[], verbose=True):
+                                     obstacles=[], verbose=False):
     cabinets, shelves = [], []
     cabi_type = 'CabinetTop' if random.random() < 0.5 else 'CabinetUpper'
     if world.note in [1, 4, 41]:
@@ -1763,7 +1763,8 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
     def ensure_cfree(obj, obstacles, selected_counters, **kwargs):
         counter = None
         trials = 5
-        while collided(obj, obstacles) or obj.aabb().upper[1] > y_max or obj.aabb().lower[1] < y_min:
+        while collided(obj, obstacles, verbose=verbose, world=world) or \
+                obj.aabb().upper[1] > y_max or obj.aabb().lower[1] < y_min:
             world.remove_object(obj)
             trials -= 1
             if trials < 0:
