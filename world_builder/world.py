@@ -66,6 +66,7 @@ class World(object):
         self.non_planning_objects = []
         self.not_stackable = {}
         self.c_ignored_pairs = []
+        self.planning_config = {'camera_zoomins': []}
 
         ## for visualization
         self.handles = []
@@ -1012,6 +1013,7 @@ class World(object):
             'system': platform.system(),
             'host': os.uname()[1]
         }
+        config.update(self.planning_config)
         if self.camera is not None:
             t, r = self.camera.pose
             if isinstance(t, np.ndarray):
