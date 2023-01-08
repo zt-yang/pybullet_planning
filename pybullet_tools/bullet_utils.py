@@ -1486,8 +1486,9 @@ def get_file_short_name(path):
 
 def in_list(elem, ls, epsilon=3e-3):
     for e in ls:
-        if len(e) != len(elem):
-            return None
+        if isinstance(elem, list) or isinstance(elem, tuple):
+            if len(e) != len(elem):
+                return None
         if equal(e, elem, epsilon=epsilon):
             return e
     return None
@@ -1514,7 +1515,6 @@ def equal(tup_a, tup_b, epsilon=0.001):
 #     if len(tup1) == 2:
 #         return equal(tup1[0], tup2[0]) and equal(tup1[1], tup2[1])
 #     return all([abs(tup1[i] - tup2[i]) < epsilon for i in range(len(tup1))])
-
 
 
 def get_gripper_directions():

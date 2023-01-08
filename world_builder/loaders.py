@@ -35,7 +35,7 @@ from pybullet_tools.bullet_utils import place_body, add_body, Pose2d, nice, OBJ_
     sample_obj_on_body_link_surface, sample_obj_in_body_link_space, set_camera_target_body, \
     open_joint, close_joint, set_camera_target_robot, summarize_joints, get_partnet_doors, get_partnet_spaces, \
     set_pr2_ready, BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, draw_base_limits, \
-    collided_around, collided, get_partnet_links_by_type, aabb_larger
+    collided_around, collided, get_partnet_links_by_type, aabb_larger, equal, in_list
 
 OBJ = '?obj'
 
@@ -1481,7 +1481,7 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
 
     def ensure_cfree(obj, obstacles, obj_name, category=None):
         # s = np.random.get_state()[-3]
-        while collided(obj, obstacles, verbose=verbose) or \
+        while collided(obj, obstacles, verbose=verbose, world=world) or \
                 not robot.check_reachability(obj, state, verbose=verbose) or \
                 (obj_name == 'food' and size_matter and len(satisfied) == 0):
             world.remove_object(obj)
@@ -1998,8 +1998,20 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     """ step 3: make all the counters """
     sink_left = world.name_to_object('sink_counter_left')
     sink_right = world.name_to_object('sink_counter_right')
+
     def could_connect(y1, y2, adjust_y):
-        return y1 == y2 or (y1 in adjust_y and adjust_y[y1] == y2) or (y2 in adjust_y and adjust_y[y2] == y1)
+        if equal(y1, y2):
+            return True
+        result1 = in_list(y1, adjust_y)
+        if result1 is not None:
+            if equal(adjust_y[result1], y2):
+                return True
+        result2 = in_list(y2, adjust_y)
+        if result2 is not None:
+            if equal(adjust_y[result2], y1):
+                return True
+        return False
+
     for lower, upper in counter_regions:
         name = 'counter'
         if could_connect(lower, sink_right.aabb().upper[1], adjust_y):
@@ -2023,7 +2035,17 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
         x_upper = base.aabb().lower[0]
         x = (x_upper+x_lower)/2
         counter_regions.append([base.aabb().lower[1], base.aabb().upper[1]])
-        for lower, upper in counter_regions:
+
+        ## merge those could be merged
+        counter_regions = sorted(counter_regions, key=lambda x: x[0])
+        merged_counter_regions = [counter_regions[0]]
+        for i in range(1, len(counter_regions)):
+            if could_connect(counter_regions[i][0], merged_counter_regions[-1][1], adjust_y):
+                merged_counter_regions[-1][1] = counter_regions[i][1]
+            else:
+                merged_counter_regions.append(counter_regions[i])
+
+        for lower, upper in merged_counter_regions:
             world.add_object(
                 Object(create_box(w=x_upper - x_lower, l=upper - lower,
                                   h=COUNTER_THICKNESS, color=color),
@@ -2098,7 +2120,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
             cabi = world.name_to_object('cabinettop')
             load_storage_mechanism(world, cabi, epsilon=epsilon)
 
-    # pause = True
+    pause = True
     if pause:
         wait_unlocked()
     return moveables, cabinets, only_counters, obstacles, x_food_min
