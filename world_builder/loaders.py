@@ -2095,7 +2095,8 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     for cabi_type in ['cabinettop', 'cabinetupper']:
         cabi = world.cat_to_objects(cabi_type)
         if len(cabi) > 0:
-            load_storage_mechanism(world, cabi[0], epsilon=epsilon)
+            cabi = world.name_to_object('cabinettop')
+            load_storage_mechanism(world, cabi, epsilon=epsilon)
 
     # pause = True
     if pause:

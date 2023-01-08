@@ -433,17 +433,18 @@ class PR2Robot(RobotAPI):
 
         # context_saver = WorldSaver(bodies=[state.world.robot])
         q = self.get_base_conf()
+        p = Pose(body, get_pose(body))
 
         def restore(result):
             # context_saver.restore()
             # remove_body(state.gripper)
             # state.gripper = None
             q.assign()
+            p.assign()
             if verbose:
                 print(f'... finished {title} -> {result} in {round(time.time() - start, 2)}s')
 
         with LockRenderer(True):
-            pose = Pose(body, get_pose(body))
             funk = get_grasp_list_gen(state, verbose=verbose, visualize=False, top_grasp_tolerance=PI / 4)
             outputs = funk(body)
 
@@ -453,12 +454,12 @@ class PR2Robot(RobotAPI):
                                verbose=verbose, visualize=False, **kwargs)
             funk3 = get_ik_fn(state, verbose=verbose, visualize=False, ACONF=False, **kwargs)
             for (grasp, ) in outputs:
-                gen = funk2(self.arms[0], body, pose, grasp)
+                gen = funk2(self.arms[0], body, p, grasp)
                 try:
                     result = next(gen)
                     if result is not None:
                         (bconf,) = result
-                        result = funk3(self.arms[0], body.body, pose, grasp, bconf)
+                        result = funk3(self.arms[0], body.body, p, grasp, bconf)
                         if result is not None:
                             if verbose:
                                 print(f'robot.check_reachability({obj})', grasp, bconf)

@@ -908,6 +908,8 @@ def close_joint(body, joint):
 
 def get_readable_list(lst, world=None, NAME_ONLY=False, TO_LISDF=False):
     to_print = []
+    # if lst[0] == 'arm':
+    #     print('ssssss')
     for word in lst:
         if world is not None:
             name = world.get_name(word)
@@ -922,6 +924,9 @@ def get_readable_list(lst, world=None, NAME_ONLY=False, TO_LISDF=False):
                 to_print.append(word)
         else:
             to_print.append(word)
+    # if isinstance(to_print[0], str):
+    #     if to_print[0] == 'arm' or ':' in to_print[0] or '#' in to_print[0]:
+    #         print('ssssss')
     return to_print
 
 

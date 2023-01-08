@@ -974,8 +974,8 @@ class World(object):
                 init += [(cat, obj.pybullet_name) for obj in objects if obj.pybullet_name in BODY_TO_OBJECT]
             else:
                 for obj in cat_to_bodies(cat):
-                    # if (cat, obj) not in init:
-                    #     init += [(cat, obj)]
+                    if cat in ['space', 'surface'] and (cat, obj) not in init:
+                        init += [(cat, obj)]
                     cat2 = f"@{cat}"
                     if cat2 in self.constants:
                         init += [('OfType', obj, cat2)]
@@ -1052,7 +1052,7 @@ class World(object):
                        save_rgb=False, save_depth=False, **kwargs):
         if not isdir(output_dir):
             os.makedirs(output_dir, exist_ok=True)
-        world_name = basename(output_dir)
+        world_name = f"{problem}_{basename(output_dir)}"
 
         self.save_lisdf(output_dir, world_name=world_name, **kwargs)
         self.save_problem_pddl(goal, output_dir, world_name=world_name, init=init)
