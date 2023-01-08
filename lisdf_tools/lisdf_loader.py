@@ -157,11 +157,15 @@ class World():
         fixed = []
         movable = []
         floors = []
+        ignored_pairs = []
         for model in self.lisdf.models:
             body = self.safely_get_body_from_name(model.name)
             if 'pr2' not in model.name and 'feg' not in model.name:
                 if model.static: fixed.append(body)
                 else: movable.append(body)
+            if model.name in ['cabinettop', 'cabinettop#1']:
+                filler_body = self.safely_get_body_from_name(model.name + '_filler')
+                ignored_pairs.extend([(body, filler_body), (filler_body, body)])
             if hasattr(model, 'links'):
                 for link in model.links:
                     if link.name == 'box':
@@ -171,16 +175,18 @@ class World():
         self.fixed = [f for f in fixed if f not in floors]
         self.movable = movable
         self.floors = floors
+        self.ignored_pairs = ignored_pairs
 
     def summarize_all_types(self, init=None):
         if init is None: return ''
         printout = ''
         for typ in ['graspable', 'surface', 'door', 'drawer']:
-            num = len(self.cat_to_bodies(typ, init))
+            bodies = self.cat_to_bodies(typ, init)
+            num = len(bodies)
             if typ == 'graspable':
                 typ = 'moveable'
             if num > 0:
-                printout += "{type}({num}), ".format(type=typ, num=num)
+                printout += f"{typ}({num}) = {bodies}, "
         return printout
 
     def cat_to_bodies(self, cat, init=[]):
@@ -492,8 +498,18 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
 
         ## when camera pose is not saved for generating training data
         if np.all(camera_pose.pos == 0):
-            fridge = bullet_world.name_to_body['minifridge']
-            set_camera_target_body(fridge, dx=2, dy=0, dz=2)
+            camera_zoomins = json.load(open(join(lisdf_dir, 'planning_config.json')))['camera_zoomins']
+            if len(camera_zoomins) > 0:
+                d = camera_zoomins[0]
+                name = d['name']
+                if '::' in name:
+                    name = name.split('::')[0]
+                body = bullet_world.name_to_body[name]
+                dx, dy, dz = d['d']
+                set_camera_target_body(body, dx=dx, dy=dy, dz=dz)
+            else:
+                fridge = bullet_world.name_to_body['minifridge']
+                set_camera_target_body(fridge, dx=2, dy=0, dz=2)
         else:
             set_camera_pose2((camera_pose.pos, camera_pose.quat_xyzw))
 
@@ -562,16 +578,14 @@ def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True,
     exp_dir = abspath(exp_dir)
 
     domain_path, stream_path, config_path = pddl_files_from_dir(exp_dir, replace_pddl)
-    print(f'Experiment: \t{exp_dir}\n'
-          f'Domain PDDL: \t{domain_path}\n'
-          f'Stream PDDL: \t{stream_path}\n'
-          f'Config: \t{config_path}')
 
     domain_pddl = read(domain_path)
     stream_pddl = read(stream_path)
 
     world = problem.world
-    init, g, constant_map = pddl_to_init_goal(exp_dir, world)
+    init, g, constant_map = pddl_to_init_goal(exp_dir, world, domain_file=domain_path)
+    world.summarize_all_objects(init)  ## important to get obstacles
+
     if goal is not None:
         goal = [AND] + revise_goal(goal, world)
     else:
@@ -581,6 +595,12 @@ def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True,
 
     custom_limits = problem.world.robot.custom_limits ## planning_config['base_limits']
     stream_map = world.robot.get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
+
+    print(f'Experiment: \t{exp_dir}\n'
+          f'Domain PDDL: \t{domain_path}\n'
+          f'Stream PDDL: \t{stream_path}\n'
+          f'Config: \t{config_path}\n',
+          f'Custom Limits: \t{custom_limits}')
 
     return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
 
