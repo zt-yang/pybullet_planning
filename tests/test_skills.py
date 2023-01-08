@@ -167,7 +167,7 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
             outputs = funk(body)
             if isinstance(outputs, list):
                 print(f'grasps on body {body}:', outputs)
-            visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=True)
+            visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=False, TEST_ATTACHMENT=True)
             set_renderer(True)
             set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
 
@@ -845,7 +845,7 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    test_grasps(robot, ['BraiserLid'], skip_grasps=False)  ## 'EyeGlasses'
+    test_grasps(robot, ['Food'], skip_grasps=False)  ## 'EyeGlasses'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # test_handle_grasps(robot, category='CabinetUpper')

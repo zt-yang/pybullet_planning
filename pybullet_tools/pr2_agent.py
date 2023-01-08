@@ -913,7 +913,7 @@ def test_grasps(state, name='cabbage', visualize=True):
     return goals
 
 
-def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=False):
+def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=False, TEST_ATTACHMENT=True):
     robot = state.robot
     colors = [BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED]
 
@@ -930,6 +930,12 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=Fal
         else:
             gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, body=grasp.body, color=GREEN, width=w)
             gripper_approach = robot.visualize_grasp(body_pose, grasp.approach, color=BROWN)
+
+            if TEST_ATTACHMENT:
+                set_renderer(True)
+                set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.5)
+                attachment = grasp.get_attachment(robot, robot.arms[0], visualize=True)
+
             # set_camera_target_body(gripper_approach, dx=0, dy=-1, dz=0)
             remove_body(gripper_grasp)
             remove_body(gripper_approach)

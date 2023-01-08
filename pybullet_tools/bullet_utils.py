@@ -388,7 +388,7 @@ def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=Fals
     for b in obstacles:
         if pairwise_collision(obj, b) and (obj, b) not in ignored_pairs:
             if world is None:
-                print('sss')
+                print('bullet_utils.collided | world is None')
             obj_print = world.get_name(obj) if world is not None else obj
             b_print = world.get_name(b) if world is not None else b
             if verbose:

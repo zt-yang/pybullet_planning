@@ -106,6 +106,9 @@ class Object(Index):
         self.name = name
         self.verbose = verbose  ## whether to omit all debug messages
 
+        if '#' in category or ':' in category:
+            print('sssss')
+
         self.collision = collision
         self.handles = []
         self.text_handle = None

@@ -8,7 +8,7 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
     set_joint_positions, set_pose, GREEN, dump_body, get_pose, remove_body, PoseSaver, \
     ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles, \
     interpolate_poses, Pose, Euler, quat_from_euler, set_renderer, get_bodies, get_all_links, PI, \
-    WorldSaver, is_darwin
+    WorldSaver, is_darwin, wait_for_user
 
 from pybullet_tools.bullet_utils import equal, nice, get_gripper_direction, set_camera_target_body, Attachment, \
     BASE_LIMITS, get_rotation_matrix
@@ -73,13 +73,30 @@ class RobotAPI(Robot):
                 filtered_grasps.append(grasp)
         return filtered_grasps
 
-    def make_attachment(self, grasp, tool_link):
+    def make_attachment(self, grasp, tool_link, visualize=True):
+        from pybullet_tools.pr2_utils import PR2_GRIPPER_ROOTS
         o = grasp.body
         if isinstance(o, tuple) and len(o) == 2:
             body, joint = o
             link = get_handle_link(o)
             return Attachment(self, tool_link, grasp.value, body, child_joint=joint, child_link=link)
-        return Attachment(self, tool_link, grasp.value, grasp.body)
+
+        arm = self.arms[0]
+        tool_from_root = self.get_tool_from_root(arm)
+        child_pose = get_pose(o)
+        grasp_pose = self.get_grasp_pose(child_pose, grasp.value, body=o)
+        gripper_pose = multiply(grasp_pose, invert(tool_from_root))
+        grasp_pose = multiply(invert(gripper_pose), child_pose)
+        attachment = Attachment(self, tool_link, grasp_pose, grasp.body)
+        if visualize:
+            with PoseSaver(attachment.child):
+                set_camera_target_body(o)
+                wait_for_user('robots.make_attachment | start attachment?')
+                attachment.assign()
+                set_renderer(True)
+                set_camera_target_body(o)
+                wait_for_user('robots.make_attachment | correct attachment?')
+        return attachment
 
     def get_custom_limits(self):
         return self.custom_limits
@@ -188,7 +205,7 @@ class PR2Robot(RobotAPI):
         for arm in ARM_NAMES:
             conf = get_arm_conf(arm)
             init += [('Arm', arm), ('AConf', arm, conf),
-                     ('DefaultConf', arm, conf), ('AtAConf', arm, conf)]
+                     ('DefaultAConf', arm, conf), ('AtAConf', arm, conf)]
             if arm in self.arms:
                 init += [('Controllable', arm)]
 
@@ -284,9 +301,9 @@ class PR2Robot(RobotAPI):
     def mod_grasp_along_handle(self, grasp, dl):
         return multiply(grasp, Pose(point=(0, dl, 0)))
 
-    def get_attachment(self, grasp, arm):
-        tool_link = link_from_name(self.body, PR2_TOOL_FRAMES[arm])
-        return self.make_attachment(grasp, tool_link)
+    def get_attachment(self, grasp, arm, **kwargs):
+        tool_link = self.get_attachment_link(arm)
+        return self.make_attachment(grasp, tool_link, **kwargs)
         # return Attachment(self.body, tool_link, grasp.value, grasp.body)
 
     def get_attachment_link(self, arm):
@@ -397,47 +414,60 @@ class PR2Robot(RobotAPI):
         q = get_joint_positions(self.body, base_joints)
         return Conf(self.body, base_joints, q)
 
-    def check_reachability(self, body, state, verbose=False, timeout=3):
+    def check_reachability(self, obj, state, verbose=False, timeout=3):
         from pybullet_tools.pr2_primitives import Pose
-        from pybullet_tools.pr2_streams import get_ik_gen
+        from pybullet_tools.pr2_streams import get_ik_gen, get_ik_fn
 
         if is_darwin():
             return True
 
+        # if 'sweetpotato' in obj.name:
+        #     verbose = True
+
+        body = obj
+        title = f'checking feasibility for {obj} ({obj.body})'
+
         start = time.time()
         if verbose:
-            print('... started checking feasibility for', body)
+            print(f'... started {title}', end='\r')
 
         # context_saver = WorldSaver(bodies=[state.world.robot])
         q = self.get_base_conf()
 
-        def restore():
+        def restore(result):
             # context_saver.restore()
             # remove_body(state.gripper)
             # state.gripper = None
             q.assign()
             if verbose:
-                print('... finished checking feasibility in {}s'.format(round(time.time() - start, 2)))
+                print(f'... finished {title} -> {result} in {round(time.time() - start, 2)}s')
 
         with LockRenderer(True):
             pose = Pose(body, get_pose(body))
             funk = get_grasp_list_gen(state, verbose=verbose, visualize=False, top_grasp_tolerance=PI / 4)
             outputs = funk(body)
 
-            funk2 = get_ik_gen(state, max_attempts=10, collisions=True, teleport=False,
-                               ir_only=True, learned=False, custom_limits=state.robot.custom_limits,
-                               verbose=verbose, visualize=verbose)
+            kwargs = dict(collisions=True, teleport=False)
+            funk2 = get_ik_gen(state, max_attempts=10, ir_only=True, learned=False,
+                               custom_limits=state.robot.custom_limits,
+                               verbose=verbose, visualize=False, **kwargs)
+            funk3 = get_ik_fn(state, verbose=verbose, visualize=False, ACONF=False, **kwargs)
             for (grasp, ) in outputs:
                 gen = funk2(self.arms[0], body, pose, grasp)
                 try:
                     result = next(gen)
                     if result is not None:
-                        restore()
-                        return True
+                        (bconf,) = result
+                        result = funk3(self.arms[0], body.body, pose, grasp, bconf)
+                        if result is not None:
+                            if verbose:
+                                print(f'robot.check_reachability({obj})', grasp, bconf)
+                            restore(True)
+                            return True
                 except Exception:
                     pass
 
-            restore()
+            restore(False)
             return False
 
 

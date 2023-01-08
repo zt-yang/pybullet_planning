@@ -241,7 +241,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
             attachments = {a.child: a for a in attachments}
         else:
             world_saver.restore()
-            attachment = grasp.get_attachment(problem.robot, arm)
+            attachment = grasp.get_attachment(problem.robot, arm, visualize=False)
             attachments = {attachment.child: attachment} ## {}  ## TODO: problem with having (body, joint) tuple
 
         if isinstance(obj, tuple): ## may be a (body, joint) or a body with a marker
@@ -256,9 +256,10 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
 
         ## TODO: change to world.get_grasp_parent
         addons = [body]
-        if hasattr(world, 'BODY_TO_OBJECT') and world.BODY_TO_OBJECT[body].grasp_parent is not None:
+        if hasattr(world, 'BODY_TO_OBJECT') and body in world.BODY_TO_OBJECT and \
+                world.BODY_TO_OBJECT[body].grasp_parent is not None:
             addons.append(world.BODY_TO_OBJECT[body].grasp_parent)
-        addon_obstacles = obstacles + addons if collisions else []
+        addon_obstacles = obstacles ## + addons if collisions else []
         # print(title, 'addon_obstacles', addon_obstacles)
 
         approach_obstacles = {obst for obst in obstacles if not is_placement(body, obst)}
@@ -1378,6 +1379,7 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
                                 max_attempts=ir_max_attempts, verbose=verbose, **kwargs)
     ik_fn = get_ik_fn(problem, collisions=collisions, teleport=teleport, verbose=False, ACONF=ACONF, **kwargs)
     robot = problem.robot
+    world = problem.world
     obstacles = problem.fixed if collisions else []
     heading = 'pr2_streams.get_ik_gen | '
 
@@ -1400,7 +1402,7 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
 
         #gripper_grasp = robot.visualize_grasp(pose_value, g.value, arm=a, body=g.body)
         gripper_grasp = robot.set_gripper_pose(pose_value, g.value, arm=a, body=g.body)
-        if collided(gripper_grasp, obstacles, articulated=True): # w is not None
+        if collided(gripper_grasp, obstacles, articulated=True, world=world): # w is not None
             #wait_unlocked()
             #robot.remove_gripper(gripper_grasp)
             if verbose: print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
@@ -1445,13 +1447,14 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
                 bq.assign()
 
                 set_joint_positions(robot, arm_joints, default_conf)
-                if collided(robot, obstacles, articulated=True, tag='ik_default_conf', verbose=verbose):
+                if collided(robot, obstacles, articulated=True, tag='ik_default_conf',
+                            verbose=verbose, world=world):
                     # wait_unlocked()
                     continue
 
                 ik_solver.set_conf(conf)
                 if collided(robot, obstacles, articulated=True, tag='ik_final_conf',
-                            visualize=visualize, verbose=verbose):
+                            visualize=visualize, verbose=verbose, world=world):
                     continue
 
                 if visualize:

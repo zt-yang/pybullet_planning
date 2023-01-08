@@ -974,8 +974,8 @@ class World(object):
                 init += [(cat, obj.pybullet_name) for obj in objects if obj.pybullet_name in BODY_TO_OBJECT]
             else:
                 for obj in cat_to_bodies(cat):
-                    if (cat, obj) not in init:
-                        init += [(cat, obj)]
+                    # if (cat, obj) not in init:
+                    #     init += [(cat, obj)]
                     cat2 = f"@{cat}"
                     if cat2 in self.constants:
                         init += [('OfType', obj, cat2)]
