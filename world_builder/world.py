@@ -1080,9 +1080,10 @@ class World(object):
     def get_type(self, body):
         return [self.BODY_TO_OBJECT[body].category]
 
-    def find_surfaces_for_placement(self, obj, surfaces, obstacles=[]):
+    def find_surfaces_for_placement(self, obj, surfaces, verbose=False, obstacles=[]):
         from pybullet_tools.pr2_streams import get_stable_gen
-        self.summarize_supporting_surfaces()
+        if verbose:
+            self.summarize_supporting_surfaces()
 
         def get_area(surface):
             area = surface.ly
@@ -1099,7 +1100,8 @@ class World(object):
                 possible.append(s)
             except Exception:
                 pass
-        print(f'   find {len(possible)} out of {len(surfaces)} surfaces for {obj}', possible)
+        if verbose:
+            print(f'   find {len(possible)} out of {len(surfaces)} surfaces for {obj}', possible)
         possible = sorted(possible, key=get_area, reverse=True)
         return possible
 

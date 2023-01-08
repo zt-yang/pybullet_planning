@@ -1,3 +1,4 @@
+import time
 from pybullet_tools.pr2_utils import attach_viewcone, draw_viewcone, get_viewcone_base, set_group_conf, get_arm_joints
 from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_name, get_link_pose, get_pose, set_pose, \
     joint_from_name, get_movable_joints, get_joint_positions, set_joint_position, set_joint_positions, link_from_name, \
@@ -171,7 +172,7 @@ class Object(Index):
         # set_renderer(True)
         return obj
 
-    def place_obj(self, obj, xyzyaw=None, max_trial=8):
+    def place_obj(self, obj, xyzyaw=None, max_trial=8, timeout=1.5):
         from pybullet_tools.bullet_utils import sample_obj_on_body_link_surface, nice
         # set_renderer(False)
         if isinstance(obj, str):
@@ -184,6 +185,7 @@ class Object(Index):
         else:
             done = False
             obstacles = [o for o in get_bodies() if o not in [obj, self.body]]
+            start_time = time.time()
             while not done:
                 x, y, z, yaw = sample_obj_on_body_link_surface(
                     obj, self.body, self.link, PLACEMENT_ONLY=True, max_trial=max_trial)
@@ -193,6 +195,10 @@ class Object(Index):
                     # print(f'entities.Object.place_obj({obj}, xyzyaw={xyzyaw}, max_trial={max_trial}) '
                     #       f'| collided with {obstacles}! try again')
                     done = False
+                    if time.time() - start_time > timeout:
+                        print(f'entities.Object.place_obj({obj}, xyzyaw={xyzyaw}, max_trial={max_trial}) '
+                              f'| timeout {timeout}! give up')
+                        return None
                     continue
                 done = True
 
