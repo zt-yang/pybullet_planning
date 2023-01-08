@@ -475,6 +475,7 @@ def generate_problem_pddl(world, facts, goals,
             by_len[num].append(pred)
 
         predicates[pred].append(fact)
+
     kinds = {k: v for k, v in sorted(kinds.items(), key=lambda item: item[0])}
     by_len = {k: v for k, v in sorted(by_len.items(), key=lambda item: item[0])}
 

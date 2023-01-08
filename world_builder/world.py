@@ -176,7 +176,10 @@ class World(object):
         self.c_ignored_pairs.extend([(a, b), (b, a)])
 
     def get_attr(self, obj, attr):
+        preds = self.robot.arms + ['joint', 'door', 'drawer', 'knob', 'button']
         if isinstance(obj, str):
+            if obj.lower() in preds:
+                return obj
             obj = self.name_to_object(obj)
         elif isinstance(obj, Object):
             obj = obj
@@ -1002,10 +1005,12 @@ class World(object):
 
     def get_planning_config(self):
         import platform
+        import os
         config = {
             'base_limits': self.robot.custom_limits,
             'body_to_name': self.get_indices(),
-            'system': platform.system()
+            'system': platform.system(),
+            'host': os.uname()[1]
         }
         if self.camera is not None:
             t, r = self.camera.pose

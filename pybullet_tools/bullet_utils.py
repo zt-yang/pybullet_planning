@@ -927,9 +927,6 @@ def get_readable_list(lst, world=None, NAME_ONLY=False, TO_LISDF=False):
                 to_print.append(word)
         else:
             to_print.append(word)
-    # if isinstance(to_print[0], str):
-    #     if to_print[0] == 'arm' or ':' in to_print[0] or '#' in to_print[0]:
-    #         print('ssssss')
     return to_print
 
 
