@@ -236,9 +236,13 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
     title = 'pr2_streams.get_ik_fn:\t'
 
     def fn(arm, obj, pose, grasp, base_conf, fluents=[]):
+        obstacles_here = copy.deepcopy(obstacles)
+        ignored_pairs_here = copy.deepcopy(ignored_pairs)
+
         if fluents:
             attachments = process_motion_fluents(fluents, robot) # TODO(caelan): use attachments
             attachments = {a.child: a for a in attachments}
+            obstacles_here.extend([p[1] for p in fluents if p[0] == 'atpose'])
         else:
             world_saver.restore()
             attachment = grasp.get_attachment(problem.robot, arm, visualize=False)
@@ -259,10 +263,11 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
         if hasattr(world, 'BODY_TO_OBJECT') and body in world.BODY_TO_OBJECT and \
                 world.BODY_TO_OBJECT[body].grasp_parent is not None:
             addons.append(world.BODY_TO_OBJECT[body].grasp_parent)
-        addon_obstacles = obstacles ## + addons if collisions else []
-        # print(title, 'addon_obstacles', addon_obstacles)
+        addon_obstacles = obstacles_here ## + addons if collisions else []
 
-        approach_obstacles = {obst for obst in obstacles if not is_placement(body, obst)}
+        # approach_obstacles = {obst for obst in obstacles_here if not is_placement(body, obst)}
+        approach_obstacles = obstacles_here
+        ignored_pairs_here.extend([[(body, obst), (obst, body)] for obst in obstacles_here if is_placement(body, obst)])
         # approach_obstacles = problem.world.refine_marker_obstacles(obj, approach_obstacles)  ## for steerables
 
         tool_from_root = get_tool_from_root(robot, arm)
@@ -292,7 +297,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
             grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose, custom_limits=custom_limits) #, upper_limits=USE_CURRENT)
                                                 #nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
 
-        if (grasp_conf is None) or collided(robot, addon_obstacles, articulated=False, world=world,
+        if (grasp_conf is None) or collided(robot, obstacles_here, articulated=False, world=world,
                                             verbose=verbose, ignored_pairs=ignored_pairs, min_num_pts=3): ## approach_obstacles): # [obj]
             #wait_unlocked()
             if verbose:
@@ -320,15 +325,12 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
             approach_conf = pr2_inverse_kinematics(robot, arm, approach_pose, custom_limits=custom_limits,
                                                    upper_limits=USE_CURRENT, nearby_conf=USE_CURRENT)
             #approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits)
-        if (approach_conf is None) or collided(robot, addon_obstacles, articulated=False, world=world,
+        if (approach_conf is None) or collided(robot, obstacles_here, articulated=False, world=world,
                                                verbose=verbose, ignored_pairs=ignored_pairs, min_num_pts=3): ##
             if verbose:
                 if approach_conf != None:
                     approach_conf = nice(approach_conf)
                 print(f'{title}Approach IK failure', approach_conf)
-                for b in addon_obstacles:
-                    if pairwise_collision(robot, b):
-                        print(f'                        robot at {nice(base_conf.values)} colliding with {b} at {nice(get_pose(b))}')
             # wait_if_gui()
             if visualize:
                 remove_body(gripper_grasp)
@@ -353,7 +355,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
             if is_top_grasp(robot, arm, body, grasp) or True:
                 grasp_path = plan_direct_joint_motion(robot, arm_joints, grasp_conf, attachments=attachments.values(),
                                                       obstacles=approach_obstacles, self_collisions=SELF_COLLISIONS,
-                                                      use_aabb=True, cache=True, ignored_pairs=ignored_pairs,
+                                                      use_aabb=True, cache=True, ignored_pairs=ignored_pairs_here,
                                                       custom_limits=custom_limits, resolutions=resolutions/2.)
                 if grasp_path is None:
                     if verbose: print(f'{title}Grasp path failure')
@@ -366,7 +368,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
                 dest_conf = grasp_conf
             set_joint_positions(robot, arm_joints, default_conf)
             approach_path = plan_joint_motion(robot, arm_joints, dest_conf, attachments=attachments.values(),
-                                              obstacles=obstacles, self_collisions=SELF_COLLISIONS,
+                                              obstacles=obstacles_here, self_collisions=SELF_COLLISIONS,
                                               custom_limits=custom_limits, resolutions=resolutions,
                                               use_aabb=True, cache=True, ignored_pairs=ignored_pairs,
                                               restarts=2, iterations=25, smooth=0) # smooth=25

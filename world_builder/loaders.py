@@ -2120,7 +2120,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
             cabi = world.name_to_object('cabinettop')
             load_storage_mechanism(world, cabi, epsilon=epsilon)
 
-    pause = True
+    # pause = True
     if pause:
         wait_unlocked()
     return moveables, cabinets, only_counters, obstacles, x_food_min
