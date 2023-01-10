@@ -497,11 +497,22 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
 
     if world.gui is not None:
         camera_pose = world.gui.camera.pose
-
         ## when camera pose is not saved for generating training data
-        if np.all(camera_pose.pos == 0):
-            config_file = join(lisdf_dir, 'planning_config.json')
-            config = json.load(open(config_file, 'r'))
+        if not np.all(camera_pose.pos == 0):
+            set_camera_pose2((camera_pose.pos, camera_pose.quat_xyzw))
+
+    planning_config = join(lisdf_dir, 'planning_config.json')
+    if isfile(planning_config):
+        config = json.load(open(planning_config, 'r'))
+
+        ## body to name
+        body_to_name = config['body_to_name']
+        for k, v in body_to_name.items():
+            if v not in bullet_world.name_to_body:
+                bullet_world.add_body(eval(k), v)
+
+        ## camera
+        if 'camera_zoomins' in config:
             camera_zoomins = config['camera_zoomins']
             if len(camera_zoomins) > 0:
                 changed = False
@@ -532,16 +543,6 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
             else:
                 fridge = bullet_world.name_to_body['minifridge']
                 set_camera_target_body(fridge, dx=2, dy=0, dz=2)
-
-        else:
-            set_camera_pose2((camera_pose.pos, camera_pose.quat_xyzw))
-
-    planning_config = join(lisdf_dir, 'planning_config.json')
-    if isfile(planning_config):
-        body_to_name = json.load(open(planning_config, 'r'))['body_to_name']
-        for k, v in body_to_name.items():
-            if v not in bullet_world.name_to_body:
-                bullet_world.add_body(eval(k), v)
     return bullet_world
 
 
