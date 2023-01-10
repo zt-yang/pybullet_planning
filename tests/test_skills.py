@@ -807,6 +807,17 @@ def add_scale_to_grasp_file(robot, category):
     dump_json(db, db_file, sort_dicts=False)
 
 
+def add_time_to_grasp_file():
+    from pybullet_tools.logging import dump_json
+    for robot in ['pr2', 'feg']:
+        db_file = get_grasp_db_file(robot)
+        db = json.load(open(db_file, 'r'))
+        for key, data in db.items():
+            data["datetime"] = "22" + data["datetime"]
+            db[key] = data
+        dump_json(db, db_file, sort_dicts=False)
+
+
 def test_reachability(robot):
     world = get_test_world(robot=robot, semantic_world=True, custom_limits=((-4, -4), (4, 4)))
     robot = world.robot
@@ -848,6 +859,7 @@ if __name__ == '__main__':
     test_grasps(robot, ['Food'], skip_grasps=False)  ## 'EyeGlasses'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
+    # add_time_to_grasp_file()
     # test_handle_grasps(robot, category='CabinetUpper')
     ## Kitchen: 'MiniFridge', 'MiniFridgeDoorless', 'CabinetTop'
 

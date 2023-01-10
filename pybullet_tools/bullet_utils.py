@@ -1821,11 +1821,14 @@ def get_grasp_link(path, body):
     return link
 
 
-def get_datetime(TO_LISDF=False):
+def get_datetime(TO_LISDF=False, year=True):
     from datetime import datetime
+    form = "%m%d_%H:%M"
     if TO_LISDF:
-        return datetime.now().strftime("%m%d_%H%M%S")
-    return datetime.now().strftime("%m%d_%H:%M")
+        form = "%m%d_%H%M%S"
+    if year:
+        form = "%y" + form
+    return datetime.now().strftime(form)
 
 # def remove_all_bodies():
 #     for body in get_bodies():
