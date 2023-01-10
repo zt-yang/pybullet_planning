@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 from os import listdir
 from os.path import join, abspath, dirname, isdir, isfile
@@ -164,7 +165,7 @@ class World():
                 if model.static: fixed.append(body)
                 else: movable.append(body)
             if model.name in ['cabinettop', 'cabinettop#1']:
-                filler_body = self.safely_get_body_from_name(model.name + '_filler')
+                filler_body = self.safely_get_body_from_name(model.name.replace('cabinettop', 'cabinettop_filler'))
                 ignored_pairs.extend([(body, filler_body), (filler_body, body)])
             if hasattr(model, 'links'):
                 for link in model.links:
@@ -490,26 +491,43 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
 
         # wait_if_gui('load next model?')
 
-    # if world.name in HACK_CAMERA_POSES:
-    #     cp, tp = HACK_CAMERA_POSES[world.name]
-    #     set_camera_pose(camera_point=cp, target_point=tp)
     if world.gui is not None:
         camera_pose = world.gui.camera.pose
 
         ## when camera pose is not saved for generating training data
         if np.all(camera_pose.pos == 0):
-            camera_zoomins = json.load(open(join(lisdf_dir, 'planning_config.json')))['camera_zoomins']
+            config_file = join(lisdf_dir, 'planning_config.json')
+            config = json.load(open(config_file, 'r'))
+            camera_zoomins = config['camera_zoomins']
             if len(camera_zoomins) > 0:
+                changed = False
                 d = camera_zoomins[0]
                 name = d['name']
                 if '::' in name:
                     name = name.split('::')[0]
+                if name not in bullet_world.name_to_body and f"{name}#1" in bullet_world.name_to_body:
+                    d['name'] = name = f"{name}#1"
+                    changed = True
                 body = bullet_world.name_to_body[name]
                 dx, dy, dz = d['d']
+                if 'cabinettop' in name:
+                    d['d'][2] = dz = 2
+                    changed = True
+                if 'sink' in name:
+                    d['d'][0] = dx = 0.1
+                    d['d'][2] = dz = 0.7
+                    changed = True
                 set_camera_target_body(body, dx=dx, dy=dy, dz=dz)
+
+                # if changed:
+                #     config['camera_zoomins'][0] = d
+                #     # shutil.move(config_file, config_file.replace('.json', '_old.json'))
+                #     json.dump(config, open(config_file, 'w'), indent=2)
+                #     print('updated camera zoomin in', config_file)
             else:
                 fridge = bullet_world.name_to_body['minifridge']
                 set_camera_target_body(fridge, dx=2, dy=0, dz=2)
+
         else:
             set_camera_pose2((camera_pose.pos, camera_pose.quat_xyzw))
 

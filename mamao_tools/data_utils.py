@@ -1,11 +1,151 @@
 import json
-from os import listdir
+import shutil
+from os import listdir, getcwd
 from os.path import join, isfile, isdir, abspath
 import untangle
 import copy
 
 import sys
 sys.path.append('/home/yang/Documents/fastamp')
+
+if 'zhutiany' in getcwd():
+    DATASET_PATH = '/home/zhutiany/Documents/mamao-data'
+elif 'yang' in getcwd():
+    DATASET_PATH = '/home/yang/Documents/fastamp-data'
+else: ## not tested
+    DATASET_PATH = '../../fastamp-data'
+
+
+def get_feasibility_checker(run_dir, mode, diverse=False):
+    from .feasibility_checkers import PassAll, ShuffleAll, Oracle, PVT
+    if mode == 'binary':
+        mode = 'pvt'
+        diverse = False
+    if mode == 'None':
+        return PassAll(run_dir)
+    elif mode == 'shuffle':
+        return ShuffleAll(run_dir)
+    elif mode == 'oracle':
+        plan = get_successful_plan(run_dir)
+        return Oracle(run_dir, plan)
+    elif 'pvt-task' in mode:
+        task_name = abspath(run_dir).replace(DATASET_PATH, '').split('/')[1]
+        return PVT(run_dir, mode=mode, task_name=task_name, scoring=diverse)
+    elif mode.startswith('pvt'):
+        return PVT(run_dir, mode=mode, scoring=diverse)
+    return None
+
+
+def organize_dataset(task_name):
+    out_path = join(DATASET_PATH, task_name)
+    names = [eval(l) for l in listdir(out_path) if isdir(join(out_path, l))]
+    if len(names) == 0: return
+    index = max(names)
+    missing = list(set(range(index)) - set(names))
+    if len(missing) == 0: return
+    missing.sort()
+    top = index
+    moved = []
+    for i in range(len(missing)):
+        old_dir = join(out_path, str(top))
+        while not isdir(old_dir) or str(top) in missing:
+            top -= 1
+            old_dir = join(out_path, str(top))
+        if top in moved:
+            break
+        print(f'---- moving {top} to {missing[i]}')
+        top -= 1
+        shutil.move(old_dir, join(out_path, str(missing[i])))
+        moved.append(missing[i])
+
+
+def get_indices_from_config(run_dir):
+    config = json.load(open(join(run_dir, 'planning_config.json'), 'r'))
+    if 'body_to_name' in config:
+        return {k: v for k, v in config['body_to_name'].items()} ## .replace('::', '%')
+    return False
+
+
+def process_value(vv, training=True):
+    from pybullet_tools.utils import quat_from_euler
+    vv = list(vv)
+    ## convert quaternion to euler angles
+    if len(vv) == 6:
+        quat = quat_from_euler(vv[3:])
+        vv = vv[:3] + list(quat)
+    return vv
+
+
+def get_successful_plan(run_dir, indices={}, continuous={}):
+    plan = []
+    with open(join(run_dir, 'plan.json'), 'r') as f:
+        data = json.load(f)[0]
+        actions = data['plan']
+        if actions == 'FAILED':
+            return None
+        vs, inv_vs = get_variables(data['init'])
+        for a in actions:
+            name = a[a.index("name='")+6: a.index("', args=(")]
+            # if 'grasp_handle' in name:
+            #     continue
+            args = a[a.index("args=(")+6:-2].replace("'", "")
+            new_args = parse_pddl_str(args, vs=vs, inv_vs=inv_vs, indices=indices)
+            plan.append([name] + new_args)
+    return plan
+
+
+def parse_pddl_str(args, vs, inv_vs, indices={}):
+    """ parse a string of string, int, and tuples into a list """
+
+    ## replace those tuples with placeholders that doesn't have ', ' or ' '
+    for string, sub in inv_vs.items():
+        if string in args:
+            args = args.replace(string, sub)
+
+    if ',' in args:
+        """  from plan.json
+        e.g. 'left', 7, p1=(3.255, 4.531, 0.762, 0.0, -0.0, 2.758), g208=(0, 0.0, 0.304, -3.142, 0, 0),
+             q624=(3.959, 4.687, 0.123, -1.902), c528=t(7, 60), wconf64 """
+        args = args.split(', ')
+
+    else:
+        """  from problem.pddl
+        e.g. pose veggiecauliflower p0=(3.363, 2.794, 0.859, 0.0, -0.0, 1.976) """
+        args = args.split(' ')
+
+    ## replace those placeholders with original values
+    new_args = []
+    for arg in args:
+        if arg in indices:
+            new_args.append(indices[arg])
+        elif 'idx=' in arg:
+            idx = int(eval(arg.replace('idx=', '')))
+            new_args.append(vs[idx])
+        else:
+            new_args.append(arg)
+    return new_args
+
+
+def get_plan(run_dir, indices={}, continuous={}, plan_json=None):
+    if indices == {}:
+        indices = get_indices_from_config(run_dir)
+    if plan_json is not None:
+        plan = json.load(open(plan_json, 'r'))['plan']
+    else:
+        plan = get_successful_plan(run_dir, indices)
+
+    ## add the continuous mentioned in plan
+    new_continuous = {}
+    for a in plan:
+        for arg in a[1:]:
+            if '=' in arg:
+                name, value = arg.split('=')
+                value = value.replace('t(', '(')
+                if name not in continuous and name not in new_continuous:
+                    v = list(eval(value)) if ('(' in value) else [eval(value)]
+                    if len(v) != 2:  ## sampled trajectory
+                        new_continuous[name] = process_value(v)
+    return plan, new_continuous
 
 
 def get_indices_from_log(run_dir):
@@ -62,26 +202,50 @@ def get_lisdf_xml(run_dir):
     return untangle.parse(join(run_dir, 'scene.lisdf')).sdf.world
 
 
-def get_plan_skeleton(plan, indices={}):
+def get_plan_skeleton(plan, indices={}, include_joint=True, include_movable=False):
     from text_utils import ACTION_ABV, ACTION_NAMES
+    joints = [k for k, v in indices.items() if "::" in v]
+    movables = [k for k, v in indices.items() if "::" not in v]
+    joint_names = [v for v in indices.values() if "::" in v]
+    movable_names = [v for v in indices.values() if "::" not in v]
+    inv_joints = {v: k for k, v in indices.items() if v in joint_names}
+    inv_movables = {v: k for k, v in indices.items() if v in movable_names}
+    inv_indices = {v: k for k, v in indices.items()}
+
+    if isinstance(plan[0], str):
+        plan = get_plan_from_strings(plan, indices=indices)
+
     def get_action_abv(a):
-        if isinstance(a, str):
-            name = a[a.index("name='")+6: a.index("', args=(")]
-            return ACTION_ABV[name]
+        if len(a) == 0:
+            print('what is a', a)
+        if a[0] in ACTION_ABV:
+            skeleton = ACTION_ABV[a[0]]
         else:
-            if a[0] in ACTION_ABV:
-                skeleton = ACTION_ABV[a[0]]
-                if hasattr(a, 'args'):
-                    a = a.args
-            else:
-                ABV = {ACTION_NAMES[k]: v for k, v in ACTION_ABV.items()}
-                skeleton = ABV[a[0]]
-            aa = []
-            for e in a:
-                aa.append(indices[str(e)] if str(e) in indices else str(e))
-            if len(skeleton) > 0:
-                skeleton += ''.join([f"({o[0]}{o[-1]})" for o in aa[1:] if '::' in o])
-            return skeleton
+            ABV = {ACTION_NAMES[k]: v for k, v in ACTION_ABV.items()}
+            skeleton = ABV[a[0]]
+        aa = []
+        for e in a:
+            aa.append(indices[e] if e in indices else e)
+        a = copy.deepcopy(aa)
+        if len(skeleton) > 0:
+            ## contains 'minifridge::joint_2' or '(4, 1)'
+            if include_joint:
+                def get_joint_name_chars(o):
+                    body_name, joint_name = o.split('::')
+                    if not joint_name.startswith('left') and 'left' in joint_name:
+                        joint_name = joint_name[0] + 'l'
+                    elif not joint_name.startswith('right') and 'right' in joint_name:
+                        joint_name = joint_name[0] + 'r'
+                    else:
+                        joint_name = joint_name[0]
+                    return f"({body_name[0]}{joint_name})"
+                skeleton += ''.join([get_joint_name_chars(o) for o in a[1:] if o in joint_names])
+                skeleton += ''.join([f"({indices[o][0]}{indices[o][-1]})" for o in a[1:] if o in joints])
+            ## contains 'veggiepotato' or '3'
+            if include_movable:
+                skeleton += ''.join([f"({inv_movables[o]})" for o in a[1:] if o in movable_names])
+                skeleton += ''.join([f"({o})" for o in a[1:] if o in movables])
+        return skeleton
     return ''.join([get_action_abv(a) for a in plan])
 
 

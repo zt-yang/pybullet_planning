@@ -19,6 +19,7 @@ from pybullet_tools.flying_gripper_utils import set_se3_conf
 
 from .world import State
 
+
 class Action(object): # TODO: command
     def transition(self, state):
         raise NotImplementedError()
@@ -461,7 +462,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=False, plan=None, bod
     for i, action in enumerate(actions):
         if verbose:
             print(i, action)
-        if 'tachObjectAction' in str(action):
+        if 'tachObjectAction' in str(action) and body_map is not None:
             if action.object in body_map:
                 action.object = body_map[action.object]
         action = adapt_action(action, problem, plan)

@@ -222,7 +222,7 @@ def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False, visua
             p = Pose(body, body_pose, surface)
             p.assign()
             obs = [obst for obst in obstacles if obst not in {body, surface}]
-            result = collided(body, obs, verbose=verbose, visualize=visualize, tag='stable_gen')
+            result = collided(body, obs, verbose=verbose, visualize=visualize, tag='stable_gen', world=world)
             if not result:
                 p0.assign()
                 yield (p,)

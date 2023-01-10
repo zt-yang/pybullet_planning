@@ -1,12 +1,13 @@
 import os.path
 import random
 import sys
-from os.path import join, isdir, abspath, dirname
+from os.path import join, isdir, abspath, dirname, isfile
 import time
 from pprint import pprint
 import numpy as np
+import json
 
-from pybullet_tools.bullet_utils import nice, equal
+from pybullet_tools.bullet_utils import nice, equal, get_datetime
 from pybullet_tools.utils import pose_from_tform, get_pose, get_joint_name, get_joint_position, get_movable_joints
 from isaac_tools.urdf_utils import load_lisdf, test_is_robot
 
@@ -375,7 +376,7 @@ def init_isaac_world():
 
 def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_name='gym_replay.gif',
                           time_step=0.5, verbose=False, plan=None, return_wconf=False,
-                          world_index=None, body_map=None):
+                          world_index=None, body_map=None, save_gif=True, save_mp4=False):
     """ act out the whole plan and event in the world without observation/replanning """
     from world_builder.actions import adapt_action, apply_actions
     from world_builder.world import State
@@ -418,8 +419,18 @@ def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_n
 
     if return_wconf:
         return wconfs
-    images_to_gif(img_dir, gif_name, filenames)
+    save_gym_run(img_dir, gif_name, filenames, save_gif=save_gif, save_mp4=save_mp4)
     return gif_name
+
+
+def save_gym_run(img_dir, gif_name, filenames, save_gif=True, save_mp4=True):
+    if save_gif:
+        images_to_gif(img_dir, gif_name, filenames)
+        print('created gif {}'.format(join(img_dir, gif_name)))
+    if save_mp4:
+        mp4_name = join(img_dir, gif_name.replace('.gif', f'_{get_datetime()}.mp4'))
+        images_to_mp4(filenames, mp4_name=mp4_name)
+        print('created mp4 {} with {} frames'.format(mp4_name, len(filenames)))
 
 
 def images_to_gif(img_dir, gif_name, filenames):
@@ -461,6 +472,44 @@ def images_to_mp4(images=[], img_dir='images', mp4_name='video.mp4'):
 
     cv2.destroyAllWindows()
     video.release()
+
+
+# def make_collage_mp4(mp4s, num_cols, num_rows, size=None, mp4_name='collage.mp4'):
+#     import cv2
+#     from datetime import datetime
+#     import numpy as np
+#
+#     import skvideo.io
+#     videodata = skvideo.io.vread("video_file_name")
+#     print(videodata.shape)
+#
+#     img_read1_0 = cv2.imread(capture_image1_name, cv2.IMREAD_COLOR)
+#     img_read2_0 = cv2.imread(capture_image2_name, cv2.IMREAD_COLOR)  # resize
+#     img_read1 = cv2.resize(img_read1_0, (250, 250))
+#     img_read2 = cv2.resize(img_read2_0, (250, 250))  # Vertically stack up two images of first capture
+#     col1 = np.vstack([img_read1, img_read1])  # Vertically stack up two images of secodn capture
+#     col2 = np.vstack([img_read2, img_read2])  # Now horizontally put them side-by-side
+#     collage = np.hstack([col1, col2])  # Create the collage
+#     k = cv2.waitKey(0)
+#     cv2.imwrite("collage.png", collage)
+
+
+def set_camera_target_body(gym_world, run_dir):
+    config_file = join(run_dir, 'planning_config.json')
+    if isfile(config_file):
+        config = json.load(open(config_file, 'r'))
+        if 'camera_zoomins' in config:
+            camera_zoomin = config['camera_zoomins'][0]
+            name = camera_zoomin['name']
+            dx, dy, dz = camera_zoomin['d']
+            actor = gym_world.get_actor(name)
+            pose = gym_world.get_pose(actor)
+
+            camera_target = pose[0]
+            camera_point = camera_target + np.array([dx, dy, dz])
+
+            gym_world.set_viewer_target(camera_point, target=camera_target)
+            gym_world.set_camera_target(gym_world.cameras[0], camera_point, camera_target)
 
 
 if __name__ == "__main__":

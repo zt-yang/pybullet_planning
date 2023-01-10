@@ -1055,7 +1055,7 @@ def fit_dimensions(body, body_pose=unit_pose()):
 ROTATIONAL_MATRICES = {}
 
 
-def get_rotation_matrix(body, verbose=True):
+def get_rotation_matrix(body, verbose=False):
     import untangle
     r = unit_pose()
     collision_data = get_collision_data(body, 0)
@@ -1069,7 +1069,7 @@ def get_rotation_matrix(body, verbose=True):
         urdf_file = urdf_file.replace('/textured_objs', '').replace('/vhacd', '')
         if urdf_file not in ROTATIONAL_MATRICES:
             if verbose:
-                print('get_rotation_matrix | urdf_file = ', urdf_file)
+                print('get_rotation_matrix | urdf_file = ', abspath(urdf_file))
             joints = untangle.parse(join(urdf_file, 'mobility.urdf')).robot.joint
             if isinstance(joints, list):
                 for j in joints:
@@ -2037,3 +2037,8 @@ def aabb_larger(one, two):
     lx, ly, _ = get_aabb_extent(get_aabb(two))
     larger = max(lx, ly)
     return smaller > larger
+
+
+def get_class_path(var):
+    import inspect
+    return inspect.getfile(var.__class__)
