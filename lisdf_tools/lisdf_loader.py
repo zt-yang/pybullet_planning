@@ -22,9 +22,10 @@ from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove
     set_camera_pose, set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
     set_joint_positions, get_links, get_joints, get_joint_name, get_body_name, link_from_name, \
     parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK, read, get_client, \
-    reset_simulation, get_movable_joints, JOINT_TYPES, get_joint_type, is_movable, get_camera_matrix
+    reset_simulation, get_movable_joints, JOINT_TYPES, get_joint_type, is_movable, get_camera_matrix, \
+    wait_unlocked
 from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link, \
-    toggle_joint, get_door_links, set_camera_target_body, colorize_world
+    toggle_joint, get_door_links, set_camera_target_body, colorize_world, colorize_link, find_closest_match
 from pybullet_tools.pr2_streams import get_handle_link
 from pybullet_tools.flying_gripper_utils import set_se3_conf
 
@@ -32,7 +33,7 @@ from pddlstream.language.constants import AND, PDDLProblem
 
 from world_builder.entities import Space
 from world_builder.robot_builders import create_pr2_robot, create_gripper_robot
-from world_builder.utils import get_instance_name
+from world_builder.utils import get_instance_name, get_camera_zoom_in
 
 from lisdf_tools.lisdf_planning import pddl_to_init_goal
 
@@ -146,12 +147,35 @@ class World():
     #     elif 'fe' in domain_name:
     #         self.robot = 'feg'
 
-    def safely_get_body_from_name(self, name):
+    def safely_get_body_from_name(self, name, all_possible=False):
         if name in self.name_to_body:
             return self.name_to_body[name]
         elif name[:-1] in self.name_to_body:  ## 'pr20
             return self.name_to_body[name[:-1]]
-        return None
+        possible = {}
+        for n, body in self.name_to_body.items():
+            if name in n:
+                possible[body] = n
+        return find_closest_match(possible, all_possible=all_possible)
+
+    def make_transparent(self, obj, transparency=0.5):
+        def color_obj(obj):
+            if isinstance(obj, int):
+                links = get_links(obj)
+            else:
+                links = [obj[1]]
+                obj = obj[0]
+            for l in links:
+                colorize_link(obj, l, transparency=transparency)
+
+        if isinstance(obj, str):
+            obj = self.safely_get_body_from_name(obj, all_possible=True)
+        if obj is not None:
+            if isinstance(obj, list):
+                for o in obj:
+                    color_obj(o)
+            else:
+                color_obj(obj)
 
     def check_world_obstacles(self):
         if self.lisdf is None:
@@ -489,11 +513,16 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
                 position = js.axis_states[0].value
                 set_joint_position(body, joint_from_name(body, js.name), position)
 
-        ## TODO - became a problem for parallel processing
-        # if not isinstance(model, URDFInclude):
-        #     os.remove(uri)
-
-        # wait_if_gui('load next model?')
+    ## load objects transparent
+    if 'test_full_kitchen' in world.name:
+        transparent = ['pr2']
+        camera_zoomin = get_camera_zoom_in(lisdf_dir)
+        if camera_zoomin is not None:
+            target_body = camera_zoomin['name']
+            if 'braiser' in target_body:
+                transparent.extend(['braiserlid', 'cabinettop', 'cabinetupper', 'shelf'])
+        for b in transparent:
+            bullet_world.make_transparent(b)
 
     if world.gui is not None:
         camera_pose = world.gui.camera.pose
@@ -543,6 +572,8 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
             else:
                 fridge = bullet_world.name_to_body['minifridge']
                 set_camera_target_body(fridge, dx=2, dy=0, dz=2)
+
+    wait_unlocked()
     return bullet_world
 
 

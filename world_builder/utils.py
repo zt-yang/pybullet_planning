@@ -563,3 +563,11 @@ def smarter_sample_placement(body, surface, world, **kwargs):
         body_pose = sample_placement(body, surface, **kwargs)
     return body_pose
 
+
+def get_camera_zoom_in(run_dir):
+    config_file = join(run_dir, 'planning_config.json')
+    if isfile(config_file):
+        config = json.load(open(config_file, 'r'))
+        if 'camera_zoomins' in config:
+            return config['camera_zoomins'][0]
+    return None

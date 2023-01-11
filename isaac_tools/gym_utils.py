@@ -8,6 +8,7 @@ from tqdm import tqdm
 import numpy as np
 import json
 
+from world_builder.utils import get_camera_zoom_in
 from pybullet_tools.bullet_utils import nice, equal, get_datetime
 from pybullet_tools.utils import pose_from_tform, get_pose, get_joint_name, get_joint_position, get_movable_joints
 from isaac_tools.urdf_utils import load_lisdf, test_is_robot
@@ -520,22 +521,28 @@ def make_collage_mp4(mp4s, num_cols, num_rows, size=None, mp4_name='collage.mp4'
     video.release()
 
 
+def test_make_collage_mp4():
+    mp4_dir = '/home/yang/Documents/jupyter-worlds/tests/gym_images/'
+    num_cols = 2
+    num_rows = 2
+    mp4 = join(mp4_dir, 'gym_replay_batch_gym_0101_16:57.mp4')
+    mp4s = [mp4] * (num_cols * num_rows)
+    make_collage_mp4(mp4s, num_cols, num_rows, mp4_name=join(mp4_dir, 'collage_4by4.mp4'))
+
+
 def set_camera_target_body(gym_world, run_dir):
-    config_file = join(run_dir, 'planning_config.json')
-    if isfile(config_file):
-        config = json.load(open(config_file, 'r'))
-        if 'camera_zoomins' in config:
-            camera_zoomin = config['camera_zoomins'][0]
-            name = camera_zoomin['name']
-            dx, dy, dz = camera_zoomin['d']
-            actor = gym_world.get_actor(name)
-            pose = gym_world.get_pose(actor)
+    camera_zoomin = get_camera_zoom_in(run_dir)
+    if camera_zoomin is not None:
+        name = camera_zoomin['name']
+        dx, dy, dz = camera_zoomin['d']
+        actor = gym_world.get_actor(name)
+        pose = gym_world.get_pose(actor)
 
-            camera_target = pose[0]
-            camera_point = camera_target + np.array([dx, dy, dz])
+        camera_target = pose[0]
+        camera_point = camera_target + np.array([dx, dy, dz])
 
-            gym_world.set_viewer_target(camera_point, target=camera_target)
-            gym_world.set_camera_target(gym_world.cameras[0], camera_point, camera_target)
+        gym_world.set_viewer_target(camera_point, target=camera_target)
+        gym_world.set_camera_target(gym_world.cameras[0], camera_point, camera_target)
 
 
 if __name__ == "__main__":
@@ -544,9 +551,4 @@ if __name__ == "__main__":
     # lisdf_dir = '/home/yang/Documents/fastamp-data/tt_two_fridge_in/4'
     # world = load_lisdf_isaacgym(lisdf_dir, pause=True)
 
-    mp4_dir = '/home/yang/Documents/jupyter-worlds/tests/gym_images/'
-    num_cols = 2
-    num_rows = 2
-    mp4 = join(mp4_dir, 'gym_replay_batch_gym_0101_16:57.mp4')
-    mp4s = [mp4] * (num_cols * num_rows)
-    make_collage_mp4(mp4s, num_cols, num_rows, mp4_name=join(mp4_dir, 'collage_4by4.mp4'))
+    test_make_collage_mp4()

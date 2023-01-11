@@ -1941,6 +1941,8 @@ def clone_body_link(body, link, collision=True, visual=True, client=None):
 
 
 def colorize_link(body, link=0, transparency=0.5):
+    if isinstance(body, tuple):
+        body, link = body
     body_color = apply_alpha(0.9 * np.ones(3))
     link_color = np.array(body_color) + np.random.normal(0, 1e-2, 4)  # TODO: clip
     link_color = apply_alpha(link_color, alpha=transparency)
@@ -2046,3 +2048,13 @@ def aabb_larger(one, two):
 def get_class_path(var):
     import inspect
     return inspect.getfile(var.__class__)
+
+
+def find_closest_match(possible, all_possible=False):
+    if len(possible) == 0:
+        return None
+    counts = {b: len(o) for b, o in possible.items()}
+    counts = dict(sorted(counts.items(), key=lambda item: item[1]))
+    if all_possible:
+        return list(counts.keys())
+    return list(counts.keys())[0]

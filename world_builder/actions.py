@@ -432,6 +432,8 @@ def adapt_action(a, problem, plan, verbose=True):
     if a.__class__.__name__ == 'AttachObjectAction' and isinstance(a.object, tuple):
         robot = problem.world.robot
         plan, continuous = plan
+        if len(plan) == 1 and len(plan[0]) > 1:
+            plan = plan[0]
         def get_value(string):
             name, tup = string.split('=')
             # value = continuous[name]
@@ -439,7 +441,10 @@ def adapt_action(a, problem, plan, verbose=True):
             #     value = value[0]
             # return value
             return eval(tup)
-        act = [aa for aa in plan if aa[0] == 'pull_door_handle' and aa[2] == str(a.object)][0]
+        if ' ' in plan[0][0]:
+            act = [aa for aa in plan if aa[0].startswith('pull') and aa[2] == problem.world.body_to_name[a.object]][0]
+        else:
+            act = [aa for aa in plan if aa[0] == 'pull_door_handle' and aa[2] == str(a.object)][0]
         pstn1 = Position(a.object, get_value(act[3]))
         pstn2 = Position(a.object, get_value(act[4]))
         bq1 = get_value(act[6])  ## continuous[act[6].split('=')[0]]
@@ -467,7 +472,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=False, plan=None, bod
             if action.object in body_map:
                 action.object = body_map[action.object]
             action.verbose = verbose
-        action = adapt_action(action, problem, plan)
+        action = adapt_action(action, problem, plan, verbose=verbose)
         if action is None:
             continue
         if isinstance(action, Command):

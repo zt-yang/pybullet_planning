@@ -14,7 +14,7 @@ def parallel_print(text='', *kwargs):
     print_in_file(string, txt_file='txt_file.txt')
 
 
-def myprint(text='', *kwargs):
+def myprint(text='', *kwargs, **kwargs2):
     string = get_string(text, kwargs)
     print_in_file(string)
 

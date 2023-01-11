@@ -26,7 +26,7 @@ from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_po
     is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
     set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR, CAMERA_MATRIX, visualize_camera_image, equal, \
     draw_pose2d_path, draw_pose3d_path, sort_body_parts, get_root_links, colorize_world, colorize_link, \
-    draw_fitted_box
+    draw_fitted_box, find_closest_match
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
     Attach, Detach, Clean, Cook, control_commands, link_from_name, \
     get_gripper_joints, GripperCommand, apply_commands, State, Command
@@ -107,10 +107,8 @@ class World(object):
         if isinstance(name, str):
             obj = self.name_to_object(name)
             colorize_link(obj.body, obj.link, transparency=transparency)
-        elif isinstance(name, int):
+        elif isinstance(name, int) or isinstance(name, tuple):
             colorize_link(name, transparency=transparency)
-        elif isinstance(name, tuple):
-            colorize_link(name[0], name[-1], transparency=transparency)
         elif isinstance(name, Object):
             colorize_link(name.body, name.link, transparency=transparency)
 
@@ -619,12 +617,9 @@ class World(object):
             if name == obj.name:
                 return body
             if name in obj.name:
-                possible[body] = obj
+                possible[body] = obj.name
         if len(possible) >= 1:
-            counts = {b: len(o.name) for b, o in possible.items()}
-            counts = dict(sorted(counts.items(), key=lambda item: item[1]))
-            return list(counts.keys())[0]
-            # return possible[0]
+            return find_closest_match(possible)
         return None
 
     def name_to_object(self, name):
