@@ -4,6 +4,7 @@ import sys
 from os.path import join, isdir, abspath, dirname, isfile
 import time
 from pprint import pprint
+from tqdm import tqdm
 import numpy as np
 import json
 
@@ -474,24 +475,49 @@ def images_to_mp4(images=[], img_dir='images', mp4_name='video.mp4'):
     video.release()
 
 
-# def make_collage_mp4(mp4s, num_cols, num_rows, size=None, mp4_name='collage.mp4'):
-#     import cv2
-#     from datetime import datetime
-#     import numpy as np
-#
-#     import skvideo.io
-#     videodata = skvideo.io.vread("video_file_name")
-#     print(videodata.shape)
-#
-#     img_read1_0 = cv2.imread(capture_image1_name, cv2.IMREAD_COLOR)
-#     img_read2_0 = cv2.imread(capture_image2_name, cv2.IMREAD_COLOR)  # resize
-#     img_read1 = cv2.resize(img_read1_0, (250, 250))
-#     img_read2 = cv2.resize(img_read2_0, (250, 250))  # Vertically stack up two images of first capture
-#     col1 = np.vstack([img_read1, img_read1])  # Vertically stack up two images of secodn capture
-#     col2 = np.vstack([img_read2, img_read2])  # Now horizontally put them side-by-side
-#     collage = np.hstack([col1, col2])  # Create the collage
-#     k = cv2.waitKey(0)
-#     cv2.imwrite("collage.png", collage)
+def make_collage_mp4(mp4s, num_cols, num_rows, size=None, mp4_name='collage.mp4'):
+    import cv2
+    import numpy as np
+    import skvideo.io
+
+    fps = 20
+    max_frames = -1
+    frames = []
+    for mp4 in tqdm(mp4s, desc=f'reading videos'):
+        videodata = skvideo.io.vread(mp4)
+        frames.append(videodata)  ## np.swapaxes(videodata, 1, 2)
+        num_frames, h, w, c = videodata.shape
+
+        if num_frames > max_frames:
+            max_frames = num_frames
+
+    if size is None:
+        size = (h, w)
+        clip_size = (h // num_rows, w // num_cols)
+    else:
+        clip_size = (size[0] // num_rows, size[1] // num_cols)
+    size = size[::-1]
+    clip_size = clip_size[::-1]
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  ## cv2.VideoWriter_fourcc(*'XVID') ## cv2.VideoWriter_fourcc(*'mp4v')
+    video = cv2.VideoWriter(mp4_name, fourcc, fps, size)
+
+    for i in tqdm(range(max_frames), desc=f'generating collage of {len(mp4s)} videos'):
+        rows = []
+        this_row = []
+        for j, videodata in enumerate(frames):
+            img = videodata[i] if i < videodata.shape[0] else videodata[-1]
+            img = cv2.resize(img, clip_size)
+            img = img[..., [2, 1, 0]].copy()  ## RGB to BGR for cv2
+            col = j % num_cols
+            this_row.append(img)
+            if col == num_cols - 1:
+                rows.append(np.hstack(this_row))
+                this_row = []
+        frame = np.vstack(rows)
+        video.write(frame)
+
+    cv2.destroyAllWindows()
+    video.release()
 
 
 def set_camera_target_body(gym_world, run_dir):
@@ -513,7 +539,14 @@ def set_camera_target_body(gym_world, run_dir):
 
 
 if __name__ == "__main__":
-    ## broken, need to copy test dir to test_cases folder for relative asset paths to be found
-    lisdf_dir = '/home/caelan/Programs/interns/yang/kitchen-worlds/test_cases/tt_one_fridge_pick_2'
-    lisdf_dir = '/home/yang/Documents/fastamp-data/tt_two_fridge_in/4'
-    world = load_lisdf_isaacgym(lisdf_dir, pause=True)
+    # ## broken, need to copy test dir to test_cases folder for relative asset paths to be found
+    # lisdf_dir = '/home/caelan/Programs/interns/yang/kitchen-worlds/test_cases/tt_one_fridge_pick_2'
+    # lisdf_dir = '/home/yang/Documents/fastamp-data/tt_two_fridge_in/4'
+    # world = load_lisdf_isaacgym(lisdf_dir, pause=True)
+
+    mp4_dir = '/home/yang/Documents/jupyter-worlds/tests/gym_images/'
+    num_cols = 2
+    num_rows = 2
+    mp4 = join(mp4_dir, 'gym_replay_batch_gym_0101_16:57.mp4')
+    mp4s = [mp4] * (num_cols * num_rows)
+    make_collage_mp4(mp4s, num_cols, num_rows, mp4_name=join(mp4_dir, 'collage_4by4.mp4'))

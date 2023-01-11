@@ -616,7 +616,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
     return maybe
 
 
-def add_attachment(state=None, obj=None, parent=-1, parent_link=None, attach_distance=0.1):
+def add_attachment(state=None, obj=None, parent=-1, parent_link=None, attach_distance=0.1, verbose=False):
     new_attachments = {}
     if state != None:
         new_attachments = dict(state.attachments)
@@ -643,7 +643,8 @@ def add_attachment(state=None, obj=None, parent=-1, parent_link=None, attach_dis
         else:
             attachment = create_attachment(parent, parent_link, obj)
         new_attachments[obj] = attachment  ## may overwrite older attachment
-        print('   added attachment', obj, parent, parent_link, link1, joint)
+        if verbose:
+            print('   added attachment', obj, parent, parent_link, link1, joint)
     return new_attachments
 
 
@@ -765,7 +766,10 @@ def set_camera_target_body(body, link=None, dx=None, dy=None, dz=None):
         dy = get_aabb_extent(aabb)[1] * 2
     if dz is None:
         dz = get_aabb_extent(aabb)[2] * 2
-    set_camera_pose(camera_point=[x + dx, y + dy, z + dz], target_point=[x, y, z])
+    camera_point = [x + dx, y + dy, z + dz]
+    target_point = [x, y, z]
+    set_camera_pose(camera_point=camera_point, target_point=target_point)
+    return camera_point, target_point
 
 
 def set_default_camera_pose():
@@ -1821,11 +1825,14 @@ def get_grasp_link(path, body):
     return link
 
 
-def get_datetime(TO_LISDF=False):
+def get_datetime(TO_LISDF=False, year=True):
     from datetime import datetime
+    form = "%m%d_%H:%M"
     if TO_LISDF:
-        return datetime.now().strftime("%m%d_%H%M%S")
-    return datetime.now().strftime("%m%d_%H:%M")
+        form = "%m%d_%H%M%S"
+    if year:
+        form = "%y" + form
+    return datetime.now().strftime(form)
 
 # def remove_all_bodies():
 #     for body in get_bodies():

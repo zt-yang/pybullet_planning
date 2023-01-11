@@ -63,6 +63,7 @@ class World():
         self.handles = []
         self.cameras = []
         self.colored_links = []
+        self.camera_kwargs = {}
 
     def clear_viz(self):
         self.remove_handles()
@@ -292,7 +293,7 @@ class World():
     def get_events(self, body):
         pass
 
-    def add_camera(self, pose, img_dir=join('visualizations', 'camera_images'),
+    def add_camera(self, pose=unit_pose(), img_dir=join('visualizations', 'camera_images'),
                    width=640, height=480, fx=400, max_depth=8):
         from world_builder.entities import StaticCamera
 
@@ -304,7 +305,8 @@ class World():
         self.img_dir = img_dir
 
     def visualize_image(self, pose=None, img_dir=None, index=None,
-                        image=None, segment=False, segment_links=False, **kwargs):
+                        image=None, segment=False, segment_links=False,
+                        camera_point=None, target_point=None, **kwargs):
         from pybullet_tools.bullet_utils import visualize_camera_image
 
         if pose is not None:
@@ -314,7 +316,8 @@ class World():
         if index is None:
             index = self.camera.index
         if image is None:
-            image = self.camera.get_image(segment=segment, segment_links=segment_links)
+            image = self.camera.get_image(segment=segment, segment_links=segment_links,
+                                          camera_point=camera_point, target_point=target_point)
         visualize_camera_image(image, index, img_dir=self.img_dir, **kwargs)
 
     def add_joints_by_keyword(self, body_name, joint_name=None):
@@ -407,9 +410,6 @@ def get_custom_limits(config_path):
 
 def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False,
                         width=1980, height=1238):
-    ## tmp path for putting sdf files, e.g. floor
-    tmp_path = join(ASSET_PATH, 'tmp')
-    if not isdir(tmp_path): os.mkdir(tmp_path)
 
     ## sometimes another lisdf name is given
     if lisdf_path.endswith('.lisdf'):
@@ -417,6 +417,10 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
     else:
         lisdf_dir = lisdf_path
         lisdf_path = join(lisdf_dir, 'scene.lisdf')
+
+    ## tmp path for putting sdf files, e.g. floor
+    tmp_path = join(lisdf_dir, 'tmp')
+    if not isdir(tmp_path): os.mkdir(tmp_path)
 
     ## get custom base limits for robots
     config_path = join(lisdf_dir, 'planning_config.json')
@@ -448,8 +452,8 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
         else:
             uri = join(tmp_path, f'{model.name}.sdf')
             ## TODO: when solving in parallel causes problems
-            if isfile(uri):
-                os.remove(uri)
+            # if isfile(uri):
+            #     os.remove(uri)
             with open(uri, 'w') as f:
                 f.write(make_sdf_world(model.to_sdf()))
             category = model.links[0].name
@@ -493,11 +497,22 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
 
     if world.gui is not None:
         camera_pose = world.gui.camera.pose
-
         ## when camera pose is not saved for generating training data
-        if np.all(camera_pose.pos == 0):
-            config_file = join(lisdf_dir, 'planning_config.json')
-            config = json.load(open(config_file, 'r'))
+        if not np.all(camera_pose.pos == 0):
+            set_camera_pose2((camera_pose.pos, camera_pose.quat_xyzw))
+
+    planning_config = join(lisdf_dir, 'planning_config.json')
+    if isfile(planning_config):
+        config = json.load(open(planning_config, 'r'))
+
+        ## body to name
+        body_to_name = config['body_to_name']
+        for k, v in body_to_name.items():
+            if v not in bullet_world.name_to_body:
+                bullet_world.add_body(eval(k), v)
+
+        ## camera
+        if 'camera_zoomins' in config:
             camera_zoomins = config['camera_zoomins']
             if len(camera_zoomins) > 0:
                 changed = False
@@ -517,7 +532,8 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
                     d['d'][0] = dx = 0.1
                     d['d'][2] = dz = 0.7
                     changed = True
-                set_camera_target_body(body, dx=dx, dy=dy, dz=dz)
+                camera_point, target_point = set_camera_target_body(body, dx=dx, dy=dy, dz=dz)
+                bullet_world.camera_kwargs = {'camera_point': camera_point, 'target_point': target_point}
 
                 # if changed:
                 #     config['camera_zoomins'][0] = d
@@ -527,16 +543,6 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
             else:
                 fridge = bullet_world.name_to_body['minifridge']
                 set_camera_target_body(fridge, dx=2, dy=0, dz=2)
-
-        else:
-            set_camera_pose2((camera_pose.pos, camera_pose.quat_xyzw))
-
-    planning_config = join(lisdf_dir, 'planning_config.json')
-    if isfile(planning_config):
-        body_to_name = json.load(open(planning_config, 'r'))['body_to_name']
-        for k, v in body_to_name.items():
-            if v not in bullet_world.name_to_body:
-                bullet_world.add_body(eval(k), v)
     return bullet_world
 
 

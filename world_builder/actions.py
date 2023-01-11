@@ -262,21 +262,22 @@ class GripperAction(Action):
         return state.new_state()
 
 class AttachObjectAction(Action):
-    def __init__(self, arm, grasp, object):
+    def __init__(self, arm, grasp, object, verbose=True):
         self.arm = arm
         self.grasp = grasp
         self.object = object
+        self.verbose = verbose
     def transition(self, state):
         link = state.robot.get_attachment_link(self.arm)
         new_attachments = add_attachment(state=state, obj=self.object, parent=state.robot,
-                                         parent_link=link, attach_distance=None)  ## can attach without contact
+                                         parent_link=link, attach_distance=None, verbose=self.verbose)  ## can attach without contact
         for k in new_attachments:
             if k in state.world.ATTACHMENTS:
                 state.world.ATTACHMENTS.pop(k)
         return state.new_state(attachments=new_attachments)
 
 class DetachObjectAction(Action):
-    def __init__(self, arm, object):
+    def __init__(self, arm, object, verbose):
         self.arm = arm
         self.object = object
     def transition(self, state):
@@ -465,6 +466,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=False, plan=None, bod
         if 'tachObjectAction' in str(action) and body_map is not None:
             if action.object in body_map:
                 action.object = body_map[action.object]
+            action.verbose = verbose
         action = adapt_action(action, problem, plan)
         if action is None:
             continue
@@ -474,8 +476,6 @@ def apply_actions(problem, actions, time_step=0.5, verbose=False, plan=None, bod
             sys.exit()
         elif isinstance(action, Action):
             state_event = action.transition(state_event.copy())
-            if isinstance(action, AttachObjectAction):
-                print(action.grasp)
         elif isinstance(action, list):
             for a in action:
                 state_event = a.transition(state_event.copy())
