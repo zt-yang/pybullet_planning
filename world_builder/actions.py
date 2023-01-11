@@ -277,7 +277,7 @@ class AttachObjectAction(Action):
         return state.new_state(attachments=new_attachments)
 
 class DetachObjectAction(Action):
-    def __init__(self, arm, object, verbose):
+    def __init__(self, arm, object, verbose=False):
         self.arm = arm
         self.object = object
     def transition(self, state):

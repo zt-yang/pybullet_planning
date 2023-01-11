@@ -418,7 +418,7 @@ def save_multiple_solutions(plan_dataset, indices=None, run_dir=None,
     first_solution = None
     min_len = 10000
     solutions_log = []
-    save = has_text_utils()
+    save = False
     for i, (opt_solution, real_solution) in enumerate(plan_dataset):
         stream_plan, (opt_plan, preimage), opt_cost = opt_solution
         plan = None

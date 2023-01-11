@@ -1721,7 +1721,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
                                      obstacles=[], verbose=False):
     cabinets, shelves = [], []
     cabi_type = 'CabinetTop' if random.random() < 0.5 else 'CabinetUpper'
-    if world.note in [1, 4, 41]:
+    if world.note in [1, 123, 4, 41]:
         cabi_type = 'CabinetTop'
     colors = {
         '45526': HEX_to_RGB('#EDC580'),
@@ -2125,6 +2125,76 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     if pause:
         wait_unlocked()
     return moveables, cabinets, only_counters, obstacles, x_food_min
+
+
+def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
+    assert case in [2, 3]
+
+    obj_name, surface_name, d = {
+        2: ('sink', 'sink_bottom', [0.1, 0.0, 0.8]),
+        3: ('braiserbody', 'braiser_bottom', [0.2, 0.0, 1.3])
+    }[case]
+    obj = world.name_to_body(obj_name)
+    obj_bottom = world.name_to_body(surface_name)
+    set_camera_target_body(obj, dx=d[0], dy=d[1], dz=d[2])
+    world.planning_config['camera_zoomins'].append(
+        {'name': world.BODY_TO_OBJECT[obj].name, 'd': d}
+    )
+
+    ## ---------- add obstacles ----------
+    bottom_obj = world.BODY_TO_OBJECT[obj_bottom]
+    obstacles = bottom_obj.supported_objects
+
+    ## at least two objects on sink bottom, or one in braiser
+    if (case in [2] and len(obstacles) <= 1 and random.random() < 1) \
+            or (case in [3] and len(obstacles) == 0 and random.random() < 1):
+        existing = [o.body for o in obstacles]
+        something = None
+        if case in [2]:
+            something = [m for m in moveables if m.body not in existing]
+        elif case in [3]:
+            something = world.cat_to_objects('edible') + world.cat_to_objects('medicine')
+            something = [m for m in something if m.body not in existing]
+
+        if food is not None:
+            something = [m for m in something if m.body != food]
+        something = random.choice(something)
+
+        if something is not None:
+            result = bottom_obj.place_obj(something, max_trial=5)
+            if result is None:
+                counters_tmp = world.find_surfaces_for_placement(something, counters)
+                counters_tmp[0].place_obj(something)
+            else:
+                obstacles = bottom_obj.supported_objects
+
+    for o in obstacles:
+        world.add_to_cat(o, 'moveable')
+        # skeleton.extend([(k, arm, o) for k in pick_place_actions])
+        # goals.append(('On', o.body, random.choice(sink_counters)))
+        # goals = [('Holding', arm, o.body)]
+        objects.append(o)
+    # skeleton.extend([(k, arm, food) for k in pick_place_actions])
+
+    if case in [3]:
+        count = 0
+        foods = world.cat_to_bodies('edible')
+        if food is None:
+            food = foods[0]
+        while not aabb_larger(obj_bottom, food):
+            count += 1
+            food = foods[count]
+
+        lid = world.name_to_body('braiserlid')  ## , obstacles=moveables+obstacles
+        counters_tmp = world.find_surfaces_for_placement(lid, counters)
+        if len(counters_tmp) == 0:
+            raise Exception('No counters found, try another seed')
+        objects += [food, lid, counters_tmp[0].pybullet_name]
+        # world.add_highlighter(counters[0])
+
+        if random.random() < 0.2:
+            counters_tmp[0].place_obj(world.BODY_TO_OBJECT[lid])
+    return obj_bottom, objects
 
 
 if __name__ == '__main__':
