@@ -163,8 +163,7 @@ class Object(Index):
 
         # set_renderer(False)
         obj = self.world.add_object(
-            Object(load_asset(obj_name.lower(), maybe=True, **kwargs),
-                   category=category, name=name)
+            Object(load_asset(obj_name.lower(), **kwargs), category=category, name=name)
         )
         # body = sample_obj_on_body_link_surface(obj, self.body, self.link, max_trial=max_trial)
         self.world.put_on_surface(obj, max_trial=max_trial, surface=self.shorter_name)
