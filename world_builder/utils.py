@@ -563,3 +563,19 @@ def smarter_sample_placement(body, surface, world, **kwargs):
         body_pose = sample_placement(body, surface, **kwargs)
     return body_pose
 
+
+def reduce_model_scale(txt_file, scale_down=10, new_scale_file='new_scale.txt'):
+    new_lines = []
+    for line in open(txt_file, 'r').readlines():
+        nums = line.strip().split(' ')
+        prefix = [n for n in nums if len(n) <= 1]
+        nums = [n for n in nums if len(n) > 1]
+        nums = prefix + [str(round(eval(n)/scale_down, 4)) for n in nums]
+        new_lines.append(' '.join(nums)+'\n')
+    with open(join(dirname(txt_file), new_scale_file), 'w') as f:
+        f.writelines(new_lines)
+
+
+if __name__ == "__main__":
+    reduce_model_scale('/home/yang/Documents/jupyter-worlds/assets/models/Food/MeatTurkeyLeg/old_scale.txt',
+                       scale_down=10)
