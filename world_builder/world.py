@@ -1055,6 +1055,8 @@ class World(object):
         if not isdir(output_dir):
             os.makedirs(output_dir, exist_ok=True)
         world_name = f"{problem}_{basename(output_dir)}"
+        if self.note is not None:
+            world_name += f"_{self.note}"
 
         self.save_lisdf(output_dir, world_name=world_name, **kwargs)
         self.save_problem_pddl(goal, output_dir, world_name=world_name, init=init)
