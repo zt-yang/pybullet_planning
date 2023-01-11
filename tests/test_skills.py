@@ -201,6 +201,7 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
 
             if cat == 'BraiserBody':
                 print('get_aabb_extent', nice(get_aabb_extent(get_aabb(body))))
+                set_camera_target_body(body, dx=0.05, dy=0, dz=0.5)
                 # draw_points(body, size=0.05)
                 # set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
                 # pose = get_pose(body)
@@ -224,8 +225,7 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
                 wait_if_gui()
             else:
                 test_grasp(body)
-
-            wait_unlocked()
+                wait_unlocked()
 
         if len(categories) > 1:
             wait_if_gui(f'------------- Next object category? finished ({i+1}/{len(categories)})')
@@ -856,7 +856,7 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    test_grasps(robot, ['Food'], skip_grasps=False)  ## 'EyeGlasses'
+    test_grasps(robot, ['BraiserBody'], skip_grasps=True)  ## 'EyeGlasses'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
