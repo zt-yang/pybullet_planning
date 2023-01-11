@@ -306,8 +306,7 @@ def adjust_scale(body, category, file, w, l):
 
 
 def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=None,
-               scale=1, verbose=False, maybe=False, moveable=False,
-               RANDOM_INSTANCE=False, SAMPLING=False):
+               scale=1, verbose=False, RANDOM_INSTANCE=False, SAMPLING=False):
 
     if verbose: print(f"\nLoading ... {category}", end='\r')
 

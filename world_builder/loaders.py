@@ -2073,7 +2073,8 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
         wide_counters = [c for c in counters if c.ly > 0.66]
         if len(wide_counters) > 0:
             counter = wide_counters[0]
-            microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random())
+            microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random(),
+                                              RANDOM_INSTANCE=True)
             microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)))
             obstacles.append(microwave)
     else:
