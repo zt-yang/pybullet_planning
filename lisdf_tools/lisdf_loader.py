@@ -526,7 +526,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
             if 'braiser' in target_body:
                 transparent.extend(['braiserlid', 'cabinettop', 'cabinetupper', 'shelf'])
             if 'sink' in target_body:
-                transparent.extend(['faucet'])
+                transparent.extend(['faucet', 'cabinettop', 'cabinetupper', 'shelf'])
             # if 'minifridge' in target_body or 'cabinettop' in target_body:
             #     transparent.extend(['minifridge::', 'cabinettop::'])
         for b in transparent:
@@ -568,7 +568,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
                     changed = True
                 if 'sink' in name:
                     d['d'][0] = dx = 0.1
-                    d['d'][2] = dz = 0.7
+                    d['d'][2] = dz = 1.1
                     changed = True
                 camera_point, target_point = set_camera_target_body(body, dx=dx, dy=dy, dz=dz)
                 bullet_world.camera_kwargs = {'camera_point': camera_point, 'target_point': target_point}
