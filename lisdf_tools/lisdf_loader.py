@@ -148,24 +148,28 @@ class World():
     #         self.robot = 'feg'
 
     def safely_get_body_from_name(self, name, all_possible=False):
-        if name in self.name_to_body:
-            return self.name_to_body[name]
-        elif name[:-1] in self.name_to_body:  ## 'pr20
-            return self.name_to_body[name[:-1]]
+        if not all_possible:
+            if name in self.name_to_body:
+                return self.name_to_body[name]
+            elif name[:-1] in self.name_to_body:  ## 'pr20
+                return self.name_to_body[name[:-1]]
         possible = {}
         for n, body in self.name_to_body.items():
             if name in n:
                 possible[body] = n
         return find_closest_match(possible, all_possible=all_possible)
 
-    def make_transparent(self, obj, transparency=0.5):
+    def make_transparent(self, obj, transparency=0.5, verbose=False):
         def color_obj(obj):
             if isinstance(obj, int):
                 links = get_links(obj)
+                if len(links) == 0:
+                    links = [-1]
             else:
                 links = [obj[1]]
                 obj = obj[0]
             for l in links:
+                if verbose: print('coloring', self.body_to_name[obj], '\t', obj, l)
                 colorize_link(obj, l, transparency=transparency)
 
         if isinstance(obj, str):
@@ -521,8 +525,11 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
             target_body = camera_zoomin['name']
             if 'braiser' in target_body:
                 transparent.extend(['braiserlid', 'cabinettop', 'cabinetupper', 'shelf'])
+            # if 'minifridge' in target_body or 'cabinettop' in target_body:
+            #     transparent.extend(['minifridge::', 'cabinettop::'])
         for b in transparent:
-            bullet_world.make_transparent(b)
+            transparency = 0.5 if b not in ['cabinetupper'] else 0.2
+            bullet_world.make_transparent(b, transparency=transparency)
 
     if world.gui is not None:
         camera_pose = world.gui.camera.pose
@@ -573,7 +580,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
                 fridge = bullet_world.name_to_body['minifridge']
                 set_camera_target_body(fridge, dx=2, dy=0, dz=2)
 
-    wait_unlocked()
+    # wait_unlocked()
     return bullet_world
 
 
