@@ -12,7 +12,7 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     BASE_LINK, get_joint_position, get_aabb, quat_from_euler, flatten_links, multiply, \
     get_joint_limits, unit_pose, point_from_pose, draw_point, PI, quat_from_pose, angle_between, \
     tform_point, interpolate_poses, draw_pose, RED, remove_handles, stable_z, wait_unlocked, \
-    get_aabb_center, set_renderer
+    get_aabb_center, set_renderer, timeout
 from pybullet_tools.pr2_primitives import Pose
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, is_contained, \
@@ -328,21 +328,27 @@ def get_contain_gen(problem, collisions=True, max_attempts=60, verbose=False, le
             attempts += 1
             space = random.choice(spaces)  # TODO: weight by area
 
-            if isinstance(space, tuple):
-                x, y, z, yaw = sample_obj_in_body_link_space(body, body=space[0], link=space[-1],
-                                                             PLACEMENT_ONLY=True, verbose=verbose, **kwargs)
-                body_pose = ((x, y, z), quat_from_euler(Euler(yaw=yaw)))
-            else:
-                body_pose = None
-            if body_pose is None:
-                break
-
             ## special sampler for data collection
             if is_cabinet_top(world, space) or learned_sampling:
                 from world_builder.loaders import place_in_cabinet
                 if verbose:
                     print('use special pose sampler')
                 body_pose = place_in_cabinet(space, body, place=False)
+
+            if isinstance(space, tuple):
+                result = None
+                with timeout(duration=1):
+                    result = sample_obj_in_body_link_space(body, body=space[0], link=space[-1],
+                                                           PLACEMENT_ONLY=True, verbose=verbose, **kwargs)
+                if result is None:
+                    break
+                x, y, z, yaw = result
+                body_pose = ((x, y, z), quat_from_euler(Euler(yaw=yaw)))
+            else:
+                print('\n\n trying to sample pose inside body', space)
+                body_pose = None
+            if body_pose is None:
+                break
 
             ## there will be collision between body and that link because of how pose is sampled
             p_mod = p = Pose(body, get_mod_pose(body_pose), space)

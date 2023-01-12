@@ -441,7 +441,7 @@ def get_arm_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, ve
         set_joint_positions(robot, arm_joints, grasp_conf) # default_conf | sample_fn()
         # grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose, custom_limits=custom_limits) #, upper_limits=USE_CURRENT)
         #                                     #nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
-        if (grasp_conf is None) or collided(robot, obstacles, articulated=False): ## approach_obstacles): # [obj]
+        if (grasp_conf is None) or collided(robot, obstacles, articulated=False, world=world): ## approach_obstacles): # [obj]
             if verbose:
                 if grasp_conf != None:
                     grasp_conf = nice(grasp_conf)
@@ -459,7 +459,7 @@ def get_arm_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, ve
 
         #approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits) ##, max_iterations=500
         approach_conf = solve_nearby_ik(robot, arm, approach_pose, custom_limits=custom_limits)
-        if (approach_conf is None) or collided(robot, obstacles, articulated=False): ##
+        if (approach_conf is None) or collided(robot, obstacles, articulated=False, world=world): ##
             if verbose:
                 if approach_conf != None:
                     approach_conf = nice(approach_conf)

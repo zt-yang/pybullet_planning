@@ -1772,7 +1772,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
             obj, counter = place_cabinet(selected_counters, **kwargs)
         return obj, counter
 
-    def add_cabinets_shelves(selected_counters, obstacles=[], **kwargs):
+    def add_cabinets(selected_counters, obstacles=[], **kwargs):
         color = FURNITURE_WHITE
         blend = []  ## cabinet overflowed to the next counter
         for num in range(random.choice([1, 2])):
@@ -1836,8 +1836,8 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
 
     ## load cabinets
     ins = world.note not in [4, 41]
-    obstacles, color, counters, bled = add_cabinets_shelves(counters, obstacles=obstacles,
-                                                             cabi_type=cabi_type, RANDOM_INSTANCE=ins)
+    obstacles, color, counters, bled = add_cabinets(counters, obstacles=obstacles,
+                                                    cabi_type=cabi_type, RANDOM_INSTANCE=ins)
     ## then load shelves
     add_shelves(counters+others, color, bled=bled, obstacles=obstacles)
     set_camera_target_body(cabinets[0])
@@ -1897,13 +1897,13 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
 
     def load_furniture(category):
         return world.add_object(Object(
-            load_asset(category, yaw=math.pi, floor=floor, RANDOM_INSTANCE=True, verbose=verbose),
+            load_asset(category, yaw=math.pi, floor=floor, RANDOM_INSTANCE=True, verbose=True),
             name=category, category=category))
 
     def load_furniture_base(furniture):
         return world.add_object(Object(
             load_asset('MiniFridgeBase', l=furniture.ly, yaw=math.pi, floor=floor,
-                       RANDOM_INSTANCE=True, verbose=verbose),
+                       RANDOM_INSTANCE=True, verbose=True),
             name=f'{furniture.category}Base', category=f'{furniture.category}Base'))
 
     counter_regions = []
@@ -1939,7 +1939,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
 
             ## put a cabinetlower with the same y_extent as the object
             elif category in on_base:
-                if True or furniture.mobility_id not in ['11178', '11231', '11709']:
+                if furniture.mobility_id not in ['11709']:
                     furniture_base = load_furniture_base(furniture)
                     adjust = furniture_base.adjust_next_to(current, direction=direction, align='+x')
                     furniture.adjust_next_to(furniture_base, direction='+z', align='+x')
