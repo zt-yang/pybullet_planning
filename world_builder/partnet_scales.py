@@ -211,15 +211,6 @@ MODEL_SCALES = {
         '100501': 0.45,
         '101176': 0.45,
     },
-    'Microwave': {
-        '7119': 0.4,
-        '7128': 0.4,
-        '7167': 0.4,
-        '7236': 0.4,
-        '7263': 0.4,
-        '7265': 0.4,
-        '7310': 0.4,
-    },
 }
 MODEL_SCALES['MiniFridgeDoorless'] = MODEL_SCALES['MiniFridge']
 MODEL_SCALES.update({k.lower(): v for k, v in MODEL_SCALES.items()})
@@ -263,6 +254,10 @@ MODEL_HEIGHTS = {
     'Dishwasher': {
         'height': 1,
         'models': ['2085', '12065', '12349', ]
+    },
+    'Microwave': {
+      'height': 0.298,
+      'models': ['7119', '7128', '7167', '7236', '7263', '7265', '7310']
     },
     'MicrowaveHanging': {
         'height': 0.6,
