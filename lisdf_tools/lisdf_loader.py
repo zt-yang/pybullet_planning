@@ -525,6 +525,8 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
             target_body = camera_zoomin['name']
             if 'braiser' in target_body:
                 transparent.extend(['braiserlid', 'cabinettop', 'cabinetupper', 'shelf'])
+            if 'sink' in target_body:
+                transparent.extend(['faucet'])
             # if 'minifridge' in target_body or 'cabinettop' in target_body:
             #     transparent.extend(['minifridge::', 'cabinettop::'])
         for b in transparent:
