@@ -568,7 +568,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
                     changed = True
                 if 'sink' in name:
                     d['d'][0] = dx = 0.1
-                    d['d'][2] = dz = 1.1
+                    d['d'][2] = dz = 0.8
                     changed = True
                 camera_point, target_point = set_camera_target_body(body, dx=dx, dy=dy, dz=dz)
                 bullet_world.camera_kwargs = {'camera_point': camera_point, 'target_point': target_point}
@@ -582,7 +582,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
                 fridge = bullet_world.name_to_body['minifridge']
                 set_camera_target_body(fridge, dx=2, dy=0, dz=2)
 
-    # wait_unlocked()
+    wait_unlocked()
     return bullet_world
 
 

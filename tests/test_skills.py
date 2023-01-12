@@ -856,7 +856,7 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    test_grasps(robot, ['Microwave'], skip_grasps=True)  ## 'EyeGlasses'
+    test_grasps(robot, ['Sink'], skip_grasps=True)  ## 'EyeGlasses'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
