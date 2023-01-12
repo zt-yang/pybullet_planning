@@ -209,8 +209,8 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
                 # set_pose(body, pose)
 
             """ --- fixing texture issues ---"""
-            world.add_joints_by_keyword(obj_name)
-            world.open_all_doors()
+            # world.add_joints_by_keyword(obj_name)
+            # world.open_all_doors()
 
             """ test others """
             # test_robot_rotation(body, world.robot)

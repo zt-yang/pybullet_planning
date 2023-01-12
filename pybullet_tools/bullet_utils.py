@@ -840,6 +840,8 @@ def check_joint_state(body, joint, verbose=False):
                 state = 'knob TURNED OFF'
             elif pose == max_limit:
                 state = 'knob TURNED ON'
+            else:
+                state = 'knob TURNED ON partially'
 
         elif joint_type == 'revolute' and min_limit == 0:
             category = 'door-max'
