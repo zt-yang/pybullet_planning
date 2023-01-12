@@ -208,6 +208,8 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
                 # _, body, _ = load_model_instance('BraiserLid', id, scale=scale, location=locations[j])
                 # set_pose(body, pose)
 
+            draw_aabb(get_aabb(body))
+
             """ --- fixing texture issues ---"""
             # world.add_joints_by_keyword(obj_name)
             # world.open_all_doors()
@@ -856,7 +858,7 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    test_grasps(robot, ['Sink'], skip_grasps=True)  ## 'EyeGlasses'
+    test_grasps(robot, ['Microwave'], skip_grasps=True)  ## 'EyeGlasses'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()

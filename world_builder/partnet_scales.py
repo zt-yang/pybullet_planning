@@ -59,14 +59,15 @@ MODEL_SCALES = {
     },
     'Food': {
         'VeggieCabbage': 0.0047,
-        # 'MeatTurkeyLeg': 0.0007,
         'VeggieZucchini': 0.01,
         'VeggieSweetPotato': 0.015,
         'VeggiePotato': 0.013,
-        # 'VeggieCauliflower': 0.0056,
         'VeggieArtichoke': 0.014,
-        # 'VeggieGreenPepper': 0.0005,
         'VeggieTomato': 0.008,
+        ## able to render but not generate world with
+        'MeatTurkeyLeg': 0.0007,
+        'VeggieCauliflower': 0.0056,
+        'VeggieGreenPepper': 0.0005,
     },
     'Salter': {
         '3934': 0.05,
@@ -287,3 +288,9 @@ OBJ_SCALES = {
     # 'VeggieGreenPepper': 0.0003, 'VeggieArtichoke': 0.017, 'MeatChicken': 0.0008,
 }
 OBJ_SCALES = {k.lower(): v * 0.7 for k, v in OBJ_SCALES.items()}
+
+DONT_LOAD = [
+    'MeatTurkeyLeg', 'VeggieCauliflower', 'VeggieGreenPepper', ## unable to load in gym
+    '102379',  ## has an extra sink base
+    '7265', ## microwave door partially open
+]

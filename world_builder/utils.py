@@ -3,7 +3,7 @@ import time
 import numpy as np
 import untangle
 from numpy import inf
-from os.path import join, isdir, isfile, dirname, abspath
+from os.path import join, isdir, isfile, dirname, abspath, basename
 from os import listdir
 import json
 import random
@@ -19,6 +19,7 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sam
     get_link_name, get_link_pose, euler_from_quat, get_collision_data, get_joint_name, get_joint_position
 from pybullet_tools.bullet_utils import get_partnet_links_by_type
 from pybullet_tools.logging import dump_json
+from world_builder.partnet_scales import DONT_LOAD
 from world_builder.paths import ASSET_PATH
 
 
@@ -205,6 +206,7 @@ def get_file_by_category(category, RANDOM_INSTANCE=False, SAMPLING=False):
             paths = [join(asset_root, p) for p in ids]
             paths.sort()
             if RANDOM_INSTANCE:
+                paths = [p for p in paths if basename(p) not in DONT_LOAD]
                 if isinstance(RANDOM_INSTANCE, str):
                     paths = [join(asset_root, RANDOM_INSTANCE)]
                 else:
@@ -397,6 +399,7 @@ def world_of_models(floor_width=5, floor_length = 5):
 
     return floor
 
+
 def find_point_for_single_push(body):
     (x_min, y_min, z_min), (x_max, y_max, z_max) = get_aabb(body)
     x_c = (x_max + x_min) / 2
@@ -506,6 +509,8 @@ def HEX_to_RGB(color):
 
 
 def adjust_for_reachability(obj, counter, x_min=None, body_pose=None, return_pose=False):
+    if 'microwave' in counter.name:
+        print('sssssssss')
     if x_min is None:
         x_min = counter.aabb().upper[0] - 0.3
     if body_pose is None:
