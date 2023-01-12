@@ -685,8 +685,6 @@ class Attachment(object):
         elif self.child in LP2JP:  ## pull drawer handle
             if self.child in LP2JP and self.child_joint in LP2JP[self.child]:
                 ls = LP2JP[self.child][self.child_joint]
-                if isinstance(self.parent, int):
-                    print('sssssss')
                 for group in self.parent.joint_groups: ## ['base', 'left', 'hand']:
                     key = self.parent.get_positions(joint_group=group, roundto=3)
                     result = in_list(key, ls)
@@ -919,8 +917,6 @@ def close_joint(body, joint):
 
 def get_readable_list(lst, world=None, NAME_ONLY=False, TO_LISDF=False):
     to_print = []
-    # if lst[0] == 'arm':
-    #     print('ssssss')
     for word in lst:
         if world is not None:
             name = world.get_name(word)
