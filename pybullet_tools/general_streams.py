@@ -313,6 +313,7 @@ def is_cabinet_top(world, space):
 
 def get_contain_gen(problem, collisions=True, max_attempts=60, verbose=False, learned_sampling=False, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
+    from world_builder.entities import Object
     obstacles = problem.fixed if collisions else []
     world = problem.world
 
@@ -328,13 +329,11 @@ def get_contain_gen(problem, collisions=True, max_attempts=60, verbose=False, le
             attempts += 1
             space = random.choice(spaces)  # TODO: weight by area
 
+            if isinstance(space, Object):
+                space = Object.pybullet_name
             if isinstance(space, tuple):
-                result = None
-                with timeout(duration=1):
-                    result = sample_obj_in_body_link_space(body, body=space[0], link=space[-1],
-                                                           PLACEMENT_ONLY=True, verbose=verbose, **kwargs)
-                if result is None:
-                    break
+                result = sample_obj_in_body_link_space(body, body=space[0], link=space[-1],
+                                                       PLACEMENT_ONLY=True, verbose=verbose, **kwargs)
                 x, y, z, yaw = result
                 body_pose = ((x, y, z), quat_from_euler(Euler(yaw=yaw)))
             else:

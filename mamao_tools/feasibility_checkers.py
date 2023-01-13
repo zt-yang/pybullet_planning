@@ -7,9 +7,10 @@ import time
 import json
 import sys
 
-from pybullet_tools.utils import WorldSaver, get_aabb_center
+from pybullet_tools.utils import WorldSaver, get_aabb_center, remove_body
 from pybullet_tools.bullet_utils import check_joint_state, open_joint
 from pybullet_tools.general_streams import Position
+from world_builder.utils import get_potential_placements
 from world_builder.robot_builders import create_gripper_robot
 from mamao_tools.data_utils import get_plan_skeleton, get_indices, get_action_elems, \
     get_successful_plan
@@ -53,6 +54,12 @@ class FeasibilityChecker(object):
                 self._log['run_time'].append(round(time.time() - start, 4))
                 if hasattr(self, 'skeleton'):
                     printout.append((skeleton, 'pass' if prediction else f'x ({self.skeleton})'))
+            if isinstance(self, Heuristic):
+                remove_body(self._feg)
+                self._feg = None
+                for f in self._fluents_original:
+                    if f[0].lower() == 'atgrasp':
+                        f[2].assign()
         else:
             self._log['sequence'] = []
             start = time.time()
@@ -140,12 +147,14 @@ class Oracle(FeasibilityChecker):
 
 class Heuristic(FeasibilityChecker):
 
-    def __init__(self, state):
-        from world_builder.world import RelaxedState
+    def __init__(self, initializer):
+        state, goals, init = initializer
         super().__init__(state)
         self._state = state
+        self.potential_placements = get_potential_placements(goals, init)
         self._robot = state.robot
         self._fluents = state.get_fluents(only_fluents=True)
+        self._fluents_original = copy.deepcopy(self._fluents)
         self._cache = {}
         self.failures = {}
         self._feg = None
@@ -159,9 +168,13 @@ class Heuristic(FeasibilityChecker):
             'pull_door_handle': self._check_pull,
         }
         shorter = lambda a: str(tuple([a.name, a.args[1]]))
-        if self._verbose:
+
+        def print_plan(plan):
+            print('plan\t', [shorter(a) for a in plan if a.name in checkers])
+
+        if self._verbose or True:
             print('-------------- heuristic plan feasibility checking -------------')
-            print(len(plan), [shorter(a) for a in plan])
+            print_plan(plan)
         with WorldSaver(self._state.objects):
             plan_so_far = []
             for i in range(len(plan)):
@@ -171,27 +184,38 @@ class Heuristic(FeasibilityChecker):
                 if action.name in checkers:
                     plan_so_far.append(shorter(action))
                     key = tuple(plan_so_far)
+                    print('key\t', key)
                     if key in self._cache:
                         if not self._cache[key]:
                             self.failures[key] += 1
-                            if self._verbose:
-                                print('cached failed for action', i, action)
-                        return self._cache[key]
+                            if self._verbose or True:
+                                print('   cached failed for action', i, action)
+                                print('   ', self._cache)
+                                print('   self.failures[key]', self.failures[key])
+                            return False
+                        continue
                     if not checkers[action.name](action.args):
                         self._cache[key] = False
                         self.failures[key] = 0
-                        if self._verbose:
+                        if self._verbose or True:
                             print('checking failed for action', i, action)
+                            print('   ', self._cache)
                         return False
                     self._cache[key] = True
-        print('------------------------------------------------------------------')
+                    if self._verbose or True:
+                        print('checking passed for action', i, action)
+                        print('   ', self._cache)
+        if self._verbose or True:
+            print('----------------------------- passed -----------------------------')
+            print_plan(plan)
         return True
 
     def _check_pick(self, args):
         """ whether body is reachable by the robot """
         body = args[1].value
         fluents = [f for f in self._fluents if not (f[0] == 'AtPose' and f[1] == body)]
-        result = self._robot.check_reachability(body, self._state, fluents=fluents, verbose=True)
+        result = self._robot.check_reachability(body, self._state, fluents=fluents,
+                                                max_attempts=100, verbose=self._verbose)
         ## the resulting state is that the object is removed from the state
         if result:
             self._fluents = [f for f in self._fluents if not (f[0] != 'AtPose' and f[1] == body)]
@@ -199,22 +223,26 @@ class Heuristic(FeasibilityChecker):
 
     def _check_place(self, args):
         """ whether the surface is reachable by a flying gripper """
-        body_link = args[1].value
+        movable = args[1].value
+        if movable not in self.potential_placements:
+            return True
+        body_link = self.potential_placements[movable]
         if self._feg is None:
             x, y, _ = get_aabb_center(self._robot.aabb())
             z = self._robot.aabb().upper[2] + 0.1
             self._feg = create_gripper_robot(custom_limits=self._robot.custom_limits,
                                              initial_q=(x, y, z, 0, 0, 0))
-        result = self._feg.check_reachability_space(body_link, self._state, fluents=self._fluents, verbose=True)
+        result = self._feg.check_reachability_space(body_link, self._state, fluents=self._fluents,
+                                                    verbose=self._verbose)
         return result
         ## nothing happens to the state
 
     def _check_pull(self, args):
         ## door is assigned to a position that's fully open
         body_joint = b, j = args[1].value
-        new_pstn = open_joint(b, j, extent=1, return_pstn=True)
+        new_pstn = open_joint(b, j, extent=0.8, return_pstn=True)
         self._fluents = [f for f in self._fluents if not (f[0] == 'AtPosition' and f[1] == body_joint)]
-        self._fluents.append(('AtPosition', body_joint, new_pstn))
+        self._fluents.append(('AtPosition', body_joint, Position(body_joint, value=new_pstn)))
         return True
 
 

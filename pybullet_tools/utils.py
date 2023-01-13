@@ -3022,6 +3022,7 @@ def get_collision_data(body, link=BASE_LINK):
         return [CollisionShapeData(*tup) for tup in data]
     except:
         print(f'pybullet.get_collision_data({body}, {link}) | pybullet.error: Error receiving collision shape info')
+        sys.exit()
     return []
 
 def can_collide(body, link=BASE_LINK, **kwargs):
@@ -3997,7 +3998,7 @@ def check_initial_end(start_conf, end_conf, collision_fn, verbose=False):
     # TODO: collision_fn might not accept kwargs
     if collision_fn(start_conf, verbose=verbose):
         print(f'bullet.Warning: initial configuration {nice(start_conf)} is in collision')
-        # set_renderer(True)
+        set_renderer(True)
         # wait_unlocked()
         collision_fn(start_conf, verbose=True)
         return False

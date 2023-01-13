@@ -414,7 +414,7 @@ class PR2Robot(RobotAPI):
         q = get_joint_positions(self.body, base_joints)
         return Conf(self.body, base_joints, q)
 
-    def check_reachability(self, body, state, verbose=False, fluents=[]):
+    def check_reachability(self, body, state, verbose=False, max_attempts=10, fluents=[]):
         from pybullet_tools.pr2_primitives import Pose
         from pybullet_tools.pr2_streams import get_ik_gen, get_ik_fn
         from world_builder.entities import Object
@@ -450,7 +450,7 @@ class PR2Robot(RobotAPI):
             outputs = funk(obj)
 
             kwargs = dict(collisions=True, teleport=False)
-            funk2 = get_ik_gen(state, max_attempts=10, ir_only=True, learned=False,
+            funk2 = get_ik_gen(state, max_attempts=max_attempts, ir_only=True, learned=False,
                                custom_limits=state.robot.custom_limits,
                                verbose=verbose, visualize=False, **kwargs)
             funk3 = get_ik_fn(state, verbose=verbose, visualize=False, ACONF=False, **kwargs)
@@ -675,8 +675,9 @@ class FEGripper(RobotAPI):
         self.set_positions(sample_robot_conf(), self.get_base_joints())
 
     def get_initial_q(self):
-        init_q = get_joint_positions(self.body, self.get_base_joints())[:-1]
-        init_q = list(init_q) + [0] * 3
+        init_q = get_joint_positions(self.body, self.get_base_joints())
+        # init_q = get_joint_positions(self.body, self.get_base_joints())[:-1]
+        # init_q = list(init_q) + [0] * 3
         return init_q
 
     def check_reachability(self, body, state, fluents=[], obstacles=None, verbose=False):
@@ -714,26 +715,32 @@ class FEGripper(RobotAPI):
         return result
 
     def check_reachability_space(self, body_link, state, fluents=[], obstacles=None, verbose=False):
-        from pybullet_tools.flying_gripper_utils import set_cloned_se3_conf, plan_se3_motion
+        from pybullet_tools.flying_gripper_utils import set_cloned_se3_conf, plan_se3_motion, \
+            get_se3_joints
         from pybullet_tools.general_streams import get_contain_list_gen
 
+        if obstacles is None:
+            obstacles = state.obstacles
         for f in fluents:
             if f[0].lower() == 'atgrasp':
                 f[2].assign()
 
         robot = self.body
         init_q = self.get_initial_q()
+        q = Conf(robot, get_se3_joints(robot), init_q)
         marker = self.create_gripper(color=YELLOW)
         set_cloned_se3_conf(robot, marker, [0] * 6)
 
-        funk = get_contain_list_gen(state)
+        funk = get_contain_list_gen(state, verbose=False, visualize=False)
         gen = funk(marker, body_link)
         count = 4
+        result = False
         for output in gen:
             p = output[0].value
             (x, y, z), quat = p
             end_q = list([x, y, z + 0.1]) + list(euler_from_quat(quat))
-            path = plan_se3_motion(robot, init_q, end_q, obstacles=obstacles, custom_limits=self.custom_limits)
+            path = plan_se3_motion(robot, init_q, end_q, obstacles=obstacles,
+                                   custom_limits=self.custom_limits)
             if verbose: print('\n... check reachability from', nice(init_q), 'to space', nice(end_q))
             if path is not None:
                 if verbose: print('... path found of length', len(path))
@@ -747,4 +754,5 @@ class FEGripper(RobotAPI):
             count -= 1
 
         remove_body(marker)
+        q.assign()
         return result

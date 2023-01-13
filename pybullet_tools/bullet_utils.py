@@ -34,7 +34,7 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
     parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug, set_point, has_gui, get_rigid_clusters, \
     BASE_LINK as ROOT_LINK, link_pairs_collision, draw_collision_info, wait_unlocked, apply_alpha, set_color, \
-    dimensions_from_camera_matrix, get_field_of_view, tform_point, get_image, sample_placement_on_aabb
+    dimensions_from_camera_matrix, get_field_of_view, tform_point, get_image, sample_placement_on_aabb, timeout
 
 
 OBJ = '?obj'
@@ -357,9 +357,6 @@ def initialize_collision_logs():
 def log_collided(obj, obs, visualize=False):
     # from world_builder.robots import RobotAPI
 
-    # if 'sweetpotato' in obs or 'bottle#2' in obs:
-    #     print('why')
-
     collisions = {}
     if isfile(COLLISION_FILE):
         collisions = json.load(open(COLLISION_FILE, 'r'))
@@ -523,8 +520,9 @@ def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_t
 
 
 def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
-                                  XY_ONLY=False, draw=False, verbose=False):
-    #set_renderer(verbose)
+                                  draw=False, verbose=False, visualize=False):
+    if visualize:
+        set_renderer(True)
     draw &= has_gui()
     if verbose:
         print(f'sample_obj_in_body_link_space(obj={obj}, body={body}, link={link})')
@@ -536,11 +534,6 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
     x, y, z, yaw = sample_pose(obj, aabb, obj_aabb=get_aabb(obj))
     maybe = obj
     handles = draw_fitted_box(maybe)[-1] if draw else []
-
-    # def contained(maybe):
-    #     if not XY_ONLY:
-    #         return aabb_contains_aabb(get_aabb(maybe), aabb)
-    #     return aabb_contains_aabb(aabb2d_from_aabb(get_aabb(maybe)), aabb2d_from_aabb(aabb))
 
     def sample_one(maybe, handles):
         x, y, z, yaw = sample_pose(obj, aabb, get_aabb(maybe))
@@ -609,10 +602,11 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
     pose = (x, y, z, yaw)
     maybe, pose, handles = sample_maybe(body, maybe, pose, handles)
     result = adjust_z(body, maybe, pose, handles)
-    while result == None:
-        maybe, pose, handles = sample_one(maybe, handles)
-        maybe, pose, handles = sample_maybe(body, maybe, pose, handles)
-        result = adjust_z(body, maybe, pose, handles)
+    with timeout(duration=1):
+        while result is None:
+            maybe, pose, handles = sample_one(maybe, handles)
+            maybe, pose, handles = sample_maybe(body, maybe, pose, handles)
+            result = adjust_z(body, maybe, pose, handles)
     maybe, (x, y, z, yaw), handles = result
 
     remove_handles(handles)

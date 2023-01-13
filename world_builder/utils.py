@@ -587,6 +587,26 @@ def reduce_model_scale(txt_file, scale_down=10, new_scale_file='new_scale.txt'):
         f.writelines(new_lines)
 
 
+def get_potential_placements(goals, init):
+    def get_body(body):
+        from world_builder.entities import Object
+        if isinstance(body, Object):
+            return body.pybullet_name
+        return body
+
+    placements = {}
+    for goal in goals:
+        pred = goal[0].lower()
+        if pred in ['on', 'in']:
+            placements[get_body(goal[1])] = get_body(goal[2])
+        elif pred in ['storedinspace']:
+            for f in init:
+                if f[0].lower() == 'oftype' and f[2] == goal[1]:
+                    placements[get_body(f[1])] = get_body(goal[2])
+    print('\nworld_builder.utils.get_potential_placements: ', placements, '\n')
+    return placements
+
+
 if __name__ == "__main__":
     reduce_model_scale('/home/yang/Documents/jupyter-worlds/assets/models/Food/MeatTurkeyLeg/old_scale.txt',
                        scale_down=10)

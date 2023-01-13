@@ -1145,22 +1145,6 @@ class World(object):
 
 #######################################################
 
-
-class RelaxedState(object):
-    def __init__(self, state):
-        self.world = state.world
-        self.objects = state.objects
-        self.obstacles = state.obstacles
-        self.robot = state.robot
-
-    def remove_body(self, body):
-        if body in self.obstacles:
-            self.obstacles.remove(body)
-        self.world.remove_body(body)
-
-
-#######################################################
-
 class State(object):
     def __init__(self, world, objects=[], attachments={}, facts=[],
                  variables={}, grasp_types=['top']):
