@@ -17,7 +17,7 @@ else: ## not tested
 
 
 def get_feasibility_checker(run_dir, mode, diverse=False):
-    from .feasibility_checkers import PassAll, ShuffleAll, Oracle, PVT
+    from .feasibility_checkers import PassAll, ShuffleAll, Oracle, PVT, Heuristic
     if mode == 'binary':
         mode = 'pvt'
         diverse = False
@@ -28,6 +28,8 @@ def get_feasibility_checker(run_dir, mode, diverse=False):
     elif mode == 'oracle':
         plan = get_successful_plan(run_dir)
         return Oracle(run_dir, plan)
+    elif mode == 'heuristic':
+        return Heuristic(run_dir)
     elif 'pvt-task' in mode:
         task_name = abspath(run_dir).replace(DATASET_PATH, '').split('/')[1]
         return PVT(run_dir, mode=mode, task_name=task_name, scoring=diverse)
@@ -200,6 +202,11 @@ def exist_instance(run_dir, instance):
 
 def get_lisdf_xml(run_dir):
     return untangle.parse(join(run_dir, 'scene.lisdf')).sdf.world
+
+
+def get_action_elems(list_of_elem):
+    return [str(e) for e in list_of_elem if '#' not in str(e) and \
+                    '=' not in str(e) and str(e) not in ['left', 'right', 'hand', 'None']]
 
 
 def get_plan_skeleton(plan, indices={}, include_joint=True, include_movable=False):
@@ -401,14 +408,40 @@ def parse_pddl_str(args, vs, inv_vs, indices={}):
 
 
 def get_successful_plan(run_dir, indices={}):
-    if len(indices) == 0:
-        indices = get_indices(run_dir)
+    plans = []
+    ## default best plan is in 'plan.json'
     with open(join(run_dir, 'plan.json'), 'r') as f:
         data = json.load(f)[0]
         actions = data['plan']
+        if actions == 'FAILED':
+            return None
         vs, inv_vs = get_variables(data['init'])
         plan = get_plan_from_strings(actions, vs=vs, inv_vs=inv_vs, indices=indices)
-    return [plan]
+        plans.append(plan)
+    solutions = get_multiple_solutions(run_dir, indices=indices)
+    if len(solutions) > 1:
+        for solution in solutions:
+            if len(solution) < len(plans[0]):
+                plans = [solution] + plans
+    return plans
+
+
+def get_multiple_solutions(run_dir, indices={}):
+    all_plans = []
+    solutions_file = join(run_dir, 'multiple_solutions.json')
+    if isfile(solutions_file):
+        with open(solutions_file, 'r') as f:
+            data = json.load(f)
+            for d in data:
+                ## those failed attempts
+                if 'optimistic_plan' in d:
+                    plan = d['optimistic_plan'][1:-1].split('Action')
+                    plan = ['Action'+p[:-2] for p in plan[1:]]
+                    plan = get_plan_from_strings(plan, indices=indices)
+                elif 'rerun_dir' in d:
+                    plan = d['plan']
+                all_plans.append(plan)
+    return all_plans
 
 
 def save_multiple_solutions(plan_dataset, indices=None, run_dir=None,

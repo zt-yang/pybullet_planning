@@ -4,13 +4,16 @@ from os.path import join, isdir, abspath, isfile, abspath, dirname, basename
 import copy
 import numpy as np
 import time
-import torch
 import json
-
 import sys
-sys.path.append('/home/yang/Documents/fastamp')
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+from pybullet_tools.utils import WorldSaver, get_aabb_center
+from pybullet_tools.bullet_utils import check_joint_state, open_joint
+from pybullet_tools.general_streams import Position
+from world_builder.robot_builders import create_gripper_robot
+from mamao_tools.data_utils import get_plan_skeleton, get_indices, get_action_elems, \
+    get_successful_plan
+sys.path.append('/home/yang/Documents/fastamp')
 
 MODELS_PATH = '/home/yang/Documents/fastamp/test_models'
 
@@ -24,17 +27,21 @@ class FeasibilityChecker(object):
     def __call__(self, *args, **kwargs):
         return self.check(*args, **kwargs)
 
+    def _get_indices(self):
+        if isinstance(self.run_dir, str):
+            return get_indices(self.run_dir)
+        return self.run_dir.world.get_indices()
+
     def _check(self, input):
         raise NotImplementedError('should implement this for FeasibilityChecker')
 
     def check(self, inputs):
-        from fastamp_utils import get_plan_skeleton, get_indices
         if not isinstance(inputs[0], list):
             inputs = [inputs]
 
         predictions = []
         printout = []
-        indices = get_indices(self.run_dir)
+        indices = self._get_indices()
         if 'PVT' not in self.__class__.__name__:
             for input in inputs:
                 start = time.time()
@@ -44,7 +51,8 @@ class FeasibilityChecker(object):
                 skeleton = get_plan_skeleton(plan, indices)
                 self._log['checks'].append((skeleton, plan, prediction))
                 self._log['run_time'].append(round(time.time() - start, 4))
-                printout.append((skeleton, 'pass' if prediction else f'x ({self.skeleton})'))
+                if hasattr(self, 'skeleton'):
+                    printout.append((skeleton, 'pass' if prediction else f'x ({self.skeleton})'))
         else:
             self._log['sequence'] = []
             start = time.time()
@@ -71,8 +79,10 @@ class FeasibilityChecker(object):
         return predictions
 
     def dump_log(self, json_path, plans_only=False):
+        from world_builder.world import State
         with open(json_path, 'w') as f:
-            config = {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
+            config = {k: v for k, v in self.__dict__.items() if \
+                      not k.startswith('_') and not isinstance(v, State)}
             if 'args' in config:
                 config['args'] = config['args'].__dict__
             self._log['config'] = config
@@ -105,7 +115,7 @@ class Oracle(FeasibilityChecker):
     def __init__(self, run_dir, correct):
         super().__init__(run_dir)
         self.correct = [[a for a in act if a != 'None'] for act in correct]
-        from fastamp_utils import get_plan_skeleton, get_indices
+        from mamao_tools.data_utils import get_plan_skeleton, get_indices
         self.skeleton = get_plan_skeleton(correct, get_indices(run_dir))
         print(f'\nOracle feasibility checker - {self.skeleton})\n'+
               '\n'.join([str(c) for c in correct]))
@@ -125,6 +135,86 @@ class Oracle(FeasibilityChecker):
                         # print(i, self.correct[i], self.correct[i][j], '\n', action, str(action[j]), '\n')
                         return False
         # print('pass', input)
+        return True
+
+
+class Heuristic(FeasibilityChecker):
+
+    def __init__(self, state):
+        from world_builder.world import RelaxedState
+        super().__init__(state)
+        self._state = state
+        self._robot = state.robot
+        self._fluents = state.get_fluents(only_fluents=True)
+        self._cache = {}
+        self.failures = {}
+        self._feg = None
+        self._verbose = False
+
+    def _check(self, plan):
+        """ each checker returns either False or the next relaxed state """
+        checkers = {
+            'pick': self._check_pick,
+            'place': self._check_place,
+            'pull_door_handle': self._check_pull,
+        }
+        shorter = lambda a: str(tuple([a.name, a.args[1]]))
+        if self._verbose:
+            print('-------------- heuristic plan feasibility checking -------------')
+            print(len(plan), [shorter(a) for a in plan])
+        with WorldSaver(self._state.objects):
+            plan_so_far = []
+            for i in range(len(plan)):
+                action = plan[i]
+                if action.name in ['move_base']:
+                    continue
+                if action.name in checkers:
+                    plan_so_far.append(shorter(action))
+                    key = tuple(plan_so_far)
+                    if key in self._cache:
+                        if not self._cache[key]:
+                            self.failures[key] += 1
+                            if self._verbose:
+                                print('cached failed for action', i, action)
+                        return self._cache[key]
+                    if not checkers[action.name](action.args):
+                        self._cache[key] = False
+                        self.failures[key] = 0
+                        if self._verbose:
+                            print('checking failed for action', i, action)
+                        return False
+                    self._cache[key] = True
+        print('------------------------------------------------------------------')
+        return True
+
+    def _check_pick(self, args):
+        """ whether body is reachable by the robot """
+        body = args[1].value
+        fluents = [f for f in self._fluents if not (f[0] == 'AtPose' and f[1] == body)]
+        result = self._robot.check_reachability(body, self._state, fluents=fluents, verbose=True)
+        ## the resulting state is that the object is removed from the state
+        if result:
+            self._fluents = [f for f in self._fluents if not (f[0] != 'AtPose' and f[1] == body)]
+        return result
+
+    def _check_place(self, args):
+        """ whether the surface is reachable by a flying gripper """
+        body_link = args[1].value
+        if self._feg is None:
+            x, y, _ = get_aabb_center(self._robot.aabb())
+            z = self._robot.aabb().upper[2] + 0.1
+            self._feg = create_gripper_robot(custom_limits=self._robot.custom_limits,
+                                             initial_q=(x, y, z, 0, 0, 0))
+        result = self._feg.check_reachability_space(body_link, self._state, fluents=self._fluents, verbose=True)
+        return result
+        ## nothing happens to the state
+
+    def _check_pull(self, args):
+        ## door is assigned to a position that's fully open
+        body_joint = b, j = args[1].value
+        new_pstn = open_joint(b, j, extent=1, return_pstn=True)
+        self._fluents = [f for f in self._fluents if not (f[0] == 'AtPosition' and f[1] == body_joint)]
+        self._fluents.append(('AtPosition', body_joint, new_pstn))
         return True
 
 
@@ -148,8 +238,7 @@ class PVT(FeasibilityChecker):
         super().__init__(run_dir)
         from test_piginet import get_model, DAFAULT_PT_NAME, TASK_PT_NAMES, \
             PT_NEWER, get_args, TASK_PT_STAR
-        from fastamp_utils import get_facts_goals_visuals, get_successful_plan, \
-            get_action_elems, get_plans
+        from fastamp_utils import get_facts_goals_visuals, get_plans
 
         """ get data """
         self.run_dir = run_dir
@@ -181,8 +270,10 @@ class PVT(FeasibilityChecker):
     def _check(self, inputs):
         from text_utils import ACTION_NAMES
         from dataset.datasets import get_dataset, collate
-        from fastamp_utils import get_action_elems, get_plan_skeleton
         import torch.nn as nn
+        import torch
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
         args = self.args
         self.sequences = []
 

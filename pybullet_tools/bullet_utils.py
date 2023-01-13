@@ -357,6 +357,9 @@ def initialize_collision_logs():
 def log_collided(obj, obs, visualize=False):
     # from world_builder.robots import RobotAPI
 
+    # if 'sweetpotato' in obs or 'bottle#2' in obs:
+    #     print('why')
+
     collisions = {}
     if isfile(COLLISION_FILE):
         collisions = json.load(open(COLLISION_FILE, 'r'))
@@ -393,11 +396,15 @@ def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=Fals
     for b in obstacles:
         if pairwise_collision(obj, b) and (obj, b) not in ignored_pairs:
             if world is None:
+                import traceback
                 print('bullet_utils.collided | world is None')
+                print(traceback.format_exc())
             obj_print = world.get_name(obj) if world is not None else obj
             b_print = world.get_name(b) if world is not None else b
             if verbose:
-                print(prefix, f'obj {obj_print} collides with {b_print}')
+                # if b_print == 'floor1':
+                #     print(obstacles)
+                print(prefix, f'{obj_print} collides with {b_print}')
             result = True
             bodies.append(b)
             log_collided(obj_print, b_print)
@@ -479,7 +486,7 @@ def sample_pose(obj, aabb, obj_aabb=None, yaws=OBJ_YAWS):
     return x, y, z, yaw
 
 
-def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_trial=3):
+def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_trial=3, verbose=False):
     aabb = get_aabb(body, link)
     # x, y, z, yaw = sample_pose(obj, aabb)
     # maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), scale=scales[obj], maybe=True)
@@ -504,7 +511,7 @@ def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_t
             # print(f'sampling surface for {body}-{link}', nice(aabb2d_from_aabb(aabb)))
             trial += 1
             if trial > max_trial:
-                if max_trial > 1:
+                if max_trial > 1 and verbose:
                     print(f'sample_obj_on_body_link_surface\t sample {obj} on {body}-{link} | exceed max trial {max_trial}')
                 break
 
@@ -885,7 +892,7 @@ def toggle_joint(body, joint):
         open_joint(body, joint)
 
 
-def open_joint(body, joint, extent=0.95, pstn=None):
+def open_joint(body, joint, extent=0.95, pstn=None, return_pstn=False):
     if pstn is None:
         if isinstance(joint, str):
             joint = joint_from_name(body, joint)
@@ -898,6 +905,8 @@ def open_joint(body, joint, extent=0.95, pstn=None):
             pstn = min_limit * extent
         elif category == 'drawer':
             pstn = max_limit
+    if return_pstn:
+        return pstn
     set_joint_position(body, joint, pstn)
 
 

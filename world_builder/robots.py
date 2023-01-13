@@ -8,10 +8,10 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
     set_joint_positions, set_pose, GREEN, dump_body, get_pose, remove_body, PoseSaver, \
     ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles, \
     interpolate_poses, Pose, Euler, quat_from_euler, set_renderer, get_bodies, get_all_links, PI, \
-    WorldSaver, is_darwin, wait_for_user
+    WorldSaver, is_darwin, wait_for_user, YELLOW, euler_from_quat
 
 from pybullet_tools.bullet_utils import equal, nice, get_gripper_direction, set_camera_target_body, Attachment, \
-    BASE_LIMITS, get_rotation_matrix
+    BASE_LIMITS, get_rotation_matrix, collided
 from pybullet_tools.pr2_primitives import APPROACH_DISTANCE, Conf, Grasp, get_base_custom_limits
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, close_until_collision, TOP_HOLDING_LEFT_ARM, \
     SIDE_HOLDING_LEFT_ARM
@@ -414,18 +414,19 @@ class PR2Robot(RobotAPI):
         q = get_joint_positions(self.body, base_joints)
         return Conf(self.body, base_joints, q)
 
-    def check_reachability(self, obj, state, verbose=False, timeout=3):
+    def check_reachability(self, body, state, verbose=False, fluents=[]):
         from pybullet_tools.pr2_primitives import Pose
         from pybullet_tools.pr2_streams import get_ik_gen, get_ik_fn
+        from world_builder.entities import Object
 
         if is_darwin():
             return True
 
-        # if 'sweetpotato' in obj.name:
-        #     verbose = True
-
-        body = obj
-        title = f'checking feasibility for {obj} ({obj.body})'
+        title = f'checking feasibility for {body}'
+        obj = body
+        if isinstance(body, Object):
+            title += f'({body.body})'
+            body = body.body
 
         start = time.time()
         if verbose:
@@ -446,7 +447,7 @@ class PR2Robot(RobotAPI):
 
         with LockRenderer(True):
             funk = get_grasp_list_gen(state, verbose=verbose, visualize=False, top_grasp_tolerance=PI / 4)
-            outputs = funk(body)
+            outputs = funk(obj)
 
             kwargs = dict(collisions=True, teleport=False)
             funk2 = get_ik_gen(state, max_attempts=10, ir_only=True, learned=False,
@@ -459,10 +460,10 @@ class PR2Robot(RobotAPI):
                     result = next(gen)
                     if result is not None:
                         (bconf,) = result
-                        result = funk3(self.arms[0], body.body, p, grasp, bconf)
+                        result = funk3(self.arms[0], body, p, grasp, bconf, fluents=fluents)
                         if result is not None:
                             if verbose:
-                                print(f'robot.check_reachability({obj})', grasp, bconf)
+                                print(f'robot.check_reachability({body})', grasp, bconf)
                             restore(True)
                             return True
                 except Exception:
@@ -672,3 +673,78 @@ class FEGripper(RobotAPI):
             return [x, y, z, 0, -math.pi / 2, 0]
 
         self.set_positions(sample_robot_conf(), self.get_base_joints())
+
+    def get_initial_q(self):
+        init_q = get_joint_positions(self.body, self.get_base_joints())[:-1]
+        init_q = list(init_q) + [0] * 3
+        return init_q
+
+    def check_reachability(self, body, state, fluents=[], obstacles=None, verbose=False):
+        from pybullet_tools.flying_gripper_utils import get_cloned_se3_conf, plan_se3_motion
+
+        if obstacles is None:
+            obstacles = state.obstacles
+
+        robot = self.body
+        init_q = self.get_initial_q()
+        funk = get_grasp_list_gen(state, collisions=True, visualize=False,
+                                  RETAIN_ALL=False, top_grasp_tolerance=math.pi / 4)
+
+        result = False
+        body_pose = get_pose(body)
+        outputs = funk(body)
+        for output in outputs:
+            grasp = output[0]
+            w = grasp.grasp_width
+            gripper_grasp = self.visualize_grasp(body_pose, grasp.value, body=grasp.body, color=GREEN, width=w)
+            end_q = get_cloned_se3_conf(robot, gripper_grasp)
+            if not collided(gripper_grasp, obstacles, verbose=True, tag='check reachability of movable'):
+                if verbose: print('\n... check reachability from', nice(init_q), 'to', nice(end_q))
+                path = plan_se3_motion(robot, init_q, end_q, obstacles=obstacles,
+                                       custom_limits=self.custom_limits)
+                if path is not None:
+                    if verbose: print('... path found of length', len(path))
+                    result = True
+                    break
+                else:
+                    if verbose: print('... no path found', nice(end_q))
+            else:
+                if verbose: print('... collided', nice(end_q))
+            remove_body(gripper_grasp)
+        return result
+
+    def check_reachability_space(self, body_link, state, fluents=[], obstacles=None, verbose=False):
+        from pybullet_tools.flying_gripper_utils import set_cloned_se3_conf, plan_se3_motion
+        from pybullet_tools.general_streams import get_contain_list_gen
+
+        for f in fluents:
+            if f[0].lower() == 'atgrasp':
+                f[2].assign()
+
+        robot = self.body
+        init_q = self.get_initial_q()
+        marker = self.create_gripper(color=YELLOW)
+        set_cloned_se3_conf(robot, marker, [0] * 6)
+
+        funk = get_contain_list_gen(state)
+        gen = funk(marker, body_link)
+        count = 4
+        for output in gen:
+            p = output[0].value
+            (x, y, z), quat = p
+            end_q = list([x, y, z + 0.1]) + list(euler_from_quat(quat))
+            path = plan_se3_motion(robot, init_q, end_q, obstacles=obstacles, custom_limits=self.custom_limits)
+            if verbose: print('\n... check reachability from', nice(init_q), 'to space', nice(end_q))
+            if path is not None:
+                if verbose: print('... path found of length', len(path))
+                result = True
+                break
+            else:
+                if verbose: print('... no path found', nice(end_q))
+
+            if count == 0:
+                break
+            count -= 1
+
+        remove_body(marker)
+        return result

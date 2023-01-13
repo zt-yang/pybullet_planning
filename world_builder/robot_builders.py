@@ -102,9 +102,8 @@ def create_pr2_robot(world, base_q=(0, 0, 0), DUAL_ARM=False, USE_TORSO=True,
 from pybullet_tools.flying_gripper_utils import create_fe_gripper, get_se3_joints, set_se3_conf
 
 
-def create_gripper_robot(world, custom_limits=((0, 0, 0), (6, 12, 2)),
-                         initial_q=(0, 0, 0, 0, 0, 0),
-                         DRAW_BASE_LIMITS=False, robot=None):
+def create_gripper_robot(world=None, custom_limits=((0, 0, 0), (6, 12, 2)),
+                         initial_q=(0, 0, 0, 0, 0, 0), DRAW_BASE_LIMITS=False, robot=None):
     from pybullet_tools.flying_gripper_utils import BASE_RESOLUTIONS, BASE_VELOCITIES, \
         BASE_LINK, get_se3_custom_limits
 
@@ -123,7 +122,8 @@ def create_gripper_robot(world, custom_limits=((0, 0, 0), (6, 12, 2)),
 
     robot = FEGripper(robot, base_link=BASE_LINK, joints=get_se3_joints(robot),
                   custom_limits=custom_limits, resolutions=BASE_RESOLUTIONS, weights=weights)
-    world.add_robot(robot, max_velocities=BASE_VELOCITIES)
+    if world is not None:
+        world.add_robot(robot, max_velocities=BASE_VELOCITIES)
 
     return robot
 

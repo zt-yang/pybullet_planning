@@ -826,21 +826,10 @@ class World(object):
         body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
         return body_to_name
 
-    def get_facts(self, init_facts=[], conf_saver=None, obj_poses=None, verbose=True,
-                  use_rel_pose=True, objects=None):
-        def cat_to_bodies(cat):
-            ans = self.cat_to_bodies(cat)
-            if objects is not None:
-                ans = [obj for obj in ans if obj in set(objects)]
-            return ans
-        def cat_to_objects(cat):
-            ans = self.cat_to_objects(cat)
-            if objects is not None:
-                ans = [obj for obj in ans if obj.body in set(objects)]
-            return ans
-        robot = self.robot.body
-        name_to_body = self.name_to_body
-        BODY_TO_OBJECT = self.BODY_TO_OBJECT
+    def get_world_fluents(self, obj_poses=None, init_facts=[], objects=None, use_rel_pose=False,
+                          cat_to_bodies=None, cat_to_objects=None, verbose=False,
+                          only_fluents=False):
+        """ if only_fluents = Ture: return only AtPose, AtPosition """
 
         if 'feg' in self.robot.name or True:
             use_rel_pose = False
@@ -848,7 +837,7 @@ class World(object):
                 self.constants.remove('@world')
 
         def get_body_pose(body):
-            if obj_poses == None:
+            if obj_poses is None:
                 pose = Pose(body, get_pose(body))
             else:  ## in observation
                 pose = obj_poses[body]
@@ -872,12 +861,22 @@ class World(object):
                     return fact[2]
             return grasp
 
-        set_cost_scale(cost_scale=1)
-        init = [Equal(('PickCost',), 1), Equal(('PlaceCost',), 1),
-                ('CanMove',), ('CanPull',)]
+        if cat_to_bodies is None:
+            def cat_to_bodies(cat):
+                ans = self.cat_to_bodies(cat)
+                if objects is not None:
+                    ans = [obj for obj in ans if obj in set(objects)]
+                return ans
+        if cat_to_objects is None:
+            def cat_to_objects(cat):
+                ans = self.cat_to_objects(cat)
+                if objects is not None:
+                    ans = [obj for obj in ans if obj.body in set(objects)]
+                return ans
 
-        ## ---- robot conf ------------------
-        init += self.robot.get_init(init_facts=init_facts, conf_saver=conf_saver)
+        robot = self.robot
+        BODY_TO_OBJECT = self.BODY_TO_OBJECT
+        init = []
 
         ## ---- object poses / grasps ------------------
         graspables = [o.body for o in cat_to_objects('object') if o.category in GRASPABLES]
@@ -965,6 +964,40 @@ class World(object):
                 if controlled is not None:
                     init += [('ControlledBy', controlled, body)]
 
+        if only_fluents:
+            fluents_pred = ['AtPose', 'AtPosition']
+            init = [i for i in init if i[0] in fluents_pred]
+        return init
+
+    def get_facts(self, conf_saver=None, init_facts=[], obj_poses=None, objects=None,
+                  verbose=True, use_rel_pose=True):
+
+        def cat_to_bodies(cat):
+            ans = self.cat_to_bodies(cat)
+            if objects is not None:
+                ans = [obj for obj in ans if obj in set(objects)]
+            return ans
+
+        def cat_to_objects(cat):
+            ans = self.cat_to_objects(cat)
+            if objects is not None:
+                ans = [obj for obj in ans if obj.body in set(objects)]
+            return ans
+
+        BODY_TO_OBJECT = self.BODY_TO_OBJECT
+
+        set_cost_scale(cost_scale=1)
+        init = [Equal(('PickCost',), 1), Equal(('PlaceCost',), 1),
+                ('CanMove',), ('CanPull',)]
+
+        ## ---- robot conf ------------------
+        init += self.robot.get_init(init_facts=init_facts, conf_saver=conf_saver)
+
+        ## ---- poses, positions, grasps ------------------
+        init += self.get_world_fluents(obj_poses, init_facts, objects, use_rel_pose=use_rel_pose,
+                                       cat_to_bodies=cat_to_bodies, cat_to_objects=cat_to_objects,
+                                       verbose=verbose)
+
         ## ---- object types -------------
         for cat in self.OBJECTS_BY_CATEGORY:
             if cat.lower() == 'moveable': continue
@@ -1029,7 +1062,8 @@ class World(object):
         from world_builder.world_generator import to_lisdf
         to_lisdf(self, join(output_dir, 'scene.lisdf'), verbose=verbose, **kwargs)
 
-    def save_planning_config(self, output_dir, template_dir=None, domain=None, stream=None, problem=None):
+    def save_planning_config(self, output_dir, template_dir=None, domain=None, stream=None,
+                             pddlstream_kwargs=None):
         from world_builder.world_generator import get_config_from_template
         """ planning related files and params are referred to in template directory """
         config = self.get_planning_config()
@@ -1046,11 +1080,13 @@ class World(object):
                 'domain': domain,
                 'stream': stream,
             })
+        if pddlstream_kwargs is not None:
+            config['pddlstream_kwargs'] = {k: str(v) for k, v in pddlstream_kwargs.items()}
         with open(join(output_dir, 'planning_config.json'), 'w') as f:
             json.dump(config, f, indent=4)
 
     def save_test_case(self, goal, output_dir, template_dir=None, init=None,
-                       domain=None, stream=None, problem=None,
+                       domain=None, stream=None, problem=None, pddlstream_kwargs=None,
                        save_rgb=False, save_depth=False, **kwargs):
         if not isdir(output_dir):
             os.makedirs(output_dir, exist_ok=True)
@@ -1061,7 +1097,8 @@ class World(object):
         self.save_lisdf(output_dir, world_name=world_name, **kwargs)
         self.save_problem_pddl(goal, output_dir, world_name=world_name, init=init)
         self.save_planning_config(output_dir, template_dir=template_dir,
-                                  domain=domain, stream=stream, problem=problem)
+                                  domain=domain, stream=stream,
+                                  pddlstream_kwargs=pddlstream_kwargs)
 
         ## move other log files:
         for suffix in ['log.txt', 'commands.pkl', 'time.json']:
@@ -1104,6 +1141,22 @@ class World(object):
 
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, self.robot)
+
+
+#######################################################
+
+
+class RelaxedState(object):
+    def __init__(self, state):
+        self.world = state.world
+        self.objects = state.objects
+        self.obstacles = state.obstacles
+        self.robot = state.robot
+
+    def remove_body(self, body):
+        if body in self.obstacles:
+            self.obstacles.remove(body)
+        self.world.remove_body(body)
 
 
 #######################################################
@@ -1264,6 +1317,9 @@ class State(object):
     def get_planning_config(self):
         return self.world.get_planning_config()
 
+    def get_fluents(self, **kwargs):
+        return self.world.get_world_fluents(**kwargs)
+
     def __repr__(self):
         return '{}{}'.format(self.__class__.__name__, self.objects)
 
@@ -1274,10 +1330,13 @@ class Outcome(object):
     def __init__(self, collisions=[], violations=[]):
         self.collisions = list(collisions)
         self.violations = list(violations)
+
     def __len__(self):
         return max(map(len, [self.collisions, self.violations]))
+
     def __repr__(self):
         return '{}{}'.format(self.__class__.__name__, str_from_object(self.__dict__))
+
 
 def analyze_outcome(state):
     # TODO: possibly move to State and rename inconsistencies

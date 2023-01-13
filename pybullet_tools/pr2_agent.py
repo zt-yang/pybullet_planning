@@ -735,7 +735,7 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
 
     with LockRenderer(lock=lock):
         solution = solve_one(pddlstream_problem, stream_info,
-                             fc=None, domain_modifier=domain_modifier,
+                             domain_modifier=domain_modifier,
                              collect_dataset=collect_dataset,
                              visualize=visualization, **kwargs)
 

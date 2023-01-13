@@ -328,13 +328,6 @@ def get_contain_gen(problem, collisions=True, max_attempts=60, verbose=False, le
             attempts += 1
             space = random.choice(spaces)  # TODO: weight by area
 
-            ## special sampler for data collection
-            if is_cabinet_top(world, space) or learned_sampling:
-                from world_builder.loaders import place_in_cabinet
-                if verbose:
-                    print('use special pose sampler')
-                body_pose = place_in_cabinet(space, body, place=False)
-
             if isinstance(space, tuple):
                 result = None
                 with timeout(duration=1):
@@ -349,6 +342,13 @@ def get_contain_gen(problem, collisions=True, max_attempts=60, verbose=False, le
                 body_pose = None
             if body_pose is None:
                 break
+
+            ## special sampler for data collection
+            if is_cabinet_top(world, space) or learned_sampling:
+                from world_builder.loaders import place_in_cabinet
+                if verbose:
+                    print('use special pose sampler')
+                body_pose = place_in_cabinet(space, body, place=False)
 
             ## there will be collision between body and that link because of how pose is sampled
             p_mod = p = Pose(body, get_mod_pose(body_pose), space)
@@ -428,12 +428,13 @@ def sample_joint_position_open_list_gen(problem, num_samples = 10):
                 higher = sometime
 
         positions = []
-        if psn2 is None or abs(psn1.value - psn2.value) > math.pi/2:
+        if psn2 is None or abs(psn1.value - psn2.value) >= math.pi/2 - math.pi/8:
             # positions.append((Position(o, lower+math.pi/2), ))
-            lower += math.pi/2 ## - math.pi/8
-            higher = min(lower + math.pi/6, get_joint_limits(o[0], o[1])[1])
-            ptns = [np.random.uniform(lower, higher) for k in range(num_samples)]
+            open_lower = lower + math.pi/2 ## - math.pi/8
+            higher = min(open_lower + math.pi/6, get_joint_limits(o[0], o[1])[1])
+            ptns = [np.random.uniform(open_lower, higher) for k in range(num_samples)]
             ptns.append(1.57)
+            ptns += [np.random.uniform(lower, open_lower) for k in range(num_samples)]
             positions.extend([(Position(o, p), ) for p in ptns])
         else:
             positions.append((psn2,))
@@ -753,7 +754,7 @@ def process_motion_fluents(fluents, robot, verbose=False):
         print('Fluents:', fluents)
     attachments = []
     for atom in fluents:
-        predicate, args = atom[0], atom[1:]
+        predicate, args = atom[0].lower(), atom[1:]
         if predicate == 'atpose':
             o, p = args
             if o not in ['@world']:

@@ -1432,7 +1432,8 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
             for conf in ik_solver.generate(gripper_pose): # TODO: islice
                 joint_state = dict(zip(ik_solver.joints, conf))
                 if max_attempts <= attempts:
-                    if verbose: print(f'{get_ik_gen.__name__} failed after {attempts} attempts!')
+                    if verbose:
+                        print(f'{get_ik_gen.__name__} failed after {attempts} attempts!')
                     # wait_unlocked()
                     if soft_failures:
                         attempts = 0
