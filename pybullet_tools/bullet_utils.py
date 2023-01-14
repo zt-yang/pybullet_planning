@@ -886,7 +886,8 @@ def toggle_joint(body, joint):
         open_joint(body, joint)
 
 
-def open_joint(body, joint, extent=0.95, pstn=None, return_pstn=False):
+def open_joint(body, joint, extent=0.95, pstn=None,
+               return_pstn=False, hide_door=False):
     if pstn is None:
         if isinstance(joint, str):
             joint = joint_from_name(body, joint)
@@ -895,8 +896,12 @@ def open_joint(body, joint, extent=0.95, pstn=None, return_pstn=False):
         category, state = check_joint_state(body, joint)
         if category == 'door-max':
             pstn = max_limit * extent
+            if hide_door:
+                pstn = 3/2 * PI
         elif category == 'door-min':
             pstn = min_limit * extent
+            if hide_door:
+                pstn = -3/2 * PI
         elif category == 'drawer':
             pstn = max_limit
     if return_pstn:

@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 from pybullet_tools.general_streams import get_cfree_approach_pose_test, get_grasp_list_gen, \
-    get_stable_list_gen, sample_joint_position_open_list_gen, get_cfree_pose_pose_test, \
+    get_stable_list_gen, sample_joint_position_gen, get_cfree_pose_pose_test, \
     get_cfree_traj_pose_test, get_handle_grasp_gen, \
     Position, get_contain_list_gen, get_pose_from_attachment, get_stable_gen, get_contain_gen
 
@@ -29,7 +29,7 @@ def get_stream_map(p, c, l, t, **kwargs):
 
         'plan-free-motion-hand': from_fn(get_free_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
 
-        'get-joint-position-open': from_gen_fn(sample_joint_position_open_list_gen(p)),
+        'get-joint-position-open': from_gen_fn(sample_joint_position_gen(num_samples=6)),
         'sample-handle-grasp': from_gen_fn(get_handle_grasp_gen(p, collisions=c, verbose=False)),
 
         'inverse-kinematics-grasp-handle': from_fn(get_ik_fn(p, collisions=c, teleport=t,

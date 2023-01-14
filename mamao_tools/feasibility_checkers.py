@@ -44,9 +44,10 @@ class FeasibilityChecker(object):
         printout = []
         indices = self._get_indices()
         if 'PVT' not in self.__class__.__name__:
+            skip = False
             for input in inputs:
                 start = time.time()
-                prediction = self._check(input)
+                prediction = self._check(input) if not skip else True
                 predictions.append(prediction)
                 plan = get_plan_from_input(input)
                 skeleton = get_plan_skeleton(plan, indices)
@@ -54,6 +55,8 @@ class FeasibilityChecker(object):
                 self._log['run_time'].append(round(time.time() - start, 4))
                 if hasattr(self, 'skeleton'):
                     printout.append((skeleton, 'pass' if prediction else f'x ({self.skeleton})'))
+                if isinstance(self, Heuristic) and prediction:
+                    skip = True
             if isinstance(self, Heuristic):
                 remove_body(self._feg)
                 self._feg = None
@@ -157,23 +160,34 @@ class Heuristic(FeasibilityChecker):
         self._fluents_original = copy.deepcopy(self._fluents)
         self._cache = {}
         self.failures = {}
+        self.reachability_space = {}
+        # self.conditions = {} ## shorter: shorter_plan
         self._feg = None
         self._verbose = False
 
     def _check(self, plan):
         """ each checker returns either False or the next relaxed state """
+        from pybullet_tools.logging import myprint as print
+        verbose = self._verbose or True
         checkers = {
             'pick': self._check_pick,
             'place': self._check_place,
             'pull_door_handle': self._check_pull,
         }
-        shorter = lambda a: str(tuple([a.name, a.args[1]]))
+        shorter = lambda a: '-'.join([a.name, str(a.args[1])])
+        shorter_plan = lambda actions: f"({', '.join([shorter(a) for a in actions if a.name in checkers])})"
 
         def print_plan(plan):
-            print('plan\t', [shorter(a) for a in plan if a.name in checkers])
+            print('plan\t', shorter_plan(plan))
 
-        if self._verbose or True:
-            print('-------------- heuristic plan feasibility checking -------------')
+        def print_result(plan, result):
+            text = 'passed' if result else 'failed'
+            print(f'----------------------------- {text} -----------------------------')
+            print_plan(plan)
+            print('------------------------------------------------------------------\n')
+
+        if verbose:
+            print('\n-------------- heuristic plan feasibility checking -------------')
             print_plan(plan)
         with WorldSaver(self._state.objects):
             plan_so_far = []
@@ -184,30 +198,34 @@ class Heuristic(FeasibilityChecker):
                 if action.name in checkers:
                     plan_so_far.append(shorter(action))
                     key = tuple(plan_so_far)
-                    print('key\t', key)
+                    print('\tkey\t', key)
                     if key in self._cache:
                         if not self._cache[key]:
-                            self.failures[key] += 1
-                            if self._verbose or True:
-                                print('   cached failed for action', i, action)
-                                print('   ', self._cache)
-                                print('   self.failures[key]', self.failures[key])
+                            self.failures[str(key)] += 1
+                            if verbose:
+                                print('\t\tfailed according to cache')
+                                print('\t\tcache', self._cache)
+                                print_result(plan, False)
                             return False
                         continue
                     if not checkers[action.name](action.args):
                         self._cache[key] = False
-                        self.failures[key] = 0
-                        if self._verbose or True:
-                            print('checking failed for action', i, action)
-                            print('   ', self._cache)
+                        self.failures[str(key)] = 0
+                        if len(plan_so_far) > 1:
+                            key_left = tuple(plan_so_far[:-1])
+                            key_right = tuple(plan_so_far[-1:])
+                            if key_left in self._cache and self._cache[key_left]:
+                                self._cache[key_right] = False
+                                self.failures[str(key_right)] = 0
+                        if verbose:
+                            print('\t\tfailed')
+                            print_result(plan, False)
                         return False
                     self._cache[key] = True
-                    if self._verbose or True:
-                        print('checking passed for action', i, action)
-                        print('   ', self._cache)
-        if self._verbose or True:
-            print('----------------------------- passed -----------------------------')
-            print_plan(plan)
+                    if verbose:
+                        print('\t\tpassed')
+        if verbose:
+            print_result(plan, True)
         return True
 
     def _check_pick(self, args):
@@ -227,6 +245,8 @@ class Heuristic(FeasibilityChecker):
         if movable not in self.potential_placements:
             return True
         body_link = self.potential_placements[movable]
+        if body_link in self.reachability_space:
+            return self.reachability_space[body_link]
         if self._feg is None:
             x, y, _ = get_aabb_center(self._robot.aabb())
             z = self._robot.aabb().upper[2] + 0.1
@@ -234,15 +254,17 @@ class Heuristic(FeasibilityChecker):
                                              initial_q=(x, y, z, 0, 0, 0))
         result = self._feg.check_reachability_space(body_link, self._state, fluents=self._fluents,
                                                     verbose=self._verbose)
+        self.reachability_space[body_link] = result
         return result
         ## nothing happens to the state
 
     def _check_pull(self, args):
         ## door is assigned to a position that's fully open
         body_joint = b, j = args[1].value
-        new_pstn = open_joint(b, j, extent=0.8, return_pstn=True)
+        new_pstn = open_joint(b, j, hide_door=True, return_pstn=True)
+        new_pstn = Position(body_joint, value=new_pstn)
         self._fluents = [f for f in self._fluents if not (f[0] == 'AtPosition' and f[1] == body_joint)]
-        self._fluents.append(('AtPosition', body_joint, Position(body_joint, value=new_pstn)))
+        self._fluents.append(('AtPosition', body_joint, new_pstn))
         return True
 
 
