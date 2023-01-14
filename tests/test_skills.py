@@ -292,7 +292,7 @@ def draw_text_label(body, text, offset=(0, -0.05, .5)):
     add_text(text, position=position, color=(1, 0, 0), lifetime=0)
 
 
-def test_handle_grasps(robot, category):
+def test_handle_grasps(robot, category, skip_grasps=False):
     from pybullet_tools.pr2_streams import get_handle_pose
 
     world = get_test_world(robot, DRAW_BASE_LIMITS=False)
@@ -332,13 +332,17 @@ def test_handle_grasps(robot, category):
         world.add_joints(body, body_joints)
 
         for body_joint in body_joints:
-            outputs = funk(body_joint)
-            body_pose = get_handle_pose(body_joint)
+            if skip_grasps:
+                open_joint(body, body_joint[1])
 
-            set_renderer(True)
-            set_camera_target_body(body, dx=2, dy=1, dz=1)
-            visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=True)
-            set_camera_target_body(body, dx=2, dy=1, dz=1)
+            else:
+                outputs = funk(body_joint)
+                body_pose = get_handle_pose(body_joint)
+
+                set_renderer(True)
+                set_camera_target_body(body, dx=2, dy=1, dz=1)
+                visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=True)
+                set_camera_target_body(body, dx=2, dy=1, dz=1)
 
         wait_if_gui('Next?')
 
@@ -858,11 +862,11 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    test_grasps(robot, ['Microwave'], skip_grasps=True)  ## 'EyeGlasses'
+    # test_grasps(robot, ['MiniFridge'], skip_grasps=True)  ## 'EyeGlasses'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
-    # test_handle_grasps(robot, category='CabinetUpper')
+    test_handle_grasps(robot, category='MiniFridge', skip_grasps=True)
     ## Kitchen: 'MiniFridge', 'MiniFridgeDoorless', 'CabinetTop'
 
     """ --- placement related  --- 
