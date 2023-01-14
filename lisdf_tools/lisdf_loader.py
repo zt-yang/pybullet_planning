@@ -582,7 +582,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
                 fridge = bullet_world.name_to_body['minifridge']
                 set_camera_target_body(fridge, dx=2, dy=0, dz=2)
 
-    wait_unlocked()
+    # wait_unlocked()
     return bullet_world
 
 

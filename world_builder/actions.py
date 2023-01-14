@@ -270,7 +270,7 @@ class AttachObjectAction(Action):
     def transition(self, state):
         link = state.robot.get_attachment_link(self.arm)
         new_attachments = add_attachment(state=state, obj=self.object, parent=state.robot,
-                                         parent_link=link, attach_distance=None, verbose=self.verbose)  ## can attach without contact
+                                         parent_link=link, attach_distance=None, verbose=False)  ## can attach without contact
         for k in new_attachments:
             if k in state.world.ATTACHMENTS:
                 state.world.ATTACHMENTS.pop(k)
