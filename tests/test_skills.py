@@ -24,8 +24,8 @@ from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, set_c
     open_joint, get_grasp_db_file, draw_points
 from pybullet_tools.pr2_agent import get_stream_info, post_process, move_cost_fn, \
     visualize_grasps_by_quat, visualize_grasps
-from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, \
-    get_stable_gen, get_stable_list_gen, get_handle_grasp_gen
+from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, Position, \
+    get_stable_gen, get_stable_list_gen, get_handle_grasp_gen, sample_joint_position_gen
 from pybullet_tools.flying_gripper_utils import se3_from_pose, \
     pose_from_se3, se3_ik, set_cloned_se3_conf, create_fe_gripper, set_se3_conf
 
@@ -298,6 +298,7 @@ def test_handle_grasps(robot, category, skip_grasps=False):
     world = get_test_world(robot, DRAW_BASE_LIMITS=False)
     problem = State(world)
     funk = get_handle_grasp_gen(problem, visualize=False)
+    funk2 = sample_joint_position_gen()
 
     ## load fridge
     instances = get_instances(category)
@@ -333,7 +334,13 @@ def test_handle_grasps(robot, category, skip_grasps=False):
 
         for body_joint in body_joints:
             if skip_grasps:
-                open_joint(body, body_joint[1])
+                ## when doing relaxed heuristic feasibility checking
+                # open_joint(body, body_joint[1], hide_door=True)
+
+                pstn1 = Position(body_joint)
+                for (pstn, ) in funk2(body_joint, pstn1):
+                    pstn.assign()
+                    wait_if_gui('Next?')
 
             else:
                 outputs = funk(body_joint)

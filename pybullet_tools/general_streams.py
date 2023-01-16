@@ -406,19 +406,31 @@ def get_joint_position_open_gen(problem):
     return fn
 
 
-def sample_joint_position_open_list_gen(problem, num_samples = 10):
-    def fn(o, psn1, fluents=[]):
-        psn2 = None
+def sample_joint_position_list_gen(num_samples=6):
+    funk = sample_joint_position_gen(num_samples=6)
+
+    def gen(o, psn1):
+        pstn_gen = funk(o, psn1)
+        positions = []
+        while len(positions) < num_samples:
+            try:
+                position = next(pstn_gen)
+                positions.append(position)
+            except StopIteration:
+                break
+        return positions
+    return gen
+
+
+def sample_joint_position_gen(num_samples=6):
+    def fn(o, psn1):
         if psn1.extent == 'max':
-            psn2 = Position(o, 'min')
             higher = psn1.value
-            lower = psn2.value
+            lower = Position(o, 'min').value
         elif psn1.extent == 'min':
-            psn2 = Position(o, 'max')
-            higher = psn2.value
+            higher = Position(o, 'max').value
             lower = psn1.value
         else:
-            # return [(psn1, )]
             higher = Position(o, 'max').value
             lower = Position(o, 'min').value
             if lower > higher:
@@ -426,41 +438,24 @@ def sample_joint_position_open_list_gen(problem, num_samples = 10):
                 lower = higher
                 higher = sometime
 
-        positions = []
-        if psn2 is None or abs(psn1.value - psn2.value) >= math.pi/2 - math.pi/8:
-            # positions.append((Position(o, lower+math.pi/2), ))
-            open_lower = lower + math.pi/2 ## - math.pi/8
-            higher = min(open_lower + math.pi/6, get_joint_limits(o[0], o[1])[1])
-            ptns = [np.random.uniform(open_lower, higher) for k in range(num_samples)]
-            ptns.append(1.57)
-            ptns += [np.random.uniform(lower, open_lower) for k in range(num_samples)]
-            positions.extend([(Position(o, p), ) for p in ptns])
-        else:
-            positions.append((psn2,))
+        ptns = []
+        if higher > 0:
+            if higher - lower > 3/4*math.pi:
+                higher = lower + 3/4*math.pi
+            ptns.append(lower + math.pi/2)
+            ptns.extend([np.random.uniform(lower + math.pi/3, higher) for k in range(num_samples)])
+        if lower < 0:
+            if higher - lower > 3/4*math.pi:
+                lower = higher - 3/4*math.pi
+            ptns.append(higher - math.pi/2)
+            ptns.extend([np.random.uniform(lower, higher - math.pi/3) for k in range(num_samples)])
+        ptns = [round(ptn, 3) for ptn in ptns]
+        positions = [(Position(o, p), ) for p in ptns]
 
         for pstn in positions:
             yield pstn
         # return positions
     return fn
-
-
-# ## discarded
-# def get_position_gen(problem, collisions=True, extent=None):
-#     obstacles = problem.fixed if collisions else []
-#     def fn(o, fluents=[]):  ## ps1,
-#         ps2 = Position(o, extent)
-#         return (ps2,)
-#     return fn
-#
-#
-# ## discarded
-# def get_joint_position_test(extent='max'):
-#     def test(o, pst):
-#         pst_max = Position(o, extent)
-#         if pst_max.value == pst.value:
-#             return True
-#         return False
-#     return test
 
 
 """ ==============================================================

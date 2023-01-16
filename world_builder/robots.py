@@ -731,7 +731,7 @@ class FEGripper(RobotAPI):
         marker = self.create_gripper(color=YELLOW)
         set_cloned_se3_conf(robot, marker, [0] * 6)
 
-        funk = get_contain_list_gen(state, verbose=False, visualize=False)
+        funk = get_contain_list_gen(state, verbose=False, visualize=True)
         gen = funk(marker, body_link)
         count = 4
         result = False

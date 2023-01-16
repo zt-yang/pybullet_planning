@@ -673,7 +673,12 @@ class World(object):
         close_joint(body, joint)
         self.assign_attachment(body)
 
-    def open_joint(self, body, joint, extent=1, pstn=None):
+    def open_joint(self, body, joint, extent=1, pstn=None, random_gen=False):
+        if random_gen:
+            from pybullet_tools.general_streams import sample_joint_position_list_gen
+            funk = sample_joint_position_list_gen()
+            pstns = funk((body, joint), Position((body, joint)))
+            pstn = random.choice(pstns)[0].value
         open_joint(body, joint, extent=extent, pstn=pstn)
         self.assign_attachment(body)
 

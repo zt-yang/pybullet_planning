@@ -16,7 +16,7 @@ from pybullet_tools.pr2_streams import get_stable_gen, Position, get_pose_in_spa
     get_marker_pose_gen, get_pull_marker_to_pose_motion_gen, get_pull_marker_to_bconf_motion_gen,  \
     get_pull_marker_random_motion_gen, get_ik_ungrasp_handle_gen, get_pose_in_region_test, \
     get_cfree_btraj_pose_test, get_joint_position_open_gen, get_ik_ungrasp_mark_gen, \
-    sample_joint_position_open_list_gen, get_ik_gen, get_ik_fn
+    sample_joint_position_gen, get_ik_gen, get_ik_fn
     # , get_cfree_pose_pose_rel_test, get_cfree_approach_pose_rel_test
 
 from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
@@ -104,7 +104,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         # 'test-cfree-traj-position': from_test(universe_test),
         'test-cfree-btraj-pose': from_test(get_cfree_btraj_pose_test(p.robot, collisions=c)),
 
-        'get-joint-position-open': from_gen_fn(sample_joint_position_open_list_gen(p)),
+        'get-joint-position-open': from_gen_fn(sample_joint_position_gen(num_samples=6)),
 
         'sample-handle-grasp': from_gen_fn(get_handle_grasp_gen(p, max_samples=None, collisions=c)),
 
@@ -1049,9 +1049,8 @@ def test_pose_gen(problem, init, args):
 
 
 def test_door_pull_traj(problem, init, o):
-    from pybullet_tools.flying_gripper_utils import get_pull_door_handle_motion_gen
     pst1 = [f[2] for f in init if f[0].lower() == 'atposition' and f[1] == o][0]
-    funk1 = sample_joint_position_open_list_gen(problem)
+    funk1 = sample_joint_position_gen()
     pst2 = funk1(o, pst1)[0][0]
 
     funk2 = get_handle_grasp_gen(problem, visualize=True)
