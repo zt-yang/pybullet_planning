@@ -4,10 +4,9 @@ import copy
 
 from pybullet_tools.bullet_utils import clip_delta, multiply2d, is_above, nice, open_joint, set_camera_target_robot, \
     toggle_joint, add_attachment, remove_attachment, draw_pose2d_path, \
-    draw_pose3d_path
+    draw_pose3d_path, get_obj_keys_for_segmentation, get_segmask
 from pybullet_tools.pr2_streams import Position, get_pull_door_handle_motion_gen, \
     LINK_POSE_TO_JOINT_POSITION
-
 from pybullet_tools.utils import str_from_object, get_closest_points, INF, create_attachment, wait_if_gui, \
     get_aabb, get_joint_position, get_joint_name, get_link_pose, link_from_name, PI, Pose, Euler, \
     get_extend_fn, get_joint_positions, set_joint_positions, get_max_limit, get_pose, set_pose, set_color, \
@@ -16,6 +15,7 @@ from pybullet_tools.utils import str_from_object, get_closest_points, INF, creat
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, get_gripper_joints
 from pybullet_tools.pr2_primitives import Trajectory, Command, Conf, Trajectory, Commands
 from pybullet_tools.flying_gripper_utils import set_se3_conf
+from lisdf_tools.image_utils import RAINBOW_COLORS, save_seg_mask
 
 from .world import State
 
@@ -460,19 +460,67 @@ def adapt_action(a, problem, plan, verbose=True):
     return a
 
 
-def apply_actions(problem, actions, time_step=0.5, verbose=False, plan=None, body_map=None):
+def apply_actions(problem, actions, time_step=0.5, verbose=False, plan=None,
+                  body_map=None, SAVE_COMPOSED_JPG=False, SAVE_GIF=False):
     """ act out the whole plan and event in the world without observation/replanning """
     if actions is None:
         return
-    state_event = State(problem.world)
+    world = problem.world
+    state_event = State(world)
+    episodes = []
+    seg_images = []
+    recording = False
+    last_name = None
+    last_object = None
+    if SAVE_COMPOSED_JPG or SAVE_GIF:
+        colors = RAINBOW_COLORS
+        color_index = 0
+        indices = world.get_indices()
+        if body_map is not None:
+            indices = {str(body_map[eval(body)]): name for body, name in indices.items()}
+        if SAVE_COMPOSED_JPG:
+            imgs = world.camera.get_image(segment=True, segment_links=True)
+            seg = imgs.segmentationMaskBuffer
+            unique = get_segmask(seg)
+            obj_keys = get_obj_keys_for_segmentation(indices, unique)
+        elif SAVE_GIF:
+            obj_keys = get_obj_keys_for_segmentation(indices)
+
     for i, action in enumerate(actions):
-        if verbose:
-            print(i, action)
-        if 'tachObjectAction' in str(action) and body_map is not None:
+        name = action.__class__.__name__
+
+        record_img = False
+        if 'tachObjectAction' in name and body_map is not None:
             if action.object in body_map:
                 action.object = body_map[action.object]
+            last_object = action.object
             action.verbose = verbose
-        action = adapt_action(action, problem, plan, verbose=verbose)
+            if SAVE_COMPOSED_JPG or SAVE_GIF:
+                record_img = True
+                if 'Attach' in name:
+                    color = colors[color_index]
+                    color_index += 1
+
+                    body_name = world.body_to_name[action.object]
+                    for b, l in obj_keys[body_name]:
+                        set_color(b, color, link=l)
+                    recording = body_name
+
+                elif 'Detach' in name:
+                    recording = False
+                    if SAVE_COMPOSED_JPG:
+                        episodes.append((seg_images, isinstance(last_object, int)))
+                        seg_images = []
+        elif 'MoveArm' in name:
+            record_img = i % 5 == 0
+        elif 'MoveBase' in name:
+            record_img = i % 2 == 0
+
+        if verbose and name != last_name:
+            print(i, action)
+            last_name = name
+            record_img = True
+        action = adapt_action(action, problem, plan, verbose=False)
         if action is None:
             continue
         if isinstance(action, Command):
@@ -484,11 +532,29 @@ def apply_actions(problem, actions, time_step=0.5, verbose=False, plan=None, bod
         elif isinstance(action, list):
             for a in action:
                 state_event = a.transition(state_event.copy())
-        
-        if time_step is None:
+
+        if recording:
+            if not record_img:
+                continue
+            if SAVE_COMPOSED_JPG:
+                imgs = world.camera.get_image(segment=True, segment_links=True)
+                body_name = recording
+                seg_images.append(save_seg_mask(imgs, obj_keys[body_name], verbose=False))
+            elif SAVE_GIF:
+                imgs = world.camera.get_image()
+                seg_images.append(imgs.rgbPixels[:, :, :3])
+
+        elif time_step is None:
             wait_if_gui()
         else:
             wait_for_duration(time_step)
+
+    if SAVE_COMPOSED_JPG:
+        if recording:
+            episodes.append((seg_images, isinstance(last_object, int)))
+        return episodes
+    if SAVE_GIF:
+        return seg_images
 
 
 def get_primitive_actions(action, world, teleport=False):

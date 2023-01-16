@@ -1682,6 +1682,30 @@ def visualize_camera_image(image, index=0, img_dir='.', rgb=False, rgbd=False):
     # plt.show()
 
 
+def get_obj_keys_for_segmentation(indices, unique=None):
+    """ indices: {'(15, 1)': 'minifridge::joint_0', '0': 'pr20', '15': 'minifridge'}
+        unique: {(23, 3): [(243, 0), ...], (23, 7): [...], ...}
+        return obj_keys: {'minifridge::joint_0': [(15, 1), (15, 2)], 'pr20': [(0, 0)], 'minifridge': [(15, 0), (15, 1)]}
+    """
+    obj_keys = {}
+    for k, v in indices.items():
+        keys = []
+        k = eval(k)
+        if isinstance(k, int):  ##  and (k, 0) in unique
+            if unique is not None:
+                keys = [u for u in unique if u[0] == k]
+                if len(keys) == 0:
+                    keys = [(k, 0)]
+            else:
+                keys = [(k, l) for l in get_links(k)]
+        elif isinstance(k, tuple) and len(k) == 3:
+            keys = [(k[0], k[2])]
+        elif isinstance(k, tuple) and len(k) == 2:
+            keys = [(k[0], l) for l in get_door_links(k[0], k[1])]
+        obj_keys[v] = keys
+    return obj_keys
+
+
 def get_segmask(seg):
     unique = {}
     for row in range(seg.shape[0]):

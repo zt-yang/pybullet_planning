@@ -12,6 +12,7 @@ from world_builder.utils import get_camera_zoom_in
 from pybullet_tools.bullet_utils import nice, equal, get_datetime
 from pybullet_tools.utils import pose_from_tform, get_pose, get_joint_name, get_joint_position, get_movable_joints
 from isaac_tools.urdf_utils import load_lisdf, test_is_robot
+from lisdf_tools.image_utils import images_to_mp4, images_to_gif
 
 ASSET_PATH = join(dirname(__file__), '..', 'assets')
 
@@ -119,19 +120,19 @@ def load_one_world(gym_world, lisdf_dir, offset=None, loading_effect=False,
 
 
 def load_lisdf_isaacgym(lisdf_dir, robots=True, pause=False, loading_effect=False,
-                       camera_point=(8.5, 2.5, 3), camera_target=(0, 2.5, 0), return_wconf=False,
+                       camera_point=(8.5, 2.5, 3), target_point=(0, 2.5, 0), return_wconf=False,
                         camera_width=2560, camera_height=1600, **kwargs):
     sys.path.append('/home/yang/Documents/playground/srl_stream/src')
     from srl_stream.gym_world import create_single_world, default_arguments
 
     # TODO: Segmentation fault - possibly cylinders & mimic joints
     gym_world = create_single_world(args=default_arguments(use_gpu=False), spacing=5.)
-    gym_world.set_viewer_target(camera_point, target=camera_target)
+    gym_world.set_viewer_target(camera_point, target=target_point)
 
     loading = load_one_world(gym_world, lisdf_dir, robots=robots,
                              loading_effect=loading_effect, **kwargs)
     camera = gym_world.create_camera(width=camera_width, height=camera_height, fov=60)
-    gym_world.set_camera_target(camera, camera_point, camera_target)
+    gym_world.set_camera_target(camera, camera_point, target_point)
 
     if loading_effect:
         wconfs = record_gym_world_loading_objects(gym_world, loading, return_wconf=return_wconf, **kwargs)
@@ -288,7 +289,7 @@ def update_gym_world_by_wconf(gym_world, wconf, offsets=None):
 
 
 def load_envs_isaacgym(ori_dirs, robots=True, pause=False, num_rows=5, num_cols=5, world_size=(6, 6),
-                       camera_point=(34, 12, 10), camera_target=(0, 12, 0), verbose=False, 
+                       camera_point=(34, 12, 10), target_point=(0, 12, 0), verbose=False,
                         # camera_width=2560, camera_height=1600,
                         camera_width=3840, camera_height=2160,
                        loading_effect=False, **kwargs):
@@ -297,10 +298,10 @@ def load_envs_isaacgym(ori_dirs, robots=True, pause=False, num_rows=5, num_cols=
     from tqdm import tqdm
 
     gym_world = create_single_world(args=default_arguments(use_gpu=True), spacing=0)
-    gym_world.set_viewer_target(camera_point, target=camera_target)
+    gym_world.set_viewer_target(camera_point, target=target_point)
 
     camera = gym_world.create_camera(width=camera_width, height=camera_height, fov=60)
-    gym_world.set_camera_target(camera, camera_point, camera_target)
+    gym_world.set_camera_target(camera, camera_point, target_point)
 
     num_worlds = num_rows * num_cols
     scale = 0.75 if world_size[0] > 12 else 1
@@ -435,101 +436,6 @@ def save_gym_run(img_dir, gif_name, filenames, save_gif=True, save_mp4=True):
         print('created mp4 {} with {} frames'.format(mp4_name, len(filenames)))
 
 
-def images_to_gif(img_dir, gif_name, filenames):
-    import imageio
-    start = time.time()
-    gif_file = join(img_dir, '..', gif_name)
-    print(f'saving to {abspath(gif_file)} with {len(filenames)} frames')
-    with imageio.get_writer(gif_file, mode='I') as writer:
-        for filename in filenames:
-            # image = imageio.imread(filename)
-            writer.append_data(filename)
-
-    print(f'saved to {abspath(gif_file)} with {len(filenames)} frames in {round(time.time() - start, 2)} seconds')
-    return gif_file
-
-
-def images_to_mp4(images=[], img_dir='images', mp4_name='video.mp4'):
-    import cv2
-    import os
-
-    fps = 20
-    if isinstance(images[0], str):
-        images = [img for img in os.listdir(img_dir) if img.endswith(".png")]
-        frame = cv2.imread(os.path.join(img_dir, images[0]))
-    else:
-        frame = images[0]
-    height, width, layers = frame.shape
-
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v') ## cv2.VideoWriter_fourcc(*'XVID') ## cv2.VideoWriter_fourcc(*'mp4v')
-    video = cv2.VideoWriter(mp4_name, fourcc, fps, (width, height))
-
-    for image in images:
-        if isinstance(images[0], str):
-            image = cv2.imread(os.path.join(img_dir, image))
-        elif isinstance(images[0], np.ndarray) and image.shape[-1] == 4:
-            image = image[:, :, :3]
-            image = image[...,[2,1,0]].copy() ## RGB to BGR for cv2
-        video.write(image)
-
-    cv2.destroyAllWindows()
-    video.release()
-
-
-def make_collage_mp4(mp4s, num_cols, num_rows, size=None, mp4_name='collage.mp4'):
-    import cv2
-    import numpy as np
-    import skvideo.io
-
-    fps = 20
-    max_frames = -1
-    frames = []
-    for mp4 in tqdm(mp4s, desc=f'reading videos'):
-        videodata = skvideo.io.vread(mp4)
-        frames.append(videodata)  ## np.swapaxes(videodata, 1, 2)
-        num_frames, h, w, c = videodata.shape
-
-        if num_frames > max_frames:
-            max_frames = num_frames
-
-    if size is None:
-        size = (h, w)
-        clip_size = (h // num_rows, w // num_cols)
-    else:
-        clip_size = (size[0] // num_rows, size[1] // num_cols)
-    size = size[::-1]
-    clip_size = clip_size[::-1]
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  ## cv2.VideoWriter_fourcc(*'XVID') ## cv2.VideoWriter_fourcc(*'mp4v')
-    video = cv2.VideoWriter(mp4_name, fourcc, fps, size)
-
-    for i in tqdm(range(max_frames), desc=f'generating collage of {len(mp4s)} videos'):
-        rows = []
-        this_row = []
-        for j, videodata in enumerate(frames):
-            img = videodata[i] if i < videodata.shape[0] else videodata[-1]
-            img = cv2.resize(img, clip_size)
-            img = img[..., [2, 1, 0]].copy()  ## RGB to BGR for cv2
-            col = j % num_cols
-            this_row.append(img)
-            if col == num_cols - 1:
-                rows.append(np.hstack(this_row))
-                this_row = []
-        frame = np.vstack(rows)
-        video.write(frame)
-
-    cv2.destroyAllWindows()
-    video.release()
-
-
-def test_make_collage_mp4():
-    mp4_dir = '/home/yang/Documents/jupyter-worlds/tests/gym_images/'
-    num_cols = 2
-    num_rows = 2
-    mp4 = join(mp4_dir, 'gym_replay_batch_gym_0101_16:57.mp4')
-    mp4s = [mp4] * (num_cols * num_rows)
-    make_collage_mp4(mp4s, num_cols, num_rows, mp4_name=join(mp4_dir, 'collage_4by4.mp4'))
-
-
 def set_camera_target_body(gym_world, run_dir):
     camera_zoomin = get_camera_zoom_in(run_dir)
     if camera_zoomin is not None:
@@ -546,9 +452,7 @@ def set_camera_target_body(gym_world, run_dir):
 
 
 if __name__ == "__main__":
-    # ## broken, need to copy test dir to test_cases folder for relative asset paths to be found
-    # lisdf_dir = '/home/caelan/Programs/interns/yang/kitchen-worlds/test_cases/tt_one_fridge_pick_2'
-    # lisdf_dir = '/home/yang/Documents/fastamp-data/tt_two_fridge_in/4'
-    # world = load_lisdf_isaacgym(lisdf_dir, pause=True)
-
-    test_make_collage_mp4()
+    ## broken, need to copy test dir to test_cases folder for relative asset paths to be found
+    lisdf_dir = '/home/caelan/Programs/interns/yang/kitchen-worlds/test_cases/tt_one_fridge_pick_2'
+    lisdf_dir = '/home/yang/Documents/fastamp-data/tt_two_fridge_in/4'
+    world = load_lisdf_isaacgym(lisdf_dir, pause=True)
