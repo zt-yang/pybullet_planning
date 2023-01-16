@@ -65,6 +65,7 @@ class World():
         self.cameras = []
         self.colored_links = []
         self.camera_kwargs = {}
+        self.run_dir = None
 
     def clear_viz(self):
         self.remove_handles()
@@ -321,13 +322,17 @@ class World():
     def get_events(self, body):
         pass
 
+    def get_indices(self):
+        from mamao_tools.data_utils import get_indices
+        return get_indices(self.run_dir)
+
     def add_camera(self, pose=unit_pose(), img_dir=join('visualizations', 'camera_images'),
-                   width=640, height=480, fx=400, max_depth=8):
+                   width=640, height=480, fx=400, **kwargs):
         from world_builder.entities import StaticCamera
 
         # camera_matrix = get_camera_matrix(width=width, height=height, fx=525., fy=525.)
         camera_matrix = get_camera_matrix(width=width, height=height, fx=fx)
-        camera = StaticCamera(pose, camera_matrix=camera_matrix, max_depth=max_depth)
+        camera = StaticCamera(pose, camera_matrix=camera_matrix, **kwargs)
         self.cameras.append(camera)
         self.camera = camera
         self.img_dir = img_dir
@@ -583,6 +588,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
                 set_camera_target_body(fridge, dx=2, dy=0, dz=2)
 
     # wait_unlocked()
+    bullet_world.run_dir = lisdf_dir
     return bullet_world
 
 

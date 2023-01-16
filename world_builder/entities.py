@@ -814,17 +814,20 @@ class Camera(object):
         return '{}({})'.format(self.__class__.__name__, self.name)
 
 class StaticCamera(object):
-    def __init__(self, pose, camera_matrix, max_depth=2., name=None, draw_frame=None, **kwargs):
+    def __init__(self, pose, camera_matrix, max_depth=2., name=None, draw_frame=None,
+                 camera_point=None, target_point=None):
         self.pose = pose
         self.camera_matrix = camera_matrix
         self.max_depth = max_depth
         self.name = 'unknown_camera' if name is None else name
-        self.kwargs = dict(kwargs)
+        # self.kwargs = dict(kwargs)
         #self.__dict__.update(**kwargs)
         # self.handles = []
         # self.handles = self.draw()
         self.get_boundaries()
         self.index = 0
+        self.camera_point = camera_point
+        self.target_point = target_point
 
     def get_pose(self):
         return self.pose
@@ -836,10 +839,14 @@ class StaticCamera(object):
                   camera_point=None, target_point=None, **kwargs):
         # TODO: apply maximum depth
         self.index += 1
+        if self.camera_point is not None and self.target_point is not None:
+            camera_point = self.camera_point
+            target_point = self.target_point
         if camera_point is not None and target_point is not None:
+            self.camera_point = camera_point
+            self.target_point = target_point
             return get_camera_image_at_pose(camera_point, target_point, self.camera_matrix, far=far,
                                  tiny=False, segment=segment, segment_links=segment_links, **kwargs)
-        #image = get_image(self.get_pose(), target_pos=[0, 0, 1])
         return get_image_at_pose(self.get_pose(), self.camera_matrix, far=far,
                                  tiny=False, segment=segment, segment_links=segment_links, **kwargs)
 

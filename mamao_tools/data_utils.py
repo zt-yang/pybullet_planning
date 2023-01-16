@@ -78,24 +78,6 @@ def process_value(vv, training=True):
     return vv
 
 
-def get_successful_plan(run_dir, indices={}, continuous={}):
-    plan = []
-    with open(join(run_dir, 'plan.json'), 'r') as f:
-        data = json.load(f)[0]
-        actions = data['plan']
-        if actions == 'FAILED':
-            return None
-        vs, inv_vs = get_variables(data['init'])
-        for a in actions:
-            name = a[a.index("name='")+6: a.index("', args=(")]
-            # if 'grasp_handle' in name:
-            #     continue
-            args = a[a.index("args=(")+6:-2].replace("'", "")
-            new_args = parse_pddl_str(args, vs=vs, inv_vs=inv_vs, indices=indices)
-            plan.append([name] + new_args)
-    return plan
-
-
 def parse_pddl_str(args, vs, inv_vs, indices={}):
     """ parse a string of string, int, and tuples into a list """
 
@@ -128,13 +110,13 @@ def parse_pddl_str(args, vs, inv_vs, indices={}):
     return new_args
 
 
-def get_plan(run_dir, indices={}, continuous={}, plan_json=None):
+def get_plan(run_dir, indices={}, continuous={}, plan_json=None, **kwargs):
     if indices == {}:
         indices = get_indices_from_config(run_dir)
     if plan_json is not None:
         plan = json.load(open(plan_json, 'r'))['plan']
     else:
-        plan = get_successful_plan(run_dir, indices)
+        plan = get_successful_plan(run_dir, indices, **kwargs)
 
     ## add the continuous mentioned in plan
     new_continuous = {}
@@ -364,14 +346,15 @@ def get_variables(init, objs=None):
     return vs, {vs[i]: f'idx={i}' for i in range(len(vs))}
 
 
-def get_plan_from_strings(actions, vs, inv_vs, indices={}):
+def get_plan_from_strings(actions, vs, inv_vs, indices={}, keep_action_names=True):
     from text_utils import ACTION_NAMES
     plan = []
     for a in actions:
         name = a[a.index("name='") + 6: a.index("', args=(")]
         args = a[a.index("args=(") + 6:-2].replace("'", "")
         new_args = parse_pddl_str(args, vs=vs, inv_vs=inv_vs, indices=indices)
-        plan.append([ACTION_NAMES[name]] + new_args)
+        k = name if keep_action_names else ACTION_NAMES[name]
+        plan.append([k] + new_args)
     return plan
 
 
@@ -407,7 +390,7 @@ def parse_pddl_str(args, vs, inv_vs, indices={}):
     return new_args
 
 
-def get_successful_plan(run_dir, indices={}):
+def get_successful_plan(run_dir, indices={}, skip_multiple_plans=True, **kwargs):
     plans = []
     ## default best plan is in 'plan.json'
     with open(join(run_dir, 'plan.json'), 'r') as f:
@@ -416,13 +399,14 @@ def get_successful_plan(run_dir, indices={}):
         if actions == 'FAILED':
             return None
         vs, inv_vs = get_variables(data['init'])
-        plan = get_plan_from_strings(actions, vs=vs, inv_vs=inv_vs, indices=indices)
+        plan = get_plan_from_strings(actions, vs=vs, inv_vs=inv_vs, indices=indices, **kwargs)
         plans.append(plan)
-    solutions = get_multiple_solutions(run_dir, indices=indices)
-    if len(solutions) > 1:
-        for solution in solutions:
-            if len(solution) < len(plans[0]):
-                plans = [solution] + plans
+    if not skip_multiple_plans:
+        solutions = get_multiple_solutions(run_dir, indices=indices)
+        if len(solutions) > 1:
+            for solution in solutions:
+                if len(solution) < len(plans[0]):
+                    plans = [solution] + plans
     return plans
 
 
