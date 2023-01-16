@@ -2,6 +2,8 @@ from os.path import join, isdir, abspath
 from os import listdir
 import numpy as np
 
+from pybullet_tools.utils import quat_from_euler, euler_from_quat
+
 DATABASE = None
 
 DATABASE_DIR = abspath(join(__file__, '..', '..', 'databases'))
@@ -22,12 +24,17 @@ def get_asset_to_poses(title='place', yaw_only=True):
     return asset_to_pose
 
 
-def get_learned_yaw(category):
+def get_learned_yaw(category, quat=None):
     global DATABASE
     if DATABASE is None:
         DATABASE = get_asset_to_poses(title='place', yaw_only=True)
 
     if category in DATABASE:
         possibilities = DATABASE[category]
-        return np.random.choice(possibilities)
+        yaw = np.random.choice(possibilities)
+        if quat is not None:
+            r, p, _ = euler_from_quat(quat)
+            quat = quat_from_euler((r, p, yaw))
+            return quat
+        return yaw
     return None

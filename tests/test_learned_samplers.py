@@ -16,22 +16,6 @@ def get_obj_pose(action, indices):
     return obj, (pose[0], pose[-1])
 
 
-def get_sink_counter_x(rundir, keyw='sink_counter'):
-    def get_numbers(line, keep_strings=False):
-        nums = line[line.index('>')+1:line.index('</')].split(' ')
-        if keep_strings:
-            return nums
-        return [eval(n) for n in nums]
-    lines = open(join(rundir, 'scene.lisdf'), 'r').readlines()
-    for i in range(len(lines)):
-        if f'name="{keyw}' in lines[i]:
-            pose = lines[i+2]
-            x = eval(get_numbers(pose, keep_strings=True)[0])
-            size = lines[i+7]
-            lx = eval(get_numbers(size, keep_strings=True)[0])
-            return x + lx/2
-
-
 def save_pose_samples(asset_to_pose, title='pose_samples'):
     import pandas as pd
 

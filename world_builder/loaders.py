@@ -1468,11 +1468,11 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
 
     if world.note in [123]:
         braiser_bottom = world.name_to_object('braiser_bottom')
-        counters = copy.deepcopy(counters)
-        counters.update({
-            c: [random.choice([cc for cc in counters[c] if 'microwave' not in cc.name]), braiser_bottom]
-            for c in ['food']
-        })
+        # counters = copy.deepcopy(counters)
+        # counters.update({
+        #     c: [random.choice([cc for cc in counters[c] if 'microwave' not in cc.name]), braiser_bottom]
+        #     for c in ['food']
+        # })
         obstacles = [o for o in obstacles if o.pybullet_name != braiser_bottom.pybullet_name]
     pprint(counters)
     print('\nload_counter_moveables(obstacles={})\n'.format([o.name for o in obstacles]))
@@ -1481,14 +1481,17 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
         if size_matter and aabb_larger(obstacles[-1], obj):
             satisfied.append(obj)
 
-    def place_on_counter(obj_name, category=None):
-        counter = random.choice(counters[obj_name])
+    def place_on_counter(obj_name, category=None, coounter_choices=None):
+        if coounter_choices is None:
+            coounter_choices = counters[obj_name]
+        counter = random.choice(coounter_choices)
         obj = counter.place_new_obj(obj_name, category=category, RANDOM_INSTANCE=True, world=world)
         print(f'          placed {obj} on {counter.name}')
-        adjust_for_reachability(obj, counter, x_min, world=world)
+        if 'braiser_bottom' not in counter.name:
+            adjust_for_reachability(obj, counter, x_min, world=world)
         return obj
 
-    def ensure_cfree(obj, obstacles, obj_name, category=None, trials=10):
+    def ensure_cfree(obj, obstacles, obj_name, category=None, trials=10, **kwargs):
         # s = np.random.get_state()[-3]
         collision = collided(obj, obstacles, verbose=verbose, world=world)
         old_world = copy.deepcopy(world)
@@ -1498,7 +1501,7 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
         while collision or unreachable or size:
             print(f'          remove {obj} because collision={collision}, unreachable={unreachable}, size={size}')
             world.remove_object(obj)
-            obj = place_on_counter(obj_name, category)
+            obj = place_on_counter(obj_name, category, **kwargs)
             check_size_matter(obj)
 
             collision = collided(obj, obstacles, verbose=verbose, world=world)
@@ -1509,16 +1512,19 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
             trials -= 1
             if trials == 0:
                 sys.exit('Could not place object')
-            if trials == 6:
-                print('sssss')
         return obj
 
     ## add food items
     food_ids = []
+    in_briaser = False
     for i in range(2):
-        obj = place_on_counter('food', category='edible')
+        kwargs = dict()
+        if world.note in [123] and not in_briaser:
+            kwargs['coounter_choices'] = [braiser_bottom]
+        obj = place_on_counter('food', category='edible', **kwargs)
         check_size_matter(obj)
-        obj = ensure_cfree(obj, obstacles, obj_name='food', category='edible')
+        obj = ensure_cfree(obj, obstacles, obj_name='food', category='edible', **kwargs)
+        in_briaser = in_briaser or 'braiser_bottom' in obj.supporting_surface.name
         food_ids.append(obj)
         obstacles.append(obj.body)
 
@@ -1539,9 +1545,7 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
         obstacles.append(obj.body)
 
     print('... finished loading moveables in {}s'.format(round(time.time() - start, 2)))
-    world.summarize_supporting_surfaces()
 
-    wait_unlocked()
     return food_ids, bottle_ids, medicine_ids
 
 
@@ -2114,7 +2118,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     """ step 5: place movables on counters """
     all_counters = {
         'food': counters,
-        'bottle': shelves + [sink_bottom],
+        'bottle': counters + [sink_bottom],
         'medicine': shelves + [microwave],
     }
     possible = []
@@ -2187,10 +2191,10 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
         something = random.choice(something)
 
         if something is not None:
-            result = bottom_obj.place_obj(something, max_trial=5)
+            result = bottom_obj.place_obj(something, max_trial=5, world=world)
             if result is None:
                 counters_tmp = world.find_surfaces_for_placement(something, counters)
-                counters_tmp[0].place_obj(something)
+                counters_tmp[0].place_obj(something, world=world)
             else:
                 obstacles = bottom_obj.supported_objects
 
@@ -2219,7 +2223,7 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
         # world.add_highlighter(counters[0])
 
         if random.random() < 0.2:
-            counters_tmp[0].place_obj(world.BODY_TO_OBJECT[lid])
+            counters_tmp[0].place_obj(world.BODY_TO_OBJECT[lid], world=world)
     return obj_bottom, objects
 
 

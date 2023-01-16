@@ -476,3 +476,30 @@ def has_text_utils():
     except ImportError:
         return False
     return True
+
+
+###############################################################################
+
+
+def get_numbers_from_xml(line, keep_strings=False):
+    nums = line[line.index('>') + 1:line.index('</')].split(' ')
+    if keep_strings:
+        return nums
+    return [eval(n) for n in nums]
+
+
+def get_lisdf_shapes(rundir, keyw=None):
+    """ faster way to return a dict with all objects and their pose, aabb """
+    lines = open(join(rundir, 'scene.lisdf'), 'r').readlines()
+    shapes = {}
+    for i in range(len(lines)):
+        if f'name="{keyw}' in lines[i]:
+            pose = lines[i + 2]
+            size = lines[i + 7]
+            x = eval(get_numbers_from_xml(pose, keep_strings=True)[0])
+            lx = eval(get_numbers_from_xml(size, keep_strings=True)[0])
+            return x + lx / 2
+
+
+def get_sink_counter_x(rundir, keyw='sink_counter'):
+    return get_lisdf_shapes(rundir, keyw=keyw)

@@ -19,6 +19,7 @@ from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, is_
     visualize_point, collided, sample_pose, xyzyaw_to_pose, ObjAttachment, set_camera_target_body, \
     sample_obj_on_body_link_surface
 
+from world_builder.samplers import get_learned_yaw
 
 class Position(object):
     num = count()
@@ -236,13 +237,17 @@ def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False, visua
 
 def learned_pose_sampler(world, body, surface, body_pose):
     ## hack to reduce planning time
+    (x, y, z), quat = body_pose
     if 'braiser_bottom' in world.get_name(surface):
-        (x, y, z), quat = body_pose
         cx, cy, _ = get_aabb_center(get_aabb(body))
         dx = x - cx
         dy = y - cy
         x, y, _ = get_aabb_center(get_aabb(surface[0], link=surface[-1]))
         body_pose = (x+dx, y+dy, z+0.01), quat
+    lisdf_name = world.get_lisdf_name(body)
+    learned_quat = get_learned_yaw(lisdf_name, quat)
+    if learned_quat is not None:
+        body_pose = (x, y, z), quat
     return body_pose
 
 

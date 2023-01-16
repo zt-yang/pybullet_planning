@@ -220,6 +220,8 @@ class Object(Index):
     ## ====================================================================
 
     def __int__(self):
+        if not hasattr(self, 'body'):
+            print('what sy')
         if self.body is None:
             return id(self) # TODO: hack
         if self.joint is not None:

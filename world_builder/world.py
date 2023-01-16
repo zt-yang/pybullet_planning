@@ -392,14 +392,18 @@ class World(object):
         self.add_object(surface)
         return surface
 
-    def summarize_supporting_surfaces(self):
+    def summarize_supporting_surfaces(self, return_dict={}):
+        from pybullet_tools.logging import myprint as print
+        return_dict = {}
         padding = '    '
         print('--------------- summarize_supporting_surfaces --------------')
         print(padding, 'surface', self.cat_to_objects('surface'))
         print(padding, 'supporter', self.cat_to_objects('supporter'))
         for surface in set(self.cat_to_objects('surface') + self.cat_to_objects('supporter')):
             print(padding, surface.name, surface.supported_objects)
+            return_dict[surface.name] = surface.supported_objects
         print('-------------------------------------------------')
+        return return_dict
 
     def summarize_all_types(self):
         printout = ''
@@ -760,12 +764,10 @@ class World(object):
             obj.set_pose((point, quat), **kwargs)
         else:
             ## try learned sampling
-            learned_yaw = get_learned_yaw(obj.category)
-            if learned_yaw is not None:
-                r, p, _ = euler_from_quat(quat)
-                quat = quat_from_euler((r, p, learned_yaw))
-                print('    using learned yaw', learned_yaw)
-            obj.set_pose((point, quat), **kwargs)
+            learned_quat = get_learned_yaw(obj.lisdf_name, quat)
+            if learned_quat is not None:
+                # print('    using learned yaw', learned_quat)
+                obj.set_pose((point, learned_quat), **kwargs)
 
         ## ---------- reachability hacks for PR2
         if hasattr(self, 'robot') and 'pr2' in self.robot.name:
@@ -784,7 +786,8 @@ class World(object):
         ## ---------- center object
         if 'braiser_bottom' in surface:  ## for testing
             (a, b, c), _ = world_to_surface
-            obj.set_pose(((0.55, b, z), (0, 0, 0.36488663206619243, 0.9310519565198234)), **kwargs)
+            obj.set_pose(((a, b, z), quat), **kwargs)
+            # obj.set_pose(((0.55, b, z), (0, 0, 0.36488663206619243, 0.9310519565198234)), **kwargs)
         elif 'braiser' in surface:
             (a, b, c), quat = world_to_surface
             obj.set_pose(((a, b, z), quat), **kwargs)

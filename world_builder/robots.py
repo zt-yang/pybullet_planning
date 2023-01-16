@@ -737,6 +737,8 @@ class FEGripper(RobotAPI):
         count = 4
         result = False
         for output in gen:
+            if output is None:
+                break
             p = output[0].value
             (x, y, z), quat = p
             end_q = list([x, y, z + 0.1]) + list(euler_from_quat(quat))
