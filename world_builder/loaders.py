@@ -4,6 +4,7 @@ import copy
 import numpy as np
 import math
 import time
+from pprint import pprint
 import os
 import string
 
@@ -1460,14 +1461,21 @@ def load_kitchen_mini_scene(world, **kwargs):
 def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=False):
     start = time.time()
     robot = world.robot
-    old_world = copy.deepcopy(world)
-    state = State(old_world, robot.grasp_types)
     size_matter = len(obstacles) > 0 and obstacles[-1].name == 'braiser_bottom'
     satisfied = []
     if x_min is None:
         x_min = counters[0].aabb().upper[0] - 0.3
 
-    print('load_counter_moveables(obstacles={})'.format([o.name for o in obstacles]))
+    if world.note in [123]:
+        braiser_bottom = world.name_to_object('braiser_bottom')
+        counters = copy.deepcopy(counters)
+        counters.update({
+            c: [random.choice([cc for cc in counters[c] if 'microwave' not in cc.name]), braiser_bottom]
+            for c in ['food']
+        })
+        obstacles = [o for o in obstacles if o.pybullet_name != braiser_bottom.pybullet_name]
+    pprint(counters)
+    print('\nload_counter_moveables(obstacles={})\n'.format([o.name for o in obstacles]))
 
     def check_size_matter(obj):
         if size_matter and aabb_larger(obstacles[-1], obj):
@@ -1475,18 +1483,34 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
 
     def place_on_counter(obj_name, category=None):
         counter = random.choice(counters[obj_name])
-        obj = counter.place_new_obj(obj_name, category=category, RANDOM_INSTANCE=True)
-        adjust_for_reachability(obj, counter, x_min)
+        obj = counter.place_new_obj(obj_name, category=category, RANDOM_INSTANCE=True, world=world)
+        print(f'          placed {obj} on {counter.name}')
+        adjust_for_reachability(obj, counter, x_min, world=world)
         return obj
 
-    def ensure_cfree(obj, obstacles, obj_name, category=None):
+    def ensure_cfree(obj, obstacles, obj_name, category=None, trials=10):
         # s = np.random.get_state()[-3]
-        while collided(obj, obstacles, verbose=verbose, world=world) or \
-                not robot.check_reachability(obj, state, verbose=verbose) or \
-                (obj_name == 'food' and size_matter and len(satisfied) == 0):
+        collision = collided(obj, obstacles, verbose=verbose, world=world)
+        old_world = copy.deepcopy(world)
+        state = State(old_world, robot.grasp_types)
+        unreachable = collision or not robot.check_reachability(obj, state, verbose=False)
+        size = unreachable or ((obj_name == 'food' and size_matter and len(satisfied) == 0))
+        while collision or unreachable or size:
+            print(f'          remove {obj} because collision={collision}, unreachable={unreachable}, size={size}')
             world.remove_object(obj)
             obj = place_on_counter(obj_name, category)
             check_size_matter(obj)
+
+            collision = collided(obj, obstacles, verbose=verbose, world=world)
+            old_world = copy.deepcopy(world)
+            state = State(old_world, robot.grasp_types)
+            unreachable = collision or not robot.check_reachability(obj, state, verbose=False)
+            size = unreachable or ((obj_name == 'food' and size_matter and len(satisfied) == 0))
+            trials -= 1
+            if trials == 0:
+                sys.exit('Could not place object')
+            if trials == 6:
+                print('sssss')
         return obj
 
     ## add food items
@@ -1515,7 +1539,9 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
         obstacles.append(obj.body)
 
     print('... finished loading moveables in {}s'.format(round(time.time() - start, 2)))
+    world.summarize_supporting_surfaces()
 
+    wait_unlocked()
     return food_ids, bottle_ids, medicine_ids
 
 
@@ -1583,14 +1609,14 @@ def load_table_stationaries(world, w=6, l=6, h=0.9):
 #################################################################
 
 
-def place_faucet_by_sink(faucet_obj, sink_obj, gap=0.01):
+def place_faucet_by_sink(faucet_obj, sink_obj, gap=0.01, world=None):
     body = faucet_obj.body
     base_link = get_partnet_links_by_type(faucet_obj.path, body, 'switch')[0]
     x = get_link_pose(body, base_link)[0][0]
     aabb = get_aabb(body, base_link)
     lx = get_aabb_extent(aabb)[0]
     x_new = sink_obj.aabb().lower[0] - lx / 2 - gap
-    faucet_obj.adjust_pose(dx=x_new - x)
+    faucet_obj.adjust_pose(dx=x_new - x, world=world)
 
 
 WALL_HEIGHT = 2.5
@@ -1609,7 +1635,7 @@ def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=True):
         load_asset('SinkBase', x=x, y=y, yaw=math.pi, floor=floor,
                    RANDOM_INSTANCE=True, verbose=verbose), name='sinkbase'))
     dx = base.lx/2
-    base.adjust_pose(dx=dx)
+    base.adjust_pose(dx=dx, world=world)
     x += dx
     if base.instance_name == 'partnet_5b112266c93a711b824662341ce2b233': ##'46481'
         x += 0.1
@@ -1619,20 +1645,18 @@ def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=True):
                    RANDOM_INSTANCE=True, verbose=verbose), name='sink'))
     dx = (base.aabb().upper[0] - sink.aabb().upper[0]) - 0.05
     dy = sink.ly/2 - (sink.aabb().upper[1] - y)
-    sink.adjust_pose(dx=dx, dy=dy, dz=-sink.height+COUNTER_THICKNESS)
+    sink.adjust_pose(dx=dx, dy=dy, dz=-sink.height+COUNTER_THICKNESS, world=world)
     # print('sink.get_pose()', sink.get_pose())
     if sink.instance_name == 'partnet_u82f2a1a8-3a4b-4dd0-8fac-6679970a9b29': ##'100685'
         x += 0.2
-        # sink.adjust_pose(dx=0.2)
     if sink.instance_name == 'partnet_549813be-3bd8-47dd-9a49-b51432b2f14c': ##'100685'
         x -= 0.06
-        # sink.adjust_pose(dx=-0.06)
 
     faucet = world.add_object(Object(
         load_asset('Faucet', x=x, y=y, yaw=math.pi, floor=base.body,
                    RANDOM_INSTANCE=True, verbose=verbose), name='faucet'))
-    place_faucet_by_sink(faucet, sink)
-    faucet.adjust_pose(dz=COUNTER_THICKNESS)
+    place_faucet_by_sink(faucet, sink, world=world)
+    faucet.adjust_pose(dz=COUNTER_THICKNESS, world=world)
 
     xa, ya, _ = base.aabb().lower
     xb, yb, _ = sink.aabb().lower
@@ -1758,7 +1782,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
                    category=cabi_type, name=cabi_type)
         )
         cabinet.adjust_next_to(counter, direction='+z', align='+x', dz=dz)
-        cabinet.adjust_pose(dx=0.3)
+        cabinet.adjust_pose(dx=0.3, world=world)
         return cabinet, counter
 
     def ensure_cfree(obj, obstacles, selected_counters, **kwargs):
@@ -1847,22 +1871,22 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
 
 
 def load_braiser(world, supporter, x_min=None, verbose=True):
-    braiser = supporter.place_new_obj('BraiserBody', RANDOM_INSTANCE=True, verbose=verbose)
-    braiser.adjust_pose(theta=PI)
+    braiser = supporter.place_new_obj('BraiserBody', RANDOM_INSTANCE=True, verbose=verbose, world=world)
+    braiser.adjust_pose(theta=PI, world=world)
     set_camera_target_body(braiser)
 
     if x_min is None:
         x_min = supporter.aabb().upper[0] - 0.3
-    adjust_for_reachability(braiser, supporter, x_min)
+    adjust_for_reachability(braiser, supporter, x_min, world=world)
     set_camera_target_body(braiser)
 
     lid = braiser.place_new_obj('BraiserLid', category='moveable', name='BraiserLid', max_trial=1,
-                                RANDOM_INSTANCE=braiser.mobility_id, verbose=verbose)
+                                RANDOM_INSTANCE=braiser.mobility_id, verbose=verbose, world=world)
     world.make_transparent(lid)
     point, quat = get_pose(braiser)
     r, p, y = euler_from_quat(quat)
-    lid.set_pose((point, quat_from_euler((r, p, y + PI/4))))
-    braiser.attach_obj(lid)
+    lid.set_pose((point, quat_from_euler((r, p, y + PI/4))), world=world)
+    braiser.attach_obj(lid, world=world)
 
     braiser_bottom = world.add_surface_by_keyword(braiser, 'braiser_bottom')
     return braiser, braiser_bottom
@@ -1986,7 +2010,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     counter_regions = new_counter_regions
 
     ## make doors easier to open
-    world.name_to_object('minifridge').adjust_pose(dx=0.2)
+    world.name_to_object('minifridge').adjust_pose(dx=0.2, world=world)
 
     ## make wall
     l = right_counter_upper - left_counter_lower
@@ -1995,7 +2019,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
     wall = world.add_object(
         Supporter(create_box(w=WALL_WIDTH, l=l, h=wall_height, color=color), name='wall'),
         Pose(point=Point(x=x, y=y, z=wall_height/2)))
-    floor.adjust_pose(dx=x_lower - WALL_WIDTH)
+    floor.adjust_pose(dx=x_lower - WALL_WIDTH, world=world)
 
     """ step 3: make all the counters """
     sink_left = world.name_to_object('sink_counter_left')
@@ -2075,8 +2099,8 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
         if len(wide_counters) > 0:
             counter = wide_counters[0]
             microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random(),
-                                              RANDOM_INSTANCE=True, verbose=True)
-            microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)))
+                                              RANDOM_INSTANCE=True, verbose=True, world=world)
+            microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)), world=world)
             obstacles.append(microwave)
     else:
         microwave = world.name_to_object('MicrowaveHanging')

@@ -145,30 +145,36 @@ class Object(Index):
         if obj not in self.supported_objects:
             self.supported_objects.append(obj)
 
-    def attach_obj(self, obj):
+    def attach_obj(self, obj, world=None):
         from pybullet_tools.bullet_utils import create_attachment
         link = self.link if self.link is not None else -1
-        self.world.ATTACHMENTS[obj] = create_attachment(self, link, obj, OBJ=True)
+        if world is None:
+            world = self.world
+            raise NotImplementedError('place_new_obj: world is None')
+        world.ATTACHMENTS[obj] = create_attachment(self, link, obj, OBJ=True)
         obj.change_supporting_surface(self)
 
-    def place_new_obj(self, obj_name, category=None, name=None, max_trial=8, **kwargs):
+    def place_new_obj(self, obj_name, category=None, name=None, max_trial=8, world=None, **kwargs):
         from pybullet_tools.bullet_utils import sample_obj_on_body_link_surface
         from world_builder.utils import load_asset
 
         if category is None:
             category = obj_name
+        if world is None:
+            world = self.world
+            raise NotImplementedError('place_new_obj: world is None')
 
         # set_renderer(False)
-        obj = self.world.add_object(
+        obj = world.add_object(
             Object(load_asset(obj_name.lower(), **kwargs), category=category, name=name)
         )
         # body = sample_obj_on_body_link_surface(obj, self.body, self.link, max_trial=max_trial)
-        self.world.put_on_surface(obj, max_trial=max_trial, surface=self.shorter_name)
+        world.put_on_surface(obj, max_trial=max_trial, surface=self.shorter_name, world=world)
         self.support_obj(obj)
         # set_renderer(True)
         return obj
 
-    def place_obj(self, obj, xyzyaw=None, max_trial=8, timeout=1.5):
+    def place_obj(self, obj, xyzyaw=None, max_trial=8, timeout=1.5, world=None):
         from pybullet_tools.bullet_utils import sample_obj_on_body_link_surface, nice
         # set_renderer(False)
         if isinstance(obj, str):
@@ -186,7 +192,7 @@ class Object(Index):
                 x, y, z, yaw = sample_obj_on_body_link_surface(
                     obj, self.body, self.link, PLACEMENT_ONLY=True, max_trial=max_trial)
                 z = stable_z(obj, self.body, self.link)
-                obj.set_pose(Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw)))
+                obj.set_pose(Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw)), world=world)
                 if pairwise_collisions(obj, obstacles):
                     # print(f'entities.Object.place_obj({obj}, xyzyaw={xyzyaw}, max_trial={max_trial}) '
                     #       f'| collided with {obstacles}! try again')
@@ -202,7 +208,7 @@ class Object(Index):
             supporter_name = f"{self.__class__.__name__.capitalize()} {self.name}"
             print(f'entities.place_obj.placed {obj.name} on {supporter_name} at point {nice((x, y, z))}')
 
-        self.attach_obj(obj)
+        self.attach_obj(obj, world=world)
         # set_renderer(True)
         return obj
 
@@ -281,7 +287,7 @@ class Object(Index):
         # print('adjust_next_to | other', other.aabb().upper[0], 'self', self.aabb().upper[0])
         return gap
 
-    def adjust_pose(self, x=None, y=None, z=None, dx=None, dy=None, dz=None, theta=None):
+    def adjust_pose(self, x=None, y=None, z=None, dx=None, dy=None, dz=None, theta=None, world=None):
         (cx, cy, cz), r = self.get_pose()
         if dx is not None:
             cx += dx
@@ -297,16 +303,19 @@ class Object(Index):
             cz = z
         if theta is not None:
             r = quat_from_euler(Euler(yaw=theta))
-        self.set_pose(((cx, cy, cz), r))
+        self.set_pose(((cx, cy, cz), r), world=world)
 
-    def set_pose(self, conf):
+    def set_pose(self, conf, world=None):
         links = [get_link_name(self.body, l) for l in get_links(self.body)]
         if 'base' in links:
             set_group_conf(self.body, 'base', conf)
         else:
             set_pose(self.body, conf)
         if self.supporting_surface is not None:
-            self.supporting_surface.attach_obj(self)
+            if world is None:
+                world = self.world
+                raise ValueError('world is None')
+            self.supporting_surface.attach_obj(self, world)
 
     def get_joint(self, joint): # int | str
         # TODO: unify with get_joint in pybullet-planning
@@ -435,10 +444,13 @@ class Object(Index):
             remove_body(self.body)
             self.body = None
 
-    def add_grasp_marker(self, object):
+    def add_grasp_marker(self, object, world=None):
         if object not in self.grasp_markers:
             self.grasp_markers.append(object)
-        self.world.BODY_TO_OBJECT[object].grasp_parent = self.body
+        if world is not None:
+            world = self.world
+            raise NotImplementedError('add_grasp_marker')
+        world.BODY_TO_OBJECT[object].grasp_parent = self.body
 
     def add_events(self, events):
         self.events.extend(events)
@@ -533,34 +545,38 @@ class Space(Region):
             self.name = get_link_name(body, link)
         # self.objects_inside = []
 
-    def include_and_attach(self, obj):
+    def include_and_attach(self, obj, world):
         from pybullet_tools.bullet_utils import create_attachment
         if obj not in self.supported_objects:
             # self.supported_objects.append(obj)
             obj.change_supporting_surface(self)
         attachment = create_attachment(self, self.link, obj, OBJ=True)
         print('entities.include_and_attach\t', attachment)
-        self.world.ATTACHMENTS[obj] = attachment
+        world.ATTACHMENTS[obj] = attachment
         # obj.supporting_surface = self
 
-    def place_new_obj(self, obj_name, category=None, max_trial=8, verbose=False, scale=1):
+    def place_new_obj(self, obj_name, category=None, max_trial=8, verbose=False, scale=1,
+                      world=None, **kwargs):
         from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, open_joint
         from world_builder.utils import load_asset
 
-        # self.world.open_doors_drawers(self.body)
         if category is None:
             category = obj_name
+        if world is None:
+            world = self.world
+            raise NotImplementedError('place_new_obj: world is None')
+        # world.open_doors_drawers(self.body)
 
-        obj = self.world.add_object(
-            Moveable(load_asset(obj_name.lower(), maybe=True, scale=scale), category=category)
+        obj = world.add_object(
+            Moveable(load_asset(obj_name.lower(), scale=scale), category=category)
         )
         sample_obj_in_body_link_space(obj, self.body, self.link)
 
-        self.include_and_attach(obj)
-        # self.world.close_doors_drawers(self.body)
+        self.include_and_attach(obj, world)
+        # world.close_doors_drawers(self.body)
         return obj
 
-    def place_obj(self, obj, xyzyaw=None, max_trial=8):
+    def place_obj(self, obj, xyzyaw=None, max_trial=8, **kwargs):
         from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice
         from world_builder.robots import PR2Robot
         if isinstance(obj, str):
