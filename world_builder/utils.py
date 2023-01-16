@@ -508,7 +508,7 @@ def HEX_to_RGB(color):
     return tuple(rgb)
 
 
-def adjust_for_reachability(obj, counter, x_min=None, body_pose=None, return_pose=False):
+def adjust_for_reachability(obj, counter, x_min=None, body_pose=None, return_pose=False, world=None):
     if x_min is None:
         x_min = counter.aabb().upper[0] - 0.3
     if body_pose is None:
@@ -520,8 +520,8 @@ def adjust_for_reachability(obj, counter, x_min=None, body_pose=None, return_pos
     x_new = x_max - (x_max - x_min) * (x_max - x) / counter.lx
     if return_pose:
         return (x_new, y, z), r
-    obj.set_pose(((x_new, y, z), r))
-    counter.attach_obj(obj)
+    obj.set_pose(((x_new, y, z), r), world=world)
+    counter.attach_obj(obj, world=world)
 
 
 def smarter_sample_placement(body, surface, world, **kwargs):

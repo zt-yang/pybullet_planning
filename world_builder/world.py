@@ -19,7 +19,7 @@ from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, g
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
     get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked, \
     get_movable_joints, apply_alpha, get_all_links, set_color, set_all_color, dump_body, clear_texture, \
-    get_link_name, get_aabb, draw_aabb, GREY, GREEN
+    get_link_name, get_aabb, draw_aabb, GREY, GREEN, quat_from_euler
 from pybullet_tools.pr2_streams import Position, get_handle_grasp_gen, pr2_grasp
 from pybullet_tools.general_streams import pose_from_attachment
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
@@ -34,7 +34,7 @@ from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_
 from .entities import Region, Environment, Robot, Surface, ArticulatedObjectPart, Door, Drawer, Knob, \
     Camera, Object, StaticCamera
 from world_builder.utils import GRASPABLES
-
+from world_builder.samplers import get_learned_yaw
 
 class World(object):
     """ api for building world and tamp problems """
@@ -233,6 +233,7 @@ class World(object):
             # set_all_color(body, (1, 0, 0, 1))
 
     def add_object(self, object, pose=None):
+
         OBJECTS_BY_CATEGORY = self.OBJECTS_BY_CATEGORY
         BODY_TO_OBJECT = self.BODY_TO_OBJECT
         category = object.category
@@ -505,6 +506,10 @@ class World(object):
     def get_all_obj_in_body(self, body):
         if isinstance(body, tuple):
             return [body]
+        if body not in self.BODY_TO_OBJECT:
+            set_camera_target_body(body)
+            set_renderer(True)
+            wait_unlocked()
         object = self.BODY_TO_OBJECT[body]
         bodies = [body]
         if len(object.doors) > 0:
@@ -733,12 +738,12 @@ class World(object):
             obj = None
         return obj
 
-    def put_on_surface(self, obj, surface='hitman_tmp', max_trial=20, OAO=False):
+    def put_on_surface(self, obj, surface='hitman_tmp', max_trial=20, OAO=False, **kwargs):
         obj = self.get_object(obj)
         surface_obj = self.get_object(surface)
         surface = surface_obj.name
 
-        surface_obj.place_obj(obj, max_trial=max_trial)
+        surface_obj.place_obj(obj, max_trial=max_trial, **kwargs)
 
         ## ----------- rules of locate specific objects
         world_to_surface = surface_obj.get_pose()
@@ -746,13 +751,21 @@ class World(object):
         x, y, z = point
         if 'faucet_platform' in surface:
             (a, b, c), quat = world_to_surface
-            obj.set_pose(((a - 0.2, b, z), quat))
+            obj.set_pose(((a - 0.2, b, z), quat), **kwargs)
         elif 'hitman_tmp' in surface:
             quat = (0, 0, 1, 0)  ## facing out
-            obj.set_pose(((0.4, 6.4, z), quat))
+            obj.set_pose(((0.4, 6.4, z), quat), **kwargs)
         elif obj.category in ['microwave', 'toaster']:
             quat = (0, 0, 1, 0)  ## facing out
-            obj.set_pose((point, quat))
+            obj.set_pose((point, quat), **kwargs)
+        else:
+            ## try learned sampling
+            learned_yaw = get_learned_yaw(obj.category)
+            if learned_yaw is not None:
+                r, p, _ = euler_from_quat(quat)
+                quat = quat_from_euler((r, p, learned_yaw))
+                print('    using learned yaw', learned_yaw)
+            obj.set_pose((point, quat), **kwargs)
 
         ## ---------- reachability hacks for PR2
         if hasattr(self, 'robot') and 'pr2' in self.robot.name:
@@ -761,24 +774,24 @@ class World(object):
             if 'shelf' in surface:
                 surface_to_obj = ((-0.2, 0, -0.2), (0, 0, 1, 0))
                 (a, b, _), _ = multiply(world_to_surface, surface_to_obj)
-                obj.set_pose(((a, b, z), quat))
+                obj.set_pose(((a, b, z), quat), **kwargs)
                 # obj.set_pose(((1, 4.4, z), quat))
                 # obj.set_pose(((1.6, 4.5, z), quat)) ## vertical orientation
             elif 'tmp' in surface: ## egg
                 if y > 9: y = 8.9
-                obj.set_pose(((0.7, y, z), quat))
+                obj.set_pose(((0.7, y, z), quat), **kwargs)
 
         ## ---------- center object
         if 'braiser_bottom' in surface:  ## for testing
             (a, b, c), _ = world_to_surface
-            obj.set_pose(((0.55, b, z), (0, 0, 0.36488663206619243, 0.9310519565198234)))
+            obj.set_pose(((0.55, b, z), (0, 0, 0.36488663206619243, 0.9310519565198234)), **kwargs)
         elif 'braiser' in surface:
             (a, b, c), quat = world_to_surface
-            obj.set_pose(((a, b, z), quat))
+            obj.set_pose(((a, b, z), quat), **kwargs)
         elif 'front_' in surface and '_stove' in surface:
-            obj.set_pose(((0.55, y, z), quat))
+            obj.set_pose(((0.55, y, z), quat), **kwargs)
 
-        surface_obj.attach_obj(obj)
+        surface_obj.attach_obj(obj, **kwargs)
         if OAO: ## one and only
             self.remove_body_from_planning(self.name_to_body(surface))
 

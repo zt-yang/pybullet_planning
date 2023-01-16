@@ -1,6 +1,5 @@
 import PIL.Image
 import numpy as np
-from tqdm import tqdm
 import time
 from os.path import join, isdir, abspath, dirname, isfile
 from pybullet_tools.utils import get_aabb_extent, get_aabb_center, AABB
@@ -254,6 +253,7 @@ def make_collage_mp4(mp4s, num_cols, num_rows, size=None, mp4_name='collage.mp4'
     import cv2
     import numpy as np
     import skvideo.io
+    from tqdm import tqdm
 
     fps = 20
     max_frames = -1

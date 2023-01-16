@@ -414,7 +414,8 @@ class PR2Robot(RobotAPI):
         q = get_joint_positions(self.body, base_joints)
         return Conf(self.body, base_joints, q)
 
-    def check_reachability(self, body, state, verbose=False, max_attempts=10, fluents=[]):
+    def check_reachability(self, body, state, verbose=False, visualize=False,
+                           max_attempts=10, fluents=[]):
         from pybullet_tools.pr2_primitives import Pose
         from pybullet_tools.pr2_streams import get_ik_gen, get_ik_fn
         from world_builder.entities import Object
@@ -446,14 +447,14 @@ class PR2Robot(RobotAPI):
                 print(f'... finished {title} -> {result} in {round(time.time() - start, 2)}s')
 
         with LockRenderer(True):
-            funk = get_grasp_list_gen(state, verbose=verbose, visualize=False, top_grasp_tolerance=PI / 4)
+            funk = get_grasp_list_gen(state, verbose=verbose, visualize=visualize, top_grasp_tolerance=PI / 4)
             outputs = funk(obj)
 
             kwargs = dict(collisions=True, teleport=False)
             funk2 = get_ik_gen(state, max_attempts=max_attempts, ir_only=True, learned=False,
                                custom_limits=state.robot.custom_limits,
-                               verbose=verbose, visualize=False, **kwargs)
-            funk3 = get_ik_fn(state, verbose=verbose, visualize=False, ACONF=False, **kwargs)
+                               verbose=verbose, visualize=visualize, **kwargs)
+            funk3 = get_ik_fn(state, verbose=verbose, visualize=visualize, ACONF=False, **kwargs)
             for (grasp, ) in outputs:
                 gen = funk2(self.arms[0], body, p, grasp)
                 try:
