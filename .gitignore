@@ -22,3 +22,4 @@ tests/txt_file.txt
 tests/tests/temp_urdfs/
 
 *.png
+*.ipynb_checkpoints/
