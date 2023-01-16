@@ -20,3 +20,5 @@ tests/temp/
 tests/statistics/
 tests/txt_file.txt
 tests/tests/temp_urdfs/
+
+*.png

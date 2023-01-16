@@ -6,6 +6,8 @@ from tqdm import tqdm
 from pybullet_tools.utils import euler_from_quat
 from mamao_tools.data_utils import get_successful_plan, get_indices
 
+DATABASE_DIR = abspath(join(__file__, '..', '..', 'databases'))
+
 
 def get_obj_pose(action, indices):
     obj = indices[action[2]].replace('#1', '').replace('#2', '')
@@ -28,6 +30,17 @@ def get_sink_counter_x(rundir, keyw='sink_counter'):
             size = lines[i+7]
             lx = eval(get_numbers(size, keep_strings=True)[0])
             return x + lx/2
+
+
+def save_pose_samples(asset_to_pose, title='pose_samples'):
+    import pandas as pd
+
+    lst = []
+    for name, poses in asset_to_pose.items():
+        for pose in poses:
+            lst.append([name] + list(pose))
+    df = pd.DataFrame(lst, columns=['Category', 'Distance', 'Radian'], dtype=float)
+    df.to_csv(join(DATABASE_DIR, f'{title}.csv'))
 
 
 def plot_pose_samples(asset_to_pose, title='Pose Samples'):
@@ -61,8 +74,8 @@ def plot_pose_samples(asset_to_pose, title='Pose Samples'):
     # plt.show()
     plt.title(title)
     plt.tight_layout()
-    database_dir = abspath(join(__file__, '..', '..', 'databases'))
-    plt.savefig(join(database_dir, f'{title}.png'))
+
+    plt.savefig(join(DATABASE_DIR, f'{title}.png'))
 
 
 def test_generate_pose_samples():
@@ -86,8 +99,23 @@ def test_generate_pose_samples():
                         asset_to_pose[action[0]][obj] = []
                     asset_to_pose[action[0]][obj].append((counter_x - x, yaw))
     for action in asset_to_pose:
-        plot_pose_samples(asset_to_pose[action], title=action)
+        # plot_pose_samples(asset_to_pose[action], title=action)
+        save_pose_samples(asset_to_pose[action], title=action)
+
+
+def test_plotting(title='place'):
+    import pandas as pd
+
+    asset_to_pose = {}
+    df = pd.read_csv(join(DATABASE_DIR, f'{title}.csv'))
+    categories = df['Category'].unique()
+    for c in categories:
+        new_df = df.loc[df['Category'] == c]
+        poses = list(zip(new_df['Distance'], new_df['Radian']))
+        asset_to_pose[c] = poses
+    plot_pose_samples(asset_to_pose, title='Reconstructed_' + title)
 
 
 if __name__ == '__main__':
-    test_generate_pose_samples()
+    # test_generate_pose_samples()
+    test_plotting()
