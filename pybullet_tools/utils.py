@@ -417,7 +417,7 @@ def raise_timeout(signum, frame):
     raise TimeoutError()
 
 @contextmanager
-def timeout(duration):
+def timeout(duration, desc=''):
     # TODO: function that wraps around
     # https://www.jujens.eu/posts/en/2018/Jun/02/python-timeout-function/
     # https://code-maven.com/python-timeout
@@ -438,7 +438,7 @@ def timeout(duration):
     try:
         yield
     except TimeoutError as e:
-        print('Timeout after {} sec'.format(duration))
+        print('Timeout after {} sec {}'.format(duration, desc))
         #traceback.print_exc()
         pass
     finally:

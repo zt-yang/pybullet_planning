@@ -602,11 +602,13 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
     pose = (x, y, z, yaw)
     maybe, pose, handles = sample_maybe(body, maybe, pose, handles)
     result = adjust_z(body, maybe, pose, handles)
-    with timeout(duration=1):
+    with timeout(duration=1, desc=f"({obj}, {body}, {link})"):
         while result is None:
             maybe, pose, handles = sample_one(maybe, handles)
             maybe, pose, handles = sample_maybe(body, maybe, pose, handles)
             result = adjust_z(body, maybe, pose, handles)
+    if result is None:
+        return None
     maybe, (x, y, z, yaw), handles = result
 
     remove_handles(handles)

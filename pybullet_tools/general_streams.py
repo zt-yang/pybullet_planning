@@ -334,6 +334,8 @@ def get_contain_gen(problem, collisions=True, max_attempts=60, verbose=False, le
             if isinstance(space, tuple):
                 result = sample_obj_in_body_link_space(body, body=space[0], link=space[-1],
                                                        PLACEMENT_ONLY=True, verbose=verbose, **kwargs)
+                if result is None:
+                    break
                 x, y, z, yaw = result
                 body_pose = ((x, y, z), quat_from_euler(Euler(yaw=yaw)))
             else:
