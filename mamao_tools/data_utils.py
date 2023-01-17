@@ -2,8 +2,12 @@ import json
 import shutil
 from os import listdir, getcwd
 from os.path import join, isfile, isdir, abspath
+
+import numpy as np
 import untangle
 import copy
+
+from pybullet_tools.bullet_utils import nice
 
 import sys
 sys.path.append('/home/yang/Documents/fastamp')
@@ -481,25 +485,189 @@ def has_text_utils():
 ###############################################################################
 
 
+def get_substring_from_xml(line, pre, post):
+    return line[line.index(pre) + len(pre): line.index(post)]
+
+
 def get_numbers_from_xml(line, keep_strings=False):
-    nums = line[line.index('>') + 1:line.index('</')].split(' ')
+    nums = get_substring_from_xml(line, '>', '</').split(' ')
     if keep_strings:
         return nums
-    return [eval(n) for n in nums]
+    return np.asarray([eval(n) for n in nums])
 
 
-def get_lisdf_shapes(rundir, keyw=None):
+def get_name_from_xml(line):
+    return get_substring_from_xml(line, '="', '">')
+
+
+def get_category_idx_from_xml(line):
+    line = get_substring_from_xml(line, 'i>', '</')
+    line = line.replace('../../assets/models/', '').replace('/mobility.urdf', '')
+    return line.split('/')
+
+
+def get_if_static_from_xml(line):
+    translations = {'true': 'static', 'false': 'movable'}
+    return translations[get_substring_from_xml(line, 'c>', '</')]
+
+
+PARTNET_SHAPES = None
+
+
+from pybullet_tools.utils import aabb_contains_aabb, aabb2d_from_aabb, aabb_from_extent_center, AABB
+
+
+def get_partnet_aabb(category, idx):
+    from pprint import pprint
+    global PARTNET_SHAPES
+    DATABASE_DIR = abspath(join(__file__, '..', '..', 'databases'))
+    if PARTNET_SHAPES is None:
+        PARTNET_SHAPES = json.load(open(join(DATABASE_DIR, 'partnet_shapes.json'), 'r'))
+    if category not in PARTNET_SHAPES or idx not in PARTNET_SHAPES[category]:
+        # pprint({k: list(v.keys()) for k, v in PARTNET_SHAPES.items()})
+        # print('category', category, 'idx', idx)
+        return None
+    dlower, dupper = PARTNET_SHAPES[category][idx]
+    return np.asarray(dlower), np.asarray(dupper)
+
+
+def get_lisdf_aabbs(run_dir, keyw=None):
     """ faster way to return a dict with all objects and their pose, aabb """
-    lines = open(join(rundir, 'scene.lisdf'), 'r').readlines()
-    shapes = {}
+    lines = open(join(run_dir, 'scene.lisdf'), 'r').readlines()
+    aabbs = {c: {} for c in ['static', 'movable', 'movable_d', 'categories']}
     for i in range(len(lines)):
-        if f'name="{keyw}' in lines[i]:
+        if f'<model name="' in lines[i]:
             pose = lines[i + 2]
             size = lines[i + 7]
-            x = eval(get_numbers_from_xml(pose, keep_strings=True)[0])
-            lx = eval(get_numbers_from_xml(size, keep_strings=True)[0])
-            return x + lx / 2
+            if keyw is not None and f'name="{keyw}' in lines[i]:
+                x = eval(get_numbers_from_xml(pose, keep_strings=True)[0])
+                lx = eval(get_numbers_from_xml(size, keep_strings=True)[0])
+                return x + lx / 2
+            name = get_name_from_xml(lines[i])
+            if name in ['floor1', 'wall'] or 'counter_back' in name:
+                continue
+            pose = get_numbers_from_xml(pose)[:3]
+            size = get_numbers_from_xml(size)
+            aabb = aabb_from_extent_center(size, pose)
+            aabbs['static'][name] = aabb
+
+        elif f'<include name="' in lines[i]:
+            name = get_name_from_xml(lines[i])
+            if name in ['sinkbase', 'minifridgebase', 'faucet', 'diswasherbox'] or 'pr2' in name:
+                continue
+            uri = lines[i + 1]
+            static = lines[i + 2]
+            pose = lines[i + 4]
+            category, idx = get_category_idx_from_xml(uri)
+            static = get_if_static_from_xml(static)
+            if 'veggie' in name or 'meat' in name or 'bottle' in name or 'medicine' in name:
+                static = 'movable'
+            point = get_numbers_from_xml(pose)[:3]
+            result = get_partnet_aabb(category, idx)
+            if result is None:
+                continue
+            dlower, dupper = result
+            if static == 'movable':
+                aabbs['movable_d'][name] = (dlower, dupper)
+            else:
+                aabbs['categories'][name] = '/'.join([category, idx])
+            aabb = AABB(lower=point + dlower, upper=point + dupper)
+            aabbs[static][name] = aabb
+
+        elif f'state world_name=' in lines[i]:
+            break
+    return aabbs
 
 
-def get_sink_counter_x(rundir, keyw='sink_counter'):
-    return get_lisdf_shapes(rundir, keyw=keyw)
+def get_sink_counter_x(run_dir, keyw='sink_counter'):
+    return get_lisdf_aabbs(run_dir, keyw=keyw)
+
+
+def aabb_placed_on_aabb(top_aabb, bottom_aabb, above_epsilon=1e-2, below_epsilon=0.02):
+    assert (0 <= above_epsilon) and (0 <= below_epsilon)
+    top_z_min = top_aabb[0][2]
+    bottom_z_max = bottom_aabb[1][2]
+    return ((bottom_z_max - abs(below_epsilon)) <= top_z_min <= (bottom_z_max + abs(above_epsilon))) and \
+           (aabb_contains_aabb(aabb2d_from_aabb(top_aabb), aabb2d_from_aabb(bottom_aabb)))
+
+
+def aabb_placed_in_aabb(contained, container):
+    """ the object can stick out a bit on z axis """
+    lower1, upper1 = contained
+    lower1p = lower1 + np.array([0.02, 0.02, 0])
+    upper1p = upper1 - np.array([0.03, 0.02, 0])
+    lower2, upper2 = container
+    return np.less_equal(lower2, lower1p).all() and \
+           np.less_equal(upper1p[:2], upper2[:2]).all() and \
+           np.less_equal(lower1p[2], upper2[2])
+
+
+def get_from_to(name, aabbs, point=None, verbose=False, run_dir=None):
+    if point is None:
+        movable_aabb = aabbs['movable'][name]
+    else:
+        ## estimate based on the smaller side
+        dlower, dupper = aabbs['movable_d'][name]
+        dlower_min = np.max(dlower[:2])
+        dlower[:2] = dlower_min
+        dupper_min = np.min(dupper[:2])
+        dupper[:2] = dupper_min
+        movable_aabb = AABB(lower=point + dlower, upper=point + dupper)
+    relation = None
+    found_category = None
+    found_name = None
+    found_xy = None
+    padding = 30
+    def print_aabb(name, aabb):
+        blank = ''.join([' ']*(padding - len(name)))
+        print(f'{name} {blank} {nice(aabb)}')
+    if verbose:
+        print('\n----------------------------------------')
+        print(run_dir)
+        print_aabb(name, movable_aabb)
+    ## sort aabbs['static'] by static_aabb.lower[1] (y_lower)
+    static_aabb_dicts = sorted(aabbs['static'].items(), key=lambda x: x[1].lower[1])
+    for static_name, static_aabb in static_aabb_dicts:
+        if static_aabb.lower[1] > movable_aabb.upper[1] or static_aabb.upper[1] < movable_aabb.lower[1]:
+            continue
+        category = aabbs['categories'][static_name] if static_name in aabbs['categories'] else 'box'
+        if verbose:
+            print_aabb('  '+static_name+' | '+category, static_aabb)
+        if aabb_placed_on_aabb(movable_aabb, static_aabb):
+            if relation is not None and not verbose:
+                # get_from_to(name, aabbs, point=point, verbose=True, run_dir=run_dir)
+                return None, found_name, category
+                print('multiple answers')
+            relation = 'On'
+            found_category = category
+            found_name = static_name
+            found_xy = static_aabb
+            if verbose: print('  found', relation, '\t', static_name)
+            # break
+        elif aabb_placed_in_aabb(movable_aabb, static_aabb):
+            if 'microwave' in static_name:
+                continue
+            if 'braiserbody' in static_name:
+                relation = 'On'
+            elif 'sink' in static_name:
+                relation = 'On'
+            else:
+                relation = 'In'
+            if found_name is not None and not verbose:
+                # get_from_to(name, aabbs, point=point, verbose=True, run_dir=run_dir)
+                return None, found_name, category
+                print('multiple answers')
+            found_category = category
+            found_name = static_name
+            found_xy = static_aabb
+            if verbose: print('  found', relation, '\t', static_name)
+            # break
+    if relation is None:
+        # if not verbose:
+        #     get_from_to(name, aabbs, point=point, verbose=True, run_dir=run_dir)
+        #     print('didnt find for', name)
+        return None
+
+    x_upper = found_xy.upper[0]
+    y_center = (found_xy.lower[1] + found_xy.upper[1]) / 2
+    return (relation, found_category, found_name), (x_upper, y_center)

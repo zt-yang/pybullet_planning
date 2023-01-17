@@ -25,6 +25,7 @@ def get_asset_to_poses(title='place', yaw_only=True):
 
 
 def get_learned_yaw(category, quat=None):
+    return None
     global DATABASE
     if DATABASE is None:
         DATABASE = get_asset_to_poses(title='place', yaw_only=True)

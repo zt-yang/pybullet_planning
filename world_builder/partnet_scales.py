@@ -227,7 +227,7 @@ MODEL_HEIGHTS = {
     },
     'CabinetUpper': {
         'height': 0.768,
-        'models': ['45621', '45526', '46108', '46889', '48381', '49182']
+        'models': ['45621', '45526', '46108', '46889', '48381', '49182', '46744']
     },
     'CabinetAboveOven': {
         'height': 0.4,
@@ -293,4 +293,5 @@ DONT_LOAD = [
     'MeatTurkeyLeg', 'VeggieCauliflower', 'VeggieGreenPepper', ## unable to load in gym
     '102379',  ## has an extra sink base
     '7265', ## microwave door partially open
+    '46744', ## cabinet upper
 ]

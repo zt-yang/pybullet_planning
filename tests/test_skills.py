@@ -15,7 +15,7 @@ from config import ASSET_PATH
 
 from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, load_pybullet, load_model, \
     sample_aabb, AABB, set_pose, get_aabb, get_aabb_center, quat_from_euler, Euler, HideOutput, get_aabb_extent, \
-    set_camera_pose, wait_unlocked, disconnect, wait_if_gui, create_box, \
+    set_camera_pose, wait_unlocked, disconnect, wait_if_gui, create_box, wait_for_duration, \
     SEPARATOR, get_aabb, get_pose, approximate_as_prism, draw_aabb, multiply, unit_quat, remove_body, invert, \
     Pose, get_link_pose, get_joint_limits, WHITE, RGBA, set_all_color, RED, GREEN, set_renderer, clone_body, \
     add_text, joint_from_name, set_caching, Point, set_random_seed, set_numpy_seed
@@ -35,7 +35,7 @@ from world_builder.loaders import sample_kitchen_sink, sample_full_kitchen, crea
 from world_builder.robot_builders import create_gripper_robot, create_pr2_robot
 from world_builder.utils import load_asset, get_instance_name
 from world_builder.utils import get_instances as get_instances_helper
-from world_builder.partnet_scales import MODEL_SCALES as TEST_MODELS
+from world_builder.partnet_scales import MODEL_SCALES
 from world_builder.partnet_scales import MODEL_HEIGHTS, OBJ_SCALES
 from world_builder.robot_builders import build_skill_domain_robot
 
@@ -188,7 +188,7 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
             if isinstance(id, tuple):
                 cat, id = id
             path, body, _ = load_model_instance(cat, id, scale=scale, location=locations[j])
-        # for id, scale in TEST_MODELS[cat].items():
+        # for id, scale in MODEL_SCALES[cat].items():
         #     j += 1
         #     path = join(ASSET_PATH, 'models', cat, id)
         #     body = load_body(path, scale, locations[j], random_yaw=True)
@@ -278,8 +278,8 @@ def load_model_instance(category, id, scale=1, location = (0, 0)):
     if category in MODEL_HEIGHTS:
         height = MODEL_HEIGHTS[category]['height']
         scale = get_model_scale(path, h=height)
-    elif category in TEST_MODELS:
-        scale = TEST_MODELS[category][id]
+    elif category in MODEL_SCALES:
+        scale = MODEL_SCALES[category][id]
 
     body, file = load_body(path, scale, location)
     return file, body, scale
@@ -845,6 +845,45 @@ def test_reachability(robot):
     wait_unlocked()
 
 
+def test_objects():
+    world = get_test_world()
+    draw_pose(unit_pose(), length=1.5)
+    DATABASE_DIR = abspath(join(__file__, '..', '..', 'databases'))
+    shape_file = join(DATABASE_DIR, 'partnet_shapes.json')
+
+    skips = ['Kettle', 'Toaster', 'TrashCan', 'CabinetAboveOven', 'DeskStorage']
+    categories = list(MODEL_SCALES.keys()) + list(MODEL_HEIGHTS.keys())
+    skip_till = None
+    if skip_till is not None:
+        categories = categories[categories.index(skip_till)+1:]
+    categories = [c for c in categories if c not in skips and c != c.lower()]
+    shapes = {}  ## category: {id: (dlower, dupper)}
+    # if isfile(shape_file):
+    #     shapes = json.load(open(shape_file, 'r'))
+    for category in categories:
+        instances = get_instances(category)
+        if category not in shapes:
+            shapes[category] = {}
+        bodies = []
+        for idx in instances:
+            path = join(ASSET_PATH, 'models', category, idx, 'mobility.urdf')
+            if not isfile(path) or idx in shapes[category]:
+                print('skipping', path)
+                continue
+            path, body, scale = load_model_instance(category, idx)
+            set_pose(body, ([0, 0, 0], quat_from_euler([0, 0, math.pi])))
+
+            aabb = get_aabb(body)
+            shapes[category][idx] = (aabb.lower, aabb.upper)
+            bodies.append(body)
+        #     wait_for_duration(0.25)
+        # wait_unlocked()
+        for body in bodies:
+            remove_body(body)
+    with open(shape_file, 'w') as f:
+        json.dump(shapes, f, indent=2, sort_keys=False)
+
+
 if __name__ == '__main__':
 
     """ ---------------- object categories -----------------
@@ -859,6 +898,7 @@ if __name__ == '__main__':
     # get_data(categories=['BraiserBody'])
     # test_texture(category='CoffeeMachine', id='103127')
     # test_vhacd(category='BraiserBody')
+    test_objects()
 
     """ --- robot (FEGripper) related  --- """
     robot = 'pr2'  ## 'feg' | 'pr2'
@@ -873,7 +913,7 @@ if __name__ == '__main__':
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
-    test_handle_grasps(robot, category='MiniFridge', skip_grasps=True)
+    # test_handle_grasps(robot, category='MiniFridge', skip_grasps=True)
     ## Kitchen: 'MiniFridge', 'MiniFridgeDoorless', 'CabinetTop'
 
     """ --- placement related  --- 
