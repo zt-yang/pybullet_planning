@@ -392,7 +392,7 @@ class World(object):
         self.add_object(surface)
         return surface
 
-    def summarize_supporting_surfaces(self, return_dict={}):
+    def summarize_supporting_surfaces(self):
         from pybullet_tools.logging import myprint as print
         return_dict = {}
         padding = '    '
@@ -401,7 +401,19 @@ class World(object):
         print(padding, 'supporter', self.cat_to_objects('supporter'))
         for surface in set(self.cat_to_objects('surface') + self.cat_to_objects('supporter')):
             print(padding, surface.name, surface.supported_objects)
-            return_dict[surface.name] = surface.supported_objects
+            return_dict[surface.name] = [o.name for o in surface.supported_objects]
+        print('-------------------------------------------------')
+        return return_dict
+
+    def summarize_supported_movables(self):
+        from pybullet_tools.logging import myprint as print
+        return_dict = {}
+        padding = '    '
+        print('--------------- summarize_supported_movables --------------')
+        print(padding, 'moveable', self.cat_to_objects('moveable'))
+        for movable in set(self.cat_to_objects('moveable')):
+            print(padding, movable.name, movable.supporting_surface)
+            return_dict[movable.name] = movable.supporting_surface.name
         print('-------------------------------------------------')
         return return_dict
 
@@ -691,12 +703,12 @@ class World(object):
         open_joint(body, joint, extent=extent, pstn=pstn)
         self.assign_attachment(body)
 
-    def open_doors_drawers(self, body, ADD_JOINT=True, extent=1):
+    def open_doors_drawers(self, body, ADD_JOINT=True, **kwargs):
         doors, drawers, knobs = self.get_doors_drawers(body, skippable=True)
         for joint in doors + drawers:
             if isinstance(joint, tuple):
                 body, joint = joint
-            self.open_joint(body, joint, extent=extent)
+            self.open_joint(body, joint, **kwargs)
             if not ADD_JOINT:
                 self.remove_object(joint)
 

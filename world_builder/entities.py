@@ -536,7 +536,6 @@ class Surface(Region):
         super(Region, self).__init__(body, link=link, **kwargs)
         if self.name is None:
             self.name = get_link_name(body, link)
-        # self.supported_objects = []
 
 
 class Space(Region):
@@ -550,7 +549,6 @@ class Space(Region):
     def include_and_attach(self, obj, world):
         from pybullet_tools.bullet_utils import create_attachment
         if obj not in self.supported_objects:
-            # self.supported_objects.append(obj)
             obj.change_supporting_surface(self)
         attachment = create_attachment(self, self.link, obj, OBJ=True)
         print('entities.include_and_attach\t', attachment)

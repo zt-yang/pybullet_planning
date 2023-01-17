@@ -1750,7 +1750,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
                                      obstacles=[], verbose=False):
     cabinets, shelves = [], []
     cabi_type = 'CabinetTop' if random.random() < 0.5 else 'CabinetUpper'
-    if world.note in [1, 123, 4, 41]:
+    if world.note in [1, 123, 4, 41, 991]:
         cabi_type = 'CabinetTop'
     colors = {
         '45526': HEX_to_RGB('#EDC580'),
@@ -2158,12 +2158,12 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
 
 
 def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
-    assert case in [2, 3]
+    assert case in [2, 3, 992, 993]
 
     obj_name, surface_name, d = {
         2: ('sink', 'sink_bottom', [0.1, 0.0, 0.8]),
         3: ('braiserbody', 'braiser_bottom', [0.2, 0.0, 1.3])
-    }[case]
+    }[case%990]
     obj = world.name_to_body(obj_name)
     obj_bottom = world.name_to_body(surface_name)
     set_camera_target_body(obj, dx=d[0], dy=d[1], dz=d[2])
@@ -2224,6 +2224,9 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
 
         if random.random() < 0.2:
             counters_tmp[0].place_obj(world.BODY_TO_OBJECT[lid], world=world)
+
+    if case in [993]:
+        world.remove_object(world.name_to_object('braiserlid'))
     return obj_bottom, objects
 
 
