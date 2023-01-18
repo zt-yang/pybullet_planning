@@ -69,7 +69,7 @@ def plot_pose_samples(asset_to_pose, title='Pose Samples'):
 def test_generate_pose_samples():
     data_dir = '/home/yang/Documents/fastamp-data-rss'
     subdirs = [join(data_dir, s) for s in listdir(data_dir) if \
-               isdir(join(data_dir, s)) and s.startswith('mm_')]
+               isdir(join(data_dir, s)) and s.startswith('mm_') or s == '_gmm']
     asset_to_pose = {}
     for subdir in subdirs:
         run_dirs = [join(subdir, s) for s in listdir(subdir) if isdir(join(subdir, s))]
