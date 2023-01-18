@@ -72,6 +72,14 @@ def get_indices_from_config(run_dir):
     return False
 
 
+def add_to_planning_config(run_dir, keyname, value):
+    file_name = join(run_dir, 'planning_config.json')
+    config = json.load(open(file_name, 'r'))
+    if keyname not in config:
+        config[keyname] = value
+        json.dump(config, open(file_name, 'w'), indent=3)
+
+
 def process_value(vv, training=True):
     from pybullet_tools.utils import quat_from_euler
     vv = list(vv)
@@ -159,11 +167,21 @@ def get_indices_from_config(run_dir):
     return False
 
 
-def get_indices(run_dir):
-    result = get_indices_from_config(run_dir)
-    if not result:
-        return get_indices_from_log(run_dir)
-    return result
+def get_indices(run_dir, body_map=None):
+    indices = get_indices_from_config(run_dir)
+    if not indices:
+        indices = get_indices_from_log(run_dir)
+    if body_map is not None:
+        indices = {str(body_map[eval(body)]): name for body, name in indices.items()}
+    return indices
+
+
+def get_body_map(run_dir, world, inv=False):
+    body_to_name = json.load(open(join(run_dir, 'planning_config.json'), 'r'))['body_to_name']
+    body_to_new = {eval(k): world.name_to_body[v] for k, v in body_to_name.items()}
+    if inv:
+        return {v: k for k, v in body_to_new.items()}
+    return body_to_new
 
 
 def get_instance_info(run_dir, world=None):
@@ -531,10 +549,24 @@ def get_partnet_aabb(category, idx):
     return np.asarray(dlower), np.asarray(dupper)
 
 
+def get_world_center(run_dir):
+    aabbs = get_lisdf_aabbs(run_dir)
+    x_min, y_min = np.inf, np.inf
+    x_max, y_max = -np.inf, -np.inf
+    for aabb in aabbs['static'].values():
+        x_min = min(x_min, aabb.lower[0])
+        y_min = min(y_min, aabb.lower[1])
+        x_max = max(x_max, aabb.upper[0])
+        y_max = max(y_max, aabb.upper[1])
+    cx, cy = (x_min + x_max) / 2, (y_min + y_max) / 2
+    lx, ly = x_max - x_min, y_max - y_min
+    return cx, cy, lx, ly
+
+
 def get_lisdf_aabbs(run_dir, keyw=None):
     """ faster way to return a dict with all objects and their pose, aabb """
     lines = open(join(run_dir, 'scene.lisdf'), 'r').readlines()
-    aabbs = {c: {} for c in ['static', 'movable', 'movable_d', 'categories']}
+    aabbs = {c: {} for c in ['static', 'static_pose', 'movable', 'movable_d', 'categories']}
     for i in range(len(lines)):
         if f'<model name="' in lines[i]:
             pose = lines[i + 2]
@@ -550,6 +582,7 @@ def get_lisdf_aabbs(run_dir, keyw=None):
             size = get_numbers_from_xml(size)
             aabb = aabb_from_extent_center(size, pose)
             aabbs['static'][name] = aabb
+            aabbs['static_pose'][name] = pose
 
         elif f'<include name="' in lines[i]:
             name = get_name_from_xml(lines[i])
