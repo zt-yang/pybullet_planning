@@ -322,9 +322,9 @@ class World():
     def get_events(self, body):
         pass
 
-    def get_indices(self):
+    def get_indices(self, **kwargs):
         from mamao_tools.data_utils import get_indices
-        return get_indices(self.run_dir)
+        return get_indices(self.run_dir, **kwargs)
 
     def add_camera(self, pose=unit_pose(), img_dir=join('visualizations', 'camera_images'),
                    width=640, height=480, fx=400, **kwargs):
@@ -442,7 +442,7 @@ def get_custom_limits(config_path):
 
 
 def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False,
-                        width=1980, height=1238):
+                        width=1980, height=1238, transparent=True):
 
     ## sometimes another lisdf name is given
     if lisdf_path.endswith('.lisdf'):
@@ -523,20 +523,8 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
                 set_joint_position(body, joint_from_name(body, js.name), position)
 
     ## load objects transparent
-    if 'test_full_kitchen' in world.name:
-        transparent = ['pr2']
-        camera_zoomin = get_camera_zoom_in(lisdf_dir)
-        if camera_zoomin is not None:
-            target_body = camera_zoomin['name']
-            if 'braiser' in target_body:
-                transparent.extend(['braiserlid', 'cabinettop', 'cabinetupper', 'shelf'])
-            if 'sink' in target_body:
-                transparent.extend(['faucet', 'cabinettop', 'cabinetupper', 'shelf'])
-            # if 'minifridge' in target_body or 'cabinettop' in target_body:
-            #     transparent.extend(['minifridge::', 'cabinettop::'])
-        for b in transparent:
-            transparency = 0.5 if b not in ['cabinetupper'] else 0.2
-            bullet_world.make_transparent(b, transparency=transparency)
+    if 'test_full_kitchen' in world.name and transparent:
+        make_furniture_transparent(bullet_world, lisdf_dir, lower_tpy=0.5, upper_tpy=0.2)
 
     if world.gui is not None:
         camera_pose = world.gui.camera.pose
@@ -590,6 +578,24 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
     # wait_unlocked()
     bullet_world.run_dir = lisdf_dir
     return bullet_world
+
+
+def make_furniture_transparent(bullet_world, lisdf_dir, lower_tpy=0.5, upper_tpy=0.2):
+    transparent = ['pr2']
+    camera_zoomin = get_camera_zoom_in(lisdf_dir)
+    upper_furnitures = ['cabinettop', 'cabinetupper', 'shelf']
+    if camera_zoomin is not None:
+        target_body = camera_zoomin['name']
+        if 'braiser' in target_body:
+            transparent.extend(['braiserlid']+upper_furnitures)
+        if 'sink' in target_body:
+            transparent.extend(['faucet']+upper_furnitures)
+        # if 'minifridge' in target_body or 'cabinettop' in target_body:
+        #     transparent.extend(['minifridge::', 'cabinettop::'])
+    for b in transparent:
+        transparency = lower_tpy if b not in upper_furnitures else upper_tpy
+        if transparency < 1:
+            bullet_world.make_transparent(b, transparency=transparency)
 
 
 ## will be replaced later will <world><gui><camera> tag

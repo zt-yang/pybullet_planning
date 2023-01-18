@@ -475,9 +475,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=False, plan=None,
     if SAVE_COMPOSED_JPG or SAVE_GIF:
         colors = RAINBOW_COLORS
         color_index = 0
-        indices = world.get_indices()
-        if body_map is not None:
-            indices = {str(body_map[eval(body)]): name for body, name in indices.items()}
+        indices = world.get_indices(body_map=body_map)
         if SAVE_COMPOSED_JPG:
             imgs = world.camera.get_image(segment=True, segment_links=True)
             seg = imgs.segmentationMaskBuffer

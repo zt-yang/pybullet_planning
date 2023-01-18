@@ -304,5 +304,48 @@ def test_make_collage_mp4():
     make_collage_mp4(mp4s, num_cols, num_rows, mp4_name=join(mp4_dir, 'collage_4by4.mp4'))
 
 
+def make_collage_img(imgs, num_cols, num_rows, size=None, img_name='collage.png'):
+    import cv2
+    import numpy as np
+    from tqdm import tqdm
+
+    images = []
+    for img in tqdm(imgs, desc=f'reading imgs'):
+        img = cv2.imread(img, cv2.IMREAD_COLOR)
+        h, w, c = img.shape
+        images.append(img)
+
+    if size is None:
+        clip_size = (h // num_rows, w // num_cols)
+    else:
+        clip_size = (size[0] // num_rows, size[1] // num_cols)
+    clip_size = clip_size[::-1]
+
+    rows = []
+    this_row = []
+    for j, img in enumerate(images):
+        img = cv2.resize(img, clip_size)
+        # img = img[..., [2, 1, 0]].copy()  ## RGB to BGR for cv2
+        col = j % num_cols
+        this_row.append(img)
+        if col == num_cols - 1:
+            rows.append(np.hstack(this_row))
+            this_row = []
+    frame = np.vstack(rows)
+
+    cv2.imwrite(img_name, frame)
+
+
+def test_make_collage_img():
+    mp4_dir = '/home/yang/Documents/jupyter-worlds/tests/gym_images/'
+    img = '/home/yang/Documents/fastamp-data-rss/mm_braiser/1066/zoomin/rgb_image_initial.png'
+    num_cols = 2
+    num_rows = 2
+    size = (1960, 1470)
+    imgs = [img] * (num_cols * num_rows)
+    make_collage_img(imgs, num_cols, num_rows, size=size, img_name=join(mp4_dir, 'collage_4by4.png'))
+
+
 if __name__ == "__main__":
+    # test_make_collage_img()
     test_make_collage_mp4()
