@@ -19,15 +19,16 @@ def get_obj_pose(action, indices):
     return name, category, (pose[:3], pose[-1])
 
 
-def save_pose_samples(asset_to_pose, title='pose_samples'):
+def save_pose_samples(pose_dict, title='pose_samples'):
     import pandas as pd
 
     lst = []
-    for name, surface_to_poses in asset_to_pose.items():
-        for surface, poses in surface_to_poses.items():
-            for pose in poses:
-                lst.append([name, surface] + list(pose))
-    df = pd.DataFrame(lst, columns=['Movable', 'Surface', 'x', 'y', 'yaw'])
+    for action, asset_to_pose in pose_dict.items():
+        for name, surface_to_poses in asset_to_pose.items():
+            for surface, poses in surface_to_poses.items():
+                for pose in poses:
+                    lst.append([action, name, surface] + list(pose))
+    df = pd.DataFrame(lst, columns=['Action', 'Movable', 'Surface', 'x', 'y', 'z', 'yaw', 'run_name'])
     df.to_csv(join(DATABASE_DIR, f'{title}.csv'))
 
 
@@ -71,6 +72,8 @@ def test_generate_pose_samples():
     subdirs = [join(data_dir, s) for s in listdir(data_dir) if \
                isdir(join(data_dir, s)) and s.startswith('mm_') or s == '_gmm']
     asset_to_pose = {}
+    found_count = 0
+    missed_count = 0
     for subdir in subdirs:
         run_dirs = [join(subdir, s) for s in listdir(subdir) if isdir(join(subdir, s))]
         run_dirs = sorted(run_dirs, key=lambda x: eval(x.split('/')[-1]))
@@ -84,20 +87,26 @@ def test_generate_pose_samples():
                 if action[0].startswith('pick') or action[0].startswith('place'):
                     if action[0] not in asset_to_pose:
                         asset_to_pose[action[0]] = {}
+                    ## that of movable object
                     name, category, (point, yaw) = get_obj_pose(action, indices)
                     result = get_from_to(name, aabbs, point, run_dir=run_dir)
-                    if result is None or len(result) == 3:
-                        print(run_dir, name, result)
+                    ## found_count 15543 	missed_count 571
+                    if result is None or result[0] is None:
+                        # print(run_dir, name, result)
                         placement_plan.append((action[0], name, None))
+                        missed_count += 1
                         continue
-                    (relation, surface_category, surface_name), (x_upper, y_center) = result
+                    found_count += 1
+                    (relation, surface_category, surface_name), (x_upper, y_center, z_center) = result
                     if category not in asset_to_pose[action[0]]:
                         asset_to_pose[action[0]][category] = {}
                     if surface_category == 'box':
                         y_center = point[1]
                     if surface_category not in asset_to_pose[action[0]][category]:
                         asset_to_pose[action[0]][category][surface_category] = []
-                    asset_to_pose[action[0]][category][surface_category].append((x_upper - point[0], point[1] - y_center, yaw))
+                    run_name = run_dir.replace(data_dir, '')
+                    pp = (x_upper - point[0], point[1] - y_center, point[2] - z_center, yaw, run_name)
+                    asset_to_pose[action[0]][category][surface_category].append(pp)
                     placement_plan.append((action[0], name, surface_name))
             config_file = join(run_dir, 'planning_config.json')
             planning_config = json.load(open(config_file, 'r'))
@@ -108,12 +117,15 @@ def test_generate_pose_samples():
                     json.dump(planning_config, f, indent=3)
                 shutil.move(new_config_file, config_file)
 
-    for action in asset_to_pose:
-        # plot_pose_samples(asset_to_pose[action], title=action)
-        save_pose_samples(asset_to_pose[action], title=action)
+    print('found_count', found_count, '\tmissed_count', missed_count)
+    save_pose_samples(asset_to_pose, title='pickplace')
+    # for action in asset_to_pose:
+    #     # plot_pose_samples(asset_to_pose[action], title=action)
+    #     save_pose_samples(asset_to_pose[action], title=action)
 
 
-def test_plotting(title='place'):
+def test_polar_2d_plotting(title='place'):
+    """ discarded """
     import pandas as pd
 
     asset_to_pose = {}
@@ -126,6 +138,31 @@ def test_plotting(title='place'):
     plot_pose_samples(asset_to_pose, title='Reconstructed_' + title)
 
 
+def test_pose_3d_plotting(title='pickplace'):
+    """ jupyter notebook in world_builder/samplers.ipynb """
+    import pandas as pd
+    import plotly.express as px
+
+    df = pd.read_csv(join(DATABASE_DIR, f'{title}.csv'), index_col=0)
+
+    def get_sub_df(cat=None, surface=None, action=None):
+        condition = True
+        if action is not None:
+            condition = condition & (df.Action == action)
+        if cat is not None:
+            condition = condition & (df.Movable == cat)
+        if surface is not None:
+            condition = condition & (df.Surface == surface)
+        return df[condition]
+
+    sub_df = get_sub_df(surface='MiniFridge/10849')
+    fig = px.scatter_3d(sub_df, x='x', y='y', z='z', color='yaw',
+                        opacity=0.3, size_max=2, symbol='Movable',
+                        hover_data=["run_name", "Action"])
+    fig.show()
+
+
 if __name__ == '__main__':
-    test_generate_pose_samples()
-    # test_plotting()
+    # test_generate_pose_samples()
+    # test_polar_2d_plotting()
+    test_pose_3d_plotting()

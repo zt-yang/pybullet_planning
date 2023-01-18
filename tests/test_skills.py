@@ -18,7 +18,7 @@ from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, 
     set_camera_pose, wait_unlocked, disconnect, wait_if_gui, create_box, wait_for_duration, \
     SEPARATOR, get_aabb, get_pose, approximate_as_prism, draw_aabb, multiply, unit_quat, remove_body, invert, \
     Pose, get_link_pose, get_joint_limits, WHITE, RGBA, set_all_color, RED, GREEN, set_renderer, clone_body, \
-    add_text, joint_from_name, set_caching, Point, set_random_seed, set_numpy_seed
+    add_text, joint_from_name, set_caching, Point, set_random_seed, set_numpy_seed, reset_simulation
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, set_camera_target_body, \
     draw_bounding_lines, fit_dimensions, draw_fitted_box, get_hand_grasps, get_partnet_doors, get_partnet_spaces, \
     open_joint, get_grasp_db_file, draw_points
@@ -44,7 +44,7 @@ import math
 
 DEFAULT_TEST = 'kitchen' ## 'blocks_pick'
 
-seed = 807556
+seed = None
 if seed is None:
     seed = random.randint(0, 10 ** 6 - 1)
 set_random_seed(seed)
@@ -167,7 +167,8 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
             outputs = funk(body)
             if isinstance(outputs, list):
                 print(f'grasps on body {body}:', outputs)
-            visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=False, TEST_ATTACHMENT=True)
+            # visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=False, TEST_ATTACHMENT=True)
+            visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=True, TEST_ATTACHMENT=False)
             set_renderer(True)
             set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
 
@@ -371,15 +372,17 @@ def reload_after_vhacd(path, body, scale, id=None):
     return id_urdf_path, body
 
 
-def test_placement_in(robot, category):
+def test_placement_in(robot, category, movable_category='Food', num_samples=30):
 
     world = get_test_world(robot)
     problem = State(world)
     funk = get_contain_list_gen(problem, collisions=True, verbose=False,
-                                num_samples=30, learned_sampling=True)
+                                num_samples=num_samples, learned_sampling=True)
 
     ## load fridge
     instances = get_instances(category)
+    movable_instances = get_instances(movable_category)
+    movable_instance = random.choice(list(movable_instances.keys()))
     n = len(instances)
     i = 0
     locations = [(0, get_gap(category) * n) for n in range(1, n + 1)]
@@ -390,16 +393,16 @@ def test_placement_in(robot, category):
         (x, y) = locations[i]
         path, body, scale = load_model_instance(category, id, location=(x, y))
         # new_urdf_path, body = reload_after_vhacd(path, body, scale, id=id)
-        instance_name = get_instance_name(path)
+
         name = f'{category.lower()}#{id}'
         if category in ['MiniFridge', 'Fridge', 'Cabinet', 'Microwave']:
             name += '_storage'
-        world.add_body(body, name, instance_name)
+        world.add_body(body, name, path=path)
         set_camera_target_body(body, dx=1, dy=0, dz=1)
 
         ## color links corresponding to semantic labels
         spaces = get_partnet_spaces(path, body)
-        world.add_spaces(body, spaces)
+        world.add_spaces(body, spaces, path=path)
 
         for door in get_partnet_doors(path, body):
             open_joint(door[0], door[1])
@@ -410,15 +413,17 @@ def test_placement_in(robot, category):
             # space = clone_body(body, links=body_link[-1:], visual=True, collision=True)
             # world.add_body(space, f'{category.lower()}#{id}-{body_link}')
 
-            cabbage = load_asset('VeggieCabbage', x=x, y=y, z=0, yaw=0)[0]
+            cabbage, path = load_asset(movable_category, x=x, y=y, z=0, yaw=0,
+                                       RANDOM_INSTANCE=movable_instance)[:2]
             cabbage_name = f'cabbage#{i}-{body_link}'
-            world.add_body(cabbage, cabbage_name)
+            world.add_body(cabbage, cabbage_name, path=path)
 
             outputs = funk(cabbage, body_link)
             set_pose(cabbage, outputs[0][0].value)
             markers = []
             for j in range(1, len(outputs)):
-                marker = load_asset('VeggieCabbage', x=x, y=y, z=0, yaw=0)[0]
+                marker = load_asset(movable_category, x=x, y=y, z=0, yaw=0,
+                                    RANDOM_INSTANCE=movable_instance)[0]
                 # world.add_body(cabbage, cabbage_name+f"_({j})")
                 markers.append(marker)
                 set_pose(marker, outputs[j][0].value)
@@ -430,13 +435,15 @@ def test_placement_in(robot, category):
             for m in markers:
                 remove_body(m)
         i += 1
+        reset_simulation()
 
     # set_camera_pose((4, 3, 2), (0, 3, 0.5))
     wait_if_gui('Finish?')
     disconnect()
 
 
-def test_placement_on(robot, category, surface_name=None, num_samples=30):
+def test_placement_on(robot, category, surface_name=None,
+                      movable_category='Food', num_samples=30):
 
     world = get_test_world(robot)
     problem = State(world)
@@ -445,51 +452,51 @@ def test_placement_on(robot, category, surface_name=None, num_samples=30):
 
     ## load fridge
     instances = get_instances(category)
+    movable_instances = get_instances(movable_category)
+    movable_instance = random.choice(list(movable_instances.keys()))
     n = len(instances)
     i = 0
     locations = [(0, get_gap(category) * n) for n in range(1, n + 1)]
     set_camera_pose((4, 3, 2), (0, 3, 0.5))
     for id in instances:
-        # if id not in ['11709']:
-        #     continue
         (x, y) = locations[i]
         path, body, scale = load_model_instance(category, id, location=(x, y))
         # new_urdf_path, body = reload_after_vhacd(path, body, scale, id=id)
 
         ## ---- add surface
-        instance_name = get_instance_name(path)
         name = f'{category.lower()}#{id}'
-        world.add_body(body, name, instance_name)
+        world.add_body(body, name, path=path)
         set_camera_target_body(body, dx=1, dy=0, dz=1)
         if surface_name is not None:
             link = link_from_name(body, surface_name)
             body = (body, None, link)
-            world.add_body(body, name, surface_name)
+            world.add_body(body, name, path=path)
 
         ## ---- add many cabbages
         # space = clone_body(body, links=body_link[-1:], visual=True, collision=True)
         # world.add_body(space, f'{category.lower()}#{id}-{body_link}')
         x += 1
-        cabbage = load_asset('VeggieCabbage', x=x, y=y, z=0, yaw=0)[0]
-        cabbage_name = f'cabbage#{i}-{body}'
-        world.add_body(cabbage, cabbage_name)
+        cabbage, path = load_asset(movable_category, x=x, y=y, z=0, yaw=0,
+                                   RANDOM_INSTANCE=movable_instance)[:2]
+        cabbage_name = f'{movable_category}#{i}-{body}'
+        world.add_body(cabbage, cabbage_name, path=path)
 
         outputs = funk(cabbage, body)
         set_pose(cabbage, outputs[0][0].value)
         markers = []
         for j in range(1, len(outputs)):
-            marker = load_asset('VeggieCabbage', x=x, y=y, z=0, yaw=0)[0]
-            # world.add_body(cabbage, cabbage_name+f"_({j})")
+            marker = load_asset(movable_category, x=x, y=y, z=0, yaw=0,
+                                RANDOM_INSTANCE=movable_instance)[0]
             markers.append(marker)
             set_pose(marker, outputs[j][0].value)
 
-        set_renderer(True)
         set_renderer(True)
         set_camera_target_body(cabbage, dx=1, dy=0, dz=1)
         wait_if_gui('Next surface?')
         for m in markers:
             remove_body(m)
         i += 1
+        reset_simulation()
 
     # set_camera_pose((4, 3, 2), (0, 3, 0.5))
     wait_if_gui('Finish?')
@@ -898,7 +905,7 @@ if __name__ == '__main__':
     # get_data(categories=['BraiserBody'])
     # test_texture(category='CoffeeMachine', id='103127')
     # test_vhacd(category='BraiserBody')
-    test_objects()
+    # test_objects()
 
     """ --- robot (FEGripper) related  --- """
     robot = 'pr2'  ## 'feg' | 'pr2'
@@ -909,7 +916,7 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    # test_grasps(robot, ['MiniFridge'], skip_grasps=True)  ## 'EyeGlasses'
+    # test_grasps(robot, ['Food'], skip_grasps=False)  ## 'EyeGlasses'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
@@ -919,7 +926,7 @@ if __name__ == '__main__':
     """ --- placement related  --- 
         IN: 'MiniFridge', 'CabinetTop'
     """
-    # test_placement_in(robot, category='CabinetTop')
+    test_placement_in(robot, category='MiniFridge')
 
     """ --- placement related  --- 
         ON: 'KitchenCounter', 

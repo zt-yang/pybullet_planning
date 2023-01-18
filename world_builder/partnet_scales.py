@@ -58,12 +58,13 @@ MODEL_SCALES = {
         '12252': 0.7
     },
     'Food': {
-        'VeggieCabbage': 0.0047,
-        'VeggieZucchini': 0.01,
-        'VeggieSweetPotato': 0.015,
-        'VeggiePotato': 0.013,
         'VeggieArtichoke': 0.014,
+        'VeggieCabbage': 0.0047,
+        'VeggiePotato': 0.013,
+        'VeggieSweetPotato': 0.015,
         'VeggieTomato': 0.008,
+        'VeggieZucchini': 0.01,
+
         ## able to render but not generate world with
         'MeatTurkeyLeg': 0.0007,
         'VeggieCauliflower': 0.0056,

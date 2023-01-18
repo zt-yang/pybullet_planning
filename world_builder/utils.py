@@ -495,7 +495,7 @@ def get_instance_name(path):
 
 
 def get_mobility_id(path):
-    if not path.endswith('mobility.urdf'):
+    if path is None or not path.endswith('mobility.urdf'):
         return None
     idx = dirname(path)
     idx = idx.replace(dirname(idx), '')
@@ -605,6 +605,17 @@ def get_potential_placements(goals, init):
                     placements[get_body(f[1])] = get_body(goal[2])
     print('\nworld_builder.utils.get_potential_placements: ', placements, '\n')
     return placements
+
+
+def get_lisdf_name(body, name, joint=None, link=None):
+    LINK_STR = '::'
+    if joint is not None or link is not None:
+        body_name = name.split(LINK_STR)[0]
+        if joint is None and link is not None:
+            return f"{body_name}{LINK_STR}{get_link_name(body, link)}"
+        elif joint is not None and link is None:
+            return f"{body_name}{LINK_STR}{get_joint_name(body, joint)}"
+    return name
 
 
 if __name__ == "__main__":

@@ -25,7 +25,8 @@ from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove
     reset_simulation, get_movable_joints, JOINT_TYPES, get_joint_type, is_movable, get_camera_matrix, \
     wait_unlocked
 from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link, \
-    toggle_joint, get_door_links, set_camera_target_body, colorize_world, colorize_link, find_closest_match
+    toggle_joint, get_door_links, set_camera_target_body, colorize_world, colorize_link, find_closest_match, \
+    is_box_entity
 from pybullet_tools.pr2_streams import get_handle_link
 from pybullet_tools.flying_gripper_utils import set_se3_conf
 
@@ -33,7 +34,7 @@ from pddlstream.language.constants import AND, PDDLProblem
 
 from world_builder.entities import Space
 from world_builder.robot_builders import create_pr2_robot, create_gripper_robot
-from world_builder.utils import get_instance_name, get_camera_zoom_in
+from world_builder.utils import get_instance_name, get_camera_zoom_in, get_lisdf_name, get_mobility_id
 
 from lisdf_tools.lisdf_planning import pddl_to_init_goal
 
@@ -51,6 +52,7 @@ class World():
         self.lisdf = lisdf
         self.body_to_name = {}
         self.instance_names = {}
+        self.mobility_ids = {}
         self.name_to_body = {}
         self.ATTACHMENTS = {}
         self.camera = None
@@ -88,18 +90,25 @@ class World():
             self.check_world_obstacles()
         self.colored_links = colorize_world(self.fixed, transparency)
 
-    def add_body(self, body, name, instance_name=None):
+    def add_body(self, body, name, instance_name=None, path=None):
         if body is None:
             print('lisdf_loader.body = None')
-        if instance_name is None and isinstance(body, tuple):
-            instance_name = self.get_part_instance_name(body)
+        if instance_name is None:
+            if isinstance(body, tuple):
+                instance_name = self.get_part_instance_name(body)
+            elif path is not None:
+                instance_name = get_instance_name(path)
         self.name_to_body[name] = body
         self.body_to_name[body] = name
         id = body
         if isinstance(body, tuple) and len(body) == 2:
             id = (body[0], get_handle_link(body))
         ## the id is here is either body or (body, link)
+        mobility_id = get_mobility_id(path)
         self.instance_names[id] = instance_name
+        self.mobility_ids[id] = mobility_id
+        print(f'lisdf_loader.add_body(name={name}, body={body}, '
+              f'mobility_id={mobility_id}, instance_name={instance_name})', )
 
     def add_robot(self, robot, name='robot', **kwargs):
         if not isinstance(robot, int):
@@ -107,19 +116,19 @@ class World():
         self.add_body(robot.body, name)
         self.robot = robot
 
-    def add_joints(self, body, body_joints, color_handle=False):
+    def add_joints(self, body, body_joints, color_handle=False, **kwargs):
         idx = 0
         for body_joint, joint_name in body_joints.items():
-            self.add_body(body_joint, joint_name)
+            self.add_body(body_joint, joint_name, **kwargs)
             handle_link = get_handle_link(body_joint)
             color = LINK_COLORS[idx] if color_handle else None
             set_color(body, color=color, link=handle_link)
             idx += 1
 
-    def add_spaces(self, body, body_links, color_link=False):
+    def add_spaces(self, body, body_links, color_link=False, **kwargs):
         idx = 0
         for body_link, link_name in body_links.items():
-            self.add_body(body_link, link_name)
+            self.add_body(body_link, link_name, **kwargs)
             color = LINK_COLORS[idx] if color_link else None
             set_color(body, color=color, link=body_link[-1])
             idx += 1
@@ -306,6 +315,22 @@ class World():
         if body in self.instance_names:
             return self.instance_names[body]
         return None
+
+    def get_mobility_id(self, body):
+        if body in self.mobility_ids:
+            return self.mobility_ids[body]
+        elif is_box_entity(body):
+            return 'box'
+        return None
+
+    def get_lisdf_name(self, pybullet_name):
+        if isinstance(pybullet_name, int):
+            return self.get_name(pybullet_name)
+        elif len(pybullet_name) == 2:
+            body, joint = pybullet_name
+        elif len(pybullet_name) == 3:
+            body, _, link = pybullet_name
+        return get_lisdf_name(body, self.get_name(body), joint=joint, link=link)
 
     # def get_full_name(self, body_id):
     #     """ concatenated string for links and joints,

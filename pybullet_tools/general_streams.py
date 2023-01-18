@@ -19,7 +19,8 @@ from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, is_
     visualize_point, collided, sample_pose, xyzyaw_to_pose, ObjAttachment, set_camera_target_body, \
     sample_obj_on_body_link_surface
 
-from world_builder.samplers import get_learned_yaw
+from world_builder.samplers import get_learned_yaw, get_learned_poses
+
 
 class Position(object):
     num = count()
@@ -192,20 +193,37 @@ def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False, visua
         # if fluents:
         #     attachments = process_motion_fluents(fluents, robot)
 
+        title = f"  get_stable_gen({body}, {surface}) |"
         p0 = Pose(body, get_pose(body), surface)
 
         if surface is None:
             surfaces = problem.surfaces
         else:
             surfaces = [surface]
+        obs = [obst for obst in obstacles if obst not in {body, surface}]
+        count = num_trials
 
         ## --------- Special case for plates -------------
-        result = check_plate_placement(body, surfaces, obstacles, num_trials)
+        result = check_plate_placement(body, surfaces, obs, num_trials)
         if result is not None:
             return result
         ## ------------------------------------------------
 
-        count = num_trials
+        ## --------- Special case for full kitchen objects -------------
+        result = check_kitchen_placement(world, body, surface, num_samples=num_trials-5)
+        if result is not None:
+            for body_pose in result:
+                p = Pose(body, value=body_pose, support=surface)
+                p.assign()
+                coo = collided(body, obs, verbose=verbose, visualize=visualize,
+                               tag='stable_gen_database', world=world)
+                if not coo:
+                    count -= 1
+                    p0.assign()
+                    yield (p,)
+        ## ------------------------------------------------
+        print(title, 'sample without check_kitchen_placement')
+
         while count > 0: ## True
             count -= 1
             surface = random.choice(surfaces) # TODO: weight by area
@@ -220,19 +238,26 @@ def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False, visua
             if learned_sampling:
                 body_pose = learned_pose_sampler(world, body, surface, body_pose)
 
-            p = Pose(body, body_pose, surface)
+            p = Pose(body, value=body_pose, support=surface)
             p.assign()
-            obs = [obst for obst in obstacles if obst not in {body, surface}]
             result = collided(body, obs, verbose=verbose, visualize=visualize, tag='stable_gen', world=world)
             if not result:
                 p0.assign()
                 yield (p,)
             else:
-                if verbose:
-                    print('general_streams.get_stable_gen collided')
                 if visualize:
                     wait_unlocked()
     return gen
+
+
+def check_kitchen_placement(world, body, surface, **kwargs):
+    body = world.get_mobility_id(body)
+    if isinstance(surface, tuple):
+        surface_aabb = get_aabb(surface[0])
+    else:
+        surface_aabb = get_aabb(surface)
+    surface = world.get_mobility_id(surface)
+    return get_learned_poses(body, surface, surface_aabb=surface_aabb, **kwargs)
 
 
 def learned_pose_sampler(world, body, surface, body_pose):
@@ -244,10 +269,10 @@ def learned_pose_sampler(world, body, surface, body_pose):
         dy = y - cy
         x, y, _ = get_aabb_center(get_aabb(surface[0], link=surface[-1]))
         body_pose = (x+dx, y+dy, z+0.01), quat
-    lisdf_name = world.get_lisdf_name(body)
-    learned_quat = get_learned_yaw(lisdf_name, quat)
-    if learned_quat is not None:
-        body_pose = (x, y, z), quat
+    # lisdf_name = world.get_mobility_id(body)
+    # learned_quat = get_learned_yaw(lisdf_name, quat)
+    # if learned_quat is not None:
+    #     body_pose = (x, y, z), quat
     return body_pose
 
 
@@ -323,13 +348,31 @@ def get_contain_gen(problem, collisions=True, max_attempts=60, verbose=False, le
     world = problem.world
 
     def gen(body, space):
-        #set_renderer(verbose)
         title = f"  get_contain_gen({body}, {space}) |"
+
+        p0 = Pose(body, get_pose(body), space)
+        attempts = 0
+        obs = [obst for obst in obstacles if obst not in {body, space}]
+
         if space is None:
             spaces = problem.spaces
         else:
             spaces = [space]
-        attempts = 0
+
+        ## --------- Special case for full kitchen objects -------------
+        result = check_kitchen_placement(world, body, space, num_samples=max_attempts - 5)
+        if result is not None:
+            for body_pose in result:
+                p = Pose(body, value=body_pose, support=space)
+                p.assign()
+                coo = collided(body, obs, verbose=verbose,
+                               tag='contain_gen_database', world=world)
+                if not coo:
+                    attempts += 1
+                    yield (p,)
+        ## ------------------------------------------------
+        print(title, 'sample without check_kitchen_placement')
+
         while attempts < max_attempts:
             attempts += 1
             space = random.choice(spaces)  # TODO: weight by area
@@ -359,9 +402,9 @@ def get_contain_gen(problem, collisions=True, max_attempts=60, verbose=False, le
             ## there will be collision between body and that link because of how pose is sampled
             p_mod = p = Pose(body, get_mod_pose(body_pose), space)
             p_mod.assign()
-            obs = [obst for obst in obstacles if obst not in {body, space}]
-            if not collided(body, obs, articulated=False, verbose=verbose, world=world):
+            if not collided(body, obs, articulated=False, verbose=verbose, tag='contain_gen', world=world):
                 p = Pose(body, body_pose, space)
+                p0.assign()
                 yield (p,)
         if verbose:
             print(f'{title} reached max_attempts = {max_attempts}')
@@ -739,7 +782,6 @@ def get_cfree_traj_pose_test(robot, collisions=True, verbose=False, visualize=Fa
             remove_handles(handles)
         return result
     return test
-
 
 
 """ ==============================================================

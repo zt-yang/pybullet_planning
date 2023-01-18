@@ -7,7 +7,7 @@ import numpy as np
 import untangle
 import copy
 
-from pybullet_tools.bullet_utils import nice
+from pybullet_tools.bullet_utils import nice, get_aabb_center
 
 import sys
 sys.path.append('/home/yang/Documents/fastamp')
@@ -616,7 +616,7 @@ def get_from_to(name, aabbs, point=None, verbose=False, run_dir=None):
     relation = None
     found_category = None
     found_name = None
-    found_xy = None
+    found_aabb = None
     padding = 30
     def print_aabb(name, aabb):
         blank = ''.join([' ']*(padding - len(name)))
@@ -641,7 +641,7 @@ def get_from_to(name, aabbs, point=None, verbose=False, run_dir=None):
             relation = 'On'
             found_category = category
             found_name = static_name
-            found_xy = static_aabb
+            found_aabb = static_aabb
             if verbose: print('  found', relation, '\t', static_name)
             # break
         elif aabb_placed_in_aabb(movable_aabb, static_aabb):
@@ -659,7 +659,7 @@ def get_from_to(name, aabbs, point=None, verbose=False, run_dir=None):
                 print('multiple answers')
             found_category = category
             found_name = static_name
-            found_xy = static_aabb
+            found_aabb = static_aabb
             if verbose: print('  found', relation, '\t', static_name)
             # break
     if relation is None:
@@ -668,6 +668,6 @@ def get_from_to(name, aabbs, point=None, verbose=False, run_dir=None):
         #     print('didnt find for', name)
         return None
 
-    x_upper = found_xy.upper[0]
-    y_center = (found_xy.lower[1] + found_xy.upper[1]) / 2
-    return (relation, found_category, found_name), (x_upper, y_center)
+    x_upper = found_aabb.upper[0]
+    _, y_center, z_center = get_aabb_center(found_aabb)
+    return (relation, found_category, found_name), (x_upper, y_center, z_center)
