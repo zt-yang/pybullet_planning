@@ -60,12 +60,12 @@ class FeasibilityChecker(object):
             if isinstance(self, Heuristic):
                 # remove_body(self._feg)
                 # self._feg = None
-                # self.reachability_space = {str(k): v for k, v in self.reachability_space.items()}
-                self.possible_obstacles = {str(k): v for k, v in self.possible_obstacles.items()}
+                self.possible_obstacles = {str(k): tuple(v) for k, v in self.possible_obstacles.items()}
                 self.pre_actions_and = {k: tuple(v) for k, v in self.pre_actions_and.items()}
                 self.pre_actions_or = {k: tuple(v) for k, v in self.pre_actions_or.items()}
+                self.not_pre_actions = {k: tuple(v) for k, v in self.not_pre_actions.items()}
                 for f in self._fluents_original:
-                    if f[0].lower() == 'atgrasp':
+                    if f[0].lower() in ['atposition', 'atpose']:
                         f[2].assign()
         else:
             self._log['sequence'] = []
@@ -160,17 +160,6 @@ shorter = lambda a: '-'.join([rename[a.name], str(a.args[1])]) \
 shorter_plan = lambda actions: f"({', '.join([shorter(a) for a in actions if a.name in rename])})"
 
 
-def print_plan(plan):
-    print('plan\t', shorter_plan(plan))
-
-
-def print_result(plan, result):
-    text = 'passed' if result else 'failed'
-    print(f'----------------------------- {text} -----------------------------')
-    print_plan(plan)
-    print('------------------------------------------------------------------\n')
-
-
 class Heuristic(FeasibilityChecker):
 
     def __init__(self, initializer):
@@ -185,7 +174,6 @@ class Heuristic(FeasibilityChecker):
         self._reachability_kwargs = dict(max_attempts=10, debug=False, verbose=self._verbose)
 
         self.potential_placements = get_potential_placements(goals, init)
-        # self.reachability_space = {}
         self.possible_obstacles = self._robot.possible_obstacles
         self.pre_actions_and = {}
         self.pre_actions_or = {}
@@ -195,6 +183,16 @@ class Heuristic(FeasibilityChecker):
     def _check(self, plan):
         """ each checker returns either False or the next relaxed state """
         from pybullet_tools.logging import myprint as print
+
+        def print_plan(plan):
+            print('plan\t', shorter_plan(plan))
+
+        def print_result(plan, result):
+            text = 'passed' if result else 'failed'
+            print(f'----------------------------- {text} -----------------------------')
+            print_plan(plan)
+            print('------------------------------------------------------------------\n')
+
         verbose = self._verbose or True
         checkers = {
             'pick': self._check_pick,
@@ -357,8 +355,6 @@ class Heuristic(FeasibilityChecker):
             self._update_pre_action('place', movable, True, plan_so_far)
             return True
         body_link = self.potential_placements[movable]
-        # if body_link in self.reachability_space:
-        #     return self.reachability_space[body_link]
 
         # if self._feg is None:
         #     x, y, _ = get_aabb_center(self._robot.aabb())
@@ -377,9 +373,7 @@ class Heuristic(FeasibilityChecker):
         print('_check_place | pre-actions-and', self.pre_actions_and)
         print('_check_place | pre-actions-or', self.pre_actions_or)
         print('_check_place | not pre-actions', self.not_pre_actions)
-        # self.reachability_space[body_link] = result
         return result
-        ## nothing happens to the state
 
     def _check_pull(self, args, plan_so_far):
         self._step_pull(args)
