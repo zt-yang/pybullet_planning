@@ -304,8 +304,11 @@ class Heuristic(FeasibilityChecker):
                     for action in plan_so_far:
                         if action not in self.not_pre_actions[key]:
                             something_right.add(action)
-                    movables = [k for k in self.potential_placements if \
-                                self.potential_placements[k] == self.potential_placements[body]]
+                    if body in self.possible_obstacles:
+                        movables = [k for k in self.potential_placements if \
+                                    self.potential_placements[k] == self.potential_placements[body]]
+                    else:
+                        movables = [body]
                     print(f'found pre_actions_or{key} from plan_so_far {something_right} for movables {movables}')
                     for movable in movables:
                         new_key = shorter((action_name, movable))
