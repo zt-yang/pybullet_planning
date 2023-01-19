@@ -67,6 +67,8 @@ class FeasibilityChecker(object):
                 for f in self._fluents_original:
                     if f[0].lower() in ['atposition', 'atpose']:
                         f[2].assign()
+                if len(self._log['checks']) > 200:
+                    sys.exit()
         else:
             self._log['sequence'] = []
             start = time.time()
