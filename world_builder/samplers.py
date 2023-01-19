@@ -5,6 +5,7 @@ import random
 
 from pybullet_tools.utils import quat_from_euler, euler_from_quat, get_aabb_center
 from pybullet_tools.bullet_utils import xyzyaw_to_pose
+from world_builder.utils import get_instances
 
 DATABASE = None
 
@@ -17,6 +18,8 @@ def get_asset_to_poses(title='place', yaw_only=False, full_pose=True):
     df = pd.read_csv(join(DATABASE_DIR, f'{title}.csv'))
     movables = df['Movable'].unique()
     surfaces = df['Surface'].unique()
+    categories = ['Bottle', 'Medicine']
+    categories = {k.lower(): k for k in categories}
     for m in movables:
         for s in surfaces:
             new_df = df.loc[(df['Movable'] == m) & (df['Surface'] == s)]
@@ -30,7 +33,12 @@ def get_asset_to_poses(title='place', yaw_only=False, full_pose=True):
             if '/' in s:
                 s = s.split('/')[1]
             key = (m, s)
-            asset_to_pose[key] = poses
+            if m in categories:
+                instances = get_instances(categories[m])
+                for instance in instances:
+                    asset_to_pose[(instance, s)] = poses
+            else:
+                asset_to_pose[key] = poses
     return asset_to_pose
 
 
@@ -50,20 +58,24 @@ def get_learned_yaw(category, quat=None):
     return None
 
 
-def get_learned_poses(movable, surface, num_samples=10, surface_aabb=None, verbose=True):
+def get_learned_poses(movable, surface, num_samples=10, surface_point=None, verbose=True):
     global DATABASE
     if DATABASE is None:
         DATABASE = get_asset_to_poses(title='pickplace', full_pose=True)
 
-    def get_global_pose(pose):
-        if surface_aabb is None:
+    def get_global_pose(pose, nudge=False):
+        if surface_point is None:
             return pose
-        x_upper = surface_aabb.upper[0]
-        _, y_center, z_center = get_aabb_center(surface_aabb)
-        (x, y, z), quat = pose
-        return ((x_upper - x, y + y_center, z + z_center), quat)
+        rel_point, quat = pose
+        point = [rel_point[i] + surface_point[i] for i in range(3)]
+        if nudge:
+            delta = np.random.normal(scale=0.01, size=3)
+            delta[2] = 0
+            point = np.array(point) + delta
+        return (tuple(point), quat)
 
     key = (movable.lower(), surface)
+    nudge = surface not in ['100015', '100017', '100021', '100023', '100038', '100693']
     title = f'         get_learned_poses{key} |'
     if key in DATABASE:
         possibilities = DATABASE[key]
@@ -73,9 +85,9 @@ def get_learned_poses(movable, surface, num_samples=10, surface_aabb=None, verbo
             return []
         choices = random.choices(range(len(possibilities)), k=num_samples)
         choices = [possibilities[i] for i in choices]
-        choices = [get_global_pose(choice) for choice in choices]
+        choices = [get_global_pose(choice, nudge=nudge) for choice in choices]
         if verbose:
-            print(f'{title} found {len(choices)} saved poses for {key}')
+            print(f'{title} found {len(choices)} saved poses')
         return choices
     if verbose:
         print(f'{title} doesnt exist in database')

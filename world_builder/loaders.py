@@ -1475,7 +1475,8 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
         # })
         obstacles = [o for o in obstacles if o.pybullet_name != braiser_bottom.pybullet_name]
     pprint(counters)
-    print('\nload_counter_moveables(obstacles={})\n'.format([o.name for o in obstacles]))
+    if verbose:
+        print('\nload_counter_moveables(obstacles={})\n'.format([o.name for o in obstacles]))
 
     def check_size_matter(obj):
         if size_matter and aabb_larger(obstacles[-1], obj):
@@ -1486,7 +1487,8 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
             coounter_choices = counters[obj_name]
         counter = random.choice(coounter_choices)
         obj = counter.place_new_obj(obj_name, category=category, RANDOM_INSTANCE=True, world=world)
-        print(f'          placed {obj} on {counter.name}')
+        if verbose:
+            print(f'          placed {obj} on {counter.name}')
         if 'braiser_bottom' not in counter.name:
             adjust_for_reachability(obj, counter, x_min, world=world)
         return obj
@@ -1499,7 +1501,11 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
         unreachable = collision or not robot.check_reachability(obj, state, verbose=False)
         size = unreachable or ((obj_name == 'food' and size_matter and len(satisfied) == 0))
         while collision or unreachable or size:
-            print(f'          remove {obj} because collision={collision}, unreachable={unreachable}, size={size}')
+            # set_camera_target_body(obj.body)
+            # set_renderer(True)
+            # wait_if_gui()
+            if verbose:
+                print(f'          remove {obj} because collision={collision}, unreachable={unreachable}, size={size}')
             world.remove_object(obj)
             obj = place_on_counter(obj_name, category, **kwargs)
             check_size_matter(obj)

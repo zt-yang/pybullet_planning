@@ -512,7 +512,9 @@ def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_t
                     print(f'sample_obj_on_body_link_surface\t sample {obj} on {body}-{link} | exceed max trial {max_trial}')
                 break
 
-    if PLACEMENT_ONLY: return x, y, z, yaw
+    if PLACEMENT_ONLY:
+        z = stable_z(obj, body, link)
+        return x, y, z, yaw
 
     # print(nice(aabb2d_from_aabb(aabb)))
     # print(nice(aabb2d_from_aabb(get_aabb(maybe))))
@@ -520,7 +522,7 @@ def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_t
 
 
 def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
-                                  draw=False, verbose=False, visualize=False):
+                                  draw=False, verbose=False, visualize=False, max_trial=3):
     if visualize:
         set_renderer(True)
     draw &= has_gui()

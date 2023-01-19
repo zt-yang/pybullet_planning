@@ -566,7 +566,7 @@ def get_world_center(run_dir):
 def get_lisdf_aabbs(run_dir, keyw=None):
     """ faster way to return a dict with all objects and their pose, aabb """
     lines = open(join(run_dir, 'scene.lisdf'), 'r').readlines()
-    aabbs = {c: {} for c in ['static', 'static_pose', 'movable', 'movable_d', 'categories']}
+    aabbs = {c: {} for c in ['static', 'movable', 'movable_d', 'categories', 'pose']}
     for i in range(len(lines)):
         if f'<model name="' in lines[i]:
             pose = lines[i + 2]
@@ -578,11 +578,11 @@ def get_lisdf_aabbs(run_dir, keyw=None):
             name = get_name_from_xml(lines[i])
             if name in ['floor1', 'wall'] or 'counter_back' in name:
                 continue
-            pose = get_numbers_from_xml(pose)[:3]
+            point = get_numbers_from_xml(pose)[:3]
             size = get_numbers_from_xml(size)
-            aabb = aabb_from_extent_center(size, pose)
+            aabb = aabb_from_extent_center(size, point)
             aabbs['static'][name] = aabb
-            aabbs['static_pose'][name] = pose
+            aabbs['pose'][name] = point
 
         elif f'<include name="' in lines[i]:
             name = get_name_from_xml(lines[i])
@@ -606,6 +606,7 @@ def get_lisdf_aabbs(run_dir, keyw=None):
                 aabbs['categories'][name] = '/'.join([category, idx])
             aabb = AABB(lower=point + dlower, upper=point + dupper)
             aabbs[static][name] = aabb
+            aabbs['pose'][name] = point
 
         elif f'state world_name=' in lines[i]:
             break
@@ -650,6 +651,7 @@ def get_from_to(name, aabbs, point=None, verbose=False, run_dir=None):
     found_category = None
     found_name = None
     found_aabb = None
+    found_point = None
     padding = 30
     def print_aabb(name, aabb):
         blank = ''.join([' ']*(padding - len(name)))
@@ -675,6 +677,7 @@ def get_from_to(name, aabbs, point=None, verbose=False, run_dir=None):
             found_category = category
             found_name = static_name
             found_aabb = static_aabb
+            found_point = aabbs['pose'][static_name]
             if verbose: print('  found', relation, '\t', static_name)
             # break
         elif aabb_placed_in_aabb(movable_aabb, static_aabb):
@@ -693,6 +696,7 @@ def get_from_to(name, aabbs, point=None, verbose=False, run_dir=None):
             found_category = category
             found_name = static_name
             found_aabb = static_aabb
+            found_point = aabbs['pose'][static_name]
             if verbose: print('  found', relation, '\t', static_name)
             # break
     if relation is None:
@@ -701,6 +705,9 @@ def get_from_to(name, aabbs, point=None, verbose=False, run_dir=None):
         #     print('didnt find for', name)
         return None
 
+    ## aabb will change when doors are open
     x_upper = found_aabb.upper[0]
-    _, y_center, z_center = get_aabb_center(found_aabb)
-    return (relation, found_category, found_name), (x_upper, y_center, z_center)
+    # _, y_center, z_center = get_aabb_center(found_aabb)
+    # return (relation, found_category, found_name), (x_upper, y_center, z_center)
+
+    return (relation, found_category, found_name), x_upper, found_point

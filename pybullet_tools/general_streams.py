@@ -251,13 +251,28 @@ def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False, visua
 
 
 def check_kitchen_placement(world, body, surface, **kwargs):
-    body = world.get_mobility_id(body)
+    body_id = world.get_mobility_id(body)
     if isinstance(surface, tuple):
-        surface_aabb = get_aabb(surface[0])
+        surface_point = get_pose(surface[0])[0]
+        surface_aabb = get_aabb(surface[0], link=surface[1])
     else:
+        surface_point = get_pose(surface)[0]
         surface_aabb = get_aabb(surface)
-    surface = world.get_mobility_id(surface)
-    return get_learned_poses(body, surface, surface_aabb=surface_aabb, **kwargs)
+    surface_id = world.get_mobility_id(surface)
+    poses = get_learned_poses(body_id, surface_id, surface_point=surface_point, **kwargs)
+    if surface_id == 'box':
+        original_pose = get_pose(body)
+        y_lower = surface_aabb.lower[1]
+        y_upper = surface_aabb.upper[1]
+        def random_y(pose):
+            set_pose(body, pose)
+            aabb = get_aabb(body)
+            (x, y, z), quat = pose
+            y = np.random.uniform(y_lower+(y-aabb.lower[1]), y_upper-(aabb.upper[1]-y))
+            return (x, y, z), quat
+        poses = [random_y(pose) for pose in poses]
+        set_pose(body, original_pose)
+    return poses
 
 
 def learned_pose_sampler(world, body, surface, body_pose):
@@ -341,7 +356,7 @@ def is_cabinet_top(world, space):
         or 'space' in world.get_type(space) or 'storage' in world.get_type(space)
 
 
-def get_contain_gen(problem, collisions=True, max_attempts=60, verbose=False, learned_sampling=False, **kwargs):
+def get_contain_gen(problem, collisions=True, max_attempts=20, verbose=False, learned_sampling=False, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
     from world_builder.entities import Object
     obstacles = problem.fixed if collisions else []

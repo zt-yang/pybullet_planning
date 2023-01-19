@@ -10,9 +10,12 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
     get_min_limit, get_max_limit, get_link_parent, LockRenderer, HideOutput, pairwise_collisions, get_bodies, \
     remove_debug, child_link_from_joint, unit_point, tform_point, buffer_aabb, get_aabb_center, get_aabb_extent, \
     quat_from_euler, wait_unlocked
-from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_box_entity, \
-    get_camera_image_at_pose
-from world_builder.utils import get_mobility_id, get_instance_name, get_lisdf_name
+from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_box_entity, collided, \
+    get_camera_image_at_pose, sample_obj_in_body_link_space, sample_obj_on_body_link_surface, nice, \
+    create_attachment
+from pybullet_tools.general_streams import check_kitchen_placement
+
+from world_builder.utils import get_mobility_id, get_instance_name, get_lisdf_name, load_asset
 
 import numpy as np
 
@@ -95,6 +98,7 @@ class Object(Index):
         elif is_box_entity(body):
             self.is_box = True
             self.instance_name = None
+            self.mobility_id = 'box'
 
         self.body = body
         self.joint = joint
@@ -147,7 +151,6 @@ class Object(Index):
             self.supported_objects.append(obj)
 
     def attach_obj(self, obj, world=None):
-        from pybullet_tools.bullet_utils import create_attachment
         link = self.link if self.link is not None else -1
         if world is None:
             world = self.world
@@ -156,8 +159,6 @@ class Object(Index):
         obj.change_supporting_surface(self)
 
     def place_new_obj(self, obj_name, category=None, name=None, max_trial=8, world=None, **kwargs):
-        from pybullet_tools.bullet_utils import sample_obj_on_body_link_surface
-        from world_builder.utils import load_asset
 
         if category is None:
             category = obj_name
@@ -165,52 +166,52 @@ class Object(Index):
             world = self.world
             raise NotImplementedError('place_new_obj: world is None')
 
-        # set_renderer(False)
         obj = world.add_object(
             Object(load_asset(obj_name.lower(), **kwargs), category=category, name=name)
         )
-        # body = sample_obj_on_body_link_surface(obj, self.body, self.link, max_trial=max_trial)
         world.put_on_surface(obj, max_trial=max_trial, surface=self.shorter_name, world=world)
         self.support_obj(obj)
         # set_renderer(True)
         return obj
 
-    def place_obj(self, obj, xyzyaw=None, max_trial=8, timeout=1.5, world=None):
-        from pybullet_tools.bullet_utils import sample_obj_on_body_link_surface, nice
-        # set_renderer(False)
+    def place_obj(self, obj, max_trial=8, timeout=1.5, world=None):
         if isinstance(obj, str):
-            obj = self.place_new_obj(obj, max_trial=max_trial)
+            raise NotImplementedError('place_obj: obj is str')
+            # obj = self.place_new_obj(obj, max_trial=max_trial)
+        obstacles = [o for o in get_bodies() if o not in [obj, self.body]]
 
-        if xyzyaw is not None:
-            x, y, z, yaw = xyzyaw
-            obj.set_pose(Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw)))
+        done = False
+        result = check_kitchen_placement(world, obj.body, self.pybullet_name, num_samples=10)
+        if result is not None:
+            for body_pose in result:
+                obj.set_pose(body_pose, world=world)
+                coo = collided(obj, obstacles, tag='place_obj_database', world=world, verbose=False)
+                if not coo:
+                    done = True
+                    break
 
-        else:
-            done = False
-            obstacles = [o for o in get_bodies() if o not in [obj, self.body]]
-            start_time = time.time()
-            while not done:
-                x, y, z, yaw = sample_obj_on_body_link_surface(
-                    obj, self.body, self.link, PLACEMENT_ONLY=True, max_trial=max_trial)
-                z = stable_z(obj, self.body, self.link)
-                obj.set_pose(Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw)), world=world)
-                if pairwise_collisions(obj, obstacles):
-                    # print(f'entities.Object.place_obj({obj}, xyzyaw={xyzyaw}, max_trial={max_trial}) '
-                    #       f'| collided with {obstacles}! try again')
-                    done = False
-                    if time.time() - start_time > timeout:
-                        print(f'entities.Object.place_obj({obj}, xyzyaw={xyzyaw}, max_trial={max_trial}) '
-                              f'| timeout {timeout}! give up')
-                        return None
-                    continue
+        start_time = time.time()
+        place_fn = sample_obj_in_body_link_space if isinstance(self, Space) \
+            else sample_obj_on_body_link_surface
+        while not done:
+            x, y, z, yaw = place_fn(obj, self.body, self.link,
+                                    PLACEMENT_ONLY=True, max_trial=max_trial)
+            body_pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
+            obj.set_pose(body_pose, world=world)
+            coo = collided(obj, obstacles, tag='place_obj', world=world, verbose=False)
+            if not coo:
                 done = True
+            if time.time() - start_time > timeout:
+                return obj
 
         if self.verbose:
-            supporter_name = f"{self.__class__.__name__.capitalize()} {self.name}"
-            print(f'entities.place_obj.placed {obj.name} on {supporter_name} at point {nice((x, y, z))}')
+            if isinstance(self, Space):
+                supporter_name = f"in Space {self.name}"
+            else:
+                supporter_name = f"on {self.__class__.__name__.capitalize()} {self.name}"
+            print(f'entities.place_obj.placed {obj.name} {supporter_name} at pose {nice(body_pose)}')
 
         self.attach_obj(obj, world=world)
-        # set_renderer(True)
         return obj
 
     def change_supporting_surface(self, obj):
@@ -539,21 +540,9 @@ class Space(Region):
         super(Region, self).__init__(body, link=link, **kwargs)
         if self.name is None:
             self.name = get_link_name(body, link)
-        # self.objects_inside = []
 
-    def include_and_attach(self, obj, world):
-        from pybullet_tools.bullet_utils import create_attachment
-        if obj not in self.supported_objects:
-            obj.change_supporting_surface(self)
-        attachment = create_attachment(self, self.link, obj, OBJ=True)
-        print('entities.include_and_attach\t', attachment)
-        world.ATTACHMENTS[obj] = attachment
-        # obj.supporting_surface = self
-
-    def place_new_obj(self, obj_name, category=None, max_trial=8, verbose=False, scale=1,
-                      world=None, **kwargs):
-        from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, open_joint
-        from world_builder.utils import load_asset
+    def place_new_obj(self, obj_name, category=None, max_trial=8, verbose=False,
+                      scale=1, world=None, **kwargs):
 
         if category is None:
             category = obj_name
@@ -565,42 +554,11 @@ class Space(Region):
         obj = world.add_object(
             Moveable(load_asset(obj_name.lower(), scale=scale), category=category)
         )
-        sample_obj_in_body_link_space(obj, self.body, self.link)
+        self.place_obj(obj, max_trial=max_trial, world=world, **kwargs)
 
-        self.include_and_attach(obj, world)
         # world.close_doors_drawers(self.body)
         return obj
 
-    def place_obj(self, obj, xyzyaw=None, max_trial=8, **kwargs):
-        from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice
-        from world_builder.robots import PR2Robot
-        if isinstance(obj, str):
-            obj = self.place_new_obj(obj)
-
-        if xyzyaw is not None:
-            x, y, z, yaw = xyzyaw
-            obj.set_pose(Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw)))
-
-        else:
-            # obj_name = obj.category.capitalize().replace('bottle', 'Bottle')
-            # if obj_name == 'Moveable':
-            #     obj_name = obj
-            done = False
-            obstacles = [o for o in get_bodies() if o not in [obj, self.body]]
-            while not done:
-                x, y, z, yaw = sample_obj_in_body_link_space(
-                    obj, self.body, self.link, PLACEMENT_ONLY=True)
-                obj.set_pose(Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw)))
-                if pairwise_collisions(obj, obstacles):
-                    print(f'entities.Space.place_obj({obj}, xyzyaw={xyzyaw}, max_trial={max_trial}) '
-                          f'| collided with {obstacles}! try again')
-                    done = False
-                    continue
-                done = True
-
-        print(f'entities.place_obj.placed {obj.name} in Space {self.name} at point {nice((x, y, z))}')
-        self.include_and_attach(obj)
-        return obj
 
 #######################################################
 

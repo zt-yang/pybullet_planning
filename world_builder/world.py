@@ -212,6 +212,9 @@ class World(object):
             return self.instance_names[body]
         return self.get_attr(body, 'instance_name')
 
+    def get_mobility_id(self, body):
+        return self.get_attr(body, 'mobility_id')
+
     def get_events(self, body):
         return self.get_attr(body, 'events')
 
@@ -300,6 +303,12 @@ class World(object):
         ## robot
         else:
             self.ROBOT_TO_OBJECT[body] = object
+
+        if link is not None or joint is not None:
+            parent = BODY_TO_OBJECT[body]
+            object.path = parent.path
+            object.scale = parent.scale
+            object.mobility_id = parent.mobility_id
 
         if pose is not None:
             add_body(object, pose)

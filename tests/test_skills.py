@@ -35,8 +35,7 @@ from world_builder.loaders import sample_kitchen_sink, sample_full_kitchen, crea
 from world_builder.robot_builders import create_gripper_robot, create_pr2_robot
 from world_builder.utils import load_asset, get_instance_name
 from world_builder.utils import get_instances as get_instances_helper
-from world_builder.partnet_scales import MODEL_SCALES
-from world_builder.partnet_scales import MODEL_HEIGHTS, OBJ_SCALES
+from world_builder.partnet_scales import MODEL_HEIGHTS, OBJ_SCALES, MODEL_SCALES
 from world_builder.robot_builders import build_skill_domain_robot
 
 import math

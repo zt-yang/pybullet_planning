@@ -28,7 +28,7 @@ def save_pose_samples(pose_dict, title='pose_samples'):
             for surface, poses in surface_to_poses.items():
                 for pose in poses:
                     lst.append([action, name, surface] + list(pose))
-    df = pd.DataFrame(lst, columns=['Action', 'Movable', 'Surface', 'x', 'y', 'z', 'yaw', 'run_name'])
+    df = pd.DataFrame(lst, columns=['Action', 'Movable', 'Surface', 'x', 'y', 'z', 'yaw', 'dx', 'run_name'])
     df.to_csv(join(DATABASE_DIR, f'{title}.csv'))
 
 
@@ -97,15 +97,14 @@ def test_generate_pose_samples():
                         missed_count += 1
                         continue
                     found_count += 1
-                    (relation, surface_category, surface_name), (x_upper, y_center, z_center) = result
+                    (relation, surface_category, surface_name), x_upper, surface_point = result
                     if category not in asset_to_pose[action[0]]:
                         asset_to_pose[action[0]][category] = {}
-                    if surface_category == 'box':
-                        y_center = point[1]
                     if surface_category not in asset_to_pose[action[0]][category]:
                         asset_to_pose[action[0]][category][surface_category] = []
                     run_name = run_dir.replace(data_dir, '')
-                    pp = (x_upper - point[0], point[1] - y_center, point[2] - z_center, yaw, run_name)
+                    dx = x_upper - point[0]
+                    pp = [point[i] - surface_point[i] for i in range(3)] + [yaw, dx, run_name]
                     asset_to_pose[action[0]][category][surface_category].append(pp)
                     placement_plan.append((action[0], name, surface_name))
             config_file = join(run_dir, 'planning_config.json')
@@ -163,6 +162,6 @@ def test_pose_3d_plotting(title='pickplace'):
 
 
 if __name__ == '__main__':
-    # test_generate_pose_samples()
+    test_generate_pose_samples()
     # test_polar_2d_plotting()
-    test_pose_3d_plotting()
+    # test_pose_3d_plotting()
