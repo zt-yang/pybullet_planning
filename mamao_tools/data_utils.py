@@ -8,6 +8,7 @@ import untangle
 import copy
 
 from pybullet_tools.bullet_utils import nice, get_aabb_center
+from mamao_tools.text_utils import ACTION_ABV, ACTION_NAMES
 
 import sys
 sys.path.append('/home/yang/Documents/fastamp')
@@ -214,7 +215,6 @@ def get_action_elems(list_of_elem):
 
 
 def get_plan_skeleton(plan, indices={}, include_joint=True, include_movable=False):
-    from text_utils import ACTION_ABV, ACTION_NAMES
     joints = [k for k, v in indices.items() if "::" in v]
     movables = [k for k, v in indices.items() if "::" not in v]
     joint_names = [v for v in indices.values() if "::" in v]
@@ -369,7 +369,6 @@ def get_variables(init, objs=None):
 
 
 def get_plan_from_strings(actions, vs, inv_vs, indices={}, keep_action_names=True):
-    from text_utils import ACTION_NAMES
     plan = []
     for a in actions:
         name = a[a.index("name='") + 6: a.index("', args=(")]
