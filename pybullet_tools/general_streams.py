@@ -252,6 +252,8 @@ def get_stable_gen(problem, collisions=True, num_trials=20, verbose=False, visua
 
 def check_kitchen_placement(world, body, surface, **kwargs):
     body_id = world.get_mobility_id(body)
+    if isinstance(body_id, int): ## reachable space, feg
+        return None
     if isinstance(surface, tuple):
         surface_point = get_pose(surface[0])[0]
         surface_aabb = get_aabb(surface[0], link=surface[1])

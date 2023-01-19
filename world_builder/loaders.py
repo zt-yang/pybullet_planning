@@ -1461,6 +1461,7 @@ def load_kitchen_mini_scene(world, **kwargs):
 def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=False):
     start = time.time()
     robot = world.robot
+    state = State(world, robot.grasp_types)
     size_matter = len(obstacles) > 0 and obstacles[-1].name == 'braiser_bottom'
     satisfied = []
     if x_min is None:
@@ -1496,8 +1497,6 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
     def ensure_cfree(obj, obstacles, obj_name, category=None, trials=10, **kwargs):
         # s = np.random.get_state()[-3]
         collision = collided(obj, obstacles, verbose=verbose, world=world)
-        old_world = copy.deepcopy(world)
-        state = State(old_world, robot.grasp_types)
         unreachable = collision or not robot.check_reachability(obj, state, verbose=False)
         size = unreachable or ((obj_name == 'food' and size_matter and len(satisfied) == 0))
         while collision or unreachable or size:
@@ -1511,8 +1510,6 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
             check_size_matter(obj)
 
             collision = collided(obj, obstacles, verbose=verbose, world=world)
-            old_world = copy.deepcopy(world)
-            state = State(old_world, robot.grasp_types)
             unreachable = collision or not robot.check_reachability(obj, state, verbose=False)
             size = unreachable or ((obj_name == 'food' and size_matter and len(satisfied) == 0))
             trials -= 1
@@ -1547,11 +1544,11 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
     for i in range(1):
         obj = place_on_counter('medicine')
         obj = ensure_cfree(obj, obstacles, obj_name='medicine')
+        # state = State(copy.deepcopy(world), gripper=state.gripper)
         medicine_ids.append(obj)
         obstacles.append(obj.body)
 
     print('... finished loading moveables in {}s'.format(round(time.time() - start, 2)))
-
     return food_ids, bottle_ids, medicine_ids
 
 
@@ -2169,7 +2166,7 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
     obj_name, surface_name, d = {
         2: ('sink', 'sink_bottom', [0.1, 0.0, 0.8]),
         3: ('braiserbody', 'braiser_bottom', [0.2, 0.0, 1.3])
-    }[case%990]
+    }[case % 990]
     obj = world.name_to_body(obj_name)
     obj_bottom = world.name_to_body(surface_name)
     set_camera_target_body(obj, dx=d[0], dy=d[1], dz=d[2])
@@ -2202,7 +2199,8 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
                 counters_tmp = world.find_surfaces_for_placement(something, counters)
                 counters_tmp[0].place_obj(something, world=world)
             else:
-                obstacles = bottom_obj.supported_objects
+                obstacles.append(something)
+                obstacles += bottom_obj.supported_objects
 
     for o in obstacles:
         world.add_to_cat(o, 'moveable')

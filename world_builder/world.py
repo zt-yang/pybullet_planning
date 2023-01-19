@@ -1189,7 +1189,7 @@ class World(object):
 
 class State(object):
     def __init__(self, world, objects=[], attachments={}, facts=[],
-                 variables={}, grasp_types=['top']):
+                 variables={}, grasp_types=None, gripper=None):
         self.world = world
         if len(objects) == 0:
             # objects = [o for o in world.objects if isinstance(o, int)]
@@ -1207,13 +1207,15 @@ class State(object):
         self.saver = WorldSaver(bodies=self.bodies)
 
         ## serve as problem for streams
-        self.gripper = None
+        self.gripper = gripper
+        if grasp_types is None:
+            grasp_types = world.robot.grasp_types
         self.grasp_types = grasp_types ##, 'side']
         ## allowing both types causes trouble when the AConf used for generating IK isn't the same as the one during execution
 
     def get_gripper(self, arm='left', visual=True):
         if self.gripper is None:
-            self.gripper = self.robot.create_gripper(arm=arm, visual=visual)
+            self.gripper = self.robot.get_gripper(arm=arm, visual=visual)
         return self.gripper
 
     def remove_gripper(self):

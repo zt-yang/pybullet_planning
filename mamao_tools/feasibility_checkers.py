@@ -7,7 +7,7 @@ import time
 import json
 import sys
 
-from pybullet_tools.utils import WorldSaver, get_aabb_center, remove_body
+from pybullet_tools.utils import WorldSaver, get_aabb_center, remove_body, wait_unlocked
 from pybullet_tools.bullet_utils import check_joint_state, open_joint
 from pybullet_tools.general_streams import Position
 from world_builder.utils import get_potential_placements
@@ -55,11 +55,15 @@ class FeasibilityChecker(object):
                 self._log['run_time'].append(round(time.time() - start, 4))
                 if hasattr(self, 'skeleton'):
                     printout.append((skeleton, 'pass' if prediction else f'x ({self.skeleton})'))
-                if isinstance(self, Heuristic) and prediction:
-                    skip = True
+                # if isinstance(self, Heuristic) and prediction:
+                #     skip = True
             if isinstance(self, Heuristic):
-                remove_body(self._feg)
-                self._feg = None
+                # remove_body(self._feg)
+                # self._feg = None
+                # self.reachability_space = {str(k): v for k, v in self.reachability_space.items()}
+                self.possible_obstacles = {str(k): v for k, v in self.possible_obstacles.items()}
+                self.pre_actions_and = {k: tuple(v) for k, v in self.pre_actions_and.items()}
+                self.pre_actions_or = {k: tuple(v) for k, v in self.pre_actions_or.items()}
                 for f in self._fluents_original:
                     if f[0].lower() == 'atgrasp':
                         f[2].assign()
@@ -148,22 +152,45 @@ class Oracle(FeasibilityChecker):
         return True
 
 
+###################################################################################################
+
+rename = {'pick': 'k', 'place': 'c', 'pull_door_handle': 'l'}
+shorter = lambda a: '-'.join([rename[a.name], str(a.args[1])]) \
+    if isinstance(a[1], tuple) else '-'.join([rename[a[0]], str(a[1])])
+shorter_plan = lambda actions: f"({', '.join([shorter(a) for a in actions if a.name in rename])})"
+
+
+def print_plan(plan):
+    print('plan\t', shorter_plan(plan))
+
+
+def print_result(plan, result):
+    text = 'passed' if result else 'failed'
+    print(f'----------------------------- {text} -----------------------------')
+    print_plan(plan)
+    print('------------------------------------------------------------------\n')
+
+
 class Heuristic(FeasibilityChecker):
 
     def __init__(self, initializer):
         state, goals, init = initializer
         super().__init__(state)
         self._state = state
-        self.potential_placements = get_potential_placements(goals, init)
         self._robot = state.robot
         self._fluents = state.get_fluents(only_fluents=True)
         self._fluents_original = copy.deepcopy(self._fluents)
-        self._cache = {}
-        self.failures = {}
-        self.reachability_space = {}
-        # self.conditions = {} ## shorter: shorter_plan
-        self._feg = None
+        # self._feg = None
         self._verbose = False
+        self._reachability_kwargs = dict(max_attempts=10, debug=False, verbose=self._verbose)
+
+        self.potential_placements = get_potential_placements(goals, init)
+        # self.reachability_space = {}
+        self.possible_obstacles = self._robot.possible_obstacles
+        self.pre_actions_and = {}
+        self.pre_actions_or = {}
+        self.not_pre_actions = {}
+        ## { body | (body, None, link): [ body | (body, joint) ] }
 
     def _check(self, plan):
         """ each checker returns either False or the next relaxed state """
@@ -174,18 +201,6 @@ class Heuristic(FeasibilityChecker):
             'place': self._check_place,
             'pull_door_handle': self._check_pull,
         }
-        shorter = lambda a: '-'.join([a.name, str(a.args[1])])
-        shorter_plan = lambda actions: f"({', '.join([shorter(a) for a in actions if a.name in checkers])})"
-
-        def print_plan(plan):
-            print('plan\t', shorter_plan(plan))
-
-        def print_result(plan, result):
-            text = 'passed' if result else 'failed'
-            print(f'----------------------------- {text} -----------------------------')
-            print_plan(plan)
-            print('------------------------------------------------------------------\n')
-
         if verbose:
             print('\n-------------- heuristic plan feasibility checking -------------')
             print_plan(plan)
@@ -196,76 +211,187 @@ class Heuristic(FeasibilityChecker):
                 if action.name in ['move_base']:
                     continue
                 if action.name in checkers:
-                    plan_so_far.append(shorter(action))
-                    key = tuple(plan_so_far)
-                    print('\tkey\t', key)
-                    if key in self._cache:
-                        if not self._cache[key]:
-                            self.failures[str(key)] += 1
+                    key = shorter(action)
+                    title = f'\t\t[{i}] {key} '
+
+                    ## we know the pre_actions will enable the action
+                    if key in self.pre_actions_and or key in self.pre_actions_or:
+                        if self._check_pre_action(action, plan_so_far):
                             if verbose:
-                                print('\t\tfailed according to cache')
-                                print('\t\tcache', self._cache)
+                                print(title+'passed according to pre-action')
+                            plan_so_far.append(key)
+                            continue
+                        else:
+                            if verbose:
+                                print(title+'failed according to pre-action')
                                 print_result(plan, False)
                             return False
-                        continue
-                    if not checkers[action.name](action.args):
-                        self._cache[key] = False
-                        self.failures[str(key)] = 0
-                        if len(plan_so_far) > 1:
-                            key_left = tuple(plan_so_far[:-1])
-                            key_right = tuple(plan_so_far[-1:])
-                            if key_left in self._cache and self._cache[key_left]:
-                                self._cache[key_right] = False
-                                self.failures[str(key_right)] = 0
+
+                    ## we know the pre_actions will not enable the action
+                    if key in self.not_pre_actions:
+                        ## we know it wont work
+                        if self._check_pre_action(action, plan_so_far):
+                            if verbose:
+                                print(title+'failed according to not pre-action')
+                                print_result(plan, False)
+                            return False
+
+                    ## test the action
+                    if not checkers[action.name](action.args, plan_so_far):
                         if verbose:
-                            print('\t\tfailed')
+                            print(title+'failed')
                             print_result(plan, False)
                         return False
-                    self._cache[key] = True
+                    # self._cache[key] = True
                     if verbose:
-                        print('\t\tpassed')
+                        print(title+'passed')
+                    plan_so_far.append(key)
         if verbose:
             print_result(plan, True)
         return True
 
-    def _check_pick(self, args):
+    def _check_pre_action(self, action, plan_so_far: []):
+        stepers = {
+            'pick': self._step_pick,
+            'pull_door_handle': self._step_pull,
+        }
+        if self._verbose:
+            print('\tplan_so_far\t', tuple(plan_so_far))
+
+        # if self.pre_actions[shorter(action)] is None:
+        #     return False
+
+        passed = True
+        key = shorter(action)
+        if shorter(action) in self.pre_actions_and:
+            ## return True if all have appeared in previous actions
+            for pre_action in self.pre_actions_and[key]:
+                if pre_action not in plan_so_far:
+                    passed = False
+                    break
+            if passed and action.name in stepers:
+                stepers[action.name](action.args)
+
+        elif shorter(action) in self.pre_actions_or:
+            ## return True if any have appeared in previous actions
+            passed = False
+            for pre_action in self.pre_actions_or[key]:
+                if pre_action in plan_so_far:
+                    passed = True
+                    break
+            if passed and action.name in stepers:
+                stepers[action.name](action.args)
+
+        elif shorter(action) in self.not_pre_actions:
+            ## return True if we know will fail
+            found_something_new = False
+            wont_work = self.not_pre_actions[key]
+            for previous_action in plan_so_far:
+                if previous_action not in wont_work:
+                    found_something_new = True
+                    break
+            passed = not found_something_new
+
+        return passed
+
+    def _update_pre_action(self, action_name, body, result, plan_so_far):
+        from pybullet_tools.logging import myprint as print
+        key = shorter((action_name, body))
+        if result:
+            if key not in self.pre_actions_and:
+                if key not in self.not_pre_actions:
+                    self.pre_actions_and[key] = set()
+                else:
+                    something_right = set()
+                    for action in plan_so_far:
+                        if action not in self.not_pre_actions[key]:
+                            something_right.add(action)
+                    movables = [k for k in self.potential_placements if \
+                                self.potential_placements[k] == self.potential_placements[body]]
+                    print(f'found pre_actions_or{key} from plan_so_far {something_right} for movables {movables}')
+                    for movable in movables:
+                        new_key = shorter((action_name, movable))
+                        if new_key not in self.pre_actions_or:
+                            self.pre_actions_or[new_key] = set()
+                        self.pre_actions_or[new_key] = self.pre_actions_or[new_key].union(something_right)
+                        print(f'update pre_actions_or{new_key}', self.pre_actions_or[new_key])
+            else:
+                print('Warning: pre-action already exists', key, result)
+        else:
+            if key not in self.pre_actions_and:
+                if len(self.possible_obstacles[body]) > 0:
+                    self.pre_actions_and[key] = set([shorter(('pick', o)) for o in self.possible_obstacles[body]])
+                else:
+                    if key not in self.not_pre_actions:
+                        self.not_pre_actions[key] = set()
+                    self.not_pre_actions[key] = self.not_pre_actions[key].union(set(plan_so_far))
+                    print(f'add to not-pre-action{key} from plan_so_far', set(plan_so_far))
+            else:
+                print('Warning: pre-action already exists', key, result)
+
+    def _check_pick(self, args, plan_so_far):
         """ whether body is reachable by the robot """
+        from pybullet_tools.logging import myprint as print
         body = args[1].value
         fluents = [f for f in self._fluents if not (f[0] == 'AtPose' and f[1] == body)]
-        result = self._robot.check_reachability(body, self._state, fluents=fluents,
-                                                max_attempts=100, verbose=self._verbose)
-        ## the resulting state is that the object is removed from the state
+        result = self._robot.check_reachability(body, self._state, fluents=fluents, **self._reachability_kwargs)
+        self._update_pre_action('pick', body, result, plan_so_far)
+        print('_check_pick | pre-actions-and', self.pre_actions_and)
+        print('_check_pick | pre-actions-or', self.pre_actions_or)
+        print('_check_pick | not pre-actions', self.not_pre_actions)
         if result:
-            self._fluents = [f for f in self._fluents if not (f[0] != 'AtPose' and f[1] == body)]
+            self._step_pick(args)
         return result
 
-    def _check_place(self, args):
-        """ whether the surface is reachable by a flying gripper """
+    def _step_pick(self, args):
+        ## the resulting state is that the object is removed from the state
+        body = args[1].value
+        self._fluents = [f for f in self._fluents if not (f[0] != 'AtPose' and f[1] == body)]
+
+    def _check_place(self, args, plan_so_far):
+        """ whether the surface is reachable by PR2 arm """
+        from pybullet_tools.logging import myprint as print
         movable = args[1].value
+        fluents = [f for f in self._fluents if not (f[0] == 'AtPose' and f[1] == movable)]
         if movable not in self.potential_placements:
+            self._update_pre_action('place', movable, True, plan_so_far)
             return True
         body_link = self.potential_placements[movable]
-        if body_link in self.reachability_space:
-            return self.reachability_space[body_link]
-        if self._feg is None:
-            x, y, _ = get_aabb_center(self._robot.aabb())
-            z = self._robot.aabb().upper[2] + 0.1
-            self._feg = create_gripper_robot(custom_limits=self._robot.custom_limits,
-                                             initial_q=(x, y, z, 0, 0, 0))
-        result = self._feg.check_reachability_space(body_link, self._state, fluents=self._fluents,
-                                                    verbose=self._verbose)
-        self.reachability_space[body_link] = result
+        # if body_link in self.reachability_space:
+        #     return self.reachability_space[body_link]
+
+        # if self._feg is None:
+        #     x, y, _ = get_aabb_center(self._robot.aabb())
+        #     z = self._robot.aabb().upper[2] + 0.1
+        #     self._feg = create_gripper_robot(custom_limits=self._robot.custom_limits,
+        #                                      initial_q=(x, y, z, 0, 0, 0))
+        # result = self._feg.check_reachability_space(body_link, self._state, fluents=self._fluents,
+        #                                             verbose=self._verbose)
+
+        result = self._robot.check_reachability_space(body_link, self._state, body=movable, fluents=fluents,
+                                                      **self._reachability_kwargs)
+        for k, v in self.potential_placements.items():
+            if v == body_link:
+                self._update_pre_action('place', movable, result, plan_so_far)
+        # print('_check_place | possible obstacles', self.possible_obstacles)
+        print('_check_place | pre-actions-and', self.pre_actions_and)
+        print('_check_place | pre-actions-or', self.pre_actions_or)
+        print('_check_place | not pre-actions', self.not_pre_actions)
+        # self.reachability_space[body_link] = result
         return result
         ## nothing happens to the state
 
-    def _check_pull(self, args):
+    def _check_pull(self, args, plan_so_far):
+        self._step_pull(args)
+        return True
+
+    def _step_pull(self, args):
         ## door is assigned to a position that's fully open
         body_joint = b, j = args[1].value
         new_pstn = open_joint(b, j, hide_door=True, return_pstn=True)
         new_pstn = Position(body_joint, value=new_pstn)
         self._fluents = [f for f in self._fluents if not (f[0] == 'AtPosition' and f[1] == body_joint)]
         self._fluents.append(('AtPosition', body_joint, new_pstn))
-        return True
 
 
 class Random(FeasibilityChecker):

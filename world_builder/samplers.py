@@ -75,7 +75,8 @@ def get_learned_poses(movable, surface, num_samples=10, surface_point=None, verb
         return (tuple(point), quat)
 
     key = (movable.lower(), surface)
-    nudge = surface not in ['100015', '100017', '100021', '100023', '100038', '100693']
+    # nudge = surface not in ['100015', '100017', '100021', '100023', '100038', '100693']
+    nudge = surface not in get_instances('BraiserBody')
     title = f'         get_learned_poses{key} |'
     if key in DATABASE:
         possibilities = DATABASE[key]

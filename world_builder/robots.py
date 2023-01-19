@@ -8,14 +8,18 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
     set_joint_positions, set_pose, GREEN, dump_body, get_pose, remove_body, PoseSaver, \
     ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles, \
     interpolate_poses, Pose, Euler, quat_from_euler, set_renderer, get_bodies, get_all_links, PI, \
-    WorldSaver, is_darwin, wait_for_user, YELLOW, euler_from_quat
+    WorldSaver, is_darwin, wait_for_user, YELLOW, euler_from_quat, wait_for_duration, \
+    wait_unlocked, wait_if_gui, set_renderer
 
 from pybullet_tools.bullet_utils import equal, nice, get_gripper_direction, set_camera_target_body, Attachment, \
-    BASE_LIMITS, get_rotation_matrix, collided
+    BASE_LIMITS, get_rotation_matrix, collided, query_yes_no
 from pybullet_tools.pr2_primitives import APPROACH_DISTANCE, Conf, Grasp, get_base_custom_limits
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, close_until_collision, TOP_HOLDING_LEFT_ARM, \
     SIDE_HOLDING_LEFT_ARM
-from pybullet_tools.general_streams import get_handle_link, get_grasp_list_gen
+from pybullet_tools.general_streams import get_handle_link, get_grasp_list_gen, get_contain_list_gen, \
+    get_cfree_approach_pose_test, get_stable_list_gen
+
+from world_builder.utils import load_asset
 
 
 class RobotAPI(Robot):
@@ -160,6 +164,7 @@ class PR2Robot(RobotAPI):
         self.DUAL_ARM = DUAL_ARM
         self.USE_TORSO = USE_TORSO
         self.grippers = {}
+        self.possible_obstacles = {}  ## body: obstacles
 
     def get_arm_joints(self, arm):
         from pybullet_tools.pr2_utils import get_arm_joints
@@ -414,7 +419,12 @@ class PR2Robot(RobotAPI):
         q = get_joint_positions(self.body, base_joints)
         return Conf(self.body, base_joints, q)
 
-    def check_reachability(self, body, state, verbose=False, visualize=False,
+    def get_arm_conf(self, arm):
+        from pybullet_tools.pr2_utils import get_arm_joints
+        arm_joints = get_arm_joints(self.body, arm)
+        return Conf(self.body, arm_joints)
+
+    def check_reachability(self, body, state, verbose=False, visualize=False, debug=False,
                            max_attempts=10, fluents=[]):
         from pybullet_tools.pr2_primitives import Pose
         from pybullet_tools.pr2_streams import get_ik_gen, get_ik_fn
@@ -423,7 +433,7 @@ class PR2Robot(RobotAPI):
         if is_darwin():
             return True
 
-        title = f'checking feasibility for {body}'
+        title = f'          robot.check_reachability for {body}'
         obj = body
         if isinstance(body, Object):
             title += f'({body.body})'
@@ -435,19 +445,26 @@ class PR2Robot(RobotAPI):
 
         # context_saver = WorldSaver(bodies=[state.world.robot])
         q = self.get_base_conf()
+        aq = self.get_arm_conf('left')
         p = Pose(body, get_pose(body))
+        movable_poses = [(f[1], f[2]) for f in fluents if f[0] == 'AtPose']
+        if debug:
+            for b2, p2 in movable_poses:
+                print(f'       {b2} {state.world.BODY_TO_OBJECT[b2].name}\t {p2}')
 
         def restore(result):
             # context_saver.restore()
             # remove_body(state.gripper)
             # state.gripper = None
             q.assign()
+            aq.assign()
             p.assign()
             if verbose:
                 print(f'... finished {title} -> {result} in {round(time.time() - start, 2)}s')
 
         with LockRenderer(True):
             funk = get_grasp_list_gen(state, verbose=verbose, visualize=visualize, top_grasp_tolerance=PI / 4)
+            test = None
             outputs = funk(obj)
 
             kwargs = dict(collisions=True, teleport=False)
@@ -456,22 +473,93 @@ class PR2Robot(RobotAPI):
                                verbose=verbose, visualize=visualize, **kwargs)
             funk3 = get_ik_fn(state, verbose=verbose, visualize=visualize, ACONF=False, **kwargs)
             for (grasp, ) in outputs:
+                ## test_approach_path
+                result = True
+                for b2, p2 in movable_poses:
+                    if test is None:
+                        test = get_cfree_approach_pose_test(state)
+                    result = test(body, p, grasp, b2, p2)
+                    if body not in self.possible_obstacles:
+                        self.possible_obstacles[body] = set()
+                    if not result:
+                        self.possible_obstacles[body].add(b2)
+                    elif b2 in self.possible_obstacles[body]:
+                        self.possible_obstacles[body].remove(b2)
+                    if debug:
+                        print(title, f'| test_approach_path({body}, {b2})', result)
+                if not result:
+                    continue
+
+                ## find bconf
                 gen = funk2(self.arms[0], body, p, grasp)
                 try:
                     result = next(gen)
                     if result is not None:
                         (bconf,) = result
+                        ## find aconf
                         result = funk3(self.arms[0], body, p, grasp, bconf, fluents=fluents)
                         if result is not None:
                             if verbose:
-                                print(f'robot.check_reachability({body})', grasp, bconf)
+                                print(title, f'succeeded', bconf)
+
+                            if debug:
+                                answer = query_yes_no(f"play reachability test traj?", default='no')
+                                if answer:
+                                    speed = 0.02
+                                    set_renderer(True)
+                                    set_camera_target_body(body, distance=2)
+                                    (cmd, ) = result
+                                    bconf.assign()
+                                    p.assign()
+                                    wait_for_duration(speed)
+                                    for conf in cmd.commands[0].path:
+                                        conf.assign()
+                                        wait_for_duration(speed)
+                                    wait_if_gui('finished')
+                                    set_renderer(False)
                             restore(True)
                             return True
+                        else:
+                            if verbose:
+                                print(title, f'IK failed')
                 except Exception:
+                    if verbose:
+                        print(title, f'IR failed')
                     pass
 
             restore(False)
             return False
+
+    def check_reachability_space(self, body_link, state, body=None, fluents=[], num_samples=5, **kwargs):
+
+        for f in fluents:
+            if f[0].lower() == 'atposition':
+                f[2].assign()
+
+        ## sample three poses of cabbage and check reachability of each
+        obj = None
+        if body is None:
+            body, path = load_asset('VeggieCabbage')[:2]
+            obj = state.world.add_body(body, 'marker', path=path)
+
+        if 'space' in state.world.get_type(body_link):
+            funk = get_contain_list_gen(state, verbose=False, num_samples=num_samples)
+        else:
+            funk = get_stable_list_gen(state, verbose=False, num_samples=num_samples)
+        outputs = funk(body, body_link)
+        result = False
+        for j in range(len(outputs)):
+            set_pose(body, outputs[j][0].value)
+            result = result or self.check_reachability(body, state, fluents=fluents, **kwargs)
+            if result:
+                break
+
+        if not result:
+            self.possible_obstacles[body_link] = self.possible_obstacles[body]
+
+        if obj is not None:
+            state.world.remove_object(obj)
+        return result
 
 
 class FEGripper(RobotAPI):
@@ -718,12 +806,11 @@ class FEGripper(RobotAPI):
     def check_reachability_space(self, body_link, state, fluents=[], obstacles=None, verbose=False):
         from pybullet_tools.flying_gripper_utils import set_cloned_se3_conf, plan_se3_motion, \
             get_se3_joints
-        from pybullet_tools.general_streams import get_contain_list_gen
 
         if obstacles is None:
             obstacles = state.obstacles
         for f in fluents:
-            if f[0].lower() == 'atgrasp':
+            if f[0].lower() == 'atposition':
                 f[2].assign()
 
         robot = self.body

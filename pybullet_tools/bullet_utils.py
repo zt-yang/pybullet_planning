@@ -5,6 +5,7 @@ import random
 from itertools import product
 from os.path import isfile, dirname, abspath, join, isdir
 from os import mkdir
+import sys
 
 import PIL.Image
 import numpy as np
@@ -755,7 +756,7 @@ def get_camera_image_at_pose(camera_point, target_point, camera_matrix, far=5.0,
                      vertical_fov=vertical_fov, far=far, **kwargs)
 
 
-def set_camera_target_body(body, link=None, dx=None, dy=None, dz=None):
+def set_camera_target_body(body, link=None, dx=None, dy=None, dz=None, distance=1):
     # if isinstance(body, tuple):
     #     link = BODY_TO_OBJECT[body].handle_link
     #     body = body[0]
@@ -764,11 +765,11 @@ def set_camera_target_body(body, link=None, dx=None, dy=None, dz=None):
     y = (aabb.upper[1] + aabb.lower[1]) / 2
     z = (aabb.upper[2] + aabb.lower[2]) / 2
     if dx is None:
-        dx = get_aabb_extent(aabb)[0] * 2
+        dx = get_aabb_extent(aabb)[0] * 2 * distance
     if dy is None:
-        dy = get_aabb_extent(aabb)[1] * 2
+        dy = get_aabb_extent(aabb)[1] * 2 * distance
     if dz is None:
-        dz = get_aabb_extent(aabb)[2] * 2
+        dz = get_aabb_extent(aabb)[2] * 2 * distance
     camera_point = [x + dx, y + dy, z + dz]
     target_point = [x, y, z]
     set_camera_pose(camera_point=camera_point, target_point=target_point)
@@ -2092,3 +2093,34 @@ def find_closest_match(possible, all_possible=False):
     if all_possible:
         return list(counts.keys())
     return list(counts.keys())[0]
+
+
+def query_yes_no(question, default="no"):
+    """Ask a yes/no question via raw_input() and return their answer.
+
+    "question" is a string that is presented to the user.
+    "default" is the presumed answer if the user just hits <Enter>.
+            It must be "yes" (the default), "no" or None (meaning
+            an answer is required of the user).
+
+    The "answer" return value is True for "yes" or False for "no".
+    """
+    valid = {"yes": True, "y": True, "ye": True, "no": False, "n": False}
+    if default is None:
+        prompt = " [y/n] "
+    elif default == "yes":
+        prompt = " [Y/n] "
+    elif default == "no":
+        prompt = " [y/N] "
+    else:
+        raise ValueError("invalid default answer: '%s'" % default)
+
+    while True:
+        sys.stdout.write(question + prompt)
+        choice = input().lower()
+        if default is not None and choice == "":
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
+        else:
+            sys.stdout.write("Please respond with 'yes' or 'no' " "(or 'y' or 'n').\n")

@@ -181,7 +181,7 @@ class Object(Index):
         obstacles = [o for o in get_bodies() if o not in [obj, self.body]]
 
         done = False
-        result = check_kitchen_placement(world, obj.body, self.pybullet_name, num_samples=10)
+        result = check_kitchen_placement(world, obj.body, self.pybullet_name, num_samples=4)
         if result is not None:
             for body_pose in result:
                 obj.set_pose(body_pose, world=world)
