@@ -61,7 +61,7 @@ MODEL_SCALES = {
         'VeggieArtichoke': 0.014,
         'VeggieCabbage': 0.0047,
         'VeggiePotato': 0.013,
-        'VeggieSweetPotato': 0.015,
+        'VeggieSweetPotato': 0.013,  ## 0.015
         'VeggieTomato': 0.008,
         'VeggieZucchini': 0.01,
 

@@ -309,7 +309,7 @@ class Heuristic(FeasibilityChecker):
                                     self.potential_placements[k] == self.potential_placements[body]]
                     else:
                         movables = [body]
-                    print(f'found pre_actions_or{key} from plan_so_far {something_right} for movables {movables}')
+                    print(f'found pre_actions_or({key}) from plan_so_far {something_right} for movables {movables}')
                     for movable in movables:
                         new_key = shorter((action_name, movable))
                         if new_key not in self.pre_actions_or:
@@ -326,7 +326,7 @@ class Heuristic(FeasibilityChecker):
                     if key not in self.not_pre_actions:
                         self.not_pre_actions[key] = set()
                     self.not_pre_actions[key] = self.not_pre_actions[key].union(set(plan_so_far))
-                    print(f'add to not-pre-action{key} from plan_so_far', set(plan_so_far))
+                    print(f'add to not-pre-action({key}) from plan_so_far', set(plan_so_far))
             else:
                 print('Warning: pre-action already exists', key, result)
 
