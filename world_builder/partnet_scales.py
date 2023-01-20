@@ -61,7 +61,7 @@ MODEL_SCALES = {
         'VeggieArtichoke': 0.014,
         'VeggieCabbage': 0.0047,
         'VeggiePotato': 0.013,
-        'VeggieSweetPotato': 0.015,
+        'VeggieSweetPotato': 0.013,  ## 0.015
         'VeggieTomato': 0.008,
         'VeggieZucchini': 0.01,
 
@@ -204,7 +204,7 @@ MODEL_SCALES = {
         '100732': 0.2,
     },
     'Sink': {
-        '00003': 1.25,
+        '00004': 1.25,
         '00005': 0.005,
         '102379': 0.5,
         '1023790': 0.5,  ## without the base
