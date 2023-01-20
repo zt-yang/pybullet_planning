@@ -851,7 +851,7 @@ def test_reachability(robot):
     wait_unlocked()
 
 
-def test_objects():
+def test_partnet_aabbs():
     world = get_test_world()
     draw_pose(unit_pose(), length=1.5)
     DATABASE_DIR = abspath(join(__file__, '..', '..', 'databases'))
@@ -904,7 +904,7 @@ if __name__ == '__main__':
     # get_data(categories=['BraiserBody'])
     # test_texture(category='CoffeeMachine', id='103127')
     # test_vhacd(category='BraiserBody')
-    # test_objects()
+    test_partnet_aabbs()
 
     """ --- robot (FEGripper) related  --- """
     robot = 'pr2'  ## 'feg' | 'pr2'
@@ -925,7 +925,7 @@ if __name__ == '__main__':
     """ --- placement related  --- 
         IN: 'MiniFridge', 'CabinetTop'
     """
-    test_placement_in(robot, category='MiniFridge')
+    # test_placement_in(robot, category='MiniFridge')
 
     """ --- placement related  --- 
         ON: 'KitchenCounter', 

@@ -545,8 +545,8 @@ def get_partnet_aabb(category, idx):
     if PARTNET_SHAPES is None:
         PARTNET_SHAPES = json.load(open(join(DATABASE_DIR, 'partnet_shapes.json'), 'r'))
     if category not in PARTNET_SHAPES or idx not in PARTNET_SHAPES[category]:
-        # pprint({k: list(v.keys()) for k, v in PARTNET_SHAPES.items()})
-        # print('category', category, 'idx', idx)
+        if (category, idx) not in [('DishwasherBox', '11826')]:
+            print(f'not found in partnet_shapes.json | category = {category}, idx = {idx}')
         return None
     dlower, dupper = PARTNET_SHAPES[category][idx]
     return np.asarray(dlower), np.asarray(dupper)

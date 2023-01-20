@@ -69,8 +69,8 @@ def plot_pose_samples(asset_to_pose, title='Pose Samples'):
 
 def test_generate_pose_samples():
     data_dir = '/home/yang/Documents/fastamp-data-rss'
-    subdirs = [join(data_dir, s) for s in listdir(data_dir) if \
-               isdir(join(data_dir, s)) and s.startswith('mm_') or s == '_gmm']
+    subdirs = [join(data_dir, s) for s in listdir(data_dir) if isdir(join(data_dir, s)) \
+               and (s.startswith('mm_') or s.startswith('tt_') or s.startswith('_kc') or s == '_gmm')]
     asset_to_pose = {}
     found_count = 0
     missed_count = 0
@@ -90,7 +90,7 @@ def test_generate_pose_samples():
                     ## that of movable object
                     name, category, (point, yaw) = get_obj_pose(action, indices)
                     result = get_from_to(name, aabbs, point, run_dir=run_dir)
-                    ## found_count 15543 	missed_count 571
+                    ## found_count 24965 	missed_count 1006
                     if result is None or result[0] is None:
                         # print(run_dir, name, result)
                         placement_plan.append((action[0], name, None))
