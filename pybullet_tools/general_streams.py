@@ -429,7 +429,7 @@ def get_contain_gen(problem, collisions=True, max_attempts=20, verbose=False, le
     return gen
 
 
-def get_contain_list_gen(problem, collisions=True, max_attempts=60, num_samples=10,
+def get_contain_list_gen(problem, collisions=True, max_attempts=20, num_samples=10,
                     verbose=False, learned_sampling=False, **kwargs):
     funk = get_contain_gen(problem, collisions, max_attempts, verbose, learned_sampling, **kwargs)
 

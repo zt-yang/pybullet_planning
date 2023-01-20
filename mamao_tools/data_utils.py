@@ -171,7 +171,7 @@ def get_indices(run_dir, body_map=None):
     indices = get_indices_from_config(run_dir)
     if not indices:
         indices = get_indices_from_log(run_dir)
-    if body_map is not None:
+    if body_map is not None and len(body_map) > 0:
         indices = {str(body_map[eval(body)]): name for body, name in indices.items()}
     return indices
 
@@ -432,7 +432,7 @@ def get_successful_plan(run_dir, indices={}, skip_multiple_plans=True, **kwargs)
     return plans
 
 
-def get_multiple_solutions(run_dir, indices={}):
+def get_multiple_solutions(run_dir, indices={}, commands_too=False):
     all_plans = []
     solutions_file = join(run_dir, 'multiple_solutions.json')
     if isfile(solutions_file):
@@ -444,8 +444,12 @@ def get_multiple_solutions(run_dir, indices={}):
                     plan = d['optimistic_plan'][1:-1].split('Action')
                     plan = ['Action'+p[:-2] for p in plan[1:]]
                     plan = get_plan_from_strings(plan, indices=indices)
+                    if commands_too:
+                        plan = [plan, None]
                 elif 'rerun_dir' in d:
                     plan = d['plan']
+                    if commands_too:
+                        plan = [plan, d['rerun_dir']]
                 all_plans.append(plan)
     return all_plans
 

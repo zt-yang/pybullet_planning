@@ -90,7 +90,7 @@ class World():
             self.check_world_obstacles()
         self.colored_links = colorize_world(self.fixed, transparency)
 
-    def add_body(self, body, name, instance_name=None, path=None):
+    def add_body(self, body, name, instance_name=None, path=None, verbose=False):
         if body is None:
             print('lisdf_loader.body = None')
         if instance_name is None:
@@ -105,10 +105,13 @@ class World():
             id = (body[0], get_handle_link(body))
         ## the id is here is either body or (body, link)
         mobility_id = get_mobility_id(path)
+        if mobility_id is None and isinstance(body, tuple):
+            mobility_id = self.mobility_ids[id[0]]
         self.instance_names[id] = instance_name
         self.mobility_ids[id] = mobility_id
-        print(f'lisdf_loader.add_body(name={name}, body={body}, '
-              f'mobility_id={mobility_id}, instance_name={instance_name})', )
+        if verbose:
+            print(f'lisdf_loader.add_body(name={name}, body={body}, '
+                  f'mobility_id={mobility_id}, instance_name={instance_name})', )
 
     def add_robot(self, robot, name='robot', **kwargs):
         if not isinstance(robot, int):
@@ -525,7 +528,8 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
             if isinstance(body, tuple): body = body[0]
 
         ## instance names are unique strings used to identify object models
-        instance_name = get_instance_name(abspath(uri))
+        uri = abspath(uri)
+        instance_name = get_instance_name(uri)
         if category == 'box' and instance_name is None:
             size = ','.join([str(n) for n in model.links[0].collisions[0].shape.size.round(4)])
             instance_name = f"box({size})"
@@ -540,7 +544,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
         else:
             pose = (tuple(model.pose.pos), quat_from_euler(model.pose.rpy))
             set_pose(body, pose)
-            bullet_world.add_body(body, model.name, instance_name)
+            bullet_world.add_body(body, model.name, instance_name=instance_name, path=uri)
 
         if not jointless and model.name in model_states:
             for js in model_states[model.name].joint_states:
@@ -561,11 +565,12 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
     if isfile(planning_config):
         config = json.load(open(planning_config, 'r'))
 
-        ## body to name
+        ## add surfaces, spaces, joints accoring to body_to_name
         body_to_name = config['body_to_name']
         for k, v in body_to_name.items():
             if v not in bullet_world.name_to_body:
                 bullet_world.add_body(eval(k), v)
+                ## e.g. k=(15, 1), v=minifridge::joint_0
 
         ## camera
         if 'camera_zoomins' in config:

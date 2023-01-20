@@ -444,7 +444,8 @@ def adapt_action(a, problem, plan, verbose=True):
         if ' ' in plan[0][0]:
             act = [aa for aa in plan if aa[0].startswith('pull') and aa[2] == problem.world.body_to_name[a.object]][0]
         else:
-            act = [aa for aa in plan if aa[0] == 'pull_door_handle' and aa[2] == str(a.object)][0]
+            act = [aa for aa in plan if aa[0] == 'pull_door_handle' and \
+                   (aa[2] in [str(a.object), problem.world.body_to_name[a.object]])][0]
         pstn1 = Position(a.object, get_value(act[3]))
         pstn2 = Position(a.object, get_value(act[4]))
         bq1 = get_value(act[6])  ## continuous[act[6].split('=')[0]]
@@ -460,7 +461,7 @@ def adapt_action(a, problem, plan, verbose=True):
     return a
 
 
-def apply_actions(problem, actions, time_step=0.5, verbose=False, plan=None,
+def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None,
                   body_map=None, SAVE_COMPOSED_JPG=False, SAVE_GIF=False):
     """ act out the whole plan and event in the world without observation/replanning """
     if actions is None:
