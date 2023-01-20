@@ -431,7 +431,8 @@ def adapt_action(a, problem, plan, verbose=True):
 
     if a.__class__.__name__ == 'AttachObjectAction' and isinstance(a.object, tuple):
         robot = problem.world.robot
-        plan, continuous = plan
+        if len(plan) == 2:
+            plan, continuous = plan
         if len(plan) == 1 and len(plan[0]) > 1:
             plan = plan[0]
         def get_value(string):
