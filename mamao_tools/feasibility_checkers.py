@@ -48,6 +48,8 @@ class FeasibilityChecker(object):
             for input in inputs:
                 start = time.time()
                 prediction = self._check(input) if not skip else True
+                if isinstance(self, Heuristic) and len(input) == 9 and not prediction:
+                    print('why is this not working?')
                 predictions.append(prediction)
                 plan = get_plan_from_input(input)
                 skeleton = get_plan_skeleton(plan, indices)
@@ -67,7 +69,7 @@ class FeasibilityChecker(object):
                 for f in self._fluents_original:
                     if f[0].lower() in ['atposition', 'atpose']:
                         f[2].assign()
-                if len(self._log['checks']) > 200:
+                if len(self._log['checks']) > 80:
                     sys.exit()
         else:
             self._log['sequence'] = []

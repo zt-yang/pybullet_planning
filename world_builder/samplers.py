@@ -3,7 +3,7 @@ from os import listdir
 import numpy as np
 import random
 
-from pybullet_tools.utils import quat_from_euler, euler_from_quat, get_aabb_center
+from pybullet_tools.utils import quat_from_euler, euler_from_quat, get_aabb_center, get_aabb
 from pybullet_tools.bullet_utils import xyzyaw_to_pose
 from world_builder.utils import get_instances
 
@@ -58,7 +58,7 @@ def get_learned_yaw(category, quat=None):
     return None
 
 
-def get_learned_poses(movable, surface, num_samples=10, surface_point=None, verbose=True):
+def get_learned_poses(movable, surface, surface_body, num_samples=10, surface_point=None, verbose=True):
     global DATABASE
     if DATABASE is None:
         DATABASE = get_asset_to_poses(title='pickplace', full_pose=True)
@@ -68,6 +68,8 @@ def get_learned_poses(movable, surface, num_samples=10, surface_point=None, verb
             return pose
         rel_point, quat = pose
         point = [rel_point[i] + surface_point[i] for i in range(3)]
+        if surface == 'box':
+            point[0] = get_aabb(surface_body).upper[0] - rel_point[0]
         if nudge:
             delta = np.random.normal(scale=0.01, size=3)
             delta[2] = 0

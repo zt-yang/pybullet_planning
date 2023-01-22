@@ -1467,14 +1467,10 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
     if x_min is None:
         x_min = counters[0].aabb().upper[0] - 0.3
 
-    if world.note in [123]:
+    if world.note in [31]:
         braiser_bottom = world.name_to_object('braiser_bottom')
-        # counters = copy.deepcopy(counters)
-        # counters.update({
-        #     c: [random.choice([cc for cc in counters[c] if 'microwave' not in cc.name]), braiser_bottom]
-        #     for c in ['food']
-        # })
         obstacles = [o for o in obstacles if o.pybullet_name != braiser_bottom.pybullet_name]
+        move_lid_away(world, [world.name_to_object('floor')], epsilon=1.0)
     pprint(counters)
     if verbose:
         print('\nload_counter_moveables(obstacles={})\n'.format([o.name for o in obstacles]))
@@ -1483,10 +1479,10 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
         if size_matter and aabb_larger(obstacles[-1], obj):
             satisfied.append(obj)
 
-    def place_on_counter(obj_name, category=None, coounter_choices=None):
-        if coounter_choices is None:
-            coounter_choices = counters[obj_name]
-        counter = random.choice(coounter_choices)
+    def place_on_counter(obj_name, category=None, counter_choices=None):
+        if counter_choices is None:
+            counter_choices = counters[obj_name]
+        counter = random.choice(counter_choices)
         obj = counter.place_new_obj(obj_name, category=category, RANDOM_INSTANCE=True, world=world)
         if verbose:
             print(f'          placed {obj} on {counter.name}')
@@ -1522,8 +1518,8 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
     in_briaser = False
     for i in range(2):
         kwargs = dict()
-        if world.note in [123] and not in_briaser:
-            kwargs['coounter_choices'] = [braiser_bottom]
+        if world.note in [31] and not in_briaser:
+            kwargs['counter_choices'] = [braiser_bottom]
         obj = place_on_counter('food', category='edible', **kwargs)
         check_size_matter(obj)
         obj = ensure_cfree(obj, obstacles, obj_name='food', category='edible', **kwargs)
@@ -1548,8 +1544,25 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
         medicine_ids.append(obj)
         obstacles.append(obj.body)
 
+    if world.note in [31]:
+        put_lid_on_braiser(world)
     print('... finished loading moveables in {}s'.format(round(time.time() - start, 2)))
+    # world.summarize_all_objects()
+    # wait_unlocked()
     return food_ids, bottle_ids, medicine_ids
+
+
+def move_lid_away(world, counters, epsilon=1.0):
+    lid = world.name_to_body('braiserlid')  ## , obstacles=moveables+obstacles
+    counters_tmp = world.find_surfaces_for_placement(lid, counters)
+    if len(counters_tmp) == 0:
+        raise Exception('No counters found, try another seed')
+    # world.add_highlighter(counters[0])
+
+    if random.random() < epsilon:
+        counters_tmp[0].place_obj(world.BODY_TO_OBJECT[lid], world=world)
+        return counters_tmp[0]
+    return None
 
 
 def load_table_stationaries(world, w=6, l=6, h=0.9):
@@ -1753,7 +1766,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
                                      obstacles=[], verbose=False):
     cabinets, shelves = [], []
     cabi_type = 'CabinetTop' if random.random() < 0.5 else 'CabinetUpper'
-    if world.note in [1, 123, 4, 41, 991]:
+    if world.note in [1, 21, 31, 4, 41, 991]:
         cabi_type = 'CabinetTop'
     colors = {
         '45526': HEX_to_RGB('#EDC580'),
@@ -1890,13 +1903,21 @@ def load_braiser(world, supporter, x_min=None, verbose=True):
     lid = braiser.place_new_obj('BraiserLid', category='moveable', name='BraiserLid', max_trial=1,
                                 RANDOM_INSTANCE=braiser.mobility_id, verbose=verbose, world=world)
     world.make_transparent(lid)
-    point, quat = get_pose(braiser)
-    r, p, y = euler_from_quat(quat)
-    lid.set_pose((point, quat_from_euler((r, p, y + PI/4))), world=world)
-    braiser.attach_obj(lid, world=world)
+    put_lid_on_braiser(world, lid, braiser)
 
     braiser_bottom = world.add_surface_by_keyword(braiser, 'braiser_bottom')
     return braiser, braiser_bottom
+
+
+def put_lid_on_braiser(world, lid=None, braiser=None):
+    if lid is None:
+        lid = world.name_to_object('BraiserLid')
+    if braiser is None:
+        braiser = world.name_to_object('BraiserBody')
+    point, quat = get_pose(braiser)
+    r, p, y = euler_from_quat(quat)
+    lid.set_pose((point, quat_from_euler((r, p, y + PI / 4))), world=world)
+    braiser.attach_obj(lid, world=world)
 
 
 def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
@@ -2111,9 +2132,9 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
             obstacles.append(microwave)
     else:
         microwave = world.name_to_object('MicrowaveHanging')
-    if microwave is not None:
-        counters.append(microwave)
-        world.add_to_cat(microwave.body, 'supporter')
+    # if microwave is not None:
+    #     counters.append(microwave)
+    #     world.add_to_cat(microwave.body, 'supporter')
 
     braiser, braiser_bottom = load_braiser(world, oven, x_min=x_food_min)
     obstacles.extend([braiser, braiser_bottom])
@@ -2161,12 +2182,25 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
 
 
 def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
-    assert case in [2, 3, 992, 993]
-
-    obj_name, surface_name, d = {
+    assert case in [
+        2, ## to_sink
+        3, ## to_braiser
+        992, ## to_sink (no obstacle)
+        993, ## to_braiser (no obstacle)
+        21, ## sink_to_storage
+        31, ## braiser_to_storage
+    ]
+    cammies = {
         2: ('sink', 'sink_bottom', [0.1, 0.0, 0.8]),
         3: ('braiserbody', 'braiser_bottom', [0.2, 0.0, 1.3])
-    }[case % 990]
+    }
+
+    if '2' in str(case):
+        obj_name, surface_name, d = cammies[2]
+    elif '3' in str(case):
+        obj_name, surface_name, d = cammies[3]
+
+    """ add camera to the from or to region """
     obj = world.name_to_body(obj_name)
     obj_bottom = world.name_to_body(surface_name)
     set_camera_target_body(obj, dx=d[0], dy=d[1], dz=d[2])
@@ -2174,13 +2208,14 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
         {'name': world.BODY_TO_OBJECT[obj].name, 'd': d}
     )
 
-    ## ---------- add obstacles ----------
+    """ add obstacles to the from or to region """
     bottom_obj = world.BODY_TO_OBJECT[obj_bottom]
     obstacles = bottom_obj.supported_objects
-
-    ## at least two objects on sink bottom, or one in braiser
-    if (case in [2] and len(obstacles) <= 1 and random.random() < 1) \
+    if (case in [2, 21] and len(obstacles) <= 1 and random.random() < 1) \
             or (case in [3] and len(obstacles) == 0 and random.random() < 1):
+        all_to_move = []
+
+        """ add one goal unrelated obstacles """
         existing = [o.body for o in obstacles]
         something = None
         if case in [2]:
@@ -2188,20 +2223,30 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
         elif case in [3]:
             something = world.cat_to_objects('edible') + world.cat_to_objects('medicine')
             something = [m for m in something if m.body not in existing]
-
         if food is not None:
             something = [m for m in something if m.body != food]
-        something = random.choice(something)
 
-        if something is not None:
-            result = bottom_obj.place_obj(something, max_trial=5, world=world)
-            if result is None:
-                counters_tmp = world.find_surfaces_for_placement(something, counters)
-                counters_tmp[0].place_obj(something, world=world)
-            else:
+        """ may add some goal related objects """
+        if case in [2, 3] and something is not None:
+            all_to_move = [random.choice(something)]
+        elif case in [21]:
+            all_to_move = []
+            all_to_move += random.sample(world.cat_to_objects('edible'), 2 if random.random() < 0.5 else 1)
+            all_to_move += random.sample(world.cat_to_objects('bottle'), 2 if random.random() < 0.5 else 1)
+
+        """ move objects to the clustered region """
+        for something in all_to_move:
+            pkwargs = dict(max_trial=5, world=world, obstacles=obstacles)
+            result = bottom_obj.place_obj(something, **pkwargs)
+            if result is not None:
                 obstacles.append(something)
                 obstacles += bottom_obj.supported_objects
+            ## move objects away if there is no space
+            else:
+                counters_tmp = world.find_surfaces_for_placement(something, counters)
+                counters_tmp[0].place_obj(something, **pkwargs)
 
+    """ make sure obstacles can be moved away """
     for o in obstacles:
         world.add_to_cat(o, 'moveable')
         # skeleton.extend([(k, arm, o) for k in pick_place_actions])
@@ -2210,28 +2255,29 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
         objects.append(o)
     # skeleton.extend([(k, arm, food) for k in pick_place_actions])
 
-    if case in [3]:
-        count = 0
-        foods = world.cat_to_bodies('edible')
-        if food is None:
-            food = foods[0]
-        while not aabb_larger(obj_bottom, food):
-            count += 1
-            food = foods[count]
+    """ choose the object to rearrange """
+    foods = world.cat_to_bodies('edible')
+    if food is None:
+        food = foods[0]
 
-        lid = world.name_to_body('braiserlid')  ## , obstacles=moveables+obstacles
-        counters_tmp = world.find_surfaces_for_placement(lid, counters)
-        if len(counters_tmp) == 0:
-            raise Exception('No counters found, try another seed')
-        objects += [food, lid, counters_tmp[0].pybullet_name]
-        # world.add_highlighter(counters[0])
-
-        if random.random() < 0.2:
-            counters_tmp[0].place_obj(world.BODY_TO_OBJECT[lid], world=world)
-
-    if case in [993]:
+    """ maybe move the lid away """
+    if case in [3, 31]:
+        """ make sure food is smaller than the braiser """
+        if case in [3]:
+            count = 0
+            while not aabb_larger(obj_bottom, food):
+                count += 1
+                food = foods[count]
+        lid = world.name_to_body('braiserlid')
+        objects += [food, lid]
+        world.add_to_cat(lid, 'moveable')
+        counters_tmp = move_lid_away(world, counters, epsilon=0.3)
+        if counters_tmp is not None:
+            objects += [counters_tmp.pybullet_name]
+    elif case in [993]:
         world.remove_object(world.name_to_object('braiserlid'))
-    return obj_bottom, objects
+
+    return food, obj_bottom, objects
 
 
 if __name__ == '__main__':
