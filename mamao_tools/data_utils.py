@@ -616,7 +616,7 @@ def get_lisdf_aabbs(run_dir, keyw=None):
     return aabbs
 
 
-def get_sink_counter_x(run_dir, keyw='sink_counter'):
+def get_sink_counter_x(run_dir, keyw='sink_counter_front'):
     return get_lisdf_aabbs(run_dir, keyw=keyw)
 
 
