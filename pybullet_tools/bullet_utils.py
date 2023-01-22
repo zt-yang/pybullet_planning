@@ -1081,7 +1081,7 @@ def get_rotation_matrix(body, verbose=False):
         while len(urdf_file.strip()) == 0:
             count += 1
             urdf_file = dirname(collision_data[count].filename.decode())
-        urdf_file = urdf_file.replace('/textured_objs', '').replace('/vhacd', '')
+        urdf_file = urdf_file.replace('/textured_objs', '').replace('/base_objs', '').replace('/vhacd', '')
         if urdf_file not in ROTATIONAL_MATRICES:
             if verbose:
                 print('get_rotation_matrix | urdf_file = ', abspath(urdf_file))
@@ -2124,3 +2124,13 @@ def query_yes_no(question, default="no"):
             return valid[choice]
         else:
             sys.stdout.write("Please respond with 'yes' or 'no' " "(or 'y' or 'n').\n")
+
+
+def modify_facts_by_body_map(facts, body_map):
+    new_facts = []
+    for f in facts:
+        new_f = [f[0]]
+        print(f)
+        for elem in f[1:]:
+            print('  ', elem, type(elem))
+    print('------------------')

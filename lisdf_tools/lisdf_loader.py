@@ -26,7 +26,7 @@ from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove
     wait_unlocked
 from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link, \
     toggle_joint, get_door_links, set_camera_target_body, colorize_world, colorize_link, find_closest_match, \
-    is_box_entity
+    is_box_entity, summarize_facts
 from pybullet_tools.pr2_streams import get_handle_link
 from pybullet_tools.flying_gripper_utils import set_se3_conf
 
@@ -275,6 +275,13 @@ class World():
                 pose = get_pose(body)
             print_fn(f"{line}\t|  Pose: {nice(pose)}")
         print_fn('----------------')
+
+    def summarize_facts(self, init, **kwargs):
+        self.init = init
+        summarize_facts(init, world=self, **kwargs)
+
+    def get_world_fluents(self, only_fluents=False):
+        return [f for f in self.init if f[0] in ['atposition', 'atpose']]
 
     def get_wconf(self, world_index=None, attachments={}):
         """ similar to to_lisdf in world_generator.py """
@@ -576,23 +583,14 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
         if 'camera_zoomins' in config:
             camera_zoomins = config['camera_zoomins']
             if len(camera_zoomins) > 0:
-                changed = False
                 d = camera_zoomins[0]
                 name = d['name']
                 if '::' in name:
                     name = name.split('::')[0]
                 if name not in bullet_world.name_to_body and f"{name}#1" in bullet_world.name_to_body:
                     d['name'] = name = f"{name}#1"
-                    changed = True
                 body = bullet_world.name_to_body[name]
                 dx, dy, dz = d['d']
-                if 'cabinettop' in name:
-                    d['d'][2] = dz = 2
-                    changed = True
-                if 'sink' in name:
-                    d['d'][0] = dx = 0.1
-                    d['d'][2] = dz = 0.8
-                    changed = True
                 camera_point, target_point = set_camera_target_body(body, dx=dx, dy=dy, dz=dz)
                 bullet_world.camera_kwargs = {'camera_point': camera_point, 'target_point': target_point}
 

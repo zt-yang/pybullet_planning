@@ -12,17 +12,22 @@ from pybullet_tools.pr2_primitives import Pose, Conf, APPROACH_DISTANCE, Grasp, 
     TOP_HOLDING_LEFT_ARM
 from pybullet_tools.pr2_utils import get_arm_joints, get_group_joints, create_gripper
 from pybullet_tools.utils import quat_from_euler, remove_body, get_unit_vector, unit_quat, \
-    multiply
+    multiply, get_bodies
 from pybullet_tools.bullet_utils import xyzyaw_to_pose
 from pybullet_tools.flying_gripper_utils import get_se3_joints
 
 
 class Problem():
-    def __init__(self, world):
+    def __init__(self, world, objects=[]):
         self.world = world
         self.robot = world.robot
         # self.grasp_types = ['top']
         self.gripper = None
+        if len(objects) == 0:
+            # objects = [o for o in world.objects if isinstance(o, int)]
+            objects = get_bodies()
+            objects.remove(world.robot)
+        self.objects = list(objects)
 
     @property
     def grasp_types(self):
@@ -69,6 +74,9 @@ class Problem():
         if self.gripper is not None:
             remove_body(self.gripper)
             self.gripper = None
+
+    def get_fluents(self, **kwargs):
+        return self.world.get_world_fluents(**kwargs)
 
 
 def pddl_to_init_goal(exp_dir, world, domain_file=None):
@@ -124,6 +132,7 @@ def pddl_to_init_goal(exp_dir, world, domain_file=None):
                 index = int(''.join([i for i in arg.name if i.isdigit()]))
                 value = arg.value.value
                 robot_body = robot.body
+                body = args[-1]
                 if isinstance(value, tuple): value = list(value)
                 if typ == 'q':
                     if 'pr2' in robot.name:
@@ -136,13 +145,10 @@ def pddl_to_init_goal(exp_dir, world, domain_file=None):
                 elif typ == 'aq':
                     elem = Conf(robot_body, get_arm_joints(robot_body, args[-1]), value, index=index)
                 elif typ == 'p':
-                    elem = Pose(args[-1], pose_from_tuple(value), index=index)
-                elif typ == 'lp':
-                    continue
+                    elem = Pose(body, pose_from_tuple(value), index=index)
                 elif typ == 'pstn':
-                    elem = Position(args[-1], value, index=index)
+                    elem = Position(body, value, index=index)
                 elif typ.endswith('g'):
-                    body = args[-1]
                     g = pose_from_tuple(value)
                     approach_vector = APPROACH_DISTANCE * get_unit_vector([1, 0, 0])
                     app = multiply((approach_vector, unit_quat()), g)
