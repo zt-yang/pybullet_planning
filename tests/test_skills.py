@@ -208,7 +208,7 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
                 # _, body, _ = load_model_instance('BraiserLid', id, scale=scale, location=locations[j])
                 # set_pose(body, pose)
 
-            draw_aabb(get_aabb(body))
+            # draw_aabb(get_aabb(body))
 
             """ --- fixing texture issues ---"""
             # world.add_joints_by_keyword(obj_name)
@@ -224,6 +224,7 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
             if skip_grasps:
                 print('length', round(get_aabb_extent(get_aabb(body))[1], 3))
                 print('height', round(get_aabb_extent(get_aabb(body))[2], 3))
+                print('point', round(get_pose(body)[0][2], 3))
                 wait_if_gui()
             else:
                 test_grasp(body)
@@ -904,7 +905,7 @@ if __name__ == '__main__':
     # get_data(categories=['BraiserBody'])
     # test_texture(category='CoffeeMachine', id='103127')
     # test_vhacd(category='BraiserBody')
-    test_partnet_aabbs()
+    # test_partnet_aabbs()
 
     """ --- robot (FEGripper) related  --- """
     robot = 'pr2'  ## 'feg' | 'pr2'
@@ -915,7 +916,7 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    # test_grasps(robot, ['Food'], skip_grasps=False)  ## 'EyeGlasses'
+    test_grasps(robot, ['Sink'], skip_grasps=True)  ## 'EyeGlasses'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()

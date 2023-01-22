@@ -98,9 +98,10 @@ class FeasibilityChecker(object):
 
     def dump_log(self, json_path, plans_only=False):
         from world_builder.world import State
+        from lisdf_tools.lisdf_planning import Problem
         with open(json_path, 'w') as f:
             config = {k: v for k, v in self.__dict__.items() if \
-                      not k.startswith('_') and not isinstance(v, State)}
+                      not k.startswith('_') and not isinstance(v, State) and not isinstance(v, Problem)}
             if 'args' in config:
                 config['args'] = config['args'].__dict__
             self._log['config'] = config
