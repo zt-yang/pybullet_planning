@@ -1,4 +1,4 @@
-from os.path import join, isdir, abspath, isfile
+from os.path import join, isdir, abspath, isfile, basename
 from os import listdir
 import json
 import shutil
@@ -80,7 +80,7 @@ def test_generate_pose_samples():
     for subdir in subdirs:
         run_dirs = [join(subdir, s) for s in listdir(subdir) if isdir(join(subdir, s))]
         run_dirs = sorted(run_dirs, key=lambda x: eval(x.split('/')[-1]))
-        for run_dir in tqdm(run_dirs):
+        for run_dir in tqdm(run_dirs, desc=basename(subdir)):
             indices = get_indices(run_dir)
             plan = get_successful_plan(run_dir)[0]
             counter_x = get_sink_counter_x(run_dir)
@@ -128,15 +128,15 @@ def test_generate_pose_samples():
             config_file = join(run_dir, 'planning_config.json')
             if isfile(config_file):
                 planning_config = json.load(open(config_file, 'r'))
-                if 'placement_plan' not in planning_config and False:
+                if 'placement_plan' not in planning_config:
                     new_config_file = join(run_dir, 'planning_config_new.json')
                     with open(new_config_file, 'w') as f:
                         planning_config['placement_plan'] = placement_plan
                         json.dump(planning_config, f, indent=3)
                     shutil.move(new_config_file, config_file)
 
-    ## found_count 25114 (0.864)	missed_count 1168 (0.04)
-    # misplaced_count 2791 (0.096)	deleted misplaced_count 18 (0.006)
+    ## found_count 25457 (0.865)	missed_count 1167 (0.04)
+    # misplaced_count 2815 (0.096)	deleted misplaced_count 0 (0.0)
     total_count = found_count + missed_count + misplaced_count
     line = f'found_count {found_count} ({round(found_count/total_count, 3)})'
     line += f'\tmissed_count {missed_count} ({round(missed_count/total_count, 3)})'
