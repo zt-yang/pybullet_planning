@@ -174,11 +174,12 @@ class Object(Index):
         # set_renderer(True)
         return obj
 
-    def place_obj(self, obj, max_trial=8, timeout=1.5, world=None):
+    def place_obj(self, obj, max_trial=8, timeout=1.5, world=None, obstacles=None):
         if isinstance(obj, str):
             raise NotImplementedError('place_obj: obj is str')
             # obj = self.place_new_obj(obj, max_trial=max_trial)
-        obstacles = [o for o in get_bodies() if o not in [obj, self.body]]
+        if obstacles is None:
+            obstacles = [o for o in get_bodies() if o not in [obj, self.body]]
 
         done = False
         result = check_kitchen_placement(world, obj.body, self.pybullet_name, num_samples=4)

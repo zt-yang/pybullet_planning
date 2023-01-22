@@ -72,6 +72,8 @@ def test_generate_pose_samples():
     subdirs = [join(data_dir, s) for s in listdir(data_dir) if isdir(join(data_dir, s)) \
                and (s.startswith('mm_') or s.startswith('tt_') or s.startswith('_kc') or s == '_gmm')]
     asset_to_pose = {}
+
+    ## found_count 27845	missed_count 1262 (0.043)
     found_count = 0
     missed_count = 0
     for subdir in subdirs:
@@ -90,23 +92,28 @@ def test_generate_pose_samples():
                     ## that of movable object
                     name, category, (point, yaw) = get_obj_pose(action, indices)
                     result = get_from_to(name, aabbs, point, run_dir=run_dir)
-                    ## found_count 24965 	missed_count 1006
                     if result is None or result[0] is None:
                         # print(run_dir, name, result)
                         placement_plan.append((action[0], name, None))
                         missed_count += 1
                         continue
                     found_count += 1
+
                     (relation, surface_category, surface_name), x_upper, surface_point = result
+                    placement_plan.append((action[0], name, surface_name))
+
+                    dx = x_upper - point[0]
+                    run_name = run_dir.replace(data_dir, '')
+                    pp = [point[i] - surface_point[i] for i in range(3)] + [yaw, dx, run_name]
+                    if surface_category == 'box':
+                        pp[0] = pp[-2]
+
                     if category not in asset_to_pose[action[0]]:
                         asset_to_pose[action[0]][category] = {}
                     if surface_category not in asset_to_pose[action[0]][category]:
                         asset_to_pose[action[0]][category][surface_category] = []
-                    run_name = run_dir.replace(data_dir, '')
-                    dx = x_upper - point[0]
-                    pp = [point[i] - surface_point[i] for i in range(3)] + [yaw, dx, run_name]
                     asset_to_pose[action[0]][category][surface_category].append(pp)
-                    placement_plan.append((action[0], name, surface_name))
+
             config_file = join(run_dir, 'planning_config.json')
             planning_config = json.load(open(config_file, 'r'))
             if 'placement_plan' not in planning_config and False:
@@ -116,7 +123,11 @@ def test_generate_pose_samples():
                     json.dump(planning_config, f, indent=3)
                 shutil.move(new_config_file, config_file)
 
-    print('found_count', found_count, '\tmissed_count', missed_count)
+    total_count = found_count + missed_count
+    line = f'found_count {found_count}'
+    line += f'\tmissed_count {missed_count} ({round(missed_count/total_count, 3)})'
+    print(line)
+
     save_pose_samples(asset_to_pose, title='pickplace')
     # for action in asset_to_pose:
     #     # plot_pose_samples(asset_to_pose[action], title=action)

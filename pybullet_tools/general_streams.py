@@ -255,13 +255,15 @@ def check_kitchen_placement(world, body, surface, **kwargs):
     if isinstance(body_id, int): ## reachable space, feg
         return None
     if isinstance(surface, tuple):
+        surface_body = surface[0]
         surface_point = get_pose(surface[0])[0]
         surface_aabb = get_aabb(surface[0], link=surface[1])
     else:
+        surface_body = surface
         surface_point = get_pose(surface)[0]
         surface_aabb = get_aabb(surface)
     surface_id = world.get_mobility_id(surface)
-    poses = get_learned_poses(body_id, surface_id, surface_point=surface_point, **kwargs)
+    poses = get_learned_poses(body_id, surface_id, surface_body, surface_point=surface_point, **kwargs)
     if surface_id == 'box':
         original_pose = get_pose(body)
         y_lower = surface_aabb.lower[1]
