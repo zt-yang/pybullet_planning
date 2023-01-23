@@ -374,7 +374,7 @@ def log_collided(obj, obs, visualize=False):
         wait_unlocked()
 
 
-def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=False,
+def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=False, log_collisions=True,
              visualize=False, min_num_pts=0, use_aabb=True, ignored_pairs=[], **kwargs):
 
     prefix = 'bullet_utils.collided '
@@ -391,6 +391,7 @@ def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=Fals
     result = False
     ## first find the bodies that collides with obj
     bodies = []
+    to_print = ''
     for b in obstacles:
         if pairwise_collision(obj, b) and (obj, b) not in ignored_pairs:
             if world is None:
@@ -402,10 +403,11 @@ def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=Fals
             if verbose:
                 # if b_print == 'floor1':
                 #     print(obstacles)
-                print(prefix, f'{obj_print} collides with {b_print}')
+                to_print += f'{prefix} {obj_print} collides with {b_print}'
             result = True
             bodies.append(b)
-            log_collided(obj_print, b_print)
+            if log_collisions:
+                log_collided(obj_print, b_print)
 
     ## then find the exact links
     body_links = {}
@@ -436,7 +438,12 @@ def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=Fals
         result = False
     else:
         if verbose:
-            print(f'{prefix} | {obj} with {body_links}')
+            if world is not None:
+                obj = world.get_name(obj)
+            line = f'{obj} with {body_links}'
+            print(f"{prefix} | {line}")
+            if not log_collisions:
+                return line.replace("'", "")
     return result
 
 #######################################################
@@ -1700,7 +1707,8 @@ def get_obj_keys_for_segmentation(indices, unique=None):
     obj_keys = {}
     for k, v in indices.items():
         keys = []
-        k = eval(k)
+        if isinstance(k, str):
+            k = eval(k)
         if isinstance(k, int):  ##  and (k, 0) in unique
             if unique is not None:
                 keys = [u for u in unique if u[0] == k]
@@ -1762,6 +1770,31 @@ def adjust_segmask(unique, world):
             unique[k] = list(set(unique[k]))
             # print(k, 'added', len(unique[k]) - old_count)
     return unique
+
+
+def take_selected_seg_images(world, img_dir, body, indices, width=1280, height=960, **kwargs):
+    from lisdf_tools.image_utils import save_seg_image_given_obj_keys
+
+    ## take images from in front
+    camera_point, target_point = set_camera_target_body(body, **kwargs)
+    camera_kwargs = {'camera_point': camera_point, 'target_point': target_point}
+    common = dict(img_dir=img_dir, width=width, height=height, fx=800)
+    world.add_camera(**common, **camera_kwargs)
+
+    ## take seg images
+    imgs = world.camera.get_image(segment=True, segment_links=True)
+    rgb = imgs.rgbPixels[:, :, :3]
+    seg = imgs.segmentationMaskBuffer
+    # seg = imgs.segmentationMaskBuffer[:, :, 0].astype('int32')
+    unique = get_segmask(seg)
+    obj_keys = get_obj_keys_for_segmentation(indices, unique)
+
+    for k, v in indices.items():
+        keys = obj_keys[v]
+        mobility_id = world.get_mobility_id(body)
+        file_name = join(img_dir, f"{mobility_id}_{v}.png")
+
+        save_seg_image_given_obj_keys(rgb, keys, unique, file_name, crop=False)
 
 
 def get_door_links(body, joint):

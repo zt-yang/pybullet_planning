@@ -66,13 +66,20 @@ def draw_bb(im, bb):
     PIL.Image.fromarray(im2).show()
 
 
-def crop_image(im, bb, width, height, N_PX):
+def crop_image(im, bb=None, width=1280, height=960, N_PX=224,
+               align_vertical='center', keep_ratio=False):
     if bb is None:
         # crop the center of the blank image
         left = int((width - N_PX) / 2)
-        top = int((height - N_PX) / 2)
+        if align_vertical == 'center':
+            top = int((height - N_PX) / 2)
+        elif align_vertical == 'top':
+            top = 0
         right = left + N_PX
-        bottom = top + N_PX
+        if keep_ratio:
+            bottom = int(top + N_PX * height / width)
+        else:
+            bottom = top + N_PX
         cp = (left, top, right, bottom)
         im = im.crop(cp)
         return im
@@ -130,6 +137,34 @@ def make_image_background(old_arr):
     new_arr[:, :, 1] = 178
     new_arr[:, :, 2] = 204
     return new_arr
+
+
+def save_seg_image_given_obj_keys(rgb, keys, unique, file_name, crop=False, center=False, **kwargs):
+    mask = np.zeros_like(rgb[:, :, 0])
+    background = make_image_background(rgb)
+    for k in keys:
+        if k in unique:
+            c, r = zip(*unique[k])
+            mask[(np.asarray(c), np.asarray(r))] = 1
+        # else:
+        #     print('key not found', k)
+    foreground = rgb * expand_mask(mask)
+    background[np.where(mask != 0)] = 0
+    new_image = foreground + background
+    im = PIL.Image.fromarray(new_image)
+
+    ## crop image with object bounding box centered
+    if crop:
+        if center:
+            bb = get_mask_bb(mask)
+        else:
+            bb = None
+        # if bb is not None:
+        #     draw_bb(new_image, bb)
+        im = crop_image(im, bb, **kwargs)
+
+    # im.show()
+    im.save(file_name)
 
 
 ##############################################################################

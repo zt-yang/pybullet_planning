@@ -4,7 +4,7 @@ import copy
 
 from pybullet_tools.bullet_utils import clip_delta, multiply2d, is_above, nice, open_joint, set_camera_target_robot, \
     toggle_joint, add_attachment, remove_attachment, draw_pose2d_path, \
-    draw_pose3d_path, get_obj_keys_for_segmentation, get_segmask
+    draw_pose3d_path, get_obj_keys_for_segmentation, get_segmask, collided
 from pybullet_tools.pr2_streams import Position, get_pull_door_handle_motion_gen, \
     LINK_POSE_TO_JOINT_POSITION
 from pybullet_tools.utils import str_from_object, get_closest_points, INF, create_attachment, wait_if_gui, \
@@ -462,8 +462,9 @@ def adapt_action(a, problem, plan, verbose=True):
     return a
 
 
-def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None,
-                  body_map=None, SAVE_COMPOSED_JPG=False, SAVE_GIF=False):
+def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body_map=None,
+                  SAVE_COMPOSED_JPG=False, SAVE_GIF=False, CHECK_COLLISIONS=False,
+                  cfree_range=0.1, VISUALIZE_COLLISIONS=False):
     """ act out the whole plan and event in the world without observation/replanning """
     if actions is None:
         return
@@ -474,7 +475,8 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None,
     recording = False
     last_name = None
     last_object = None
-    if SAVE_COMPOSED_JPG or SAVE_GIF:
+
+    if not CHECK_COLLISIONS and (SAVE_COMPOSED_JPG or SAVE_GIF):
         colors = RAINBOW_COLORS
         color_index = 0
         indices = world.get_indices(body_map=body_map)
@@ -486,8 +488,35 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None,
         elif SAVE_GIF:
             obj_keys = get_obj_keys_for_segmentation(indices)
 
+    robot = world.robot.body
+    objects = [n for n in world.body_to_name if isinstance(n, int) and n > 1]
+    ignored_collisions = {robot: []}
+    initial_collisions = copy.deepcopy(ignored_collisions)
+    expected_pose = None
+    cfree_until =None
     for i, action in enumerate(actions):
         name = action.__class__.__name__
+
+        if 'GripperAction' in name and CHECK_COLLISIONS:
+            next_action = actions[i+1]
+            next_name = next_action.__class__.__name__
+            if 'AttachObjectAction' in next_name:
+                last_object = next_action.object
+                if last_object in body_map:
+                    last_object = body_map[last_object]
+                if isinstance(last_object, tuple):
+                    last_object = last_object[0]
+                object_name = world.body_to_name[last_object]
+                for a in plan[0][0]:
+                    if 'place' in a[0] and a[2] == object_name:
+                        pp = a[3]
+                        expected_pose = eval(pp[pp.index('('):])[:3]
+                ignored_collisions[robot].append(last_object)
+                ignored_collisions[last_object] = [robot, last_object]
+            else:
+                ignored_collisions = copy.deepcopy(initial_collisions)
+                expected_pose = None
+                cfree_until = i + 5
 
         record_img = False
         if 'tachObjectAction' in name and body_map is not None:
@@ -495,7 +524,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None,
                 action.object = body_map[action.object]
             last_object = action.object
             action.verbose = verbose
-            if SAVE_COMPOSED_JPG or SAVE_GIF:
+            if not CHECK_COLLISIONS and (SAVE_COMPOSED_JPG or SAVE_GIF):
                 record_img = True
                 if 'Attach' in name:
                     color = colors[color_index]
@@ -513,6 +542,10 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None,
                         seg_images = []
         elif 'MoveArm' in name:
             record_img = i % 5 == 0
+            next_action = actions[i + 1]
+            next_name = next_action.__class__.__name__
+            if 'MoveArm' not in next_name:
+                record_img = True
         elif 'MoveBase' in name:
             record_img = i % 2 == 0
 
@@ -520,6 +553,9 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None,
             print(i, action)
             last_name = name
             record_img = True
+
+        ###############################################
+
         action = adapt_action(action, problem, plan, verbose=False)
         if action is None:
             continue
@@ -533,7 +569,34 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None,
             for a in action:
                 state_event = a.transition(state_event.copy())
 
-        if recording:
+        ###############################################
+
+        if CHECK_COLLISIONS:
+            for body, ignored in ignored_collisions.items():
+                obstacles = [o for o in objects if o not in ignored]
+
+                ## object colliding with surface just placed on
+                if body != robot:
+                    if expected_pose is not None:
+                        pose = get_pose(body)[0]
+                        dist = np.linalg.norm(np.array(pose) - np.array(expected_pose))
+                        if dist < cfree_range:
+                            continue
+
+                ## gripper colliding with object just placed down
+                elif cfree_until is not None and i < cfree_until:
+                    continue
+
+                result = collided(body, obstacles, world=world, verbose=True,
+                                  min_num_pts=3, log_collisions=False)
+                if result:
+                    if VISUALIZE_COLLISIONS:
+                        wait_if_gui()
+                    return result
+
+        ###############################################
+
+        elif recording:
             if not record_img:
                 continue
             if SAVE_COMPOSED_JPG:
@@ -548,6 +611,9 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None,
             wait_if_gui()
         else:
             wait_for_duration(time_step)
+
+    if CHECK_COLLISIONS:
+        return False
 
     if SAVE_COMPOSED_JPG:
         if recording:
