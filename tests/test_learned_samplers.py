@@ -70,7 +70,9 @@ def plot_pose_samples(asset_to_pose, title='Pose Samples'):
 def test_generate_pose_samples():
     data_dir = '/home/yang/Documents/fastamp-data-rss'
     subdirs = [join(data_dir, s) for s in listdir(data_dir) if isdir(join(data_dir, s)) \
-               and (s.startswith('mm_') or s.startswith('tt_') or s.startswith('_kc') or s == '_gmm')]
+               and (s.startswith('mm_') or s.startswith('tt_') or s.startswith('_kc') or s == '_gmm')
+               # and (s.startswith('mm_storage_long'))  ## for debugging
+               ]
     asset_to_pose = {}
 
     found_count = 0
@@ -99,7 +101,13 @@ def test_generate_pose_samples():
                             break
                         continue
 
-                    result = get_from_to(name, aabbs, point, run_dir=run_dir)
+                    verbose = False
+                    # if 'mm_storage_long/0' in run_dir and name == 'veggiepotato':
+                    #     verbose = True
+                    result = get_from_to(name, aabbs, point, run_dir=run_dir, verbose=verbose)
+                    if verbose:
+                        verbose = True
+
                     if result is None or result[0] is None:
                         # print(run_dir, name, result)
                         placement_plan.append((action[0], name, None))
@@ -134,8 +142,9 @@ def test_generate_pose_samples():
                         planning_config['placement_plan'] = placement_plan
                         json.dump(planning_config, f, indent=3)
                     shutil.move(new_config_file, config_file)
+    # return
 
-    ## found_count 25457 (0.865)	missed_count 1167 (0.04)
+    ## found_count 26315 (0.894)	missed_count 309 (0.01)
     # misplaced_count 2815 (0.096)	deleted misplaced_count 0 (0.0)
     total_count = found_count + missed_count + misplaced_count
     line = f'found_count {found_count} ({round(found_count/total_count, 3)})'

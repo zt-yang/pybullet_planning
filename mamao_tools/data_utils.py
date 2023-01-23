@@ -7,7 +7,8 @@ import numpy as np
 import untangle
 import copy
 
-from pybullet_tools.bullet_utils import nice, get_aabb_center
+from pybullet_tools.bullet_utils import nice
+from pybullet_tools.utils import get_aabb_center, get_aabb_extent
 from mamao_tools.text_utils import ACTION_ABV, ACTION_NAMES
 
 import sys
@@ -622,10 +623,14 @@ def get_sink_counter_x(run_dir, keyw='sink_counter_front'):
 
 def aabb_placed_on_aabb(top_aabb, bottom_aabb, above_epsilon=1e-2, below_epsilon=0.02):
     assert (0 <= above_epsilon) and (0 <= below_epsilon)
+    lower = bottom_aabb.lower
+    upper = bottom_aabb.upper
+    upper[0] += get_aabb_extent(bottom_aabb)[0] / 2
+    new_bottom_aabb = AABB(lower=lower, upper=upper)
     top_z_min = top_aabb[0][2]
-    bottom_z_max = bottom_aabb[1][2]
+    bottom_z_max = new_bottom_aabb[1][2]
     return ((bottom_z_max - abs(below_epsilon)) <= top_z_min <= (bottom_z_max + abs(above_epsilon))) and \
-           (aabb_contains_aabb(aabb2d_from_aabb(top_aabb), aabb2d_from_aabb(bottom_aabb)))
+           (aabb_contains_aabb(aabb2d_from_aabb(top_aabb), aabb2d_from_aabb(new_bottom_aabb)))
 
 
 def aabb_placed_in_aabb(contained, container):
