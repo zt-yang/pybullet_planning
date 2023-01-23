@@ -1,5 +1,6 @@
 import json
 import shutil
+import os
 from os import listdir, getcwd
 from os.path import join, isfile, isdir, abspath
 
@@ -66,19 +67,26 @@ def organize_dataset(task_name):
         moved.append(missing[i])
 
 
+def load_planning_config(run_dir):
+    return json.load(open(join(run_dir, 'planning_config.json'), 'r'))
+
+
 def get_indices_from_config(run_dir):
-    config = json.load(open(join(run_dir, 'planning_config.json'), 'r'))
+    config = load_planning_config(run_dir)
     if 'body_to_name' in config:
         return {k: v for k, v in config['body_to_name'].items()} ## .replace('::', '%')
     return False
 
 
-def add_to_planning_config(run_dir, keyname, value):
+def add_to_planning_config(run_dir, keyname, value, update=False):
     file_name = join(run_dir, 'planning_config.json')
+    tmp_file_name = join(run_dir, 'planning_config_tmp.json')
     config = json.load(open(file_name, 'r'))
-    if keyname not in config:
+    if keyname not in config or value != config[keyname] or update:
         config[keyname] = value
+        shutil.copy(file_name, tmp_file_name)
         json.dump(config, open(file_name, 'w'), indent=3)
+        os.remove(tmp_file_name)
 
 
 def process_value(vv, training=True):
@@ -162,7 +170,7 @@ def get_indices_from_log(run_dir):
 
 
 def get_indices_from_config(run_dir):
-    config = json.load(open(join(run_dir, 'planning_config.json'), 'r'))
+    config = load_planning_config(run_dir)
     if 'body_to_name' in config:
         return config['body_to_name']
     return False
@@ -178,7 +186,7 @@ def get_indices(run_dir, body_map=None):
 
 
 def get_body_map(run_dir, world, inv=False):
-    body_to_name = json.load(open(join(run_dir, 'planning_config.json'), 'r'))['body_to_name']
+    body_to_name = load_planning_config(run_dir)['body_to_name']
     body_to_new = {eval(k): world.name_to_body[v] for k, v in body_to_name.items()}
     if inv:
         return {v: k for k, v in body_to_new.items()}
@@ -285,10 +293,6 @@ def get_instance_info(run_dir, world=None):
                 index = 'VeggieCabbage'
             instances[m['name']] = index
     return instances
-
-
-def exist_instance(model_instances, instance):
-    return list(model_instances.values()).count(instance) > 0
 
 
 def get_fc_record(run_dir, fc_classes=[], diverse=True, rerun_subdir=None):
@@ -438,18 +442,20 @@ def get_multiple_solutions(run_dir, indices={}, commands_too=False):
         with open(solutions_file, 'r') as f:
             data = json.load(f)
             for d in data:
+                plan = None
                 ## those failed attempts
-                if 'optimistic_plan' in d:
+                if 'optimistic_plan' in d and not commands_too:
                     plan = d['optimistic_plan'][1:-1].split('Action')
                     plan = ['Action'+p[:-2] for p in plan[1:]]
                     plan = get_plan_from_strings(plan, indices=indices)
-                    if commands_too:
-                        plan = [plan, None]
+                    # if commands_too:
+                    #     plan = [plan, None]
                 elif 'rerun_dir' in d:
                     plan = d['plan']
                     if commands_too:
                         plan = [plan, d['rerun_dir']]
-                all_plans.append(plan)
+                if plan is not None:
+                    all_plans.append(plan)
     return all_plans
 
 

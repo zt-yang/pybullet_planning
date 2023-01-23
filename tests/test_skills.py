@@ -7,6 +7,7 @@ import random
 import json
 import shutil
 import time
+import copy
 
 import numpy as np
 from os.path import join, abspath, dirname, isdir, isfile
@@ -18,10 +19,11 @@ from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, 
     set_camera_pose, wait_unlocked, disconnect, wait_if_gui, create_box, wait_for_duration, \
     SEPARATOR, get_aabb, get_pose, approximate_as_prism, draw_aabb, multiply, unit_quat, remove_body, invert, \
     Pose, get_link_pose, get_joint_limits, WHITE, RGBA, set_all_color, RED, GREEN, set_renderer, clone_body, \
-    add_text, joint_from_name, set_caching, Point, set_random_seed, set_numpy_seed, reset_simulation
+    add_text, joint_from_name, set_caching, Point, set_random_seed, set_numpy_seed, reset_simulation, \
+    get_joint_name, get_link_name
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, set_camera_target_body, \
     draw_bounding_lines, fit_dimensions, draw_fitted_box, get_hand_grasps, get_partnet_doors, get_partnet_spaces, \
-    open_joint, get_grasp_db_file, draw_points
+    open_joint, get_grasp_db_file, draw_points, take_selected_seg_images
 from pybullet_tools.pr2_agent import get_stream_info, post_process, move_cost_fn, \
     visualize_grasps_by_quat, visualize_grasps
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, Position, \
@@ -142,7 +144,7 @@ def get_gap(category):
         gap = 3
     if category == 'MiniFridge':
         gap = 2
-    if category in ['Food', 'Stapler']:
+    if category in ['Food', 'Stapler', 'BraiserBody']:
         gap = 0.5
     return gap
 
@@ -372,7 +374,7 @@ def reload_after_vhacd(path, body, scale, id=None):
     return id_urdf_path, body
 
 
-def test_placement_in(robot, category, movable_category='Food', num_samples=30):
+def test_placement_in(robot, category, movable_category='Food', num_samples=30, seg_links=False):
 
     world = get_test_world(robot)
     problem = State(world)
@@ -404,36 +406,50 @@ def test_placement_in(robot, category, movable_category='Food', num_samples=30):
         spaces = get_partnet_spaces(path, body)
         world.add_spaces(body, spaces, path=path)
 
-        for door in get_partnet_doors(path, body):
+        doors = get_partnet_doors(path, body)
+        for door in doors:
             open_joint(door[0], door[1])
         set_renderer(True)
 
-        for body_link in spaces:
-            x += 1
-            # space = clone_body(body, links=body_link[-1:], visual=True, collision=True)
-            # world.add_body(space, f'{category.lower()}#{id}-{body_link}')
+        """ test taking images of link segments """
+        if seg_links:
+            name = category.lower()
+            img_dir = join(dirname(__file__), 'pb_images', name)
+            os.makedirs(img_dir, exist_ok=True)
 
-            cabbage, path = load_asset(movable_category, x=x, y=y, z=0, yaw=0,
-                                       RANDOM_INSTANCE=movable_instance)[:2]
-            cabbage_name = f'cabbage#{i}-{body_link}'
-            world.add_body(cabbage, cabbage_name, path=path)
+            indices = {body: name}
+            indices.update({(b, None, l): f"{name}::{get_link_name(b, l)}" for b, _, l in spaces})
+            indices.update({(b, j): f"{name}::{get_joint_name(b, j)}" for b, j in doors})
+            take_selected_seg_images(world, img_dir, body, indices, dx=1.5, dy=0, dz=1)
 
-            outputs = funk(cabbage, body_link)
-            set_pose(cabbage, outputs[0][0].value)
-            markers = []
-            for j in range(1, len(outputs)):
-                marker = load_asset(movable_category, x=x, y=y, z=0, yaw=0,
-                                    RANDOM_INSTANCE=movable_instance)[0]
-                # world.add_body(cabbage, cabbage_name+f"_({j})")
-                markers.append(marker)
-                set_pose(marker, outputs[j][0].value)
+        else:
 
-            set_renderer(True)
-            set_renderer(True)
-            set_camera_target_body(cabbage, dx=1, dy=0, dz=1)
-            wait_if_gui('Next space?')
-            for m in markers:
-                remove_body(m)
+            for body_link in spaces:
+                x += 1
+                # space = clone_body(body, links=body_link[-1:], visual=True, collision=True)
+                # world.add_body(space, f'{category.lower()}#{id}-{body_link}')
+
+                cabbage, path = load_asset(movable_category, x=x, y=y, z=0, yaw=0,
+                                           RANDOM_INSTANCE=movable_instance)[:2]
+                cabbage_name = f'cabbage#{i}-{body_link}'
+                world.add_body(cabbage, cabbage_name, path=path)
+
+                outputs = funk(cabbage, body_link)
+                set_pose(cabbage, outputs[0][0].value)
+                markers = []
+                for j in range(1, len(outputs)):
+                    marker = load_asset(movable_category, x=x, y=y, z=0, yaw=0,
+                                        RANDOM_INSTANCE=movable_instance)[0]
+                    # world.add_body(cabbage, cabbage_name+f"_({j})")
+                    markers.append(marker)
+                    set_pose(marker, outputs[j][0].value)
+
+                set_renderer(True)
+                set_renderer(True)
+                set_camera_target_body(cabbage, dx=1, dy=0, dz=1)
+                wait_if_gui('Next space?')
+                for m in markers:
+                    remove_body(m)
         i += 1
         reset_simulation()
 
@@ -443,7 +459,7 @@ def test_placement_in(robot, category, movable_category='Food', num_samples=30):
 
 
 def test_placement_on(robot, category, surface_name=None,
-                      movable_category='Food', num_samples=30):
+                      movable_category='Food', num_samples=30, seg_links=False):
 
     world = get_test_world(robot)
     problem = State(world)
@@ -456,7 +472,7 @@ def test_placement_on(robot, category, surface_name=None,
     movable_instance = random.choice(list(movable_instances.keys()))
     n = len(instances)
     i = 0
-    locations = [(0, get_gap(category) * n) for n in range(1, n + 1)]
+    locations = [(0, get_gap(category) * n) for n in range(2, n + 2)]
     set_camera_pose((4, 3, 2), (0, 3, 0.5))
     for id in instances:
         (x, y) = locations[i]
@@ -467,36 +483,50 @@ def test_placement_on(robot, category, surface_name=None,
         name = f'{category.lower()}#{id}'
         world.add_body(body, name, path=path)
         set_camera_target_body(body, dx=1, dy=0, dz=1)
+        nn = category.lower()
+        indices = {body: nn}
         if surface_name is not None:
             link = link_from_name(body, surface_name)
+            print('radius', round( get_aabb_extent(get_aabb(body, link=link))[0]/ scale / 2, 3))
+            print('height', round( get_aabb_extent(get_aabb(body))[2]/ scale / 2, 3))
             body = (body, None, link)
             world.add_body(body, name, path=path)
+            indices[body] = f"{nn}::{surface_name}"
 
-        ## ---- add many cabbages
-        # space = clone_body(body, links=body_link[-1:], visual=True, collision=True)
-        # world.add_body(space, f'{category.lower()}#{id}-{body_link}')
-        x += 1
-        cabbage, path = load_asset(movable_category, x=x, y=y, z=0, yaw=0,
-                                   RANDOM_INSTANCE=movable_instance)[:2]
-        cabbage_name = f'{movable_category}#{i}-{body}'
-        world.add_body(cabbage, cabbage_name, path=path)
+        """ test taking images of link segments """
+        if seg_links:
+            name = category.lower()
+            img_dir = join(dirname(__file__), 'pb_images', name)
+            os.makedirs(img_dir, exist_ok=True)
+            take_selected_seg_images(world, img_dir, body[0], indices, dx=0.2, dy=0, dz=1)
+            # wait_unlocked()
 
-        outputs = funk(cabbage, body)
-        set_pose(cabbage, outputs[0][0].value)
-        markers = []
-        for j in range(1, len(outputs)):
-            marker = load_asset(movable_category, x=x, y=y, z=0, yaw=0,
-                                RANDOM_INSTANCE=movable_instance)[0]
-            markers.append(marker)
-            set_pose(marker, outputs[j][0].value)
+        else:
+            ## ---- add many cabbages
+            # space = clone_body(body, links=body_link[-1:], visual=True, collision=True)
+            # world.add_body(space, f'{category.lower()}#{id}-{body_link}')
+            x += 1
+            cabbage, path = load_asset(movable_category, x=x, y=y, z=0, yaw=0,
+                                       RANDOM_INSTANCE=movable_instance)[:2]
+            cabbage_name = f'{movable_category}#{i}-{body}'
+            world.add_body(cabbage, cabbage_name, path=path)
 
-        set_renderer(True)
-        set_camera_target_body(cabbage, dx=1, dy=0, dz=1)
-        wait_if_gui('Next surface?')
-        for m in markers:
-            remove_body(m)
+            outputs = funk(cabbage, body)
+            set_pose(cabbage, outputs[0][0].value)
+            markers = []
+            for j in range(1, len(outputs)):
+                marker = load_asset(movable_category, x=x, y=y, z=0, yaw=0,
+                                    RANDOM_INSTANCE=movable_instance)[0]
+                markers.append(marker)
+                set_pose(marker, outputs[j][0].value)
+
+            set_renderer(True)
+            set_camera_target_body(cabbage, dx=1, dy=0, dz=1)
+            wait_if_gui('Next surface?')
+            for m in markers:
+                remove_body(m)
+            reset_simulation()
         i += 1
-        reset_simulation()
 
     # set_camera_pose((4, 3, 2), (0, 3, 0.5))
     wait_if_gui('Finish?')
@@ -916,7 +946,7 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    test_grasps(robot, ['Sink'], skip_grasps=True)  ## 'EyeGlasses'
+    # test_grasps(robot, ['Sink'], skip_grasps=True)  ## 'EyeGlasses'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
@@ -926,7 +956,7 @@ if __name__ == '__main__':
     """ --- placement related  --- 
         IN: 'MiniFridge', 'CabinetTop'
     """
-    # test_placement_in(robot, category='MiniFridge')
+    # test_placement_in(robot, category='CabinetTop', seg_links=True)
 
     """ --- placement related  --- 
         ON: 'KitchenCounter', 
@@ -934,7 +964,8 @@ if __name__ == '__main__':
             'Sink' (surface_name='sink_bottom'),
             'BraiserBody' (surface_name='braiser_bottom'),
     """
-    # test_placement_on(robot, category='BraiserBody', surface_name='braiser_bottom')
+    test_placement_on(robot, category='BraiserBody', surface_name='braiser_bottom', seg_links=True)
+    # test_placement_on(robot, category='Sink', surface_name='sink_bottom', seg_links=True)
 
     # test_sink_configuration(robot, pause=True)
     # test_kitchen_configuration(robot)
