@@ -73,6 +73,7 @@ def test_generate_pose_samples():
                and (s.startswith('mm_') or s.startswith('tt_') or s.startswith('_kc') or s == '_gmm')
                # and (s.startswith('mm_storage_long'))  ## for debugging
                ]
+    subdirs.sort()
     asset_to_pose = {}
 
     found_count = 0
@@ -144,13 +145,13 @@ def test_generate_pose_samples():
                     shutil.move(new_config_file, config_file)
     # return
 
-    ## found_count 26315 (0.894)	missed_count 309 (0.01)
-    # misplaced_count 2815 (0.096)	deleted misplaced_count 0 (0.0)
+    ## found 26776 (0.892)	missed 332 (0.011)  misplaced 2899 (0.097)
     total_count = found_count + missed_count + misplaced_count
-    line = f'found_count {found_count} ({round(found_count/total_count, 3)})'
-    line += f'\tmissed_count {missed_count} ({round(missed_count/total_count, 3)})'
-    line += f'\tmisplaced_count {misplaced_count} ({round(misplaced_count/total_count, 3)})'
-    line += f'\tdeleted misplaced_count {deleted_count} ({round(deleted_count/(misplaced_count+deleted_count), 3)})'
+    line = f'found {found_count} ({round(found_count/total_count, 3)})'
+    line += f'\tmissed {missed_count} ({round(missed_count/total_count, 3)})'
+    line += f'\tmisplaced {misplaced_count} ({round(misplaced_count/total_count, 3)})'
+    if deleted_count > 0:
+        line += f'\tdeleted misplaced {deleted_count} ({round(deleted_count/(misplaced_count+deleted_count), 3)})'
     print(line)
 
     save_pose_samples(asset_to_pose, title='pickplace')
