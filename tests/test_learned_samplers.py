@@ -70,8 +70,9 @@ def plot_pose_samples(asset_to_pose, title='Pose Samples'):
 def test_generate_pose_samples():
     data_dir = '/home/yang/Documents/fastamp-data-rss'
     subdirs = [join(data_dir, s) for s in listdir(data_dir) if isdir(join(data_dir, s)) \
-               and (s.startswith('mm_') or s.startswith('tt_') or s.startswith('_kc') or s == '_gmm')
+               and (s.startswith('mm_') or s.startswith('tt_') or s.startswith('_kc') or s == '_gmm') \
                # and (s.startswith('mm_storage_long'))  ## for debugging
+               and not s.endswith('tmp')
                ]
     subdirs.sort()
     asset_to_pose = {}
@@ -145,9 +146,9 @@ def test_generate_pose_samples():
                     shutil.move(new_config_file, config_file)
     # return
 
-    ## found 26776 (0.892)	missed 332 (0.011)  misplaced 2899 (0.097)
+    ## found 27011 (0.893)	missed 336 (0.011)	misplaced 2912 (0.096)
     total_count = found_count + missed_count + misplaced_count
-    line = f'found {found_count} ({round(found_count/total_count, 3)})'
+    line = f'## found {found_count} ({round(found_count/total_count, 3)})'
     line += f'\tmissed {missed_count} ({round(missed_count/total_count, 3)})'
     line += f'\tmisplaced {misplaced_count} ({round(misplaced_count/total_count, 3)})'
     if deleted_count > 0:
