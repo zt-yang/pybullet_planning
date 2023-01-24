@@ -79,15 +79,21 @@ def get_indices_from_config(run_dir):
     return False
 
 
-def add_to_planning_config(run_dir, keyname, value, update=False):
+def add_to_planning_config(run_dir, new_data, safely=True):
     file_name = join(run_dir, 'planning_config.json')
     tmp_file_name = join(run_dir, 'planning_config_tmp.json')
     config = json.load(open(file_name, 'r'))
-    if keyname not in config or value != config[keyname] or update:
-        config[keyname] = value
-        shutil.copy(file_name, tmp_file_name)
+    changed = False
+    for keyname, value in new_data.items():
+        if keyname not in config or value != config[keyname]:
+            config[keyname] = value
+            changed = True
+    if changed:
+        if safely:
+            shutil.copy(file_name, tmp_file_name)
         json.dump(config, open(file_name, 'w'), indent=3)
-        os.remove(tmp_file_name)
+        if safely:
+            os.remove(tmp_file_name)
 
 
 def process_value(vv, training=True):
@@ -559,17 +565,37 @@ def get_partnet_aabb(category, idx):
     return np.asarray(dlower), np.asarray(dupper)
 
 
-def get_world_center(run_dir):
-    aabbs = get_lisdf_aabbs(run_dir)
-    x_min, y_min = np.inf, np.inf
-    x_max, y_max = -np.inf, -np.inf
-    for aabb in aabbs['static'].values():
+def get_merged_aabb(aabbs):
+    x_min, y_min, z_min = np.inf, np.inf, np.inf
+    x_max, y_max, z_max = -np.inf, -np.inf, -np.inf
+    for aabb in aabbs:
         x_min = min(x_min, aabb.lower[0])
         y_min = min(y_min, aabb.lower[1])
+        z_min = min(z_min, aabb.lower[2])
         x_max = max(x_max, aabb.upper[0])
         y_max = max(y_max, aabb.upper[1])
-    cx, cy = (x_min + x_max) / 2, (y_min + y_max) / 2
-    lx, ly = x_max - x_min, y_max - y_min
+        z_max = max(z_max, aabb.upper[2])
+    return AABB(lower=[x_min, y_min, z_min], upper=[x_max, y_max, z_max])
+
+
+def get_worlds_aabb(run_dirs):
+    aabbs = [get_world_aabb(run_dir) for run_dir in run_dirs]
+    global_aabb = get_merged_aabb(aabbs)
+    print(nice(global_aabb))
+    for run_dir, aabb in zip(run_dirs, aabbs):
+        add_to_planning_config(run_dir, {'global_aabb': global_aabb, 'world_aabb': aabb})
+    return get_merged_aabb(aabbs)
+
+
+def get_world_aabb(run_dir):
+    aabbs = get_lisdf_aabbs(run_dir)['static'].values()
+    return get_merged_aabb(aabbs)
+
+
+def get_world_center(run_dir):
+    aabb = get_world_aabb(run_dir)
+    cx, cy = get_aabb_center(aabb)[:2]
+    lx, ly = get_aabb_extent(aabb)[:2]
     return cx, cy, lx, ly
 
 

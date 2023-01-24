@@ -542,10 +542,11 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
                         seg_images = []
         elif 'MoveArm' in name:
             record_img = i % 5 == 0
-            next_action = actions[i + 1]
-            next_name = next_action.__class__.__name__
-            if 'MoveArm' not in next_name:
-                record_img = True
+            if i + 1 < len(actions):
+                next_action = actions[i + 1]
+                next_name = next_action.__class__.__name__
+                if 'MoveArm' not in next_name:
+                    record_img = True
         elif 'MoveBase' in name:
             record_img = i % 2 == 0
 
