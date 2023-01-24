@@ -325,7 +325,7 @@ class Heuristic(FeasibilityChecker):
                 print('Warning: pre-action already exists', key, result)
         else:
             if key not in self.pre_actions_and:
-                if len(self.possible_obstacles[body]) > 0:
+                if body in self.possible_obstacles and len(self.possible_obstacles[body]) > 0:
                     self.pre_actions_and[key] = set([shorter(('pick', o)) for o in self.possible_obstacles[body]])
                 else:
                     if key not in self.not_pre_actions:

@@ -20,7 +20,7 @@ from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, 
     SEPARATOR, get_aabb, get_pose, approximate_as_prism, draw_aabb, multiply, unit_quat, remove_body, invert, \
     Pose, get_link_pose, get_joint_limits, WHITE, RGBA, set_all_color, RED, GREEN, set_renderer, clone_body, \
     add_text, joint_from_name, set_caching, Point, set_random_seed, set_numpy_seed, reset_simulation, \
-    get_joint_name, get_link_name
+    get_joint_name, get_link_name, dump_joint, set_joint_position
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, set_camera_target_body, \
     draw_bounding_lines, fit_dimensions, draw_fitted_box, get_hand_grasps, get_partnet_doors, get_partnet_spaces, \
     open_joint, get_grasp_db_file, draw_points, take_selected_seg_images
@@ -336,14 +336,24 @@ def test_handle_grasps(robot, category, skip_grasps=False):
         world.add_joints(body, body_joints)
 
         for body_joint in body_joints:
+
+            ## a few other tests here
             if skip_grasps:
-                ## when doing relaxed heuristic feasibility checking
+                ## --- open door smartly when doing relaxed heuristic feasibility checking
                 # open_joint(body, body_joint[1], hide_door=True)
 
+                ## --- sample open positions during planning
+                # pstn1 = Position(body_joint)
+                # for (pstn, ) in funk2(body_joint, pstn1):
+                #     pstn.assign()
+                #     wait_if_gui('Next?')
+
+                ## --- normalize joint positions for PIGINet
+                b, j = body_joint
+                # set_joint_position(b, j, 1.57)
                 pstn1 = Position(body_joint)
-                for (pstn, ) in funk2(body_joint, pstn1):
-                    pstn.assign()
-                    wait_if_gui('Next?')
+                dump_joint(b, j)
+                print('     positions', pstn1.value)
 
             else:
                 outputs = funk(body_joint)
@@ -947,30 +957,29 @@ if __name__ == '__main__':
     """ --- grasps related ---
     """
     # test_grasps(robot, ['Sink'], skip_grasps=True)  ## 'EyeGlasses'
-
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
-    # test_handle_grasps(robot, category='MiniFridge', skip_grasps=True)
-    ## Kitchen: 'MiniFridge', 'MiniFridgeDoorless', 'CabinetTop'
 
-    """ --- placement related  --- 
-        IN: 'MiniFridge', 'CabinetTop'
+    """ --- grasps and placement for articulated storage units --- 
+        IN: 'MiniFridge', 'MiniFridgeDoorless', 'CabinetTop'
     """
+    test_handle_grasps(robot, category='CabinetTop', skip_grasps=True)
     # test_placement_in(robot, category='CabinetTop', seg_links=True)
 
-    """ --- placement related  --- 
+    """ --- placement related for supporting surfaces --- 
         ON: 'KitchenCounter', 
             'Tray' (surface_name='tray_bottom'),
             'Sink' (surface_name='sink_bottom'),
             'BraiserBody' (surface_name='braiser_bottom'),
     """
-    test_placement_on(robot, category='BraiserBody', surface_name='braiser_bottom', seg_links=True)
+    # test_placement_on(robot, category='BraiserBody', surface_name='braiser_bottom', seg_links=True)
     # test_placement_on(robot, category='Sink', surface_name='sink_bottom', seg_links=True)
 
-    # test_sink_configuration(robot, pause=True)
-    # test_kitchen_configuration(robot)
-
-    """ --- specific counter --- """
+    """ --- specific kitchen counter --- """
     # test_placement_counter()  ## initial placement
     # test_handle_grasps_counter()
     # test_pick_place_counter(robot)
+
+    """ --- procedurally generated kitchen counters --- """
+    # test_sink_configuration(robot, pause=True)
+    # test_kitchen_configuration(robot)
