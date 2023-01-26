@@ -48,7 +48,6 @@ class FeasibilityChecker(object):
             for input in inputs:
                 start = time.time()
                 prediction = self._check(input) if not skip else True
-                # wait_unlocked()
                 predictions.append(prediction)
                 plan = get_plan_from_input(input)
                 skeleton = get_plan_skeleton(plan, indices)
