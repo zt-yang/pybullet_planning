@@ -1,6 +1,7 @@
 from os.path import join, isdir, abspath, isfile, basename
 from os import listdir
 import json
+from pprint import pprint
 import shutil
 from tqdm import tqdm
 
@@ -68,6 +69,7 @@ def plot_pose_samples(asset_to_pose, title='Pose Samples'):
 
 
 def test_generate_pose_samples():
+    from world_builder.utils import Z_CORRECTION_FILE as file
     data_dir = '/home/yang/Documents/fastamp-data-rss'
     subdirs = [join(data_dir, s) for s in listdir(data_dir) if isdir(join(data_dir, s)) \
                and (s.startswith('mm_') or s.startswith('tt_') or s.startswith('_kc') or s == '_gmm') \
@@ -81,72 +83,95 @@ def test_generate_pose_samples():
     misplaced_count = 0
     deleted_count = 0
     missed_count = 0
+
+    z_correction = json.load(open(file, 'r'))
+
+    run_dirs = []
     for subdir in subdirs:
-        run_dirs = [join(subdir, s) for s in listdir(subdir) if isdir(join(subdir, s))]
-        run_dirs = sorted(run_dirs, key=lambda x: eval(x.split('/')[-1]))
-        for run_dir in tqdm(run_dirs, desc=basename(subdir)):
-            indices = get_indices(run_dir)
-            plan = get_successful_plan(run_dir)[0]
-            counter_x = get_sink_counter_x(run_dir)
-            aabbs = get_lisdf_aabbs(run_dir)
-            placement_plan = []
-            for action in plan:
-                if action[0].startswith('pick') or action[0].startswith('place'):
-                    ## that of movable object
-                    name, category, (point, yaw) = get_obj_pose(action, indices)
-                    if point[0] > counter_x:
-                        misplaced_count += 1
-                        if 'pick' in action[0] and ('/mm_' in run_dir or '/tt_' in run_dir):
-                            deleted_count += 1
-                            # print(run_dir, name, point[0], round(counter_x, 3), action[0])
-                            shutil.rmtree(run_dir)
-                            break
-                        continue
+        some_run_dirs = [join(subdir, s) for s in listdir(subdir) if isdir(join(subdir, s))]
+        run_dirs += sorted(some_run_dirs, key=lambda x: eval(x.split('/')[-1]))
 
-                    verbose = False
-                    # if 'mm_storage_long/0' in run_dir and name == 'veggiepotato':
-                    #     verbose = True
-                    result = get_from_to(name, aabbs, point, run_dir=run_dir, verbose=verbose)
-                    if verbose:
-                        verbose = True
+    ## debugging
+    # run_dirs = ['/home/yang/Documents/fastamp-data-rss' + '/mm_storage/381']
+    # run_dirs = ['/home/yang/Documents/fastamp-data-rss/_gmm/3610']
 
-                    if result is None or result[0] is None:
-                        # print(run_dir, name, result)
-                        placement_plan.append((action[0], name, None))
-                        missed_count += 1
-                        continue
-                    found_count += 1
+    for run_dir in tqdm(run_dirs):  ## , desc=basename(subdir)
+        indices = get_indices(run_dir)
+        plan = get_successful_plan(run_dir)[0]
+        counter_x = get_sink_counter_x(run_dir)
+        aabbs = get_lisdf_aabbs(run_dir)
+        placement_plan = []
+        for action in plan:
+            if action[0].startswith('pick') or action[0].startswith('place'):
+                ## that of movable object
+                name, category, (point, yaw) = get_obj_pose(action, indices)
 
-                    (relation, surface_category, surface_name), x_upper, surface_point = result
-                    placement_plan.append((action[0], name, surface_name))
+                verbose = False or len(run_dirs) == 1
+                # if 'mm_storage_long/0' in run_dir and name == 'veggiepotato':
+                #     verbose = True
+                result = get_from_to(name, aabbs, point, run_dir=run_dir, verbose=verbose)
+                if verbose:
+                    verbose = True
 
-                    dx = x_upper - point[0]
-                    run_name = run_dir.replace(data_dir, '')
-                    pp = [point[i] - surface_point[i] for i in range(3)] + [yaw, dx, run_name]
-                    if surface_category == 'box':
-                        pp[0] = pp[-2]
+                if result is None or result[0] is None:
+                    # print(run_dir, name, result)
+                    placement_plan.append((action[0], name, None))
+                    missed_count += 1
+                    continue
 
-                    if action[0] not in asset_to_pose:
-                        asset_to_pose[action[0]] = {}
-                    if category not in asset_to_pose[action[0]]:
-                        asset_to_pose[action[0]][category] = {}
-                    if surface_category not in asset_to_pose[action[0]][category]:
-                        asset_to_pose[action[0]][category][surface_category] = []
-                    asset_to_pose[action[0]][category][surface_category].append(pp)
+                (relation, surface_category, surface_name), x_upper, surface_point = result
+                placement_plan.append((action[0], name, surface_name))
+                pp = [point[i] - surface_point[i] for i in range(3)]
 
-            ## the run_dir might have been deleted
-            config_file = join(run_dir, 'planning_config.json')
-            if isfile(config_file):
-                planning_config = json.load(open(config_file, 'r'))
-                if 'placement_plan' not in planning_config:
-                    new_config_file = join(run_dir, 'planning_config_new.json')
-                    with open(new_config_file, 'w') as f:
-                        planning_config['placement_plan'] = placement_plan
-                        json.dump(planning_config, f, indent=3)
-                    shutil.move(new_config_file, config_file)
-    # return
+                ######################################################################
+                ## objects outside of counters
+                if surface_category == 'box' and point[0] > counter_x:
+                    misplaced_count += 1
+                    if 'pick' in action[0] and ('/mm_' in run_dir or '/tt_' in run_dir):
+                        deleted_count += 1
+                        # print(run_dir, name, point[0], round(counter_x, 3), action[0])
+                        # shutil.rmtree(run_dir)
+                        break
+                    continue
 
-    ## found 27011 (0.893)	missed 336 (0.011)	misplaced 2912 (0.096)
+                ## objects on top of containers instead of inside
+                elif 'minifridge' in surface_category.lower() and pp[2] > 0:
+                    continue
+
+                ######################################################################
+                found_count += 1
+                dx = x_upper - point[0]
+                run_name = run_dir.replace(data_dir, '')
+                pp += [yaw, dx, run_name]
+                if surface_category == 'box':
+                    pp[0] = pp[-2]
+                movable_name = aabbs['category'][name]
+
+                if movable_name in z_correction and surface_category in z_correction[movable_name]:
+                    pp[2] = z_correction[movable_name][surface_category][2]  ## just get the mean
+                elif not ('BraiserLid' in movable_name and 'BraiserBody' in surface_category):
+                    print(movable_name, surface_category, 'not in z_correction', run_dir)
+
+                if action[0] not in asset_to_pose:
+                    asset_to_pose[action[0]] = {}
+                if movable_name not in asset_to_pose[action[0]]:
+                    asset_to_pose[action[0]][movable_name] = {}
+                if surface_category not in asset_to_pose[action[0]][movable_name]:
+                    asset_to_pose[action[0]][movable_name][surface_category] = []
+                asset_to_pose[action[0]][movable_name][surface_category].append(pp)
+
+        ## the run_dir might have been deleted
+        config_file = join(run_dir, 'planning_config.json')
+        if isfile(config_file):
+            planning_config = json.load(open(config_file, 'r'))
+            if 'placement_plan' not in planning_config:
+                new_config_file = join(run_dir, 'planning_config_new.json')
+                with open(new_config_file, 'w') as f:
+                    planning_config['placement_plan'] = placement_plan
+                    json.dump(planning_config, f, indent=3)
+                shutil.move(new_config_file, config_file)
+
+    ## found 30658 (0.987)	missed 392 (0.013)	misplaced 23 (0.001)
     total_count = found_count + missed_count + misplaced_count
     line = f'## found {found_count} ({round(found_count/total_count, 3)})'
     line += f'\tmissed {missed_count} ({round(missed_count/total_count, 3)})'
@@ -154,6 +179,9 @@ def test_generate_pose_samples():
     if deleted_count > 0:
         line += f'\tdeleted misplaced {deleted_count} ({round(deleted_count/(misplaced_count+deleted_count), 3)})'
     print(line)
+
+    if len(run_dirs) == 1:
+        return
 
     save_pose_samples(asset_to_pose, title='pickplace')
     # for action in asset_to_pose:

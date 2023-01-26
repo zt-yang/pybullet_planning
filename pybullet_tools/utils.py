@@ -1861,7 +1861,7 @@ def get_pose(body):
     # #return np.concatenate([point, quat])
     with HideOutput(True):
         k = 0
-        while True:
+        with timeout(duration=1):
             try:
                 return p.getBasePositionAndOrientation(body, physicsClientId=CLIENT)
             except:

@@ -16,8 +16,9 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sam
     dump_joint, dump_body, PoseSaver, get_aabb, add_text, GREEN, AABB, remove_body, HideOutput, \
     stable_z, Pose, Point, create_box, load_model, get_joints, set_joint_position, BROWN, Euler, PI, \
     set_camera_pose, TAN, RGBA, sample_aabb, get_min_limit, get_max_limit, set_color, WHITE, get_links, \
-    get_link_name, get_link_pose, euler_from_quat, get_collision_data, get_joint_name, get_joint_position
-from pybullet_tools.bullet_utils import get_partnet_links_by_type
+    get_link_name, get_link_pose, euler_from_quat, get_collision_data, get_joint_name, get_joint_position, \
+    set_renderer
+from pybullet_tools.bullet_utils import get_partnet_links_by_type, set_camera_target_body
 from pybullet_tools.logging import dump_json
 from world_builder.partnet_scales import DONT_LOAD
 from world_builder.paths import ASSET_PATH
@@ -41,6 +42,8 @@ SCALE_DB = abspath(join(dirname(__file__), 'model_scales.json'))
 
 SAMPLER_DB = abspath(join(dirname(__file__), 'sampling_distributions.json'))
 SAMPLER_KEY = "{x}&{y}"
+
+Z_CORRECTION_FILE = join(dirname(__file__), '..', 'databases', 'pose_z_correction.json')
 
 
 def read_xml(plan_name, asset_path=ASSET_PATH):
@@ -502,6 +505,22 @@ def get_mobility_id(path):
     return idx[1:]
 
 
+def get_mobility_category(path):
+    if path is None or not path.endswith('mobility.urdf'):
+        return None
+    idx = dirname(path)
+    idx = idx.replace(dirname(dirname(idx)), '').replace(basename(idx), '')
+    return idx[1:-1]
+
+
+def get_mobility_identifier(path):
+    if path is None or not path.endswith('mobility.urdf'):
+        return None
+    idx = dirname(path)
+    idx = idx.replace(dirname(dirname(idx)), '')
+    return idx[1:]
+
+
 def HEX_to_RGB(color):
     color = color.lstrip('#')
     rgb = [int(color[i: i+2], 16)/255 for i in (0, 2, 4)] + [1]
@@ -511,8 +530,14 @@ def HEX_to_RGB(color):
 def adjust_for_reachability(obj, counter, x_min=None, body_pose=None, return_pose=False, world=None):
     if x_min is None:
         x_min = counter.aabb().upper[0] - 0.3
+    x_max = counter.aabb().upper[0]
     if body_pose is None:
         body_pose = obj.get_pose()
+    if obj.aabb().lower[0] > x_min and obj.aabb().upper[0] < x_max:
+        if return_pose:
+            return body_pose
+        return
+
     (x, y, z), r = body_pose
     x_min += (y - obj.aabb().lower[1])
     ## scale the x to a reachable range

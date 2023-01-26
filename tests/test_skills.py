@@ -23,7 +23,7 @@ from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, 
     get_joint_name, get_link_name, dump_joint, set_joint_position
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, set_camera_target_body, \
     draw_bounding_lines, fit_dimensions, draw_fitted_box, get_hand_grasps, get_partnet_doors, get_partnet_spaces, \
-    open_joint, get_grasp_db_file, draw_points, take_selected_seg_images
+    open_joint, get_grasp_db_file, draw_points, take_selected_seg_images, dump_json
 from pybullet_tools.pr2_agent import get_stream_info, post_process, move_cost_fn, \
     visualize_grasps_by_quat, visualize_grasps
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, Position, \
@@ -384,24 +384,24 @@ def reload_after_vhacd(path, body, scale, id=None):
     return id_urdf_path, body
 
 
-def test_placement_in(robot, category, movable_category='Food', num_samples=30, seg_links=False):
+def test_placement_in(robot, category, movable_category='Food', movable_instance=None,
+                      seg_links=False, gen_z=False, **kwargs):
 
     world = get_test_world(robot)
     problem = State(world)
-    funk = get_contain_list_gen(problem, collisions=True, verbose=False,
-                                num_samples=num_samples, learned_sampling=True)
+    funk = get_contain_list_gen(problem, collisions=True, verbose=False, **kwargs)
 
     ## load fridge
+    if movable_instance is None:
+        movable_instances = get_instances(movable_category)
+        movable_instance = random.choice(list(movable_instances.keys()))
+
     instances = get_instances(category)
-    movable_instances = get_instances(movable_category)
-    movable_instance = random.choice(list(movable_instances.keys()))
     n = len(instances)
     i = 0
     locations = [(0, get_gap(category) * n) for n in range(1, n + 1)]
     set_camera_pose((4, 3, 2), (0, 3, 0.5))
     for id in instances:
-        # if id not in ['11709']:
-        #     continue
         (x, y) = locations[i]
         path, body, scale = load_model_instance(category, id, location=(x, y))
         # new_urdf_path, body = reload_after_vhacd(path, body, scale, id=id)
@@ -445,41 +445,72 @@ def test_placement_in(robot, category, movable_category='Food', num_samples=30, 
                 world.add_body(cabbage, cabbage_name, path=path)
 
                 outputs = funk(cabbage, body_link)
+                if gen_z:
+                    container_z = get_pose(body)[0][2]
+                    zs = [output[0].value[0][2] for output in outputs if output is not None]
+                    zs = [z - container_z for z in zs]
+                    mov_mobility = f"{movable_category}/{movable_instance}"
+                    sur_mobility = f"{category}/{id}"
+                    add_heights_to_pose_database(mov_mobility, sur_mobility, zs)
+                    continue
+
                 set_pose(cabbage, outputs[0][0].value)
                 markers = []
                 for j in range(1, len(outputs)):
                     marker = load_asset(movable_category, x=x, y=y, z=0, yaw=0,
                                         RANDOM_INSTANCE=movable_instance)[0]
-                    # world.add_body(cabbage, cabbage_name+f"_({j})")
                     markers.append(marker)
                     set_pose(marker, outputs[j][0].value)
 
-                set_renderer(True)
                 set_renderer(True)
                 set_camera_target_body(cabbage, dx=1, dy=0, dz=1)
                 wait_if_gui('Next space?')
                 for m in markers:
                     remove_body(m)
+                reset_simulation()
+                set_renderer(True)
         i += 1
         reset_simulation()
 
     # set_camera_pose((4, 3, 2), (0, 3, 0.5))
-    wait_if_gui('Finish?')
+    if not gen_z:
+        wait_if_gui('Finish?')
     disconnect()
 
 
-def test_placement_on(robot, category, surface_name=None,
-                      movable_category='Food', num_samples=30, seg_links=False):
+def test_placement_on(robot, category, surface_name=None, seg_links=False, gen_z=False,
+                      movable_category='Food', movable_instance=None, **kwargs):
 
     world = get_test_world(robot)
     problem = State(world)
-    funk = get_stable_list_gen(problem, collisions=True, verbose=False,
-                                num_samples=num_samples, learned_sampling=True)
+    funk = get_stable_list_gen(problem, collisions=True, verbose=False, **kwargs)
 
-    ## load fridge
+    if movable_instance is None:
+        movable_instances = get_instances(movable_category)
+        movable_instance = random.choice(list(movable_instances.keys()))
+
+    ###########################################################
+
+    if category == 'box' and gen_z:
+        cabbage, path = load_asset(movable_category, x=0, y=0, z=0, yaw=0,
+                                   RANDOM_INSTANCE=movable_instance)[:2]
+        z = get_pose(cabbage)[0][2] - get_aabb(cabbage).lower[2]
+        zs = [z] * 20
+
+        mov_mobility = f"{movable_category}/{movable_instance}"
+        sur_mobility = f"{category}"
+        add_heights_to_pose_database(mov_mobility, sur_mobility, zs)
+        return
+
+    surface_links = {
+        'BraiserBody': 'braiser_bottom',
+        'Sink': 'sink_bottom',
+    }
+    if category in surface_links and surface_name is None:
+        surface_name = surface_links[category]
+
+    ## load fridges
     instances = get_instances(category)
-    movable_instances = get_instances(movable_category)
-    movable_instance = random.choice(list(movable_instances.keys()))
     n = len(instances)
     i = 0
     locations = [(0, get_gap(category) * n) for n in range(2, n + 2)]
@@ -522,6 +553,18 @@ def test_placement_on(robot, category, surface_name=None,
             world.add_body(cabbage, cabbage_name, path=path)
 
             outputs = funk(cabbage, body)
+            if gen_z:
+                if isinstance(body, tuple):
+                    container_z = get_pose(body[0])[0][2]
+                else:
+                    container_z = get_pose(body)[0][2]
+                zs = [output[0].value[0][2] for output in outputs if output is not None]
+                zs = [z - container_z for z in zs]
+                mov_mobility = f"{movable_category}/{movable_instance}"
+                sur_mobility = f"{category}/{id}"
+                add_heights_to_pose_database(mov_mobility, sur_mobility, zs)
+                continue
+
             set_pose(cabbage, outputs[0][0].value)
             markers = []
             for j in range(1, len(outputs)):
@@ -539,7 +582,8 @@ def test_placement_on(robot, category, surface_name=None,
         i += 1
 
     # set_camera_pose((4, 3, 2), (0, 3, 0.5))
-    wait_if_gui('Finish?')
+    if not gen_z:
+        wait_if_gui('Finish?')
     disconnect()
 
 
@@ -892,7 +936,7 @@ def test_reachability(robot):
     wait_unlocked()
 
 
-def test_partnet_aabbs():
+def get_partnet_aabbs():
     world = get_test_world()
     draw_pose(unit_pose(), length=1.5)
     DATABASE_DIR = abspath(join(__file__, '..', '..', 'databases'))
@@ -931,6 +975,63 @@ def test_partnet_aabbs():
         json.dump(shapes, f, indent=2, sort_keys=False)
 
 
+############################################################################
+
+
+def add_heights_to_pose_database(movable, surface, zs):
+    from world_builder.utils import Z_CORRECTION_FILE as file
+    from scipy.stats import norm
+    if len(zs) == 0:
+        print('         no samples for', movable, surface)
+        return
+    mina, maxa = min(zs), max(zs)
+    while maxa - mina > 0.02:
+        zs.remove(mina)
+        zs.remove(maxa)
+        print('       throwing away outliners', nice(mina), nice(maxa))
+        mina, maxa = min(zs), max(zs)
+    print('         length', len(zs))
+    collection = json.load(open(file, 'r')) if isfile(file) else {}
+    if movable not in collection:
+        collection[movable] = {}
+    mu, std = norm.fit(zs)
+    collection[movable][surface] = [round(i, 6) for i in [mina, maxa, mu, std]]
+    dump_json(collection, file, width=150)
+
+
+def get_placement_z(robot='pr2'):
+    from world_builder.utils import Z_CORRECTION_FILE as file
+    kwargs = dict(num_samples=50, gen_z=True, learned_sampling=False)
+    surfaces = ['box', 'Sink', 'Microwave', "OvenCounter"]
+    storage = ['CabinetTop', 'MiniFridge']
+    movables = {
+        'Bottle': surfaces + storage,
+        'Food': surfaces + storage + ['BraiserBody'],
+        'Medicine': surfaces + storage + ['BraiserBody'],
+        'BraiserLid': ['box'],
+    }
+    dic = json.load(open(file, 'r')) if isfile(file) else {}
+    for mov, surfaces in movables.items():
+        for sur in surfaces:
+            num_sur_instances = len(get_instances(sur)) if sur != 'box' else 1
+            for ins in get_instances(mov):
+                mov_mibility = f"{mov}/{ins}"
+                if mov_mibility in dic:
+                    if sur == 'box' and sur in dic[mov_mibility]:
+                        continue
+                    elif len([i for i in dic[mov_mibility] if sur in i]) == num_sur_instances:
+                        continue
+                if sur in ['MiniFridge', 'CabinetTop']:
+                    test_placement_in(robot, category=sur, movable_category=mov,
+                                      movable_instance=ins, **kwargs)
+                else:
+                    test_placement_on(robot, category=sur, movable_category=mov,
+                                      movable_instance=ins, **kwargs)
+
+
+############################################################################
+
+
 if __name__ == '__main__':
 
     """ ---------------- object categories -----------------
@@ -945,7 +1046,8 @@ if __name__ == '__main__':
     # get_data(categories=['BraiserBody'])
     # test_texture(category='CoffeeMachine', id='103127')
     # test_vhacd(category='BraiserBody')
-    # test_partnet_aabbs()
+    # get_partnet_aabbs()
+    get_placement_z()
 
     """ --- robot (FEGripper) related  --- """
     robot = 'pr2'  ## 'feg' | 'pr2'
@@ -963,8 +1065,9 @@ if __name__ == '__main__':
     """ --- grasps and placement for articulated storage units --- 
         IN: 'MiniFridge', 'MiniFridgeDoorless', 'CabinetTop'
     """
-    test_handle_grasps(robot, category='CabinetTop', skip_grasps=True)
-    # test_placement_in(robot, category='CabinetTop', seg_links=True)
+    # test_handle_grasps(robot, category='CabinetTop', skip_grasps=True)
+    # test_placement_in(robot, category='MiniFridge', seg_links=False,
+    #                   movable_category='BraiserLid', learned_sampling=True)
 
     """ --- placement related for supporting surfaces --- 
         ON: 'KitchenCounter', 

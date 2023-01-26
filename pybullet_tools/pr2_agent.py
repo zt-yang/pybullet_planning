@@ -720,8 +720,8 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
     objects = world.objects
     stream_info = world.robot.get_stream_info()
 
-    if has_gui():
-        world.make_doors_transparent()
+    # if has_gui():
+    #     world.make_doors_transparent()
         # set_renderer(True)
         # time.sleep(0.1)
         # set_renderer(False)

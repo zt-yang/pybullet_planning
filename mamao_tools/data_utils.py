@@ -602,8 +602,10 @@ def get_world_center(run_dir):
 def get_lisdf_aabbs(run_dir, keyw=None):
     """ faster way to return a dict with all objects and their pose, aabb """
     lines = open(join(run_dir, 'scene.lisdf'), 'r').readlines()
-    aabbs = {c: {} for c in ['static', 'movable', 'movable_d', 'categories', 'pose']}
+    aabbs = {c: {} for c in ['static', 'movable', 'movable_d', 'category', 'pose']}
     for i in range(len(lines)):
+
+        ## box
         if f'<model name="' in lines[i]:
             pose = lines[i + 2]
             size = lines[i + 7]
@@ -612,7 +614,7 @@ def get_lisdf_aabbs(run_dir, keyw=None):
                 lx = eval(get_numbers_from_xml(size, keep_strings=True)[0])
                 return x + lx / 2
             name = get_name_from_xml(lines[i])
-            if name in ['floor1', 'wall'] or 'counter_back' in name:
+            if name in ['floor1', 'wall'] or 'counter_back' in name or '_filler' in name:
                 continue
             point = get_numbers_from_xml(pose)[:3]
             size = get_numbers_from_xml(size)
@@ -620,6 +622,7 @@ def get_lisdf_aabbs(run_dir, keyw=None):
             aabbs['static'][name] = aabb
             aabbs['pose'][name] = point
 
+        ## urdf
         elif f'<include name="' in lines[i]:
             name = get_name_from_xml(lines[i])
             if name in ['sinkbase', 'minifridgebase', 'faucet', 'diswasherbox'] or 'pr2' in name:
@@ -632,17 +635,18 @@ def get_lisdf_aabbs(run_dir, keyw=None):
             if 'veggie' in name or 'meat' in name or 'bottle' in name or 'medicine' in name:
                 static = 'movable'
             point = get_numbers_from_xml(pose)[:3]
+
+            ## get minimal aabb
             result = get_partnet_aabb(category, idx)
             if result is None:
                 continue
             dlower, dupper = result
             if static == 'movable':
                 aabbs['movable_d'][name] = (dlower, dupper)
-            else:
-                aabbs['categories'][name] = '/'.join([category, idx])
-            aabb = AABB(lower=point + dlower, upper=point + dupper)
-            aabbs[static][name] = aabb
+
+            aabbs[static][name] = AABB(lower=point + dlower, upper=point + dupper)
             aabbs['pose'][name] = point
+            aabbs['category'][name] = '/'.join([category, idx])
 
         elif f'state world_name=' in lines[i]:
             break
@@ -705,11 +709,11 @@ def get_from_to(name, aabbs, point=None, verbose=False, run_dir=None):
     for static_name, static_aabb in static_aabb_dicts:
         if static_aabb.lower[1] > movable_aabb.upper[1] or static_aabb.upper[1] < movable_aabb.lower[1]:
             continue
-        category = aabbs['categories'][static_name] if static_name in aabbs['categories'] else 'box'
+        category = aabbs['category'][static_name] if static_name in aabbs['category'] else 'box'
         if verbose:
             print_aabb('  '+static_name+' | '+category, static_aabb)
         if aabb_placed_on_aabb(movable_aabb, static_aabb):
-            if relation is not None and not verbose:
+            if relation is not None:
                 # get_from_to(name, aabbs, point=point, verbose=True, run_dir=run_dir)
                 return None, found_name, category
                 print('multiple answers')

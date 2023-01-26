@@ -15,7 +15,8 @@ from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_bo
     create_attachment
 from pybullet_tools.general_streams import check_kitchen_placement
 
-from world_builder.utils import get_mobility_id, get_instance_name, get_lisdf_name, load_asset
+from world_builder.utils import get_mobility_id, get_mobility_category, get_mobility_identifier, \
+    get_instance_name, get_lisdf_name, load_asset
 
 import numpy as np
 
@@ -92,6 +93,8 @@ class Object(Index):
             self.path = path
             self.scale = scale
             self.mobility_id = get_mobility_id(path)
+            self.mobility_category = get_mobility_category(path)
+            self.mobility_identifier = get_mobility_identifier(path)
             if not self.mobility_id.isdigit():
                 name = self.mobility_id
             self.instance_name = get_instance_name(path)
@@ -99,6 +102,8 @@ class Object(Index):
             self.is_box = True
             self.instance_name = None
             self.mobility_id = 'box'
+            self.mobility_category = 'box'
+            self.mobility_identifier = 'box'
 
         self.body = body
         self.joint = joint
@@ -174,15 +179,20 @@ class Object(Index):
         # set_renderer(True)
         return obj
 
-    def place_obj(self, obj, max_trial=8, timeout=1.5, world=None, obstacles=None):
+    def place_obj(self, obj, max_trial=8, timeout=1.5, world=None, obstacles=None, visualize=False):
         if isinstance(obj, str):
             raise NotImplementedError('place_obj: obj is str')
             # obj = self.place_new_obj(obj, max_trial=max_trial)
         if obstacles is None:
             obstacles = [o for o in get_bodies() if o not in [obj, self.body]]
 
+        # if visualize:
+        #     set_renderer(True)
+        #     set_camera_target_body(obj.body)
+
         done = False
-        result = check_kitchen_placement(world, obj.body, self.pybullet_name, num_samples=4)
+        result = check_kitchen_placement(world, obj.body, self.pybullet_name,
+                                         visualize=visualize, num_samples=4)
         if result is not None:
             for body_pose in result:
                 obj.set_pose(body_pose, world=world)
@@ -190,6 +200,8 @@ class Object(Index):
                 if not coo:
                     done = True
                     break
+                # if visualize:
+                #     wait_unlocked()
 
         start_time = time.time()
         place_fn = sample_obj_in_body_link_space if isinstance(self, Space) \
@@ -543,7 +555,7 @@ class Space(Region):
             self.name = get_link_name(body, link)
 
     def place_new_obj(self, obj_name, category=None, max_trial=8, verbose=False,
-                      scale=1, world=None, **kwargs):
+                      scale=1, world=None, RANDOM_INSTANCE=True, **kwargs):
 
         if category is None:
             category = obj_name
@@ -553,9 +565,10 @@ class Space(Region):
         # world.open_doors_drawers(self.body)
 
         obj = world.add_object(
-            Moveable(load_asset(obj_name.lower(), scale=scale), category=category)
+            Moveable(load_asset(obj_name.lower(), RANDOM_INSTANCE=RANDOM_INSTANCE, scale=scale),
+                     category=category)
         )
-        self.place_obj(obj, max_trial=max_trial, world=world, **kwargs)
+        self.place_obj(obj, max_trial=max_trial, world=world, visualize=False, **kwargs)
 
         # world.close_doors_drawers(self.body)
         return obj

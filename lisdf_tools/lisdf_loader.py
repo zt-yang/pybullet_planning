@@ -34,7 +34,8 @@ from pddlstream.language.constants import AND, PDDLProblem
 
 from world_builder.entities import Space
 from world_builder.robot_builders import create_pr2_robot, create_gripper_robot
-from world_builder.utils import get_instance_name, get_camera_zoom_in, get_lisdf_name, get_mobility_id
+from world_builder.utils import get_instance_name, get_camera_zoom_in, get_lisdf_name, get_mobility_id, \
+    get_mobility_category, get_mobility_identifier
 
 from lisdf_tools.lisdf_planning import pddl_to_init_goal
 
@@ -52,7 +53,9 @@ class World():
         self.lisdf = lisdf
         self.body_to_name = {}
         self.instance_names = {}
+        self.paths = {}
         self.mobility_ids = {}
+        self.mobility_identifiers = {}
         self.name_to_body = {}
         self.ATTACHMENTS = {}
         self.camera = None
@@ -103,12 +106,17 @@ class World():
         id = body
         if isinstance(body, tuple) and len(body) == 2:
             id = (body[0], get_handle_link(body))
+
         ## the id is here is either body or (body, link)
+        self.paths[id] = path
         mobility_id = get_mobility_id(path)
+        mobility_identifier = get_mobility_identifier(path)
         if mobility_id is None and isinstance(body, tuple):
             mobility_id = self.mobility_ids[id[0]]
+            mobility_identifier = self.mobility_identifiers[id[0]]
         self.instance_names[id] = instance_name
         self.mobility_ids[id] = mobility_id
+        self.mobility_identifiers[id] = mobility_identifier
         if verbose:
             print(f'lisdf_loader.add_body(name={name}, body={body}, '
                   f'mobility_id={mobility_id}, instance_name={instance_name})', )
@@ -327,8 +335,23 @@ class World():
         return None
 
     def get_mobility_id(self, body):
+        """ e.g. 10797 """
         if body in self.mobility_ids:
             return self.mobility_ids[body]
+        elif is_box_entity(body):
+            return 'box'
+        return None
+
+    def get_mobility_category(self, body):
+        """ e.g. MiniFridge """
+        if body in self.paths and self.paths[body] is not None:
+            return get_mobility_category(self.paths[body])
+        return None
+
+    def get_mobility_identifier(self, body):
+        """ e.g. MiniFridge/10797 """
+        if body in self.mobility_identifiers:
+            return self.mobility_identifiers[body]
         elif is_box_entity(body):
             return 'box'
         return None

@@ -215,6 +215,9 @@ class World(object):
     def get_mobility_id(self, body):
         return self.get_attr(body, 'mobility_id')
 
+    def get_mobility_identifier(self, body):
+        return self.get_attr(body, 'mobility_identifier')
+
     def get_events(self, body):
         return self.get_attr(body, 'events')
 
@@ -309,6 +312,8 @@ class World(object):
             object.path = parent.path
             object.scale = parent.scale
             object.mobility_id = parent.mobility_id
+            object.mobility_category = parent.mobility_category
+            object.mobility_identifier = parent.mobility_identifier
 
         if pose is not None:
             add_body(object, pose)

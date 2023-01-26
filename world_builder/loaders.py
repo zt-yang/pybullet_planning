@@ -1471,6 +1471,9 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
         braiser_bottom = world.name_to_object('braiser_bottom')
         obstacles = [o for o in obstacles if o.pybullet_name != braiser_bottom.pybullet_name]
         move_lid_away(world, [world.name_to_object('floor')], epsilon=1.0)
+    elif world.note in [11]:
+        from_storage = random.choice(['minifridge', 'cabinettop'])
+        counters['food'] = [world.name_to_object(f"{from_storage}_storage")]
     pprint(counters)
     if verbose:
         print('\nload_counter_moveables(obstacles={})\n'.format([o.name for o in obstacles]))
@@ -1493,7 +1496,8 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
     def ensure_cfree(obj, obstacles, obj_name, category=None, trials=10, **kwargs):
         # s = np.random.get_state()[-3]
         collision = collided(obj, obstacles, verbose=verbose, world=world)
-        unreachable = collision or not robot.check_reachability(obj, state, verbose=False)
+        unreachable = collision or (not isinstance(obj.supporting_surface, Space) and \
+                                    not robot.check_reachability(obj, state, verbose=False))
         size = unreachable or ((obj_name == 'food' and size_matter and len(satisfied) == 0))
         while collision or unreachable or size:
             # set_camera_target_body(obj.body)
@@ -1506,7 +1510,8 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
             check_size_matter(obj)
 
             collision = collided(obj, obstacles, verbose=verbose, world=world)
-            unreachable = collision or not robot.check_reachability(obj, state, verbose=False)
+            unreachable = collision or (not isinstance(obj.supporting_surface, Space) and \
+                                        not robot.check_reachability(obj, state, verbose=False))
             size = unreachable or ((obj_name == 'food' and size_matter and len(satisfied) == 0))
             trials -= 1
             if trials == 0:
@@ -1766,7 +1771,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
                                      obstacles=[], verbose=False):
     cabinets, shelves = [], []
     cabi_type = 'CabinetTop' if random.random() < 0.5 else 'CabinetUpper'
-    if world.note in [1, 21, 31, 4, 41, 991]:
+    if world.note in [1, 21, 31, 11, 4, 41, 991]:
         cabi_type = 'CabinetTop'
     colors = {
         '45526': HEX_to_RGB('#EDC580'),
@@ -2158,15 +2163,8 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
         draw_aabb(aabb)
         drawn.append(str(c))
 
-    ## load objects into reachable places
-    food_ids, bottle_ids, medicine_ids = \
-        load_counter_moveables(world, all_counters, x_min=x_food_min, obstacles=obstacles)
-    moveables = food_ids + bottle_ids + medicine_ids
-
-    """ step 6: take an image """
-    set_camera_pose((4, 4, 3), (0, 4, 0))
-
     ## probility of each door being open
+    world.make_doors_transparent()
     epsilon = 0
     load_storage_mechanism(world, world.name_to_object('minifridge'), epsilon=epsilon)
     for cabi_type in ['cabinettop', 'cabinetupper']:
@@ -2174,6 +2172,14 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
         if len(cabi) > 0:
             cabi = world.name_to_object(cabi_type)
             load_storage_mechanism(world, cabi, epsilon=epsilon)
+
+    ## load objects into reachable places
+    food_ids, bottle_ids, medicine_ids = \
+        load_counter_moveables(world, all_counters, x_min=x_food_min, obstacles=obstacles)
+    moveables = food_ids + bottle_ids + medicine_ids
+
+    """ step 6: take an image """
+    set_camera_pose((4, 4, 3), (0, 4, 0))
 
     # pause = True
     if pause:
