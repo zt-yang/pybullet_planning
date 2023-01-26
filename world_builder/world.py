@@ -562,15 +562,19 @@ class World(object):
                 if not isinstance(item, str) and str(item) not in bodies:
                     if isinstance(item, Object):
                         item = item.pybullet_name
-                    bodies.append(str(item))
                     if isinstance(item, tuple):
                         bodies.append(str(item[0]))
+                    bodies.append(str(item))
+
         new_exceptions = []
         for b in exceptions:
             if isinstance(b, Object):
                 b = b.pybullet_name
+            if isinstance(b, tuple) and str(b[0]) not in new_exceptions:
+                new_exceptions.append(str(b[0]))
             new_exceptions.append(str(b))
         exceptions = new_exceptions
+
         all_bodies = list(self.BODY_TO_OBJECT.keys())
         for body in all_bodies:
             if str(body) not in bodies and str(body) not in exceptions:
