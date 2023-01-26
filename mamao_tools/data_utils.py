@@ -96,6 +96,20 @@ def add_to_planning_config(run_dir, new_data, safely=True):
             os.remove(tmp_file_name)
 
 
+def check_unrealistic_placement_z(world, run_dir):
+    from world_builder.utils import Z_CORRECTION_FILE as file
+    violated = False
+    z_correction = json.load(open(file, 'r'))
+    placement_plan = load_planning_config(run_dir)['placement_plan']
+    if placement_plan is not None:
+        for _, mov, sur, point in placement_plan:
+            movable = world.safely_get_body_from_name(mov)
+            surface = world.safely_get_body_from_name(sur)
+            movable_id = world.get_mobility_identifier(movable)
+            surface_id = world.get_mobility_identifier(surface)
+            if movable_id in z_correction and surface_id in z_correction[movable_id]:
+
+
 def process_value(vv, training=True):
     from pybullet_tools.utils import quat_from_euler
     vv = list(vv)
