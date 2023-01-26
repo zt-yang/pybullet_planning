@@ -107,7 +107,7 @@ def check_unrealistic_placement_z(world, run_dir):
             surface = world.safely_get_body_from_name(sur)
             movable_id = world.get_mobility_identifier(movable)
             surface_id = world.get_mobility_identifier(surface)
-            if movable_id in z_correction and surface_id in z_correction[movable_id]:
+            # if movable_id in z_correction and surface_id in z_correction[movable_id]:
 
 
 def process_value(vv, training=True):
