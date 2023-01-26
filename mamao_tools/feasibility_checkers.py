@@ -48,6 +48,7 @@ class FeasibilityChecker(object):
             for input in inputs:
                 start = time.time()
                 prediction = self._check(input) if not skip else True
+                wait_unlocked()
                 predictions.append(prediction)
                 plan = get_plan_from_input(input)
                 skeleton = get_plan_skeleton(plan, indices)
@@ -225,6 +226,8 @@ class Heuristic(FeasibilityChecker):
                         else:
                             if verbose:
                                 print(title+'failed according to pre-action')
+                                print('    pre-actions-and', self.pre_actions_and)
+                                print('    pre-actions-or', self.pre_actions_or)
                                 print_result(plan, False)
                             return False
 
@@ -234,6 +237,7 @@ class Heuristic(FeasibilityChecker):
                         if self._check_pre_action(action, plan_so_far):
                             if verbose:
                                 print(title+'failed according to not pre-action')
+                                print('    not_pre_actions', self.not_pre_actions)
                                 print_result(plan, False)
                             return False
 
