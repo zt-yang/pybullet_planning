@@ -7,7 +7,8 @@ from tqdm import tqdm
 
 from pybullet_tools.utils import euler_from_quat
 from mamao_tools.data_utils import get_successful_plan, get_indices, get_sink_counter_x, get_lisdf_aabbs, \
-    get_from_to
+    get_from_to, add_to_planning_config
+from world_builder.utils import get_placement_z
 
 DATABASE_DIR = abspath(join(__file__, '..', '..', 'databases'))
 
@@ -69,7 +70,6 @@ def plot_pose_samples(asset_to_pose, title='Pose Samples'):
 
 
 def test_generate_pose_samples():
-    from world_builder.utils import Z_CORRECTION_FILE as file
     data_dir = '/home/yang/Documents/fastamp-data-rss'
     subdirs = [join(data_dir, s) for s in listdir(data_dir) if isdir(join(data_dir, s)) \
                and (s.startswith('mm_') or s.startswith('tt_') or s.startswith('_kc') or s == '_gmm') \
@@ -84,7 +84,7 @@ def test_generate_pose_samples():
     deleted_count = 0
     missed_count = 0
 
-    z_correction = json.load(open(file, 'r'))
+    correction_z = get_placement_z()
 
     run_dirs = []
     for subdir in subdirs:
@@ -115,12 +115,12 @@ def test_generate_pose_samples():
 
                 if result is None or result[0] is None:
                     # print(run_dir, name, result)
-                    placement_plan.append((action[0], name, None))
+                    placement_plan.append((action[0], name, None, point))
                     missed_count += 1
                     continue
 
                 (relation, surface_category, surface_name), x_upper, surface_point = result
-                placement_plan.append((action[0], name, surface_name))
+                placement_plan.append((action[0], name, surface_name, point))
                 pp = [point[i] - surface_point[i] for i in range(3)]
 
                 ######################################################################
@@ -163,13 +163,7 @@ def test_generate_pose_samples():
         ## the run_dir might have been deleted
         config_file = join(run_dir, 'planning_config.json')
         if isfile(config_file):
-            planning_config = json.load(open(config_file, 'r'))
-            if 'placement_plan' not in planning_config:
-                new_config_file = join(run_dir, 'planning_config_new.json')
-                with open(new_config_file, 'w') as f:
-                    planning_config['placement_plan'] = placement_plan
-                    json.dump(planning_config, f, indent=3)
-                shutil.move(new_config_file, config_file)
+            add_to_planning_config(run_dir, {'placement_plan': placement_plan})
 
     ## found 30658 (0.987)	missed 392 (0.013)	misplaced 23 (0.001)
     total_count = found_count + missed_count + misplaced_count
