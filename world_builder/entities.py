@@ -192,7 +192,7 @@ class Object(Index):
 
         done = False
         result = check_kitchen_placement(world, obj.body, self.pybullet_name,
-                                         visualize=visualize, num_samples=4)
+                                         visualize=visualize, num_samples=14)
         if result is not None:
             for body_pose in result:
                 obj.set_pose(body_pose, world=world)
