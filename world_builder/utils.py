@@ -643,6 +643,12 @@ def get_lisdf_name(body, name, joint=None, link=None):
     return name
 
 
+def get_placement_z():
+    z_correction = json.load(open(Z_CORRECTION_FILE, 'r'))
+    z_correction.update({k.lower(): {kk.lower(): vv for kk, vv in v.items()} for k, v in z_correction.items()})
+    return z_correction
+
+
 if __name__ == "__main__":
     reduce_model_scale('/home/yang/Documents/jupyter-worlds/assets/models/Food/MeatTurkeyLeg/old_scale.txt',
                        scale_down=10)
