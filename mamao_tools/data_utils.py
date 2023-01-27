@@ -25,7 +25,7 @@ else: ## not tested
 
 def get_feasibility_checker(run_dir, mode, diverse=False, world=None):
     from .feasibility_checkers import PassAll, ShuffleAll, Oracle, PVT, Heuristic
-    body_map = get_body_map(run_dir, world=world)
+    body_map = get_body_map(run_dir, world=world) if isinstance(run_dir, str) else {}
     if mode == 'binary':
         mode = 'pvt'
         diverse = False
