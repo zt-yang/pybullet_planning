@@ -24,7 +24,9 @@ class FeasibilityChecker(object):
     def __init__(self, run_dir, body_map, **kwargs):
         self.run_dir = run_dir
         self.body_map = body_map  ## rerun may have different pybullet body indices
-        self._skwargs = {'indices': get_indices(run_dir), 'include_joint': True, 'include_movable': True}
+        self._skwargs = {'include_joint': True, 'include_movable': True}
+        if isinstance(run_dir, str):
+            self._skwargs['indices'] = get_indices(run_dir)
         self._log = {k: [] for k in ['checks', 'run_time']}
 
     def __call__(self, *args, **kwargs):
@@ -162,7 +164,7 @@ shorter_plan = lambda actions: f"({', '.join([shorter(a) for a in actions if a.n
 
 class Heuristic(FeasibilityChecker):
 
-    def __init__(self, body_map, initializer):
+    def __init__(self, initializer, body_map):
         state, goals, init = initializer
         super().__init__(state, body_map)
         self._state = state
