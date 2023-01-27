@@ -144,7 +144,7 @@ class Oracle(FeasibilityChecker):
         from mamao_tools.data_utils import get_plan_skeleton
         plans = get_successful_plan(run_dir, skip_multiple_plans=False)
         self.skeletons = [get_plan_skeleton(plan, **self._skwargs) for plan in plans]
-        print(f'\nOracle feasibility checker - {self.skeletons})\n')
+        print(f'\nOracle feasibility checker - {self.skeletons}\n')
 
     def _check(self, plan):
         plan = [[i.name] + [str(a) for a in i.args] for i in plan]
