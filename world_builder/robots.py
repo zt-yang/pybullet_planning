@@ -549,6 +549,9 @@ class PR2Robot(RobotAPI):
         outputs = funk(body, body_link)
         result = False
         for j in range(len(outputs)):
+            if outputs is None or outputs[j] is None:
+                print('\ncheck_reachability_space | outputs', outputs, '\n')
+                continue
             set_pose(body, outputs[j][0].value)
             result = result or self.check_reachability(body, state, fluents=fluents, **kwargs)
             if result:

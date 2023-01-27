@@ -173,8 +173,8 @@ class Heuristic(FeasibilityChecker):
         self._fluents = state.get_fluents(only_fluents=True)
         self._fluents_original = copy.deepcopy(self._fluents)
         # self._feg = None
-        self._verbose = False
-        self._reachability_kwargs = dict(max_attempts=10, debug=False, verbose=self._verbose)
+        self._verbose = True
+        self._reachability_kwargs = dict(max_attempts=10, debug=False, visualize=False, verbose=self._verbose)
 
         self.potential_placements = get_potential_placements(goals, init)
         self.possible_obstacles = self._robot.possible_obstacles
@@ -225,6 +225,8 @@ class Heuristic(FeasibilityChecker):
                         else:
                             if verbose:
                                 print(title+'failed according to pre-action')
+                                print('    pre-actions-and', self.pre_actions_and)
+                                print('    pre-actions-or', self.pre_actions_or)
                                 print_result(plan, False)
                             return False
 
@@ -234,6 +236,7 @@ class Heuristic(FeasibilityChecker):
                         if self._check_pre_action(action, plan_so_far):
                             if verbose:
                                 print(title+'failed according to not pre-action')
+                                print('    not_pre_actions', self.not_pre_actions)
                                 print_result(plan, False)
                             return False
 

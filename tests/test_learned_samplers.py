@@ -84,7 +84,7 @@ def test_generate_pose_samples():
     deleted_count = 0
     missed_count = 0
 
-    correction_z = get_placement_z()
+    z_correction = get_placement_z()
 
     run_dirs = []
     for subdir in subdirs:
@@ -165,7 +165,7 @@ def test_generate_pose_samples():
         if isfile(config_file):
             add_to_planning_config(run_dir, {'placement_plan': placement_plan})
 
-    ## found 30658 (0.987)	missed 392 (0.013)	misplaced 23 (0.001)
+    ## found 30849 (0.986)	missed 403 (0.013)	misplaced 23 (0.001)
     total_count = found_count + missed_count + misplaced_count
     line = f'## found {found_count} ({round(found_count/total_count, 3)})'
     line += f'\tmissed {missed_count} ({round(missed_count/total_count, 3)})'
