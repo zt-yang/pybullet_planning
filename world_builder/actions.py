@@ -493,7 +493,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
     ignored_collisions = {robot: []}
     initial_collisions = copy.deepcopy(ignored_collisions)
     expected_pose = None
-    cfree_until =None
+    cfree_until = None
     for i, action in enumerate(actions):
         name = action.__class__.__name__
 
@@ -513,10 +513,11 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
                         expected_pose = eval(pp[pp.index('('):])[:3]
                 ignored_collisions[robot].append(last_object)
                 ignored_collisions[last_object] = [robot, last_object]
+                cfree_until = i + 6
             else:
                 ignored_collisions = copy.deepcopy(initial_collisions)
                 expected_pose = None
-                cfree_until = i + 5
+                cfree_until = i + 6
 
         record_img = False
         if 'tachObjectAction' in name and body_map is not None:
@@ -573,6 +574,12 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
         ###############################################
 
         if CHECK_COLLISIONS:
+
+            ## gripper colliding with object just placed down
+            ## or braiser colliding with lid just picked away
+            if cfree_until is not None and i < cfree_until:
+                continue
+
             for body, ignored in ignored_collisions.items():
                 obstacles = [o for o in objects if o not in ignored]
 
@@ -583,10 +590,6 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
                         dist = np.linalg.norm(np.array(pose) - np.array(expected_pose))
                         if dist < cfree_range:
                             continue
-
-                ## gripper colliding with object just placed down
-                elif cfree_until is not None and i < cfree_until:
-                    continue
 
                 result = collided(body, obstacles, world=world, verbose=True,
                                   min_num_pts=3, log_collisions=False)

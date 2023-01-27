@@ -1715,11 +1715,13 @@ def get_obj_keys_for_segmentation(indices, unique=None):
                 if len(keys) == 0:
                     keys = [(k, 0)]
             else:
-                keys = [(k, l) for l in get_links(k)]
+                if k in get_bodies():
+                    keys = [(k, l) for l in get_links(k)]
         elif isinstance(k, tuple) and len(k) == 3:
             keys = [(k[0], k[2])]
         elif isinstance(k, tuple) and len(k) == 2:
-            keys = [(k[0], l) for l in get_door_links(k[0], k[1])]
+            if k[0] in get_bodies():
+                keys = [(k[0], l) for l in get_door_links(k[0], k[1])]
         obj_keys[v] = keys
     return obj_keys
 

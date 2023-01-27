@@ -180,7 +180,8 @@ class World():
                 possible[body] = n
         return find_closest_match(possible, all_possible=all_possible)
 
-    def make_transparent(self, obj, transparency=0.5, verbose=False):
+    def make_transparent(self, obj, transparency=0.5, verbose=False,
+                               remove_upper_furnitures=False):
         def color_obj(obj):
             if isinstance(obj, int):
                 links = get_links(obj)
@@ -195,12 +196,14 @@ class World():
 
         if isinstance(obj, str):
             obj = self.safely_get_body_from_name(obj, all_possible=True)
+
         if obj is not None:
-            if isinstance(obj, list):
-                for o in obj:
+            oo = obj if isinstance(obj, list) else [obj]
+            for o in oo:
+                if transparency == 0 and remove_upper_furnitures:
+                    self.remove_object(o)
+                else:
                     color_obj(o)
-            else:
-                color_obj(obj)
 
     def check_world_obstacles(self):
         if self.lisdf is None:
@@ -336,10 +339,10 @@ class World():
 
     def get_mobility_id(self, body):
         """ e.g. 10797 """
+        if is_box_entity(body):
+            self.mobility_ids[body] = 'box'
         if body in self.mobility_ids:
             return self.mobility_ids[body]
-        elif is_box_entity(body):
-            return 'box'
         return None
 
     def get_mobility_category(self, body):
@@ -350,10 +353,10 @@ class World():
 
     def get_mobility_identifier(self, body):
         """ e.g. MiniFridge/10797 """
+        if is_box_entity(body):
+            self.mobility_identifiers[body] = 'box'
         if body in self.mobility_identifiers:
             return self.mobility_identifiers[body]
-        elif is_box_entity(body):
-            return 'box'
         return None
 
     def get_lisdf_name(self, pybullet_name):
@@ -607,21 +610,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
             camera_zoomins = config['camera_zoomins']
             if len(camera_zoomins) > 0:
                 d = camera_zoomins[0]
-                name = d['name']
-                if '::' in name:
-                    name = name.split('::')[0]
-                if name not in bullet_world.name_to_body and f"{name}#1" in bullet_world.name_to_body:
-                    d['name'] = name = f"{name}#1"
-                body = bullet_world.name_to_body[name]
-                dx, dy, dz = d['d']
-                camera_point, target_point = set_camera_target_body(body, dx=dx, dy=dy, dz=dz)
-                bullet_world.camera_kwargs = {'camera_point': camera_point, 'target_point': target_point}
-
-                # if changed:
-                #     config['camera_zoomins'][0] = d
-                #     # shutil.move(config_file, config_file.replace('.json', '_old.json'))
-                #     json.dump(config, open(config_file, 'w'), indent=2)
-                #     print('updated camera zoomin in', config_file)
+                bullet_world.camera_kwargs = get_camera_kwargs_from_camera_zoomin(bullet_world, d)
             else:
                 fridge = bullet_world.name_to_body['minifridge']
                 set_camera_target_body(fridge, dx=2, dy=0, dz=2)
@@ -631,7 +620,19 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
     return bullet_world
 
 
-def make_furniture_transparent(bullet_world, lisdf_dir, lower_tpy=0.5, upper_tpy=0.2):
+def get_camera_kwargs_from_camera_zoomin(bullet_world, camera_zoomin):
+    name = camera_zoomin['name']
+    if '::' in name:
+        name = name.split('::')[0]
+    if name not in bullet_world.name_to_body and f"{name}#1" in bullet_world.name_to_body:
+        camera_zoomin['name'] = name = f"{name}#1"
+    body = bullet_world.name_to_body[name]
+    dx, dy, dz = camera_zoomin['d']
+    camera_point, target_point = set_camera_target_body(body, dx=dx, dy=dy, dz=dz)
+    return {'camera_point': camera_point, 'target_point': target_point}
+
+
+def make_furniture_transparent(bullet_world, lisdf_dir, lower_tpy=0.5, upper_tpy=0.2, **kwargs):
     transparent = ['pr2']
     camera_zoomin = get_camera_zoom_in(lisdf_dir)
     upper_furnitures = ['cabinettop', 'cabinetupper', 'shelf']
@@ -646,7 +647,7 @@ def make_furniture_transparent(bullet_world, lisdf_dir, lower_tpy=0.5, upper_tpy
     for b in transparent:
         transparency = lower_tpy if b not in upper_furnitures else upper_tpy
         if transparency < 1:
-            bullet_world.make_transparent(b, transparency=transparency)
+            bullet_world.make_transparent(b, transparency=transparency, **kwargs)
 
 
 ## will be replaced later will <world><gui><camera> tag

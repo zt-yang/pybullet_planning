@@ -9,7 +9,7 @@ import untangle
 import copy
 
 from pybullet_tools.bullet_utils import nice
-from pybullet_tools.utils import get_aabb_center, get_aabb_extent
+from pybullet_tools.utils import get_aabb_center, get_aabb_extent, get_pose
 from mamao_tools.text_utils import ACTION_ABV, ACTION_NAMES
 
 import sys
@@ -68,8 +68,11 @@ def organize_dataset(task_name):
         moved.append(missing[i])
 
 
-def load_planning_config(run_dir):
-    return json.load(open(join(run_dir, 'planning_config.json'), 'r'))
+def load_planning_config(run_dir, return_mod_time=False):
+    file = join(run_dir, 'planning_config.json')
+    config = json.load(open(file, 'r'))
+    mod_time = os.path.getmtime(file)
+    return (config, mod_time) if return_mod_time else config
 
 
 def get_indices_from_config(run_dir):
@@ -94,20 +97,29 @@ def add_to_planning_config(run_dir, new_data, safely=True):
         json.dump(config, open(file_name, 'w'), indent=3)
         if safely:
             os.remove(tmp_file_name)
+    return config
 
 
 def check_unrealistic_placement_z(world, run_dir):
     from world_builder.utils import Z_CORRECTION_FILE as file
-    violated = False
     z_correction = json.load(open(file, 'r'))
     placement_plan = load_planning_config(run_dir)['placement_plan']
     if placement_plan is not None:
         for _, mov, sur, point in placement_plan:
             movable = world.safely_get_body_from_name(mov)
+            if sur is None:
+                return False
             surface = world.safely_get_body_from_name(sur)
             movable_id = world.get_mobility_identifier(movable)
             surface_id = world.get_mobility_identifier(surface)
-            # if movable_id in z_correction and surface_id in z_correction[movable_id]:
+            if movable_id in z_correction and surface_id in z_correction[movable_id]:
+                z = z_correction[movable_id][surface_id]
+                z_here = point[2] - get_pose(surface)[0][2]
+                if z_here < z[0] - 0.03:
+                    return f'sunk into {sur}'
+                if z_here > z[1] + 0.03:
+                    return f'floating in {sur}'
+    return False
 
 
 def process_value(vv, training=True):
