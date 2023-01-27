@@ -23,25 +23,25 @@ else: ## not tested
     DATASET_PATH = '../../fastamp-data'
 
 
-def get_feasibility_checker(run_dir, mode, diverse=False):
+def get_feasibility_checker(run_dir, mode, diverse=False, world=None):
     from .feasibility_checkers import PassAll, ShuffleAll, Oracle, PVT, Heuristic
+    body_map = get_body_map(run_dir, world=world)
     if mode == 'binary':
         mode = 'pvt'
         diverse = False
     if mode == 'None':
-        return PassAll(run_dir)
+        return PassAll(run_dir, body_map)
     elif mode == 'shuffle':
-        return ShuffleAll(run_dir)
+        return ShuffleAll(run_dir, body_map)
     elif mode == 'oracle':
-        plan = get_successful_plan(run_dir)
-        return Oracle(run_dir, plan)
+        return Oracle(run_dir, body_map)
     elif mode == 'heuristic':
-        return Heuristic(run_dir)
+        return Heuristic(run_dir, body_map)
     elif 'pvt-task' in mode:
         task_name = abspath(run_dir).replace(DATASET_PATH, '').split('/')[1]
-        return PVT(run_dir, mode=mode, task_name=task_name, scoring=diverse)
+        return PVT(run_dir, body_map, mode=mode, task_name=task_name, scoring=diverse)
     elif mode.startswith('pvt'):
-        return PVT(run_dir, mode=mode, scoring=diverse)
+        return PVT(run_dir, body_map, mode=mode, scoring=diverse)
     return None
 
 
@@ -219,11 +219,32 @@ def get_indices(run_dir, body_map=None):
 
 
 def get_body_map(run_dir, world, inv=False):
-    body_to_name = load_planning_config(run_dir)['body_to_name']
+    config = load_planning_config(run_dir)
+    if 'body_to_name' not in config:
+        return {}
+    body_to_name = config['body_to_name']
     body_to_new = {eval(k): world.name_to_body[v] for k, v in body_to_name.items()}
     if inv:
         return {v: k for k, v in body_to_new.items()}
     return body_to_new
+
+
+def modify_plan_with_body_map(plan, inv_body_map):
+    from pddlstream.language.constants import Action
+    new_plan = []
+    for action in plan:
+        new_args = []
+        for a in action.args:
+            if a in inv_body_map:
+                new_args.append(inv_body_map[a])
+            else:
+                if hasattr(a, 'body') and a.body in inv_body_map:
+                    a.body = inv_body_map[a.body]
+                if hasattr(a, 'value') and a.value in inv_body_map:
+                    a.value = inv_body_map[a.value]
+                new_args.append(a)
+        new_plan.append(Action(action.name, new_args))
+    return new_plan
 
 
 def get_instance_info(run_dir, world=None):

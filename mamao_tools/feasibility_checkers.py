@@ -13,7 +13,7 @@ from pybullet_tools.general_streams import Position
 from world_builder.utils import get_potential_placements
 from world_builder.robot_builders import create_gripper_robot
 from mamao_tools.data_utils import get_plan_skeleton, get_indices, get_action_elems, \
-    get_successful_plan
+    get_successful_plan, modify_plan_with_body_map
 sys.path.append('/home/yang/Documents/fastamp')
 
 MODELS_PATH = '/home/yang/Documents/fastamp/test_models'
@@ -21,8 +21,10 @@ MODELS_PATH = '/home/yang/Documents/fastamp/test_models'
 
 class FeasibilityChecker(object):
 
-    def __init__(self, run_dir, **kwargs):
+    def __init__(self, run_dir, body_map, **kwargs):
         self.run_dir = run_dir
+        self.body_map = body_map  ## rerun may have different pybullet body indices
+        self._skwargs = {'indices': get_indices(run_dir), 'include_joint': True, 'include_movable': True}
         self._log = {k: [] for k in ['checks', 'run_time']}
 
     def __call__(self, *args, **kwargs):
@@ -40,6 +42,10 @@ class FeasibilityChecker(object):
         if not isinstance(inputs[0], list):
             inputs = [inputs]
 
+        ## change new plan to have old indices
+        inv_body_map = {v: k for k, v in self.body_map.items()}
+        inputs = [modify_plan_with_body_map(plan, inv_body_map) for plan in inputs]
+
         predictions = []
         printout = []
         indices = self._get_indices()
@@ -50,7 +56,7 @@ class FeasibilityChecker(object):
                 prediction = self._check(input) if not skip else True
                 predictions.append(prediction)
                 plan = get_plan_from_input(input)
-                skeleton = get_plan_skeleton(plan, indices)
+                skeleton = get_plan_skeleton(plan, **self._skwargs)
                 self._log['checks'].append((skeleton, plan, prediction))
                 self._log['run_time'].append(round(time.time() - start, 4))
                 if hasattr(self, 'skeleton'):
@@ -60,10 +66,6 @@ class FeasibilityChecker(object):
             if isinstance(self, Heuristic):
                 # remove_body(self._feg)
                 # self._feg = None
-                self.possible_obstacles = {str(k): tuple(v) for k, v in self.possible_obstacles.items()}
-                self.pre_actions_and = {k: tuple(v) for k, v in self.pre_actions_and.items()}
-                self.pre_actions_or = {k: tuple(v) for k, v in self.pre_actions_or.items()}
-                self.not_pre_actions = {k: tuple(v) for k, v in self.not_pre_actions.items()}
                 for f in self._fluents_original:
                     if f[0].lower() in ['atposition', 'atpose']:
                         f[2].assign()
@@ -97,9 +99,17 @@ class FeasibilityChecker(object):
     def dump_log(self, json_path, plans_only=False):
         from world_builder.world import State
         from lisdf_tools.lisdf_planning import Problem
+
+        if isinstance(self, Heuristic):
+            self.possible_obstacles = {str(k): tuple(v) for k, v in self.possible_obstacles.items()}
+            self.pre_actions_and = {k: tuple(v) for k, v in self.pre_actions_and.items()}
+            self.pre_actions_or = {k: tuple(v) for k, v in self.pre_actions_or.items()}
+            self.not_pre_actions = {k: tuple(v) for k, v in self.not_pre_actions.items()}
+
         with open(json_path, 'w') as f:
             config = {k: v for k, v in self.__dict__.items() if \
                       not k.startswith('_') and not isinstance(v, State) and not isinstance(v, Problem)}
+            config['body_map'] = {str(k): v for k, v in config['body_map'].items()}
             if 'args' in config:
                 config['args'] = config['args'].__dict__
             self._log['config'] = config
@@ -111,16 +121,16 @@ class FeasibilityChecker(object):
 
 class PassAll(FeasibilityChecker):
 
-    def __init__(self, run_dir, shuffle=False):
-        super().__init__(run_dir)
+    def __init__(self, run_dir, body_map, shuffle=False):
+        super().__init__(run_dir, body_map)
 
     def _check(self, input):
         return True
 
 
 class ShuffleAll(FeasibilityChecker):
-    def __init__(self, run_dir):
-        super().__init__(run_dir)
+    def __init__(self, run_dir, body_map):
+        super().__init__(run_dir, body_map)
         random.seed(int(time.time()))
 
     def _check(self, input):
@@ -129,30 +139,17 @@ class ShuffleAll(FeasibilityChecker):
 
 class Oracle(FeasibilityChecker):
 
-    def __init__(self, run_dir, correct):
-        super().__init__(run_dir)
-        self.correct = [[a for a in act if a != 'None'] for act in correct]
-        from mamao_tools.data_utils import get_plan_skeleton, get_indices
-        self.skeleton = get_plan_skeleton(correct, get_indices(run_dir), include_joint=True, include_movable=True)
-        print(f'\nOracle feasibility checker - {self.skeleton})\n'+
-              '\n'.join([str(c) for c in correct]))
+    def __init__(self, run_dir, body_map):
+        super().__init__(run_dir, body_map)
+        from mamao_tools.data_utils import get_plan_skeleton
+        plans = get_successful_plan(run_dir, skip_multiple_plans=False)
+        self.skeletons = [get_plan_skeleton(plan, **self._skwargs) for plan in plans]
+        print(f'\nOracle feasibility checker - {self.skeletons})\n')
 
-    def _check(self, input):
-        if len(input) != len(self.correct):
-            return False
-        print('\n\nOracle, checking', input)
-        for i in range(len(input)):
-            action = [input[i].name] + list(input[i].args)
-            for j in range(1, len(self.correct[i])):
-                if '=' not in self.correct[i][j] and self.correct[i][j] != 'None':
-                    if len(action) != len(self.correct[i]):
-                        print('len(input[i]) != len(self.correct[i])', action, self.correct[i])
-                        return False
-                    if str(action[j]) != self.correct[i][j]:
-                        # print(i, self.correct[i], self.correct[i][j], '\n', action, str(action[j]), '\n')
-                        return False
-        # print('pass', input)
-        return True
+    def _check(self, plan):
+        plan = [[i.name] + [str(a) for a in i.args] for i in plan]
+        skeleton = get_plan_skeleton(plan, **self._skwargs)
+        return skeleton in self.skeletons
 
 
 ###################################################################################################
@@ -165,9 +162,9 @@ shorter_plan = lambda actions: f"({', '.join([shorter(a) for a in actions if a.n
 
 class Heuristic(FeasibilityChecker):
 
-    def __init__(self, initializer):
+    def __init__(self, body_map, initializer):
         state, goals, init = initializer
-        super().__init__(state)
+        super().__init__(state, body_map)
         self._state = state
         self._robot = state.robot
         self._fluents = state.get_fluents(only_fluents=True)
