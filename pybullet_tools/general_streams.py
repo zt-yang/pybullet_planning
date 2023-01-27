@@ -256,6 +256,8 @@ def check_kitchen_placement(world, body, surface, **kwargs):
     body_id = world.get_mobility_identifier(body)
     if isinstance(body_id, int): ## reachable space, feg
         return None
+    if body_id is None:
+        print('ss')
     if isinstance(surface, tuple):
         surface_body = surface[0]
         surface_point = get_pose(surface[0])[0]

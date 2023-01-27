@@ -235,14 +235,15 @@ def modify_plan_with_body_map(plan, inv_body_map):
     for action in plan:
         new_args = []
         for a in action.args:
+            b = a
             if a in inv_body_map:
-                new_args.append(inv_body_map[a])
+                b = inv_body_map[a]
             else:
                 if hasattr(a, 'body') and a.body in inv_body_map:
-                    a.body = inv_body_map[a.body]
+                    b = inv_body_map[a.body]
                 if hasattr(a, 'value') and a.value in inv_body_map:
-                    a.value = inv_body_map[a.value]
-                new_args.append(a)
+                    b = inv_body_map[a.value]
+            new_args.append(b)
         new_plan.append(Action(action.name, new_args))
     return new_plan
 
