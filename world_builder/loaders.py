@@ -1885,7 +1885,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
     counters = sorted(counters, key=lambda x: x.aabb().lower[1])
 
     ## load cabinets
-    ins = world.note not in [4, 41]
+    ins = world.note not in [11, 4, 41]
     obstacles, color, counters, bled = add_cabinets(counters, obstacles=obstacles,
                                                     cabi_type=cabi_type, RANDOM_INSTANCE=ins)
     ## then load shelves

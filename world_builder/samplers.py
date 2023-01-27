@@ -79,6 +79,7 @@ def get_learned_poses(movable, surface, body, surface_body, num_samples=10, surf
             delta = np.random.normal(scale=0.01, size=3)
             delta[2] = 0
             point = np.array(point) + delta
+        point[2] += 0.01
         return (tuple(point), quat)
 
     key = (movable.lower(), surface)

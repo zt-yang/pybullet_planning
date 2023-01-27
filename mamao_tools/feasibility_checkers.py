@@ -173,8 +173,8 @@ class Heuristic(FeasibilityChecker):
         self._fluents = state.get_fluents(only_fluents=True)
         self._fluents_original = copy.deepcopy(self._fluents)
         # self._feg = None
-        self._verbose = False
-        self._reachability_kwargs = dict(max_attempts=10, debug=False, verbose=self._verbose)
+        self._verbose = True
+        self._reachability_kwargs = dict(max_attempts=10, debug=False, visualize=False, verbose=self._verbose)
 
         self.potential_placements = get_potential_placements(goals, init)
         self.possible_obstacles = self._robot.possible_obstacles
