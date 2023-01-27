@@ -133,7 +133,7 @@ class Oracle(FeasibilityChecker):
         super().__init__(run_dir)
         self.correct = [[a for a in act if a != 'None'] for act in correct]
         from mamao_tools.data_utils import get_plan_skeleton, get_indices
-        self.skeleton = get_plan_skeleton(correct, get_indices(run_dir))
+        self.skeleton = get_plan_skeleton(correct, get_indices(run_dir), include_joint=True, include_movable=True)
         print(f'\nOracle feasibility checker - {self.skeleton})\n'+
               '\n'.join([str(c) for c in correct]))
 

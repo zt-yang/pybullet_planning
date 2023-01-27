@@ -1151,6 +1151,8 @@ def draw_points(body, link=None, size=0.2, **kwargs):
 
 
 def is_box_entity(body, link=-1):
+    if isinstance(body, tuple):
+        return False
     if link is None:  link = -1
     data = get_collision_data(body, link)
     return len(data) != 0 and data[0].geometry_type == p.GEOM_BOX
