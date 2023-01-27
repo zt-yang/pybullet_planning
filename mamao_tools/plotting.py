@@ -14,18 +14,21 @@ from os import listdir
 import seaborn as sns
 sns.set_style("darkgrid", {"axes.facecolor": ".9"})
 
-from utils import DATASET_PATH
-from data_utils import get_fc_record
+from data_utils import get_fc_record, DATASET_PATH
 
 AUTO_REFRESH = False
 VIOLIN = False
 FPC = False
-PAPER_VERSION = True ## no preview, just save pdf
+PAPER_VERSION = False ## no preview, just save pdf
 
 
 from matplotlib import rc
 rc('font', **{'family': 'serif', 'serif': ['Times']})
 # rc('text', usetex=True)
+
+
+############################################################################3
+
 
 GROUPS = ['tt_one_fridge_table_pick', 'tt_two_fridge_pick', 'tt_one_fridge_table_in',
           'tt_two_fridge_in'] ## , 'tt_two_fridge_goals']
@@ -45,6 +48,16 @@ METHOD_NAMES = ['Baseline', 'PIGI', 'PIGI-1/0', 'PIGI-all', 'Oracle']  ## 'PIGI-
 ## GROUPS = ['ss_two_fridge_pick', 'ss_two_fridge_in']
 ## METHODS = ['None', 'pvt-all', 'oracle']
 ## METHOD_NAMES = ['Baseline', 'PIGI-all', 'Oracle']
+
+
+############################################################################3
+
+
+GROUPS = ['tt_storage', 'tt_sink', 'tt_braiser', 'tt_sink_to_storage',
+          'tt_braiser_to_storage' ] ##
+
+METHODS = ['None', 'oracle']
+METHOD_NAMES = ['Baseline', 'Oracle']
 
 check_time = 1664255601 ## 1664255601 for baselines | 1664750094  ## for d4 | 1665010453 for d3
 
@@ -67,7 +80,7 @@ colors_darker = [color_dict[k][0] for k in cc]
 ## see which files are missing
 # METHODS = ['None', 'oracle'] ## , 'pvt'
 SAME_Y_AXES = False
-RERUN_SUBDIR = 'rerun_2'
+RERUN_SUBDIR = 'rerun'
 
 
 def get_rundirs(task_name):
@@ -483,7 +496,8 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
             fig.legend(handles, METHOD_NAMES, ncol=len(METHODS), fontsize=11,
                        loc='upper center', bbox_to_anchor=(0.5, 0.97))
 
-    print([round(means['pvt-task'][i] / means['None'][i], 2) for i in range(len(groups))])
+    if 'pvt-task' in means:
+        print([round(means['pvt-task'][i] / means['None'][i], 2) for i in range(len(groups))])
 
     if PAPER_VERSION: ##  and False
         file_name = 'evaluation' if GROUPS[-1].startswith('tt') else 'evaluation_geometry'

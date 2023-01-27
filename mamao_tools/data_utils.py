@@ -18,7 +18,7 @@ sys.path.append('/home/yang/Documents/fastamp')
 if 'zhutiany' in getcwd():
     DATASET_PATH = '/home/zhutiany/Documents/mamao-data'
 elif 'yang' in getcwd():
-    DATASET_PATH = '/home/yang/Documents/fastamp-data'
+    DATASET_PATH = '/home/yang/Documents/fastamp-data-rss'
 else: ## not tested
     DATASET_PATH = '../../fastamp-data'
 
