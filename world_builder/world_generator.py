@@ -88,8 +88,10 @@ CAMERA_STR = """
     </gui>
 """
 
+
 def list_to_xml(lst):
     return " ".join([str(round(o, 3)) for o in lst])
+
 
 def to_pose_xml(pose):
     xyz, quat = pose
@@ -456,13 +458,13 @@ def generate_problem_pddl(world, facts, goals, world_name='lisdf', domain_name='
     objects_pddl = '\t'+'\n\t'.join(sorted(objects))
     if added_obj is not None:
         objects_pddl += '\n\t;; added objects for larger problem' + \
-                        '\t' + '\n\t'.join(sorted(added_obj))
+                        '\n\t' + '\n\t'.join(sorted(added_obj))
 
     ########################################################
 
     init_pddl = generate_init_pddl(world, facts)
     if added_init is not None:
-        init_pddl += '\n\t;; added facts for larger problem' + \
+        init_pddl += '\n\n\t;; added facts for larger problem' + \
                      generate_init_pddl(world, added_init)
 
     ########################################################
@@ -576,8 +578,9 @@ def add_objects_and_facts(world, init, goal):
             world.add_body(bj, bj_name)
             added_body_to_name[bj] = bj_name
             position = Position(bj)
-            added_init += [('Joint', bj), ('IsJointTo', bj, b),
-                           ('Position', bj, position), ('AtPosition', bj, position)]
+            added_objects.append(bj_name)
+            added_init += [('Joint', bj), ('IsJointTo', bj, b), ('Position', bj, position),
+                           ('AtPosition', bj, position), ('IsClosedPosition', bj, position)]
 
     # elif case == '2'
     #

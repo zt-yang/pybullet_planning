@@ -17,6 +17,7 @@ from mamao_tools.data_utils import get_plan_skeleton, get_indices, get_action_el
 sys.path.append('/home/yang/Documents/fastamp')
 
 MODELS_PATH = '/home/yang/Documents/fastamp/test_models'
+SKIP = 'skip'
 
 
 class FeasibilityChecker(object):
@@ -59,8 +60,9 @@ class FeasibilityChecker(object):
                 predictions.append(prediction)
                 plan = get_plan_from_input(input)
                 skeleton = get_plan_skeleton(plan, **self._skwargs)
-                self._log['checks'].append((skeleton, plan, prediction))
-                self._log['run_time'].append(round(time.time() - start, 4))
+                if prediction != SKIP:
+                    self._log['checks'].append((skeleton, plan, prediction))
+                    self._log['run_time'].append(round(time.time() - start, 4))
                 if hasattr(self, 'skeleton'):
                     printout.append((skeleton, 'pass' if prediction else f'x ({self.skeleton})'))
                 # if isinstance(self, Heuristic) and prediction:
@@ -165,7 +167,7 @@ class LargerWorld(FeasibilityChecker):
             data['skeletons'][i]: data['labels'][i] for i in range(len(data['plans']))
         }
         for i in range(len(data['plans'])):
-            print('\t', data['skeletons'][i], data['labels'][i])
+            print('\t', data['labels'][i], '\t', data['skeletons'][i])
         print(f'\nLargerWorld FC - {len(self.skeletons)} plans, '
               f'{data["num_successful_plans"]} success\n')
 
@@ -176,18 +178,18 @@ class LargerWorld(FeasibilityChecker):
             print('\n\nbody_to_name_new not in config', run_dir)
         self.body_to_name_new = config['body_to_name_new']
 
+        self._skips = []
+
     def _check(self, plan):
         plan = [[i.name] + [str(a) for a in i.args] for i in plan]
         skeleton = get_plan_skeleton(plan, **self._skwargs)
         actions = [a + ')' for a in skeleton.split(')')[:-1]]
         actions = [a for a in actions if a in self.old_actions]
         skeleton_new = ''.join(actions)
-        result = 'not found'
+        result = SKIP
         if skeleton_new in self.skeletons:
             result = self.skeletons[skeleton_new]
-        print('\t', skeleton, '->\t', skeleton_new, '\t', result)
-        if result == 'not found':
-            return False
+            print('\t', result, '\t', skeleton, '->\t', skeleton_new)
         return result
 
 ###################################################################################################

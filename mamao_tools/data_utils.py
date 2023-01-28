@@ -74,9 +74,12 @@ def load_planning_config(run_dir, return_mod_time=False):
 
 def get_indices_from_config(run_dir):
     config = load_planning_config(run_dir)
+    indices = {}
     if 'body_to_name' in config:
-        return {k: v for k, v in config['body_to_name'].items()} ## .replace('::', '%')
-    return False
+        indices = {k: v for k, v in config['body_to_name'].items()} ## .replace('::', '%')
+    if 'body_to_name_new' in config:
+        indices.update({k: v for k, v in config['body_to_name_new'].items()})
+    return indices
 
 
 def add_to_planning_config(run_dir, new_data, safely=True):
@@ -199,13 +202,6 @@ def get_indices_from_log(run_dir):
     return indices
 
 
-def get_indices_from_config(run_dir):
-    config = load_planning_config(run_dir)
-    if 'body_to_name' in config:
-        return config['body_to_name']
-    return False
-
-
 def get_indices(run_dir, body_map=None):
     indices = get_indices_from_config(run_dir)
     if not indices:
@@ -220,6 +216,8 @@ def get_body_map(run_dir, world, inv=False):
     if 'body_to_name' not in config:
         return {}
     body_to_name = config['body_to_name']
+    if 'body_to_name_new' in config:
+        body_to_name.update(config['body_to_name_new'])
     body_to_new = {eval(k): world.name_to_body[v] for k, v in body_to_name.items()}
     if inv:
         return {v: k for k, v in body_to_new.items()}
@@ -309,7 +307,7 @@ def get_plan_skeleton(plan, indices={}, include_joint=True, include_movable=Fals
                     elif not joint_name.startswith('right') and 'right' in joint_name:
                         joint_name = joint_name[0] + 'r'
                     else:
-                        joint_name = joint_name[0]
+                        joint_name = joint_name[-1]
                     return f"({body_name[0]}{joint_name})"
                 skeleton += ''.join([get_joint_name_chars(o) for o in a[1:] if o in joint_names])
                 skeleton += ''.join([f"({indices[o][0]}{indices[o][-1]})" for o in a[1:] if o in joints])
