@@ -13,7 +13,7 @@ from pybullet_tools.general_streams import Position
 from world_builder.utils import get_potential_placements
 from world_builder.robot_builders import create_gripper_robot
 from mamao_tools.data_utils import get_plan_skeleton, get_indices, get_action_elems, \
-    get_successful_plan, modify_plan_with_body_map
+    get_successful_plan, modify_plan_with_body_map, load_planning_config, get_old_actions
 sys.path.append('/home/yang/Documents/fastamp')
 
 MODELS_PATH = '/home/yang/Documents/fastamp/test_models'
@@ -153,6 +153,42 @@ class Oracle(FeasibilityChecker):
         skeleton = get_plan_skeleton(plan, **self._skwargs)
         return skeleton in self.skeletons
 
+
+class LargerWorld(FeasibilityChecker):
+    """ remove actions associated with added objects and lookup previous labels."""
+
+    def __init__(self, run_dir, body_map):
+        super().__init__(run_dir, body_map)
+        from fastamp_utils import get_plans_labels
+        data = get_plans_labels(run_dir)
+        self.skeletons = {
+            data['skeletons'][i]: data['labels'][i] for i in range(len(data['plans']))
+        }
+        for i in range(len(data['plans'])):
+            print('\t', data['skeletons'][i], data['labels'][i])
+        print(f'\nLargerWorld FC - {len(self.skeletons)} plans, '
+              f'{data["num_successful_plans"]} success\n')
+
+        self.old_actions = get_old_actions(data['skeletons'])
+
+        config = load_planning_config(run_dir)
+        if 'body_to_name_new' not in config:
+            print('\n\nbody_to_name_new not in config', run_dir)
+        self.body_to_name_new = config['body_to_name_new']
+
+    def _check(self, plan):
+        plan = [[i.name] + [str(a) for a in i.args] for i in plan]
+        skeleton = get_plan_skeleton(plan, **self._skwargs)
+        actions = [a + ')' for a in skeleton.split(')')[:-1]]
+        actions = [a for a in actions if a in self.old_actions]
+        skeleton_new = ''.join(actions)
+        result = 'not found'
+        if skeleton_new in self.skeletons:
+            result = self.skeletons[skeleton_new]
+        print('\t', skeleton, '->\t', skeleton_new, '\t', result)
+        if result == 'not found':
+            return False
+        return result
 
 ###################################################################################################
 
@@ -394,6 +430,9 @@ class Heuristic(FeasibilityChecker):
         new_pstn = Position(body_joint, value=new_pstn)
         self._fluents = [f for f in self._fluents if not (f[0] == 'AtPosition' and f[1] == body_joint)]
         self._fluents.append(('AtPosition', body_joint, new_pstn))
+
+
+##############################################################################
 
 
 class Random(FeasibilityChecker):

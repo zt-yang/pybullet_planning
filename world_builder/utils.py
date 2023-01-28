@@ -17,8 +17,8 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sam
     stable_z, Pose, Point, create_box, load_model, get_joints, set_joint_position, BROWN, Euler, PI, \
     set_camera_pose, TAN, RGBA, sample_aabb, get_min_limit, get_max_limit, set_color, WHITE, get_links, \
     get_link_name, get_link_pose, euler_from_quat, get_collision_data, get_joint_name, get_joint_position, \
-    set_renderer
-from pybullet_tools.bullet_utils import get_partnet_links_by_type, set_camera_target_body
+    set_renderer, link_from_name, parent_joint_from_link
+from pybullet_tools.bullet_utils import set_camera_target_body
 from pybullet_tools.logging import dump_json
 from world_builder.partnet_scales import DONT_LOAD
 from world_builder.paths import ASSET_PATH
@@ -152,6 +152,62 @@ def get_model_scale(file, l=None, w=None, h=None, scale=1, category=None):
     remove_body(body)
 
     return scale
+
+
+#######################################################################
+
+
+def get_partnet_semantics(path):
+    if path.endswith('urdf'):
+        path = path[:path.rfind('/')]
+    file = join(path, 'semantics.txt')
+    lines = []
+    with open(file, 'r') as f:
+        for line in f.readlines():
+            lines.append(line.replace('\n', '').split(' '))
+    return lines
+
+
+def get_partnet_doors(path, body):
+    body_joints = {}
+    for line in get_partnet_semantics(path):
+        link_name, part_type, part_name = line
+        if part_type == 'hinge' and part_name in ['door', 'rotation_door']:
+            link = link_from_name(body, link_name)
+            joint = parent_joint_from_link(link)
+            joint_name = '--'.join(line)
+            body_joint = (body, joint)
+            body_joints[body_joint] = joint_name
+    return body_joints
+
+
+def get_partnet_spaces(path, body):
+    space_links = {}
+    for line in get_partnet_semantics(path):
+        link_name, part_type, part_name = line
+        if '_body' in part_name:
+            link = link_from_name(body, link_name)
+            space_links[(body, None, link)] = part_name
+    return space_links
+
+
+def get_partnet_links_by_type(path, body, keyward):
+    links = []
+    for line in get_partnet_semantics(path):
+        if line[-1] == keyward:
+            links.append(link_from_name(body, line[0]))
+    return links
+
+
+def get_grasp_link(path, body):
+    link = None
+    for line in get_partnet_semantics(path):
+        if line[-1] == 'grasp_link':
+            link = link_from_name(body, line[0])
+    return link
+
+
+#######################################################################
 
 
 def partnet_id_from_path(path):

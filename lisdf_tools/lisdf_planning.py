@@ -79,7 +79,7 @@ class Problem():
         return self.world.get_world_fluents(**kwargs)
 
 
-def pddl_to_init_goal(exp_dir, world, domain_file=None):
+def pddl_to_init_goal(exp_dir, world, domain_file=None, larger_world=False):
 
     if domain_file is None:
         domain_file = join(exp_dir, 'domain.pddl')
@@ -94,7 +94,7 @@ def pddl_to_init_goal(exp_dir, world, domain_file=None):
     lisdf, domain, problem = load_all(
         join(exp_dir, 'scene.lisdf'),
         domain_file,
-        join(exp_dir, 'problem.pddl'),
+        join(exp_dir, 'problem.pddl' if not larger_world else 'problem_larger.pddl'),
     )
     world.update_objects(problem.objects)
     robot = world.robot
