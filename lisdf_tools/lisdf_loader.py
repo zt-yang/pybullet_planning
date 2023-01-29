@@ -248,7 +248,11 @@ class World():
         return results
 
     def cat_to_bodies(self, cat, init=[]):
-        return [f[1] for f in init if f[0].lower() == cat]
+        found = [f[1] for f in init if f[0].lower() == cat]
+        if cat == 'surface':
+            maybe = set([f[2] for f in init if f[0] == 'stackable'])
+            found += [f for f in maybe if f not in found]
+        return found
 
     def summarize_all_objects(self, init=None, print_fn=None):
         """ call this after pddl_to_init_goal() where world.update_objects() happens """

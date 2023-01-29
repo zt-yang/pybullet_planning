@@ -157,6 +157,7 @@ class Oracle(FeasibilityChecker):
     def _check(self, plan):
         plan = [[i.name] + [str(a) for a in i.args] for i in plan]
         skeleton = get_plan_skeleton(plan, **self._skwargs)
+        print(f'\t{skeleton}\n')
         return skeleton in self.skeletons
 
 

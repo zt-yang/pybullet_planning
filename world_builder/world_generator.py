@@ -10,8 +10,10 @@ from os import listdir
 
 from pybullet_tools.utils import get_bodies, euler_from_quat, get_collision_data, get_joint_name, \
     get_joint_position, get_camera, joint_from_name, get_color, reset_simulation
-from pybullet_tools.bullet_utils import get_readable_list, LINK_STR, nice
+from pybullet_tools.bullet_utils import get_readable_list, LINK_STR, nice, is_box_entity, \
+    is_placement, random
 from pybullet_tools.general_streams import Position
+from pybullet_tools.pr2_primitives import Pose
 
 from world_builder.entities import Robot, LINK_STR
 from world_builder.utils import read_xml, get_file_by_category, get_model_scale, get_partnet_doors
@@ -559,6 +561,7 @@ def add_objects_and_facts(world, init, goal):
     planning_objects = world.get_planning_objects()
     non_planning_objects = world.get_non_planning_objects()
     planning_types = world.summarize_all_types(init, return_string=False)
+    non_planning_types = {}
 
     if case in ['1', '11', '21', '31']:
 
@@ -582,8 +585,57 @@ def add_objects_and_facts(world, init, goal):
             added_init += [('Joint', bj), ('IsJointTo', bj, b), ('Position', bj, position),
                            ('AtPosition', bj, position), ('IsClosedPosition', bj, position)]
 
-    # elif case == '2'
-    #
+    elif case in ['3']:
+
+        ## make sure (supported braiserlid ...) is in init
+        lid = world.name_to_body['braiserlid']
+        braiser = world.name_to_body['braiserbody#1']
+        bottom = world.name_to_body['braiserbody#1::braiser_bottom']
+        added_objects += [braiser]
+        # added_init += [('IsLinkTo', bottom, braiser)]
+
+        found = [f for f in init if f[0] == 'supported' and f[1] == lid]
+
+        if len(found) == 0:
+            ps = [f[2] for f in init if f[0] == 'pose' and f[1] == lid]
+            if len(ps) == 0:
+                p = Pose(lid)
+                added_init += [('Pose', lid, p), ('AtPose', lid, p)]
+            else:
+                p = ps[0]
+            added_init += [('Supported', lid, p, braiser)]
+
+        ## make sure (supported obj ...) is in init for all objects
+        non_planning_types['graspable'] = [v for k, v in world.name_to_body.items() if \
+                                      ('veggie' in k or 'bottle' in k or 'medicine' in k) \
+                                      and v not in planning_types['graspable']]
+        non_planning_types['surface'] = [b for b in world.body_to_name if is_box_entity(b)]
+        non_planning_types['surface'] += [world.name_to_body['microwave#1']]
+
+        placed = False
+        graspable = None
+        found_surface = None
+        while not placed:
+            graspable = random.choice(non_planning_types['graspable'])
+            for s in non_planning_types['surface']:
+                if is_placement(graspable, s, below_epsilon=0.02, above_epsilon=0.02):
+                    found_surface = s
+                    placed = True
+
+        p = Pose(graspable)
+        added_objects += [graspable, found_surface]
+        added_init += [('Pose', graspable, p), ('AtPose', graspable, p),
+                       ('Graspable', graspable), ('Surface', found_surface),
+                       ('Supported', graspable, p, found_surface)]
+
+        """ add all stackable """
+        for gg in planning_types['graspable'] + [graspable]:
+            for ss in planning_types['surface'] + [found_surface]:
+                stackable = ('stackable', gg, ss)
+                if stackable not in init and not gg == lid and ss == bottom:
+                    added_init += [stackable]
+
+        added_objects = [world.body_to_name[b] for b in added_objects]
 
     added_body_to_name = {str(k): v for k, v in added_body_to_name.items()}
     return added_objects, added_init, added_body_to_name
