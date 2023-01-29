@@ -23,12 +23,14 @@ SKIP = 'skip'
 
 class FeasibilityChecker(object):
 
-    def __init__(self, run_dir, body_map, **kwargs):
+    def __init__(self, run_dir, inv_body_map, **kwargs):
         self.run_dir = run_dir
-        self.body_map = body_map  ## rerun may have different pybullet body indices
+        self.inv_body_map = inv_body_map  ## rerun may have different pybullet body indices
         self._skwargs = {'include_joint': True, 'include_movable': True}
         if isinstance(run_dir, str):
             self._skwargs['indices'] = get_indices(run_dir)
+            self._skwargs_old = copy.deepcopy(self._skwargs)
+            self._skwargs_old['indices'] = get_indices(run_dir, inv_body_map=inv_body_map)
         self._log = {k: [] for k in ['checks', 'run_time']}
 
     def __call__(self, *args, **kwargs):
@@ -47,12 +49,10 @@ class FeasibilityChecker(object):
             inputs = [inputs]
 
         ## change new plan to have old indices
-        inv_body_map = {v: k for k, v in self.body_map.items()}
-        inputs = [modify_plan_with_body_map(plan, inv_body_map) for plan in inputs]
+        inputs = [modify_plan_with_body_map(plan, self.inv_body_map) for plan in inputs]
 
         predictions = []
         printout = []
-        indices = self._get_indices()
         if 'PVT' not in self.__class__.__name__:
             skip = False
             for input in inputs:
@@ -60,9 +60,9 @@ class FeasibilityChecker(object):
                 prediction = self._check(input) if not skip else True
                 predictions.append(prediction)
                 plan = get_plan_from_input(input)
-                skeleton = get_plan_skeleton(plan, **self._skwargs)
+                skeleton = get_plan_skeleton(plan, **self._skwargs_old)
                 if 'kc' in skeleton:
-                    print('\nkckckckckckckckckckckckckckckckckcv!!!')
+                    print('\nkckckckckckckckckckckckckckckckckcv!!!\n')
                 if prediction != SKIP:
                     self._log['checks'].append((skeleton, plan, prediction))
                     self._log['run_time'].append(round(time.time() - start, 4))
@@ -119,7 +119,7 @@ class FeasibilityChecker(object):
         with open(json_path, 'w') as f:
             config = {k: v for k, v in self.__dict__.items() if \
                       not k.startswith('_') and not isinstance(v, State) and not isinstance(v, Problem)}
-            config['body_map'] = {str(k): v for k, v in config['body_map'].items()}
+            config['inv_body_map'] = {str(k): v for k, v in config['inv_body_map'].items()}
             if 'args' in config:
                 config['args'] = config['args'].__dict__
             self._log['config'] = config
@@ -156,12 +156,12 @@ class Oracle(FeasibilityChecker):
         super().__init__(run_dir, body_map)
         from mamao_tools.data_utils import get_plan_skeleton
         plans = get_successful_plan(run_dir, skip_multiple_plans=False)
-        self.skeletons = [get_plan_skeleton(plan, **self._skwargs) for plan in plans]
+        self.skeletons = [get_plan_skeleton(plan, **self._skwargs_old) for plan in plans]
         print(f'\nOracle feasibility checker - {self.skeletons}\n')
 
     def _check(self, plan):
         plan = [[i.name] + [str(a) for a in i.args] for i in plan]
-        skeleton = get_plan_skeleton(plan, **self._skwargs)
+        skeleton = get_plan_skeleton(plan, **self._skwargs_old)
         print(f'\t{skeleton}')
         return skeleton in self.skeletons
 

@@ -20,25 +20,25 @@ DATASET_PATH = '/home/yang/Documents/fastamp-data-rss'
 def get_feasibility_checker(run_dir, mode, diverse=False, world=None):
     from mamao_tools.feasibility_checkers import PassAll, ShuffleAll, Oracle, PVT, \
         Heuristic, LargerWorld
-    body_map = get_body_map(run_dir, world=world) if isinstance(run_dir, str) else {}
+    inv_body_map = get_body_map(run_dir, world=world, inv=True) if isinstance(run_dir, str) else {}
     if mode == 'binary':
         mode = 'pvt'
         diverse = False
     if mode == 'None':
-        return PassAll(run_dir, body_map)
+        return PassAll(run_dir, inv_body_map)
     elif mode == 'shuffle':
-        return ShuffleAll(run_dir, body_map)
+        return ShuffleAll(run_dir, inv_body_map)
     elif mode == 'oracle':
-        return Oracle(run_dir, body_map)
+        return Oracle(run_dir, inv_body_map)
     elif mode == 'heuristic':
-        return Heuristic(run_dir, body_map)
+        return Heuristic(run_dir, inv_body_map)
     elif mode == 'larger_world':
-        return LargerWorld(run_dir, body_map)
+        return LargerWorld(run_dir, inv_body_map)
     elif 'pvt-task' in mode:
         task_name = abspath(run_dir).replace(DATASET_PATH, '').split('/')[1]
-        return PVT(run_dir, body_map, mode=mode, task_name=task_name, scoring=diverse)
+        return PVT(run_dir, inv_body_map, mode=mode, task_name=task_name, scoring=diverse)
     elif mode.startswith('pvt'):
-        return PVT(run_dir, body_map, mode=mode, scoring=diverse)
+        return PVT(run_dir, inv_body_map, mode=mode, scoring=diverse)
     return None
 
 
@@ -204,15 +204,18 @@ def get_indices_from_log(run_dir):
     return indices
 
 
-def get_indices(run_dir, body_map=None, **kwargs):
+def get_indices(run_dir, inv_body_map=None, **kwargs):
     indices = get_indices_from_config(run_dir, **kwargs)
     if not indices:
         indices = get_indices_from_log(run_dir)
-    if body_map is not None and len(body_map) > 0:
-        # for body, name in indices.items():
-        #     if body in body_map:
-        #         indices[body] = body_map[body]
-        indices = {str(body_map[eval(body)]): name for body, name in indices.items()}
+    if inv_body_map is not None and len(inv_body_map) > 0:
+        new_indices = {}
+        for body, name in indices.items():
+            if eval(body) in inv_body_map:
+                new_indices[inv_body_map[eval(body)]] = name
+            else:
+                new_indices[body] = name
+        indices = new_indices
     return indices
 
 
@@ -222,7 +225,8 @@ def get_body_map(run_dir, world, inv=False, larger=True):
         return {}
     body_to_name = config['body_to_name']
     if larger and 'body_to_name_new' in config:
-        body_to_name = config['body_to_name_new']
+        body_to_name.update({k: v for k, v in config['body_to_name_new'].items() \
+                             if v not in body_to_name.values()})
     ## if something doesn't exist, 'body_to_name_new' is incomplete
     body_to_new = {k: world.name_to_body[v] for k, v in body_to_name.items() \
                    if v in world.name_to_body}
