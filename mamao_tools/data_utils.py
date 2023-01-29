@@ -72,13 +72,15 @@ def load_planning_config(run_dir, return_mod_time=False):
     return (config, mod_time) if return_mod_time else config
 
 
-def get_indices_from_config(run_dir):
+def get_indices_from_config(run_dir, larger=True):
     config = load_planning_config(run_dir)
     indices = {}
     if 'body_to_name' in config:
-        indices = {k: v for k, v in config['body_to_name'].items()} ## .replace('::', '%')
-    if 'body_to_name_new' in config:
-        indices.update({k: v for k, v in config['body_to_name_new'].items()})
+        indices = config['body_to_name']
+    if larger and 'body_to_name_new' in config:
+        indices = config['body_to_name_new']
+        if len(indices) < len(config['body_to_name']):
+            indices.update(config['body_to_name'])
     return indices
 
 
@@ -202,23 +204,27 @@ def get_indices_from_log(run_dir):
     return indices
 
 
-def get_indices(run_dir, body_map=None):
-    indices = get_indices_from_config(run_dir)
+def get_indices(run_dir, body_map=None, **kwargs):
+    indices = get_indices_from_config(run_dir, **kwargs)
     if not indices:
         indices = get_indices_from_log(run_dir)
     if body_map is not None and len(body_map) > 0:
+        # for body, name in indices.items():
+        #     if body in body_map:
+        #         indices[body] = body_map[body]
         indices = {str(body_map[eval(body)]): name for body, name in indices.items()}
     return indices
 
 
-def get_body_map(run_dir, world, inv=False):
+def get_body_map(run_dir, world, inv=False, larger=True):
     config = load_planning_config(run_dir)
     if 'body_to_name' not in config:
         return {}
     body_to_name = config['body_to_name']
-    if 'body_to_name_new' in config:
+    if larger and 'body_to_name_new' in config:
         body_to_name = config['body_to_name_new']
-    body_to_new = {k: world.name_to_body[v] for k, v in body_to_name.items()}
+    body_to_new = {k: world.name_to_body[v] for k, v in body_to_name.items() \
+                   if v in world.name_to_body}
     if inv:
         return {v: k for k, v in body_to_new.items()}
     body_to_new = {eval(k): v for k, v in body_to_new.items()}
@@ -254,8 +260,6 @@ def get_instance_info(run_dir, world=None):
             uri = m.uri.cdata.replace('/mobility.urdf', '')
             uri = uri[uri.index('models/') + 7:]
             index = uri[uri.index('/') + 1:]
-            if index == '00001':
-                index = 'VeggieCabbage'
             instances[m['name']] = index
     return instances
 
@@ -328,25 +332,6 @@ def get_init_tuples(run_dir):
     objs = get_objs(lines)
     init = get_init(lines, objs, get_all=True)
     return init
-
-
-def get_lisdf_xml(run_dir):
-    return untangle.parse(join(run_dir, 'scene.lisdf')).sdf.world
-
-
-def get_instance_info(run_dir, world=None):
-    if world is None:
-        world = get_lisdf_xml(run_dir)
-    instances = {}
-    for m in world.include:
-        if 'mobility.urdf' in m.uri.cdata:
-            uri = m.uri.cdata.replace('/mobility.urdf', '')
-            uri = uri[uri.index('models/') + 7:]
-            index = uri[uri.index('/') + 1:]
-            if index == '00001':
-                index = 'VeggieCabbage'
-            instances[m['name']] = index
-    return instances
 
 
 def get_fc_record(run_dir, fc_classes=[], diverse=True, rerun_subdir=None):

@@ -185,15 +185,18 @@ class LargerWorld(FeasibilityChecker):
         if 'body_to_name_new' not in config:
             print('\n\nbody_to_name_new not in config', run_dir)
         self.body_to_name_new = config['body_to_name_new']
+        self._body_to_name_old = config['body_to_name']
 
         self.old_actions = get_old_actions(data['skeletons'])
         include_actions = []
         for k, v in self.body_to_name_new.items():
+            if v in self._body_to_name_old.values():
+                continue
             k = eval(k)
             if isinstance(k, tuple) and len(k) == 2:
                 include_actions.append(f'l{get_joint_name_chars(v)}')
             elif isinstance(k, int) and 'minifridge' not in v and 'cabinettop' not in v:
-                include_actions.append(f'k({v})')
+                include_actions.append(f'k({k})')
         self.include_actions = set(include_actions)
 
         self._skips = []

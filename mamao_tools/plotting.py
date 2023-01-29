@@ -18,7 +18,7 @@ from data_utils import get_fc_record, DATASET_PATH
 
 AUTO_REFRESH = False
 VIOLIN = False
-FPC = False
+FPC = True
 PAPER_VERSION = False ## no preview, just save pdf
 
 
@@ -56,8 +56,8 @@ METHOD_NAMES = ['Baseline', 'PIGI', 'PIGI-1/0', 'PIGI-all', 'Oracle']  ## 'PIGI-
 GROUPS = ['tt_storage', 'tt_sink', 'tt_braiser', 'tt_sink_to_storage',
           'tt_braiser_to_storage' ] ##
 
-METHODS = ['None', 'oracle']
-METHOD_NAMES = ['Baseline', 'Oracle']
+METHODS = ['None', 'pvt-task', 'oracle']
+METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']
 
 check_time = 1664255601 ## 1664255601 for baselines | 1664750094  ## for d4 | 1665010453 for d3
 
@@ -496,8 +496,8 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
             fig.legend(handles, METHOD_NAMES, ncol=len(METHODS), fontsize=11,
                        loc='upper center', bbox_to_anchor=(0.5, 0.97))
 
-    if 'pvt-task' in means:
-        print([round(means['pvt-task'][i] / means['None'][i], 2) for i in range(len(groups))])
+    # if 'pvt-task' in means and len(means['pvt-task']) > 0 and len(means['None']) > 0:
+    #     print([round(means['pvt-task'][i] / means['None'][i], 2) for i in range(len(groups))])
 
     if PAPER_VERSION: ##  and False
         file_name = 'evaluation' if GROUPS[-1].startswith('tt') else 'evaluation_geometry'

@@ -15,7 +15,7 @@ from pybullet_tools.utils import pose_from_tform, get_pose, get_joint_name, get_
     get_movable_joints, Euler, quat_from_euler
 from isaac_tools.urdf_utils import load_lisdf, test_is_robot
 from lisdf_tools.image_utils import images_to_mp4, images_to_gif
-from mamao_tools.data_utils import load_planning_config
+from mamao_tools.data_utils import load_planning_config, get_instance_info
 
 ASSET_PATH = join(dirname(__file__), '..', 'assets')
 
@@ -194,6 +194,7 @@ def load_lisdf_isaacgym(lisdf_dir, robots=True, pause=False, loading_effect=Fals
             actor = gym_world.create_actor(asset, name=f'camera_{i+1+j}', scale=0.1)
             gym_world.set_pose(actor, pose)
 
+        ## looking from the right side for the paper
         gym_world.set_camera_target(camera, (6, 9, 3), (0, 4, 1))
         # gym_world.set_camera_target(camera, (8, 3.5, 3), (0, 3.5, 1))
 
@@ -510,6 +511,15 @@ def set_camera_target_body(gym_world, run_dir):
         pose = gym_world.get_pose(actor)
 
         camera_target = pose[0]
+        instances = get_instance_info(run_dir)
+        print(f'\n gym_utils.set_camera_target_body({name}) | {instances[name]} \n')
+        if instances[name] in ['00001']:
+            camera_target[1] -= 0.4
+            camera_target[0] += 0.4
+        elif instances[name] in ['00002']:
+            camera_target[1] += 0.4
+        elif instances[name] in ['00003']:
+            camera_target[1] -= 0.5
         camera_point = camera_target + np.array([dx, dy, dz])
 
         gym_world.set_viewer_target(camera_point, target=camera_target)
