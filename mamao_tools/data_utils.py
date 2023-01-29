@@ -418,7 +418,7 @@ def get_variables(init, objs=None):
     return vs, {vs[i]: f'idx={i}' for i in range(len(vs))}
 
 
-def get_plan_from_strings(actions, vs, inv_vs, indices={}, keep_action_names=True):
+def get_plan_from_strings(actions, indices={}, keep_action_names=True, vs={}, inv_vs={}):
     plan = []
     for a in actions:
         name = a[a.index("name='") + 6: a.index("', args=(")]
