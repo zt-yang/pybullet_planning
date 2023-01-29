@@ -218,7 +218,7 @@ class LargerWorld(FeasibilityChecker):
 
 rename = {'pick': 'k', 'place': 'c', 'pull_door_handle': 'l'}
 shorter = lambda a: '-'.join([rename[a.name], str(a.args[1])]) \
-    if isinstance(a[1], tuple) else '-'.join([rename[a[0]], str(a[1])])
+    if isinstance(a[1], list) else '-'.join([rename[a[0]], str(a[1])])
 shorter_plan = lambda actions: f"({', '.join([shorter(a) for a in actions if a.name in rename])})"
 
 
