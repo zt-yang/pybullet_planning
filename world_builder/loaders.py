@@ -1549,7 +1549,7 @@ def load_counter_moveables(world, counters, x_min=None, obstacles=[], verbose=Fa
         medicine_ids.append(obj)
         obstacles.append(obj.body)
 
-    if world.note in [31]:
+    if world.note in [3, 31]:
         put_lid_on_braiser(world)
     print('... finished loading moveables in {}s'.format(round(time.time() - start, 2)))
     # world.summarize_all_objects()
@@ -1566,8 +1566,7 @@ def move_lid_away(world, counters, epsilon=1.0):
 
     if random.random() < epsilon:
         counters_tmp[0].place_obj(world.BODY_TO_OBJECT[lid], world=world)
-        return counters_tmp[0]
-    return None
+    return counters_tmp[0]
 
 
 def load_table_stationaries(world, w=6, l=6, h=0.9):
@@ -2269,6 +2268,7 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
     """ maybe move the lid away """
     if case in [3, 31]:
         """ make sure food is smaller than the braiser """
+        epsilon = 0 if case in [3] else 0.3
         if case in [3]:
             count = 0
             while not aabb_larger(obj_bottom, food):
@@ -2277,7 +2277,7 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
         lid = world.name_to_body('braiserlid')
         objects += [food, lid]
         world.add_to_cat(lid, 'moveable')
-        counters_tmp = move_lid_away(world, counters, epsilon=0.3)
+        counters_tmp = move_lid_away(world, counters, epsilon=epsilon)
         if counters_tmp is not None:
             objects += [counters_tmp.pybullet_name]
     elif case in [993]:
