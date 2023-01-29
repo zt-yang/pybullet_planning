@@ -609,30 +609,36 @@ def add_objects_and_facts(world, init, goal):
         non_planning_types['graspable'] = [v for k, v in world.name_to_body.items() if \
                                       ('veggie' in k or 'bottle' in k or 'medicine' in k) \
                                       and v not in planning_types['graspable']]
+        random.shuffle(non_planning_types['graspable'])
         non_planning_types['surface'] = [b for b in world.body_to_name if is_box_entity(b)]
         non_planning_types['surface'] += [world.name_to_body['microwave#1']]
+        total_surfaces = planning_types['surface']
+        total_graspables = planning_types['graspable']
 
         placed = False
         graspable = None
         found_surface = None
-        while not placed:
-            graspable = random.choice(non_planning_types['graspable'])
+        for graspable in non_planning_types['graspable']:
             for s in non_planning_types['surface']:
                 if is_placement(graspable, s, below_epsilon=0.02, above_epsilon=0.02):
                     found_surface = s
                     placed = True
-
-        p = Pose(graspable)
-        added_objects += [graspable, found_surface]
-        added_init += [('Pose', graspable, p), ('AtPose', graspable, p),
-                       ('Graspable', graspable), ('Surface', found_surface),
-                       ('Supported', graspable, p, found_surface)]
+            if placed:
+                break
+        if placed:
+            p = Pose(graspable)
+            added_objects += [graspable, found_surface]
+            added_init += [('Pose', graspable, p), ('AtPose', graspable, p),
+                           ('Graspable', graspable), ('Surface', found_surface),
+                           ('Supported', graspable, p, found_surface)]
+            total_surfaces += [found_surface]
+            total_graspables += [graspable]
 
         """ add all stackable """
-        for gg in planning_types['graspable'] + [graspable]:
-            for ss in planning_types['surface'] + [found_surface]:
+        for gg in total_graspables:
+            for ss in total_surfaces:
                 stackable = ('stackable', gg, ss)
-                if stackable not in init and not gg == lid and ss == bottom:
+                if stackable not in init and not (gg == lid and ss == bottom):
                     added_init += [stackable]
 
         added_objects = [world.body_to_name[b] for b in added_objects]
