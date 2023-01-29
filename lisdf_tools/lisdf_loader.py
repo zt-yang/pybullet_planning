@@ -613,7 +613,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
                 set_joint_position(body, joint_from_name(body, js.name), position)
 
     ## load objects transparent
-    if 'test_full_kitchen' in world.name and transparent:
+    if ('test_full_kitchen' in world.name or 'None_' in world.name) and transparent:
         make_furniture_transparent(bullet_world, lisdf_dir, lower_tpy=0.5, upper_tpy=0.2)
 
     if world.gui is not None:
