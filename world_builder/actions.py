@@ -479,7 +479,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
     if not CHECK_COLLISIONS and (SAVE_COMPOSED_JPG or SAVE_GIF):
         colors = RAINBOW_COLORS
         color_index = 0
-        indices = world.get_indices(body_map=body_map)
+        indices = world.get_indices(body_map=body_map, larger=False)
         if SAVE_COMPOSED_JPG:
             imgs = world.camera.get_image(segment=True, segment_links=True)
             seg = imgs.segmentationMaskBuffer
