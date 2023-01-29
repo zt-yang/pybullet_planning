@@ -231,17 +231,21 @@ class World():
         self.floors = floors
         self.ignored_pairs = ignored_pairs
 
-    def summarize_all_types(self, init=None):
+    def summarize_all_types(self, init=None, return_string=True):
         if init is None: return ''
         printout = ''
-        for typ in ['graspable', 'surface', 'door', 'drawer']:
+        results = {}
+        for typ in ['graspable', 'surface', 'space', 'door', 'drawer', 'joint']:
             bodies = self.cat_to_bodies(typ, init)
+            results[typ] = bodies
             num = len(bodies)
             if typ == 'graspable':
                 typ = 'moveable'
             if num > 0:
                 printout += f"{typ}({num}) = {bodies}, "
-        return printout
+        if return_string:
+            return printout
+        return results
 
     def cat_to_bodies(self, cat, init=[]):
         return [f[1] for f in init if f[0].lower() == cat]
@@ -254,8 +258,12 @@ class World():
         self.check_world_obstacles()
         ob = [n for n in self.fixed if n not in self.floors]
 
+        objects = []
         if init is not None:
             for f in init:
+                for elem in f:
+                    if elem in self.body_to_name and elem not in objects:
+                        objects.append(elem)
                 if len(f) == 2 and f[1] in self.body_to_name:
                     typ, body = f
                     name = self.body_to_name[body]
@@ -264,12 +272,21 @@ class World():
                         if 'cabinet::link' in name or 'minifridge::link' in name:
                             self.body_types[body].append('storage')
                     self.body_types[body].append(typ)
+        self.planning_objects = objects
 
-        print_fn('----------------')
+        print_fn('----------------------------------------------------------------------------------')
         print_fn(f'PART I: world objects | {self.summarize_all_types(init)} | obstacles({len(ob)}) = {ob}')
-        print_fn('----------------')
+        print_fn('----------------------------------------------------------------------------------')
 
-        for body in sort_body_parts(self.body_to_name.keys()):
+        sorted_body_parts = sort_body_parts(self.body_to_name.keys())
+        body_parts = [b for b in sorted_body_parts if b in self.planning_objects]
+        body_parts += [b for b in sorted_body_parts if b not in self.planning_objects]
+
+        drew_line = False
+        for body in body_parts:
+            if body not in self.planning_objects and not drew_line:
+                print_fn('----------------------------------------------------------------------------------')
+                drew_line = True
             name = self.body_to_name[body]
             line = f'{body}\t  |  {name}'
             if body in self.body_types:
@@ -290,6 +307,12 @@ class World():
     def summarize_facts(self, init, **kwargs):
         self.init = init
         summarize_facts(init, world=self, **kwargs)
+
+    def get_planning_objects(self):
+        return [self.body_to_name[b] for b in self.planning_objects]
+
+    def get_non_planning_objects(self):
+        return [self.body_to_name[b] for b in self.body_to_name if b not in self.planning_objects]
 
     def get_world_fluents(self, only_fluents=False):
         return [f for f in self.init if f[0] in ['atposition', 'atpose']]
@@ -359,7 +382,12 @@ class World():
             return self.mobility_identifiers[body]
         return None
 
-    def get_lisdf_name(self, pybullet_name):
+    def get_path(self, body):
+        if body in self.paths:
+            return self.paths[body]
+        return None
+
+    def get_lisdf_name(self, pybullet_name, joint=None, link=None):
         if isinstance(pybullet_name, int):
             return self.get_name(pybullet_name)
         elif len(pybullet_name) == 2:
@@ -503,7 +531,7 @@ def get_custom_limits(config_path):
 
 
 def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False,
-                        width=1980, height=1238, transparent=True):
+                        width=1980, height=1238, transparent=True, larger_world=False):
 
     ## sometimes another lisdf name is given
     if lisdf_path.endswith('.lisdf'):
@@ -585,7 +613,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
                 set_joint_position(body, joint_from_name(body, js.name), position)
 
     ## load objects transparent
-    if 'test_full_kitchen' in world.name and transparent:
+    if ('test_full_kitchen' in world.name or 'None_' in world.name) and transparent:
         make_furniture_transparent(bullet_world, lisdf_dir, lower_tpy=0.5, upper_tpy=0.2)
 
     if world.gui is not None:
@@ -600,6 +628,9 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
 
         ## add surfaces, spaces, joints accoring to body_to_name
         body_to_name = config['body_to_name']
+        if larger_world and 'body_to_name_new' in config:
+            body_to_name.update(config['body_to_name_new'])
+
         for k, v in body_to_name.items():
             if v not in bullet_world.name_to_body:
                 bullet_world.add_body(eval(k), v)
@@ -702,7 +733,7 @@ def revise_goal(goal, world):
 
 
 def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True,
-                        teleport=False, goal=None, **kwargs):
+                        teleport=False, goal=None, larger_world=False, **kwargs):
     exp_dir = abspath(exp_dir)
 
     domain_path, stream_path, config_path = pddl_files_from_dir(exp_dir, replace_pddl)
@@ -711,7 +742,8 @@ def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True,
     stream_pddl = read(stream_path)
 
     world = problem.world
-    init, g, constant_map = pddl_to_init_goal(exp_dir, world, domain_file=domain_path)
+    init, g, constant_map = pddl_to_init_goal(exp_dir, world, domain_file=domain_path,
+                                              larger_world=larger_world)
     world.summarize_all_objects(init)  ## important to get obstacles
 
     if goal is not None:

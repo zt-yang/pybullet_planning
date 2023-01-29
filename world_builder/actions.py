@@ -600,7 +600,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
 
         ###############################################
 
-        elif recording:
+        if recording:
             if not record_img:
                 continue
             if SAVE_COMPOSED_JPG:

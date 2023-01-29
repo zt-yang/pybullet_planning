@@ -14,17 +14,12 @@ from mamao_tools.text_utils import ACTION_ABV, ACTION_NAMES
 
 import sys
 sys.path.append('/home/yang/Documents/fastamp')
-
-if 'zhutiany' in getcwd():
-    DATASET_PATH = '/home/zhutiany/Documents/mamao-data'
-elif 'yang' in getcwd():
-    DATASET_PATH = '/home/yang/Documents/fastamp-data-rss'
-else: ## not tested
-    DATASET_PATH = '../../fastamp-data'
+DATASET_PATH = '/home/yang/Documents/fastamp-data-rss'
 
 
 def get_feasibility_checker(run_dir, mode, diverse=False, world=None):
-    from .feasibility_checkers import PassAll, ShuffleAll, Oracle, PVT, Heuristic
+    from mamao_tools.feasibility_checkers import PassAll, ShuffleAll, Oracle, PVT, \
+        Heuristic, LargerWorld
     body_map = get_body_map(run_dir, world=world) if isinstance(run_dir, str) else {}
     if mode == 'binary':
         mode = 'pvt'
@@ -37,6 +32,8 @@ def get_feasibility_checker(run_dir, mode, diverse=False, world=None):
         return Oracle(run_dir, body_map)
     elif mode == 'heuristic':
         return Heuristic(run_dir, body_map)
+    elif mode == 'larger_world':
+        return LargerWorld(run_dir, body_map)
     elif 'pvt-task' in mode:
         task_name = abspath(run_dir).replace(DATASET_PATH, '').split('/')[1]
         return PVT(run_dir, body_map, mode=mode, task_name=task_name, scoring=diverse)
@@ -77,9 +74,12 @@ def load_planning_config(run_dir, return_mod_time=False):
 
 def get_indices_from_config(run_dir):
     config = load_planning_config(run_dir)
+    indices = {}
     if 'body_to_name' in config:
-        return {k: v for k, v in config['body_to_name'].items()} ## .replace('::', '%')
-    return False
+        indices = {k: v for k, v in config['body_to_name'].items()} ## .replace('::', '%')
+    if 'body_to_name_new' in config:
+        indices.update({k: v for k, v in config['body_to_name_new'].items()})
+    return indices
 
 
 def add_to_planning_config(run_dir, new_data, safely=True):
@@ -202,13 +202,6 @@ def get_indices_from_log(run_dir):
     return indices
 
 
-def get_indices_from_config(run_dir):
-    config = load_planning_config(run_dir)
-    if 'body_to_name' in config:
-        return config['body_to_name']
-    return False
-
-
 def get_indices(run_dir, body_map=None):
     indices = get_indices_from_config(run_dir)
     if not indices:
@@ -223,9 +216,12 @@ def get_body_map(run_dir, world, inv=False):
     if 'body_to_name' not in config:
         return {}
     body_to_name = config['body_to_name']
-    body_to_new = {eval(k): world.name_to_body[v] for k, v in body_to_name.items()}
+    if 'body_to_name_new' in config:
+        body_to_name.update(config['body_to_name_new'])
+    body_to_new = {k: world.name_to_body[v] for k, v in body_to_name.items()}
     if inv:
         return {v: k for k, v in body_to_new.items()}
+    body_to_new = {eval(k): v for k, v in body_to_new.items()}
     return body_to_new
 
 
@@ -278,6 +274,17 @@ def get_action_elems(list_of_elem):
                     '=' not in str(e) and str(e) not in ['left', 'right', 'hand', 'None']]
 
 
+def get_joint_name_chars(o):
+    body_name, joint_name = o.split('::')
+    if not joint_name.startswith('left') and 'left' in joint_name:
+        joint_name = joint_name[0] + 'l'
+    elif not joint_name.startswith('right') and 'right' in joint_name:
+        joint_name = joint_name[0] + 'r'
+    else:
+        joint_name = joint_name[-1]
+    return f"({body_name[0]}{joint_name})"
+
+
 def get_plan_skeleton(plan, indices={}, include_joint=True, include_movable=False):
     joints = [k for k, v in indices.items() if "::" in v]
     movables = [k for k, v in indices.items() if "::" not in v]
@@ -305,15 +312,6 @@ def get_plan_skeleton(plan, indices={}, include_joint=True, include_movable=Fals
         if len(skeleton) > 0:
             ## contains 'minifridge::joint_2' or '(4, 1)'
             if include_joint:
-                def get_joint_name_chars(o):
-                    body_name, joint_name = o.split('::')
-                    if not joint_name.startswith('left') and 'left' in joint_name:
-                        joint_name = joint_name[0] + 'l'
-                    elif not joint_name.startswith('right') and 'right' in joint_name:
-                        joint_name = joint_name[0] + 'r'
-                    else:
-                        joint_name = joint_name[0]
-                    return f"({body_name[0]}{joint_name})"
                 skeleton += ''.join([get_joint_name_chars(o) for o in a[1:] if o in joint_names])
                 skeleton += ''.join([f"({indices[o][0]}{indices[o][-1]})" for o in a[1:] if o in joints])
             ## contains 'veggiepotato' or '3'
@@ -804,3 +802,14 @@ def get_from_to(name, aabbs, point=None, verbose=False, run_dir=None):
     # return (relation, found_category, found_name), (x_upper, y_center, z_center)
 
     return (relation, found_category, found_name), x_upper, found_point
+
+
+def get_old_actions(skeletons):
+    actions = []
+    for skeleton in skeletons:
+        aa = [a+')' for a in skeleton.split(')')[:-1]]
+        for a in aa:
+            if a not in actions:
+                actions.append(a)
+    actions.sort()
+    return actions

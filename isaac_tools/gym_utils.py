@@ -5,14 +5,17 @@ from os.path import join, isdir, abspath, dirname, isfile
 import time
 from pprint import pprint
 from tqdm import tqdm
+import shutil
 import numpy as np
 import json
 
 from world_builder.utils import get_camera_zoom_in
 from pybullet_tools.bullet_utils import nice, equal, get_datetime
-from pybullet_tools.utils import pose_from_tform, get_pose, get_joint_name, get_joint_position, get_movable_joints
+from pybullet_tools.utils import pose_from_tform, get_pose, get_joint_name, get_joint_position, \
+    get_movable_joints, Euler, quat_from_euler
 from isaac_tools.urdf_utils import load_lisdf, test_is_robot
 from lisdf_tools.image_utils import images_to_mp4, images_to_gif
+from mamao_tools.data_utils import load_planning_config
 
 ASSET_PATH = join(dirname(__file__), '..', 'assets')
 
@@ -31,7 +34,7 @@ ASSET_PATH = join(dirname(__file__), '..', 'assets')
 
 def load_one_world(gym_world, lisdf_dir, offset=None, loading_effect=False,
                    robots=True, world_index=None, assets=None, 
-                   update_viewer=True, test_camera_pose=False, **kwargs):
+                   update_viewer=True, test_camera_pose=False, save_obj_shots=False, **kwargs):
     movable_keywords = ['bottle', 'medicine', 'veggie', 'meat', 'braiser']
     cabinet_keywards = ['cabinettop', 'cabinettall', 'minifridge', 'dishwasher', 'microwavehanging'] ## , 'ovencounter'
     loading_objects = {}
@@ -42,6 +45,12 @@ def load_one_world(gym_world, lisdf_dir, offset=None, loading_effect=False,
             if k in name:
                 return True
         return False
+
+    if save_obj_shots:
+        asset = gym_world.simulator.box_asset(0.5, length=8, height=3, fixed_base=True)
+        actor = gym_world.create_actor(asset, name='backdrop', scale=1)
+        gym_world.set_color(actor, (1, 1, 1, 1))
+        gym_world.set_pose(actor, ((-5, -5, 1), (0, 0, 0, 1)))
 
     for name, path, scale, is_fixed, pose, positions in load_lisdf(lisdf_dir, robots=robots, **kwargs):
         is_robot = test_is_robot(name)
@@ -85,7 +94,6 @@ def load_one_world(gym_world, lisdf_dir, offset=None, loading_effect=False,
         if color is not None:
             gym_world.set_color(actor, color)
 
-        gym_world.set_pose(actor, pose)
         if positions is not None:
             joint_positions = gym_world.get_joint_positions(actor)
             joint_names = gym_world.get_joint_names(actor)
@@ -114,33 +122,90 @@ def load_one_world(gym_world, lisdf_dir, offset=None, loading_effect=False,
                 joint_positions = [p[0] for p in opened_positions]
             gym_world.set_joint_positions(actor, joint_positions)
 
+        if save_obj_shots:
+            if 'minifridge' in name:
+                camera = gym_world.cameras[-1]
+                img_file = join('gym_images', f'obj-{name}.png')
+                to_point = [-4, -4, 1]
+                from_point = [-1, -4, 1.5]
+                gym_world.set_pose(actor, (to_point, pose[1]))
+                gym_world.set_camera_target(camera, from_point, to_point)
+                gym_world.save_image(camera, image_type='rgb', filename=img_file)
+
+        gym_world.set_pose(actor, pose)
+
     if update_viewer:
         gym_world.simulator.update_viewer()
     return assets, (loading_objects, loading_positions)
 
 
 def load_lisdf_isaacgym(lisdf_dir, robots=True, pause=False, loading_effect=False,
-                       camera_point=(8.5, 2.5, 3), target_point=(0, 2.5, 0), return_wconf=False,
-                        camera_width=2560, camera_height=1600, **kwargs):
+                        camera_point=(8.5, 2.5, 3), target_point=(0, 2.5, 0), return_wconf=False,
+                        camera_width=2560, camera_height=1600, load_cameras=False,
+                        save_obj_shots=False, **kwargs):
     sys.path.append('/home/yang/Documents/playground/srl_stream/src')
     from srl_stream.gym_world import create_single_world, default_arguments
+
+    if 'full_kitchen' in lisdf_dir or 'mm_' in lisdf_dir or 'tt_' in lisdf_dir:
+        config = load_planning_config(lisdf_dir)
+        world_aabb = config['world_aabb']
+        y = (world_aabb[1][1] + world_aabb[0][1]) / 2
+        camera_point = (8, y, 3)
+        target_point = (0, y, 1)
 
     # TODO: Segmentation fault - possibly cylinders & mimic joints
     gym_world = create_single_world(args=default_arguments(use_gpu=False), spacing=5.)
     gym_world.set_viewer_target(camera_point, target=target_point)
 
-    loading = load_one_world(gym_world, lisdf_dir, robots=robots,
-                             loading_effect=loading_effect, **kwargs)
     camera = gym_world.create_camera(width=camera_width, height=camera_height, fov=60)
     gym_world.set_camera_target(camera, camera_point, target_point)
+
+    loading = load_one_world(gym_world, lisdf_dir, robots=robots,
+                             loading_effect=loading_effect, save_obj_shots=save_obj_shots, **kwargs)
+
+    if save_obj_shots:
+        gym_world.set_camera_target(camera, camera_point, target_point)
+
+    if load_cameras:
+        ## load planning conf to get camera poses
+        path = '/home/yang/Documents/cognitive-architectures/bullet/assets/models/RGBCamera/102523/mobility.urdf'
+        asset = gym_world.simulator.load_asset(
+            asset_file=path, root=None, fixed_base=True,
+            gravity_comp=False, collapse=False, vhacd=False)
+
+        config = load_planning_config(lisdf_dir)
+        for i in range(1, len(config['camera_kwargs'])):
+            args = config['camera_kwargs'][i]
+            x1, _, z1 = args['camera_point']
+            x2, _, z2 = args['target_point']
+            pitch = - np.arctan((z2 - z1) / (x2 - x1))
+            pose = (args['camera_point'], quat_from_euler(Euler(pitch=pitch)))
+            actor = gym_world.create_actor(asset, name=f'camera_{i}', scale=0.1)
+            gym_world.set_pose(actor, pose)
+        for j in range(len(config['camera_zoomins'])):
+            args = config['camera_zoomins'][j]
+            pose = gym_world.get_pose(gym_world.get_actor(args['name']))
+            dx, _, dz = args['d']
+            pitch = - np.arctan(dz / dx)
+            d = np.asarray(args['d']) * 0.8
+            point = pose[0] + d
+            point[2] = 1.79
+            pose = (point, quat_from_euler(Euler(pitch=pitch)))
+            actor = gym_world.create_actor(asset, name=f'camera_{i+1+j}', scale=0.1)
+            gym_world.set_pose(actor, pose)
+
+        gym_world.set_camera_target(camera, (6, 9, 3), (0, 4, 1))
+        # gym_world.set_camera_target(camera, (8, 3.5, 3), (0, 3.5, 1))
 
     if loading_effect:
         wconfs = record_gym_world_loading_objects(gym_world, loading, return_wconf=return_wconf, **kwargs)
         if return_wconf:
             return wconfs
     else:
-        img_file = os.path.join(lisdf_dir, 'gym_scene.png')
+        img_file = join(lisdf_dir, 'gym_scene.png')
         gym_world.save_image(camera, image_type='rgb', filename=img_file)
+        if load_cameras:
+            shutil.copy(img_file, join('gym_images', 'cameras2.png'))
 
     if pause:
         gym_world.wait_if_gui()

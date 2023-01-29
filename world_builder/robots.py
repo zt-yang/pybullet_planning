@@ -557,7 +557,7 @@ class PR2Robot(RobotAPI):
             if result:
                 break
 
-        if not result:
+        if not result and body in self.possible_obstacles:
             self.possible_obstacles[body_link] = self.possible_obstacles[body]
 
         if obj is not None:

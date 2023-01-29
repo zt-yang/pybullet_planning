@@ -17,6 +17,7 @@ from world_builder.entities import Object, Region, Environment, Robot, Camera, F
     Surface, Moveable, Space, Steerable
 from world_builder.robots import PR2Robot, FEGripper
 from world_builder.robot_builders import create_pr2_robot
+from world_builder.utils import get_partnet_doors, get_partnet_spaces, get_partnet_links_by_type
 
 import sys
 from pybullet_tools.pr2_primitives import get_base_custom_limits
@@ -34,12 +35,11 @@ from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, H
     get_joint_name, wait_for_user, draw_aabb, get_bodies, euler_from_quat
 from pybullet_tools.bullet_utils import place_body, add_body, Pose2d, nice, OBJ_YAWS, \
     sample_obj_on_body_link_surface, sample_obj_in_body_link_space, set_camera_target_body, \
-    open_joint, close_joint, set_camera_target_robot, summarize_joints, get_partnet_doors, get_partnet_spaces, \
+    open_joint, close_joint, set_camera_target_robot, summarize_joints, \
     set_pr2_ready, BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, draw_base_limits, \
-    collided_around, collided, get_partnet_links_by_type, aabb_larger, equal, in_list
+    collided_around, collided, aabb_larger, equal, in_list
 
 OBJ = '?obj'
-
 
 BASE_VELOCITIES = np.array([1., 1., math.radians(180)]) / 1.  # per second
 BASE_RESOLUTIONS = np.array([0.05, 0.05, math.radians(10)])  # from examples.pybullet.namo.stream import BASE_RESOLUTIONS

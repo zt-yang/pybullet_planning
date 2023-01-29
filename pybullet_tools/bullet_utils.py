@@ -1847,56 +1847,6 @@ def sort_body_parts(bodies, existing=[]):
     return sorted_bodies
 
 
-def get_partnet_semantics(path):
-    if path.endswith('urdf'):
-        path = path[:path.rfind('/')]
-    file = join(path, 'semantics.txt')
-    lines = []
-    with open(file, 'r') as f:
-        for line in f.readlines():
-            lines.append(line.replace('\n', '').split(' '))
-    return lines
-
-
-def get_partnet_doors(path, body):
-    body_joints = {}
-    for line in get_partnet_semantics(path):
-        link_name, part_type, part_name = line
-        if part_type == 'hinge' and part_name in ['door', 'rotation_door']:
-            link = link_from_name(body, link_name)
-            joint = parent_joint_from_link(link)
-            joint_name = '--'.join(line)
-            body_joint = (body, joint)
-            body_joints[body_joint] = joint_name
-    return body_joints
-
-
-def get_partnet_spaces(path, body):
-    space_links = {}
-    for line in get_partnet_semantics(path):
-        link_name, part_type, part_name = line
-        if '_body' in part_name:
-            link = link_from_name(body, link_name)
-            space_links[(body, None, link)] = part_name
-    return space_links
-
-
-def get_partnet_links_by_type(path, body, keyward):
-    links = []
-    for line in get_partnet_semantics(path):
-        if line[-1] == keyward:
-            links.append(link_from_name(body, line[0]))
-    return links
-
-
-def get_grasp_link(path, body):
-    link = None
-    for line in get_partnet_semantics(path):
-        if line[-1] == 'grasp_link':
-            link = link_from_name(body, line[0])
-    return link
-
-
 def get_datetime(TO_LISDF=False, year=True):
     from datetime import datetime
     form = "%m%d_%H:%M"

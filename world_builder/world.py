@@ -174,6 +174,9 @@ class World(object):
         a, b = pair
         self.c_ignored_pairs.extend([(a, b), (b, a)])
 
+    def get_planning_objects(self):
+        return [o.lisdf_name for o in self.BODY_TO_OBJECT.values()]
+
     def get_attr(self, obj, attr):
         preds = ['left', 'right', 'hand'] + ['joint', 'door', 'drawer', 'knob', 'button']
         if isinstance(obj, str):

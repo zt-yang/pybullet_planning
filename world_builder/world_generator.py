@@ -11,8 +11,10 @@ from os import listdir
 from pybullet_tools.utils import get_bodies, euler_from_quat, get_collision_data, get_joint_name, \
     get_joint_position, get_camera, joint_from_name, get_color, reset_simulation
 from pybullet_tools.bullet_utils import get_readable_list, LINK_STR, nice
-from .entities import Robot, LINK_STR
-from .utils import read_xml, get_file_by_category, get_model_scale
+from pybullet_tools.general_streams import Position
+
+from world_builder.entities import Robot, LINK_STR
+from world_builder.utils import read_xml, get_file_by_category, get_model_scale, get_partnet_doors
 
 from lisdf_tools.lisdf_loader import get_depth_images
 
@@ -86,8 +88,10 @@ CAMERA_STR = """
     </gui>
 """
 
+
 def list_to_xml(lst):
     return " ".join([str(round(o, 3)) for o in lst])
+
 
 def to_pose_xml(pose):
     xyz, quat = pose
@@ -308,6 +312,7 @@ def test_get_camera_spec():
             print(f'test {i} | \t camera_point_est {nice(camera_point_est)}\t target_point_est {nice(target_point_est)}')
     disconnect()
 
+
 def clean_domain_pddl(pddl_str, all_pred_names):
     string = 'xyzijk'
     need_preds = list(all_pred_names)
@@ -419,25 +424,13 @@ def get_config_from_template(template_path):
     return config
 
 
-def get_pddl_from_list(fact, world):
-    fact = get_readable_list(fact, world, NAME_ONLY=True, TO_LISDF=True)
-    line = ' '.join([str(ele) for ele in fact])
-    line = line.replace("'", "")
-    return '(' + line + ')'
-
-
-def generate_problem_pddl(world, facts, goals,
-                          world_name='lisdf', domain_name='domain', out_path=None):
-    if goals[0] == 'and':
-        goals = [list(n) for n in goals[1:]]
-
-    PDDL_STR = """
+PDDL_STR = """
 (define
   (problem {world_name})
   (:domain {domain_name})
 
   (:objects
-    {objects_pddl}
+{objects_pddl}
   )
 
   (:init
@@ -450,15 +443,74 @@ def generate_problem_pddl(world, facts, goals,
 )
         """
 
+
+def generate_problem_pddl(world, facts, goals, world_name='lisdf', domain_name='domain',
+                          out_path=None, added_obj=None, added_init=None):
+
+    if world_name is None and hasattr(world, 'lisdf'):
+        world_name = world.lisdf.name
+
+    ########################################################
+
+    objects = world.get_planning_objects()
+    objects.extend(world.robot.joint_groups)
+    objects.extend([str(i[1]) for i in facts if i[0].lower() == 'wconf'])
+    objects_pddl = '\t'+'\n\t'.join(sorted(objects))
+    if added_obj is not None:
+        objects_pddl += '\n\t;; added objects for larger problem' + \
+                        '\n\t' + '\n\t'.join(sorted(added_obj))
+
+    ########################################################
+
+    init_pddl = generate_init_pddl(world, facts)
+    if added_init is not None:
+        init_pddl += '\n\n\t;; added facts for larger problem' + \
+                     generate_init_pddl(world, added_init)
+
+    ########################################################
+
+    if goals[0] == 'and':
+        goals = [list(n) for n in goals[1:]]
+    goal_pddl = '\n\t'.join([get_pddl_from_list(g, world) for g in sorted(goals)]).lower()
+
+    problem_pddl = PDDL_STR.format(
+        objects_pddl=objects_pddl, init_pddl=init_pddl, goal_pddl=goal_pddl,
+        world_name=world_name, domain_name=domain_name
+    ).lower()
+
+    ########################################################
+
+    if out_path is not None:
+        with open(out_path, 'w') as f:
+            f.writelines(problem_pddl)
+    else:
+        from pybullet_tools.logging import myprint as print
+        print(f'----------------{problem_pddl}')
+
+    # all_pred_names = {}  # pred: arity
+    # for fact in list(set(facts)):
+    #     pred = fact[0]
+    #     if pred.lower() not in all_pred_names:
+    #         all_pred_names[pred.lower()] = len(fact[1:])
+    # return all_pred_names
+
+
+def get_pddl_from_list(fact, world):
+    fact = get_readable_list(fact, world, NAME_ONLY=True, TO_LISDF=True)
+    line = ' '.join([str(ele) for ele in fact])
+    line = line.replace("'", "")
+    return '(' + line + ')'
+
+
+def generate_init_pddl(world, facts):
+
+    init_pddl = ''
     kinds = {}  # pred: continuous vars
     by_len = {}  # pred: length of fact
     predicates = {}  # pred: [fact]
-    all_pred_names = {}  # pred: arity
     for fact in list(set(facts)):
         pred = fact[0]
         if pred in ['=']: continue
-        if pred.lower() not in all_pred_names:
-            all_pred_names[pred.lower()] = len(fact[1:])
         fact = get_pddl_from_list(fact, world)
 
         if pred not in predicates:
@@ -479,7 +531,6 @@ def generate_problem_pddl(world, facts, goals,
     kinds = {k: v for k, v in sorted(kinds.items(), key=lambda item: item[0])}
     by_len = {k: v for k, v in sorted(by_len.items(), key=lambda item: item[0])}
 
-    init_pddl = ''
     for kind, preds in kinds.items():
         pp = {k: v for k, v in predicates.items() if k in preds}
 
@@ -495,21 +546,44 @@ def generate_problem_pddl(world, facts, goals,
                 init_pddl += '\n\t' + '\n\t'.join(predicates[pred])
             init_pddl += '\n'
 
-    objects = [o.lisdf_name for o in world.BODY_TO_OBJECT.values()]
-    objects.extend(world.robot.joint_groups)
-    objects.extend([str(i[1]) for i in facts if i[0].lower() == 'wconf'])
-    objects_pddl = '\n\t'.join(sorted(objects))
+    return init_pddl
 
-    goal_pddl = '\n\t'.join([get_pddl_from_list(g, world) for g in sorted(goals)]).lower()
 
-    problem_pddl = PDDL_STR.format(
-        objects_pddl=objects_pddl, init_pddl=init_pddl, goal_pddl=goal_pddl,
-        world_name=world_name, domain_name=domain_name
-    ).lower()
-    if out_path != None:
-        with open(out_path, 'w') as f:
-            f.writelines(problem_pddl)
-    else:
-        from pybullet_tools.logging import myprint as print
-        print(f'----------------{problem_pddl}')
-    return all_pred_names
+def add_objects_and_facts(world, init, goal):
+    """ lisdf world """
+    added_objects, added_init, added_body_to_name = [], [], {}
+
+    world_name = world.lisdf.name
+    case = world_name[world_name.find('original_')+9:]
+
+    planning_objects = world.get_planning_objects()
+    non_planning_objects = world.get_non_planning_objects()
+    planning_types = world.summarize_all_types(init, return_string=False)
+
+    if case in ['1', '11', '21', '31']:
+
+        ## add another container and its doors
+        this_container = [o[:o.index(':')] for o in planning_objects if 'minifridge::' in o or 'cabinettop::' in o][0]
+        container = [o for o in non_planning_objects if ('minifridge' in o or 'cabinettop' in o) \
+                     and this_container not in o][0]
+        body = world.name_to_body[container]
+        path = world.get_path(body)
+        added_objects.append(container)
+        added_body_to_name[body] = container
+
+        doors = get_partnet_doors(path, body)
+        for b, j in doors:
+            bj = (b, j)
+            bj_name = f"{container}::{get_joint_name(b, j)}"
+            world.add_body(bj, bj_name)
+            added_body_to_name[bj] = bj_name
+            position = Position(bj)
+            added_objects.append(bj_name)
+            added_init += [('Joint', bj), ('IsJointTo', bj, b), ('Position', bj, position),
+                           ('AtPosition', bj, position), ('IsClosedPosition', bj, position)]
+
+    # elif case == '2'
+    #
+
+    added_body_to_name = {str(k): v for k, v in added_body_to_name.items()}
+    return added_objects, added_init, added_body_to_name
