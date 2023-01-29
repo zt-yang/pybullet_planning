@@ -61,6 +61,8 @@ class FeasibilityChecker(object):
                 predictions.append(prediction)
                 plan = get_plan_from_input(input)
                 skeleton = get_plan_skeleton(plan, **self._skwargs)
+                if 'kc' in skeleton:
+                    print('\nkckckckckckckckckckckckckckckckckcv!!!')
                 if prediction != SKIP:
                     self._log['checks'].append((skeleton, plan, prediction))
                     self._log['run_time'].append(round(time.time() - start, 4))
@@ -132,7 +134,10 @@ class PassAll(FeasibilityChecker):
     def __init__(self, run_dir, body_map, shuffle=False):
         super().__init__(run_dir, body_map)
 
-    def _check(self, input):
+    def _check(self, plan):
+        plan = [[i.name] + [str(a) for a in i.args] for i in plan]
+        skeleton = get_plan_skeleton(plan, **self._skwargs)
+        print(f'\t{skeleton}')
         return True
 
 
@@ -199,19 +204,21 @@ class LargerWorld(FeasibilityChecker):
         actions = [a + ')' for a in skeleton.split(')')[:-1]]
 
         result = SKIP
+        after_line = ''
 
         ## plan must contain new objects
-        if len(set(actions).intersection(self.include_actions)) == 0:
-            return result
+        if len(set(actions).intersection(self.include_actions)) > 0:
 
-        ## actions apart from the new objects must be in the dataset
-        actions = [a for a in actions if a in self.old_actions]
-        skeleton_new = ''.join(actions)
-        if skeleton_new in self.skeletons:
-            result = self.skeletons[skeleton_new]
-            print('\t', result, '\t', skeleton, '->\t', skeleton_new)
-            if skeleton_new != skeleton:
-                result = False
+            ## actions apart from the new objects must be in the dataset
+            actions = [a for a in actions if a in self.old_actions]
+            skeleton_new = ''.join(actions)
+            if skeleton_new in self.skeletons:
+                result = self.skeletons[skeleton_new]
+                if skeleton_new != skeleton:
+                    result = False
+            after_line = '->\t'+skeleton_new
+
+        print('\t', result, '\t', skeleton, after_line)
         return result
 
 ###################################################################################################

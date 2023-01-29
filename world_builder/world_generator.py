@@ -553,7 +553,7 @@ def generate_init_pddl(world, facts):
 
 def add_objects_and_facts(world, init, goal):
     """ lisdf world """
-    added_objects, added_init, added_body_to_name = [], [], {}
+    added_objects, added_init = [], []
 
     world_name = world.lisdf.name
     case = world_name[world_name.find('original_')+9:]
@@ -572,14 +572,14 @@ def add_objects_and_facts(world, init, goal):
         body = world.name_to_body[container]
         path = world.get_path(body)
         added_objects.append(container)
-        added_body_to_name[body] = container
+        # added_body_to_name[body] = container
 
         doors = get_partnet_doors(path, body)
         for b, j in doors:
             bj = (b, j)
             bj_name = f"{container}::{get_joint_name(b, j)}"
             world.add_body(bj, bj_name)
-            added_body_to_name[bj] = bj_name
+            # added_body_to_name[bj] = bj_name
             position = Position(bj)
             added_objects.append(bj_name)
             added_init += [('Joint', bj), ('IsJointTo', bj, b), ('Position', bj, position),
@@ -607,8 +607,8 @@ def add_objects_and_facts(world, init, goal):
 
         ## make sure (supported obj ...) is in init for all objects
         non_planning_types['graspable'] = [v for k, v in world.name_to_body.items() if \
-                                      ('veggie' in k or 'bottle' in k or 'medicine' in k) \
-                                      and v not in planning_types['graspable']]
+                                           ('veggie' in k or 'bottle' in k or 'medicine' in k) \
+                                           and v not in planning_types['graspable']]
         random.shuffle(non_planning_types['graspable'])
         non_planning_types['surface'] = [b for b in world.body_to_name if is_box_entity(b)]
         non_planning_types['surface'] += [world.name_to_body['microwave#1']]
@@ -643,5 +643,4 @@ def add_objects_and_facts(world, init, goal):
 
         added_objects = [world.body_to_name[b] for b in added_objects]
 
-    added_body_to_name = {str(k): v for k, v in added_body_to_name.items()}
-    return added_objects, added_init, added_body_to_name
+    return added_objects, added_init
