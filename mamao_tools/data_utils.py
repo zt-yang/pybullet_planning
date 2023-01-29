@@ -218,6 +218,7 @@ def get_body_map(run_dir, world, inv=False):
     body_to_name = config['body_to_name']
     if 'body_to_name_new' in config:
         body_to_name = config['body_to_name_new']
+    ## if something doesn't exist, 'body_to_name_new' is incomplete
     body_to_new = {k: world.name_to_body[v] for k, v in body_to_name.items()}
     if inv:
         return {v: k for k, v in body_to_new.items()}

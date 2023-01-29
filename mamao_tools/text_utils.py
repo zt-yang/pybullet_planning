@@ -8,7 +8,7 @@ ACTION_NAMES = {
     "grasp_handle": "grasp the handle of door joint",
     "pull_door_handle": "pull the handle of door joint",
     "ungrasp_handle": "release the grasp of the handle of door joint",
-    "declare_store_in_space": "stored all objects of this type into that space"
+    "declare_store_in_space": "declare that all objects of this type have been stored into that space"
 }
 
 ACTION_ABV = {
@@ -68,6 +68,13 @@ TRANSLATIONS = {
     "aabby": "the object has a width of that value",
     "distancey": "the objects have a distance of that value",
 
+    "storedinspace": "all objects of this type are stored in that space",
+    "oftype": "the object is of that type",
+    "supporter": "this is a supporter",
+    "@edible": "food",
+    "@bottle": "bottle",
+    "@medicine": "medicine",
+
 }
 ALL_RELATIONS = copy.deepcopy(TRANSLATIONS)
 ALL_RELATIONS.update({k: k for k in ACTION_NAMES.values()})
@@ -78,7 +85,7 @@ TRANSLATIONS.update({k: k for k in joint_groups})
 DISCARDED = [
     "defaultconf", "isclosedposition",
     "contained x 1", "contained x 2", "isjointgroupof",
-    "floor", "food", "stapler", "object", "door", "supporter",
+    "floor", "food", "stapler", "object", "door", "surface", "edible", ## "supporter",
     "pose", "position", "aconf", "ataconf", "wconf", "inwconf",
 ]
 OMITTED_OBJS = ['scene', 'floor', 'pr2', 'floor1', 'pr20']

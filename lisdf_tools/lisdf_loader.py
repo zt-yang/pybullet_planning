@@ -633,7 +633,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
         ## add surfaces, spaces, joints accoring to body_to_name
         body_to_name = config['body_to_name']
         if larger_world and 'body_to_name_new' in config:
-            body_to_name.update(config['body_to_name_new'])
+            body_to_name = config['body_to_name_new']
 
         for k, v in body_to_name.items():
             if v not in bullet_world.name_to_body:

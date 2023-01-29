@@ -92,7 +92,7 @@ class FeasibilityChecker(object):
             for i, prediction in sorted_predictions.items():
                 plan = get_plan_from_input(inputs[i])
                 sequence = self.sequences[i]
-                skeleton = get_plan_skeleton(plan, indices)
+                skeleton = get_plan_skeleton(plan, **self._skwargs)
                 self._log['checks'].append((skeleton, plan, prediction))
                 self._log['sequence'].append(sequence)
                 self._log['run_time'].append(ave_time)
@@ -162,7 +162,7 @@ class Oracle(FeasibilityChecker):
     def _check(self, plan):
         plan = [[i.name] + [str(a) for a in i.args] for i in plan]
         skeleton = get_plan_skeleton(plan, **self._skwargs)
-        print(f'\t{skeleton}\n')
+        print(f'\t{skeleton}')
         return skeleton in self.skeletons
 
 
@@ -482,8 +482,8 @@ class Random(FeasibilityChecker):
 
 class PVT(FeasibilityChecker):
 
-    def __init__(self, run_dir, pt_path=None, task_name=None, mode='pvt', scoring=False):
-        super().__init__(run_dir)
+    def __init__(self, run_dir, body_map, pt_path=None, task_name=None, mode='pvt', scoring=False):
+        super().__init__(run_dir, body_map)
         from test_piginet import get_model, DAFAULT_PT_NAME, TASK_PT_NAMES, \
             PT_NEWER, get_args, TASK_PT_STAR
         from fastamp_utils import get_facts_goals_visuals, get_plans
@@ -537,6 +537,7 @@ class PVT(FeasibilityChecker):
                 if 'grasp' in ACTION_NAMES[a.name]:
                     continue
                 plan.append([ACTION_NAMES[a.name]] + elems)
+            data['run_name'] = self.run_dir
             data['plan'] = plan
             data['index'] = index
             data['skeleton'] = get_plan_skeleton(plan, indices)
@@ -550,7 +551,7 @@ class PVT(FeasibilityChecker):
         bs = min(2 ** int(base_2), 128)
         Dataset = get_dataset('pigi')
         data_loader = torch.utils.data.DataLoader(
-            Dataset(dataset, test_time=True),
+            Dataset(dataset, test_time=True, num_images=args.num_img_channels),
             batch_size=bs, shuffle=False,
             num_workers=args.num_workers, collate_fn=collate
         )
