@@ -563,7 +563,10 @@ def add_objects_and_facts(world, init, goal):
     planning_types = world.summarize_all_types(init, return_string=False)
     non_planning_types = {}
 
-    if case in ['1', '11', '21', '31']:
+    total_surfaces = planning_types['surface']
+    total_graspables = planning_types['graspable']
+
+    if '1' in case:
 
         ## add another container and its doors
         this_container = [o[:o.index(':')] for o in planning_objects if 'minifridge::' in o or 'cabinettop::' in o][0]
@@ -585,7 +588,7 @@ def add_objects_and_facts(world, init, goal):
             added_init += [('Joint', bj), ('IsJointTo', bj, b), ('Position', bj, position),
                            ('AtPosition', bj, position), ('IsClosedPosition', bj, position)]
 
-    elif case in ['3']:
+    if '3' in case:
 
         ## make sure (supported braiserlid ...) is in init
         lid = world.name_to_body['braiserlid']
@@ -595,7 +598,6 @@ def add_objects_and_facts(world, init, goal):
         # added_init += [('IsLinkTo', bottom, braiser)]
 
         found = [f for f in init if f[0] == 'supported' and f[1] == lid]
-
         if len(found) == 0:
             ps = [f[2] for f in init if f[0] == 'pose' and f[1] == lid]
             if len(ps) == 0:
@@ -605,6 +607,8 @@ def add_objects_and_facts(world, init, goal):
                 p = ps[0]
             added_init += [('Supported', lid, p, braiser)]
 
+    if '2' in case or '3' in case:
+
         ## make sure (supported obj ...) is in init for all objects
         non_planning_types['graspable'] = [v for k, v in world.name_to_body.items() if \
                                            ('veggie' in k or 'bottle' in k or 'medicine' in k) \
@@ -612,8 +616,6 @@ def add_objects_and_facts(world, init, goal):
         random.shuffle(non_planning_types['graspable'])
         non_planning_types['surface'] = [b for b in world.body_to_name if is_box_entity(b)]
         non_planning_types['surface'] += [world.name_to_body['microwave#1']]
-        total_surfaces = planning_types['surface']
-        total_graspables = planning_types['graspable']
 
         placed = False
         graspable = None
@@ -638,7 +640,7 @@ def add_objects_and_facts(world, init, goal):
         for gg in total_graspables:
             for ss in total_surfaces:
                 stackable = ('stackable', gg, ss)
-                if stackable not in init and not (gg == lid and ss == bottom):
+                if stackable not in init:
                     added_init += [stackable]
 
         added_objects = [world.body_to_name[b] for b in added_objects]
