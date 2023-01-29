@@ -274,6 +274,17 @@ def get_action_elems(list_of_elem):
                     '=' not in str(e) and str(e) not in ['left', 'right', 'hand', 'None']]
 
 
+def get_joint_name_chars(o):
+    body_name, joint_name = o.split('::')
+    if not joint_name.startswith('left') and 'left' in joint_name:
+        joint_name = joint_name[0] + 'l'
+    elif not joint_name.startswith('right') and 'right' in joint_name:
+        joint_name = joint_name[0] + 'r'
+    else:
+        joint_name = joint_name[-1]
+    return f"({body_name[0]}{joint_name})"
+
+
 def get_plan_skeleton(plan, indices={}, include_joint=True, include_movable=False):
     joints = [k for k, v in indices.items() if "::" in v]
     movables = [k for k, v in indices.items() if "::" not in v]
@@ -301,15 +312,6 @@ def get_plan_skeleton(plan, indices={}, include_joint=True, include_movable=Fals
         if len(skeleton) > 0:
             ## contains 'minifridge::joint_2' or '(4, 1)'
             if include_joint:
-                def get_joint_name_chars(o):
-                    body_name, joint_name = o.split('::')
-                    if not joint_name.startswith('left') and 'left' in joint_name:
-                        joint_name = joint_name[0] + 'l'
-                    elif not joint_name.startswith('right') and 'right' in joint_name:
-                        joint_name = joint_name[0] + 'r'
-                    else:
-                        joint_name = joint_name[-1]
-                    return f"({body_name[0]}{joint_name})"
                 skeleton += ''.join([get_joint_name_chars(o) for o in a[1:] if o in joint_names])
                 skeleton += ''.join([f"({indices[o][0]}{indices[o][-1]})" for o in a[1:] if o in joints])
             ## contains 'veggiepotato' or '3'

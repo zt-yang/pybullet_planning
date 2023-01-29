@@ -13,7 +13,8 @@ from pybullet_tools.general_streams import Position
 from world_builder.utils import get_potential_placements
 from world_builder.robot_builders import create_gripper_robot
 from mamao_tools.data_utils import get_plan_skeleton, get_indices, get_action_elems, \
-    get_successful_plan, modify_plan_with_body_map, load_planning_config, get_old_actions
+    get_successful_plan, modify_plan_with_body_map, load_planning_config, get_old_actions, \
+    get_joint_name_chars
 sys.path.append('/home/yang/Documents/fastamp')
 
 MODELS_PATH = '/home/yang/Documents/fastamp/test_models'
@@ -110,6 +111,9 @@ class FeasibilityChecker(object):
             self.pre_actions_or = {k: tuple(v) for k, v in self.pre_actions_or.items()}
             self.not_pre_actions = {k: tuple(v) for k, v in self.not_pre_actions.items()}
 
+        if isinstance(self, LargerWorld):
+            self.include_actions = list(self.include_actions)
+
         with open(json_path, 'w') as f:
             config = {k: v for k, v in self.__dict__.items() if \
                       not k.startswith('_') and not isinstance(v, State) and not isinstance(v, Problem)}
@@ -162,7 +166,7 @@ class LargerWorld(FeasibilityChecker):
     def __init__(self, run_dir, body_map):
         super().__init__(run_dir, body_map)
         from fastamp_utils import get_plans_labels
-        data = get_plans_labels(run_dir)
+        data = get_plans_labels(run_dir, using_larger_labels=False)
         self.skeletons = {
             data['skeletons'][i]: data['labels'][i] for i in range(len(data['plans']))
         }
@@ -171,12 +175,20 @@ class LargerWorld(FeasibilityChecker):
         print(f'\nLargerWorld FC - {len(self.skeletons)} plans, '
               f'{data["num_successful_plans"]} success\n')
 
-        self.old_actions = get_old_actions(data['skeletons'])
-
         config = load_planning_config(run_dir)
         if 'body_to_name_new' not in config:
             print('\n\nbody_to_name_new not in config', run_dir)
         self.body_to_name_new = config['body_to_name_new']
+
+        self.old_actions = get_old_actions(data['skeletons'])
+        include_actions = []
+        for k, v in self.body_to_name_new.items():
+            k = eval(k)
+            if isinstance(k, tuple) and len(k) == 2:
+                include_actions.append(f'l{get_joint_name_chars(v)}')
+            elif isinstance(k, int) and 'minifridge' not in v and 'cabinettop' not in v:
+                include_actions.append(f'k({v})')
+        self.include_actions = set(include_actions)
 
         self._skips = []
 
@@ -184,12 +196,21 @@ class LargerWorld(FeasibilityChecker):
         plan = [[i.name] + [str(a) for a in i.args] for i in plan]
         skeleton = get_plan_skeleton(plan, **self._skwargs)
         actions = [a + ')' for a in skeleton.split(')')[:-1]]
+
+        result = SKIP
+
+        ## plan must contain new objects
+        if len(set(actions).intersection(self.include_actions)) == 0:
+            return result
+
+        ## actions apart from the new objects must be in the dataset
         actions = [a for a in actions if a in self.old_actions]
         skeleton_new = ''.join(actions)
-        result = SKIP
         if skeleton_new in self.skeletons:
             result = self.skeletons[skeleton_new]
             print('\t', result, '\t', skeleton, '->\t', skeleton_new)
+            if skeleton_new != skeleton:
+                result = False
         return result
 
 ###################################################################################################
