@@ -18,7 +18,7 @@ from data_utils import get_fc_record, DATASET_PATH
 
 AUTO_REFRESH = False
 VIOLIN = False
-FPC = True
+FPC = False
 PAPER_VERSION = False ## no preview, just save pdf
 
 
@@ -58,6 +58,9 @@ GROUPS = ['tt_storage', 'tt_sink', 'tt_braiser', 'tt_sink_to_storage',
 
 METHODS = ['None', 'pvt-task', 'oracle']
 METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']
+
+METHODS = ['None', 'oracle']
+METHOD_NAMES = ['Baseline', 'Oracle']
 
 check_time = 1664255601 ## 1664255601 for baselines | 1664750094  ## for d4 | 1665010453 for d3
 

@@ -204,18 +204,20 @@ def get_indices_from_log(run_dir):
     return indices
 
 
-def get_indices(run_dir, inv_body_map=None, **kwargs):
+def get_indices(run_dir, inv_body_map=None, body_map=None, **kwargs):
     indices = get_indices_from_config(run_dir, **kwargs)
     if not indices:
         indices = get_indices_from_log(run_dir)
-    if inv_body_map is not None and len(inv_body_map) > 0:
-        new_indices = {}
-        for body, name in indices.items():
-            if eval(body) in inv_body_map:
-                new_indices[inv_body_map[eval(body)]] = name
-            else:
-                new_indices[body] = name
-        indices = new_indices
+    for bm in [inv_body_map, body_map]:
+        if bm is not None and len(bm) > 0:
+            new_indices = {}
+            for body, name in indices.items():
+                if eval(body) in bm:
+                    new_indices[bm[eval(body)]] = name
+                else:
+                    new_indices[body] = name
+            indices = new_indices
+
     return indices
 
 
