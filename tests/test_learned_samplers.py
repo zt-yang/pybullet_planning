@@ -14,6 +14,8 @@ DATABASE_DIR = abspath(join(__file__, '..', '..', 'databases'))
 
 
 def get_obj_pose(action, indices):
+    if action[2] not in indices:
+        return None
     name = indices[action[2]]
     category = name.replace('#1', '').replace('#2', '')
     pose = action[3]
@@ -97,7 +99,7 @@ def test_generate_pose_samples():
     # run_dirs = ['/home/yang/Documents/fastamp-data-rss/_gmm/3610']
 
     for run_dir in tqdm(run_dirs):  ## , desc=basename(subdir)
-        indices = get_indices(run_dir)
+        indices = get_indices(run_dir, larger=False)
         plan = get_successful_plan(run_dir)[0]
         counter_x = get_sink_counter_x(run_dir)
         aabbs = get_lisdf_aabbs(run_dir)
@@ -105,7 +107,11 @@ def test_generate_pose_samples():
         for action in plan:
             if action[0].startswith('pick') or action[0].startswith('place'):
                 ## that of movable object
-                name, category, (point, yaw) = get_obj_pose(action, indices)
+                result = get_obj_pose(action, indices)
+                if result is None:
+                    print(run_dir, action)
+                    continue
+                name, category, (point, yaw) = result
 
                 verbose = False or len(run_dirs) == 1
                 # if 'mm_storage_long/0' in run_dir and name == 'veggiepotato':
@@ -166,7 +172,7 @@ def test_generate_pose_samples():
         if isfile(config_file):
             add_to_planning_config(run_dir, {'placement_plan': placement_plan})
 
-    ## found 31778 (0.985)	missed 480 (0.015)	misplaced 20 (0.001)
+    ## found 31776 (0.983)	missed 519 (0.016)	misplaced 20 (0.001)
     total_count = found_count + missed_count + misplaced_count
     line = f'## found {found_count} ({round(found_count/total_count, 3)})'
     line += f'\tmissed {missed_count} ({round(missed_count/total_count, 3)})'

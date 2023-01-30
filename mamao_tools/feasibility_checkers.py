@@ -27,6 +27,7 @@ class FeasibilityChecker(object):
         self.run_dir = run_dir
         self.inv_body_map = inv_body_map  ## rerun may have different pybullet body indices
         self._skwargs = {'include_joint': True, 'include_movable': True}
+        self._skwargs_old = copy.deepcopy(self._skwargs)
         if isinstance(run_dir, str):
             self._skwargs['indices'] = get_indices(run_dir)
             self._skwargs_old = copy.deepcopy(self._skwargs)
@@ -226,6 +227,7 @@ class LargerWorld(FeasibilityChecker):
 
 ###################################################################################################
 
+
 rename = {'pick': 'k', 'place': 'c', 'pull_door_handle': 'l'}
 shorter = lambda a: '-'.join([rename[a.name], str(a.args[1])]) \
     if isinstance(a[1], list) else '-'.join([rename[a[0]], str(a[1])])
@@ -237,6 +239,7 @@ class Heuristic(FeasibilityChecker):
     def __init__(self, initializer, body_map):
         state, goals, init = initializer
         super().__init__(state, body_map)
+        self._skwargs_old['indices'] = state.world.get_indices()
         self._state = state
         self._robot = state.robot
         self._fluents = state.get_fluents(only_fluents=True)

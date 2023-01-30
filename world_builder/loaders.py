@@ -2216,7 +2216,9 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
     """ add obstacles to the from or to region """
     bottom_obj = world.BODY_TO_OBJECT[obj_bottom]
     obstacles = bottom_obj.supported_objects
-    if (case in [2, 21] and len(obstacles) <= 1 and random.random() < 1) \
+    start = time.time()
+    time_allowed = 4
+    while (case in [2, 21] and len(obstacles) <= 2 and random.random() < 1) \
             or (case in [3] and len(obstacles) == 0 and random.random() < 1):
         all_to_move = []
 
@@ -2250,6 +2252,9 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
             else:
                 counters_tmp = world.find_surfaces_for_placement(something, counters)
                 counters_tmp[0].place_obj(something, **pkwargs)
+
+        if time.time() - start > time_allowed:
+            sys.exit()
 
     """ make sure obstacles can be moved away """
     for o in obstacles:
