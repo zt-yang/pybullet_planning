@@ -588,13 +588,13 @@ def add_objects_and_facts(world, init, goal):
             added_init += [('Joint', bj), ('IsJointTo', bj, b), ('Position', bj, position),
                            ('AtPosition', bj, position), ('IsClosedPosition', bj, position)]
 
-    if '3' in case:
+    if case == '3':
 
         ## make sure (supported braiserlid ...) is in init
         lid = world.name_to_body['braiserlid']
         braiser = world.name_to_body['braiserbody#1']
         bottom = world.name_to_body['braiserbody#1::braiser_bottom']
-        added_objects += [braiser]
+        added_objects += ['braiserbody#1']
         # added_init += [('IsLinkTo', bottom, braiser)]
 
         found = [f for f in init if f[0] == 'supported' and f[1] == lid]
@@ -629,7 +629,7 @@ def add_objects_and_facts(world, init, goal):
                 break
         if placed:
             p = Pose(graspable)
-            added_objects += [graspable, found_surface]
+            added_objects += [world.body_to_name[b] for b in [graspable, found_surface]]
             added_init += [('Pose', graspable, p), ('AtPose', graspable, p),
                            ('Graspable', graspable), ('Surface', found_surface),
                            ('Supported', graspable, p, found_surface)]
@@ -642,7 +642,5 @@ def add_objects_and_facts(world, init, goal):
                 stackable = ('stackable', gg, ss)
                 if stackable not in init:
                     added_init += [stackable]
-
-        added_objects = [world.body_to_name[b] for b in added_objects]
 
     return added_objects, added_init
