@@ -878,10 +878,13 @@ def add_objects_and_facts(world, init, run_dir):
 
             placement_plan = load_planning_config(run_dir)['placement_plan']
             for a, o_name, s_name, _ in placement_plan:
+                if s_name is None:
+                    continue
                 if a == 'pick':
                     if o_name == lid_name and s_name == body_name:
                         p, aa = get_p(lid)
                         added_init += [('Supported', lid, p, braiser)] + aa
+                        added_objects += [body_name]
                     else:
                         if s_name == body_name:
                             s_body = bottom
