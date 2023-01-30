@@ -9,14 +9,15 @@ from os.path import join, isdir, isfile, dirname, abspath, basename
 from os import listdir
 
 from pybullet_tools.utils import get_bodies, euler_from_quat, get_collision_data, get_joint_name, \
-    get_joint_position, get_camera, joint_from_name, get_color, reset_simulation
+    get_joint_position, get_camera, joint_from_name, get_color, reset_simulation, \
+    link_from_name
 from pybullet_tools.bullet_utils import get_readable_list, LINK_STR, nice, is_box_entity, \
     is_placement, random
 from pybullet_tools.general_streams import Position
 from pybullet_tools.pr2_primitives import Pose
 
 from world_builder.entities import Robot, LINK_STR
-from world_builder.utils import read_xml, get_file_by_category, get_model_scale, get_partnet_doors
+from world_builder.utils import read_xml, get_file_by_category, get_model_scale
 
 from lisdf_tools.lisdf_loader import get_depth_images
 
@@ -549,100 +550,3 @@ def generate_init_pddl(world, facts):
             init_pddl += '\n'
 
     return init_pddl
-
-
-def add_objects_and_facts(world, init, goal):
-    """ lisdf world """
-    added_objects, added_init = [], []
-
-    world_name = world.lisdf.name
-    case = world_name[world_name.find('original_')+9:]
-
-    planning_objects = world.get_planning_objects()
-    non_planning_objects = world.get_non_planning_objects()
-    planning_types = world.summarize_all_types(init, return_string=False)
-    non_planning_types = {}
-
-    total_surfaces = planning_types['surface']
-    total_graspables = planning_types['graspable']
-
-    if '1' in case:
-
-        ## add another container and its doors
-        this_container = [o[:o.index(':')] for o in planning_objects if 'minifridge::' in o or 'cabinettop::' in o][0]
-        container = [o for o in non_planning_objects if ('minifridge' in o or 'cabinettop' in o) \
-                     and this_container not in o][0]
-        body = world.name_to_body[container]
-        path = world.get_path(body)
-        added_objects.append(container)
-        # added_body_to_name[body] = container
-
-        doors = get_partnet_doors(path, body)
-        for b, j in doors:
-            bj = (b, j)
-            bj_name = f"{container}::{get_joint_name(b, j)}"
-            world.add_body(bj, bj_name)
-            # added_body_to_name[bj] = bj_name
-            position = Position(bj)
-            added_objects.append(bj_name)
-            added_init += [('Joint', bj), ('IsJointTo', bj, b), ('Position', bj, position),
-                           ('AtPosition', bj, position), ('IsClosedPosition', bj, position)]
-
-    if case == '3':
-
-        ## make sure (supported braiserlid ...) is in init
-        lid = world.name_to_body['braiserlid']
-        braiser = world.name_to_body['braiserbody#1']
-        bottom = world.name_to_body['braiserbody#1::braiser_bottom']
-        added_objects += ['braiserbody#1']
-        # added_init += [('IsLinkTo', bottom, braiser)]
-
-        found = [f for f in init if f[0] == 'supported' and f[1] == lid]
-        if len(found) == 0:
-            ps = [f[2] for f in init if f[0] == 'pose' and f[1] == lid]
-            if len(ps) == 0:
-                p = Pose(lid)
-                added_init += [('Pose', lid, p), ('AtPose', lid, p)]
-            else:
-                p = ps[0]
-            added_init += [('Supported', lid, p, braiser)]
-
-    if '2' in case or '3' in case:
-
-        ## make sure (supported obj ...) is in init for all objects
-        non_planning_types['graspable'] = [v for k, v in world.name_to_body.items() if \
-                                           ('veggie' in k or 'bottle' in k or 'medicine' in k) \
-                                           and v not in planning_types['graspable']]
-        random.shuffle(non_planning_types['graspable'])
-        non_planning_types['surface'] = [b for b in world.body_to_name if is_box_entity(b)]
-        non_planning_types['surface'] += [world.name_to_body['microwave#1']]
-
-        placed = False
-        graspable = None
-        found_surface = None
-        for graspable in non_planning_types['graspable']:
-            for s in non_planning_types['surface']:
-                if is_placement(graspable, s, below_epsilon=0.02, above_epsilon=0.02):
-                    found_surface = s
-                    placed = True
-            if placed:
-                break
-        if placed:
-            p = Pose(graspable)
-            added_objects += [world.body_to_name[b] for b in [graspable, found_surface]]
-            added_init += [('Pose', graspable, p), ('AtPose', graspable, p),
-                           ('Graspable', graspable),
-                           ('Supported', graspable, p, found_surface)]
-            total_graspables += [graspable]
-            if case in ['2', '3']:
-                added_init += [('Surface', found_surface)]
-                total_surfaces += [found_surface]
-
-        """ add all stackable """
-        for gg in total_graspables:
-            for ss in total_surfaces:
-                stackable = ('stackable', gg, ss)
-                if stackable not in init:
-                    added_init += [stackable]
-
-    return added_objects, added_init

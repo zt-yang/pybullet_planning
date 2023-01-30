@@ -8,9 +8,16 @@ import numpy as np
 import untangle
 import copy
 
-from pybullet_tools.bullet_utils import nice
-from pybullet_tools.utils import get_aabb_center, get_aabb_extent, get_pose
+import random
+from pybullet_tools.utils import is_placement, link_from_name, get_joint_name, \
+get_aabb_center, get_aabb_extent, get_pose
+from pybullet_tools.pr2_primitives import Pose
+from pybullet_tools.general_streams import Position
+from pybullet_tools.bullet_utils import nice, is_box_entity
+
 from mamao_tools.text_utils import ACTION_ABV, ACTION_NAMES
+
+from world_builder.utils import get_partnet_doors
 
 import sys
 sys.path.append('/home/yang/Documents/fastamp')
@@ -805,3 +812,135 @@ def get_old_actions(skeletons):
                 actions.append(a)
     actions.sort()
     return actions
+
+
+def add_objects_and_facts(world, init, run_dir):
+    """ lisdf world """
+    added_objects, added_init = [], []
+
+    world_name = world.lisdf.name
+    case = world_name[world_name.find('original_')+9:]
+
+    planning_objects = world.get_planning_objects()
+    non_planning_objects = world.get_non_planning_objects()
+    planning_types = world.summarize_all_types(init, return_string=False)
+    non_planning_types = {}
+
+    total_surfaces = planning_types['surface']
+    total_graspables = planning_types['graspable']
+
+    if '1' in case:
+
+        ## add another container and its doors
+        this_container = [o[:o.index(':')] for o in planning_objects if 'minifridge::' in o or 'cabinettop::' in o][0]
+        container = [o for o in non_planning_objects if ('minifridge' in o or 'cabinettop' in o) \
+                     and this_container not in o][0]
+        body = world.name_to_body[container]
+        path = world.get_path(body)
+        added_objects.append(container)
+        # added_body_to_name[body] = container
+
+        doors = get_partnet_doors(path, body)
+        for b, j in doors:
+            bj = (b, j)
+            bj_name = f"{container}::{get_joint_name(b, j)}"
+            world.add_body(bj, bj_name)
+            # added_body_to_name[bj] = bj_name
+            position = Position(bj)
+            added_objects.append(bj_name)
+            added_init += [('Joint', bj), ('IsJointTo', bj, b), ('Position', bj, position),
+                           ('AtPosition', bj, position), ('IsClosedPosition', bj, position)]
+
+    if '3' in case:
+
+        ## make sure (supported braiserlid ...) is in init
+        lid_name = 'braiserlid'
+        body_name = 'braiserbody#1'
+        bottom_name = 'braiserbody#1::braiser_bottom'
+        lid = world.name_to_body[lid_name]
+        braiser = world.name_to_body[body_name]
+
+        def get_p(bb):
+            aa = []
+            ps = [f[2] for f in init if f[0] == 'pose' and f[1] == bb]
+            if len(ps) == 0:
+                p = Pose(bb)
+                aa = [('Pose', bb, p), ('AtPose', bb, p)]
+            else:
+                p = ps[0]
+            return p, aa
+
+        if bottom_name not in world.name_to_body:
+            link = link_from_name(braiser, 'braiser_bottom')
+            bottom = (braiser, None, link)
+            world.add_body(bottom, bottom_name)
+            added_objects += [bottom_name]
+
+            placement_plan = load_planning_config(run_dir)['placement_plan']
+            for a, o_name, s_name, _ in placement_plan:
+                if a == 'pick':
+                    if o_name == lid_name and s_name == body_name:
+                        p, aa = get_p(lid)
+                        added_init += [('Supported', lid, p, braiser)] + aa
+                    else:
+                        if s_name == body_name:
+                            s_body = bottom
+                        else:
+                            s_body = world.name_to_body[s_name]
+                            if s_body not in planning_types['surface']:
+                                added_objects += [s_name]
+                        o_body = world.name_to_body[o_name]
+                        found = [f for f in init if f[0] == 'supported' and f[1] == o_body and f[-1] == s_body]
+                        if len(found) == 0:
+                            p, aa = get_p(o_body)
+                            added_init += [('Supported', o_body, p, s_body)] + aa
+
+        else:
+            bottom = world.name_to_body[bottom_name]
+            added_objects += [body_name]
+            # added_init += [('IsLinkTo', bottom, braiser)]
+
+            found = [f for f in init if f[0] == 'supported' and f[1] == lid]
+            if len(found) == 0:
+                p, aa = get_p(lid)
+                added_init += [('Supported', lid, p, braiser)] + aa
+
+    if '2' in case or '3' in case:
+
+        ## make sure (supported obj ...) is in init for all objects
+        non_planning_types['graspable'] = [v for k, v in world.name_to_body.items() if \
+                                           ('veggie' in k or 'bottle' in k or 'medicine' in k) \
+                                           and v not in planning_types['graspable']]
+        random.shuffle(non_planning_types['graspable'])
+        non_planning_types['surface'] = [b for b in world.body_to_name if is_box_entity(b)]
+        non_planning_types['surface'] += [world.name_to_body['microwave#1']]
+
+        placed = False
+        graspable = None
+        found_surface = None
+        for graspable in non_planning_types['graspable']:
+            for s in non_planning_types['surface']:
+                if is_placement(graspable, s, below_epsilon=0.02, above_epsilon=0.02):
+                    found_surface = s
+                    placed = True
+            if placed:
+                break
+        if placed:
+            p = Pose(graspable)
+            added_objects += [world.body_to_name[b] for b in [graspable, found_surface]]
+            added_init += [('Pose', graspable, p), ('AtPose', graspable, p),
+                           ('Graspable', graspable),
+                           ('Supported', graspable, p, found_surface)]
+            total_graspables += [graspable]
+            if case in ['2', '3']:
+                added_init += [('Surface', found_surface)]
+                total_surfaces += [found_surface]
+
+        """ add all stackable """
+        for gg in total_graspables:
+            for ss in total_surfaces:
+                stackable = ('stackable', gg, ss)
+                if stackable not in init:
+                    added_init += [stackable]
+
+    return added_objects, added_init

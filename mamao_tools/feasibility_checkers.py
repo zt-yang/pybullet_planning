@@ -203,7 +203,7 @@ class LargerWorld(FeasibilityChecker):
 
     def _check(self, plan):
         plan = [[i.name] + [str(a) for a in i.args] for i in plan]
-        skeleton = get_plan_skeleton(plan, **self._skwargs)
+        skeleton = get_plan_skeleton(plan, **self._skwargs_old)
         actions = [a + ')' for a in skeleton.split(')')[:-1]]
 
         result = SKIP
