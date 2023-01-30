@@ -644,7 +644,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
         if 'camera_zoomins' in config:
             camera_zoomins = config['camera_zoomins']
             if len(camera_zoomins) > 0:
-                d = camera_zoomins[0]
+                d = camera_zoomins[-1]
                 bullet_world.camera_kwargs = get_camera_kwargs_from_camera_zoomin(bullet_world, d)
             else:
                 fridge = bullet_world.name_to_body['minifridge']

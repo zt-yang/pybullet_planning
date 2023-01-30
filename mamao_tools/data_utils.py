@@ -859,6 +859,8 @@ def add_objects_and_facts(world, init, run_dir):
         bottom_name = 'braiserbody#1::braiser_bottom'
         lid = world.name_to_body[lid_name]
         braiser = world.name_to_body[body_name]
+        if body_name not in planning_objects:
+            added_objects += [body_name]
 
         def get_p(bb):
             aa = []
@@ -878,10 +880,13 @@ def add_objects_and_facts(world, init, run_dir):
 
             placement_plan = load_planning_config(run_dir)['placement_plan']
             for a, o_name, s_name, _ in placement_plan:
+                if s_name is None:
+                    continue
                 if a == 'pick':
                     if o_name == lid_name and s_name == body_name:
                         p, aa = get_p(lid)
                         added_init += [('Supported', lid, p, braiser)] + aa
+                        added_objects += [body_name]
                     else:
                         if s_name == body_name:
                             s_body = bottom
@@ -943,4 +948,5 @@ def add_objects_and_facts(world, init, run_dir):
                 if stackable not in init:
                     added_init += [stackable]
 
+    added_objects = [o for o in added_objects if o not in planning_objects]
     return added_objects, added_init
