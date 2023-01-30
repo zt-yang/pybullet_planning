@@ -859,6 +859,8 @@ def add_objects_and_facts(world, init, run_dir):
         bottom_name = 'braiserbody#1::braiser_bottom'
         lid = world.name_to_body[lid_name]
         braiser = world.name_to_body[body_name]
+        if body_name not in planning_objects:
+            added_objects += [body_name]
 
         def get_p(bb):
             aa = []
@@ -943,4 +945,5 @@ def add_objects_and_facts(world, init, run_dir):
                 if stackable not in init:
                     added_init += [stackable]
 
+    added_objects = [o for o in added_objects if o not in planning_objects]
     return added_objects, added_init
