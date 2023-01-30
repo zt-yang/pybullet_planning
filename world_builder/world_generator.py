@@ -631,10 +631,12 @@ def add_objects_and_facts(world, init, goal):
             p = Pose(graspable)
             added_objects += [world.body_to_name[b] for b in [graspable, found_surface]]
             added_init += [('Pose', graspable, p), ('AtPose', graspable, p),
-                           ('Graspable', graspable), ('Surface', found_surface),
+                           ('Graspable', graspable),
                            ('Supported', graspable, p, found_surface)]
-            total_surfaces += [found_surface]
             total_graspables += [graspable]
+            if case in ['2', '3']:
+                added_init += [('Surface', found_surface)]
+                total_surfaces += [found_surface]
 
         """ add all stackable """
         for gg in total_graspables:
