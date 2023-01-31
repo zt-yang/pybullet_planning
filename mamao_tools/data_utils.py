@@ -223,7 +223,7 @@ def get_indices(run_dir, inv_body_map=None, body_map=None, **kwargs):
                     new_indices[bm[eval(body)]] = name
                 else:
                     new_indices[body] = name
-            indices = new_indices
+            indices = {str(k): v for k, v in new_indices.items()}
 
     return indices
 
