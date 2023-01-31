@@ -6,6 +6,7 @@ import shutil
 import time
 from datetime import datetime
 import os
+import sys
 from scipy.stats import gaussian_kde
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,7 +15,10 @@ from os import listdir
 import seaborn as sns
 sns.set_style("darkgrid", {"axes.facecolor": ".9"})
 
-from data_utils import get_fc_record, DATASET_PATH
+from data_utils import DATASET_PATH, get_fc_record
+
+sys.path.append('/home/yang/Documents/fastamp')
+# from fastamp_utils import get_fc_record
 
 AUTO_REFRESH = False
 VIOLIN = False
@@ -26,8 +30,8 @@ from matplotlib import rc
 rc('font', **{'family': 'serif', 'serif': ['Times']})
 # rc('text', usetex=True)
 
-
-############################################################################3
+GROUPNAMES = None
+############################## fridges #######################################3
 
 
 GROUPS = ['tt_one_fridge_table_pick', 'tt_two_fridge_pick', 'tt_one_fridge_table_in',
@@ -50,17 +54,29 @@ METHOD_NAMES = ['Baseline', 'PIGI', 'PIGI-1/0', 'PIGI-all', 'Oracle']  ## 'PIGI-
 ## METHOD_NAMES = ['Baseline', 'PIGI-all', 'Oracle']
 
 
-############################################################################3
+################################ kitchens ######################################
 
 
-GROUPS = ['tt_storage', 'tt_sink', 'tt_braiser', 'tt_sink_to_storage',
-          'tt_braiser_to_storage' ] ##
+GROUPS = ['tt_storage', 'tt_braiser', 'tt_braiser_to_storage' ] ## 'tt_sink', 'tt_sink_to_storage',
 
 METHODS = ['None', 'pvt-task', 'oracle']
 METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']
 
-METHODS = ['None', 'oracle']
-METHOD_NAMES = ['Baseline', 'Oracle']
+# METHODS = ['None', 'oracle']
+# METHOD_NAMES = ['Baseline', 'Oracle']
+
+################################ draft ######################################
+
+
+GROUPS = ['tt_one_fridge_table_in', 'tt_two_fridge_in',
+          'tt_storage', 'tt_braiser', 'tt_braiser_to_storage' ]
+GROUPNAMES = ['Table-to-fridge', 'Fridge-to-fridge',
+              'Counter-to-storage', 'Counter-to-pot', 'Pot-to-storage' ]
+
+METHODS = ['None', 'pvt-task', 'oracle']
+METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']
+
+############################################################################
 
 check_time = 1664255601 ## 1664255601 for baselines | 1664750094  ## for d4 | 1665010453 for d3
 
@@ -88,6 +104,8 @@ RERUN_SUBDIR = 'rerun_2'
 
 def get_rundirs(task_name):
     data_dir = join(DATASET_PATH, task_name)
+    if not isdir(data_dir):
+        data_dir = join(DATASET_PATH.replace('-rss', ''), task_name)
     # data_dir = join(DATASET_PATH, 'tt_0915', 'tt1', task_name)
     dirs = [join(data_dir, f, RERUN_SUBDIR) for f in listdir(data_dir) if isdir(join(data_dir, f))]
     # dirs = []
@@ -184,6 +202,9 @@ def get_time_data(diverse=False):
                     num_FP = get_fc_record(rr, fc_classes=[method], rerun_subdir=RERUN_SUBDIR)[method][-1]
                     if num_FP is not None:
                         data[group][method].append(num_FP)
+                    # num_FP = get_fc_record(rr, fc_classes=[method], rerun_subdir=RERUN_SUBDIR)
+                    # if method in num_FP:
+                    #     data[group][method].append(len(num_FP[method][-2]))
 
                 else:
                     ## original planning time
@@ -270,7 +291,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                 means_overhead[method].append(np.mean(data[group]['overhead'][method]))
                 maxs[method].append(np.max(data[group][method]))
                 label = data[group]['run_dir'][method][np.argmax(data[group][method])]
-                label = label.replace(abspath(DATASET_PATH), '')
+                label = label.replace(abspath(DATASET_PATH), '').replace(abspath(DATASET_PATH.replace('-rss', '')), '')
                 label = label.replace('/', '').replace(group, '').replace('tt1', '-').replace(RERUN_SUBDIR, '')
                 argmaxs[method].append(f"#{label}")
                 counts[method].append(len(data[group][method]))
@@ -314,6 +335,8 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     labels = tuple([f"{g.replace('tt_', '')}" for g in groups])
     if 'ss_' in groups[-1]:
         labels = tuple([f"{g.replace('ss_', '')} (stapler)" for g in groups])
+    if GROUPNAMES is not None:
+        labels = tuple(GROUPNAMES)
 
     if SAME_Y_AXES:
         figsize = (9, 6)
@@ -428,7 +451,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                             color='#000000',
                             label=METHODS,
                             bottom=mean)
-                    print(f"task: {groups[i]} overhead: {overhead}")
+                    print(f"task: {groups[i]} overhead: {[round(oo, 5) for oo in overhead]}")
                 else:
                     from matplotlib.ticker import MaxNLocator
                     axs[i].yaxis.set_major_locator(MaxNLocator(integer=True))
@@ -447,22 +470,25 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                             ss.extend([s]*len(yy_method))
                             continue
                         sss_min = min(sss)
-                        sss = [np.log(ssss/sss_min + 1)*s for ssss in sss]
+                        # sss = [np.log(ssss/sss_min + 1)*s for ssss in sss]
+                        # sss = [np.sqrt(ssss/sss_min + 1)*s for ssss in sss]
+                        sss = [(ssss/sss_min + 1)*s/5 for ssss in sss]
                         ss.extend(sss)
                     s = np.asarray(ss)
                 axs[i].scatter(xxx, yy, s=s, color=cc, alpha=0.7)
 
                 for j in range(len(METHODS)):
 
-                    bar_label = f"{count[j]} \n"
-                    if miss[j] > 0:
-                        bar_label += str(miss[j])
-                    axs[i].annotate(bar_label,  # text
-                                (j*scale, 0),  # points location to label
-                                textcoords="offset points",
-                                xytext=(0, -40),  # distance between the points and label
-                                ha='center', color='gray',
-                                fontsize=10)
+                    if not PAPER_VERSION:
+                        bar_label = f"{count[j]} \n"
+                        if miss[j] > 0:
+                            bar_label += str(miss[j])
+                        axs[i].annotate(bar_label,  # text
+                                    (j*scale, 0),  # points location to label
+                                    textcoords="offset points",
+                                    xytext=(0, -40),  # distance between the points and label
+                                    ha='center', color='gray',
+                                    fontsize=10)
                     if not PAPER_VERSION:
                         axs[i].annotate(agm[j],  # text
                                     (j*scale, mx[j]),  # points location to label
@@ -475,7 +501,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                 axs[i].tick_params(axis='x', which='major') ## , pad=28
                 axs[i].tick_params(axis='y', which='major', pad=-4, rotation=45)
 
-            if PAPER_VERSION and False:
+            if PAPER_VERSION: ##  and False
                 axs[i].set_title(labels[i], fontsize=11, y=-0.2)
             else:
                 axs[i].set_title(f"{labels[i]} ({len(get_rundirs(groups[i]))})", fontsize=11, y=-0.24)

@@ -2,7 +2,7 @@ import json
 import shutil
 import os
 from os import listdir, getcwd
-from os.path import join, isfile, isdir, abspath
+from os.path import join, isfile, isdir, abspath, basename
 
 import numpy as np
 import untangle
@@ -349,21 +349,26 @@ def get_init_tuples(run_dir):
 
 
 def get_fc_record(run_dir, fc_classes=[], diverse=True, rerun_subdir=None):
+    sys.path.append('/home/yang/Documents/fastamp')
+    from fastamp_utils import get_all_plans
+
     prefix = 'diverse_' if diverse else ''
     pass_fail = {}
     indices = get_indices(run_dir)
+    skwargs = dict(indices=indices, include_movable=True, include_joint=True)
     rerun_dir = join(run_dir, rerun_subdir) if rerun_subdir is not None else run_dir
     for fc_class in fc_classes:
         pas = []
         fail = []
         log_file = join(rerun_dir, f"{prefix}fc_log={fc_class}.json")
         plan_file = join(rerun_dir, f"{prefix}plan_rerun_fc={fc_class}.json")
+        run_log_file = join(rerun_dir, f"{prefix}runlog_fc={fc_class}.json")
 
         if isfile(log_file) and isfile(plan_file):
             log = json.load(open(log_file, 'r'))
             for aa in log['checks']:
                 plan, prediction = aa[-2:]
-                skeleton = get_plan_skeleton(plan, indices=indices)
+                skeleton = get_plan_skeleton(plan, indices=indices, include_movable=True)
                 note = f"{skeleton} ({round(prediction, 4)})"
                 if prediction and prediction > 0.5:
                     pas.append(note)
@@ -374,12 +379,20 @@ def get_fc_record(run_dir, fc_classes=[], diverse=True, rerun_subdir=None):
             plan = result['plan']
             planning_time = round(result['planning_time'], 2)
             if len(pas) > 0 or len(fail) > 0:
+                num_FP = None
                 if plan is not None:
-                    plan = get_plan_skeleton(plan, indices=indices)
-                    t_skeletons = [sk[:sk.index(' (')] for sk in pas]
-                    num_FP = t_skeletons.index(plan) if plan in t_skeletons else len(pas)
-                else:
-                    num_FP = None
+                    plan = get_plan_skeleton(plan, **skwargs)
+
+                    failure = []
+                    if isfile(run_log_file):
+                        plans = get_all_plans(rerun_dir, indices=indices, log_name=basename(run_log_file))
+                        skeletons = [get_plan_skeleton(p, **skwargs) for p in plans]
+                        failure = [s for s in skeletons if s != plan]
+                        failure = list(set(failure))
+                        num_FP = len(failure)
+                    else:
+                        t_skeletons = [sk[:sk.index(' (')] for sk in pas]
+                        num_FP = t_skeletons.index(plan) if plan in t_skeletons else len(pas)
                 pass_fail[fc_class] = (fail, pas, [plan], planning_time, num_FP)
     return pass_fail
 
