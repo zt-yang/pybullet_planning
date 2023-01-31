@@ -2235,7 +2235,7 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
 
         """ may add some goal related objects """
         if case in [2, 3] and something is not None:
-            all_to_move = [random.choice(something)]
+            all_to_move = [random.sample(something, 2)]
         elif case in [21]:
             all_to_move = []
             all_to_move += random.sample(world.cat_to_objects('edible'), 2 if random.random() < 0.5 else 1)
