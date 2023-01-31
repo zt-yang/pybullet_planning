@@ -172,7 +172,7 @@ def test_generate_pose_samples():
         if isfile(config_file):
             add_to_planning_config(run_dir, {'placement_plan': placement_plan})
 
-    ## found 31776 (0.983)	missed 519 (0.016)	misplaced 20 (0.001)
+    ## found 32940 (0.978)	missed 725 (0.022)	misplaced 20 (0.001)
     total_count = found_count + missed_count + misplaced_count
     line = f'## found {found_count} ({round(found_count/total_count, 3)})'
     line += f'\tmissed {missed_count} ({round(missed_count/total_count, 3)})'
