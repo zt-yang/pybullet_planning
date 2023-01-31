@@ -664,6 +664,9 @@ def get_camera_kwargs_from_camera_zoomin(bullet_world, camera_zoomin):
     body = bullet_world.name_to_body[name]
     dx, dy, dz = camera_zoomin['d']
     camera_point, target_point = set_camera_target_body(body, dx=dx, dy=dy, dz=dz)
+    # print(body, bullet_world.get_mobility_category(body))
+    if bullet_world.get_mobility_category(body) in ['CabinetTop']:
+        target_point[0] += 0.6
     return {'camera_point': camera_point, 'target_point': target_point}
 
 
