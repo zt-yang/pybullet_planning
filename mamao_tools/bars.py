@@ -125,6 +125,9 @@ df = pd.DataFrame({
         0.6637, ## rel=no_init
     ],
 })
+
+
+
 df = df.set_index(['Area', 'Rank'])
 
 figsize = (12, 4) if not PAPER_VERSION else (15, 3)
