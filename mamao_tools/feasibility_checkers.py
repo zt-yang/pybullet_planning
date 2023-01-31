@@ -93,7 +93,7 @@ class FeasibilityChecker(object):
             for i, prediction in sorted_predictions.items():
                 plan = get_plan_from_input(inputs[i])
                 sequence = self.sequences[i]
-                skeleton = get_plan_skeleton(plan, **self._skwargs)
+                skeleton = get_plan_skeleton(plan, **self._skwargs_old)
                 self._log['checks'].append((skeleton, plan, prediction))
                 self._log['sequence'].append(sequence)
                 self._log['run_time'].append(ave_time)
@@ -512,6 +512,7 @@ class PVT(FeasibilityChecker):
 
         self.args = args = get_args(basename(pt_path))
         self.data = get_facts_goals_visuals(run_dir, mode=args.input_mode, img_mode=args.image_mode, links_only=True)
+        self.data['indices'] = get_indices(run_dir, larger=True)
         plan_gt = get_successful_plan(run_dir, self.data['indices'])
         self.plan_gt = [get_action_elems(a) for a in plan_gt[0]] if plan_gt is not None else None
 
