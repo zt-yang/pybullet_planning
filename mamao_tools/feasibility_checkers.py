@@ -555,7 +555,7 @@ class PVT(FeasibilityChecker):
         # import ipdb; ipdb.set_trace()
 
         base_2 = np.ceil(np.log2(len(inputs)))
-        bs = min(2 ** int(base_2), 128)
+        bs = min(2 ** int(base_2), 32) ## 128
         Dataset = get_dataset('pigi')
         data_loader = torch.utils.data.DataLoader(
             Dataset(dataset, test_time=True, num_images=args.num_img_channels),

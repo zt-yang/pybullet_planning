@@ -602,9 +602,9 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
     set_cost_scale(cost_scale=1)
     with LockRenderer(lock=lock):
         solution = solve_focused(pddlstream_problem, stream_info=stream_info, constraints=constraints,
-                                 planner='ff-astar1', max_planner_time=downward_time, debug=False,
+                                 planner='ff-astar1', max_planner_time=downward_time,
                                  unit_costs=False, success_cost=INF, initial_complexity=5,
-                                 max_time=max_time, verbose=True, visualize=visualize,
+                                 max_time=max_time, visualize=visualize, verbose=True, debug=False,
                                  # unit_efforts=True, effort_weight=None,
                                  unique_optimistic=True, use_feedback=use_feedback,
                                  forbid=True, max_plans=max_plans,
