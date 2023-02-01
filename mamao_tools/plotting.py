@@ -22,7 +22,7 @@ sys.path.append('/home/yang/Documents/fastamp')
 
 AUTO_REFRESH = False
 VIOLIN = False
-FPC = False
+FPC = True
 PAPER_VERSION = False ## no preview, just save pdf
 
 
@@ -69,9 +69,9 @@ METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']
 
 
 GROUPS = ['tt_one_fridge_table_in', 'tt_two_fridge_in',
-          'tt_storage', 'tt_braiser', 'tt_braiser_to_storage' ]
+          'tt_storage', 'tt_braiser', 'tt_braiser_to_storage'] ##
 GROUPNAMES = ['Table-to-fridge', 'Fridge-to-fridge',
-              'Counter-to-storage', 'Counter-to-pot', 'Pot-to-storage' ]
+              'Counter-to-storage', 'Counter-to-pot', 'Pot-to-storage' ]  ##
 
 METHODS = ['None', 'pvt-task', 'oracle']
 METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']
@@ -479,7 +479,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
 
                 for j in range(len(METHODS)):
 
-                    if not PAPER_VERSION:
+                    if not PAPER_VERSION or True:
                         bar_label = f"{count[j]} \n"
                         if miss[j] > 0:
                             bar_label += str(miss[j])
