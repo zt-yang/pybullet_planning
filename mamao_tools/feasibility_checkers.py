@@ -30,9 +30,9 @@ class FeasibilityChecker(object):
         self._skwargs = {'include_joint': True, 'include_movable': True}
         self._skwargs_old = copy.deepcopy(self._skwargs)
         if isinstance(run_dir, str):
-            self._skwargs['indices'] = get_indices(run_dir)
+            self._skwargs['indices'] = self._indices = get_indices(run_dir)
             self._skwargs_old = copy.deepcopy(self._skwargs)
-            self._skwargs_old['indices'] = get_indices(run_dir, larger=False, inv_body_map=inv_body_map)
+            self._skwargs_old['indices'] = self._indices_old = get_indices(run_dir, larger=False, inv_body_map=inv_body_map)
         self._log = {k: [] for k in ['checks', 'run_time']}
 
     def __call__(self, *args, **kwargs):
@@ -42,6 +42,11 @@ class FeasibilityChecker(object):
         if isinstance(self.run_dir, str):
             return get_indices(self.run_dir)
         return self.run_dir.world.get_indices()
+
+    def _get_gt_skeletons(self):
+        plans = get_successful_plan(self.run_dir, skip_multiple_plans=False)
+        plans = [modify_plan_with_body_map(plan, self.body_map) for plan in plans]
+        return [get_plan_skeleton(plan, **self._skwargs) for plan in plans]
 
     def _check(self, input):
         raise NotImplementedError('should implement this for FeasibilityChecker')
@@ -156,10 +161,7 @@ class Oracle(FeasibilityChecker):
 
     def __init__(self, run_dir, body_map):
         super().__init__(run_dir, body_map)
-        from mamao_tools.data_utils import get_plan_skeleton
-        plans = get_successful_plan(run_dir, skip_multiple_plans=False)
-        plans = [modify_plan_with_body_map(plan, self.body_map) for plan in plans]
-        self.skeletons = [get_plan_skeleton(plan, **self._skwargs) for plan in plans]  ## _old
+        self.skeletons = self._get_gt_skeletons()
         print(f'\nOracle feasibility checker - {self.skeletons}\n')
 
     def _check(self, plan):
@@ -514,9 +516,8 @@ class PVT(FeasibilityChecker):
 
         self.args = args = get_args(basename(pt_path))
         self.data = get_facts_goals_visuals(run_dir, mode=args.input_mode, img_mode=args.image_mode, links_only=True)
-        # self.data['indices'] = get_indices(run_dir, larger=True)
-        plan_gt = get_successful_plan(run_dir, self.data['indices'])
-        self.plan_gt = [get_action_elems(a) for a in plan_gt[0]] if plan_gt is not None else None
+        self.data['indices'] = get_indices(run_dir, larger=True)
+        self.skeletons = self._get_gt_skeletons()
 
         self._model = get_model(pt_path, args)
         self._model.eval()
@@ -549,10 +550,10 @@ class PVT(FeasibilityChecker):
             data['run_name'] = self.run_dir
             data['plan'] = plan
             data['index'] = index
-            data['skeleton'] = get_plan_skeleton(plan, indices)
-            if 'kc' in data['skeleton']:
-                print('sssssss')
-            label = 1 if plan == self.plan_gt else 0
+            data['skeleton'] = get_plan_skeleton(plan, **self._skwargs)
+            if 'kc' in data['skeleton'] or 'kc' in self.skeletons[0]:
+                print('\nkckckckckck -> ', data['skeleton'], self.skeletons[0])
+            label = 1 if data['skeleton'] in self.skeletons else 0
             dataset.append((data, label))
             index += 1
 
