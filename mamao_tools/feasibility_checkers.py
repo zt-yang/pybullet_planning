@@ -25,13 +25,14 @@ class FeasibilityChecker(object):
 
     def __init__(self, run_dir, inv_body_map, **kwargs):
         self.run_dir = run_dir
+        self.body_map = {v: k for k, v in inv_body_map.items()}
         self.inv_body_map = inv_body_map  ## rerun may have different pybullet body indices
         self._skwargs = {'include_joint': True, 'include_movable': True}
         self._skwargs_old = copy.deepcopy(self._skwargs)
         if isinstance(run_dir, str):
             self._skwargs['indices'] = get_indices(run_dir)
             self._skwargs_old = copy.deepcopy(self._skwargs)
-            self._skwargs_old['indices'] = get_indices(run_dir, inv_body_map=inv_body_map)
+            self._skwargs_old['indices'] = get_indices(run_dir, larger=False, inv_body_map=inv_body_map)
         self._log = {k: [] for k in ['checks', 'run_time']}
 
     def __call__(self, *args, **kwargs):
@@ -50,7 +51,7 @@ class FeasibilityChecker(object):
             inputs = [inputs]
 
         ## change new plan to have old indices
-        inputs = [modify_plan_with_body_map(plan, self.inv_body_map) for plan in inputs]
+        # inputs = [modify_plan_with_body_map(plan, self.inv_body_map) for plan in inputs]
 
         predictions = []
         printout = []
@@ -61,7 +62,7 @@ class FeasibilityChecker(object):
                 prediction = self._check(input) if not skip else True
                 predictions.append(prediction)
                 plan = get_plan_from_input(input)
-                skeleton = get_plan_skeleton(plan, **self._skwargs_old)
+                skeleton = get_plan_skeleton(plan, **self._skwargs) ## _old
                 if 'kc' in skeleton:
                     print('\nkckckckckckckckckckckckckckckckckcv!!!\n')
                 if prediction != SKIP:
@@ -157,12 +158,13 @@ class Oracle(FeasibilityChecker):
         super().__init__(run_dir, body_map)
         from mamao_tools.data_utils import get_plan_skeleton
         plans = get_successful_plan(run_dir, skip_multiple_plans=False)
-        self.skeletons = [get_plan_skeleton(plan, **self._skwargs_old) for plan in plans]
+        plans = [modify_plan_with_body_map(plan, self.body_map) for plan in plans]
+        self.skeletons = [get_plan_skeleton(plan, **self._skwargs) for plan in plans]  ## _old
         print(f'\nOracle feasibility checker - {self.skeletons}\n')
 
     def _check(self, plan):
         plan = [[i.name] + [str(a) for a in i.args] for i in plan]
-        skeleton = get_plan_skeleton(plan, **self._skwargs_old)
+        skeleton = get_plan_skeleton(plan, **self._skwargs)
         print(f'\t{skeleton}')
         return skeleton in self.skeletons
 
@@ -555,7 +557,8 @@ class PVT(FeasibilityChecker):
         # import ipdb; ipdb.set_trace()
 
         base_2 = np.ceil(np.log2(len(inputs)))
-        bs = min(2 ** int(base_2), 32) ## 128
+        bs = 32 if 'to_storage' in self.run_dir else 128
+        bs = min(2 ** int(base_2), bs) ## 128
         Dataset = get_dataset('pigi')
         data_loader = torch.utils.data.DataLoader(
             Dataset(dataset, test_time=True, num_images=args.num_img_channels),

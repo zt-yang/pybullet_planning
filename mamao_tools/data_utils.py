@@ -234,8 +234,12 @@ def get_body_map(run_dir, world, inv=False, larger=True):
         return {}
     body_to_name = config['body_to_name']
     if larger and 'body_to_name_new' in config:
-        body_to_name.update({k: v for k, v in config['body_to_name_new'].items() \
-                             if v not in body_to_name.values()})
+        name_to_body = {v: k for k, v in body_to_name.items()}
+        name_to_body_new = {v: k for k, v in config['body_to_name_new'].items()}
+        body_to_new = {v: name_to_body_new[k] for k, v in name_to_body.items()}
+        if inv:
+            return {v: k for k, v in body_to_new.items()}
+        return body_to_new
     ## if something doesn't exist, 'body_to_name_new' is incomplete
     body_to_new = {k: world.name_to_body[v] for k, v in body_to_name.items() \
                    if v in world.name_to_body}
@@ -250,18 +254,26 @@ def modify_plan_with_body_map(plan, inv_body_map):
     new_plan = []
     for action in plan:
         new_args = []
-        for a in action.args:
-            b = a
-            if a in inv_body_map:
-                b = inv_body_map[a]
-            else:
-                if hasattr(a, 'body') and a.body in inv_body_map:
-                    b = copy.deepcopy(a)
-                    b.body = inv_body_map[a.body]
-                elif hasattr(a, 'value') and a.value in inv_body_map:
-                    b = inv_body_map[a.value]
-            new_args.append(b)
-        new_plan.append(Action(action.name, new_args))
+        if isinstance(action, list):
+            new_action = []
+            for a in action:
+                if a in inv_body_map:
+                    a = inv_body_map[a]
+                new_action.append(a)
+            new_plan.append(new_action)
+        else:
+            for a in action.args:
+                b = a
+                if a in inv_body_map:
+                    b = inv_body_map[a]
+                else:
+                    if hasattr(a, 'body') and a.body in inv_body_map:
+                        b = copy.deepcopy(a)
+                        b.body = inv_body_map[a.body]
+                    elif hasattr(a, 'value') and a.value in inv_body_map:
+                        b = inv_body_map[a.value]
+                new_args.append(b)
+            new_plan.append(Action(action.name, new_args))
     return new_plan
 
 
