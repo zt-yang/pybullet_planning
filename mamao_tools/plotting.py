@@ -22,7 +22,7 @@ sys.path.append('/home/yang/Documents/fastamp')
 
 AUTO_REFRESH = False
 VIOLIN = False
-FPC = True
+FPC = False
 PAPER_VERSION = False ## no preview, just save pdf
 
 
@@ -73,8 +73,8 @@ GROUPS = ['tt_one_fridge_table_in', 'tt_two_fridge_in',
 GROUPNAMES = ['Table-to-fridge', 'Fridge-to-fridge',
               'Counter-to-storage', 'Counter-to-pot', 'Pot-to-storage' ]  ##
 
-METHODS = ['None', 'pvt-task', 'oracle']
-METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']
+METHODS = ['None', 'pvt-task', 'pvt-56', 'oracle']
+METHOD_NAMES = ['Baseline', 'PIGI', 'PIGI*', 'Oracle']
 
 ############################################################################
 
@@ -260,6 +260,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     missing = {}
     points_x = {}
     points_y = {}
+    lines = {}  ## Group: lines
     for i in range(n_groups):
         group = groups[i]
         if not SAME_Y_AXES:
@@ -309,6 +310,14 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                 argmaxs[method].append("")
                 counts[method].append(0)
             missing[method].append(len(data[group]['missing'][method]))
+
+        lines[group] = {}
+        for method, run_dirs in data[group]['run_dir'].items():
+            for run_dir in run_dirs:
+                if run_dir not in lines[group]:
+                    lines[group][run_dir] = {n: [] for n in ['x', 'y']}
+                lines[group][run_dir]['x'].append(METHODS.index(method))
+                lines[group][run_dir]['y'].append(data[group][method][run_dirs.index(run_dir)])
 
     index = np.arange(n_groups)
     bar_width = 0.1
@@ -456,6 +465,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                     from matplotlib.ticker import MaxNLocator
                     axs[i].yaxis.set_major_locator(MaxNLocator(integer=True))
 
+                ## data points
                 cc = [colors[k] for k in xx]
                 xxx = [x * scale for x in xx]
                 s = 20
@@ -476,6 +486,18 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                         ss.extend(sss)
                     s = np.asarray(ss)
                 axs[i].scatter(xxx, yy, s=s, color=cc, alpha=0.7)
+
+                ## line connections
+                for run_dir, line in lines[groups[i]].items():
+                    if len(line['y']) < 2:
+                        continue
+                    color = color_dict['gray']
+                    if line['y'][0] > line['y'][1]:
+                        color = color_dict['g'][0]
+                    elif line['y'][0] < line['y'][1]:
+                        color = color_dict['r'][0]
+
+                    axs[i].plot([n*scale for n in line['x']], line['y'], color=color, alpha=0.2)
 
                 for j in range(len(METHODS)):
 
