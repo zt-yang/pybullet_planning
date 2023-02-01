@@ -22,7 +22,7 @@ sys.path.append('/home/yang/Documents/fastamp')
 
 AUTO_REFRESH = False
 VIOLIN = False
-FPC = False
+FPC = True
 PAPER_VERSION = False ## no preview, just save pdf
 
 
@@ -31,6 +31,8 @@ rc('font', **{'family': 'serif', 'serif': ['Times']})
 # rc('text', usetex=True)
 
 GROUPNAMES = None
+FIXED_COST = None
+
 ############################## fridges #######################################3
 
 
@@ -73,8 +75,15 @@ GROUPS = ['tt_one_fridge_table_in', 'tt_two_fridge_in',
 GROUPNAMES = ['Table-to-fridge', 'Fridge-to-fridge',
               'Counter-to-storage', 'Counter-to-pot', 'Pot-to-storage' ]  ##
 
-METHODS = ['None', 'pvt-task', 'pvt-56', 'oracle']
-METHOD_NAMES = ['Baseline', 'PIGI', 'PIGI*', 'Oracle']
+METHODS = ['None', 'pvt-task', 'oracle']  ## 'pvt-56',
+METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']  ## 'PIGI*',
+
+FIXED_COST = []
+for task_name in GROUPS:
+    if 'to_storage' in task_name:
+        FIXED_COST.append(60)
+    else:
+        FIXED_COST.append(3)
 
 ############################################################################
 
@@ -202,6 +211,8 @@ def get_time_data(diverse=False):
                     num_FP = get_fc_record(rr, fc_classes=[method], rerun_subdir=RERUN_SUBDIR)[method][-1]
                     if num_FP is not None:
                         data[group][method].append(num_FP)
+                    else:
+                        continue
                     # num_FP = get_fc_record(rr, fc_classes=[method], rerun_subdir=RERUN_SUBDIR)
                     # if method in num_FP:
                     #     data[group][method].append(len(num_FP[method][-2]))
@@ -312,10 +323,17 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
             missing[method].append(len(data[group]['missing'][method]))
 
         lines[group] = {}
+        run_dir_counts = {}
         for method, run_dirs in data[group]['run_dir'].items():
             for run_dir in run_dirs:
-                if run_dir not in lines[group]:
-                    lines[group][run_dir] = {n: [] for n in ['x', 'y']}
+                if run_dir not in run_dir_counts:
+                    run_dir_counts[run_dir] = 0
+                run_dir_counts[run_dir] += 1
+        use_run_dirs = [k for k, v in run_dir_counts.items() if v == len(METHODS)]
+        for run_dir in use_run_dirs:
+            if run_dir not in lines[group]:
+                lines[group][run_dir] = {n: [] for n in ['x', 'y']}
+            for method, run_dirs in data[group]['run_dir'].items():
                 lines[group][run_dir]['x'].append(METHODS.index(method))
                 lines[group][run_dir]['y'].append(data[group][method][run_dirs.index(run_dir)])
 
@@ -448,18 +466,22 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
 
             else:
                 ll = [x * scale for x in range(len(METHODS))]
-                axs[i].bar(ll, mean, bar_width,
-                        alpha=0.4,
-                        color=colors,
-                        yerr=std,
-                        error_kw={'ecolor': colors_darker},
-                        label=METHODS)
+
+                bar_kwargs = dict(color=colors, alpha=0.4, label=METHODS)
+                overhead_kwargs = dict(color='#000000', alpha=0.4, bottom=mean)
+
+                if not FPC and FIXED_COST is not None:
+                    axs[i].bar(ll, FIXED_COST[i], bar_width,
+                               color=color_dict['p'][1], alpha=0.4)
+                    mean = [m - FIXED_COST[i] for m in mean]
+                    bar_kwargs['bottom'] = FIXED_COST[i]
+                    overhead_kwargs['bottom'] = [m + FIXED_COST[i] for m in mean]
+
+                axs[i].bar(ll, mean, bar_width, yerr=std,
+                           error_kw={'ecolor': colors_darker}, **bar_kwargs)
+
                 if not FPC:
-                    axs[i].bar(ll, overhead, bar_width,
-                            alpha=0.4,
-                            color='#000000',
-                            label=METHODS,
-                            bottom=mean)
+                    axs[i].bar(ll, overhead, bar_width, **overhead_kwargs)
                     print(f"task: {groups[i]} overhead: {[round(oo, 5) for oo in overhead]}")
                 else:
                     from matplotlib.ticker import MaxNLocator
@@ -491,7 +513,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                 for run_dir, line in lines[groups[i]].items():
                     if len(line['y']) < 2:
                         continue
-                    color = color_dict['gray']
+                    color = color_dict['gray'][0]
                     if line['y'][0] > line['y'][1]:
                         color = color_dict['g'][0]
                     elif line['y'][0] < line['y'][1]:
