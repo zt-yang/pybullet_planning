@@ -52,6 +52,7 @@ class FeasibilityChecker(object):
         raise NotImplementedError('should implement this for FeasibilityChecker')
 
     def check(self, inputs):
+        from pybullet_tools.logging import myprint as print
         if not isinstance(inputs[0], list):
             inputs = [inputs]
 
@@ -88,22 +89,36 @@ class FeasibilityChecker(object):
         else:
             self._log['sequence'] = []
             start = time.time()
+            appeared_skeletons = []
             predictions = self._check(inputs)
-            run_time = round(time.time() - start, 4)
-            ave_time = (run_time, len(inputs), round(run_time / len(inputs), 4))
             if len(predictions) != len(inputs):
                 print('len predictions', len(predictions), '\nlen inputs', len(inputs))
                 # import ipdb; ipdb.set_trace()
+
+            new_predictions = predictions
+
+            ## for the logging
+            run_time = round(time.time() - start, 4)
+            ave_time = (run_time, len(inputs), round(run_time / len(inputs), 4))
             p = {i: predictions[i] for i in range(len(inputs))}
             sorted_predictions = {k: v for k, v in sorted(p.items(), key=lambda item: item[1], reverse=True)}
             for i, prediction in sorted_predictions.items():
                 plan = get_plan_from_input(inputs[i])
                 sequence = self.sequences[i]
                 skeleton = get_plan_skeleton(plan, **self._skwargs)
+                if skeleton in appeared_skeletons:
+                    prediction = 0
+                    new_predictions[i] = prediction
+                else:
+                    appeared_skeletons.append(skeleton)
                 self._log['checks'].append((skeleton, plan, prediction))
                 self._log['sequence'].append(sequence)
                 self._log['run_time'].append(ave_time)
-                printout.append((round(prediction, 3), skeleton))
+                pp = [round(prediction, 3), skeleton]
+                if prediction == 0:
+                    pp.append('x')
+                printout.append(tuple(pp))
+            predictions = new_predictions
         [print(p) for p in printout]
 
         # if len(predictions) == 1:
@@ -208,7 +223,7 @@ class LargerWorld(FeasibilityChecker):
 
     def _check(self, plan):
         plan = [[i.name] + [str(a) for a in i.args] for i in plan]
-        skeleton = get_plan_skeleton(plan, **self._skwargs_old)
+        skeleton = get_plan_skeleton(plan, **self._skwargs)
         actions = [a + ')' for a in skeleton.split(')')[:-1]]
 
         result = SKIP
