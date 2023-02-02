@@ -10,7 +10,7 @@ import copy
 
 import random
 from pybullet_tools.utils import is_placement, link_from_name, get_joint_name, \
-get_aabb_center, get_aabb_extent, get_pose
+    get_aabb_center, get_aabb_extent, get_pose, get_aabb
 from pybullet_tools.pr2_primitives import Pose
 from pybullet_tools.general_streams import Position
 from pybullet_tools.bullet_utils import nice, is_box_entity
@@ -849,12 +849,29 @@ def add_objects_and_facts(world, init, run_dir):
     planning_objects = world.get_planning_objects()
     non_planning_objects = world.get_non_planning_objects()
     planning_types = world.summarize_all_types(init, return_string=False)
-    non_planning_types = {}
 
     total_surfaces = planning_types['surface']
     total_graspables = planning_types['graspable']
 
-    if '1' in case:
+    ## make sure (supported obj ...) is in init for all objects
+    non_planning_types = {}
+    non_planning_types['graspable'] = [v for k, v in world.name_to_body.items() if \
+                                       ('veggie' in k or 'bottle' in k or 'medicine' in k) \
+                                       and v not in planning_types['graspable']]
+    non_planning_types['surface'] = [b for b in world.body_to_name if is_box_entity(b)]
+    non_planning_types['surface'] += [world.name_to_body['microwave#1']]
+
+    def get_p(bb):
+        aa = []
+        ps = [f[2] for f in init if f[0] == 'pose' and f[1] == bb]
+        if len(ps) == 0:
+            p = Pose(bb)
+            aa = [('Pose', bb, p), ('AtPose', bb, p)]
+        else:
+            p = ps[0]
+        return p, aa
+
+    if '1' in case and '2' not in case:
 
         ## add another container and its doors
         this_container = [o[:o.index(':')] for o in planning_objects if 'minifridge::' in o or 'cabinettop::' in o][0]
@@ -886,16 +903,6 @@ def add_objects_and_facts(world, init, run_dir):
         braiser = world.name_to_body[body_name]
         if body_name not in planning_objects:
             added_objects += [body_name]
-
-        def get_p(bb):
-            aa = []
-            ps = [f[2] for f in init if f[0] == 'pose' and f[1] == bb]
-            if len(ps) == 0:
-                p = Pose(bb)
-                aa = [('Pose', bb, p), ('AtPose', bb, p)]
-            else:
-                p = ps[0]
-            return p, aa
 
         if bottom_name not in world.name_to_body:
             link = link_from_name(braiser, 'braiser_bottom')
@@ -935,19 +942,37 @@ def add_objects_and_facts(world, init, run_dir):
                 p, aa = get_p(lid)
                 added_init += [('Supported', lid, p, braiser)] + aa
 
+    if '2' in case:
+        bottom_name = 'sink#1::sink_bottom'
+        sink_body = world.name_to_body['sink#1']
+
+        ## all existing movables must be supported
+        if bottom_name not in world.name_to_body:
+            link = link_from_name(sink_body, 'sink_bottom')
+            bottom = (sink_body, None, link)
+            world.add_body(bottom, bottom_name)
+            added_objects += [bottom_name]
+
+        ## all existing movables must be supported
+        config = load_planning_config(run_dir)
+        if 'supported_movables' in config:
+            for obj_name, surface_name in config['supported_movables'].items():
+                if obj_name not in planning_objects:
+                    continue
+                found = [f for f in init if f[0] == 'supported' and f[1] == obj_name and f[-1] == surface_name]
+                if len(found) == 0:
+                    p, aa = get_p(world.name_to_body[obj_name])
+                    added_init += [('Supported', obj_name, p, surface_name)] + aa
+                    if surface_name not in planning_objects and surface_name not in added_objects:
+                        added_objects += [surface_name]
+
     if '2' in case or '3' in case:
 
-        ## make sure (supported obj ...) is in init for all objects
-        non_planning_types['graspable'] = [v for k, v in world.name_to_body.items() if \
-                                           ('veggie' in k or 'bottle' in k or 'medicine' in k) \
-                                           and v not in planning_types['graspable']]
-        random.shuffle(non_planning_types['graspable'])
-        non_planning_types['surface'] = [b for b in world.body_to_name if is_box_entity(b)]
-        non_planning_types['surface'] += [world.name_to_body['microwave#1']]
-
+        ## add another graspable and its surface
         placed = False
         graspable = None
         found_surface = None
+        random.shuffle(non_planning_types['graspable'])
         for graspable in non_planning_types['graspable']:
             for s in non_planning_types['surface']:
                 if is_placement(graspable, s, below_epsilon=0.02, above_epsilon=0.02):
@@ -974,4 +999,5 @@ def add_objects_and_facts(world, init, run_dir):
                     added_init += [stackable]
 
     added_objects = [o for o in added_objects if o not in planning_objects]
+    added_objects = list(set(added_objects))
     return added_objects, added_init

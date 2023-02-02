@@ -4228,8 +4228,8 @@ def is_placed_on_aabb(body, bottom_aabb, above_epsilon=1e-2, below_epsilon=0.0):
     return ((bottom_z_max - abs(below_epsilon)) <= top_z_min <= (bottom_z_max + abs(above_epsilon))) and \
            (aabb_contains_aabb(aabb2d_from_aabb(top_aabb), aabb2d_from_aabb(bottom_aabb)))
 
-def is_placement(body, surface, **kwargs):
-    return is_placed_on_aabb(body, get_aabb(surface), **kwargs)
+def is_placement(body, surface, link=None, **kwargs):
+    return is_placed_on_aabb(body, get_aabb(surface, link=link), **kwargs)
 
 def is_center_on_aabb(body, bottom_aabb, above_epsilon=1e-2, below_epsilon=0.0):
     # TODO: compute AABB in origin

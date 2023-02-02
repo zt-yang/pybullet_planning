@@ -22,7 +22,7 @@ sys.path.append('/home/yang/Documents/fastamp')
 
 AUTO_REFRESH = False
 VIOLIN = False
-FPC = True
+FPC = False
 PAPER_VERSION = False ## no preview, just save pdf
 
 
@@ -184,11 +184,14 @@ def get_time_data(diverse=False):
                 if 'run_dir' not in data[group]:
                     data[group]['run_dir'] = []
 
+                """ get planning time """
                 file = join(run_dir, f"{prefix}plan_rerun_fc={method}.json")
                 # if 'tt_two_fridge_pick' in run_dir and method == 'pvt-task*':
                 #     file = join(run_dir, f"{prefix}plan_rerun_fc=pvt-124.json")
                 # elif 'tt_two_fridge_in' in run_dir and method == 'pvt-task*':
                 #     file = join(run_dir, f"{prefix}plan_rerun_fc=pvt-123.json")
+                if 'tt_braiser_to_storage' in run_dir and method == 'pvt-56':
+                    file = file.replace('rerun_2', 'rerun_3')
 
                 if not isfile(file):
                     print(f"File not found: {file}")
@@ -584,8 +587,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
             plt.show()
 
 
-if __name__ == '__main__':
-
+def make_plot():
     # check_run_dirs()
 
     if not AUTO_REFRESH:
@@ -609,3 +611,7 @@ if __name__ == '__main__':
         #     print('waiting for new data...')
         #     plt.pause(duration)
         #     plt.close('all')
+
+
+if __name__ == '__main__':
+    make_plot()

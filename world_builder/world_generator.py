@@ -464,6 +464,15 @@ def generate_problem_pddl(world, facts, goals, world_name='lisdf', domain_name='
                         '\n\t' + '\n\t'.join(sorted(added_obj))
 
     ########################################################
+    if added_init is not None and 'sink' in out_path:
+        new_supported = [i for i in added_init if i[0].lower() == 'supported']
+        old_supported = [i for i in facts if i[0].lower() == 'supported']
+        for i in old_supported:
+            for j in new_supported:
+                o = j[1] if not isinstance(j[1], str) else world.name_to_body[j[1]]
+                s = j[-1] if not isinstance(j[-1], str) else world.name_to_body[j[-1]]
+                if i[1] == o:
+                    facts.remove(i)
 
     init_pddl = generate_init_pddl(world, facts)
     if added_init is not None:
