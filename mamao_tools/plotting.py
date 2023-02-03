@@ -21,7 +21,7 @@ sys.path.append('/home/yang/Documents/fastamp')
 # from fastamp_utils import get_fc_record
 
 AUTO_REFRESH = False
-VIOLIN = True
+VIOLIN = False
 FPC = False
 PAPER_VERSION = False ## no preview, just save pdf
 

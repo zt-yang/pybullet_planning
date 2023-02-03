@@ -158,7 +158,7 @@ class PassAll(FeasibilityChecker):
 
     def _check(self, plan):
         plan = [[i.name] + [str(a) for a in i.args] for i in plan]
-        skeleton = get_plan_skeleton(plan, **self._skwargs_old)
+        skeleton = get_plan_skeleton(plan, **self._skwargs)
         print(f'\t{skeleton}')
         return True
 
