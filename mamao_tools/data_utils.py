@@ -249,6 +249,13 @@ def get_body_map(run_dir, world, inv=False, larger=True):
     return body_to_new
 
 
+def modify_skeleton_with_body_map(skeleton, body_map):
+    for k, v in body_map.items():
+        if k != v and '(' not in k:
+            skeleton = skeleton.replace(f"({v})", f"({k})")
+    return skeleton
+
+
 def modify_plan_with_body_map(plan, inv_body_map):
     from pddlstream.language.constants import Action
     new_plan = []
@@ -1001,3 +1008,37 @@ def add_objects_and_facts(world, init, run_dir):
     added_objects = [o for o in added_objects if o not in planning_objects]
     added_objects = list(set(added_objects))
     return added_objects, added_init
+
+
+def delete_wrongly_supported(run_dir, debug=False):
+    prb_file = join(run_dir, 'problem_larger.pddl')
+    config = load_planning_config(run_dir)
+    if 'supported_movables' in config:
+        ss = config['supported_movables']
+        found = False
+        # new_lines = ""
+        lines = []
+        for old_line in open(prb_file, 'r').readlines():
+            line = old_line.strip().replace('\n', '')
+            if line.startswith('(supported'):
+                elems = line.split()
+                obj_name = elems[1]
+                surface_name = elems[-1][:-1]
+                if obj_name in ss and ss[obj_name] != surface_name:
+                    print('   ', obj_name, 'is supported by', ss[obj_name], 'instead of', surface_name)
+                    found = True
+                    if debug:
+                        old_line = old_line.replace('(supported', ';(supported')
+                    else:
+                        continue
+            # if old_line not in lines:
+            #     lines.append(old_line)
+            new_lines += old_line
+        if found:
+            if debug:
+                prb_file = join(run_dir, 'problem_larger_revised.pddl')
+            else:
+                shutil.copy(prb_file, join(run_dir, 'problem_larger_old.pddl'))
+            with open(prb_file, 'w') as f:
+                f.write(new_lines)
+                print('saved revised problem file to', prb_file)
