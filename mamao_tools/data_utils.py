@@ -878,7 +878,7 @@ def add_objects_and_facts(world, init, run_dir):
             p = ps[0]
         return p, aa
 
-    if '1' in case and '2' not in case:
+    if '1' in case: ##  and '2' not in case
 
         ## add another container and its doors
         this_container = [o[:o.index(':')] for o in planning_objects if 'minifridge::' in o or 'cabinettop::' in o][0]
@@ -1016,7 +1016,7 @@ def delete_wrongly_supported(run_dir, debug=False):
     if 'supported_movables' in config:
         ss = config['supported_movables']
         found = False
-        # new_lines = ""
+        new_lines = ""
         lines = []
         for old_line in open(prb_file, 'r').readlines():
             line = old_line.strip().replace('\n', '')
