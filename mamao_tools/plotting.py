@@ -21,7 +21,7 @@ sys.path.append('/home/yang/Documents/fastamp')
 # from fastamp_utils import get_fc_record
 
 AUTO_REFRESH = False
-VIOLIN = False
+VIOLIN = True
 FPC = False
 PAPER_VERSION = False ## no preview, just save pdf
 
@@ -71,9 +71,11 @@ METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']
 
 
 GROUPS = ['tt_one_fridge_table_in', 'tt_two_fridge_in',
-          'tt_storage', 'tt_braiser', 'tt_braiser_to_storage'] ##
+          'tt_storage', 'tt_braiser', 'tt_braiser_to_storage',
+          'tt_sink', 'tt_sink_to_storage'] ##
 GROUPNAMES = ['Table-to-fridge', 'Fridge-to-fridge',
-              'Counter-to-storage', 'Counter-to-pot', 'Pot-to-storage' ]  ##
+              'Counter-to-storage', 'Counter-to-pot', 'Pot-to-storage',
+              'Counter-to-sink', 'Sink-to-storage' ]  ##
 
 METHODS = ['None', 'pvt-task', 'oracle']  ## 'pvt-56',
 METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']  ## 'PIGI*',
@@ -97,7 +99,7 @@ color_dict = {
     'p': ('#9b59b6', '#8e44ad'),
     'gray': ('#95a5a6', '#7f8c8d'),
 }
-cc = ['b', 'r', 'g', 'gray']
+cc = ['b', 'r', 'y', 'gray']
 if len(METHODS) == 5:
     cc = ['b', 'r', 'g', 'p', 'gray']
 elif len(METHODS) == 6:
@@ -109,6 +111,12 @@ colors_darker = [color_dict[k][0] for k in cc]
 # METHODS = ['None', 'oracle'] ## , 'pvt'
 SAME_Y_AXES = False
 RERUN_SUBDIR = 'rerun_2'
+
+
+def hex_to_rgb(value):
+    value = value.lstrip('#')
+    lv = len(value)
+    return tuple(int(value[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
 
 
 def get_rundirs(task_name):
@@ -194,7 +202,7 @@ def get_time_data(diverse=False):
                     file = file.replace('rerun_2', 'rerun_3')
 
                 if not isfile(file):
-                    print(f"File not found: {file}")
+                    # print(f"File not found: {file}")
                     data[group]['missing'][method].append(run_dir)
                     continue
                     # if method == 'None':
@@ -345,7 +353,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     if len(METHODS) == 2:
         bar_width = 0.35
     elif len(METHODS) == 3:
-        bar_width = 0.25
+        bar_width = 0.2
     elif len(METHODS) == 4:
         bar_width = 0.2
     elif len(METHODS) == 5:
@@ -439,6 +447,9 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
             if len(METHODS) == 6 or len(groups) == 6:
                 figsize = (21, 6)
 
+        if len(METHODS) == 3 or len(groups) == 7:
+            figsize = (18, 5)
+
         bar_width = 0.3
         fig, axs = plt.subplots(1, len(groups), figsize=figsize)
 
@@ -459,13 +470,18 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                 import pandas as pd
                 from matplotlib.collections import PolyCollection
 
+                scale = 1
                 df = pd.DataFrame({'x': xx, 'y': yy})
                 my_pal = {i: colors[i] for i in range(len(METHODS))}
-                sns.violinplot(data=df, x="x", y="y", bw=.4, ax=axs[i], scale="width", palette=my_pal)
+                ax = sns.violinplot(data=df, x="x", y="y", bw=.4, ax=axs[i], scale="width", palette=my_pal)
                 axs[i].set(xlabel=None, ylabel=None)
-                # for art in axs[i].get_children():
-                #     if isinstance(art, PolyCollection):
-                #         art.set_edgecolor((1, 1, 1, 1))
+                for violin in ax.collections[::2]:
+                    violin.set_alpha(0.4)
+
+                for art in axs[i].get_children():
+                    if isinstance(art, PolyCollection):
+                        # color = hex_to_rgb()
+                        art.set_edgecolor(art.get_facecolor()[0])
 
             else:
                 ll = [x * scale for x in range(len(METHODS))]
@@ -473,6 +489,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                 bar_kwargs = dict(color=colors, alpha=0.4, label=METHODS)
                 overhead_kwargs = dict(color='#000000', alpha=0.4, bottom=mean)
 
+                """ fixed cost """
                 if not FPC and FIXED_COST is not None:
                     axs[i].bar(ll, FIXED_COST[i], bar_width,
                                color=color_dict['p'][1], alpha=0.4)
@@ -480,9 +497,11 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                     bar_kwargs['bottom'] = FIXED_COST[i]
                     overhead_kwargs['bottom'] = [m + FIXED_COST[i] for m in mean]
 
+                """ refinement cost """
                 axs[i].bar(ll, mean, bar_width, yerr=std,
                            error_kw={'ecolor': colors_darker}, **bar_kwargs)
 
+                """ overhead cost """
                 if not FPC:
                     axs[i].bar(ll, overhead, bar_width, **overhead_kwargs)
                     print(f"task: {groups[i]} overhead: {[round(oo, 5) for oo in overhead]}")
@@ -490,63 +509,67 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                     from matplotlib.ticker import MaxNLocator
                     axs[i].yaxis.set_major_locator(MaxNLocator(integer=True))
 
-                ## data points
-                cc = [colors[k] for k in xx]
-                xxx = [x * scale for x in xx]
-                s = 20
-                if FPC:
-                    ss = []
-                    for j in range(len(METHODS)):
-                        yy_method = [yy[m] for m in range(len(yy)) if xx[m] == j]
-                        unique, num = np.unique(yy_method, return_counts=True)
-                        unique = list(unique)
-                        sss = [num[unique.index(m)] for m in yy_method]
-                        if len(sss) == 0:
-                            ss.extend([s]*len(yy_method))
-                            continue
-                        sss_min = min(sss)
-                        # sss = [np.log(ssss/sss_min + 1)*s for ssss in sss]
-                        # sss = [np.sqrt(ssss/sss_min + 1)*s for ssss in sss]
-                        sss = [(ssss/sss_min + 1)*s/5 for ssss in sss]
-                        ss.extend(sss)
-                    s = np.asarray(ss)
-                axs[i].scatter(xxx, yy, s=s, color=cc, alpha=0.7)
-
-                ## line connections
-                for run_dir, line in lines[groups[i]].items():
-                    if len(line['y']) < 2:
-                        continue
-                    color = color_dict['gray'][0]
-                    if line['y'][0] > line['y'][1]:
-                        color = color_dict['g'][0]
-                    elif line['y'][0] < line['y'][1]:
-                        color = color_dict['r'][0]
-
-                    axs[i].plot([n*scale for n in line['x']], line['y'], color=color, alpha=0.2)
-
+            ## data points
+            cc = [colors[k] for k in xx]
+            xxx = [x * scale for x in xx]
+            s = 20
+            if FPC:
+                ss = []
                 for j in range(len(METHODS)):
+                    yy_method = [yy[m] for m in range(len(yy)) if xx[m] == j]
+                    unique, num = np.unique(yy_method, return_counts=True)
+                    unique = list(unique)
+                    sss = [num[unique.index(m)] for m in yy_method]
+                    if len(sss) == 0:
+                        ss.extend([s]*len(yy_method))
+                        continue
+                    sss_min = min(sss)
+                    # sss = [np.log(ssss/sss_min + 1)*s for ssss in sss]
+                    # sss = [np.sqrt(ssss/sss_min + 1)*s for ssss in sss]
+                    sss = [(ssss/sss_min + 1)*s/5 for ssss in sss]
+                    ss.extend(sss)
+                s = np.asarray(ss)
+            axs[i].scatter(xxx, yy, s=s, color=cc, alpha=0.7)
 
-                    if not PAPER_VERSION or True:
-                        bar_label = f"{count[j]} \n"
-                        if miss[j] > 0:
-                            bar_label += str(miss[j])
-                        axs[i].annotate(bar_label,  # text
-                                    (j*scale, 0),  # points location to label
-                                    textcoords="offset points",
-                                    xytext=(0, -40),  # distance between the points and label
-                                    ha='center', color='gray',
-                                    fontsize=10)
-                    if not PAPER_VERSION:
-                        axs[i].annotate(agm[j],  # text
-                                    (j*scale, mx[j]),  # points location to label
-                                    textcoords="offset points",
-                                    xytext=(0, 6),  # distance between the points and label
-                                    ha='center',
-                                    fontsize=10)
+            """ line connections """
+            for run_dir, line in lines[groups[i]].items():
+                if len(line['y']) < 2:
+                    continue
+                color = None ## color_dict['gray'][0]
+                alpha = 0.2
+                if line['y'][0] != 0 and line['y'][1] != 0:
+                    if line['y'][0] / line['y'][1] > 1.1:
+                        color = color_dict['g'][0]
+                    elif line['y'][1] / line['y'][0] > 1.1:
+                        color = color_dict['r'][0]
+                        print(run_dir)
 
-                axs[i].set_ylim([0, max(mx)*1.1])
-                axs[i].tick_params(axis='x', which='major') ## , pad=28
-                axs[i].tick_params(axis='y', which='major', pad=-4, rotation=45)
+                if color is not None:
+                    axs[i].plot([n*scale for n in line['x']], line['y'], color=color, alpha=alpha)
+
+            for j in range(len(METHODS)):
+
+                if not PAPER_VERSION or True:
+                    bar_label = f"{count[j]} \n"
+                    if miss[j] > 0:
+                        bar_label += str(miss[j])
+                    axs[i].annotate(bar_label,  # text
+                                (j*scale, 0),  # points location to label
+                                textcoords="offset points",
+                                xytext=(0, -40),  # distance between the points and label
+                                ha='center', color='gray',
+                                fontsize=10)
+                if not PAPER_VERSION:
+                    axs[i].annotate(agm[j],  # text
+                                (j*scale, mx[j]),  # points location to label
+                                textcoords="offset points",
+                                xytext=(0, 6),  # distance between the points and label
+                                ha='center',
+                                fontsize=10)
+
+            axs[i].set_ylim([0, max(mx)*1.1])
+            axs[i].tick_params(axis='x', which='major') ## , pad=28
+            axs[i].tick_params(axis='y', which='major', pad=-4, rotation=45)
 
             if PAPER_VERSION: ##  and False
                 axs[i].set_title(labels[i], fontsize=11, y=-0.2)
@@ -556,7 +579,6 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
             axs[i].set_xticks(ll)
             axs[i].set_xticklabels(METHOD_NAMES, fontsize=10) ## , y=-0.25 , rotation=45
 
-            # print(groups[i], 'means_overhead', means_overhead)
 
         ylabel = 'Number of FP Skeletons' if FPC else 'Planning time'
         axs[0].set_ylabel(ylabel, fontsize=12)
@@ -564,9 +586,10 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
 
         if not PAPER_VERSION:
             plt.subplots_adjust(hspace=0.55, left=0.1, right=0.95, top=0.8, bottom=0.2)
-            fig.suptitle(title, fontsize=16, y=0.96) ##  + dt
+            # fig.suptitle(title, fontsize=16, y=0.96) ##  + dt
+            fig.suptitle('.', fontsize=16, y=0.96) ##  + dt
             fig.legend(handles, METHOD_NAMES, ncol=len(METHODS), fontsize=11,
-                       loc='upper center', bbox_to_anchor=(0.5, 0.9))
+                       loc='upper center', bbox_to_anchor=(0.5, 0.97))
         else:
             plt.subplots_adjust(hspace=0.55, left=0.05, right=0.99, top=0.85, bottom=0.15)
             fig.legend(handles, METHOD_NAMES, ncol=len(METHODS), fontsize=11,
@@ -581,6 +604,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
             file_name += '_fpc'
         plt.savefig(f'/home/yang/{file_name}.pdf', bbox_inches='tight')
     else:
+        plt.tight_layout()
         if update:
             plt.draw()
         else:
