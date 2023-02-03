@@ -14,7 +14,7 @@ from world_builder.utils import get_potential_placements
 from world_builder.robot_builders import create_gripper_robot
 from mamao_tools.data_utils import get_plan_skeleton, get_indices, get_action_elems, \
     get_successful_plan, modify_plan_with_body_map, load_planning_config, get_old_actions, \
-    get_joint_name_chars
+    get_joint_name_chars, modify_skeleton_with_body_map
 sys.path.append('/home/yang/Documents/fastamp')
 
 MODELS_PATH = '/home/yang/Documents/fastamp/test_models'
@@ -193,9 +193,8 @@ class LargerWorld(FeasibilityChecker):
         super().__init__(run_dir, body_map)
         from fastamp_utils import get_plans_labels
         data = get_plans_labels(run_dir, using_larger_labels=False)
-        self.skeletons = {
-            data['skeletons'][i]: data['labels'][i] for i in range(len(data['plans']))
-        }
+        new_skeletons = [modify_skeleton_with_body_map(s, body_map) for s in data['skeletons']]
+        self.skeletons = {new_skeletons[i]: data['labels'][i] for i in range(len(data['plans']))}
         for i in range(len(data['plans'])):
             print('\t', data['labels'][i], '\t', data['skeletons'][i])
         print(f'\nLargerWorld FC - {len(self.skeletons)} plans, '
@@ -207,7 +206,7 @@ class LargerWorld(FeasibilityChecker):
         self.body_to_name_new = config['body_to_name_new']
         self._body_to_name_old = config['body_to_name']
 
-        self.old_actions = get_old_actions(data['skeletons'])
+        self.old_actions = get_old_actions(self.skeletons)
         include_actions = []
         for k, v in self.body_to_name_new.items():
             if v in self._body_to_name_old.values():
