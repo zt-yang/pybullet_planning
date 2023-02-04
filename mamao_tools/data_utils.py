@@ -1042,3 +1042,14 @@ def delete_wrongly_supported(run_dir, debug=False):
             with open(prb_file, 'w') as f:
                 f.write(new_lines)
                 print('saved revised problem file to', prb_file)
+
+
+def get_fastdownward_time(run_dir, method):
+    log = join(run_dir, f'diverse_printouts_fc={method}.txt')
+    if not isfile(log):
+        if 'to_storage' in run_dir:
+            return 60
+        return 3
+    lines = open(log, 'r').readlines()
+    times = [eval(l[l.index(':')+2:].strip()) for l in lines if 'Count Diverse Time:' in l]
+    return sum(times)
