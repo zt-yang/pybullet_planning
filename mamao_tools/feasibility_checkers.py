@@ -155,11 +155,15 @@ class PassAll(FeasibilityChecker):
 
     def __init__(self, run_dir, body_map, shuffle=False):
         super().__init__(run_dir, body_map)
+        self.skeletons_gt = self._get_gt_skeletons()
 
     def _check(self, plan):
         plan = [[i.name] + [str(a) for a in i.args] for i in plan]
         skeleton = get_plan_skeleton(plan, **self._skwargs)
-        print(f'\t{skeleton}')
+        line = f'\t{skeleton}'
+        if skeleton in self.skeletons_gt:
+            line += ' *'
+        print(line)
         return True
 
 
