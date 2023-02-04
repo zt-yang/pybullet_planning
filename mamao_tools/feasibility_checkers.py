@@ -181,6 +181,18 @@ class Oracle(FeasibilityChecker):
     def __init__(self, run_dir, body_map):
         super().__init__(run_dir, body_map)
         self.skeletons = self._get_gt_skeletons()
+        ## include plan found by None during testing
+        rerun_dir = join(run_dir, 'rerun_2')
+        if isdir(rerun_dir):
+            for fc in ['None', 'pvt-task']:
+                plan_file = join(rerun_dir, f'diverse_plan_rerun_fc={fc}.json')
+                if isfile(plan_file):
+                    new_plan = json.load(open(plan_file, 'r'))['plan']
+                    if new_plan is not None:
+                        new_skeleton = get_plan_skeleton(new_plan, **self._skwargs)
+                        if new_skeleton not in self.skeletons:
+                            self.skeletons.append(new_skeleton)
+                            print(f'add new skeleton {new_skeleton} by {fc} rerun to oracle')
         print(f'\nOracle feasibility checker - {self.skeletons}\n')
 
     def _check(self, plan):
