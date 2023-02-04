@@ -15,7 +15,7 @@ from os import listdir
 import seaborn as sns
 sns.set_style("darkgrid", {"axes.facecolor": ".9"})
 
-from data_utils import DATASET_PATH, get_fc_record
+from data_utils import DATASET_PATH, get_fc_record, get_fastdownward_time
 
 sys.path.append('/home/yang/Documents/fastamp')
 # from fastamp_utils import get_fc_record
@@ -23,8 +23,9 @@ sys.path.append('/home/yang/Documents/fastamp')
 AUTO_REFRESH = False
 VIOLIN = False
 FPC = False
+EVALUATE_GEOMETRY = False
 PAPER_VERSION = False ## no preview, just save pdf
-
+DEBUG_LINES = False
 
 from matplotlib import rc
 rc('font', **{'family': 'serif', 'serif': ['Times']})
@@ -86,6 +87,15 @@ for task_name in GROUPS:
         FIXED_COST.append(60)
     else:
         FIXED_COST.append(3)
+
+############################ generalization ################################
+
+if EVALUATE_GEOMETRY:
+    GROUPS = ['tt_two_fridge_in', 'ss_two_fridge_in']
+    GROUPNAMES = ['Fridge-to-fridge \n(Food)', 'Fridge-to-fridge \n(Staplers)']
+
+    METHODS = ['None', 'pvt-all', 'oracle']
+    METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']
 
 ############################################################################
 
@@ -177,20 +187,18 @@ def get_time_data(diverse=False):
         data[group]['missing'] = {}
         data[group]['run_dir'] = {}
         data[group]['overhead'] = {}
+        data[group]['fd_cost'] = {}
         data[group]['num_FP'] = {}
         for run_dir in run_dirs:
 
             for method in METHODS:
                 if method not in data[group]:
                     data[group][method] = []
-                if method not in data[group]['missing']:
-                    data[group]['missing'][method] = []
-                if method not in data[group]['run_dir']:
-                    data[group]['run_dir'][method] = []
-                if method not in data[group]['overhead']:
-                    data[group]['overhead'][method] = []
                 if 'run_dir' not in data[group]:
                     data[group]['run_dir'] = []
+                for k in ['missing', 'run_dir', 'overhead', 'fd_cost']:
+                    if method not in data[group][k]:
+                        data[group][k][method] = []
 
                 """ get planning time """
                 file = join(run_dir, f"{prefix}plan_rerun_fc={method}.json")
@@ -252,6 +260,9 @@ def get_time_data(diverse=False):
                 if isinstance(inf_t, list):
                     inf_t = inf_t[0]
                 data[group]['overhead'][method].append(inf_t)
+
+                fd_time = get_fastdownward_time(run_dir, method)
+                data[group]['fd_time'][method].append(inf_t)
 
                 if run_dir not in data[group]['run_dir']:
                     data[group]['run_dir'][method].append(run_dir)
@@ -338,13 +349,15 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
         for method, run_dirs in data[group]['run_dir'].items():
             for run_dir in run_dirs:
                 if run_dir not in run_dir_counts:
-                    run_dir_counts[run_dir] = 0
-                run_dir_counts[run_dir] += 1
-        use_run_dirs = [k for k, v in run_dir_counts.items() if v == len(METHODS)]
-        for run_dir in use_run_dirs:
+                    run_dir_counts[run_dir] = []
+                run_dir_counts[run_dir].append(method)
+        # use_run_dirs = [k for k, v in run_dir_counts.items() if v == len(METHODS)]
+        for run_dir, mm in run_dir_counts.items():
             if run_dir not in lines[group]:
                 lines[group][run_dir] = {n: [] for n in ['x', 'y']}
             for method, run_dirs in data[group]['run_dir'].items():
+                if method not in mm:
+                    continue
                 lines[group][run_dir]['x'].append(METHODS.index(method))
                 lines[group][run_dir]['y'].append(data[group][method][run_dirs.index(run_dir)])
 
@@ -432,25 +445,29 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     ## ------------- different y axis to amplify improvements ------------ ##
     else:
         if PAPER_VERSION:
-            if len(groups) == 2:
+            if len(GROUPS) == 2:
                 figsize = (5, 4)
             else:
                 figsize = (15, 4)
         else:
             figsize = (12, 4)
-            if len(METHODS) == 4 or len(groups) == 4:
+            if len(METHODS) == 4 or len(GROUPS) == 4:
                 figsize = (15, 4)
-            if len(METHODS) == 5 or len(groups) == 5:
+            if len(METHODS) == 5 or len(GROUPS) == 5:
                 figsize = (18, 6)
-                if len(METHODS) == 5 and len(groups) == 5:
+                if len(METHODS) == 5 and len(GROUPS) == 5:
                     figsize = (21, 6)
-            if len(METHODS) == 6 or len(groups) == 6:
+            if len(METHODS) == 6 or len(GROUPS) == 6:
                 figsize = (21, 6)
 
-        if len(METHODS) == 3 or len(groups) == 7:
-            figsize = (18, 5)
-
+        ## RSS paper version
         bar_width = 0.3
+        if len(METHODS) == 3 and len(GROUPS) == 7:
+            figsize = (16, 5)
+            bar_width = 0.27
+        if len(METHODS) == 3 and len(GROUPS) == 2:
+            figsize = (5, 5)
+
         fig, axs = plt.subplots(1, len(groups), figsize=figsize)
 
         scale = 0.4
@@ -532,20 +549,21 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
             axs[i].scatter(xxx, yy, s=s, color=cc, alpha=0.7)
 
             """ line connections """
-            for run_dir, line in lines[groups[i]].items():
-                if len(line['y']) < 2:
-                    continue
-                color = None ## color_dict['gray'][0]
-                alpha = 0.2
-                if line['y'][0] != 0 and line['y'][1] != 0:
-                    if line['y'][0] / line['y'][1] > 1.1:
-                        color = color_dict['g'][0]
-                    elif line['y'][1] / line['y'][0] > 1.1:
-                        color = color_dict['r'][0]
-                        print(run_dir)
+            if DEBUG_LINES:
+                for run_dir, line in lines[groups[i]].items():
+                    if len(line['y']) < 2:
+                        continue
+                    color = None ## color_dict['gray'][0]
+                    alpha = 0.2
+                    if line['y'][0] != 0 and line['y'][1] != 0:
+                        if line['y'][0] / line['y'][1] > 1.1:
+                            color = color_dict['g'][0]
+                        elif line['y'][1] / line['y'][0] > 1.1:
+                            color = color_dict['r'][0]
+                            print(run_dir)
 
-                if color is not None:
-                    axs[i].plot([n*scale for n in line['x']], line['y'], color=color, alpha=alpha)
+                    if color is not None:
+                        axs[i].plot([n*scale for n in line['x']], line['y'], color=color, alpha=alpha)
 
             for j in range(len(METHODS)):
 
@@ -567,7 +585,10 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                                 ha='center',
                                 fontsize=10)
 
-            axs[i].set_ylim([0, max(mx)*1.1])
+            if GROUPS[-1].startswith('ss'):
+                axs[i].set_ylim([0, 800 if not FPC else 15])
+            else:
+                axs[i].set_ylim([0, max(mx)*1.1])
             axs[i].tick_params(axis='x', which='major') ## , pad=28
             axs[i].tick_params(axis='y', which='major', pad=-4, rotation=45)
 
@@ -603,6 +624,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
         if FPC:
             file_name += '_fpc'
         plt.savefig(f'/home/yang/{file_name}.pdf', bbox_inches='tight')
+        # plt.savefig(f'/home/yang/{file_name}.png', bbox_inches='tight')
     else:
         plt.tight_layout()
         if update:
