@@ -23,7 +23,7 @@ sys.path.append('/home/yang/Documents/fastamp')
 AUTO_REFRESH = False
 VIOLIN = False
 FPC = False
-EVALUATE_GEOMETRY = True
+EVALUATE_GEOMETRY = False
 PAPER_VERSION = True ## no preview, just save pdf
 DEBUG_LINES = False
 
@@ -269,6 +269,25 @@ def get_time_data(diverse=False):
 
                 if run_dir not in data[group]['run_dir']:
                     data[group]['run_dir'][method].append(run_dir)
+    return data
+
+
+if EVALUATE_GEOMETRY:
+    file_name = 'plotting_geometry.json'
+elif FPC:
+    file_name = 'plotting_fpc.json'
+else:
+    file_name = 'plotting.json'
+
+
+def dump_data(data):
+    with open(file_name, 'w') as f:
+        json.dump(data, f, indent=4)
+
+
+def load_data():
+    with open(file_name, 'r') as f:
+        data = json.load(f)
     return data
 
 
@@ -646,13 +665,21 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
 def make_plot():
     # check_run_dirs()
 
+    ## on Ubuntu
+    data = get_time_data(diverse=True)
+    dump_data(data)
+
+    ## on Mac
+    data = load_data()
+    sys.exit()
+
     if not AUTO_REFRESH:
         print('time.time()', int(time.time()))
-        plot_bar_chart(get_time_data(diverse=True), diverse=True)
+        plot_bar_chart(data, diverse=True)
         # plot_bar_chart(get_time_data())
     else:
         while True:
-            plot_bar_chart(get_time_data(diverse=True), diverse=True, update=True)
+            plot_bar_chart(data, diverse=True, update=True)
             print('waiting for new data...')
             plt.pause(30)
             plt.close('all')
