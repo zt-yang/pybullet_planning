@@ -23,7 +23,7 @@ sys.path.append('/home/yang/Documents/fastamp')
 AUTO_REFRESH = False
 VIOLIN = False
 FPC = False
-EVALUATE_GEOMETRY = False
+EVALUATE_GEOMETRY = True
 PAPER_VERSION = True ## no preview, just save pdf
 DEBUG_LINES = False
 
