@@ -2,6 +2,7 @@
 Bar chart demo with pairs of bars grouped for easy comparison.
 """
 import json
+import platform
 import shutil
 import time
 from datetime import datetime
@@ -23,7 +24,7 @@ sys.path.append('/home/yang/Documents/fastamp')
 AUTO_REFRESH = False
 VIOLIN = False
 FPC = False
-EVALUATE_GEOMETRY = False
+EVALUATE_GEOMETRY = True
 PAPER_VERSION = True ## no preview, just save pdf
 DEBUG_LINES = False
 
@@ -596,7 +597,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
 
             for j in range(len(METHODS)):
 
-                if not PAPER_VERSION or True:
+                if not PAPER_VERSION:
                     bar_label = f"{count[j]} \n"
                     if miss[j] > 0:
                         bar_label += str(miss[j])
@@ -652,7 +653,10 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
         file_name = 'evaluation' if GROUPS[-1].startswith('tt') else 'evaluation_geometry'
         if FPC:
             file_name += '_fpc'
-        plt.savefig(f'/home/yang/{file_name}.pdf', bbox_inches='tight')
+        if platform.system() == 'Darwin':
+            plt.savefig(f'{file_name}.pdf', bbox_inches='tight')
+        else:
+            plt.savefig(f'/home/yang/{file_name}.pdf', bbox_inches='tight')
         # plt.savefig(f'/home/yang/{file_name}.png', bbox_inches='tight')
     else:
         plt.tight_layout()
@@ -666,12 +670,13 @@ def make_plot():
     # check_run_dirs()
 
     ## on Ubuntu
-    data = get_time_data(diverse=True)
-    dump_data(data)
+    if not platform.system() == 'Darwin':
+        data = get_time_data(diverse=True)
+        dump_data(data)
 
     ## on Mac
     data = load_data()
-    sys.exit()
+    # sys.exit()
 
     if not AUTO_REFRESH:
         print('time.time()', int(time.time()))
