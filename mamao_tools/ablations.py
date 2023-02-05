@@ -33,7 +33,7 @@ for i in range(n):
     plt.bar(_X - width / 2. + i / float(n) * width, vals[i],
             width=width / float(n), align="edge", color=colors[i], alpha=0.6)
 plt.xticks(_X, X)
-plt.ylim([0, 1.0])
+plt.ylim([0.4, 1.0])
 plt.legend(tasks, ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.2))
 plt.tight_layout()
 

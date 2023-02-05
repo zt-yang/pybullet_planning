@@ -247,6 +247,10 @@ class GripperAction(Action):
         if self.extent != None:
             gripper_joint = robot.get_gripper_joints(self.arm)[0]
             self.position = get_max_limit(robot, gripper_joint)
+        else:
+            self.position = 0.5  ## cabbage
+            self.position = 0.4  ## tomato
+            ## self.position = 0.14  ## bottle
 
         joints = robot.get_gripper_joints(self.arm)
         start_conf = get_joint_positions(robot, joints)

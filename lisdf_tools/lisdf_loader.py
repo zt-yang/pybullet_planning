@@ -544,6 +544,10 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
         lisdf_dir = lisdf_path
         lisdf_path = join(lisdf_dir, 'scene.lisdf')
 
+    replay_scene = lisdf_path.replace('.lisdf', '_replay.lisdf')
+    if isfile(replay_scene):
+        lisdf_path = replay_scene
+
     ## tmp path for putting sdf files, e.g. floor
     tmp_path = join(lisdf_dir, 'tmp')
     if not isdir(tmp_path): os.mkdir(tmp_path)

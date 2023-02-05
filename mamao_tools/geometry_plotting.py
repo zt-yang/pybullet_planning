@@ -5,7 +5,7 @@ sns.set_style("darkgrid", {"axes.facecolor": ".9"})
 
 PAPER_VERSION = True
 from matplotlib import rc
-rc('font', **{'family':'serif', 'serif':['Times']})
+rc('font', **{'family': 'serif', 'serif': ['Times']})
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -28,12 +28,12 @@ ax.add_line(line)
 ax.scatter(training, testing, c=colors, s=160, alpha=0.8)
 ax.set_xlim([0.7, 1])
 ax.set_ylim([0.7, 1])
-ax.set_xlabel('Accuracy with seen objects', fontsize=18)
-ax.set_ylabel('Accuracy with unseen objects', fontsize=18)
+ax.set_xlabel('Accuracy with seen assets', fontsize=18)
+ax.set_ylabel('Accuracy with unseen assets', fontsize=18)
 ax.tick_params(axis='both', which='major', labelsize=16)
 plt.locator_params(nbins=4)
 
-groups = ['Trained w\o one food asset', 'Trained w\o one fridge asset', 'Trained on all assets']
+groups = ['Trained w/o one food asset', 'Trained w/o one fridge asset', 'Trained on all assets']
 handles = [plt.Rectangle((0.5, 0.5), 0.5, 0.5, color=color_types[i]) for i in range(len(groups))]
 fig.legend(handles, groups, ncol=1, fontsize=16,
                        loc='lower right', bbox_to_anchor=(0.96, 0.13))

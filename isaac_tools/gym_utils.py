@@ -1,7 +1,7 @@
 import os.path
 import random
 import sys
-from os.path import join, isdir, abspath, dirname, isfile
+from os.path import join, isdir, abspath, dirname, isfile, basename
 import time
 from pprint import pprint
 from tqdm import tqdm
@@ -15,7 +15,7 @@ from pybullet_tools.utils import pose_from_tform, get_pose, get_joint_name, get_
     get_movable_joints, Euler, quat_from_euler
 from isaac_tools.urdf_utils import load_lisdf, test_is_robot
 from lisdf_tools.image_utils import images_to_mp4, images_to_gif
-from mamao_tools.data_utils import load_planning_config, get_instance_info
+from mamao_tools.data_utils import load_planning_config, get_worlds_aabb, get_instance_info
 
 ASSET_PATH = join(dirname(__file__), '..', 'assets')
 
@@ -148,7 +148,10 @@ def load_lisdf_isaacgym(lisdf_dir, robots=True, pause=False, loading_effect=Fals
 
     if 'full_kitchen' in lisdf_dir or 'mm_' in lisdf_dir or 'tt_' in lisdf_dir:
         config = load_planning_config(lisdf_dir)
-        world_aabb = config['world_aabb']
+        if 'world_aabb' not in config:
+            world_aabb = get_worlds_aabb([lisdf_dir])
+        else:
+            world_aabb = config['world_aabb']
         y = (world_aabb[1][1] + world_aabb[0][1]) / 2
         camera_point = (8, y, 3)
         target_point = (0, y, 1)
@@ -172,6 +175,8 @@ def load_lisdf_isaacgym(lisdf_dir, robots=True, pause=False, loading_effect=Fals
         asset = gym_world.simulator.load_asset(
             asset_file=path, root=None, fixed_base=True,
             gravity_comp=False, collapse=False, vhacd=False)
+        gym_world.simulator.set_light(direction=np.asarray([1, 1, 1]),
+                                      intensity=np.asarray([0.5, 0.5, 0.5]))
 
         config = load_planning_config(lisdf_dir)
         for i in range(1, len(config['camera_kwargs'])):
@@ -186,16 +191,20 @@ def load_lisdf_isaacgym(lisdf_dir, robots=True, pause=False, loading_effect=Fals
             args = config['camera_zoomins'][j]
             pose = gym_world.get_pose(gym_world.get_actor(args['name']))
             dx, _, dz = args['d']
-            pitch = - np.arctan(dz / dx)
-            d = np.asarray(args['d']) * 0.8
+            d = np.asarray(args['d'])
             point = pose[0] + d
-            point[2] = 1.79
+            if 'sink' in args['name'] or 'braiser' in args['name']:
+                point[2] = 1.79
+            else:
+                point[2] = point[2] * 0.8
+            pitch = - np.arctan(point[2] / dx)
             pose = (point, quat_from_euler(Euler(pitch=pitch)))
             actor = gym_world.create_actor(asset, name=f'camera_{i+1+j}', scale=0.1)
             gym_world.set_pose(actor, pose)
 
         ## looking from the right side for the paper
-        gym_world.set_camera_target(camera, (6, 9, 3), (0, 4, 1))
+        gym_world.set_camera_target(camera, (6, 9, 3), (0, 4, 1))  ## from right
+        gym_world.set_camera_target(camera, (6, -2.5, 3), (0, 2.5, 1))  ## from left
         # gym_world.set_camera_target(camera, (8, 3.5, 3), (0, 3.5, 1))
 
     if loading_effect:
@@ -206,7 +215,8 @@ def load_lisdf_isaacgym(lisdf_dir, robots=True, pause=False, loading_effect=Fals
         img_file = join(lisdf_dir, 'gym_scene.png')
         gym_world.save_image(camera, image_type='rgb', filename=img_file)
         if load_cameras:
-            shutil.copy(img_file, join('gym_images', 'cameras2.png'))
+            run_name = basename(lisdf_dir).replace('temp_', '')
+            shutil.copy(img_file, join('gym_images', f'{run_name}_cameras.png'))
 
     if pause:
         gym_world.wait_if_gui()

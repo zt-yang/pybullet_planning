@@ -22,8 +22,8 @@ sys.path.append('/home/yang/Documents/fastamp')
 
 AUTO_REFRESH = False
 VIOLIN = False
-FPC = True
-EVALUATE_GEOMETRY = False
+FPC = False
+EVALUATE_GEOMETRY = True
 PAPER_VERSION = True ## no preview, just save pdf
 DEBUG_LINES = False
 
@@ -92,7 +92,7 @@ METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']  ## 'PIGI*',
 
 if EVALUATE_GEOMETRY:
     GROUPS = ['tt_two_fridge_in', 'ss_two_fridge_in']
-    GROUPNAMES = ['Fridge-to-fridge \n(Food)', 'Fridge-to-fridge \n(Staplers)']
+    GROUPNAMES = ['Fridge-to-fridge (Food)', 'Fridge-to-fridge (Staplers)']
 
     METHODS = ['None', 'pvt-all', 'oracle']
     METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']
