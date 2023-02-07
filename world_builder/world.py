@@ -736,10 +736,10 @@ class World(object):
 
     def close_doors_drawers(self, body, ADD_JOINT=True):
         doors, drawers, knobs = self.get_doors_drawers(body, skippable=True)
-        for joint in doors + drawers:
-            self.close_joint(body, joint)
+        for b, j in doors + drawers:
+            self.close_joint(b, j)
             if not ADD_JOINT:
-                self.remove_object(joint)
+                self.remove_object(j)
 
     def close_all_doors_drawers(self):
         doors = [(o.body, o.joint) for o in self.cat_to_objects('door')]
