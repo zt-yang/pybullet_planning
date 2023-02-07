@@ -7,15 +7,15 @@ rc('font', **{'family':'serif', 'serif':['Times']})
 
 PAPER_VERSION = True
 
-tasks = ['counter-to-storage', 'counter-to-pot', 'pot-to-storage']
+tasks = ['counter-to-storage', 'counter-to-pot']  ## , 'pot-to-storage'
 X = ['PIGINet', 'no value', 'no init', 'no image', 'no image\nno value', 'no image\nno init']
 vals = [
-    [0.8702,    0,      0.7169,     0,          0,      0],
-    [0.934,     0.9255, 0.9028,     0.6494,     0.6872, 0.5985],
-    [0.8682,    0.86,   0,          0.674,      0,      0],
+    [0.9212,    0.9116, 0.8944,     0.5922,     0.4575, 0.4882],
+    [0.934,     0.9255, 0.9028,     0.6494,     0.6872, 0.6391],
+    # [0.8682,    0.86,   0,          0.674,      0,      0],
 ]
 
-colors = ['#3498db', '#2ecc71', '#e74c3c']
+colors = ['#3498db', '#2ecc71']  ## , '#e74c3c'
 
 figsize = (6, 4) if not PAPER_VERSION else (6, 3)
 fig = plt.figure(figsize=figsize)
@@ -33,7 +33,7 @@ for i in range(n):
     plt.bar(_X - width / 2. + i / float(n) * width, vals[i],
             width=width / float(n), align="edge", color=colors[i], alpha=0.6)
 plt.xticks(_X, X)
-plt.ylim([0.5, 1.0])
+plt.ylim([0.4, 1.0])
 plt.legend(tasks, ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.2))
 plt.tight_layout()
 

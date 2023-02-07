@@ -878,7 +878,7 @@ def add_objects_and_facts(world, init, run_dir):
             p = ps[0]
         return p, aa
 
-    if '1' in case and '2' not in case:
+    if '1' in case: ##  and '2' not in case
 
         ## add another container and its doors
         this_container = [o[:o.index(':')] for o in planning_objects if 'minifridge::' in o or 'cabinettop::' in o][0]
@@ -1016,7 +1016,7 @@ def delete_wrongly_supported(run_dir, debug=False):
     if 'supported_movables' in config:
         ss = config['supported_movables']
         found = False
-        # new_lines = ""
+        new_lines = ""
         lines = []
         for old_line in open(prb_file, 'r').readlines():
             line = old_line.strip().replace('\n', '')
@@ -1042,3 +1042,14 @@ def delete_wrongly_supported(run_dir, debug=False):
             with open(prb_file, 'w') as f:
                 f.write(new_lines)
                 print('saved revised problem file to', prb_file)
+
+
+def get_fastdownward_time(run_dir, method):
+    log = join(run_dir, f'diverse_printouts_fc={method}.txt')
+    if not isfile(log):
+        if 'to_storage' in run_dir:
+            return 60
+        return 3
+    lines = open(log, 'r').readlines()
+    times = [eval(l[l.index(':')+2:].strip()) for l in lines if 'Count Diverse Time:' in l]
+    return sum(times)
