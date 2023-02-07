@@ -1,6 +1,7 @@
 """
 Bar chart demo with pairs of bars grouped for easy comparison.
 """
+import platform
 import json
 import shutil
 import time
@@ -23,9 +24,12 @@ sys.path.append('/home/yang/Documents/fastamp')
 AUTO_REFRESH = False
 VIOLIN = False
 FPC = False
-EVALUATE_GEOMETRY = True
-PAPER_VERSION = True ## no preview, just save pdf
+EVALUATE_GEOMETRY = False
+PAPER_VERSION = False ## no preview, just save pdf
 DEBUG_LINES = False
+
+SAVE_DATA = False
+USE_DATA = platform.system() == 'Darwin'
 
 from matplotlib import rc
 rc('font', **{'family': 'serif', 'serif': ['Times']})
@@ -78,7 +82,7 @@ GROUPNAMES = ['Table-to-fridge', 'Fridge-to-fridge',
               'Counter-to-storage', 'Counter-to-pot', 'Pot-to-storage',
               'Counter-to-sink', 'Sink-to-storage' ]  ##
 
-METHODS = ['None', 'pvt-task', 'oracle']  ## 'pvt-56',
+METHODS = ['None', 'pvt-task', 'oracle']  ## 'pvt-6',
 METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']  ## 'PIGI*',
 
 # FIXED_COST = []
@@ -665,13 +669,15 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
 def make_plot():
     # check_run_dirs()
 
-    ## on Ubuntu
-    data = get_time_data(diverse=True)
-    dump_data(data)
-
     ## on Mac
-    data = load_data()
-    sys.exit()
+    if USE_DATA:
+        data = load_data()
+     ## on Ubuntu
+    else:
+        data = get_time_data(diverse=True)
+        if SAVE_DATA:
+            dump_data(data)
+            sys.exit()
 
     if not AUTO_REFRESH:
         print('time.time()', int(time.time()))

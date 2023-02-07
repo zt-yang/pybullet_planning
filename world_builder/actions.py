@@ -273,6 +273,7 @@ class AttachObjectAction(Action):
         self.verbose = verbose
     def transition(self, state):
         link = state.robot.get_attachment_link(self.arm)
+        print(f'AttachObjectAction | picking object {self.object} from', nice(get_pose(self.object)))
         new_attachments = add_attachment(state=state, obj=self.object, parent=state.robot,
                                          parent_link=link, attach_distance=None, verbose=False)  ## can attach without contact
         for k in new_attachments:
@@ -285,6 +286,7 @@ class DetachObjectAction(Action):
         self.arm = arm
         self.object = object
     def transition(self, state):
+        print(f'DetachObjectAction | placing object {self.object} at', nice(get_pose(self.object)))
         # print(f'bullet.actions | DetachObjectAction | remove {self.object} from state.attachment')
         new_attachments = remove_attachment(state, self.object)
         return state.new_state(attachments=new_attachments)
