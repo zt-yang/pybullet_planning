@@ -295,4 +295,5 @@ DONT_LOAD = [
     '102379',  ## has an extra sink base
     '7265', ## microwave door partially open
     '46744', ## cabinet upper
+    # 'veggiezucchini', ## temporarily
 ]
