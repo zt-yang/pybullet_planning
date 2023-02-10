@@ -675,8 +675,8 @@ def get_camera_kwargs(bullet_world, camera_zoomin):
 
 def make_furniture_transparent(bullet_world, lisdf_dir, lower_tpy=0.5, upper_tpy=0.2, **kwargs):
     transparent = ['pr2']
-    camera_zoomin = get_camera_zoom_in(lisdf_dir)
     upper_furnitures = ['cabinettop', 'cabinetupper', 'shelf']
+    camera_zoomin = get_camera_zoom_in(lisdf_dir)
     if camera_zoomin is not None:
         target_body = camera_zoomin['name']
         if 'braiser' in target_body:

@@ -245,7 +245,7 @@ def get_body_map(run_dir, world, inv=False, larger=True):
                    if v in world.name_to_body}
     if inv:
         return {v: k for k, v in body_to_new.items()}
-    body_to_new = {eval(k): v for k, v in body_to_new.items()}
+    body_to_new.update({eval(k): v for k, v in body_to_new.items()})
     return body_to_new
 
 

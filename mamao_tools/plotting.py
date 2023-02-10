@@ -82,6 +82,9 @@ GROUPNAMES = ['Table-to-fridge', 'Fridge-to-fridge',
               'Counter-to-storage', 'Counter-to-pot', 'Pot-to-storage',
               'Counter-to-sink', 'Sink-to-storage' ]  ##
 
+GROUPS = ['tt_sink', 'tt_sink_to_storage'] ##
+GROUPNAMES = ['Counter-to-sink', 'Sink-to-storage' ]  ##
+
 METHODS = ['None', 'pvt-task', 'oracle']  ## 'pvt-6',
 METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']  ## 'PIGI*',
 
@@ -124,7 +127,7 @@ colors_darker = [color_dict[k][0] for k in cc]
 ## see which files are missing
 # METHODS = ['None', 'oracle'] ## , 'pvt'
 SAME_Y_AXES = False
-RERUN_SUBDIR = 'rerun_2'
+RERUN_SUBDIR = 'rerun_3'
 
 
 def hex_to_rgb(value):

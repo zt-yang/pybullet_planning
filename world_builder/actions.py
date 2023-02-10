@@ -248,10 +248,11 @@ class GripperAction(Action):
         if self.extent != None:
             gripper_joint = robot.get_gripper_joints(self.arm)[0]
             self.position = get_max_limit(robot, gripper_joint)
-        else:
-            self.position = 0.5  ## cabbage
+        else: ## if self.position == None:
+            self.position = 0.5  ## cabbage, artichoke
             self.position = 0.4  ## tomato
-            ## self.position = 0.14  ## bottle
+            # self.position = 0.2  ## zucchini
+            # self.position = 0.14  ## bottle
 
         joints = robot.get_gripper_joints(self.arm)
         start_conf = get_joint_positions(robot, joints)
@@ -509,6 +510,8 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
             next_name = next_action.__class__.__name__
             if 'AttachObjectAction' in next_name:
                 last_object = next_action.object
+                # if isinstance(last_object, str):
+                #     last_object = eval(last_object)
                 if last_object in body_map:
                     last_object = body_map[last_object]
                 if isinstance(last_object, tuple):
