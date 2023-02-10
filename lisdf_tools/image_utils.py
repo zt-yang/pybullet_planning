@@ -1,9 +1,11 @@
+import random
+from tqdm import tqdm
 import PIL.Image
 import numpy as np
 import time
+import sys
 from os.path import join, isdir, abspath, dirname, isfile
-from pybullet_tools.utils import get_aabb_extent, get_aabb_center, AABB
-from pybullet_tools.bullet_utils import get_segmask
+sys.path.append(abspath(join(dirname(__file__), '..')))
 
 
 def hex_to_rgba(color):
@@ -68,6 +70,9 @@ def draw_bb(im, bb):
 
 def crop_image(im, bb=None, width=1280, height=960, N_PX=224,
                align_vertical='center', keep_ratio=False):
+    from pybullet_tools.utils import get_aabb_extent, get_aabb_center, AABB
+    from pybullet_tools.bullet_utils import get_segmask
+
     if bb is None:
         # crop the center of the blank image
         left = int((width - N_PX) / 2)
@@ -295,7 +300,7 @@ def make_collage_mp4(mp4s, num_cols, num_rows, size=None, mp4_name='collage.mp4'
     frames = []
     for mp4 in tqdm(mp4s, desc=f'reading videos'):
         videodata = skvideo.io.vread(mp4)
-        frames.append(videodata)  ## np.swapaxes(videodata, 1, 2)
+        frames.append(videodata[:, ::2, ::2, :])  ## np.swapaxes(videodata, 1, 2)
         num_frames, h, w, c = videodata.shape
 
         if num_frames > max_frames:
@@ -330,13 +335,12 @@ def make_collage_mp4(mp4s, num_cols, num_rows, size=None, mp4_name='collage.mp4'
     video.release()
 
 
-def test_make_collage_mp4():
+def test_make_collage_mp4(mp4s=None, num_cols=2, num_rows=2, mp4_name='collage_4by4.mp4', **kwargs):
     mp4_dir = '/home/yang/Documents/jupyter-worlds/tests/gym_images/'
-    num_cols = 2
-    num_rows = 2
-    mp4 = join(mp4_dir, 'gym_replay_batch_gym_0101_16:57.mp4')
-    mp4s = [mp4] * (num_cols * num_rows)
-    make_collage_mp4(mp4s, num_cols, num_rows, mp4_name=join(mp4_dir, 'collage_4by4.mp4'))
+    if mp4s is None:
+        mp4 = join(mp4_dir, 'gym_replay_batch_gym_0101_16:57.mp4')
+        mp4s = [mp4] * (num_cols * num_rows)
+    make_collage_mp4(mp4s, num_cols, num_rows, mp4_name=join(mp4_dir, mp4_name), **kwargs)
 
 
 def make_collage_img(imgs, num_cols, num_rows, size=None, img_name='collage.png'):
@@ -371,16 +375,72 @@ def make_collage_img(imgs, num_cols, num_rows, size=None, img_name='collage.png'
     cv2.imwrite(img_name, frame)
 
 
-def test_make_collage_img():
+def test_make_collage_img(imgs=None, num_cols=2, num_rows=2, size=(1960, 1470)):
+    if imgs is None:
+        img = '/home/yang/Documents/fastamp-data-rss/mm_braiser/1066/zoomin/rgb_image_initial.png'
+        imgs = [img] * (num_cols * num_rows)
+
     mp4_dir = '/home/yang/Documents/jupyter-worlds/tests/gym_images/'
-    img = '/home/yang/Documents/fastamp-data-rss/mm_braiser/1066/zoomin/rgb_image_initial.png'
-    num_cols = 2
-    num_rows = 2
-    size = (1960, 1470)
-    imgs = [img] * (num_cols * num_rows)
     make_collage_img(imgs, num_cols, num_rows, size=size, img_name=join(mp4_dir, 'collage_4by4.png'))
+
+
+def get_mp4s_from_dir(task_name, count=16):
+    import glob
+    mp4_dir = '/home/yang/Documents/jupyter-worlds/tests/gym_images/'
+    mp4s = glob.glob(join(mp4_dir, task_name, '*.mp4'))
+    random.shuffle(mp4s)
+    if len(mp4s) >= count:
+        mp4s = mp4s[:count]
+    else:
+        assert len(mp4s) > count
+    return mp4s
+
+
+def resize_mp4(input_mp4, output_mp4, size=(1280, 720)):
+    import cv2
+    import numpy as np
+
+    cap = cv2.VideoCapture(input_mp4)
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter(output_mp4, fourcc, 5, size)
+
+    while True:
+        ret, frame = cap.read()
+        if ret == True:
+            b = cv2.resize(frame, size, fx=0, fy=0, interpolation=cv2.INTER_CUBIC)
+            out.write(b)
+        else:
+            break
+
+    cap.release()
+    out.release()
+    cv2.destroyAllWindows()
+
+
+def resize_mp4s_for_collage(new_dir_name, mp4s, size=(1280, 720)):
+    import os
+    mp4_dir = '/home/yang/Documents/jupyter-worlds/tests/gym_images/'
+    new_dir_name = join(mp4_dir, new_dir_name)
+    if not os.path.exists(new_dir_name):
+        os.makedirs(new_dir_name)
+    new_mp4s = []
+    for mp4 in tqdm(mp4s, desc=f'resizing mp4s for collage'):
+        new_mp4 = join(new_dir_name, os.path.basename(mp4))
+        if not isfile(new_mp4):
+            resize_mp4(mp4, new_mp4, size=size)
+        new_mp4s.append(new_mp4)
+    return new_mp4s
 
 
 if __name__ == "__main__":
     # test_make_collage_img()
-    test_make_collage_mp4()
+
+    random.seed(3)  ## storage
+    random.seed(0)  ## braiser
+    # random.seed(1)  ## sink
+    # mp4s = get_mp4s_from_dir('mm_storage', count=4)
+    # test_make_collage_mp4(mp4s, num_cols=2, num_rows=2)
+    mp4s = get_mp4s_from_dir('mm_braiser', count=25)
+    mp4s = resize_mp4s_for_collage('mm_braiser_small', mp4s, size=(3840//2, 2160//2))
+    test_make_collage_mp4(mp4s, num_cols=5, num_rows=5, size=(2160//2*4, 3840//2*4))
+    # test_make_collage_mp4()

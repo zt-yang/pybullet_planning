@@ -651,7 +651,9 @@ def get_camera_zoom_in(run_dir):
     if isfile(config_file):
         config = json.load(open(config_file, 'r'))
         if 'camera_zoomins' in config:
-            return config['camera_zoomins'][-1]
+            camera_zoomins = config['camera_zoomins']
+            if len(camera_zoomins) > 0:
+                return camera_zoomins[-1]
     return None
 
 
