@@ -914,7 +914,8 @@ def test_grasps(state, name='cabbage', visualize=True):
     return goals
 
 
-def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=False, TEST_ATTACHMENT=True):
+def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=False,
+                     TEST_ATTACHMENT=True):
     robot = state.robot
     colors = [BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED]
 

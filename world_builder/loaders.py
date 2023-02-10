@@ -1467,6 +1467,7 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
     satisfied = []
     if d_x_min is None:
         d_x_min = - 0.3
+    instances = {k: None for k in counters}
 
     if world.note in [31]:
         braiser_bottom = world.name_to_object('braiser_bottom')
@@ -1481,6 +1482,24 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
         counters['medicine'] = [world.name_to_object(f"cabinettop_storage")]
         from world_builder.partnet_scales import DONT_LOAD
         DONT_LOAD.append('VeggieZucchini')
+    elif world.note in [552]:
+        counters['food'] = [world.name_to_object(f"sink_bottom")]
+        counters['bottle'] = [world.name_to_object(f"sink_counter_left"),
+                              world.name_to_object(f"sink_counter_right"), ]
+        counters['medicine'] = [world.name_to_object(f"cabinettop_storage")]
+        from world_builder.partnet_scales import DONT_LOAD
+        DONT_LOAD.append('VeggieZucchini')
+    elif world.note in [553]:
+        counters['food'] = [world.name_to_object(n) for n in \
+                            ["counter#1", "ovencounter", "sink_counter_left", "sink_counter_right"]]
+        instances['food'] = ['VeggieZucchini', 'VeggiePotato']
+    elif world.note in [554]:
+        counters['food'] = [world.name_to_object(n) for n in \
+                            ["counter#1", "ovencounter", "sink_counter_left", "sink_counter_right"]]
+        counters['bottle'] = [world.name_to_object(n) for n in \
+                            ["counter#1", "ovencounter", "sink_counter_left", "sink_counter_right"]]
+        instances['food'] = ['VeggieArtichoke', 'VeggiePotato']
+        instances['bottle'] = ['3822', '3574']
 
     pprint(counters)
     if verbose:
@@ -1490,22 +1509,23 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
         if size_matter and aabb_larger(obstacles[-1], obj):
             satisfied.append(obj)
 
-    def place_on_counter(obj_name, category=None, counter_choices=None):
+    def place_on_counter(obj_name, category=None, counter_choices=None, ins=True):
         if counter_choices is None:
             counter_choices = counters[obj_name]
         counter = random.choice(counter_choices)
-        obj = counter.place_new_obj(obj_name, category=category, RANDOM_INSTANCE=True, world=world)
+        obj = counter.place_new_obj(obj_name, category=category, RANDOM_INSTANCE=ins, world=world)
         if verbose:
             print(f'          placed {obj} on {counter.name}')
         if 'bottom' not in counter.name:
             adjust_for_reachability(obj, counter, d_x_min, world=world)
         return obj
 
-    def ensure_cfree(obj, obstacles, obj_name, category=None, trials=10, **kwargs):
+    def ensure_cfree(obj, obstacles, obj_name, category=None, trials=10, verbose=False, **kwargs):
         # s = np.random.get_state()[-3]
+        debug = (obj_name == 'bottle')
         collision = collided(obj, obstacles, verbose=verbose, world=world)
         unreachable = collision or (not isinstance(obj.supporting_surface, Space) and \
-                                    not robot.check_reachability(obj, state, verbose=False))
+                                    not robot.check_reachability(obj, state, verbose=verbose, debug=debug))
         size = unreachable or ((obj_name == 'food' and size_matter and len(satisfied) == 0))
         while collision or unreachable or size:
             # set_camera_target_body(obj.body)
@@ -1519,7 +1539,7 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
 
             collision = collided(obj, obstacles, verbose=verbose, world=world)
             unreachable = collision or (not isinstance(obj.supporting_surface, Space) and \
-                                        not robot.check_reachability(obj, state, verbose=False))
+                                        not robot.check_reachability(obj, state, verbose=verbose, debug=debug))
             size = unreachable or ((obj_name == 'food' and size_matter and len(satisfied) == 0))
             trials -= 1
             if trials == 0:
@@ -1539,6 +1559,8 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
         else:
             obj_cat = 'camera'
             obj_category = None
+        if instances['food'] is not None:
+            kwargs['ins'] = instances['food'][i]
         obj = place_on_counter(obj_cat, category=obj_category, **kwargs)
         check_size_matter(obj)
         obj = ensure_cfree(obj, obstacles, obj_name=obj_cat, category=obj_category, **kwargs)
@@ -1549,12 +1571,15 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
     ## add bottles
     bottle_ids = []
     for i in range(2):
+        kwargs = dict()
         if not use_stationaries:
             obj_cat = 'bottle'
         else:
             obj_cat = 'stapler'
+        if instances['bottle'] is not None:
+            kwargs['ins'] = instances['bottle'][i]
         obj = place_on_counter(obj_cat)
-        obj = ensure_cfree(obj, obstacles, obj_name='bottle')
+        obj = ensure_cfree(obj, obstacles, obj_name='bottle', **kwargs)
         bottle_ids.append(obj)
         obstacles.append(obj.body)
 
@@ -1674,7 +1699,7 @@ def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=True):
         x = 0
 
     ins = True
-    if world.note in [551]:
+    if world.note in [551, 552]:
         ins = '45305'
     base = world.add_object(Object(
         load_asset('SinkBase', x=x, y=y, yaw=math.pi, floor=floor,
@@ -1686,8 +1711,10 @@ def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=True):
         x += 0.1
 
     ins = True
-    if world.note in [551]:
+    if world.note in [551, 552]:
         ins = '00005'
+    if world.note in [554]:
+        ins = '00004'
     sink = world.add_object(Object(
         load_asset('Sink', x=x, y=y, yaw=math.pi, floor=base.body,
                    RANDOM_INSTANCE=ins, verbose=verbose), name='sink'))
@@ -1701,7 +1728,7 @@ def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=True):
         x -= 0.06
 
     ins = True
-    if world.note in [551]:
+    if world.note in [551, 552]:
         ins = '14'
     faucet = world.add_object(Object(
         load_asset('Faucet', x=x, y=y, yaw=math.pi, floor=base.body,
@@ -1797,7 +1824,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
                                      obstacles=[], verbose=False):
     cabinets, shelves = [], []
     cabi_type = 'CabinetTop' if random.random() < 0.5 else 'CabinetUpper'
-    if world.note in [1, 21, 31, 11, 4, 41, 991, 551]:
+    if world.note in [1, 21, 31, 11, 4, 41, 991, 551, 552]:
         cabi_type = 'CabinetTop'
     colors = {
         '45526': HEX_to_RGB('#EDC580'),
@@ -1923,8 +1950,10 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
 
 def load_braiser(world, supporter, x_min=None, verbose=True):
     ins = True
-    if world.note in [551]:
-        ins = random.choice(['100038', '100023'])  ## larger braiser
+    if world.note in [551, 552]:
+        ins = random.choice(['100038', '100023'])  ## larger braisers
+    elif world.note in [553]:
+        ins = random.choice(['100015'])  ## shallower braisers big enough for zucchini, ,'100693'
     braiser = supporter.place_new_obj('BraiserBody', RANDOM_INSTANCE=ins, verbose=verbose, world=world)
     braiser.adjust_pose(theta=PI, world=world)
     if supporter.mobility_id == '102044':
@@ -1988,13 +2017,19 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
 
     def load_furniture(category):
         ins = True
-        if world.note in [551]:
+        if world.note in [551, 552]:
             if category == 'MiniFridge':
                 ins = random.choice(['11178', '11231'])  ## two doors
             if category == 'CabinetTop':
                 ins = random.choice(['00003'])  ## two doors
             if category == 'Sink':
                 ins = random.choice(['00003'])  ## two doors
+        if world.note in [553]:
+            if category == 'OvenCounter':
+                ins = random.choice(['101921'])  ## two doors
+        if world.note in [555]:
+            if category == 'MiniFridge':
+                ins = random.choice(['11709'])  ## two doors
         return world.add_object(Object(
             load_asset(category, yaw=math.pi, floor=floor, RANDOM_INSTANCE=ins, verbose=True),
             name=category, category=category))

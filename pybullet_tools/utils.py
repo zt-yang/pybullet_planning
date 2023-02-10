@@ -3943,9 +3943,31 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
         #             return True
         # return False
 
+        # if len(moving_bodies) > 0:
+        #     print('collision_fn', len(moving_bodies))
+
+        from pybullet_tools.bullet_utils import collided
+
         for body1, body2 in product(moving_bodies, obstacles):
             if body1.body == body2 or (body1.body, body2) in ignored_pairs:
                 continue
+
+            ## debug colliding with sink
+            debug = False
+            world = moving_bodies[0].body.world
+            if hasattr(world, 'BODY_TO_OBJECT'):
+                if body2 in world.BODY_TO_OBJECT:
+                    if isinstance(body1.body, int):
+                        mov_name = world.BODY_TO_OBJECT[body1.body].name
+                    else:
+                        mov_name = body1.body.name
+                    obs_name = world.BODY_TO_OBJECT[body2].name
+                    if 'bottle' in mov_name and ('bottle' in obs_name or ##'sink#1' in obs_name or
+                                                 'sink_counter_front' in obs_name or 'faucet' in obs_name):
+                        debug = True
+                        # set_renderer(True)
+                        # if 'bottle' in obs_name:
+                        #     print(f'checking collision between {obs_name} and bottle')
             if (not use_aabb or aabb_overlap(get_moving_aabb(body1), get_obstacle_aabb(body2))) \
                     and pairwise_collision(body1, body2, **kwargs):
                 #print(get_body_name(body1), get_body_name(body2))
@@ -3955,8 +3977,19 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
                         print('bullet.get_collision_fn', body1.body, 'at', nice(q), 'collides with', body2)
                     else:
                         print(body1, body2)
+                    # if debug:
+                    #     set_camera_target_body(body2)
+                    #     set_renderer(True)
+                    #     print(f'checking collision between {obs_name} and bottle')
+                    #     wait_for_user()
                 ## set_camera_target_body(body2, dx=0.5, dy=-0.2, dz=0.3)
                 return True
+            # elif collided(body1, [body2], tag='compare collision fn', world=world) or debug:
+            #     set_camera_target_body(body2, dx=0, dy=-0.5, dz=0.5)
+            #     print(f'get_collision_fn | no collision between {obs_name} and bottle')
+            #     set_renderer(True)
+            #     wait_for_user()
+
         return False
     return collision_fn
 
