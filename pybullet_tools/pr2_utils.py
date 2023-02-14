@@ -793,7 +793,7 @@ def compute_grasp_width(robot, arm, body, grasp_pose, **kwargs):
     return close_until_collision(robot, gripper_joints, bodies=[body], **kwargs)
 
 
-def create_gripper(robot, arm, visual=True):
+def create_gripper(robot, arm, visual=True, color=None):
     link_name = PR2_GRIPPER_ROOTS[arm]
     # gripper = load_pybullet(os.path.join(get_data_path(), 'pr2_gripper.urdf'))
     # gripper = load_pybullet(os.path.join(get_models_path(), 'pr2_description/pr2_l_gripper.urdf'), fixed_base=False)
@@ -802,4 +802,6 @@ def create_gripper(robot, arm, visual=True):
     gripper = clone_body(robot, links=links, visual=False, collision=True)  # TODO: joint limits
     if not visual:
         set_all_color(gripper, TRANSPARENT)
+    if color is not None:
+        set_all_color(gripper, color)
     return gripper

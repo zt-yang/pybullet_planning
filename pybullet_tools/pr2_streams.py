@@ -161,7 +161,6 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
             #     if any([pairwise_collision(gripper, b) or pairwise_collision(obj, b) for b in approach_obstacles]):
             #         return
 
-
         # gripper_pose = multiply(pose_value, invert(grasp.value)) # w_f_g = w_f_o * (g_f_o)^-1
         tool_from_root = get_tool_from_root(robot, arm)
         gripper_pose = multiply(robot.get_grasp_pose(pose_value, grasp.value, arm, body=grasp.body), invert(tool_from_root))
@@ -351,7 +350,8 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
         if teleport:
             path = [default_conf, approach_conf, grasp_conf]
         else:
-            resolutions = DEFAULT_RESOLUTION * np.ones(len(arm_joints))
+            resolutions = math.radians(1) ## DEFAULT_RESOLUTION
+            resolutions = resolutions * np.ones(len(arm_joints))
             if is_top_grasp(robot, arm, body, grasp) or True:
                 grasp_path = plan_direct_joint_motion(robot, arm_joints, grasp_conf, attachments=attachments.values(),
                                                       obstacles=approach_obstacles, self_collisions=SELF_COLLISIONS,
@@ -388,6 +388,15 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False,
             remove_body(gripper_grasp)
         if ACONF:
             return (mt.path[-1], cmd)
+
+        # ## replay sink trajectory
+        # if hasattr(world, 'BODY_TO_OBJECT'):
+        #     mov_name = world.BODY_TO_OBJECT[body].name
+        #     print('       robot base conf during planning, ', nice(robot.get_base_conf().values))
+        #     print('         length of trajectory, ', cmd, len(mt.path))
+        #     if 'bottle' in mov_name:
+        #         robot.test_trajectory(arm, body, pose, grasp, base_conf, cmd)
+
         return (cmd,)
     return fn
 
@@ -1402,7 +1411,10 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
         open_arm(robot, a)
         context_saver = WorldSaver(bodies=[robot, o])
 
-        #gripper_grasp = robot.visualize_grasp(pose_value, g.value, arm=a, body=g.body)
+        # gripper_grasp = robot.visualize_grasp(pose_value, g.value, arm=a, body=g.body)
+        # set_renderer(enable=True)
+        # wait_unlocked()
+
         gripper_grasp = robot.set_gripper_pose(pose_value, g.value, arm=a, body=g.body)
         if collided(gripper_grasp, obstacles, articulated=True, world=world): # w is not None
             #wait_unlocked()
@@ -1448,16 +1460,18 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
                 bconf = list(map(joint_state.get, base_joints))
                 bq = Conf(robot, base_joints, bconf, joint_state=joint_state)
                 bq.assign()
+                # wait_unlocked()
 
                 set_joint_positions(robot, arm_joints, default_conf)
                 if collided(robot, obstacles, articulated=True, tag='ik_default_conf',
-                            verbose=verbose, world=world):
-                    # wait_unlocked()
+                            verbose=verbose and False, world=world):
                     continue
 
                 ik_solver.set_conf(conf)
                 if collided(robot, obstacles, articulated=True, tag='ik_final_conf',
                             visualize=visualize, verbose=verbose, world=world):
+                    robot.add_collision_grasp(a, o, g)
+                    robot.add_collision_conf(Conf(robot.body, ik_solver.joints, conf))
                     continue
 
                 if visualize:

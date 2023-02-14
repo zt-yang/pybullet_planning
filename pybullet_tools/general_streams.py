@@ -243,7 +243,9 @@ def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visu
             p = Pose(body, value=body_pose, support=surface)
             p.assign()
             result = collided(body, obs, verbose=verbose, visualize=visualize, tag='stable_gen', world=world)
-            if not result:
+            if not result: ##  or ('braiser_bottom' in world.BODY_TO_OBJECT[surface].name):
+                # if ('braiser_bottom' in world.BODY_TO_OBJECT[surface].name):
+                #     print('\n\nallow bad samples inside pots')
                 p0.assign()
                 yield (p,)
             else:

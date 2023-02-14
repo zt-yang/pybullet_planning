@@ -242,6 +242,7 @@ class GripperAction(Action):
 
     def transition(self, state):
         robot = state.robot
+        print('       robot base conf during execution, ', nice(robot.get_base_conf().values))
 
         ## get width from extent
         if self.extent != None:
@@ -639,6 +640,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
 def get_primitive_actions(action, world, teleport=False):
     def get_traj(t, sub=4, viz=True):
         world.remove_handles()
+        print('         length of trajectory, ', t)
 
         ## get the confs
         [t] = t.commands

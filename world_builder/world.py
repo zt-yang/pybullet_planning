@@ -19,7 +19,7 @@ from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, g
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
     get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked, \
     get_movable_joints, apply_alpha, get_all_links, set_color, set_all_color, dump_body, clear_texture, \
-    get_link_name, get_aabb, draw_aabb, GREY, GREEN, quat_from_euler
+    get_link_name, get_aabb, draw_aabb, GREY, GREEN, quat_from_euler, wait_for_user
 from pybullet_tools.pr2_streams import Position, get_handle_grasp_gen, pr2_grasp
 from pybullet_tools.general_streams import pose_from_attachment
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
@@ -716,13 +716,13 @@ class World(object):
         close_joint(body, joint)
         self.assign_attachment(body)
 
-    def open_joint(self, body, joint, extent=1, pstn=None, random_gen=False):
+    def open_joint(self, body, joint, extent=1, pstn=None, random_gen=False, **kwargs):
         if random_gen:
             from pybullet_tools.general_streams import sample_joint_position_list_gen
             funk = sample_joint_position_list_gen()
             pstns = funk((body, joint), Position((body, joint)))
             pstn = random.choice(pstns)[0].value
-        open_joint(body, joint, extent=extent, pstn=pstn)
+        open_joint(body, joint, extent=extent, pstn=pstn, **kwargs)
         self.assign_attachment(body)
 
     def open_doors_drawers(self, body, ADD_JOINT=True, **kwargs):
@@ -1056,7 +1056,7 @@ class World(object):
         ## ---- object types -------------
         for cat in self.OBJECTS_BY_CATEGORY:
             if cat.lower() == 'moveable': continue
-            if cat in ['CleaningSurface', 'HeatingSurface']:
+            if cat in ['edible', 'cleaningsurface', 'heatingsurface']:
                 objects = self.OBJECTS_BY_CATEGORY[cat]
                 init += [(cat, obj.pybullet_name) for obj in objects if obj.pybullet_name in BODY_TO_OBJECT]
             else:
@@ -1312,6 +1312,7 @@ class State(object):
         if isinstance(action, list):
             print('world.apply action')
         # assert isinstance(action, Action)
+        # wait_for_user()
         return action.transition(self.copy())
 
     def camera_observation(self, include_rgb=False, include_depth=False, include_segment=False):
