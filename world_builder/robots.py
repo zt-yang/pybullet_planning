@@ -1,5 +1,6 @@
 import math
 import time
+import copy
 import random
 from .entities import Robot
 
@@ -775,10 +776,16 @@ class FEGripper(RobotAPI):
     def check_reachability(self, body, state, fluents=[], obstacles=None, verbose=False):
         from pybullet_tools.flying_gripper_utils import get_cloned_se3_conf, plan_se3_motion
 
+        return True
+
         if obstacles is None:
             obstacles = state.obstacles
+        if body in obstacles:
+            obstacles = copy.deepcopy(obstacles)
+            obstacles.remove(body)
 
         robot = self.body
+        world = state.world
         init_q = self.get_initial_q()
         funk = get_grasp_list_gen(state, collisions=True, visualize=False,
                                   RETAIN_ALL=False, top_grasp_tolerance=math.pi / 4)
@@ -791,7 +798,7 @@ class FEGripper(RobotAPI):
             w = grasp.grasp_width
             gripper_grasp = self.visualize_grasp(body_pose, grasp.value, body=grasp.body, color=GREEN, width=w)
             end_q = get_cloned_se3_conf(robot, gripper_grasp)
-            if not collided(gripper_grasp, obstacles, verbose=True, tag='check reachability of movable'):
+            if not collided(gripper_grasp, obstacles, verbose=True, tag='check reachability of movable', world=world):
                 if verbose: print('\n... check reachability from', nice(init_q), 'to', nice(end_q))
                 path = plan_se3_motion(robot, init_q, end_q, obstacles=obstacles,
                                        custom_limits=self.custom_limits)

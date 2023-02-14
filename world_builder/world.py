@@ -1117,20 +1117,13 @@ class World(object):
         from world_builder.world_generator import to_lisdf
         to_lisdf(self, join(output_dir, 'scene.lisdf'), verbose=verbose, **kwargs)
 
-    def save_planning_config(self, output_dir, template_dir=None, domain=None, stream=None,
+    def save_planning_config(self, output_dir, domain=None, stream=None,
                              pddlstream_kwargs=None):
         from world_builder.world_generator import get_config_from_template
         """ planning related files and params are referred to in template directory """
         config = self.get_planning_config()
 
-        if template_dir is not None:
-            config.update(get_config_from_template(template_dir))
-            config.update({
-                'domain_full': abspath(join(template_dir, 'domain_full.pddl')),
-                'domain': abspath(join(template_dir, 'domain.pddl')),
-                'stream': abspath(join(template_dir, 'stream.pddl')),
-            })
-        elif domain is not None:
+        if domain is not None:
             config.update({
                 'domain': domain,
                 'stream': stream,
@@ -1140,7 +1133,7 @@ class World(object):
         with open(join(output_dir, 'planning_config.json'), 'w') as f:
             json.dump(config, f, indent=4)
 
-    def save_test_case(self, goal, output_dir, template_dir=None, init=None,
+    def save_test_case(self, goal, output_dir, init=None,
                        domain=None, stream=None, problem=None, pddlstream_kwargs=None,
                        save_rgb=False, save_depth=False, **kwargs):
         if not isdir(output_dir):
@@ -1151,8 +1144,7 @@ class World(object):
 
         self.save_lisdf(output_dir, world_name=world_name, **kwargs)
         self.save_problem_pddl(goal, output_dir, world_name=world_name, init=init)
-        self.save_planning_config(output_dir, template_dir=template_dir,
-                                  domain=domain, stream=stream,
+        self.save_planning_config(output_dir, domain=domain, stream=stream,
                                   pddlstream_kwargs=pddlstream_kwargs)
 
         ## move other log files:
@@ -1208,6 +1200,8 @@ class State(object):
             # objects = [o for o in world.objects if isinstance(o, int)]
             objects = get_bodies()
             objects.remove(world.robot)
+        if grasp_types is None:
+            grasp_types = world.robot.grasp_types
         self.objects = list(objects)
 
         if len(attachments) == 0:

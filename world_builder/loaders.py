@@ -1409,12 +1409,12 @@ def load_kitchen_mini_scene(world, **kwargs):
     ## add microwave
     # microwave = world.name_to_body('microwave')
     # world.put_on_surface(microwave, counter)
-    microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random())
-    microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)))
+    microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random(), world=world)
+    microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)), world=world)
 
     ## add pot
-    pot = counter.place_new_obj('kitchenpot', scale=0.2)
-    pot.set_pose(Pose(point=pot.get_pose()[0], euler=Euler(yaw=yaw)))
+    pot = counter.place_new_obj('kitchenpot', scale=0.2, world=world)
+    pot.set_pose(Pose(point=pot.get_pose()[0], euler=Euler(yaw=yaw)), world=world)
 
     ## add shelf
     SHELF_HEIGHT = 2.3
@@ -1432,13 +1432,13 @@ def load_kitchen_mini_scene(world, **kwargs):
 
     ## add cabinet next to shelf
     if min_shelf_y > -0.5:
-        ins = random.choice(['Chewie', 'Sektion'])
+        ins = random.choice(['00001', '00002'])
         cabinet = world.add_object(
             Object(load_asset('CabinetTop', x=0, y=min_shelf_y, z=SHELF_HEIGHT, yaw=math.pi, RANDOM_INSTANCE=ins),
                    category='cabinet', name='cabinet')
             )
     else:  ## if max_shelf_y < 0.5:
-        ins = random.choice(['Dagger'])
+        ins = random.choice(['00003'])
         cabinet = world.add_object(
             Object(load_asset('CabinetTop', x=0, y=max_shelf_y, z=SHELF_HEIGHT, yaw=math.pi, RANDOM_INSTANCE=ins),
                    category='cabinet', name='cabinet')
@@ -1462,9 +1462,11 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
                            verbose=False, use_stationaries=False):
     start = time.time()
     robot = world.robot
-    state = State(world, robot.grasp_types)
+    state = State(world)
     size_matter = len(obstacles) > 0 and obstacles[-1].name == 'braiser_bottom'
     satisfied = []
+    if isinstance(counters, list):
+        counters = {k: counters for k in ['food', 'bottle', 'medicine']}
     if d_x_min is None:
         d_x_min = - 0.3
 
