@@ -678,8 +678,8 @@ def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
                 body_pose = get_link_pose(body, handle_link)
                 if verbose: print(f'{title} get_link_pose({body}, {handle_link})'
                                   f' = {nice(body_pose)} | grasp = {nice(grasp.value)}')
-                grasp.grasp_width = robot.compute_grasp_width(arm, body_pose,
-                                    grasp.value, body=body_joint, verbose=verbose) if collisions else 0.0
+                grasp.grasp_width = robot.compute_grasp_width(arm, body_pose, grasp, body=body_joint,
+                                                              verbose=verbose) if collisions else 0.0
             elif robot.name.startswith('pr2'):
                 grasp.grasp_width = get_handle_width(body_joint)
 

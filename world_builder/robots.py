@@ -26,6 +26,12 @@ from world_builder.utils import load_asset
 class RobotAPI(Robot):
     tool_from_hand = unit_pose()
 
+    def __init__(self, body, **kwargs):
+        super(RobotAPI, self).__init__(body, **kwargs)
+        self.grippers = {}
+        self.possible_obstacles = {}  ## body: obstacles
+        self.collision_animations = []
+
     def get_init(self, init_facts=[], conf_saver=None):
         raise NotImplementedError('should implement this for RobotAPI!')
 
@@ -61,6 +67,11 @@ class RobotAPI(Robot):
 
     def get_approach_pose(self, approach_vector, g):
         raise NotImplementedError('should implement this for RobotAPI!')
+
+    def get_gripper(self, arm='left', **kwargs):
+        if arm not in self.grippers or self.grippers[arm] not in get_bodies():
+            self.grippers[arm] = self.create_gripper(arm=arm, **kwargs)
+        return self.grippers[arm]
 
     def make_grasps(self, g_type, arm, body, grasps_O, collisions=True):
         app = self.get_approach_vector(arm, g_type)
@@ -163,9 +174,6 @@ class PR2Robot(RobotAPI):
         super(PR2Robot, self).__init__(body, **kwargs)
         self.DUAL_ARM = DUAL_ARM
         self.USE_TORSO = USE_TORSO
-        self.grippers = {}
-        self.possible_obstacles = {}  ## body: obstacles
-        self.collision_animations = []
 
     def add_collision_grasp(self, a, o, g):
         from world_builder.actions import AttachObjectAction
@@ -248,11 +256,6 @@ class PR2Robot(RobotAPI):
         # TODO(caelan): gripper bodies are removed
         from pybullet_tools.pr2_utils import create_gripper
         self.grippers[arm] = create_gripper(self.body, arm=arm, **kwargs)
-        return self.grippers[arm]
-
-    def get_gripper(self, arm='left', **kwargs):
-        if arm not in self.grippers or self.grippers[arm] not in get_bodies():
-            self.grippers[arm] = self.create_gripper(arm=arm, **kwargs)
         return self.grippers[arm]
 
     def get_cloned_gripper_joints(self, gripper_grasp):
@@ -642,6 +645,7 @@ class FEGripper(RobotAPI):
             set_all_color(gripper, TRANSPARENT)
         if color is not None:
             set_all_color(gripper, color)
+        self.grippers[arm] = gripper
         return gripper
 
     def get_gripper_joints(self, gripper_grasp=None):
@@ -662,6 +666,7 @@ class FEGripper(RobotAPI):
         if isinstance(body, tuple): body = body[0]
         # with PoseSaver(body):
         body_pose = unit_pose()
+        grasp = grasp.value
         grasp_pose = multiply(body_pose, grasp)
         if verbose:
             print(f'robots.compute_grasp_width | body_pose = {nice(body_pose)} | grasp = {nice(grasp)}')
@@ -730,6 +735,9 @@ class FEGripper(RobotAPI):
     def mod_grasp_along_handle(self, grasp, dl):
         return multiply(grasp, Pose(point=(dl, 0, 0)))
 
+    def get_tool_from_root(self, arm):
+        return ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
+
     def get_init(self, init_facts=[], conf_saver=None):
         from pybullet_tools.flying_gripper_utils import get_se3_joints, get_se3_conf, ARM_NAME
         robot = self.body
@@ -756,9 +764,9 @@ class FEGripper(RobotAPI):
         from pybullet_tools.flying_gripper_agent import get_stream_map
         return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
 
-    def get_attachment(self, grasp, arm=None):
+    def get_attachment(self, grasp, arm=None, **kwargs):
         tool_link = link_from_name(self.body, 'panda_hand')
-        return self.make_attachment(grasp, tool_link)
+        return self.make_attachment(grasp, tool_link, **kwargs)
         # return Attachment(self.body, tool_link, grasp.value, grasp.body)
 
     def get_attachment_link(self, arm):
@@ -829,7 +837,7 @@ class FEGripper(RobotAPI):
         # init_q = list(init_q) + [0] * 3
         return init_q
 
-    def check_reachability(self, body, state, fluents=[], obstacles=None, verbose=False):
+    def check_reachability(self, body, state, fluents=[], obstacles=None, verbose=False, debug=False):
         from pybullet_tools.flying_gripper_utils import get_cloned_se3_conf, plan_se3_motion
 
         return True

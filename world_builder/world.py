@@ -1217,7 +1217,7 @@ class State(object):
         self.gripper = gripper
         if grasp_types is None:
             grasp_types = world.robot.grasp_types
-        self.grasp_types = grasp_types ##, 'side']
+        self.grasp_types = grasp_types
         ## allowing both types causes trouble when the AConf used for generating IK isn't the same as the one during execution
 
     def get_gripper(self, arm='left', visual=True):

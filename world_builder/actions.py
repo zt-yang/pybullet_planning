@@ -242,7 +242,6 @@ class GripperAction(Action):
 
     def transition(self, state):
         robot = state.robot
-        print('       robot base conf during execution, ', nice(robot.get_base_conf().values))
 
         ## get width from extent
         if self.extent != None:

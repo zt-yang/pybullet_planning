@@ -150,7 +150,7 @@ def get_gap(category):
     return gap
 
 
-def test_grasps(robot='feg', categories=[], skip_grasps=False):
+def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=False):
     world = get_test_world(robot)
     draw_pose(unit_pose(), length=10)
     robot = world.robot
@@ -169,8 +169,8 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
             outputs = funk(body)
             if isinstance(outputs, list):
                 print(f'grasps on body {body}:', outputs)
-            # visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=False, TEST_ATTACHMENT=True)
-            visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=True, TEST_ATTACHMENT=False)
+            visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=not test_attachment,
+                             TEST_ATTACHMENT=test_attachment)
             set_renderer(True)
             set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
 
@@ -1051,7 +1051,7 @@ if __name__ == '__main__':
     # get_placement_z()
 
     """ --- robot (FEGripper) related  --- """
-    robot = 'pr2'  ## 'feg' | 'pr2'
+    robot = 'feg'  ## 'feg' | 'pr2'
     # test_gripper_joints()
     # test_gripper_range()
     # test_torso()
@@ -1059,7 +1059,7 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    test_grasps(robot, ['Bottle'], skip_grasps=False)  ## 'EyeGlasses'
+    test_grasps(robot, ['Bottle'], skip_grasps=False, test_attachment=True)  ## 'EyeGlasses'
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
 
