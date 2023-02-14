@@ -61,6 +61,7 @@ def parse_yaml(path, verbose=True):
     conf.data = Namespace(**conf.data)
     conf.world = Namespace(**conf.world)
     conf.robot = Namespace(**conf.robot)
+    conf.planner = Namespace(**conf.planner)
     return conf
 
 

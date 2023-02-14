@@ -518,7 +518,9 @@ def sample_kitchen_mini_goal(world):
         # [('On', cabbage, counter)],
         # [('In', cabbage, fridge)],
     ]
-    return random.choice(goal_candidates)
+    goals = random.choice(goal_candidates)
+    world.remove_bodies_from_planning(goals=goals)
+    return goals
 
 
 ##########################################################################################

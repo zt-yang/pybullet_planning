@@ -743,6 +743,7 @@ def control_commands(commands, **kwargs):
         print(i, command)
         command.control(*kwargs)
 
+
 class State(object):
     def __init__(self, attachments={}, cleaned=set(), cooked=set()):
         self.poses = {body: Pose(body, get_pose(body))

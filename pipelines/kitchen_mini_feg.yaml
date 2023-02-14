@@ -47,7 +47,7 @@ world:
 
 
 data:
-  out_dir: /home/yang/Documents/kitchen-worlds/outputs/test_feg_kitchen_mini/
+  out_dir: ../outputs/test_feg_kitchen_mini/
   save_failed_plans: true
   save_log: true
   save_commands: true
@@ -69,4 +69,5 @@ data:
 ## configuration for PDDLStream
 planner:
   timeout: 300
-  domain_pddl:
+  domain_pddl: ../assets/pddl/feg_kitchen.pddl
+  stream_pddl: ../assets/pddl/feg_stream_kitchen.pddl
