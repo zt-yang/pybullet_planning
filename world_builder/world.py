@@ -697,6 +697,10 @@ class World(object):
         bodies = self.cat_to_bodies(cat)
         return [self.BODY_TO_OBJECT[b] for b in bodies]
 
+    def get_collision_objects(self):
+        saved = list(self.BODY_TO_OBJECT.keys())
+        return [n for n in get_bodies() if n in saved and n > 1]
+
     def assign_attachment(self, body, tag=None):
         title = f'   world.assign_attachment({body}) | '
         if tag is not None:

@@ -519,7 +519,10 @@ def sample_kitchen_mini_goal(world):
         # [('In', cabbage, fridge)],
     ]
     goals = random.choice(goal_candidates)
+
+    world.add_to_cat(bottle, 'moveable')
     world.remove_bodies_from_planning(goals=goals)
+
     return goals
 
 

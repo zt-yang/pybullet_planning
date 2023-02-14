@@ -312,6 +312,9 @@ class World():
         self.init = init
         summarize_facts(init, world=self, **kwargs)
 
+    def get_collision_objects(self):
+        return [n for n in self.body_to_name if isinstance(n, int) and n > 1]
+
     def get_planning_objects(self):
         return [self.body_to_name[b] for b in self.planning_objects]
 

@@ -496,7 +496,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
             obj_keys = get_obj_keys_for_segmentation(indices)
 
     robot = world.robot.body
-    objects = [n for n in world.body_to_name if isinstance(n, int) and n > 1]
+    objects = world.get_collision_objects()
     ignored_collisions = {robot: []}
     initial_collisions = copy.deepcopy(ignored_collisions)
     expected_pose = None
