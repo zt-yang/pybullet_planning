@@ -1444,7 +1444,7 @@ def load_kitchen_mini_scene(world, **kwargs):
                    category='cabinet', name='cabinet')
             )
 
-    food_ids, bottle_ids, medicine_ids = load_counter_moveables(world, [counter, shelf])
+    food_ids, bottle_ids, medicine_ids = load_counter_moveables(world, [counter, shelf], obstacles=[])
 
     # add camera
     camera_pose = Pose(point=Point(x=4.2, y=0, z=2.5), euler=Euler(roll=PI / 2 + PI / 8, pitch=0, yaw=-PI / 2))

@@ -663,7 +663,10 @@ class FEGripper(RobotAPI):
     def compute_grasp_width(self, arm, body_pose, grasp, body=None, verbose=False, **kwargs):
         from pybullet_tools.flying_gripper_utils import se3_ik, set_se3_conf, get_se3_conf
         body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
-        if isinstance(body, tuple): body = body[0]
+        if isinstance(body, tuple):
+            return 0.02
+            # body = body[0]
+
         # with PoseSaver(body):
         body_pose = unit_pose()
         grasp = grasp.value

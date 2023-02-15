@@ -11,7 +11,8 @@ from .entities import Object, Region, Environment, Robot, Camera, Floor, Stove,\
 from .loaders import load_rooms, load_cart, load_cart_regions, load_blocked_kitchen, \
     load_blocked_sink, load_blocked_stove, load_floor_plan, load_experiment_objects, load_pot_lid, load_basin_faucet, \
     load_kitchen_mechanism, load_cabinet_test_scene, load_random_mini_kitchen_counter, \
-    load_another_table, load_another_fridge_food, random_set_doors, ensure_robot_cfree, load_kitchen_mini_scene
+    load_another_table, load_another_fridge_food, random_set_doors, ensure_robot_cfree, load_kitchen_mini_scene, \
+    sample_full_kitchen
 from pybullet_tools.utils import Pose, Euler, PI, create_box, TAN, Point, set_camera_pose, link_from_name, \
     connect, enable_preview, draw_pose, unit_pose, set_all_static, wait_if_gui, reset_simulation, get_aabb
 
@@ -73,6 +74,7 @@ def create_pybullet_world(config, builder=None, SAVE_LISDF=False, SAVE_TESTCASE=
     if config.verbose: world.summarize_all_objects()
 
     """ ============== save world configuration ==================== """
+    file = None
     if SAVE_LISDF:   ## only lisdf files
         file = world.save_lisdf(config.data.out_dir, verbose=config.verbose)
 
@@ -529,7 +531,40 @@ def sample_kitchen_mini_goal(world):
 ##########################################################################################
 
 
-def test_kitchen_clean(world, **kwargs):
-    sample_kitchen_scene(world, **kwargs)
-    goal = sample_kitchen_mini_goal(world)
+def test_feg_kitchen_full(world, **kwargs):
+    ## hyperparameters for world sampling
+    world.set_skip_joints()
+    world.note = 1
+
+    moveables, cabinets, counters, obstacles, x_food_min = \
+        sample_full_kitchen(world, verbose=False, pause=False)
+    goal = sample_kitchen_full_goal(world)
     return goal
+
+
+def sample_kitchen_full_goal(world):
+    objects = []
+
+    food = random.choice(world.cat_to_bodies('edible'))
+    bottle = random.choice(world.cat_to_bodies('bottle'))
+    counter = world.name_to_body('counter#1')
+    fridge = world.name_to_object('minifridge')
+    fridge_door = fridge.doors[0]
+
+    objects += [fridge_door]
+
+    world.add_to_cat(food, 'moveable')
+    world.add_to_cat(bottle, 'moveable')
+
+    hand = world.robot.arms[0]
+    goal_candidates = [
+        [('Holding', hand, bottle)],
+        [('On', food, counter)],
+        [('In', food, fridge)],
+        [('OpenedJoint', fridge_door)],
+    ]
+    goals = random.choice(goal_candidates)
+
+    world.remove_bodies_from_planning(goals=goals, exceptions=objects)
+
+    return goals
