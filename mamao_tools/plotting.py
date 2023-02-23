@@ -1,6 +1,7 @@
 """
 Bar chart demo with pairs of bars grouped for easy comparison.
 """
+import platform
 import json
 import platform
 import shutil
@@ -28,6 +29,9 @@ EVALUATE_GEOMETRY = False
 PAPER_VERSION = True ## no preview, just save pdf
 DEBUG_LINES = False
 ANIMATION = 2
+
+SAVE_DATA = False
+USE_DATA = platform.system() == 'Darwin'
 
 from matplotlib import rc
 rc('font', **{'family': 'serif', 'serif': ['Times']})
@@ -80,7 +84,10 @@ GROUPNAMES = ['Table-to-fridge', 'Fridge-to-fridge',
               'Counter-to-storage', 'Counter-to-pot', 'Pot-to-storage',
               'Counter-to-sink', 'Sink-to-storage' ]  ##
 
-METHODS = ['None', 'pvt-task', 'oracle']  ## 'pvt-56',
+GROUPS = ['tt_sink', 'tt_sink_to_storage'] ##
+GROUPNAMES = ['Counter-to-sink', 'Sink-to-storage' ]  ##
+
+METHODS = ['None', 'pvt-task', 'oracle']  ## 'pvt-6',
 METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']  ## 'PIGI*',
 
 # FIXED_COST = []
@@ -125,7 +132,7 @@ colors_darker = [color_dict[k][0] for k in cc]
 ## see which files are missing
 # METHODS = ['None', 'oracle'] ## , 'pvt'
 SAME_Y_AXES = False
-RERUN_SUBDIR = 'rerun_2'
+RERUN_SUBDIR = 'rerun_3'
 
 
 def hex_to_rgb(value):
@@ -746,8 +753,14 @@ def make_plot():
         dump_data(data)
 
     ## on Mac
-    data = load_data()
-    # sys.exit()
+    if USE_DATA:
+        data = load_data()
+     ## on Ubuntu
+    else:
+        data = get_time_data(diverse=True)
+        if SAVE_DATA:
+            dump_data(data)
+            sys.exit()
 
     if not AUTO_REFRESH:
         print('time.time()', int(time.time()))

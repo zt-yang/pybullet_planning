@@ -19,7 +19,7 @@ from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, g
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
     get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked, \
     get_movable_joints, apply_alpha, get_all_links, set_color, set_all_color, dump_body, clear_texture, \
-    get_link_name, get_aabb, draw_aabb, GREY, GREEN, quat_from_euler
+    get_link_name, get_aabb, draw_aabb, GREY, GREEN, quat_from_euler, wait_for_user
 from pybullet_tools.pr2_streams import Position, get_handle_grasp_gen, pr2_grasp
 from pybullet_tools.general_streams import pose_from_attachment
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
@@ -697,6 +697,10 @@ class World(object):
         bodies = self.cat_to_bodies(cat)
         return [self.BODY_TO_OBJECT[b] for b in bodies]
 
+    def get_collision_objects(self):
+        saved = list(self.BODY_TO_OBJECT.keys())
+        return [n for n in get_bodies() if n in saved and n > 1]
+
     def assign_attachment(self, body, tag=None):
         title = f'   world.assign_attachment({body}) | '
         if tag is not None:
@@ -716,13 +720,13 @@ class World(object):
         close_joint(body, joint)
         self.assign_attachment(body)
 
-    def open_joint(self, body, joint, extent=1, pstn=None, random_gen=False):
+    def open_joint(self, body, joint, extent=1, pstn=None, random_gen=False, **kwargs):
         if random_gen:
             from pybullet_tools.general_streams import sample_joint_position_list_gen
             funk = sample_joint_position_list_gen()
             pstns = funk((body, joint), Position((body, joint)))
             pstn = random.choice(pstns)[0].value
-        open_joint(body, joint, extent=extent, pstn=pstn)
+        open_joint(body, joint, extent=extent, pstn=pstn, **kwargs)
         self.assign_attachment(body)
 
     def open_doors_drawers(self, body, ADD_JOINT=True, **kwargs):
@@ -736,10 +740,10 @@ class World(object):
 
     def close_doors_drawers(self, body, ADD_JOINT=True):
         doors, drawers, knobs = self.get_doors_drawers(body, skippable=True)
-        for joint in doors + drawers:
-            self.close_joint(body, joint)
+        for b, j in doors + drawers:
+            self.close_joint(b, j)
             if not ADD_JOINT:
-                self.remove_object(joint)
+                self.remove_object(j)
 
     def close_all_doors_drawers(self):
         doors = [(o.body, o.joint) for o in self.cat_to_objects('door')]
@@ -1054,18 +1058,18 @@ class World(object):
                                        verbose=verbose)
 
         ## ---- object types -------------
-        for cat in self.OBJECTS_BY_CATEGORY:
+        for cat, objects in self.OBJECTS_BY_CATEGORY.items():
             if cat.lower() == 'moveable': continue
-            if cat in ['CleaningSurface', 'HeatingSurface']:
+            if cat in ['edible', 'cleaningsurface', 'heatingsurface']:
                 objects = self.OBJECTS_BY_CATEGORY[cat]
                 init += [(cat, obj.pybullet_name) for obj in objects if obj.pybullet_name in BODY_TO_OBJECT]
-            else:
-                for obj in cat_to_bodies(cat):
-                    if cat in ['space', 'surface'] and (cat, obj) not in init:
-                        init += [(cat, obj)]
-                    cat2 = f"@{cat}"
-                    if cat2 in self.constants:
-                        init += [('OfType', obj, cat2)]
+
+            for obj in objects:
+                if cat in ['space', 'surface'] and (cat, obj) not in init:
+                    init += [(cat, obj)]
+                cat2 = f"@{cat}"
+                if cat2 in self.constants:
+                    init += [('OfType', obj, cat2)]
 
         ## --- for testing IK
         # lid = self.name_to_body('braiserlid')
@@ -1117,20 +1121,13 @@ class World(object):
         from world_builder.world_generator import to_lisdf
         to_lisdf(self, join(output_dir, 'scene.lisdf'), verbose=verbose, **kwargs)
 
-    def save_planning_config(self, output_dir, template_dir=None, domain=None, stream=None,
+    def save_planning_config(self, output_dir, domain=None, stream=None,
                              pddlstream_kwargs=None):
         from world_builder.world_generator import get_config_from_template
         """ planning related files and params are referred to in template directory """
         config = self.get_planning_config()
 
-        if template_dir is not None:
-            config.update(get_config_from_template(template_dir))
-            config.update({
-                'domain_full': abspath(join(template_dir, 'domain_full.pddl')),
-                'domain': abspath(join(template_dir, 'domain.pddl')),
-                'stream': abspath(join(template_dir, 'stream.pddl')),
-            })
-        elif domain is not None:
+        if domain is not None:
             config.update({
                 'domain': domain,
                 'stream': stream,
@@ -1140,7 +1137,7 @@ class World(object):
         with open(join(output_dir, 'planning_config.json'), 'w') as f:
             json.dump(config, f, indent=4)
 
-    def save_test_case(self, goal, output_dir, template_dir=None, init=None,
+    def save_test_case(self, goal, output_dir, init=None,
                        domain=None, stream=None, problem=None, pddlstream_kwargs=None,
                        save_rgb=False, save_depth=False, **kwargs):
         if not isdir(output_dir):
@@ -1151,8 +1148,7 @@ class World(object):
 
         self.save_lisdf(output_dir, world_name=world_name, **kwargs)
         self.save_problem_pddl(goal, output_dir, world_name=world_name, init=init)
-        self.save_planning_config(output_dir, template_dir=template_dir,
-                                  domain=domain, stream=stream,
+        self.save_planning_config(output_dir, domain=domain, stream=stream,
                                   pddlstream_kwargs=pddlstream_kwargs)
 
         ## move other log files:
@@ -1208,6 +1204,8 @@ class State(object):
             # objects = [o for o in world.objects if isinstance(o, int)]
             objects = get_bodies()
             objects.remove(world.robot)
+        if grasp_types is None:
+            grasp_types = world.robot.grasp_types
         self.objects = list(objects)
 
         if len(attachments) == 0:
@@ -1223,7 +1221,7 @@ class State(object):
         self.gripper = gripper
         if grasp_types is None:
             grasp_types = world.robot.grasp_types
-        self.grasp_types = grasp_types ##, 'side']
+        self.grasp_types = grasp_types
         ## allowing both types causes trouble when the AConf used for generating IK isn't the same as the one during execution
 
     def get_gripper(self, arm='left', visual=True):
@@ -1318,6 +1316,7 @@ class State(object):
         if isinstance(action, list):
             print('world.apply action')
         # assert isinstance(action, Action)
+        # wait_for_user()
         return action.transition(self.copy())
 
     def camera_observation(self, include_rgb=False, include_depth=False, include_segment=False):

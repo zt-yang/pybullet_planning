@@ -243,7 +243,9 @@ def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visu
             p = Pose(body, value=body_pose, support=surface)
             p.assign()
             result = collided(body, obs, verbose=verbose, visualize=visualize, tag='stable_gen', world=world)
-            if not result:
+            if not result: ##  or ('braiser_bottom' in world.BODY_TO_OBJECT[surface].name):
+                # if ('braiser_bottom' in world.BODY_TO_OBJECT[surface].name):
+                #     print('\n\nallow bad samples inside pots')
                 p0.assign()
                 yield (p,)
             else:
@@ -676,8 +678,8 @@ def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
                 body_pose = get_link_pose(body, handle_link)
                 if verbose: print(f'{title} get_link_pose({body}, {handle_link})'
                                   f' = {nice(body_pose)} | grasp = {nice(grasp.value)}')
-                grasp.grasp_width = robot.compute_grasp_width(arm, body_pose,
-                                    grasp.value, body=body_joint, verbose=verbose) if collisions else 0.0
+                grasp.grasp_width = robot.compute_grasp_width(arm, body_pose, grasp, body=body_joint,
+                                                              verbose=verbose) if collisions else 0.0
             elif robot.name.startswith('pr2'):
                 grasp.grasp_width = get_handle_width(body_joint)
 

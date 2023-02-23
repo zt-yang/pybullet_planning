@@ -245,7 +245,7 @@ def get_body_map(run_dir, world, inv=False, larger=True):
                    if v in world.name_to_body}
     if inv:
         return {v: k for k, v in body_to_new.items()}
-    body_to_new = {eval(k): v for k, v in body_to_new.items()}
+    body_to_new.update({eval(k): v for k, v in body_to_new.items()})
     return body_to_new
 
 
@@ -737,8 +737,8 @@ def get_sink_counter_x(run_dir, keyw='sink_counter_front'):
 
 def aabb_placed_on_aabb(top_aabb, bottom_aabb, above_epsilon=1e-2, below_epsilon=0.02):
     assert (0 <= above_epsilon) and (0 <= below_epsilon)
-    lower = bottom_aabb.lower
-    upper = bottom_aabb.upper
+    lower = copy.deepcopy(bottom_aabb.lower)
+    upper = copy.deepcopy(bottom_aabb.upper)
     upper[0] += get_aabb_extent(bottom_aabb)[0] / 2
     new_bottom_aabb = AABB(lower=lower, upper=upper)
     top_z_min = top_aabb[0][2]
@@ -1053,3 +1053,48 @@ def get_fastdownward_time(run_dir, method):
     lines = open(log, 'r').readlines()
     times = [eval(l[l.index(':')+2:].strip()) for l in lines if 'Count Diverse Time:' in l]
     return sum(times)
+
+
+##########################################################
+
+
+def get_relation_from_line(l, vs=None, inv_vs=None):
+    args = l.replace('\n', '').replace('\t', '').strip()[1:-1]
+    if vs is None:
+        return args.split(' ')
+    return parse_pddl_str(args, vs=vs, inv_vs=inv_vs)
+
+
+def exist_line_with_keywords(lines, keywords, index=False, get_all=False):
+    line_num = 0
+    relations = []
+    for l in lines:
+        result = True
+        for k in keywords:
+            if k not in l:
+                result = False
+        if result:
+            if index:
+                return line_num
+            tup = get_relation_from_line(l)
+            if not get_all:
+                return tup
+            relations.append(tup)
+        line_num += 1
+    if get_all:
+        return relations
+    return False
+
+
+def get_problem_lines(run_dir):
+    pfile = join(run_dir, 'problem_larger.pddl')
+    if not isfile(pfile):
+        pfile = join(run_dir, 'problem.pddl')
+    return open(pfile, 'r').readlines()
+
+
+def get_goals(run_dir):
+    lines = get_problem_lines(run_dir)
+    b = exist_line_with_keywords(lines, ['(:goal (and'], index=True)
+    e = exist_line_with_keywords(lines[b:], ['))'], index=True) + b
+    return [get_relation_from_line(l) for l in lines[b+1:e]]

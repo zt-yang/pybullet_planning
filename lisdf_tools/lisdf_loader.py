@@ -180,6 +180,18 @@ class World():
                 possible[body] = n
         return find_closest_match(possible, all_possible=all_possible)
 
+    def remove_from_gym_world(self, name, gym_world,  pose, exceptions=[]):
+        bodies = self.safely_get_body_from_name(name, all_possible=True)
+        removed = []
+        if bodies is not None:
+            for b in bodies:
+                name = self.body_to_name[b]
+                if name in exceptions or '::' in name:
+                    continue
+                gym_world.set_pose(gym_world.get_actor(name), pose)
+                removed.append(name)
+        return removed
+
     def make_transparent(self, obj, transparency=0.5, verbose=False,
                                remove_upper_furnitures=False):
         def color_obj(obj):
@@ -311,6 +323,9 @@ class World():
     def summarize_facts(self, init, **kwargs):
         self.init = init
         summarize_facts(init, world=self, **kwargs)
+
+    def get_collision_objects(self):
+        return [n for n in self.body_to_name if isinstance(n, int) and n > 1]
 
     def get_planning_objects(self):
         return [self.body_to_name[b] for b in self.planning_objects]
@@ -675,8 +690,8 @@ def get_camera_kwargs(bullet_world, camera_zoomin):
 
 def make_furniture_transparent(bullet_world, lisdf_dir, lower_tpy=0.5, upper_tpy=0.2, **kwargs):
     transparent = ['pr2']
-    camera_zoomin = get_camera_zoom_in(lisdf_dir)
     upper_furnitures = ['cabinettop', 'cabinetupper', 'shelf']
+    camera_zoomin = get_camera_zoom_in(lisdf_dir)
     if camera_zoomin is not None:
         target_body = camera_zoomin['name']
         if 'braiser' in target_body:

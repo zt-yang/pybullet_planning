@@ -22,7 +22,7 @@ from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, 
     add_text, joint_from_name, set_caching, Point, set_random_seed, set_numpy_seed, reset_simulation, \
     get_joint_name, get_link_name, dump_joint, set_joint_position
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, set_camera_target_body, \
-    draw_bounding_lines, fit_dimensions, draw_fitted_box, get_hand_grasps, get_partnet_doors, get_partnet_spaces, \
+    draw_bounding_lines, fit_dimensions, draw_fitted_box, get_hand_grasps, \
     open_joint, get_grasp_db_file, draw_points, take_selected_seg_images, dump_json
 from pybullet_tools.pr2_agent import get_stream_info, post_process, move_cost_fn, \
     visualize_grasps_by_quat, visualize_grasps
@@ -35,7 +35,7 @@ from world_builder.world import State
 from world_builder.loaders import sample_kitchen_sink, sample_full_kitchen, create_house_floor, create_table, \
     create_movable
 from world_builder.robot_builders import create_gripper_robot, create_pr2_robot
-from world_builder.utils import load_asset, get_instance_name
+from world_builder.utils import load_asset, get_instance_name, get_partnet_doors, get_partnet_spaces
 from world_builder.utils import get_instances as get_instances_helper
 from world_builder.partnet_scales import MODEL_HEIGHTS, OBJ_SCALES, MODEL_SCALES
 from world_builder.robot_builders import build_skill_domain_robot
@@ -136,6 +136,7 @@ def test_spatial_algebra(body, robot):
     draw_pose(W_X_G, length=0.3)
     set_pose(gripper, W_X_G)
     set_camera_target_body(gripper, dx=0.5, dy=0, dz=0.5)
+    wait_if_gui()
 
 
 def get_gap(category):
@@ -149,7 +150,7 @@ def get_gap(category):
     return gap
 
 
-def test_grasps(robot='feg', categories=[], skip_grasps=False):
+def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=False):
     world = get_test_world(robot)
     draw_pose(unit_pose(), length=10)
     robot = world.robot
@@ -168,8 +169,8 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False):
             outputs = funk(body)
             if isinstance(outputs, list):
                 print(f'grasps on body {body}:', outputs)
-            # visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=False, TEST_ATTACHMENT=True)
-            visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=True, TEST_ATTACHMENT=False)
+            visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=not test_attachment,
+                             TEST_ATTACHMENT=test_attachment)
             set_renderer(True)
             set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
 
@@ -1047,10 +1048,10 @@ if __name__ == '__main__':
     # test_texture(category='CoffeeMachine', id='103127')
     # test_vhacd(category='BraiserBody')
     # get_partnet_aabbs()
-    get_placement_z()
+    # get_placement_z()
 
     """ --- robot (FEGripper) related  --- """
-    robot = 'pr2'  ## 'feg' | 'pr2'
+    robot = 'feg'  ## 'feg' | 'pr2'
     # test_gripper_joints()
     # test_gripper_range()
     # test_torso()
@@ -1058,7 +1059,7 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    # test_grasps(robot, ['Sink'], skip_grasps=True)  ## 'EyeGlasses'
+    test_grasps(robot, ['Bottle'], skip_grasps=False, test_attachment=True)  ## 'EyeGlasses'
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
 

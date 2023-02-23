@@ -111,7 +111,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         # TODO: apply motion_collisions to pulling?
         'inverse-kinematics-grasp-handle': from_gen_fn(
             get_ik_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l,
-                        learned=False, verbose=False, ACONF=True)),
+                        learned=False, verbose=True, ACONF=True)),
         'inverse-kinematics-ungrasp-handle': from_gen_fn(
             get_ik_ungrasp_handle_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l,
                                       verbose=False)),
@@ -914,7 +914,8 @@ def test_grasps(state, name='cabbage', visualize=True):
     return goals
 
 
-def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=False, TEST_ATTACHMENT=True):
+def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=False,
+                     TEST_ATTACHMENT=True):
     robot = state.robot
     colors = [BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED]
 

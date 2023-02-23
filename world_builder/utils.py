@@ -17,7 +17,7 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sam
     stable_z, Pose, Point, create_box, load_model, get_joints, set_joint_position, BROWN, Euler, PI, \
     set_camera_pose, TAN, RGBA, sample_aabb, get_min_limit, get_max_limit, set_color, WHITE, get_links, \
     get_link_name, get_link_pose, euler_from_quat, get_collision_data, get_joint_name, get_joint_position, \
-    set_renderer, link_from_name, parent_joint_from_link
+    set_renderer, link_from_name, parent_joint_from_link, set_random_seed, set_numpy_seed
 from pybullet_tools.bullet_utils import set_camera_target_body
 from pybullet_tools.logging import dump_json
 from world_builder.partnet_scales import DONT_LOAD
@@ -44,6 +44,25 @@ SAMPLER_DB = abspath(join(dirname(__file__), 'sampling_distributions.json'))
 SAMPLER_KEY = "{x}&{y}"
 
 Z_CORRECTION_FILE = join(dirname(__file__), '..', 'databases', 'pose_z_correction.json')
+SCENE_CONFIG_PATH = abspath(join(dirname(__file__), '..', 'pipelines'))
+
+
+def parse_yaml(path, verbose=True):
+    import yaml
+    from pprint import pprint
+    from pathlib import Path
+    from argparse import Namespace
+    conf = yaml.safe_load(Path(path).read_text())
+    if verbose:
+        print(f'-------------- {abspath(path)} --------------')
+        pprint(conf)
+        print('------------------------------------\n')
+    conf = Namespace(**conf)
+    conf.data = Namespace(**conf.data)
+    conf.world = Namespace(**conf.world)
+    conf.robot = Namespace(**conf.robot)
+    conf.planner = Namespace(**conf.planner)
+    return conf
 
 
 def read_xml(plan_name, asset_path=ASSET_PATH):
@@ -583,9 +602,8 @@ def HEX_to_RGB(color):
     return tuple(rgb)
 
 
-def adjust_for_reachability(obj, counter, x_min=None, body_pose=None, return_pose=False, world=None):
-    if x_min is None:
-        x_min = counter.aabb().upper[0] - 0.3
+def adjust_for_reachability(obj, counter, d_x_min=0.3, body_pose=None, return_pose=False, world=None):
+    x_min = counter.aabb().upper[0] - d_x_min
     x_max = counter.aabb().upper[0]
     if body_pose is None:
         body_pose = obj.get_pose()
@@ -652,7 +670,9 @@ def get_camera_zoom_in(run_dir):
     if isfile(config_file):
         config = json.load(open(config_file, 'r'))
         if 'camera_zoomins' in config:
-            return config['camera_zoomins'][-1]
+            camera_zoomins = config['camera_zoomins']
+            if len(camera_zoomins) > 0:
+                return camera_zoomins[-1]
     return None
 
 

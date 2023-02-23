@@ -12,20 +12,7 @@ def get_robot_builder(builder_name):
         return build_fridge_domain_robot
     elif builder_name == 'build_table_domain_robot':
         return build_table_domain_robot
-    return None
-
-############################################
-
-
-def maybe_add_robot(world, template_dir=None):
-    config_file = join(template_dir, 'planning_config.json')
-    planning_config = json.load(open(config_file, 'r'))
-    if 'robot_builder' not in planning_config:
-        return
-    custom_limits = planning_config['base_limits']
-    robot_name = planning_config['robot_name']
-    robot_builder = get_robot_builder(planning_config['robot_builder'])
-    robot_builder(world, robot_name=robot_name, custom_limits=custom_limits)
+    return build_robot_from_args
 
 
 #######################################################

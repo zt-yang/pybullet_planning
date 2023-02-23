@@ -11,14 +11,15 @@ from .entities import Object, Region, Environment, Robot, Camera, Floor, Stove,\
 from .loaders import load_rooms, load_cart, load_cart_regions, load_blocked_kitchen, \
     load_blocked_sink, load_blocked_stove, load_floor_plan, load_experiment_objects, load_pot_lid, load_basin_faucet, \
     load_kitchen_mechanism, load_cabinet_test_scene, load_random_mini_kitchen_counter, \
-    load_another_table, load_another_fridge_food, random_set_doors, ensure_robot_cfree, load_kitchen_mini_scene
+    load_another_table, load_another_fridge_food, random_set_doors, ensure_robot_cfree, load_kitchen_mini_scene, \
+    sample_full_kitchen
 from pybullet_tools.utils import Pose, Euler, PI, create_box, TAN, Point, set_camera_pose, link_from_name, \
     connect, enable_preview, draw_pose, unit_pose, set_all_static, wait_if_gui, reset_simulation, get_aabb
 
 from pybullet_tools.bullet_utils import set_camera_target_body, set_camera_target_robot, draw_collision_shapes, \
     open_joint
 from world_builder.world_generator import EXP_PATH
-from world_builder.robot_builders import maybe_add_robot, create_gripper_robot, create_pr2_robot
+from world_builder.robot_builders import get_robot_builder, create_gripper_robot, create_pr2_robot
 
 
 def set_time_seed():
@@ -30,58 +31,61 @@ def set_time_seed():
     return seed
 
 
-def create_pybullet_world(args, builder,
-                          verbose=False,
-                          SAMPLING=False,
-                          SAVE_LISDF=False,
-                          DEPTH_IMAGES=False,
-                          RESET=False,
-                          SAVE_TESTCASE=False,
-                          SAVE_RGB=False,
-                          template_dir=None,
-                          out_dir=None,
-                          root_dir='..'):
-    """ build a pybullet world with lisdf & pddl files into test_cases folder,
-        given a text_case folder to copy the domain, stream, and config from """
-
-    if template_dir is None:
-        template_name = builder.__name__
-    else:
-        template_name = basename(template_dir)
-    template_dir = abspath(join(root_dir, EXP_PATH, template_name))
-
-    """ ============== initiate simulator ==================== """
+def initialize_pybullet(config):
     ## for viewing, not the size of depth image
-    connect(use_gui=args.viewer, shadows=False, width=1980, height=1238)
+    connect(use_gui=config.viewer, shadows=False, width=1980, height=1238)
 
     # set_camera_pose(camera_point=[2.5, 0., 3.5], target_point=[1., 0, 1.])
-    if args.camera:
+    if config.camera:
         enable_preview()
         p.configureDebugVisualizer(p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW, False)
     draw_pose(unit_pose(), length=1.)
 
-    """ ============== sample world configuration ==================== """
 
-    world = World(time_step=args.time_step, camera=args.camera, segment=args.segment)
-    maybe_add_robot(world, **args.config.robot)
-    goal = builder(world, verbose=verbose, **args.config.world_builder)
+def get_world_builder(builder_name):
+    from inspect import getmembers, isfunction
+    import sys
+    current_module = sys.modules[__name__]
+    result = [a[1] for a in getmembers(current_module) if isfunction(a[1]) and a[0] == builder_name]
+    if len(result) == 0:
+        raise ValueError('Builder {} not found'.format(builder_name))
+    return result[0]
+
+
+def create_pybullet_world(config, builder=None, SAVE_LISDF=False, SAVE_TESTCASE=False, RESET=False):
+    """ build a pybullet world with lisdf & pddl files into test_cases folder,
+        given a text_case folder to copy the domain, stream, and config from """
+
+    """ ============== initiate simulator ==================== """
+    initialize_pybullet(config)
+    world = World(time_step=config.time_step, camera=config.camera, segment=config.segment)
+
+    """ ============== load robot ==================== """
+    robot_builder = get_robot_builder(config.robot.builder_name)
+    robot = robot_builder(world, config.robot.robot_name, **config.robot.builder_kwargs)
+
+    """ ============== sample world and goal ==================== """
+    if builder is None:
+        builder = get_world_builder(config.world.builder_name)
+    goal = builder(world, verbose=config.verbose, **config.world.builder_kwargs)
 
     ## no gravity once simulation starts
     set_all_static()
-    if verbose: world.summarize_all_objects()
+    if config.verbose: world.summarize_all_objects()
 
     """ ============== save world configuration ==================== """
     file = None
     if SAVE_LISDF:   ## only lisdf files
-        file = world.save_lisdf(verbose=verbose)
+        file = world.save_lisdf(config.data.out_dir, verbose=config.verbose)
 
-    if SAVE_TESTCASE:
-        world.save_test_case(goal, out_dir, template_dir=template_dir,
-                             save_rgb=SAVE_RGB, save_depth=DEPTH_IMAGES)
+    if SAVE_TESTCASE:   ## save generated world conf, sampled problem and planning config
+        world.save_test_case(goal, config.data.out_dir, **config.data.images)
 
+    """ ============== stop here or follow up with solving the problem ==================== """
     if RESET:
         reset_simulation()
         return file
+
     return world, goal
 
 
@@ -516,13 +520,51 @@ def sample_kitchen_mini_goal(world):
         # [('On', cabbage, counter)],
         # [('In', cabbage, fridge)],
     ]
-    return random.choice(goal_candidates)
+    goals = random.choice(goal_candidates)
+
+    world.add_to_cat(bottle, 'moveable')
+    world.remove_bodies_from_planning(goals=goals)
+
+    return goals
 
 
 ##########################################################################################
 
 
-def test_kitchen_clean(world, **kwargs):
-    sample_kitchen_scene(world, **kwargs)
-    goal = sample_kitchen_mini_goal(world)
+def test_feg_kitchen_full(world, **kwargs):
+    ## hyperparameters for world sampling
+    world.set_skip_joints()
+    world.note = 1
+
+    moveables, cabinets, counters, obstacles, x_food_min = \
+        sample_full_kitchen(world, verbose=False, pause=False)
+    goal = sample_kitchen_full_goal(world)
     return goal
+
+
+def sample_kitchen_full_goal(world):
+    objects = []
+
+    food = random.choice(world.cat_to_bodies('edible'))
+    bottle = random.choice(world.cat_to_bodies('bottle'))
+    counter = world.name_to_body('counter#1')
+    fridge = world.name_to_object('minifridge')
+    fridge_door = fridge.doors[0]
+
+    objects += [fridge_door]
+
+    world.add_to_cat(food, 'moveable')
+    world.add_to_cat(bottle, 'moveable')
+
+    hand = world.robot.arms[0]
+    goal_candidates = [
+        [('Holding', hand, bottle)],
+        [('On', food, counter)],
+        [('In', food, fridge)],
+        [('OpenedJoint', fridge_door)],
+    ]
+    goals = random.choice(goal_candidates)
+
+    world.remove_bodies_from_planning(goals=goals, exceptions=objects)
+
+    return goals

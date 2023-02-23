@@ -2,6 +2,7 @@ import os.path
 import random
 import sys
 from os.path import join, isdir, abspath, dirname, isfile, basename
+import math
 import time
 from pprint import pprint
 from tqdm import tqdm
@@ -15,7 +16,8 @@ from pybullet_tools.utils import pose_from_tform, get_pose, get_joint_name, get_
     get_movable_joints, Euler, quat_from_euler
 from isaac_tools.urdf_utils import load_lisdf, test_is_robot
 from lisdf_tools.image_utils import images_to_mp4, images_to_gif
-from mamao_tools.data_utils import load_planning_config, get_worlds_aabb, get_instance_info
+from mamao_tools.data_utils import load_planning_config, get_worlds_aabb, \
+    get_instance_info, exist_instance
 
 ASSET_PATH = join(dirname(__file__), '..', 'assets')
 
@@ -47,15 +49,16 @@ def load_one_world(gym_world, lisdf_dir, offset=None, loading_effect=False,
         return False
 
     if save_obj_shots:
-        asset = gym_world.simulator.box_asset(0.5, length=8, height=3, fixed_base=True)
-        actor = gym_world.create_actor(asset, name='backdrop', scale=1)
-        gym_world.set_color(actor, (1, 1, 1, 1))
-        gym_world.set_pose(actor, ((-5, -5, 1), (0, 0, 0, 1)))
+        load_obj_shots_bg(gym_world)
 
     for name, path, scale, is_fixed, pose, positions in load_lisdf(lisdf_dir, robots=robots, **kwargs):
         is_robot = test_is_robot(name)
         if test_camera_pose and not is_robot:
             continue
+
+        ## for rendering zoom up only
+        # if 'mm_braiser_' in lisdf_dir and ('cabinettop' in name or 'cabinetupper' in name or 'shelf_lower' in name):
+        #     continue
 
         if world_index is not None:
             name = f'w{world_index}_{name}'
@@ -65,6 +68,10 @@ def load_one_world(gym_world, lisdf_dir, offset=None, loading_effect=False,
             pose = (np.array([0, 0, 0]), np.array([0, 0, 0, 1]))
         if offset is not None:
             pose = (pose[0] + offset, pose[1])
+
+        ## for rendering zoom up only
+        # if 'mm_braiser_' in lisdf_dir and ('medicine' in name or 'bottle' in name) and pose[0][2] > 1.5:
+        #     continue
 
         if loading_effect and is_loading_objects(name, movable_keywords):
             drop_height = 0.4
@@ -123,14 +130,8 @@ def load_one_world(gym_world, lisdf_dir, offset=None, loading_effect=False,
             gym_world.set_joint_positions(actor, joint_positions)
 
         if save_obj_shots:
-            if 'minifridge' in name:
-                camera = gym_world.cameras[-1]
-                img_file = join('gym_images', f'obj-{name}.png')
-                to_point = [-4, -4, 1]
-                from_point = [-1, -4, 1.5]
-                gym_world.set_pose(actor, (to_point, pose[1]))
-                gym_world.set_camera_target(camera, from_point, to_point)
-                gym_world.save_image(camera, image_type='rgb', filename=img_file)
+            img_file = join('gym_images', 'obj', f'obj-{name}.png')
+            take_obj_shot(gym_world, actor, img_file, pose)
 
         gym_world.set_pose(actor, pose)
 
@@ -314,9 +315,11 @@ def record_gym_world_loading_objects(gym_world, loading_objects, world_index=Non
     return gif_name
 
 
-def update_gym_world_by_pb_world(gym_world, pb_world, pause=False, verbose=False, offset=None):
+def update_gym_world_by_pb_world(gym_world, pb_world, pause=False, verbose=False, offset=None, ignore_actors=[]):
     for actor in gym_world.get_actors():
         name = gym_world.get_actor_name(actor)
+        if name in ignore_actors:
+            continue
         body = pb_world.name_to_body[name]
         pose = get_pose(body)
 
@@ -380,7 +383,7 @@ def load_envs_isaacgym(ori_dirs, robots=True, pause=False, num_rows=5, num_cols=
     gym_world.set_camera_target(camera, camera_point, target_point)
 
     num_worlds = num_rows * num_cols
-    scale = 0.75 if world_size[0] > 12 else 1
+    scale = 1.25 ## 0.75 if world_size[0] > 12 else 1
     offsets = []
     all_wconfs = []
     assets = {}
@@ -413,6 +416,57 @@ def load_envs_isaacgym(ori_dirs, robots=True, pause=False, num_rows=5, num_cols=
     if loading_effect:
         return gym_world, offsets, all_wconfs
     return gym_world, offsets
+
+
+##################################################################
+
+
+def load_obj_shots_bg(gym_world, vertical=True, background=(1, 1, 1, 1)):
+    if vertical:
+        w, l, h = 0.5, 8, 3
+        x, y, z = -5, -5, 1
+    else:
+        w, l, h = 6, 6, 0.5
+        x, y, z = -4, -4, 0
+    asset = gym_world.simulator.box_asset(w, length=l, height=h, fixed_base=True)
+    actor = gym_world.create_actor(asset, name='backdrop', scale=1)
+    gym_world.set_pose(actor, ((x, y, z), (0, 0, 0, 1)))
+    gym_world.set_color(actor, background)
+    gym_world.simulator.set_light(
+        direction=np.asarray([-1, -1, -1]),
+        intensity=np.asarray([0.5, 0.5, 0.5]))
+
+
+def take_obj_shot(gym_world, actor, img_file, pose, direction='horizonal'):
+    camera = gym_world.cameras[-1]
+    if direction == 'horizonal':
+        to_point = [-4, -4, 1]
+        from_point = [-1, -4, 1.5]
+    elif direction == 'diagonal':
+        to_point = [-4, -4, 1]
+        from_point = [-1, -4, 3]
+    else:
+        to_point = [-4, -4, 1]
+        from_point = [-3.9, -4, 4]
+
+    gym_world.set_pose(actor, (to_point, pose[1]))
+
+    if 'CabinetTop_' in img_file:
+        d = 0
+        if 'CabinetTop_00001' in img_file:
+            d = -0.4
+        if 'CabinetTop_00002' in img_file:
+            d = 0.4
+        if 'CabinetTop_00003' in img_file:
+            d = -0.5
+        to_point[1] += d
+        from_point[1] += d
+
+    gym_world.set_camera_target(camera, from_point, to_point)
+    gym_world.save_image(camera, image_type='rgb', filename=img_file)
+
+
+##################################################################
 
 
 def init_isaac_world():
@@ -455,7 +509,8 @@ def init_isaac_world():
 
 def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_name='gym_replay.gif',
                           time_step=0.5, verbose=False, plan=None, return_wconf=False,
-                          world_index=None, body_map=None, save_gif=True, save_mp4=False):
+                          world_index=None, body_map=None, save_gif=True, save_mp4=False,
+                          camera_movement=None, ignore_actors=None):
     """ act out the whole plan and event in the world without observation/replanning """
     from world_builder.actions import adapt_action, apply_actions
     from world_builder.world import State
@@ -467,7 +522,7 @@ def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_n
     state_event = State(problem.world)
     camera = None if gym_world is None else gym_world.cameras[0]
     filenames = []
-    frame_gap = 3
+    frame_gap = 3  ## 3 ## 3 for single world, 5 for longer horizon
     wconfs = []
     for i, action in enumerate(commands):
         if verbose:
@@ -488,9 +543,11 @@ def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_n
                 print(action.grasp)
             wait_for_duration(time_step)
 
+            interpolate_camera_pose(gym_world, i, len(commands), camera_movement)
+
             """ update gym world """
-            update_gym_world_by_pb_world(gym_world, problem.world)
-            if img_dir is not None and i % frame_gap == 0:
+            update_gym_world_by_pb_world(gym_world, problem.world, ignore_actors=ignore_actors)
+            if img_dir is not None and (frame_gap == 0 or i % frame_gap == 0):
                 # img_file = join(img_dir, f'{i}.png')
                 # gym_world.get_rgba_image(camera, image_type='rgb', filename=img_file)  ##
                 img_file = gym_world.get_rgba_image(camera)
@@ -507,9 +564,46 @@ def save_gym_run(img_dir, gif_name, filenames, save_gif=True, save_mp4=True):
         images_to_gif(img_dir, gif_name, filenames)
         print('created gif {}'.format(join(img_dir, gif_name)))
     if save_mp4:
-        mp4_name = join(img_dir, gif_name.replace('.gif', f'_{get_datetime()}.mp4'))
+        mp4_name = join(gif_name.replace('.gif', '.mp4'))  ## f'_{get_datetime()}.mp4'
         images_to_mp4(filenames, mp4_name=mp4_name)
         print('created mp4 {} with {} frames'.format(mp4_name, len(filenames)))
+
+
+def interpolate_camera_pose(gym_world, i, length, camera_movement):
+    if camera_movement is None:
+        return
+    target_point_begin = camera_movement['target_point_begin']
+    target_point_final = camera_movement['target_point_final']
+    camera_point_begin = camera_movement['camera_point_begin']
+    camera_point_final = camera_movement['camera_point_final']
+
+    if camera_point_final != camera_point_begin:
+        if isinstance(camera_point_final, int):
+            ## rotate camera around point begin by radius of camera_point_final
+            direction = 1
+            if camera_point_final < 0:
+                direction = -1
+            if i > length / 2:
+                i = length - i
+            dx = camera_point_final * math.sin(2 * math.pi * direction * i / length)
+            dy = camera_point_final * math.cos(2 * math.pi * direction * i / length)
+            offset = [dx, dy, 0]
+            camera_point = tuple([camera_point_begin[j] + offset[j] for j in range(3)])
+        else:
+            camera_point = tuple(
+                [camera_point_begin[j] + (camera_point_final[j] - camera_point_begin[j]) * i / length
+                 for j in range(3)])
+    else:
+        camera_point = camera_point_begin
+
+    if target_point_final != target_point_begin:
+        target_point = tuple(
+            [target_point_begin[j] + (target_point_final[j] - target_point_begin[j]) * i / length
+             for j in range(3)])
+    else:
+        target_point = target_point_begin
+
+    gym_world.set_camera_target(gym_world.cameras[0], camera_point, target_point)
 
 
 def set_camera_target_body(gym_world, run_dir):
@@ -517,6 +611,13 @@ def set_camera_target_body(gym_world, run_dir):
     if camera_zoomin is not None:
         name = camera_zoomin['name']
         dx, dy, dz = camera_zoomin['d']
+        if 'sink' in name:
+            dy = dx
+            dx = -dx
+            if exist_instance(run_dir, '102379'):
+                dz += 0.345
+        elif 'braiser' in name:
+            dx = -dx
         actor = gym_world.get_actor(name)
         pose = gym_world.get_pose(actor)
 

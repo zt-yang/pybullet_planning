@@ -1,5 +1,6 @@
 import math
 import time
+import copy
 import random
 from .entities import Robot
 
@@ -24,6 +25,12 @@ from world_builder.utils import load_asset
 
 class RobotAPI(Robot):
     tool_from_hand = unit_pose()
+
+    def __init__(self, body, **kwargs):
+        super(RobotAPI, self).__init__(body, **kwargs)
+        self.grippers = {}
+        self.possible_obstacles = {}  ## body: obstacles
+        self.collision_animations = []
 
     def get_init(self, init_facts=[], conf_saver=None):
         raise NotImplementedError('should implement this for RobotAPI!')
@@ -61,6 +68,11 @@ class RobotAPI(Robot):
     def get_approach_pose(self, approach_vector, g):
         raise NotImplementedError('should implement this for RobotAPI!')
 
+    def get_gripper(self, arm='left', **kwargs):
+        if arm not in self.grippers or self.grippers[arm] not in get_bodies():
+            self.grippers[arm] = self.create_gripper(arm=arm, **kwargs)
+        return self.grippers[arm]
+
     def make_grasps(self, g_type, arm, body, grasps_O, collisions=True):
         app = self.get_approach_vector(arm, g_type)
         grasps_R = [Grasp(g_type, body, g, self.get_approach_pose(app, g),
@@ -70,7 +82,7 @@ class RobotAPI(Robot):
         ## filter for grasp width
         filtered_grasps = []
         for grasp in grasps_R:
-            grasp_width = self.compute_grasp_width(arm, get_pose(body), grasp.value,
+            grasp_width = self.compute_grasp_width(arm, get_pose(body), grasp,
                                                    body=body) if collisions else 0.0
             if grasp_width is not None:
                 grasp.grasp_width = grasp_width
@@ -78,7 +90,6 @@ class RobotAPI(Robot):
         return filtered_grasps
 
     def make_attachment(self, grasp, tool_link, visualize=False):
-        from pybullet_tools.pr2_utils import PR2_GRIPPER_ROOTS
         o = grasp.body
         if isinstance(o, tuple) and len(o) == 2:
             body, joint = o
@@ -163,8 +174,24 @@ class PR2Robot(RobotAPI):
         super(PR2Robot, self).__init__(body, **kwargs)
         self.DUAL_ARM = DUAL_ARM
         self.USE_TORSO = USE_TORSO
-        self.grippers = {}
-        self.possible_obstacles = {}  ## body: obstacles
+
+    def add_collision_grasp(self, a, o, g):
+        from world_builder.actions import AttachObjectAction
+        act = AttachObjectAction(a, g, o)
+        to_add = str(act)
+        added = [str(c) for c in self.collision_animations]
+        if to_add not in added:
+            self.collision_animations.append(act)
+
+    def add_collision_conf(self, conf):  ## bconf, aconf
+        from world_builder.actions import MoveArmAction
+        import pickle
+        # joints = bconf.joints + aconf.joints
+        # values = bconf.values + aconf.values
+        # conf = Conf(bconf.body, joints, values)
+        self.collision_animations.append(MoveArmAction(conf))
+        with open('collisions.pkl', 'wb') as file:
+            pickle.dump(self.collision_animations, file)
 
     def get_arm_joints(self, arm):
         from pybullet_tools.pr2_utils import get_arm_joints
@@ -225,15 +252,10 @@ class PR2Robot(RobotAPI):
         from pybullet_tools.pr2_agent import get_stream_info
         return get_stream_info() ## partial=partial, defer=defer
 
-    def create_gripper(self, arm='left', visual=True):
+    def create_gripper(self, arm='left', **kwargs):
         # TODO(caelan): gripper bodies are removed
         from pybullet_tools.pr2_utils import create_gripper
-        self.grippers[arm] = create_gripper(self.body, arm=arm, visual=visual)
-        return self.grippers[arm]
-
-    def get_gripper(self, arm='left', **kwargs):
-        if arm not in self.grippers or self.grippers[arm] not in get_bodies():
-            self.grippers[arm] = self.create_gripper(arm=arm, **kwargs)
+        self.grippers[arm] = create_gripper(self.body, arm=arm, **kwargs)
         return self.grippers[arm]
 
     def get_cloned_gripper_joints(self, gripper_grasp):
@@ -251,10 +273,21 @@ class PR2Robot(RobotAPI):
         joints = self.get_cloned_gripper_joints(gripper_grasp)
         set_joint_positions(gripper_grasp, joints, [0.548] * 4)
 
-    def compute_grasp_width(self, arm, body_pose, grasp_pose, body=None, verbose=False, **kwargs):
-        from pybullet_tools.pr2_utils import compute_grasp_width
+    def compute_grasp_width(self, arm, body_pose, grasp, body=None, verbose=False, **kwargs):
+        from pybullet_tools.pr2_utils import get_gripper_joints
+        result = None
         with PoseSaver(body):
-            return compute_grasp_width(self.body, arm, body, grasp_pose, **kwargs)
+            with ConfSaver(self.body):
+                assignment = self.get_attachment(grasp, arm)
+                assignment.assign()
+                gripper_joints = get_gripper_joints(self.body, arm)
+                result = close_until_collision(self.body, gripper_joints, bodies=[body], **kwargs)
+        return result
+
+    # def compute_grasp_width(self, arm, body_pose, grasp, body=None, verbose=False, **kwargs):
+    #     from pybullet_tools.pr2_utils import compute_grasp_width
+    #     with PoseSaver(body):
+    #         return compute_grasp_width(self.body, arm, body, grasp.value, **kwargs)
 
     # def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
     #     body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
@@ -323,6 +356,7 @@ class PR2Robot(RobotAPI):
 
     def get_approach_vector(self, arm, grasp_type, scale=1):
         # return tuple(APPROACH_DISTANCE / 3 * get_unit_vector([0, 0, -1]))
+        scale *= 4
         return tuple(scale * APPROACH_DISTANCE / 3 * get_unit_vector([0, 0, -1]))
         # if grasp_type == 'top':
         #     return APPROACH_DISTANCE*get_unit_vector([1, 0, 0])
@@ -444,6 +478,7 @@ class PR2Robot(RobotAPI):
             print(f'... started {title}', end='\r')
 
         # context_saver = WorldSaver(bodies=[state.world.robot])
+        arm = self.arms[0]
         q = self.get_base_conf()
         aq = self.get_arm_conf('left')
         p = Pose(body, get_pose(body))
@@ -451,6 +486,10 @@ class PR2Robot(RobotAPI):
         if debug:
             for b2, p2 in movable_poses:
                 print(f'       {b2} {state.world.BODY_TO_OBJECT[b2].name}\t {p2}')
+            # print('       ik_gen debug bottle')
+            # p.assign()
+            # set_camera_target_body(body)
+            # wait_unlocked()
 
         def restore(result):
             # context_saver.restore()
@@ -470,7 +509,8 @@ class PR2Robot(RobotAPI):
             kwargs = dict(collisions=True, teleport=False)
             funk2 = get_ik_gen(state, max_attempts=max_attempts, ir_only=True, learned=False,
                                custom_limits=state.robot.custom_limits,
-                               verbose=verbose, visualize=visualize, **kwargs)
+                               verbose=verbose or True, visualize=visualize, **kwargs)
+
             funk3 = get_ik_fn(state, verbose=verbose, visualize=visualize, ACONF=False, **kwargs)
             for (grasp, ) in outputs:
                 ## test_approach_path
@@ -491,32 +531,23 @@ class PR2Robot(RobotAPI):
                     continue
 
                 ## find bconf
-                gen = funk2(self.arms[0], body, p, grasp)
+                gen = funk2(arm, body, p, grasp)
                 try:
                     result = next(gen)
                     if result is not None:
                         (bconf,) = result
                         ## find aconf
-                        result = funk3(self.arms[0], body, p, grasp, bconf, fluents=fluents)
+                        result = funk3(arm, body, p, grasp, bconf, fluents=fluents)
                         if result is not None:
                             if verbose:
                                 print(title, f'succeeded', bconf)
 
-                            if debug:
+                            if debug and False:
                                 answer = query_yes_no(f"play reachability test traj?", default='no')
                                 if answer:
-                                    speed = 0.02
-                                    set_renderer(True)
-                                    set_camera_target_body(body, distance=2)
-                                    (cmd, ) = result
-                                    bconf.assign()
-                                    p.assign()
-                                    wait_for_duration(speed)
-                                    for conf in cmd.commands[0].path:
-                                        conf.assign()
-                                        wait_for_duration(speed)
-                                    wait_if_gui('finished')
-                                    set_renderer(False)
+                                    (cmd,) = result
+                                    self.test_trajectory(arm, body, p, grasp, bconf, cmd)
+
                             restore(True)
                             return True
                         else:
@@ -529,6 +560,35 @@ class PR2Robot(RobotAPI):
 
             restore(False)
             return False
+
+    def test_trajectory(self, arm, body, p, grasp, bconf, cmd):
+        speed = 0.02
+        set_renderer(True)
+        set_camera_target_body(body, distance=2)
+
+        attachment = grasp.get_attachment(self, arm, visualize=False)
+        bconf.assign()
+
+        def play_once(stepping=False):
+            wait_if_gui('start?')
+            p.assign()
+            wait_for_duration(speed)
+            for conf in cmd.commands[0].path:
+                conf.assign()
+                attachment.assign()
+                if stepping:
+                    wait_if_gui('   step?')
+                else:
+                    wait_for_duration(speed)
+            wait_if_gui('finished')
+
+        stepping = False
+        answer = True
+        while answer:
+            play_once(stepping)
+            stepping = True
+            answer = query_yes_no(f"play again with stepping?", default='no')
+        set_renderer(False)
 
     def check_reachability_space(self, body_link, state, body=None, fluents=[], num_samples=5, **kwargs):
 
@@ -583,8 +643,9 @@ class FEGripper(RobotAPI):
         set_pose(gripper, unit_pose())
         if not visual:
             set_all_color(gripper, TRANSPARENT)
-        if color != None:
+        if color is not None:
             set_all_color(gripper, color)
+        self.grippers[arm] = gripper
         return gripper
 
     def get_gripper_joints(self, gripper_grasp=None):
@@ -602,9 +663,13 @@ class FEGripper(RobotAPI):
     def compute_grasp_width(self, arm, body_pose, grasp, body=None, verbose=False, **kwargs):
         from pybullet_tools.flying_gripper_utils import se3_ik, set_se3_conf, get_se3_conf
         body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
-        if isinstance(body, tuple): body = body[0]
+        if isinstance(body, tuple):
+            return 0.02
+            # body = body[0]
+
         # with PoseSaver(body):
         body_pose = unit_pose()
+        grasp = grasp.value
         grasp_pose = multiply(body_pose, grasp)
         if verbose:
             print(f'robots.compute_grasp_width | body_pose = {nice(body_pose)} | grasp = {nice(grasp)}')
@@ -673,6 +738,9 @@ class FEGripper(RobotAPI):
     def mod_grasp_along_handle(self, grasp, dl):
         return multiply(grasp, Pose(point=(dl, 0, 0)))
 
+    def get_tool_from_root(self, arm):
+        return ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
+
     def get_init(self, init_facts=[], conf_saver=None):
         from pybullet_tools.flying_gripper_utils import get_se3_joints, get_se3_conf, ARM_NAME
         robot = self.body
@@ -699,9 +767,9 @@ class FEGripper(RobotAPI):
         from pybullet_tools.flying_gripper_agent import get_stream_map
         return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
 
-    def get_attachment(self, grasp, arm=None):
+    def get_attachment(self, grasp, arm=None, **kwargs):
         tool_link = link_from_name(self.body, 'panda_hand')
-        return self.make_attachment(grasp, tool_link)
+        return self.make_attachment(grasp, tool_link, **kwargs)
         # return Attachment(self.body, tool_link, grasp.value, grasp.body)
 
     def get_attachment_link(self, arm):
@@ -772,13 +840,19 @@ class FEGripper(RobotAPI):
         # init_q = list(init_q) + [0] * 3
         return init_q
 
-    def check_reachability(self, body, state, fluents=[], obstacles=None, verbose=False):
+    def check_reachability(self, body, state, fluents=[], obstacles=None, verbose=False, debug=False):
         from pybullet_tools.flying_gripper_utils import get_cloned_se3_conf, plan_se3_motion
+
+        return True
 
         if obstacles is None:
             obstacles = state.obstacles
+        if body in obstacles:
+            obstacles = copy.deepcopy(obstacles)
+            obstacles.remove(body)
 
         robot = self.body
+        world = state.world
         init_q = self.get_initial_q()
         funk = get_grasp_list_gen(state, collisions=True, visualize=False,
                                   RETAIN_ALL=False, top_grasp_tolerance=math.pi / 4)
@@ -791,7 +865,7 @@ class FEGripper(RobotAPI):
             w = grasp.grasp_width
             gripper_grasp = self.visualize_grasp(body_pose, grasp.value, body=grasp.body, color=GREEN, width=w)
             end_q = get_cloned_se3_conf(robot, gripper_grasp)
-            if not collided(gripper_grasp, obstacles, verbose=True, tag='check reachability of movable'):
+            if not collided(gripper_grasp, obstacles, verbose=True, tag='check reachability of movable', world=world):
                 if verbose: print('\n... check reachability from', nice(init_q), 'to', nice(end_q))
                 path = plan_se3_motion(robot, init_q, end_q, obstacles=obstacles,
                                        custom_limits=self.custom_limits)

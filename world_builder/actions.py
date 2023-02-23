@@ -12,9 +12,9 @@ from pybullet_tools.utils import str_from_object, get_closest_points, INF, creat
     get_extend_fn, get_joint_positions, set_joint_positions, get_max_limit, get_pose, set_pose, set_color, \
     remove_body, create_cylinder, set_all_static, wait_for_duration, remove_handles, set_renderer, \
     LockRenderer
-from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, get_gripper_joints
+from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, get_gripper_joints, close_until_collision
 from pybullet_tools.pr2_primitives import Trajectory, Command, Conf, Trajectory, Commands
-from pybullet_tools.flying_gripper_utils import set_se3_conf
+from pybullet_tools.flying_gripper_utils import set_se3_conf, get_pull_handle_motion_gen
 from lisdf_tools.image_utils import RAINBOW_COLORS, save_seg_mask
 
 from .world import State
@@ -247,10 +247,14 @@ class GripperAction(Action):
         if self.extent != None:
             gripper_joint = robot.get_gripper_joints(self.arm)[0]
             self.position = get_max_limit(robot, gripper_joint)
-        else:
-            self.position = 0.5  ## cabbage
-            self.position = 0.4  ## tomato
-            ## self.position = 0.14  ## bottle
+        else: ## if self.position == None:
+            bodies = [b for b in state.objects if isinstance(b, int) and b != robot.body]
+            self.position = close_until_collision(robot.body, robot.get_gripper_joints(self.arm), bodies=bodies)
+            print(f"   [GripperAction] !!!! gripper {self.arm} is closed to {self.position} until collision")
+            # self.position = 0.5  ## cabbage, artichoke
+            # self.position = 0.4  ## tomato
+            # self.position = 0.2  ## zucchini
+            # self.position = 0.14  ## bottle
 
         joints = robot.get_gripper_joints(self.arm)
         start_conf = get_joint_positions(robot, joints)
@@ -273,6 +277,7 @@ class AttachObjectAction(Action):
         self.verbose = verbose
     def transition(self, state):
         link = state.robot.get_attachment_link(self.arm)
+        print(f'AttachObjectAction | picking object {self.object} from', nice(get_pose(self.object)))
         new_attachments = add_attachment(state=state, obj=self.object, parent=state.robot,
                                          parent_link=link, attach_distance=None, verbose=False)  ## can attach without contact
         for k in new_attachments:
@@ -285,6 +290,7 @@ class DetachObjectAction(Action):
         self.arm = arm
         self.object = object
     def transition(self, state):
+        print(f'DetachObjectAction | placing object {self.object} at', nice(get_pose(self.object)))
         # print(f'bullet.actions | DetachObjectAction | remove {self.object} from state.attachment')
         new_attachments = remove_attachment(state, self.object)
         return state.new_state(attachments=new_attachments)
@@ -433,8 +439,9 @@ def adapt_action(a, problem, plan, verbose=True):
     if plan is None:
         return a
 
+    robot = problem.world.robot
     if a.__class__.__name__ == 'AttachObjectAction' and isinstance(a.object, tuple):
-        robot = problem.world.robot
+
         if len(plan) == 2:
             plan, continuous = plan
         if len(plan) == 1 and len(plan[0]) > 1:
@@ -449,15 +456,19 @@ def adapt_action(a, problem, plan, verbose=True):
         if ' ' in plan[0][0]:
             act = [aa for aa in plan if aa[0].startswith('pull') and aa[2] == problem.world.body_to_name[a.object]][0]
         else:
-            act = [aa for aa in plan if aa[0] == 'pull_door_handle' and \
+            act = [aa for aa in plan if aa[0] in ['pull_door_handle', 'grasp_pull_handle'] and \
                    (aa[2] in [str(a.object), problem.world.body_to_name[a.object]])][0]
         pstn1 = Position(a.object, get_value(act[3]))
         pstn2 = Position(a.object, get_value(act[4]))
         bq1 = get_value(act[6])  ## continuous[act[6].split('=')[0]]
         bq1 = Conf(robot.body, robot.get_base_joints(), bq1)
-        aq1 = get_value(act[9]) ## continuous[act[9].split('=')[0]]
-        aq1 = Conf(robot.body, robot.get_arm_joints(a.arm), aq1)
-        funk = get_pull_door_handle_motion_gen(problem, collisions=False, verbose=verbose)
+        if 'pr2' in robot.name:
+            aq1 = get_value(act[9]) ## continuous[act[9].split('=')[0]]
+            aq1 = Conf(robot.body, robot.get_arm_joints(a.arm), aq1)
+            funk = get_pull_door_handle_motion_gen(problem, collisions=False, verbose=verbose)
+        else:
+            funk = get_pull_handle_motion_gen(problem, collisions=False, verbose=verbose)
+            aq1 = None
         # set_renderer(False)
         with LockRenderer(True):
             funk(a.arm, a.object, pstn1, pstn2, a.grasp, bq1, aq1)
@@ -493,7 +504,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
             obj_keys = get_obj_keys_for_segmentation(indices)
 
     robot = world.robot.body
-    objects = [n for n in world.body_to_name if isinstance(n, int) and n > 1]
+    objects = world.get_collision_objects()
     ignored_collisions = {robot: []}
     initial_collisions = copy.deepcopy(ignored_collisions)
     expected_pose = None
@@ -506,6 +517,8 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
             next_name = next_action.__class__.__name__
             if 'AttachObjectAction' in next_name:
                 last_object = next_action.object
+                # if isinstance(last_object, str):
+                #     last_object = eval(last_object)
                 if last_object in body_map:
                     last_object = body_map[last_object]
                 if isinstance(last_object, tuple):
@@ -546,12 +559,14 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
                         episodes.append((seg_images, isinstance(last_object, int)))
                         seg_images = []
         elif 'MoveArm' in name:
-            record_img = i % 5 == 0
+            record_img = (i % 5 == 0)
             if i + 1 < len(actions):
                 next_action = actions[i + 1]
                 next_name = next_action.__class__.__name__
                 if 'MoveArm' not in next_name:
                     record_img = True
+            if 'feg' in problem.robot.name:
+                record_img = True
         elif 'MoveBase' in name:
             record_img = i % 2 == 0
 
