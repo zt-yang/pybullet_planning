@@ -6,10 +6,10 @@ abs_join = lambda *args, **kwargs: abspath(join(*args, **kwargs))
 
 current_dir = abspath(dirname(__file__))
 pbp_path = abs_join(current_dir, '..')
-workspace_path = abs_join(pbp_path, '..', '..', '..')
-
-KITCHEN_WORLD = abs_join(workspace_path, 'kitchen-worlds')
 ASSET_PATH = abs_join(pbp_path, '..', 'assets')
+
+workspace_path = abs_join(pbp_path, '..', '..')
+KITCHEN_WORLD = abs_join(workspace_path, 'kitchen-worlds')
 PARTNET_PATH = abs_join(workspace_path, 'dataset')
 
 ## Caelan

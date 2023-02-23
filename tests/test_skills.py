@@ -1044,7 +1044,7 @@ if __name__ == '__main__':
     ----------------- ----------------- ----------------- --------- """
 
     """ --- models related --- """
-    # get_data(categories=['BraiserBody'])
+    get_data(categories=['DiningTable'])
     # test_texture(category='CoffeeMachine', id='103127')
     # test_vhacd(category='BraiserBody')
     # get_partnet_aabbs()
@@ -1059,7 +1059,7 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    test_grasps(robot, ['Bottle'], skip_grasps=False, test_attachment=True)  ## 'EyeGlasses'
+    # test_grasps(robot, ['Bottle'], skip_grasps=False, test_attachment=True)  ## 'EyeGlasses'
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
 

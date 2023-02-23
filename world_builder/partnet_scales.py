@@ -274,6 +274,11 @@ MODEL_HEIGHTS = {
         'height': 1.05,
         'models': ['101773', '101808', '101917', '101921', '101930', '102044'],
     },
+    'DiningTable': {
+        'height': 1.05,
+        'models': ['22301', '22339', '23372', '23807', '23782', '25308',
+                   '25913', '28164', '32932', '34617'],
+    }
 }
 MODEL_HEIGHTS.update({k.lower(): v for k, v in MODEL_HEIGHTS.items()})
 
