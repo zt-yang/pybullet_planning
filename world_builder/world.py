@@ -1058,18 +1058,18 @@ class World(object):
                                        verbose=verbose)
 
         ## ---- object types -------------
-        for cat in self.OBJECTS_BY_CATEGORY:
+        for cat, objects in self.OBJECTS_BY_CATEGORY.items():
             if cat.lower() == 'moveable': continue
             if cat in ['edible', 'cleaningsurface', 'heatingsurface']:
                 objects = self.OBJECTS_BY_CATEGORY[cat]
                 init += [(cat, obj.pybullet_name) for obj in objects if obj.pybullet_name in BODY_TO_OBJECT]
-            else:
-                for obj in cat_to_bodies(cat):
-                    if cat in ['space', 'surface'] and (cat, obj) not in init:
-                        init += [(cat, obj)]
-                    cat2 = f"@{cat}"
-                    if cat2 in self.constants:
-                        init += [('OfType', obj, cat2)]
+
+            for obj in objects:
+                if cat in ['space', 'surface'] and (cat, obj) not in init:
+                    init += [(cat, obj)]
+                cat2 = f"@{cat}"
+                if cat2 in self.constants:
+                    init += [('OfType', obj, cat2)]
 
         ## --- for testing IK
         # lid = self.name_to_body('braiserlid')
