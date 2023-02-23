@@ -180,6 +180,18 @@ class World():
                 possible[body] = n
         return find_closest_match(possible, all_possible=all_possible)
 
+    def remove_from_gym_world(self, name, gym_world,  pose, exceptions=[]):
+        bodies = self.safely_get_body_from_name(name, all_possible=True)
+        removed = []
+        if bodies is not None:
+            for b in bodies:
+                name = self.body_to_name[b]
+                if name in exceptions or '::' in name:
+                    continue
+                gym_world.set_pose(gym_world.get_actor(name), pose)
+                removed.append(name)
+        return removed
+
     def make_transparent(self, obj, transparency=0.5, verbose=False,
                                remove_upper_furnitures=False):
         def color_obj(obj):

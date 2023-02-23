@@ -1053,3 +1053,48 @@ def get_fastdownward_time(run_dir, method):
     lines = open(log, 'r').readlines()
     times = [eval(l[l.index(':')+2:].strip()) for l in lines if 'Count Diverse Time:' in l]
     return sum(times)
+
+
+##########################################################
+
+
+def get_relation_from_line(l, vs=None, inv_vs=None):
+    args = l.replace('\n', '').replace('\t', '').strip()[1:-1]
+    if vs is None:
+        return args.split(' ')
+    return parse_pddl_str(args, vs=vs, inv_vs=inv_vs)
+
+
+def exist_line_with_keywords(lines, keywords, index=False, get_all=False):
+    line_num = 0
+    relations = []
+    for l in lines:
+        result = True
+        for k in keywords:
+            if k not in l:
+                result = False
+        if result:
+            if index:
+                return line_num
+            tup = get_relation_from_line(l)
+            if not get_all:
+                return tup
+            relations.append(tup)
+        line_num += 1
+    if get_all:
+        return relations
+    return False
+
+
+def get_problem_lines(run_dir):
+    pfile = join(run_dir, 'problem_larger.pddl')
+    if not isfile(pfile):
+        pfile = join(run_dir, 'problem.pddl')
+    return open(pfile, 'r').readlines()
+
+
+def get_goals(run_dir):
+    lines = get_problem_lines(run_dir)
+    b = exist_line_with_keywords(lines, ['(:goal (and'], index=True)
+    e = exist_line_with_keywords(lines[b:], ['))'], index=True) + b
+    return [get_relation_from_line(l) for l in lines[b+1:e]]

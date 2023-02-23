@@ -12,7 +12,7 @@ from pybullet_tools.utils import str_from_object, get_closest_points, INF, creat
     get_extend_fn, get_joint_positions, set_joint_positions, get_max_limit, get_pose, set_pose, set_color, \
     remove_body, create_cylinder, set_all_static, wait_for_duration, remove_handles, set_renderer, \
     LockRenderer
-from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, get_gripper_joints
+from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, get_gripper_joints, close_until_collision
 from pybullet_tools.pr2_primitives import Trajectory, Command, Conf, Trajectory, Commands
 from pybullet_tools.flying_gripper_utils import set_se3_conf, get_pull_handle_motion_gen
 from lisdf_tools.image_utils import RAINBOW_COLORS, save_seg_mask
@@ -247,9 +247,12 @@ class GripperAction(Action):
         if self.extent != None:
             gripper_joint = robot.get_gripper_joints(self.arm)[0]
             self.position = get_max_limit(robot, gripper_joint)
-        # else: ## if self.position == None:
-        #     self.position = 0.5  ## cabbage, artichoke
-        #     self.position = 0.4  ## tomato
+        else: ## if self.position == None:
+            bodies = [b for b in state.objects if isinstance(b, int) and b != robot.body]
+            self.position = close_until_collision(robot.body, robot.get_gripper_joints(self.arm), bodies=bodies)
+            print(f"   [GripperAction] !!!! gripper {self.arm} is closed to {self.position} until collision")
+            # self.position = 0.5  ## cabbage, artichoke
+            # self.position = 0.4  ## tomato
             # self.position = 0.2  ## zucchini
             # self.position = 0.14  ## bottle
 
