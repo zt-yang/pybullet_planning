@@ -73,7 +73,7 @@ df = pd.DataFrame({
         0.916,  ## baseline
         0.881, ## img=one-hot
         0.9, ## val=no-value
-        0.774, ## img=one-hot|relno-value - 150
+        0.774, ## img=one-hot|rel=no-value - 150
 
         0.916,  ## baseline
         0.846, ## rel=one-hot

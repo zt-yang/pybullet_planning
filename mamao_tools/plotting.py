@@ -24,9 +24,10 @@ sys.path.append('/home/yang/Documents/fastamp')
 AUTO_REFRESH = False
 VIOLIN = False
 FPC = False
-EVALUATE_GEOMETRY = True
+EVALUATE_GEOMETRY = False
 PAPER_VERSION = True ## no preview, just save pdf
 DEBUG_LINES = False
+ANIMATION = 2
 
 from matplotlib import rc
 rc('font', **{'family': 'serif', 'serif': ['Times']})
@@ -109,7 +110,10 @@ color_dict = {
     'y': ('#f1c40f', '#f39c12'),
     'p': ('#9b59b6', '#8e44ad'),
     'gray': ('#95a5a6', '#7f8c8d'),
+    'w': ('#ffffff',),
 }
+gradients = ['#4392ce', '#528bc1', '#6185b3', '#707fa6', '#7f7899', '#8e728b',
+             '#9c6c7e', '#ab6571', '#ba5f64', '#c95957', '#d85249', '#e74c3c']
 cc = ['b', 'r', 'y', 'gray']
 if len(METHODS) == 5:
     cc = ['b', 'r', 'g', 'p', 'gray']
@@ -490,10 +494,16 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
         ## RSS paper version
         bar_width = 0.3
         if len(METHODS) == 3 and len(GROUPS) == 7:
-            figsize = (16, 4.5)
+            if platform.system() == 'Darwin':
+                figsize = (14, 3.5)
+            else:
+                figsize = (16, 4.5)
             bar_width = 0.27
         if len(METHODS) == 3 and len(GROUPS) == 2:
-            figsize = (5, 5)
+            if platform.system() == 'Darwin':
+                figsize = (3.5, 3.5)
+            else:
+                figsize = (5, 5)
 
         fig, axs = plt.subplots(1, len(groups), figsize=figsize)
 
@@ -511,109 +521,168 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
             xx = points_x[i]
             yy = points_y[i]
 
-            if VIOLIN:
-                import pandas as pd
-                from matplotlib.collections import PolyCollection
+            ## for animation
+            if not ANIMATION == 0:
 
-                scale = 1
-                df = pd.DataFrame({'x': xx, 'y': yy})
-                my_pal = {i: colors[i] for i in range(len(METHODS))}
-                ax = sns.violinplot(data=df, x="x", y="y", bw=.4, ax=axs[i], scale="width", palette=my_pal)
-                axs[i].set(xlabel=None, ylabel=None)
-                for violin in ax.collections[::2]:
-                    violin.set_alpha(0.4)
+                if ANIMATION in [1]:
+                    mean[2] = 0
+                    std[2] = 0
+                    overhead[2] = 0
 
-                for art in axs[i].get_children():
-                    if isinstance(art, PolyCollection):
-                        # color = hex_to_rgb()
-                        art.set_edgecolor(art.get_facecolor()[0])
+                    mean[1] = 0
+                    std[1] = 0
+                    overhead[1] = 0
+
+                    xx_new = []
+                    yy_new = []
+                    for mm in range(len(xx)):
+                        if xx[mm] == 0:
+                            xx_new.append(xx[mm])
+                            yy_new.append(yy[mm])
+                    xx = xx_new
+                    yy = yy_new
+
+                elif ANIMATION in [2]:
+                    step = 12
+                    total_steps = 12
+
+                    mean[1] = 0
+                    std[1] = 0
+                    overhead[1] = 0
+
+                    xx_new = []
+                    yy_new = []
+                    for mm in range(len(xx)):
+                        if xx[mm] in [0, 2]:
+                            xx_new.append(xx[mm])
+                            yy_new.append(yy[mm])
+                        else:
+                            for run_dir, line in lines[groups[i]].items():
+                                if len(line['y']) < 3:
+                                    continue
+                                if line['y'][1] == yy[mm]:
+                                    xxx = step / total_steps * xx[mm]
+                                    yyy = line['y'][0] + (line['y'][1]-line['y'][0]) * step / total_steps
+                                    xx_new.append(xxx)
+                                    yy_new.append(yyy)
+
+                    xx = xx_new
+                    yy = yy_new
+
+                if VIOLIN:
+                    import pandas as pd
+                    from matplotlib.collections import PolyCollection
+
+                    scale = 1
+                    df = pd.DataFrame({'x': xx, 'y': yy})
+                    my_pal = {i: colors[i] for i in range(len(METHODS))}
+                    ax = sns.violinplot(data=df, x="x", y="y", bw=.4, ax=axs[i], scale="width", palette=my_pal)
+                    axs[i].set(xlabel=None, ylabel=None)
+                    for violin in ax.collections[::2]:
+                        violin.set_alpha(0.4)
+
+                    for art in axs[i].get_children():
+                        if isinstance(art, PolyCollection):
+                            # color = hex_to_rgb()
+                            art.set_edgecolor(art.get_facecolor()[0])
+
+                else:
+                    ll = [x * scale for x in range(len(METHODS))]
+
+                    bar_kwargs = dict(color=colors, alpha=0.4, label=METHODS)
+                    overhead_kwargs = dict(color='#000000', alpha=0.4, bottom=mean)
+
+                    """ fixed cost """
+                    if not FPC:
+                        # fd_time = FIXED_COST[i]
+                        fd_time = sum(fd_time) / len(fd_time)
+                        axs[i].bar(ll, fd_time, bar_width,
+                                   color=color_dict['p'][1], alpha=0.4)
+                        # mean = [mean[i] - fd_time[i] for i in range(len(mean))]
+                        mean = [m - fd_time for m in mean]
+                        bar_kwargs['bottom'] = fd_time
+
+                    """ refinement cost """
+                    axs[i].bar(ll, mean, bar_width, yerr=std,
+                               error_kw={'ecolor': colors_darker}, **bar_kwargs)
+
+                    """ overhead cost """
+                    if not FPC:
+                        axs[i].bar(ll, overhead, bar_width, **overhead_kwargs)
+                        print(f"task: {groups[i]} overhead: {[round(oo, 5) for oo in overhead]}")
+                    else:
+                        from matplotlib.ticker import MaxNLocator
+                        axs[i].yaxis.set_major_locator(MaxNLocator(integer=True))
+
+                ## data points
+                cc = []
+                for k in xx:
+                    if isinstance(k, int):
+                        cc.append(colors[k])
+                    else:
+                        cc.append(gradients[step-1])
+                # cc = [colors[k] for k in xx]
+                xxx = [x * scale for x in xx]
+                s = 20
+                if FPC:
+                    ss = []
+                    for j in range(len(METHODS)):
+                        yy_method = [yy[m] for m in range(len(yy)) if xx[m] == j]
+                        unique, num = np.unique(yy_method, return_counts=True)
+                        unique = list(unique)
+                        sss = [num[unique.index(m)] for m in yy_method]
+                        if len(sss) == 0:
+                            ss.extend([s]*len(yy_method))
+                            continue
+                        sss_min = min(sss)
+                        # sss = [np.log(ssss/sss_min + 1)*s for ssss in sss]
+                        # sss = [np.sqrt(ssss/sss_min + 1)*s for ssss in sss]
+                        sss = [(ssss/sss_min + 1)*s/5 for ssss in sss]
+                        ss.extend(sss)
+                    s = np.asarray(ss)
+
+                axs[i].scatter(xxx, yy, s=s, color=cc, alpha=0.7)
+
+                """ line connections """
+                if DEBUG_LINES:
+                    for run_dir, line in lines[groups[i]].items():
+                        if len(line['y']) < 2:
+                            continue
+                        color = None ## color_dict['gray'][0]
+                        alpha = 0.2
+                        if line['y'][0] != 0 and line['y'][1] != 0:
+                            if line['y'][0] / line['y'][1] > 1.1:
+                                color = color_dict['g'][0]
+                            elif line['y'][1] / line['y'][0] > 1.1:
+                                color = color_dict['r'][0]
+                                print(run_dir, round(line['y'][1], 2))
+
+                        if color is not None:
+                            axs[i].plot([n*scale for n in line['x']], line['y'], color=color, alpha=alpha)
+
+                for j in range(len(METHODS)):
+
+                    if not PAPER_VERSION:
+                        bar_label = f"{count[j]} \n"
+                        if miss[j] > 0:
+                            bar_label += str(miss[j])
+                        axs[i].annotate(bar_label,  # text
+                                    (j*scale, 0),  # points location to label
+                                    textcoords="offset points",
+                                    xytext=(0, -40),  # distance between the points and label
+                                    ha='center', color='gray',
+                                    fontsize=10)
+                    if not PAPER_VERSION:
+                        axs[i].annotate(agm[j],  # text
+                                    (j*scale, mx[j]),  # points location to label
+                                    textcoords="offset points",
+                                    xytext=(0, 6),  # distance between the points and label
+                                    ha='center',
+                                    fontsize=10)
 
             else:
                 ll = [x * scale for x in range(len(METHODS))]
-
-                bar_kwargs = dict(color=colors, alpha=0.4, label=METHODS)
-                overhead_kwargs = dict(color='#000000', alpha=0.4, bottom=mean)
-
-                """ fixed cost """
-                if not FPC:
-                    # fd_time = FIXED_COST[i]
-                    fd_time = sum(fd_time) / len(fd_time)
-                    axs[i].bar(ll, fd_time, bar_width,
-                               color=color_dict['p'][1], alpha=0.4)
-                    # mean = [mean[i] - fd_time[i] for i in range(len(mean))]
-                    mean = [m - fd_time for m in mean]
-                    bar_kwargs['bottom'] = fd_time
-
-                """ refinement cost """
-                axs[i].bar(ll, mean, bar_width, yerr=std,
-                           error_kw={'ecolor': colors_darker}, **bar_kwargs)
-
-                """ overhead cost """
-                if not FPC:
-                    axs[i].bar(ll, overhead, bar_width, **overhead_kwargs)
-                    print(f"task: {groups[i]} overhead: {[round(oo, 5) for oo in overhead]}")
-                else:
-                    from matplotlib.ticker import MaxNLocator
-                    axs[i].yaxis.set_major_locator(MaxNLocator(integer=True))
-
-            ## data points
-            cc = [colors[k] for k in xx]
-            xxx = [x * scale for x in xx]
-            s = 20
-            if FPC:
-                ss = []
-                for j in range(len(METHODS)):
-                    yy_method = [yy[m] for m in range(len(yy)) if xx[m] == j]
-                    unique, num = np.unique(yy_method, return_counts=True)
-                    unique = list(unique)
-                    sss = [num[unique.index(m)] for m in yy_method]
-                    if len(sss) == 0:
-                        ss.extend([s]*len(yy_method))
-                        continue
-                    sss_min = min(sss)
-                    # sss = [np.log(ssss/sss_min + 1)*s for ssss in sss]
-                    # sss = [np.sqrt(ssss/sss_min + 1)*s for ssss in sss]
-                    sss = [(ssss/sss_min + 1)*s/5 for ssss in sss]
-                    ss.extend(sss)
-                s = np.asarray(ss)
-            axs[i].scatter(xxx, yy, s=s, color=cc, alpha=0.7)
-
-            """ line connections """
-            if DEBUG_LINES:
-                for run_dir, line in lines[groups[i]].items():
-                    if len(line['y']) < 2:
-                        continue
-                    color = None ## color_dict['gray'][0]
-                    alpha = 0.2
-                    if line['y'][0] != 0 and line['y'][1] != 0:
-                        if line['y'][0] / line['y'][1] > 1.1:
-                            color = color_dict['g'][0]
-                        elif line['y'][1] / line['y'][0] > 1.1:
-                            color = color_dict['r'][0]
-                            print(run_dir, round(line['y'][1], 2))
-
-                    if color is not None:
-                        axs[i].plot([n*scale for n in line['x']], line['y'], color=color, alpha=alpha)
-
-            for j in range(len(METHODS)):
-
-                if not PAPER_VERSION:
-                    bar_label = f"{count[j]} \n"
-                    if miss[j] > 0:
-                        bar_label += str(miss[j])
-                    axs[i].annotate(bar_label,  # text
-                                (j*scale, 0),  # points location to label
-                                textcoords="offset points",
-                                xytext=(0, -40),  # distance between the points and label
-                                ha='center', color='gray',
-                                fontsize=10)
-                if not PAPER_VERSION:
-                    axs[i].annotate(agm[j],  # text
-                                (j*scale, mx[j]),  # points location to label
-                                textcoords="offset points",
-                                xytext=(0, 6),  # distance between the points and label
-                                ha='center',
-                                fontsize=10)
+                axs[i].bar(ll, [0]*len(ll), bar_width, label=METHODS)
 
             if GROUPS[-1].startswith('ss'):
                 axs[i].set_ylim([0, 800 if not FPC else 15])
@@ -630,8 +699,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
             axs[i].set_xticks(ll)
             axs[i].set_xticklabels(METHOD_NAMES, fontsize=10) ## , y=-0.25 , rotation=45
 
-
-        ylabel = 'Number of FP Skeletons' if FPC else 'Planning time'
+        ylabel = 'Number of FP Skeletons' if FPC else 'Planning time (sec)'
         axs[0].set_ylabel(ylabel, fontsize=12)
         handles = [plt.Rectangle((0, 0), 1, 1, color=colors[i]) for i in range(len(METHODS))]
 
@@ -651,10 +719,13 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
 
     if PAPER_VERSION: ##  and False
         file_name = 'evaluation' if GROUPS[-1].startswith('tt') else 'evaluation_geometry'
+        if ANIMATION == 2:
+            file_name += f'_{step}'
         if FPC:
             file_name += '_fpc'
         if platform.system() == 'Darwin':
-            plt.savefig(f'{file_name}.pdf', bbox_inches='tight')
+            plt.savefig(f'{file_name}.png', bbox_inches='tight', dpi=300)
+            # plt.savefig(f'{file_name}.pdf', bbox_inches='tight')
         else:
             plt.savefig(f'/home/yang/{file_name}.pdf', bbox_inches='tight')
         # plt.savefig(f'/home/yang/{file_name}.png', bbox_inches='tight')

@@ -22,5 +22,6 @@ tests/txt_file.txt
 tests/tests/temp_urdfs/
 tests/pb_images/
 
+mamao_tools/*.pdf
 *.png
 *.ipynb_checkpoints/
