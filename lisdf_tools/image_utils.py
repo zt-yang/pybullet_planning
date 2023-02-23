@@ -54,6 +54,8 @@ RAINBOW_COLORS = [RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, MIDNIGHT, GREY]
 DARKER_COLORS = [DARKER_RED, DARKER_ORANGE, DARKER_YELLOW, DARKER_GREEN,
                  DARKER_BLUE, DARKER_PURPLE, DARKER_MIDNIGHT, DARKER_GREY]
 
+mp4_dir = '/home/yang/Documents/jupyter-worlds/tests/gym_images/'
+
 
 def draw_bb(im, bb):
     from PIL import ImageOps
@@ -266,7 +268,7 @@ def images_to_mp4(images=[], img_dir='images', mp4_name='video.mp4'):
     import cv2
     import os
 
-    fps = 20
+    fps = 30
     if isinstance(images[0], str):
         images = [img for img in os.listdir(img_dir) if img.endswith(".png")]
         frame = cv2.imread(os.path.join(img_dir, images[0]))
@@ -284,6 +286,41 @@ def images_to_mp4(images=[], img_dir='images', mp4_name='video.mp4'):
             image = image[:, :, :3]
             image = image[...,[2,1,0]].copy() ## RGB to BGR for cv2
         video.write(image)
+
+    cv2.destroyAllWindows()
+    video.release()
+
+
+def stack_mp4_horizontal(mp4s, size=None, mp4_name='stack_horizontal.mp4'):
+    import cv2
+    import numpy as np
+    import skvideo.io
+    from tqdm import tqdm
+
+    fps = 30
+    gap = 5
+    frames = []
+    top_bottom = [[0.3, 0.7], [0.15, 0.75]]
+    for i, mp4 in enumerate(mp4s):
+        videodata = skvideo.io.vread(mp4)
+        num_frames, h, w, c = videodata.shape
+        top, bottom = top_bottom[i]
+        frames.append(videodata[:, int(h*top):int(h*bottom)-gap, :, :])
+
+    if size is None:
+        size = (w, h)
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  ## cv2.VideoWriter_fourcc(*'XVID') ## cv2.VideoWriter_fourcc(*'mp4v')
+    video = cv2.VideoWriter(mp4_name, fourcc, fps, size)
+
+    for i in tqdm(range(num_frames), desc=f'merging two videos'):
+        imgs = []
+        for j, videodata in enumerate(frames):
+            img = videodata[i]
+            img = img[..., [2, 1, 0]].copy()  ## RGB to BGR for cv2
+            imgs.append(img)
+        imgs = [imgs[0], 255*np.ones((gap*2, w, 3), dtype=np.uint8), imgs[1]]
+        frame = np.vstack(imgs)
+        video.write(frame)
 
     cv2.destroyAllWindows()
     video.release()
@@ -336,7 +373,6 @@ def make_collage_mp4(mp4s, num_cols, num_rows, size=None, mp4_name='collage.mp4'
 
 
 def test_make_collage_mp4(mp4s=None, num_cols=2, num_rows=2, mp4_name='collage_4by4.mp4', **kwargs):
-    mp4_dir = '/home/yang/Documents/jupyter-worlds/tests/gym_images/'
     if mp4s is None:
         mp4 = join(mp4_dir, 'gym_replay_batch_gym_0101_16:57.mp4')
         mp4s = [mp4] * (num_cols * num_rows)
@@ -380,13 +416,11 @@ def test_make_collage_img(imgs=None, num_cols=2, num_rows=2, size=(1960, 1470)):
         img = '/home/yang/Documents/fastamp-data-rss/mm_braiser/1066/zoomin/rgb_image_initial.png'
         imgs = [img] * (num_cols * num_rows)
 
-    mp4_dir = '/home/yang/Documents/jupyter-worlds/tests/gym_images/'
     make_collage_img(imgs, num_cols, num_rows, size=size, img_name=join(mp4_dir, 'collage_4by4.png'))
 
 
 def get_mp4s_from_dir(task_name, count=16):
     import glob
-    mp4_dir = '/home/yang/Documents/jupyter-worlds/tests/gym_images/'
     mp4s = glob.glob(join(mp4_dir, task_name, '*.mp4'))
     random.shuffle(mp4s)
     if len(mp4s) >= count:
@@ -419,7 +453,7 @@ def resize_mp4(input_mp4, output_mp4, size=(1280, 720)):
 
 def resize_mp4s_for_collage(new_dir_name, mp4s, size=(1280, 720)):
     import os
-    mp4_dir = '/home/yang/Documents/jupyter-worlds/tests/gym_images/'
+
     new_dir_name = join(mp4_dir, new_dir_name)
     if not os.path.exists(new_dir_name):
         os.makedirs(new_dir_name)
@@ -432,15 +466,38 @@ def resize_mp4s_for_collage(new_dir_name, mp4s, size=(1280, 720)):
     return new_mp4s
 
 
-if __name__ == "__main__":
-    # test_make_collage_img()
-
+def make_collage_mp4_rss():
     random.seed(3)  ## storage
     random.seed(0)  ## braiser
     # random.seed(1)  ## sink
     # mp4s = get_mp4s_from_dir('mm_storage', count=4)
     # test_make_collage_mp4(mp4s, num_cols=2, num_rows=2)
     mp4s = get_mp4s_from_dir('mm_braiser', count=25)
-    mp4s = resize_mp4s_for_collage('mm_braiser_small', mp4s, size=(3840//2, 2160//2))
-    test_make_collage_mp4(mp4s, num_cols=5, num_rows=5, size=(2160//2*4, 3840//2*4))
+    mp4s = resize_mp4s_for_collage('mm_braiser_small', mp4s, size=(3840 // 2, 2160 // 2))
+    test_make_collage_mp4(mp4s, num_cols=5, num_rows=5, size=(2160 // 2 * 4, 3840 // 2 * 4))
     # test_make_collage_mp4()
+
+
+def test_merge_mp4_multiview():
+    task_name = 'tt_sink_to_storage_14'
+    video_names = {
+        'tt_storage_18': 'food-in-fridge-door',
+        'tt_storage_32': 'food-in-cabinet-door',
+        'tt_storage_44': 'food-in-cabinet',
+        'tt_braiser_4': 'zucchini-in-pot',
+        'tt_braiser_35': 'potato-in-pot',
+        'tt_sink_9': 'zucchini-in-sink',
+        'tt_sink_23': 'potato-in-sink-harder',
+        'tt_sink_28': 'sweetpotato-in-sink',
+        'tt_sink_to_storage_14': 'food-in-fridge',
+        'tt_braiser_to_storage_6': 'food-in-fridge-pot',
+    }
+    mp4s = [join(mp4_dir, f'{task_name}_{view}.mp4') for view in ['top', 'side']]
+    mp4_name = join(mp4_dir, video_names[task_name]+'.mp4') ## f'{task_name}_merged.mp4')
+    stack_mp4_horizontal(mp4s, mp4_name=mp4_name)
+
+
+if __name__ == "__main__":
+    # test_make_collage_img()
+    # make_collage_mp4_rss()
+    test_merge_mp4_multiview()
