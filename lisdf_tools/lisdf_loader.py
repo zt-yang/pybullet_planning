@@ -355,7 +355,8 @@ class World():
                 'pose': pose,
                 'joint_state': joint_state,
             }
-        wconf = {f"w{world_index}_{k}": v for k, v in wconf.items()}
+        if world_index is not None:
+            wconf = {f"w{world_index}_{k}": v for k, v in wconf.items()}
         return wconf
 
     def get_type(self, body):
