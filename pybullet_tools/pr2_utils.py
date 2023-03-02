@@ -763,6 +763,7 @@ def get_base_extend_fn(robot):
 
 #####################################
 
+
 def close_until_collision(robot, gripper_joints, bodies=[], open_conf=None, closed_conf=None, num_steps=25, **kwargs):
     if not gripper_joints:
         return None
@@ -779,7 +780,7 @@ def close_until_collision(robot, gripper_joints, bodies=[], open_conf=None, clos
         set_joint_positions(robot, gripper_joints, conf)
         if any(pairwise_collision((robot, collision_links), body, **kwargs) for body in bodies):
             if i == 0:
-                return None
+                return close_path[i-1][0]  ## None
             return close_path[i-1][0]
     return close_path[-1][0]
 

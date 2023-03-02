@@ -855,6 +855,10 @@ def get_primitive_actions(action, world, teleport=False):
         body, stove = args[:2]
         new_commands = [JustCook(body)]
 
+    elif 'serve' in name:
+        body, plate = args[:2]
+        new_commands = [JustServe(body)]
+
     elif name == 'season':
         body, counter, seasoning = args
         new_commands = [JustSeason(body)]

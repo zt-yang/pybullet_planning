@@ -13,7 +13,7 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     get_joint_limits, unit_pose, point_from_pose, draw_point, PI, quat_from_pose, angle_between, \
     tform_point, interpolate_poses, draw_pose, RED, remove_handles, stable_z, wait_unlocked, \
     get_aabb_center, set_renderer, timeout, get_aabb_extent
-from pybullet_tools.pr2_primitives import Pose
+from pybullet_tools.pr2_primitives import Pose, Grasp
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, is_contained, \
     visualize_point, collided, sample_pose, xyzyaw_to_pose, ObjAttachment, set_camera_target_body, \
@@ -545,7 +545,9 @@ def sample_joint_position_gen(num_samples=6):
 def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=PI/4): # None | PI/4 | INF
     if top_grasp_tolerance is None:
         return True
-    grasp_pose = robot.get_grasp_pose(pose, grasp.value, arm, body=body)
+    if isinstance(grasp, Grasp):
+        grasp = grasp.value
+    grasp_pose = robot.get_grasp_pose(pose, grasp, arm, body=body)
     grasp_orientation = (Point(), quat_from_pose(grasp_pose))
     grasp_direction = tform_point(grasp_orientation, Point(x=+1))
     return angle_between(grasp_direction, Point(z=-1)) <= top_grasp_tolerance # TODO: direction parameter

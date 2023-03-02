@@ -374,10 +374,10 @@ def log_collided(obj, obs, visualize=False):
         wait_unlocked()
 
 
-def collided(obj, obstacles, world=None, tag='', articulated=False, verbose=False, log_collisions=True,
+def collided(obj, obstacles=[], world=None, tag='', articulated=False, verbose=False, log_collisions=True,
              visualize=False, min_num_pts=0, use_aabb=True, ignored_pairs=[], **kwargs):
 
-    prefix = 'bullet_utils.collided '
+    prefix = '\t\tbullet_utils.collided '
     if len(tag) > 0: prefix += f'( {tag} )'
 
     ## first get answer
@@ -771,11 +771,9 @@ def set_camera_target_body(body, link=None, dx=None, dy=None, dz=None, distance=
     x = (aabb.upper[0] + aabb.lower[0]) / 2
     y = (aabb.upper[1] + aabb.lower[1]) / 2
     z = (aabb.upper[2] + aabb.lower[2]) / 2
-    if dx is None:
+    if dx is None and dy is None and dz is None:
         dx = get_aabb_extent(aabb)[0] * 2 * distance
-    if dy is None:
         dy = get_aabb_extent(aabb)[1] * 2 * distance
-    if dz is None:
         dz = get_aabb_extent(aabb)[2] * 2 * distance
     camera_point = [x + dx, y + dy, z + dz]
     target_point = [x, y, z]

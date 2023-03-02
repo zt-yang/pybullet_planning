@@ -95,8 +95,8 @@ def get_learned_poses(movable, surface, body, surface_body, num_samples=10, surf
         choices = random.choices(range(len(possibilities)), k=num_samples)
         choices = [possibilities[i] for i in choices]
         choices = [get_global_pose(choice, nudge=nudge) for choice in choices]
-        if verbose:
-            print(f'{title} found {len(choices)} saved poses')
+        # if verbose:
+        #     print(f'{title} found {len(choices)} saved poses')
         if visualize:
             original_pose = get_pose(body)
             for i in range(len(choices)):

@@ -182,6 +182,8 @@ class Object(Index):
     def place_obj(self, obj, max_trial=8, timeout=1.5, world=None, obstacles=None, visualize=False):
         if isinstance(obj, str):
             raise NotImplementedError('place_obj: obj is str')
+        if world is None:
+            raise NotImplementedError('no world')
             # obj = self.place_new_obj(obj, max_trial=max_trial)
         if obstacles is None:
             obstacles = [o for o in get_bodies() if o not in [obj, self.body]]
@@ -269,6 +271,18 @@ class Object(Index):
     @property
     def ly(self):
         return get_aabb_extent(self.aabb())[1]
+
+    @property
+    def ly(self):
+        return get_aabb_extent(self.aabb())[1]
+
+    @property
+    def x2xmin(self):
+        return self.get_pose()[0][0] - self.aabb().lower[0]
+
+    @property
+    def xmax2x(self):
+        return self.aabb().upper[0] - self.get_pose()[0][0]
 
     @property
     def height(self):

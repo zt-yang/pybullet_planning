@@ -1459,7 +1459,7 @@ def load_kitchen_mini_scene(world, **kwargs):
 
 
 def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
-                           verbose=False, use_stationaries=False):
+                           verbose=False, reachability_check=True):
     start = time.time()
     robot = world.robot
     state = State(world)
@@ -1523,29 +1523,34 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
         return obj
 
     def ensure_cfree(obj, obstacles, obj_name, category=None, trials=10, verbose=False, **kwargs):
-        # s = np.random.get_state()[-3]
+        def check_conditions(o):
+            collision = collided(o, obstacles, verbose=verbose, world=world)
+            unreachable = False
+            if not collision and reachability_check:
+                unreachable = not isinstance(o.supporting_surface, Space) and \
+                              not robot.check_reachability(o, state, verbose=verbose, debug=debug)
+            size = unreachable or ((obj_name == 'food' and size_matter and len(satisfied) == 0))
+            if collision or unreachable or size:
+                if verbose:
+                    print(f'\t\tremove {o} because collision={collision}, unreachable={unreachable}, size={size}')
+                return True
+            return False
+
         debug = (obj_name == 'bottle')
-        collision = collided(obj, obstacles, verbose=verbose, world=world)
-        unreachable = collision or (not isinstance(obj.supporting_surface, Space) and \
-                                    not robot.check_reachability(obj, state, verbose=verbose, debug=debug))
-        size = unreachable or ((obj_name == 'food' and size_matter and len(satisfied) == 0))
-        while collision or unreachable or size:
+        again = check_conditions(obj)
+        while again:
             # set_camera_target_body(obj.body)
             # set_renderer(True)
             # wait_if_gui()
-            if verbose:
-                print(f'          remove {obj} because collision={collision}, unreachable={unreachable}, size={size}')
+
             world.remove_object(obj)
             obj = place_on_counter(obj_name, category, **kwargs)
             check_size_matter(obj)
 
-            collision = collided(obj, obstacles, verbose=verbose, world=world)
-            unreachable = collision or (not isinstance(obj.supporting_surface, Space) and \
-                                        not robot.check_reachability(obj, state, verbose=verbose, debug=debug))
-            size = unreachable or ((obj_name == 'food' and size_matter and len(satisfied) == 0))
             trials -= 1
             if trials == 0:
                 sys.exit('Could not place object')
+            again = check_conditions(obj)
         return obj
 
     ## add food items
@@ -1555,12 +1560,8 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
         kwargs = dict()
         if world.note in [31] and not in_briaser:
             kwargs['counter_choices'] = [braiser_bottom]
-        if not use_stationaries:
-            obj_cat = 'food'
-            obj_category = 'edible'
-        else:
-            obj_cat = 'camera'
-            obj_category = None
+        obj_cat = 'food'
+        obj_category = 'edible'
         if instances['food'] is not None:
             kwargs['ins'] = instances['food'][i]
         obj = place_on_counter(obj_cat, category=obj_category, **kwargs)
@@ -1574,10 +1575,7 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
     bottle_ids = []
     for i in range(2):
         kwargs = dict()
-        if not use_stationaries:
-            obj_cat = 'bottle'
-        else:
-            obj_cat = 'stapler'
+        obj_cat = 'bottle'
         if instances['bottle'] is not None:
             kwargs['ins'] = instances['bottle'][i]
         obj = place_on_counter(obj_cat)
@@ -1989,7 +1987,7 @@ def put_lid_on_braiser(world, lid=None, braiser=None):
     braiser.attach_obj(lid, world=world)
 
 
-def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
+def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_check=True):
     h_lower_cabinets = 1
     dh_cabinets = 0.8
     h_upper_cabinets = 0.768
@@ -2253,7 +2251,8 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True):
 
     ## load objects into reachable places
     food_ids, bottle_ids, medicine_ids = \
-        load_counter_moveables(world, all_counters, d_x_min=0.3, obstacles=obstacles)
+        load_counter_moveables(world, all_counters, d_x_min=0.3, obstacles=obstacles,
+                               reachability_check=reachability_check)
     moveables = food_ids + bottle_ids + medicine_ids
 
     """ step 6: take an image """
@@ -2368,6 +2367,45 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
         world.remove_object(world.name_to_object('braiserlid'))
 
     return food, obj_bottom, objects
+
+
+######################################################################################
+
+
+def sample_table_plates(world, verbose=True):
+    x = random.uniform(3, 3.5)
+    y = random.uniform(2, 6)
+    floor = world.name_to_body('floor')
+    table = world.add_object(Supporter(
+        load_asset('DiningTable', x=x, y=y, yaw=0, verbose=verbose, floor=floor, RANDOM_INSTANCE=True)))
+    if table.aabb().upper[0] > 4:
+        table.adjust_pose(x=4-table.xmax2x)
+    plates = load_plates_on_table(world, table, verbose)
+    return table, plates
+
+
+def load_plates_on_table(world, table, verbose):
+    """ sample a series of poses for plates """
+    plate = world.add_object(Supporter(load_asset('Plate', yaw=0, verbose=verbose, floor=table.body)))
+
+    ## dist from edge of table to center of plates
+    x_gap = random.uniform(0.05, 0.1)
+    x = table.aabb().lower[0] + (plate.x2xmin + x_gap)
+    y_min = table.aabb()[0][1]
+    # draw_aabb(table.aabb())
+
+    width = table.ly
+    num = min(4, int(width / plate.ly))
+    fixed = [(i+0.5) * (width / num) + y_min for i in range(num)]
+    plate.adjust_pose(x=x, y=fixed[0])
+    # draw_aabb(plate.aabb())
+
+    plates = [plate]
+    for i in range(1, len(fixed)):
+        plate = world.add_object(Supporter(load_asset('Plate', yaw=0, verbose=verbose, floor=table.body)))
+        plate.adjust_pose(x=x, y=fixed[i])
+        plates.append(plate)
+    return plates
 
 
 if __name__ == '__main__':
