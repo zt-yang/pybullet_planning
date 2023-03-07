@@ -934,8 +934,8 @@ def close_joint(body, joint):
 #######################################################
 
 def get_readable_list(lst, world=None, NAME_ONLY=False, TO_LISDF=False):
-    to_print = []
-    for word in lst:
+    to_print = [lst[0]]
+    for word in lst[1:]:
         if world is not None:
             name = world.get_name(word)
             last_is_tuple = (len(to_print) != 0) and isinstance(to_print[-1], tuple)
