@@ -1,5 +1,5 @@
 ## debug related
-seed: null
+seed: 168876
 verbose: true
 
 ## pybullet related
@@ -65,4 +65,5 @@ data:
 planner:
   timeout: 300
   domain_pddl: ../assets/pddl/feg_kitchen.pddl
+#  domain_pddl: ../assets/pddl/feg_kitchen_clean.pddl
   stream_pddl: ../assets/pddl/feg_stream_kitchen.pddl
