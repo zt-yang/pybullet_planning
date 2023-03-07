@@ -559,10 +559,10 @@ def sample_kitchen_full_goal(world):
 
     hand = world.robot.arms[0]
     goal_candidates = [
-        # [('Holding', hand, bottle)],
+        [('Holding', hand, bottle)],
         [('On', food, counter)],
-        # [('In', food, fridge_space)],
-        # [('OpenedJoint', fridge_door)],
+        [('In', food, fridge_space)],
+        [('OpenedJoint', fridge_door)],
     ]
     goals = random.choice(goal_candidates)
     if goals[0][0] == 'In':
