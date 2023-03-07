@@ -602,6 +602,9 @@ def sample_clean_dish_goal(world):
     dishwasher = world.name_to_object('dishwasherbox')
     sink = world.name_to_object('sink#1')
 
+    ## YANG: should be on the bottom of the sink instead of on the bounding box of the sink (floating)
+    sink = world.name_to_body('sink_bottom')
+
     # objects += [fridge_door]
 
     world.add_to_cat(food, 'moveable')
