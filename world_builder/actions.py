@@ -140,6 +140,7 @@ class PressAction(Action):
         new_state.variables['Pressed', self.button] = True
         return new_state
 
+
 class OpenJointAction(Action):
     def __init__(self, affected):
         self.affected = affected
@@ -151,6 +152,7 @@ class OpenJointAction(Action):
             obj = state.world.BODY_TO_OBJECT[(body, joint)]
             print(f'{(body, joint)} | {obj.name} | limit: {nice((obj.min_limit, obj.max_limit))} | pose: {old_pose} -> {new_pose}')
         return state.new_state()
+
 
 class PickUpAction(Action):
     def __init__(self, object, gripper='left'):
@@ -169,6 +171,7 @@ class PickUpAction(Action):
         new_attachments = add_attachment(state=state, obj=obj, attach_distance=0.1)
         return state.new_state(attachments=new_attachments)
 
+
 class PutDownAction(Action):
     def __init__(self, surface, gripper='left'):
         self.surface = surface
@@ -181,11 +184,13 @@ class PutDownAction(Action):
         new_attachments = remove_attachment(state, obj)
         return state.new_state(attachments=new_attachments)
 
+
 OBJECT_PARTS = {
     'Veggie': ['VeggieLeaf', 'VeggieStem'],
     'Egg': ['EggFluid', 'EggShell']
 } ## object.category are all lower case
 OBJECT_PARTS = {k.lower():v for k,v in OBJECT_PARTS.items()}
+
 
 class ChopAction(Action):
     def __init__(self, object):
@@ -202,6 +207,7 @@ class ChopAction(Action):
         objects.remove(self.object.body)
         return state.new_state(objects=objects)
 
+
 class CrackAction(Action):
     def __init__(self, object, surface):
         self.object = object
@@ -209,9 +215,11 @@ class CrackAction(Action):
     def transition(self, state):
         pose = self.object.get_pose()
 
+
 class ToggleSwitchAction(Action):
     def __init__(self, object):
         self.object = object
+
 
 class InteractAction(Action):
     def transition(self, state):
@@ -233,6 +241,7 @@ class TeleportObjectAction(Action):
         print(f"   [TeleportObjectAction] !!!! obj {self.object} is teleported from {nice(old_pose)} to {self.arm} gripper {nice(new_pose)}")
         return state.new_state()
 
+
 class GripperAction(Action):
     def __init__(self, arm, position=None, extent=None, teleport=False):
         self.arm = arm
@@ -250,7 +259,7 @@ class GripperAction(Action):
         else: ## if self.position == None:
             bodies = [b for b in state.objects if isinstance(b, int) and b != robot.body]
             self.position = close_until_collision(robot.body, robot.get_gripper_joints(self.arm), bodies=bodies)
-            print(f"   [GripperAction] !!!! gripper {self.arm} is closed to {self.position} until collision")
+            print(f"   [GripperAction] !!!! gripper {self.arm} is closed to {round(self.position, 3)} until collision")
             # self.position = 0.5  ## cabbage, artichoke
             # self.position = 0.4  ## tomato
             # self.position = 0.2  ## zucchini
@@ -269,6 +278,7 @@ class GripperAction(Action):
 
         return state.new_state()
 
+
 class AttachObjectAction(Action):
     def __init__(self, arm, grasp, object, verbose=True):
         self.arm = arm
@@ -277,13 +287,14 @@ class AttachObjectAction(Action):
         self.verbose = verbose
     def transition(self, state):
         link = state.robot.get_attachment_link(self.arm)
-        print(f'AttachObjectAction | picking object {self.object} from', nice(get_pose(self.object)))
+        # print(f'AttachObjectAction | picking object {self.object} from', nice(get_pose(self.object)))
         new_attachments = add_attachment(state=state, obj=self.object, parent=state.robot,
                                          parent_link=link, attach_distance=None, verbose=False)  ## can attach without contact
         for k in new_attachments:
             if k in state.world.ATTACHMENTS:
                 state.world.ATTACHMENTS.pop(k)
         return state.new_state(attachments=new_attachments)
+
 
 class DetachObjectAction(Action):
     def __init__(self, arm, object, verbose=False):
@@ -294,6 +305,7 @@ class DetachObjectAction(Action):
         # print(f'bullet.actions | DetachObjectAction | remove {self.object} from state.attachment')
         new_attachments = remove_attachment(state, self.object)
         return state.new_state(attachments=new_attachments)
+
 
 class JustDoAction(Action):
     def __init__(self, body):
@@ -306,21 +318,26 @@ class JustDoAction(Action):
             state.world.BODY_TO_OBJECT[self.body].add_text(label)
         return state.new_state()
 
+
 class JustClean(JustDoAction):
     def __init__(self, body):
         super(JustClean, self).__init__(body)
+
 
 class JustCook(JustDoAction):
     def __init__(self, body):
         super(JustCook, self).__init__(body)
 
+
 class JustSeason(JustDoAction):
     def __init__(self, body):
         super(JustSeason, self).__init__(body)
 
+
 class JustServe(JustDoAction):
     def __init__(self, body):
         super(JustServe, self).__init__(body)
+
 
 class JustSucceed(Action):
     def __init__(self):

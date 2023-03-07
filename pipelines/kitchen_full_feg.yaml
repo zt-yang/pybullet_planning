@@ -3,7 +3,7 @@ seed: null
 verbose: true
 
 ## pybullet related
-viewer: true
+viewer: false
 lock: true
 simulate: false
 teleport: false
@@ -18,7 +18,7 @@ monitoring: false
 diverse: false
 dataset: false
 parallel: false
-n_data: 3
+n_data: 1
 
 
 robot:

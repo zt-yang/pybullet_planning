@@ -48,14 +48,15 @@ SCENE_CONFIG_PATH = abspath(join(dirname(__file__), '..', 'pipelines'))
 
 
 def parse_yaml(path, verbose=True):
+    from pybullet_tools.logging import myprint as print
     import yaml
-    from pprint import pprint
+    import pprint
     from pathlib import Path
     from argparse import Namespace
     conf = yaml.safe_load(Path(path).read_text())
     if verbose:
         print(f'-------------- {abspath(path)} --------------')
-        pprint(conf)
+        print(pprint.pformat(conf))
         print('------------------------------------\n')
     conf = Namespace(**conf)
     conf.data = Namespace(**conf.data)

@@ -25,7 +25,7 @@ def get_stream_map(p, c, l, t, **kwargs):
         'inverse-kinematics-hand': from_fn(get_ik_fn(p, collisions=c, teleport=t, custom_limits=l, verbose=False)),
         'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(p.robot, collisions=c)),
         'test-cfree-approach-pose': from_test(get_cfree_approach_pose_test(p, collisions=c)),
-        'test-cfree-traj-pose': from_test(get_cfree_traj_pose_test(p.robot, collisions=c, verbose=False)),
+        'test-cfree-traj-pose': from_test(get_cfree_traj_pose_test(p, collisions=c, verbose=False)),
 
         'plan-free-motion-hand': from_fn(get_free_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
 

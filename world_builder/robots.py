@@ -701,13 +701,16 @@ class FEGripper(RobotAPI):
 
     def create_gripper(self, arm='hand', visual=True, color=None):
         from pybullet_tools.utils import unit_pose
-        gripper = clone_body(self.body, visual=False, collision=True)
+        if arm in self.grippers:
+            gripper = self.grippers[arm]
+        else:
+            gripper = clone_body(self.body, visual=False, collision=True)
+            self.grippers[arm] = gripper
         set_pose(gripper, unit_pose())
         if not visual:
             set_all_color(gripper, TRANSPARENT)
         if color is not None:
             set_all_color(gripper, color)
-        self.grippers[arm] = gripper
         return gripper
 
     def get_gripper_joints(self, gripper_grasp=None):
@@ -724,7 +727,7 @@ class FEGripper(RobotAPI):
 
     def compute_grasp_width(self, arm, body_pose, grasp, body=None, verbose=False, **kwargs):
         from pybullet_tools.flying_gripper_utils import se3_ik, set_se3_conf, get_se3_conf
-        body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
+
         if isinstance(body, tuple):
             return 0.02
             # body = body[0]
@@ -738,16 +741,23 @@ class FEGripper(RobotAPI):
             print('robots.compute_grasp_width | grasp_pose = multiply(body_pose, grasp) = ', nice(grasp_pose))
 
         with ConfSaver(self.body):
-            conf = se3_ik(self, grasp_pose)
-            gripper = self.body
-            set_se3_conf(gripper, conf)
-            if verbose:
-                print(f'robots.compute_grasp_width | gripper_grasp {gripper} | object_pose {nice(body_pose)}'
-                      f' | se_conf {nice(get_se3_conf(gripper))} | grasp = {nice(grasp)} ')
+            with PoseSaver(body):
+                conf = se3_ik(self, grasp_pose)
+                if conf is None:
+                    print('\t\t\tFEGripper.conf is None', nice(grasp))
+                    return None
+                # print('\tFEGripper.compute_grasp_width', nice(grasp))
+                gripper = self.body
+                set_se3_conf(gripper, conf)
+                body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
+                set_pose(body, body_pose)
+                if verbose:
+                    print(f'robots.compute_grasp_width | gripper_grasp {gripper} | object_pose {nice(body_pose)}'
+                          f' | se_conf {nice(get_se3_conf(gripper))} | grasp = {nice(grasp)} ')
 
-            gripper_joints = self.get_gripper_joints()
-            width = close_until_collision(gripper, gripper_joints, bodies=[body], **kwargs)
-            # remove_body(gripper)
+                gripper_joints = self.get_gripper_joints()
+                width = close_until_collision(gripper, gripper_joints, bodies=[body], **kwargs)
+                # remove_body(gripper)
         return width
 
     def visualize_grasp(self, body_pose, grasp, arm='hand', color=GREEN, width=1, verbose=False,
@@ -929,7 +939,7 @@ class FEGripper(RobotAPI):
             end_q = get_cloned_se3_conf(robot, gripper_grasp)
             if not collided(gripper_grasp, obstacles, verbose=True, tag='check reachability of movable', world=world):
                 if verbose: print('\n... check reachability from', nice(init_q), 'to', nice(end_q))
-                path = plan_se3_motion(robot, init_q, end_q, obstacles=obstacles,
+                path = plan_se3_motion(self, init_q, end_q, obstacles=obstacles,
                                        custom_limits=self.custom_limits)
                 if path is not None:
                     if verbose: print('... path found of length', len(path))

@@ -549,6 +549,7 @@ def sample_kitchen_full_goal(world):
     bottle = random.choice(world.cat_to_bodies('bottle'))
     counter = world.name_to_body('counter#1')
     fridge = world.name_to_object('minifridge')
+    fridge_space = world.name_to_body(f'minifridge_storage')
     fridge_door = fridge.doors[0]
 
     objects += [fridge_door]
@@ -558,12 +559,15 @@ def sample_kitchen_full_goal(world):
 
     hand = world.robot.arms[0]
     goal_candidates = [
-        [('Holding', hand, bottle)],
+        # [('Holding', hand, bottle)],
         [('On', food, counter)],
-        [('In', food, fridge)],
-        [('OpenedJoint', fridge_door)],
+        # [('In', food, fridge_space)],
+        # [('OpenedJoint', fridge_door)],
     ]
     goals = random.choice(goal_candidates)
+    if goals[0][0] == 'In':
+        for door in fridge.doors:
+            world.open_joint(door[0], door[1], hide_door=True)
 
     world.remove_bodies_from_planning(goals=goals, exceptions=objects)
 

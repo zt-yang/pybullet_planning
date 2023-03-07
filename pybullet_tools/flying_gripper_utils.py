@@ -107,6 +107,7 @@ def test_retraction(robot, info, tool_link, distance=0.1, **kwargs):
     remove_handles(handles)
     return path
 
+
 def test_ik(robot, info, tool_link, tool_pose):
     draw_pose(tool_pose)
     # TODO: sort by one joint angle
@@ -117,6 +118,7 @@ def test_ik(robot, info, tool_link, tool_pose):
         # TODO: profile
         set_joint_positions(robot, ik_joints, conf)
         wait_for_user()
+
 
 def sample_ik_tests(robot):
     joints = get_movable_joints(robot)
@@ -142,16 +144,20 @@ SE3_GROUP = ['x', 'y', 'z', 'roll', 'pitch', 'yaw']
 FINGERS_GROUP = ['panda_finger_joint1', 'panda_finger_joint2']
 BASE_LINK = 'world_link' ## 'panda_hand' ##
 
+
 def get_gripper_positions(robot):
     joints = get_joints_by_group(robot, FINGERS_GROUP)
     return get_joint_positions(robot, joints)
+
 
 def set_gripper_positions(robot, w=0.0):
     joints = get_joints_by_group(robot, FINGERS_GROUP)
     set_joint_positions(robot, joints, [w/2, w/2])
 
+
 def open_gripper(robot):
     set_gripper_positions(robot, w=0.08)
+
 
 def open_cloned_gripper(robot, gripper, w = 0.12): ## 0.08 is the limit
     """ because link and joint names aren't cloned """
@@ -159,41 +165,51 @@ def open_cloned_gripper(robot, gripper, w = 0.12): ## 0.08 is the limit
     w = min(w, 0.12)
     set_joint_positions(gripper, joints, [w / 2, w / 2])
 
+
 def close_cloned_gripper(robot, gripper):
     """ because link and joint names aren't cloned """
     joints = get_joints_by_group(robot, FINGERS_GROUP)
     set_joint_positions(gripper, joints, [0, 0])
 
+
 def set_cloned_se3_conf(robot, gripper, conf):
     joints = get_joints_by_group(robot, SE3_GROUP)
     return set_joint_positions(gripper, joints, conf)
+
 
 def get_cloned_se3_conf(robot, gripper):
     joints = get_joints_by_group(robot, SE3_GROUP)
     return get_joint_positions(gripper, joints)
 
+
 def get_cloned_gripper_positions(robot, gripper):
     joints = get_joints_by_group(robot, FINGERS_GROUP)
     return get_joint_positions(gripper, joints)
+
 
 def get_cloned_hand_pose(robot, gripper):
     link = link_from_name(robot, TOOL_LINK)
     return get_link_pose(gripper, link)
 
+
 def get_hand_pose(robot):
     link = link_from_name(robot, TOOL_LINK)
     return get_link_pose(robot, link)
+
 
 def set_se3_conf(robot, se3):
     set_joint_positions(robot, get_se3_joints(robot), se3)
     # pose = pose_from_se3(se3)
     # set_pose(robot, pose)
 
+
 def get_joints_by_group(robot, group):
     return [joint_from_name(robot, j) for j in group]
 
+
 def get_se3_joints(robot):
     return get_joints_by_group(robot, SE3_GROUP)
+
 
 def get_se3_conf(robot):
     return get_joint_positions(robot, get_se3_joints(robot))
@@ -209,13 +225,16 @@ def get_se3_conf(robot):
 #     print('\n\n franka_utils.se3_to_pose | deprecated! \n\n')
 #     return (conf[:3], quat_from_euler(conf[3:]))
 
+
 def se3_from_pose(p):
     print('Deprecated se3_from_pose, please use se3_ik()')
     return list(np.concatenate([np.asarray(p[0]), np.asarray(euler_from_quat(p[1]))]))
 
+
 def pose_from_se3(conf):
     # print('Deprecated pose_from_se3, please use se3_fk()')
     return (conf[:3], quat_from_euler(conf[3:]))
+
 
 def se3_ik(robot, target_pose, max_iterations=200, max_time=5, verbose=False, mod_target=None):
     report_failure = False
@@ -246,9 +265,12 @@ def se3_ik(robot, target_pose, max_iterations=200, max_time=5, verbose=False, mo
             remove_body(sub_robot)
             if verbose or report_failure: print(f'{title} failed after {max_time} sec')
             return None
-        sub_kinematic_conf = p.calculateInverseKinematics(sub_robot, link, target_point, target_quat,
-                                                          lowerLimits=lower_limits, upperLimits=upper_limits,
-                                                          physicsClientId=CLIENT)
+        try:
+            sub_kinematic_conf = p.calculateInverseKinematics(sub_robot, link, target_point, target_quat,
+                                                              lowerLimits=lower_limits, upperLimits=upper_limits,
+                                                              physicsClientId=CLIENT)
+        except p.error:
+            return None
         sub_kinematic_conf = sub_kinematic_conf[:-2] ##[3:-2]
         # conf = list(sub_kinematic_conf[:3])
         # for v in sub_kinematic_conf[3:]:
@@ -266,7 +288,7 @@ def se3_ik(robot, target_pose, max_iterations=200, max_time=5, verbose=False, mo
                 print(f'{title} found after {iteration} trials and '
                     f'{nice(elapsed_time(start_time))} sec', nice(sub_kinematic_conf))
                 # set_camera_target_body(sub_robot, dx=0.5, dy=0.5, dz=0.5)
-            remove_body(sub_robot)
+            # remove_body(sub_robot)
             if mod_target != None:
                 sub_kinematic_conf = list(actual_target[0]) + list(sub_kinematic_conf)[3:]
                 CACHE[nice(actual_target)] = sub_kinematic_conf
