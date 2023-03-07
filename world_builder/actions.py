@@ -761,16 +761,17 @@ def get_primitive_actions(action, world, teleport=False):
     ##    variates of pick
     ## ------------------------------------
 
-    elif 'pick' in name:
+    elif name in ['pick', 'pick_half']:
         if '_rel' in name:
-            a, o, p, rp, o2, p2, g, _, t = args
+            a, o, p, rp, o2, p2, g = args[:7]
         else:
             a, o, p, g = args[:4]
-            t = args[-1]
-        t = get_traj(t)
+        t = get_traj(args[-1])
         close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
         attach = AttachObjectAction(a, g, o)
-        new_commands = t + [close_gripper, attach] + t[::-1]
+        new_commands = t + [close_gripper, attach]
+        if name in ['pick']:
+            new_commands += t[::-1]
 
     elif name == 'grasp_handle':
         a, o, p, g, q, aq1, aq2, t = args
@@ -803,15 +804,17 @@ def get_primitive_actions(action, world, teleport=False):
         new_commands = t + [close_gripper, attach]
 
     ## ------------------------------------
-    ##    variates of pick
+    ##    variates of place
     ## ------------------------------------
 
-    elif name == 'place':
-        a, o, p, g, _, t = args[:6]
-        t = get_traj(t)
+    elif name in ['place', 'place_half']:
+        a, o, p, g = args[:4]
+        t = get_traj(args[-1])
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
         detach = DetachObjectAction(a, o)
-        new_commands = t + [detach, open_gripper] + t[::-1]
+        new_commands = [detach, open_gripper] + t[::-1]
+        if name in ['place']:
+            new_commands = t + new_commands
 
     elif name == 'ungrasp_handle':
         a, o, p, g, q, aq1, aq2, t = args

@@ -18,7 +18,7 @@ from pybullet_tools.pr2_primitives import APPROACH_DISTANCE, Conf, Grasp, get_ba
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, close_until_collision, TOP_HOLDING_LEFT_ARM, \
     SIDE_HOLDING_LEFT_ARM
 from pybullet_tools.general_streams import get_handle_link, get_grasp_list_gen, get_contain_list_gen, \
-    get_cfree_approach_pose_test, get_stable_list_gen
+    get_cfree_approach_pose_test, get_stable_list_gen, play_trajectory
 
 from world_builder.utils import load_asset
 
@@ -78,7 +78,7 @@ class RobotAPI(Robot):
         app = self.get_approach_vector(arm, g_type)
         grasps_R = []
         for g in grasps_O:
-            if is_top_grasp(self, arm, body, g, get_pose(body)):
+            if is_top_grasp(self, arm, body, g, get_pose(body)) and False:
                 approach = g
             else:
                 approach = self.get_approach_pose(app, g)
@@ -180,6 +180,8 @@ class PR2Robot(RobotAPI):
         super(PR2Robot, self).__init__(body, **kwargs)
         self.DUAL_ARM = DUAL_ARM
         self.USE_TORSO = USE_TORSO
+        self.grasp_aconfs = {}
+        ## get away with the problem of Fluent stream outputs cannot be in action effects: ataconf
 
     def add_collision_grasp(self, a, o, g):
         from world_builder.actions import AttachObjectAction
@@ -517,7 +519,7 @@ class PR2Robot(RobotAPI):
                                custom_limits=state.robot.custom_limits,
                                verbose=verbose, visualize=visualize, **kwargs)
 
-            funk3 = get_ik_fn(state, verbose=verbose, visualize=visualize, ACONF=False, **kwargs)
+            funk3 = get_ik_fn(state, verbose=verbose, visualize=visualize, **kwargs)
             for (grasp, ) in outputs:
                 ## test_approach_path
                 result = True
@@ -552,7 +554,9 @@ class PR2Robot(RobotAPI):
                                 answer = query_yes_no(f"play reachability test traj?", default='no')
                                 if answer:
                                     (cmd,) = result
-                                    self.test_trajectory(arm, body, p, grasp, bconf, cmd)
+                                    bconf.assign()
+                                    attachment = grasp.get_attachment(self, arm, visualize=False)
+                                    play_trajectory(cmd, p=p, attachment=attachment)
 
                             restore(True)
                             return True
@@ -566,38 +570,6 @@ class PR2Robot(RobotAPI):
 
             restore(False)
             return False
-
-    def test_trajectory(self, arm, body, p, grasp, bconf, cmd, obstacles=[], title=''):
-        speed = 0.02
-        set_renderer(True)
-        set_camera_target_body(body, distance=2)
-
-        attachment = grasp.get_attachment(self, arm, visualize=False)
-        bconf.assign()
-
-        def play_once(stepping=False):
-            wait_if_gui(title+' | start?')
-            p.assign()
-            wait_for_duration(speed)
-            for conf in cmd.commands[0].path:
-                conf.assign()
-                attachment.assign()
-                if stepping:
-                    wait_if_gui('   step?')
-                else:
-                    wait_for_duration(speed)
-
-                if collided(attachment.child, obstacles, verbose=True, tag='collided grasp path', world=self.world):
-                    print(title+'!!! test_trajectory | collided')
-            wait_if_gui('finished')
-
-        stepping = False
-        answer = True
-        while answer:
-            play_once(stepping)
-            stepping = True
-            answer = query_yes_no(f"play again with stepping?", default='no')
-        set_renderer(False)
 
     def check_reachability_space(self, body_link, state, body=None, fluents=[], num_samples=5, **kwargs):
 
@@ -633,17 +605,17 @@ class PR2Robot(RobotAPI):
             state.world.remove_object(obj)
         return result
 
-    def plan_joint_motion(self, start_conf, end_conf, mp_fn, attachments,
-                          arm, body, pose, grasp, base_conf,
-                          verbose=False, title='robot.plan_joint_motion', debug=True, **kwargs):
+    def plan_joint_motion(self, start_conf, end_conf, mp_fn, attachments, arm, pose=None,
+                          verbose=False, title='robot.plan_joint_motion', debug=False, **kwargs):
         from pybullet_tools.utils import BodySaver
         from pybullet_tools.pr2_utils import get_arm_joints
         from pybullet_tools.pr2_primitives import create_trajectory, Commands, State
 
-        def play_trajectory(grasp_path, **kwargs):
+        def debug_trajectory(grasp_path, **kwargs):
+            attachment = list(attachments.values())[0] if len(attachments) else None
             mt = create_trajectory(robot, arm_joints, grasp_path)
             cmd = Commands(State(attachments=attachments), savers=[BodySaver(robot)], commands=[mt])
-            robot.test_trajectory(arm, body, pose, grasp, base_conf, cmd, **kwargs)
+            play_trajectory(cmd, p=pose, attachment=attachment, **kwargs)
 
         robot = self
         obss = kwargs['obstacles']
@@ -660,13 +632,59 @@ class PR2Robot(RobotAPI):
                 if grasp_path is not None:
                     reason = 'object-world collision'
                     ## replay the grasp path to find colliding objects
-                    play_trajectory(grasp_path, obstacles=obss, title='investigate path collision')
-            if verbose:
-                print(f'{title}Grasp path failure because of', reason)
-                wait_unlocked()
+                    debug_trajectory(grasp_path, obstacles=obss, title='investigate path collision')
+                if verbose:
+                    print(f'{title}Grasp path failure because of', reason)
+                    wait_unlocked()
             return None
-        play_trajectory(grasp_path, obstacles=obss, title='successfully found path')
+        if debug:
+            kwargs = dict(obstacles=obss, title='successfully found path')
+            if len(attachments) == 0:
+                debug_trajectory(grasp_path, **kwargs)
+            else:
+                debug_trajectory(grasp_path[::-1], **kwargs)
         return grasp_path
+
+    def compute_grasp_aconf(self, arm, obj, pose, grasp, custom_limits={}, grasp_conf_tries=10,
+                           verbose=False, title='robot.sample_grasp_aconf', **collided_kwargs):
+        from pybullet_tools.pr2_primitives import get_tool_from_root
+        from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics
+        key = (arm, obj, grasp)
+        if key in self.grasp_aconfs:
+            print(f'grasp_conf found', key)
+            return self.grasp_aconfs[key]
+        robot = self
+        pose_value = grasp.value
+
+        tool_from_root = get_tool_from_root(robot, arm)
+        gripper_pose = multiply(robot.get_grasp_pose(pose.value, pose_value, body=obj), invert(tool_from_root))
+
+        grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose, custom_limits=custom_limits) #, upper_limits=USE_CURRENT)
+                                                #nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
+
+        count_down = grasp_conf_tries
+        while (grasp_conf is None) or collided(robot, **collided_kwargs):
+            if verbose:
+                if grasp_conf is not None:
+                    grasp_conf = nice(grasp_conf)
+                print(
+                    f'{title}Grasp IK failure | {grasp_conf} <- pr2_inverse_kinematics({robot}, '
+                    f'{arm}, {nice(gripper_pose[0])}) | pose {pose}, grasp {grasp}')
+            if count_down == 0:
+                #if grasp_conf is not None:
+                #    print(grasp_conf)
+                #    #wait_if_gui()
+
+                return None
+            grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose, custom_limits=custom_limits)
+            count_down -= 1
+
+        if verbose:
+            print(f'{title}Grasp IK success | {nice(grasp_conf)} = pr2_inverse_kinematics({robot} at {nice(base_conf.values)}, '
+                  f'{arm}, {nice(gripper_pose[0])}) | pose = {pose}, grasp = {grasp}')
+        print(f'grasp_conf after', key, grasp_conf)
+        self.grasp_aconfs[key] = grasp_conf
+        return grasp_conf
 
 
 class FEGripper(RobotAPI):
@@ -967,3 +985,4 @@ class FEGripper(RobotAPI):
         remove_body(marker)
         q.assign()
         return result
+

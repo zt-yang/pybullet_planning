@@ -90,11 +90,9 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
             get_ik_gen(p, collisions=c, teleport=t, ir_only=True, custom_limits=l,
                        verbose=True, visualize=False, learned=False)),
         'inverse-kinematics': from_fn(
-            get_ik_fn(p, collisions=motion_collisions, teleport=t,
-                      verbose=True, visualize=False, ACONF=False)),
-        # 'inverse-kinematics-full': from_fn(
-        #     get_ik_full_body_fn(p, collisions=motion_collisions, teleport=t,
-        #                         verbose=True, visualize=False)),
+            get_ik_fn(p, collisions=motion_collisions, teleport=t, verbose=True, visualize=False)),
+        'inverse-kinematics-half': from_fn(
+            get_ik_fn(p, pick_up=False, collisions=motion_collisions, verbose=True, visualize=False)),
         'plan-base-motion': from_fn(get_base_motion_gen(p, collisions=base_collisions, teleport=t, custom_limits=l)),
         # 'plan-base-motion-with-obj': from_fn(get_base_motion_with_obj_gen(p, collisions=base_collisions,
         #                                                          teleport=t, custom_limits=l)),
@@ -104,8 +102,8 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         # 'test-cfree-pose-pose-rel': from_test(get_cfree_pose_pose_rel_test(collisions=c)),
         # 'test-cfree-approach-pose-rel': from_test(get_cfree_approach_pose_rel_test(p, collisions=c)),
 
-        'test-cfree-traj-pose': from_test(get_cfree_traj_pose_test(p.robot, collisions=c)),
-        # 'test-cfree-traj-position': from_test(universe_test),
+        'test-cfree-traj-pose': from_test(get_cfree_traj_pose_test(p, collisions=c)),
+        'test-cfree-traj-position': from_test(get_cfree_traj_pose_test(p, collisions=c)),
         'test-cfree-btraj-pose': from_test(get_cfree_btraj_pose_test(p.robot, collisions=c)),
 
         'get-joint-position-open': from_gen_fn(sample_joint_position_gen(num_samples=6)),
@@ -115,7 +113,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         # TODO: apply motion_collisions to pulling?
         'inverse-kinematics-grasp-handle': from_gen_fn(
             get_ik_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l,
-                        learned=False, verbose=True, ACONF=True)),
+                       pick_up=False, learned=False, verbose=True)),
         'inverse-kinematics-ungrasp-handle': from_gen_fn(
             get_ik_ungrasp_handle_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l,
                                       verbose=False)),
@@ -130,7 +128,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'sample-marker-grasp': from_list_fn(get_marker_grasp_gen(p, collisions=c)),
         'inverse-kinematics-grasp-marker': from_gen_fn(
             get_ik_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l,
-                        learned=False, verbose=False, ACONF=True)),
+                       pick_up=False, learned=False, verbose=False)), ## , ACONF=True
         'inverse-kinematics-ungrasp-marker': from_fn(
             get_ik_ungrasp_mark_gen(p, collisions=c, teleport=t, custom_limits=l)),
         'plan-base-pull-marker-random': from_gen_fn(
@@ -142,7 +140,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'plan-base-pull-marker-to-pose': from_fn(get_pull_marker_to_pose_motion_gen(p, collisions=c, teleport=t)),
         'test-bconf-in-region': from_test(get_bconf_in_region_test(p.robot)),
         'test-pose-in-region': from_test(get_pose_in_region_test()),
-        'test-pose-in-space': from_test(get_pose_in_space_test()),  ##
+        'test-pose-in-space': from_test(get_pose_in_space_test()),
 
         # 'sample-bconf-in-region': from_gen_fn(get_bconf_in_region_gen(p, collisions=c, visualize=False)),
         'sample-bconf-in-region': from_list_fn(get_bconf_in_region_gen(p, collisions=c, visualize=False)),

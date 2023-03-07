@@ -12,12 +12,12 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     BASE_LINK, get_joint_position, get_aabb, quat_from_euler, flatten_links, multiply, \
     get_joint_limits, unit_pose, point_from_pose, draw_point, PI, quat_from_pose, angle_between, \
     tform_point, interpolate_poses, draw_pose, RED, remove_handles, stable_z, wait_unlocked, \
-    get_aabb_center, set_renderer, timeout, get_aabb_extent
+    get_aabb_center, set_renderer, timeout, get_aabb_extent, wait_if_gui, wait_for_duration
 from pybullet_tools.pr2_primitives import Pose, Grasp
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, is_contained, \
     visualize_point, collided, sample_pose, xyzyaw_to_pose, ObjAttachment, set_camera_target_body, \
-    sample_obj_on_body_link_surface
+    sample_obj_on_body_link_surface, query_yes_no
 
 from world_builder.samplers import get_learned_yaw, get_learned_poses
 
@@ -778,22 +778,36 @@ def get_cfree_approach_pose_test(problem, collisions=True):
     return test
 
 
-def get_cfree_traj_pose_test(robot, collisions=True, verbose=False, visualize=False):
+def get_cfree_traj_pose_test(problem, collisions=True, verbose=False, visualize=True):
+    robot = problem.robot
+    world = problem.world
+
     def test(c, b2, p2):
         from pybullet_tools.flying_gripper_utils import pose_from_se3
         # TODO: infer robot from c
         if not collisions:
             return True
         state = c.assign()
+
+        if isinstance(b2, tuple):
+            b2 = b2[0]
         if b2 in state.attachments:
             return True
         p2.assign()
 
         handles = []
         if visualize:
-            for conf in c.commands[0].path:
-                pose = pose_from_se3(conf.values)
-                handles.extend(draw_pose(pose))
+            if len(c.commands[0].path) == 6:
+                for conf in c.commands[0].path:
+                    pose = pose_from_se3(conf.values)
+                    handles.extend(draw_pose(pose))
+            # else:
+            #     play_trajectory(c, p=p2, title='get_cfree_traj_pose_test')
+
+        attached_objects = list(state.attachments.keys())
+        if len(attached_objects) > 0 and isinstance(attached_objects[0], tuple):
+            attached_objects = [b for b, j in attached_objects]
+        obstacles = attached_objects + [robot]
 
         count = 0
         length = len(c.commands[0].path)
@@ -804,7 +818,7 @@ def get_cfree_traj_pose_test(robot, collisions=True, verbose=False, visualize=Fa
                 continue
             title = f'[step {count}/{length}]'
             state.assign()
-            if collided(b2, state.attachments+[robot], verbose=verbose, tag=title):
+            if collided(b2, obstacles, verbose=verbose, world=world, tag=title):
                 result = False
         if visualize:
             remove_handles(handles)
@@ -822,7 +836,7 @@ def get_cfree_traj_pose_test(robot, collisions=True, verbose=False, visualize=Fa
 
 def process_motion_fluents(fluents, robot, verbose=False):
     if verbose:
-        print('Fluents:', fluents)
+        print('\t'+'\n\t'.join([str(b) for b in fluents]))
     attachments = []
     for atom in fluents:
         predicate, args = atom[0].lower(), atom[1:]
@@ -830,19 +844,53 @@ def process_motion_fluents(fluents, robot, verbose=False):
             o, p = args
             if o not in ['@world']:
                 p.assign()
-        elif predicate == 'atgrasp':
+        elif predicate in ['atgrasp', 'atgrasphalf']:
             a, o, g = args
             attachments.append(g.get_attachment(robot, a))
         elif predicate == 'atposition':
             o, p = args
             p.assign()
         elif predicate == 'ataconf': # TODO: the arm conf isn't being set pre/post moves correctly
-            # a, q = args
-            # q.assign()
-            pass
+            from pddlstream.language.object import UniqueOptValue
+            a, q = args
+            if not isinstance(q, UniqueOptValue):
+                q.assign()
+            elif verbose:
+                print('Skipping bc UniqueOptValue', atom)
         elif predicate == 'atseconf':
             [q] = args
             q.assign()
         else:
             raise NotImplementedError(atom)
     return attachments
+
+
+def play_trajectory(cmd, p=None, attachment=None, obstacles=[], speed=0.02, title='play_trajectory'):
+    set_camera_target_body(p.body, distance=2)
+    set_renderer(True)
+
+    def play_once(stepping=False):
+        wait_if_gui(title + ' | start?')
+        if p is not None:
+            p.assign()
+        wait_for_duration(speed)
+        for conf in cmd.commands[0].path:
+            conf.assign()
+            if attachment is not None:
+                attachment.assign()
+                if collided(attachment.child, obstacles, verbose=True, tag='collided grasp path', world=self.world):
+                    print(title + '!!! test_trajectory | collided')
+
+            if stepping:
+                wait_if_gui('   step?')
+            else:
+                wait_for_duration(speed)
+        wait_if_gui('finished')
+
+    stepping = False
+    answer = True
+    while answer:
+        play_once(stepping)
+        stepping = True
+        answer = query_yes_no(f"play again with stepping?", default='no')
+    set_renderer(False)
