@@ -3,10 +3,11 @@ import time
 import numpy as np
 import untangle
 from numpy import inf
-from os.path import join, isdir, isfile, dirname, abspath, basename
+from os.path import join, isdir, isfile, dirname, abspath, basename, split
 from os import listdir
 import json
 import random
+import inspect
 
 from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sample_placement_on_aabb, wait_unlocked, \
     set_pose, get_movable_joints, draw_pose, pose_from_pose2d, set_velocity, set_joint_states, get_bodies, \
@@ -45,6 +46,12 @@ SAMPLER_KEY = "{x}&{y}"
 
 Z_CORRECTION_FILE = join(dirname(__file__), '..', 'databases', 'pose_z_correction.json')
 SCENE_CONFIG_PATH = abspath(join(dirname(__file__), '..', 'pipelines'))
+
+def debug_print(func, message="empty message", stop=True):
+    if stop:
+        input("\nDEBUG - {}.{}(): {}. Hit enter to continue\n".format("/".join((inspect.getfile(func).split("/"))[-2:]), func.__name__, message))
+    else:
+        print("\nDEBUG - {}.{}(): {}\n".format("/".join((inspect.getfile(func).split("/"))[-2:]), func.__name__, message))
 
 
 def parse_yaml(path, verbose=True):
@@ -387,7 +394,7 @@ def adjust_scale(body, category, file, w, l):
 
 
 def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=None,
-               scale=1, verbose=False, RANDOM_INSTANCE=False, SAMPLING=False):
+               scale=1, verbose=False, RANDOM_INSTANCE=False, SAMPLING=False, random_scale=1.0):
 
     if verbose: print(f"\nLoading ... {category}", end='\r')
 
@@ -399,6 +406,9 @@ def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=
     scale = get_scale_by_category(file=file, category=category, scale=scale)
     if file is not None:
         scale = get_model_scale(file, l, w, h, scale, category)
+
+        scale = random_scale * scale
+
         with HideOutput():
             body = load_model(file, scale=scale, fixed_base=True)
     else:
