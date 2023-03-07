@@ -3,7 +3,7 @@ seed: null
 verbose: true
 
 ## pybullet related
-viewer: false
+viewer: true
 lock: true
 simulate: false
 teleport: false
