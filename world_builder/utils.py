@@ -47,12 +47,6 @@ SAMPLER_KEY = "{x}&{y}"
 Z_CORRECTION_FILE = join(dirname(__file__), '..', 'databases', 'pose_z_correction.json')
 SCENE_CONFIG_PATH = abspath(join(dirname(__file__), '..', 'pipelines'))
 
-def debug_print(func, message="empty message", stop=True):
-    if stop:
-        input("\nDEBUG - {}.{}(): {}. Hit enter to continue\n".format("/".join((inspect.getfile(func).split("/"))[-2:]), func.__name__, message))
-    else:
-        print("\nDEBUG - {}.{}(): {}\n".format("/".join((inspect.getfile(func).split("/"))[-2:]), func.__name__, message))
-
 
 def parse_yaml(path, verbose=True):
     from pybullet_tools.logging import myprint as print

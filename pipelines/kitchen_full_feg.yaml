@@ -15,8 +15,6 @@ segment: false
 monitoring: false
 
 ## data collection mode
-diverse: false
-dataset: false
 parallel: false
 n_data: 1
 
@@ -65,5 +63,7 @@ data:
 planner:
   timeout: 300
   domain_pddl: ../assets/pddl/feg_kitchen.pddl
-#  domain_pddl: ../assets/pddl/feg_kitchen_clean.pddl
   stream_pddl: ../assets/pddl/feg_stream_kitchen.pddl
+  diverse: false
+  downward_time: 1
+  dataset: false

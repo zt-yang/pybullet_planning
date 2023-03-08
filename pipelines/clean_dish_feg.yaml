@@ -1,5 +1,5 @@
 ## debug related
-seed: null
+seed: 594585
 verbose: true
 
 ## pybullet related
@@ -15,10 +15,8 @@ segment: false
 monitoring: false
 
 ## data collection mode
-diverse: false
-dataset: false
 parallel: false
-n_data: 3
+n_data: 1
 
 
 robot:
@@ -64,5 +62,8 @@ data:
 ## configuration for PDDLStream
 planner:
   timeout: 300
-  domain_pddl: ../assets/pddl/feg_kitchen.pddl
-  stream_pddl: ../assets/pddl/feg_stream_kitchen.pddl
+  domain_pddl: ../assets/pddl/feg_kitchen_clean.pddl
+  stream_pddl: ../assets/pddl/feg_stream_kitchen_clean.pddl
+  diverse: false
+  downward_time: 0.02
+  dataset: false

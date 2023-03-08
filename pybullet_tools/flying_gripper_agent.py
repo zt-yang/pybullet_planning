@@ -8,15 +8,13 @@ from pybullet_tools.general_streams import get_cfree_approach_pose_test, get_gra
 from pddlstream.language.generator import from_gen_fn, from_list_fn, from_fn, from_test
 import math
 
-from .flying_gripper_utils import get_ik_fn, get_free_motion_gen, get_pull_handle_motion_gen, \
-    get_reachable_test
+from pybullet_tools.flying_gripper_utils import get_ik_fn, get_free_motion_gen, \
+    get_pull_handle_motion_gen, get_reachable_test
 
 
 def get_stream_map(p, c, l, t, **kwargs):
-    # p = problem
-    # c = collisions
-    # l = custom_limits
-    # t = teleport
+    """ p = problem, c = collisions, l = custom_limits, t = teleport """
+
     stream_map = {
         'sample-pose-on': from_gen_fn(get_stable_gen(p, collisions=c)),
         'sample-pose-in': from_gen_fn(get_contain_gen(p, collisions=c, verbose=False)),

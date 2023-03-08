@@ -12,7 +12,7 @@ from .loaders import load_rooms, load_cart, load_cart_regions, load_blocked_kitc
     load_blocked_sink, load_blocked_stove, load_floor_plan, load_experiment_objects, load_pot_lid, load_basin_faucet, \
     load_kitchen_mechanism, load_cabinet_test_scene, load_random_mini_kitchen_counter, \
     load_another_table, load_another_fridge_food, random_set_doors, ensure_robot_cfree, load_kitchen_mini_scene, \
-    sample_full_kitchen, sample_clean_dish_v0
+    sample_full_kitchen
 from pybullet_tools.utils import Pose, Euler, PI, create_box, TAN, Point, set_camera_pose, link_from_name, \
     connect, enable_preview, draw_pose, unit_pose, set_all_static, wait_if_gui, reset_simulation, get_aabb
 
@@ -45,8 +45,10 @@ def initialize_pybullet(config):
 def get_world_builder(builder_name):
     from inspect import getmembers, isfunction
     import sys
+    import nsplan_tools.nsplan_builders as nsplan_builders
     current_module = sys.modules[__name__]
     result = [a[1] for a in getmembers(current_module) if isfunction(a[1]) and a[0] == builder_name]
+    result += [a[1] for a in getmembers(nsplan_builders) if isfunction(a[1]) and a[0] == builder_name]
     if len(result) == 0:
         raise ValueError('Builder {} not found'.format(builder_name))
     return result[0]
@@ -570,59 +572,5 @@ def sample_kitchen_full_goal(world):
             world.open_joint(door[0], door[1], hide_door=True)
 
     world.remove_bodies_from_planning(goals=goals, exceptions=objects)
-
-    return goals
-
-
-##########################################################################################
-
-
-def test_clean_dish_feg(world, **kwargs):
-    ## hyperparameters for world sampling
-    world.set_skip_joints()
-    world.note = 1
-
-    moveables, cabinets, counters, obstacles, x_food_min = \
-        sample_clean_dish_v0(world, verbose=False, pause=False)
-    goal = sample_clean_dish_goal(world)
-    return goal
-
-
-def sample_clean_dish_goal(world):
-    objects = []
-
-    print(world.OBJECTS_BY_CATEGORY)
-    input("here")
-
-    food = random.choice(world.cat_to_bodies('edible'))
-    bottle = random.choice(world.cat_to_bodies('bottle'))
-    counter = world.name_to_body('sink_counter_left')
-    # fridge = world.name_to_object('minifridge')
-    # fridge_door = fridge.doors[0]
-    dishwasher = world.name_to_object('dishwasherbox')
-    sink = world.name_to_object('sink#1')
-
-    ## YANG: should be on the bottom of the sink instead of on the bounding box of the sink (floating)
-    sink = world.name_to_body('sink_bottom')
-
-    # objects += [fridge_door]
-
-    world.add_to_cat(food, 'moveable')
-    world.add_to_cat(bottle, 'moveable')
-
-    hand = world.robot.arms[0]
-    # goal_candidates = [
-    #     [('Holding', hand, bottle)],
-    #     [('On', food, counter)],
-    #     [('In', food, fridge)],
-    #     [('OpenedJoint', fridge_door)],
-    # ]
-    # goals = random.choice(goal_candidates)
-
-    # goals = [('On', bottle, counter)]
-    # goals = [('In', bottle, dishwasher)]
-    goals = [('On', bottle, sink)]
-
-    # world.remove_bodies_from_planning(goals=goals, exceptions=objects)
 
     return goals

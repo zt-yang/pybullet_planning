@@ -2,6 +2,7 @@ import math
 import time
 import copy
 import random
+from os.path import basename
 from .entities import Robot
 
 from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color, TRANSPARENT, \
@@ -835,10 +836,6 @@ class FEGripper(RobotAPI):
         return [('SEConf', initial_q), ('AtSEConf', initial_q), ('OriginalSEConf', initial_q),
                 ('Arm', arm), ('Controllable', arm), ('HandEmpty', arm)]
 
-    def get_stream_map(self, problem, collisions, custom_limits, teleport, **kwargs):
-        from pybullet_tools.flying_gripper_agent import get_stream_map
-        return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
-
     def get_attachment(self, grasp, arm=None, **kwargs):
         tool_link = link_from_name(self.body, 'panda_hand')
         return self.make_attachment(grasp, tool_link, **kwargs)
@@ -882,8 +879,11 @@ class FEGripper(RobotAPI):
             set_cloned_se3_conf(self.body, gripper, conf.values)
             yield
 
-    def get_stream_map(self, problem, collisions, custom_limits, teleport, **kwargs):
-        from pybullet_tools.flying_gripper_agent import get_stream_map
+    def get_stream_map(self, problem, collisions, custom_limits, teleport, domain_pddl=None, **kwargs):
+        if basename(domain_pddl) == 'feg_kitchen_clean.pddl':
+            from nsplan_tools.feg_streams import get_stream_map
+        else:
+            from pybullet_tools.flying_gripper_agent import get_stream_map
         return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
 
     def get_stream_info(self):
