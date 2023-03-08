@@ -3,10 +3,11 @@ import time
 import numpy as np
 import untangle
 from numpy import inf
-from os.path import join, isdir, isfile, dirname, abspath, basename
+from os.path import join, isdir, isfile, dirname, abspath, basename, split
 from os import listdir
 import json
 import random
+import inspect
 
 from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sample_placement_on_aabb, wait_unlocked, \
     set_pose, get_movable_joints, draw_pose, pose_from_pose2d, set_velocity, set_joint_states, get_bodies, \
@@ -387,7 +388,7 @@ def adjust_scale(body, category, file, w, l):
 
 
 def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=None,
-               scale=1, verbose=False, RANDOM_INSTANCE=False, SAMPLING=False):
+               scale=1, verbose=False, RANDOM_INSTANCE=False, SAMPLING=False, random_scale=1.0):
 
     if verbose: print(f"\nLoading ... {category}", end='\r')
 
@@ -399,6 +400,9 @@ def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=
     scale = get_scale_by_category(file=file, category=category, scale=scale)
     if file is not None:
         scale = get_model_scale(file, l, w, h, scale, category)
+
+        scale = random_scale * scale
+
         with HideOutput():
             body = load_model(file, scale=scale, fixed_base=True)
     else:

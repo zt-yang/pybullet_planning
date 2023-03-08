@@ -1060,7 +1060,7 @@ class World(object):
         ## ---- object types -------------
         for cat, objects in self.OBJECTS_BY_CATEGORY.items():
             if cat.lower() == 'moveable': continue
-            if cat in ['edible', 'plate', 'cleaningsurface', 'heatingsurface']:
+            if cat.lower() in ['edible', 'plate', 'cleaningsurface', 'heatingsurface']:
                 objects = self.OBJECTS_BY_CATEGORY[cat]
                 init += [(cat, obj.pybullet_name) for obj in objects if obj.pybullet_name in BODY_TO_OBJECT]
 

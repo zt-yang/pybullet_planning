@@ -1,5 +1,5 @@
 ## debug related
-seed: 168876
+seed: 594585
 verbose: true
 
 ## pybullet related
@@ -31,7 +31,7 @@ robot:
 world:
   ## method 1: use pre-specified builder inside world_builder/builders,
   ##         followed by builder specific arguments
-  builder_name: test_feg_kitchen_full
+  builder_name: test_clean_dish_feg
   builder_kwargs:
     ## sample assets in category from assets library, by default the 1st asset
     sampling: true
@@ -40,7 +40,7 @@ world:
 
 
 data:
-  out_dir: ../outputs/test_feg_kitchen_mini/
+  out_dir: ../outputs/test_clean_dish_feg/
   save_failed_plans: true
   save_log: true
   save_commands: true
@@ -62,8 +62,8 @@ data:
 ## configuration for PDDLStream
 planner:
   timeout: 300
-  domain_pddl: ../assets/pddl/feg_kitchen.pddl
-  stream_pddl: ../assets/pddl/feg_stream_kitchen.pddl
+  domain_pddl: ../assets/pddl/feg_kitchen_clean.pddl
+  stream_pddl: ../assets/pddl/feg_stream_kitchen_clean.pddl
   diverse: false
-  downward_time: 1
+  downward_time: 0.02
   dataset: false

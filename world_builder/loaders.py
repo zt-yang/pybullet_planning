@@ -1692,7 +1692,7 @@ COUNTER_THICKNESS = 0.05
 diswasher = 'DishwasherBox'
 
 
-def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=True):
+def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=True, random_scale=1.0):
 
     if floor is None:
         floor = create_house_floor(world, w=2, l=2, x=0, y=1)
@@ -1703,37 +1703,43 @@ def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=True):
         ins = '45305'
     base = world.add_object(Object(
         load_asset('SinkBase', x=x, y=y, yaw=math.pi, floor=floor,
-                   RANDOM_INSTANCE=ins, verbose=verbose), name='sinkbase'))
-    dx = base.lx/2
+                   RANDOM_INSTANCE=ins, verbose=verbose, random_scale=random_scale), name='sinkbase'))
+    dx = base.lx / 2
     base.adjust_pose(dx=dx, world=world)
     x += dx
-    if base.instance_name == 'partnet_5b112266c93a711b824662341ce2b233': ##'46481'
-        x += 0.1
+    if base.instance_name == 'partnet_5b112266c93a711b824662341ce2b233':  ##'46481'
+        x += 0.1 * random_scale
 
     ins = True
     if world.note in [551, 552]:
         ins = '00005'
     if world.note in [554]:
         ins = '00004'
+    # stack on base, since floor is base.body, based on aabb not exact geometry
     sink = world.add_object(Object(
         load_asset('Sink', x=x, y=y, yaw=math.pi, floor=base.body,
-                   RANDOM_INSTANCE=ins, verbose=verbose), name='sink'))
-    dx = (base.aabb().upper[0] - sink.aabb().upper[0]) - 0.05
-    dy = sink.ly/2 - (sink.aabb().upper[1] - y)
-    sink.adjust_pose(dx=dx, dy=dy, dz=-sink.height+COUNTER_THICKNESS, world=world)
+                   RANDOM_INSTANCE=ins, verbose=verbose, random_scale=random_scale), name='sink'))
+    # TODO: instead of 0.05, make it random
+    # align the front of the sink with the front of the base in the x direction
+    dx = (base.aabb().upper[0] - sink.aabb().upper[0]) - 0.05 * random_scale
+    # align the center of the sink with the center of the base in the y direction
+    dy = sink.ly / 2 - (sink.aabb().upper[1] - y)
+    sink.adjust_pose(dx=dx, dy=dy, dz=0, world=world)
+    sink.adjust_pose(dx=0, dy=0, dz=-sink.height + COUNTER_THICKNESS, world=world)
     # print('sink.get_pose()', sink.get_pose())
-    if sink.instance_name == 'partnet_u82f2a1a8-3a4b-4dd0-8fac-6679970a9b29': ##'100685'
-        x += 0.2
-    if sink.instance_name == 'partnet_549813be-3bd8-47dd-9a49-b51432b2f14c': ##'100685'
-        x -= 0.06
+    if sink.instance_name == 'partnet_u82f2a1a8-3a4b-4dd0-8fac-6679970a9b29':  ##'100685'
+        x += 0.2 * random_scale
+    if sink.instance_name == 'partnet_549813be-3bd8-47dd-9a49-b51432b2f14c':  ##'100685'
+        x -= 0.06 * random_scale
 
     ins = True
     if world.note in [551, 552]:
         ins = '14'
     faucet = world.add_object(Object(
         load_asset('Faucet', x=x, y=y, yaw=math.pi, floor=base.body,
-                   RANDOM_INSTANCE=ins, verbose=verbose), name='faucet'))
-    place_faucet_by_sink(faucet, sink, world=world)
+                   RANDOM_INSTANCE=ins, verbose=verbose, random_scale=random_scale), name='faucet'))
+    # adjust placement of faucet to be behind the sink
+    place_faucet_by_sink(faucet, sink, world=world, gap=0.01 * random_scale)
     faucet.adjust_pose(dz=COUNTER_THICKNESS, world=world)
 
     xa, ya, _ = base.aabb().lower
@@ -1821,7 +1827,7 @@ def sample_kitchen_furniture_ordering(all_necessary=True):
 
 
 def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.8, others=[],
-                                     obstacles=[], verbose=False):
+                                     obstacles=[], verbose=False, random_scale=1.0):
     cabinets, shelves = [], []
     cabi_type = 'CabinetTop' if random.random() < 0.5 else 'CabinetUpper'
     if world.note in [1, 21, 31, 11, 4, 41, 991, 551, 552]:
@@ -1856,11 +1862,11 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
     def place_cabinet(selected_counters, cabi_type=cabi_type, **kwargs):
         counter = random.choice(selected_counters)
         cabinet = world.add_object(
-            Object(load_asset(cabi_type, yaw=math.pi, verbose=verbose, **kwargs),
+            Object(load_asset(cabi_type, yaw=math.pi, verbose=verbose, random_scale=random_scale, **kwargs),
                    category=cabi_type, name=cabi_type)
         )
         cabinet.adjust_next_to(counter, direction='+z', align='+x', dz=dz)
-        cabinet.adjust_pose(dx=0.3, world=world)
+        cabinet.adjust_pose(dx=0.3 * random_scale, world=world)
         return cabinet, counter
 
     def ensure_cfree(obj, obstacles, selected_counters, **kwargs):
@@ -1878,7 +1884,9 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
     def add_cabinets(selected_counters, obstacles=[], **kwargs):
         color = FURNITURE_WHITE
         blend = []  ## cabinet overflowed to the next counter
-        for num in range(random.choice([1, 2])):
+        # for num in range(random.choice([1, 2])):
+        # Debug: only add one cabinet for now
+        for num in range(1):
             cabinet, counter = place_cabinet(selected_counters, **kwargs)
             result = ensure_cfree(cabinet, obstacles, selected_counters, **kwargs)
             if result is None:

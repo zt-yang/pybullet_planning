@@ -536,6 +536,8 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
         summarize_facts(init_added, world, name='Added facts from PDDLStream preimage', print_fn=print_fn)
         init = init + init_added
 
+    stream_map = robot.get_stream_map(problem, collisions, custom_limits, teleport,
+                                      domain_pddl=domain_pddl, **kwargs)
     domain_pddl = read(domain_pddl)
     stream_pddl = read(stream_pddl)
     constant_map = {k: k for k in state.world.constants}
@@ -546,8 +548,6 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
         print_fn(f'Robot: {world.robot} | Objects: {world.objects}\n'
                  f'Movable: {world.movable} | Fixed: {world.fixed} | Floor: {world.floors}')
         print_fn(SEPARATOR)
-
-    stream_map = robot.get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
     return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
 
 

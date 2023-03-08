@@ -45,8 +45,10 @@ def initialize_pybullet(config):
 def get_world_builder(builder_name):
     from inspect import getmembers, isfunction
     import sys
+    import nsplan_tools.nsplan_builders as nsplan_builders
     current_module = sys.modules[__name__]
     result = [a[1] for a in getmembers(current_module) if isfunction(a[1]) and a[0] == builder_name]
+    result += [a[1] for a in getmembers(nsplan_builders) if isfunction(a[1]) and a[0] == builder_name]
     if len(result) == 0:
         raise ValueError('Builder {} not found'.format(builder_name))
     return result[0]
