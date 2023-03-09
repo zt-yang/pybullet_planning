@@ -169,6 +169,21 @@ class RobotAPI(Robot):
         self.spawn_range = limits
 
 
+class SpotRobot(RobotAPI):
+    arms = ['hand']  ## 'right'
+    grasp_types = ['top', 'side']  ##
+    joint_groups = ['hand', 'base-torso']
+
+    def __init__(self, body, base_link='base', **kwargs):
+        from pybullet_tools.spot_utils import SPOT_JOINT_GROUPS
+        joints = SPOT_JOINT_GROUPS['base']
+        super(SpotRobot, self).__init__(body, base_link=base_link, joints=joints, **kwargs)
+
+    def get_tool_link(self, a='hand'):
+        from pybullet_tools.spot_utils import SPOT_TOOL_LINK
+        return SPOT_TOOL_LINK
+
+
 class PR2Robot(RobotAPI):
 
     arms = ['left']  ## 'right'
@@ -681,7 +696,7 @@ class PR2Robot(RobotAPI):
             count_down -= 1
 
         if verbose:
-            print(f'{title}Grasp IK success | {nice(grasp_conf)} = pr2_inverse_kinematics({robot} at {nice(base_conf.values)}, '
+            print(f'{title}Grasp IK success | {nice(grasp_conf)} = pr2_inverse_kinematics({robot} '
                   f'{arm}, {nice(gripper_pose[0])}) | pose = {pose}, grasp = {grasp}')
         print(f'grasp_conf after', key, grasp_conf)
         self.grasp_aconfs[key] = grasp_conf

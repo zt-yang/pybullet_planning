@@ -690,6 +690,9 @@ class Robot(Object):
         self.custom_limits = dict(custom_limits)
         self.disabled_collisions = dict(disabled_collisions)
         self.resolutions = resolutions # TODO: default values if None
+        if weights is None:
+            with np.errstate(divide='ignore'):
+                weights = np.reciprocal(resolutions)
         self.weights = weights
         self.cameras = list(cameras)
         self.objects_in_hand = {'left': -1, 'right': -1}  ## problem with equal

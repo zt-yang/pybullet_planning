@@ -4,7 +4,7 @@ from os.path import join
 import numpy as np
 import math
 from world_builder.entities import Camera
-from world_builder.robots import PR2Robot, FEGripper
+from world_builder.robots import PR2Robot, FEGripper, SpotRobot
 
 
 def get_robot_builder(builder_name):
@@ -47,10 +47,8 @@ def create_pr2_robot(world, base_q=(0, 0, 0), DUAL_ARM=False, USE_TORSO=True,
                      robot=None):
 
     if robot is None:
-        with LockRenderer(lock=True):
-            with HideOutput(enable=True):
-                robot = create_pr2()
-                set_pr2_ready(robot, DUAL_ARM=DUAL_ARM)
+        robot = create_pr2()
+        set_pr2_ready(robot, DUAL_ARM=DUAL_ARM)
         if len(base_q) == 3:
             set_group_conf(robot, 'base', base_q)
         elif len(base_q) == 4:
@@ -76,6 +74,55 @@ def create_pr2_robot(world, base_q=(0, 0, 0), DUAL_ARM=False, USE_TORSO=True,
 
     camera = Camera(robot, camera_frame=CAMERA_FRAME, camera_matrix=CAMERA_MATRIX, max_depth=2.5, draw_frame=EYE_FRAME)
     robot.cameras.append(camera)
+
+    ## don't show depth and segmentation data yet
+    # if args.camera: robot.cameras[-1].get_image(segment=args.segment)
+
+    return robot
+
+
+#######################################################
+
+from pybullet_tools.spot_utils import load_spot
+
+
+def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
+    other_arm = get_other_arm(arm)
+    if not DUAL_ARM:
+        initial_conf = get_carry_conf(arm, grasp_type)
+        set_arm_conf(pr2, arm, initial_conf)
+        open_arm(pr2, arm)
+        set_arm_conf(pr2, other_arm, arm_conf(other_arm, REST_LEFT_ARM))
+        close_arm(pr2, other_arm)
+    else:
+        for a in [arm, other_arm]:
+            initial_conf = get_carry_conf(a, grasp_type)
+            set_arm_conf(pr2, a, initial_conf)
+            open_arm(pr2, a)
+
+
+def create_spot_robot(world, base_q=(0, 0, 0), custom_limits=BASE_LIMITS, resolutions=BASE_RESOLUTIONS,
+                     DRAW_BASE_LIMITS=False, max_velocities=BASE_VELOCITIES, robot=None):
+
+    if robot is None:
+        robot = load_spot()
+        set_group_conf(robot, 'base', base_q)
+
+    if isinstance(custom_limits, dict):
+        custom_limits = np.asarray(list(custom_limits.values())).T.tolist()
+
+    if DRAW_BASE_LIMITS:
+        draw_base_limits(custom_limits)
+
+    robot = SpotRobot(robot, custom_limits=get_base_custom_limits(robot, custom_limits),
+                     resolutions=resolutions)
+    world.add_robot(robot, max_velocities=max_velocities)
+
+    # print('initial base conf', get_group_conf(robot, 'base'))
+    # set_camera_target_robot(robot, FRONT=True)
+
+    # camera = Camera(robot, camera_frame=CAMERA_FRAME, camera_matrix=CAMERA_MATRIX, max_depth=2.5, draw_frame=EYE_FRAME)
+    # robot.cameras.append(camera)
 
     ## don't show depth and segmentation data yet
     # if args.camera: robot.cameras[-1].get_image(segment=args.segment)
@@ -127,7 +174,7 @@ def build_skill_domain_robot(world, robot_name, **kwargs):
     if 'custom_limits' not in kwargs:
         if robot_name == 'feg':
             kwargs['custom_limits'] = ((0, 0, 0), (2, 10, 2))
-        elif robot_name == 'pr2':
+        elif robot_name in ['spot', 'pr2']:
             kwargs['custom_limits'] = ((0, 0, 0), (3, 10, 2.4))
     return build_robot_from_args(world, robot_name, **kwargs)
 
@@ -176,6 +223,12 @@ def build_robot_from_args(world, robot_name, **kwargs):
             del kwargs['initial_xy']
             kwargs['initial_q'] = [x, y, 0.7, 0, -PI / 2, 0]
         robot = create_gripper_robot(world, **kwargs)
+    elif robot_name == 'spot':
+        if 'base_q' not in kwargs and 'initial_xy' in kwargs:
+            x, y = kwargs['initial_xy']
+            del kwargs['initial_xy']
+            kwargs['base_q'] = (x, y, PI)
+        robot = create_spot_robot(world, **kwargs)
     else:
         if 'base_q' not in kwargs and 'initial_xy' in kwargs:
             x, y = kwargs['initial_xy']

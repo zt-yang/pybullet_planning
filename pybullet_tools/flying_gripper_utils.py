@@ -240,7 +240,7 @@ def se3_ik(robot, target_pose, max_iterations=200, max_time=5, verbose=False, mo
     report_failure = False
     debug = False
 
-    if mod_target != None:
+    if mod_target is not None:
         actual_target = copy.deepcopy(target_pose)
         target_pose = mod_target
 
