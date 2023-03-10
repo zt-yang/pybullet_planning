@@ -253,7 +253,8 @@ class PR2Robot(RobotAPI):
         init += [('HandEmpty', arm) for arm in ARM_NAMES]
         return init
 
-    def get_stream_map(self, problem, collisions, custom_limits, teleport, **kwargs):
+    def get_stream_map(self, problem, collisions, custom_limits, teleport,
+                       domain_pddl=None, **kwargs):
         from pybullet_tools.pr2_agent import get_stream_map
         return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
 

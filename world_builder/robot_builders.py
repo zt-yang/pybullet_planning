@@ -133,15 +133,11 @@ def build_skill_domain_robot(world, robot_name, **kwargs):
 
 
 def build_table_domain_robot(world, robot_name, **kwargs):
-    """ simplified cooking domain, pr2 no torso """
+    """ testing basic pick and place """
     kwargs['initial_xy'] = (0, 0)
     if 'custom_limits' not in kwargs:
-        if robot_name == 'feg':
-            kwargs['custom_limits'] = ((-4, -4, 0), (4, 4, 2))
-        elif robot_name == 'pr2':
-            kwargs['custom_limits'] = ((-4, -4), (4, 4))
-            kwargs['USE_TORSO'] = False
-            kwargs['custom_limits'] = ((-4, -4, 0), (4, 4, 1))
+        kwargs['custom_limits'] = ((-4, -4, 0), (4, 4, 2))
+        if robot_name == 'pr2':
             kwargs['USE_TORSO'] = True
     return build_robot_from_args(world, robot_name, **kwargs)
 
@@ -175,13 +171,16 @@ def build_robot_from_args(world, robot_name, **kwargs):
             x, y = kwargs['initial_xy']
             del kwargs['initial_xy']
             kwargs['initial_q'] = [x, y, 0.7, 0, -PI / 2, 0]
-        robot = create_gripper_robot(world, **kwargs)
     else:
         if 'base_q' not in kwargs and 'initial_xy' in kwargs:
             x, y = kwargs['initial_xy']
             del kwargs['initial_xy']
             kwargs['base_q'] = (x, y, PI)
-        robot = create_pr2_robot(world, **kwargs)
+
+        if robot_name == 'spot':
+            robot = load_spot_robot(world, **kwargs)
+        else:
+            robot = create_pr2_robot(world, **kwargs)
 
     if spawn_range is not None:
         robot.set_spawn_range(spawn_range)

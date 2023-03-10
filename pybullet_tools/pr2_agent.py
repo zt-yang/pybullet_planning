@@ -14,14 +14,12 @@ from pybullet_tools.pr2_streams import get_stable_gen, Position, get_pose_in_spa
     get_marker_grasp_gen, get_bconf_in_region_test, get_pull_door_handle_motion_gen, \
     get_bconf_in_region_gen, get_pose_in_region_gen, get_base_motion_gen, \
     get_marker_pose_gen, get_pull_marker_to_pose_motion_gen, get_pull_marker_to_bconf_motion_gen,  \
-    get_pull_marker_random_motion_gen, get_ik_ungrasp_handle_gen, get_pose_in_region_test, \
+    get_pull_marker_random_motion_gen, get_ik_ungrasp_gen, get_pose_in_region_test, \
     get_cfree_btraj_pose_test, get_joint_position_open_gen, get_ik_ungrasp_mark_gen, \
-    sample_joint_position_gen, get_ik_gen, get_ik_fn
-    # , get_cfree_pose_pose_rel_test, get_cfree_approach_pose_rel_test
+    sample_joint_position_gen, get_ik_gen, get_ik_fn, get_base_from_ik_fn
 
 from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
-    get_ik_ir_gen, get_motion_gen, \
-    move_cost_fn, Attach, Detach, Clean, Cook, \
+    get_ik_ir_gen, get_motion_gen, move_cost_fn, Attach, Detach, Clean, Cook, \
     get_gripper_joints, GripperCommand, apply_commands, State, Trajectory, Simultaneous, create_trajectory
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, get_handle_grasp_list_gen, \
     get_handle_grasp_gen, get_compute_pose_kin, get_compute_pose_rel_kin, \
@@ -86,13 +84,18 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
                                                        top_grasp_tolerance=PI/4)), # TODO: collisions
         'compute-pose-kin': from_fn(get_compute_pose_kin()),
         'compute-pose-rel-kin': from_fn(get_compute_pose_rel_kin()),
+
         'inverse-reachability': from_gen_fn(
             get_ik_gen(p, collisions=c, teleport=t, ir_only=True, custom_limits=l,
                        verbose=True, visualize=False, learned=False)),
         'inverse-kinematics': from_fn(
             get_ik_fn(p, collisions=motion_collisions, teleport=t, verbose=True, visualize=False)),
-        'inverse-kinematics-half': from_fn(
-            get_ik_fn(p, pick_up=False, collisions=motion_collisions, verbose=True, visualize=False)),
+
+        # 'plan-arm-motion-grasp': from_fn(
+        #     get_ik_fn(p, pick_up=False, collisions=motion_collisions, verbose=True, visualize=False)),
+        # 'plan-arm-motion-ungrasp': from_gen_fn(
+        #     get_ik_ungrasp_gen(p, given_base_conf=False, collisions=motion_collisions, verbose=True, visualize=False)),
+
         'plan-base-motion': from_fn(get_base_motion_gen(p, collisions=base_collisions, teleport=t, custom_limits=l)),
         # 'plan-base-motion-with-obj': from_fn(get_base_motion_with_obj_gen(p, collisions=base_collisions,
         #                                                          teleport=t, custom_limits=l)),
@@ -113,10 +116,9 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         # TODO: apply motion_collisions to pulling?
         'inverse-kinematics-grasp-handle': from_gen_fn(
             get_ik_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l,
-                       pick_up=False, learned=False, verbose=True)),
+                       pick_up=False, given_grasp_conf=False, learned=False, verbose=True)),
         'inverse-kinematics-ungrasp-handle': from_gen_fn(
-            get_ik_ungrasp_handle_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l,
-                                      verbose=False)),
+            get_ik_ungrasp_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l, verbose=False)),
 
         'plan-base-pull-door-handle': from_fn(
             get_pull_door_handle_motion_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l)),

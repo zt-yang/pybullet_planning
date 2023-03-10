@@ -545,7 +545,7 @@ def sample_joint_position_gen(num_samples=6):
 def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=PI/4): # None | PI/4 | INF
     if top_grasp_tolerance is None:
         return True
-    if isinstance(grasp, Grasp):
+    if not isinstance(grasp, tuple):
         grasp = grasp.value
     grasp_pose = robot.get_grasp_pose(pose, grasp, arm, body=body)
     grasp_orientation = (Point(), quat_from_pose(grasp_pose))
