@@ -20,10 +20,11 @@ from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, 
     SEPARATOR, get_aabb, get_pose, approximate_as_prism, draw_aabb, multiply, unit_quat, remove_body, invert, \
     Pose, get_link_pose, get_joint_limits, WHITE, RGBA, set_all_color, RED, GREEN, set_renderer, clone_body, \
     add_text, joint_from_name, set_caching, Point, set_random_seed, set_numpy_seed, reset_simulation, \
-    get_joint_name, get_link_name, dump_joint, set_joint_position
+    get_joint_name, get_link_name, dump_joint, set_joint_position, ConfSaver, pairwise_link_collision
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, set_camera_target_body, \
-    draw_bounding_lines, fit_dimensions, draw_fitted_box, get_hand_grasps, \
+    draw_bounding_lines, fit_dimensions, draw_fitted_box, get_hand_grasps, sample_random_pose, \
     open_joint, get_grasp_db_file, draw_points, take_selected_seg_images, dump_json
+from pybullet_tools.pr2_problems import create_floor
 from pybullet_tools.pr2_agent import get_stream_info, post_process, move_cost_fn, \
     visualize_grasps_by_quat, visualize_grasps
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, Position, \
@@ -64,10 +65,12 @@ def get_instances(category, **kwargs):
     return instances
 
 
-def get_test_world(robot='feg', semantic_world=False, **kwargs):
-    connect(use_gui=True, shadows=False, width=1980, height=1238)  ##  , width=360, height=270
-    # draw_pose(unit_pose(), length=.5)
-    # create_floor()
+def get_test_world(robot='feg', semantic_world=False, draw_origin=False,
+                   width=1980, height=1238, **kwargs):
+    connect(use_gui=True, shadows=False, width=width, height=height)  ##  , width=360, height=270
+    if draw_origin:
+        draw_pose(unit_pose(), length=.5)
+        create_floor()
     set_caching(cache=False)
     if semantic_world:
         from world_builder.world import World
@@ -1030,6 +1033,73 @@ def get_placement_z(robot='pr2'):
                                       movable_instance=ins, **kwargs)
 
 
+def test_tracik(robot, verbose=False):
+    from pybullet_tools.tracik import IKSolver
+    from pybullet_tools.spot_utils import compute_link_lengths, solve_leg_conf
+    world = get_test_world(robot=robot, width=1200, height=1200,
+                           semantic_world=True, draw_origin=True,
+                           custom_limits=((-3, -3), (3, 3)))
+    robot = world.robot
+    set_camera_target_body(robot.body, distance=0.5)
+    set_joint_position(robot.body, joint_from_name(robot.body, 'arm0.f1x'), -1.5)
+    # compute_link_lengths(robot.body)
+
+    box = create_box(0.05, 0.05, 0.075, color=(1, 0, 0, 1))
+    grasp_pose = ((0, 0, 0.2), quat_from_euler((0, math.pi/2, 0)))
+
+    tool_link = robot.get_tool_link()
+    body_solver = IKSolver(robot, tool_link=tool_link, first_joint='torso_lift_joint',
+                           custom_limits=robot.custom_limits)  ## using 13 joints
+
+    while True:
+        box_pose = sample_random_pose(AABB(lower=[-0.3, -0.3, 0.2], upper=[0.3, 0.3, 1.2])) ## ((0, 0, 0.1), (0, 0, 0, 1))
+        gripper_pose = multiply(box_pose, grasp_pose)
+        print('\n', nice(gripper_pose))
+        for conf in body_solver.generate(gripper_pose):
+            joint_state = dict(zip(body_solver.joints, conf))
+            joint_values = {}
+            for i, value in joint_state.items():
+                if i == 0:
+                    continue
+                joint_name = get_joint_name(robot.body, i)
+                joint_values[i] = (joint_name, value)
+
+            collided = False
+            with ConfSaver(robot.body):
+                body_solver.set_conf(conf)
+                body_link = link_from_name(robot.body, 'body_link')
+                for i in ['arm0.link_sh1', 'arm0.link_hr0', 'arm0.link_el0',
+                          'arm0.link_el1', 'arm0.link_wr0', 'arm0.link_wr1']:
+                    link = link_from_name(robot.body, i)
+                    if pairwise_link_collision(robot.body, link, robot.body, body_link):
+                        collided = True
+                        break
+            if collided:
+                if verbose:
+                    print('\n\n self-collision!')
+                break
+
+            leg_conf = solve_leg_conf(robot.body, joint_state[0], verbose=False)
+            if leg_conf is None:
+                if verbose:
+                    print('\n\n failed leg ik!')
+                break
+
+            for i in range(len(leg_conf.values)):
+                index = leg_conf.joints[i]
+                value = leg_conf.values[i]
+                joint_values[index] = (get_joint_name(robot.body, index), value)
+
+            joint_values = dict(sorted(joint_values.items()))
+            for i, (joint_name, value) in joint_values.items():
+                print('\t', i, '\t', joint_name, '\t', round(value, 3))
+
+            set_pose(box, box_pose)
+            body_solver.set_conf(conf)
+            leg_conf.assign()
+            break
+
+
 ############################################################################
 
 
@@ -1051,11 +1121,12 @@ if __name__ == '__main__':
     # get_placement_z()
 
     """ --- robot (FEGripper) related  --- """
-    robot = 'feg'  ## 'feg' | 'pr2'
+    robot = 'spot'  ## 'feg' | 'pr2' | 'spot'
     # test_gripper_joints()
     # test_gripper_range()
     # test_torso()
     # test_reachability(robot)
+    test_tracik(robot)
 
     """ --- grasps related ---
     """

@@ -2111,11 +2111,41 @@ def query_yes_no(question, default="no"):
             sys.stdout.write("Please respond with 'yes' or 'no' " "(or 'y' or 'n').\n")
 
 
-def modify_facts_by_body_map(facts, body_map):
-    new_facts = []
-    for f in facts:
-        new_f = [f[0]]
-        print(f)
-        for elem in f[1:]:
-            print('  ', elem, type(elem))
-    print('------------------')
+def query_right_left():
+    """ return 1 for forward and 0 for backward, only works when run in terminal, not PyCharm """
+    import getch
+
+    while True:
+        print('Please press right arrow or enter to continue or left arrow to go back')
+        key = getch.getche()
+        if ord(key) == 10:  # Enter
+            return 1
+        elif key == 'd':  # Right arrow
+            return 1
+        elif key == 'a':  # Left arrow
+            return 0
+        # elif key in [b'\xe0', b'\x00']:  # thing i do not understand
+        #     key = ord(getch.getch())
+        #     print('keyboard', key)
+        #     if key == 77:  # Right arrow
+        #         return 1
+        #     elif key == 75:  # Left arrow
+        #         return 0
+
+
+def sample_random_pose(aabb):
+    ## sample point
+    x = np.random.uniform(aabb[0][0], aabb[1][0])
+    y = np.random.uniform(aabb[0][1], aabb[1][1])
+    z = np.random.uniform(aabb[0][2], aabb[1][2])
+
+    ## sample rotation
+    case = np.random.randint(0, 4)
+    roll, pitch, yaw = 0, 0, 0
+    if case == 0:
+        roll = np.random.uniform(0, 2 * np.pi)
+    elif case == 1:
+        pitch = np.random.uniform(0, 2 * np.pi)
+    elif case == 2:
+        yaw = np.random.uniform(0, 2 * np.pi)
+    return Pose(Point(x, y, z), Euler(roll, pitch, yaw))

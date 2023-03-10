@@ -3,7 +3,7 @@ import pybullet as p
 import copy
 
 from pybullet_tools.bullet_utils import clip_delta, multiply2d, is_above, nice, open_joint, set_camera_target_robot, \
-    toggle_joint, add_attachment, remove_attachment, draw_pose2d_path, \
+    toggle_joint, add_attachment, remove_attachment, draw_pose2d_path, query_right_left, \
     draw_pose3d_path, get_obj_keys_for_segmentation, get_segmask, collided
 from pybullet_tools.pr2_streams import Position, get_pull_door_handle_motion_gen, \
     LINK_POSE_TO_JOINT_POSITION
@@ -11,7 +11,7 @@ from pybullet_tools.utils import str_from_object, get_closest_points, INF, creat
     get_aabb, get_joint_position, get_joint_name, get_link_pose, link_from_name, PI, Pose, Euler, \
     get_extend_fn, get_joint_positions, set_joint_positions, get_max_limit, get_pose, set_pose, set_color, \
     remove_body, create_cylinder, set_all_static, wait_for_duration, remove_handles, set_renderer, \
-    LockRenderer
+    LockRenderer, wait_unlocked
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, get_gripper_joints, close_until_collision
 from pybullet_tools.pr2_primitives import Trajectory, Command, Conf, Trajectory, Commands
 from pybullet_tools.flying_gripper_utils import set_se3_conf, get_pull_handle_motion_gen
@@ -526,7 +526,9 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
     initial_collisions = copy.deepcopy(ignored_collisions)
     expected_pose = None
     cfree_until = None
-    for i, action in enumerate(actions):
+    i = 0
+    while i < len(actions):
+        action = actions[i]
         name = action.__class__.__name__
 
         if 'GripperAction' in name and CHECK_COLLISIONS:
@@ -647,14 +649,25 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
                 imgs = world.camera.get_image()
                 seg_images.append(imgs.rgbPixels[:, :, :3])
 
+        ############# keyboard control (if ran in terminal) ##################
+
         elif time_step is None:
-            wait_if_gui()
+            result = query_right_left()
+            if not result:
+                if i > 1:
+                    i -= 2
+                else:
+                    i -= 1
+
+        ############# automatically play forward ##################
+
         else:
             wait_for_duration(time_step)
 
+        i += 1
+
     if CHECK_COLLISIONS:
         return False
-
     if SAVE_COMPOSED_JPG:
         if recording:
             episodes.append((seg_images, isinstance(last_object, int)))
