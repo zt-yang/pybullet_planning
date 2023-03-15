@@ -1035,8 +1035,7 @@ def get_placement_z(robot='pr2'):
 
 def test_tracik(robot, verbose=False):
     from pybullet_tools.tracik import IKSolver
-    from pybullet_tools.spot_utils import compute_link_lengths
-    from pybullet_tools.spot_ik import solve_leg_conf
+    from pybullet_tools.spot_utils import compute_link_lengths, solve_leg_conf
     world = get_test_world(robot=robot, width=1200, height=1200,
                            semantic_world=True, draw_origin=True,
                            custom_limits=((-3, -3), (3, 3)))
@@ -1115,7 +1114,7 @@ if __name__ == '__main__':
     ----------------- ----------------- ----------------- --------- """
 
     """ --- models related --- """
-    get_data(categories=['DiningTable'])
+    # get_data(categories=['DiningTable'])
     # test_texture(category='CoffeeMachine', id='103127')
     # test_vhacd(category='BraiserBody')
     # get_partnet_aabbs()
@@ -1127,11 +1126,11 @@ if __name__ == '__main__':
     # test_gripper_range()
     # test_torso()
     # test_reachability(robot)
-    test_tracik(robot)
+    # test_tracik(robot)
 
     """ --- grasps related ---
     """
-    # test_grasps(robot, ['Bottle'], skip_grasps=False, test_attachment=True)  ## 'EyeGlasses'
+    test_grasps(robot, ['Bottle'], skip_grasps=False, test_attachment=False)  ## 'EyeGlasses'
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
 

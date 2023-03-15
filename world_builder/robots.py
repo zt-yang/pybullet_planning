@@ -36,7 +36,7 @@ class RobotAPI(Robot):
     def get_init(self, init_facts=[], conf_saver=None):
         raise NotImplementedError('should implement this for RobotAPI!')
 
-    def get_stream_map(self, problem, collisions, custom_limits, teleport):
+    def get_stream_map(self, problem, collisions, custom_limits, teleport, **kwargs):
         raise NotImplementedError('should implement this for RobotAPI!')
 
     def create_gripper(self, arm='left', visual=True):
@@ -169,35 +169,140 @@ class RobotAPI(Robot):
         self.spawn_range = limits
 
 
-class SpotRobot(RobotAPI):
-    arms = ['hand']  ## 'right'
+class MobileRobot(RobotAPI):
+
+    arms = None
+
+    def __init__(self, body, USE_TORSO=True, **kwargs):
+        super(MobileRobot, self).__init__(body, **kwargs)
+        self.USE_TORSO = USE_TORSO
+
+    def get_arm_joints(self, arm):
+        raise NotImplementedError('should implement this for MobileRobot!')
+
+    def get_group_joints(self, group):
+        raise NotImplementedError('should implement this for MobileRobot!')
+
+    def get_all_arms(self):
+        return self.arms
+
+    def get_init(self, init_facts=[], conf_saver=None):
+        robot = self.body
+
+        def get_conf(joints):
+            if conf_saver is None:
+                return get_joint_positions(robot, joints)
+            return [conf_saver.conf[conf_saver.joints.index(n)] for n in joints]
+
+        def get_base_conf():
+            base_joints = self.get_group_joints('base')
+            initial_bq = Conf(robot, base_joints, get_conf(base_joints))
+            for fact in init_facts:
+                if fact[0] == 'bconf' and equal(fact[1].values, initial_bq.values):
+                    return fact[1]
+            return initial_bq
+
+        def get_base_torso_conf():
+            base_joints = self.get_group_joints('base-torso')
+            initial_bq = Conf(robot, base_joints, get_conf(base_joints))
+            for fact in init_facts:
+                if fact[0] == 'btconf' and equal(fact[1].values, initial_bq.values):
+                    return fact[1]
+            return initial_bq
+
+        def get_arm_conf(arm):
+            arm_joints = self.get_arm_joints(arm)
+            conf = Conf(robot, arm_joints, get_conf(arm_joints))
+            for fact in init_facts:
+                if fact[0] == 'aconf' and fact[1] == arm and equal(fact[2].values, conf.values):
+                    return fact[2]
+            return conf
+
+        initial_bq = get_base_torso_conf() if self.USE_TORSO else get_base_conf()
+        init = [('BConf', initial_bq), ('AtBConf', initial_bq)]
+
+        for arm in self.get_all_arms():
+            conf = get_arm_conf(arm)
+            init += [('Arm', arm), ('AConf', arm, conf), ('AtAConf', arm, conf),
+                     ('DefaultAConf', arm, conf), ('HandEmpty', arm)]
+            if arm in self.arms:
+                init += [('Controllable', arm)]
+
+        return init
+
+    def get_stream_map(self, problem, collisions, custom_limits, teleport,
+                       domain_pddl=None, **kwargs):
+        from pybullet_tools.pr2_agent import get_stream_map
+        return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
+
+    def get_stream_info(self, **kwargs):
+        from pybullet_tools.pr2_agent import get_stream_info
+        return get_stream_info() ## partial=partial, defer=defer
+
+
+class SpotRobot(MobileRobot):
+
+    arms = ['hand']
     grasp_types = ['top', 'side']  ##
     joint_groups = ['hand', 'base-torso']
 
     def __init__(self, body, base_link='base', **kwargs):
         from pybullet_tools.spot_utils import SPOT_JOINT_GROUPS
-        joints = SPOT_JOINT_GROUPS['base']
+        joints = SPOT_JOINT_GROUPS['base-torso']
         super(SpotRobot, self).__init__(body, base_link=base_link, joints=joints, **kwargs)
 
     def get_tool_link(self, a='hand'):
         from pybullet_tools.spot_utils import SPOT_TOOL_LINK
         return SPOT_TOOL_LINK
 
+    def get_arm_joints(self, arm):
+        return self.get_group_joints('arm')
 
-class PR2Robot(RobotAPI):
+    def get_group_joints(self, group):
+        from pybullet_tools.spot_utils import get_group_joints
+        return get_group_joints(self.body, group)
 
-    arms = ['left']  ## 'right'
-    grasp_types = ['top', 'side']  ##
+    # def get_stream_map(self, problem, collisions, custom_limits, teleport,
+    #                    domain_pddl=None, **kwargs):
+    #     from pybullet_tools.pr2_agent import get_stream_map
+    #     stream_map = get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
+    #     # stream_map = {k: v for k, v in stream_map.items() if k in {
+    #     #     'sample-pose', 'sample-grasp', 'sample-grasp', 'sample-grasp'
+    #     # }}
+    #     return stream_map
+
+    def create_gripper(self, arm='hand', **kwargs):
+        from pybullet_tools.pr2_utils import create_gripper
+        from pybullet_tools.spot_utils import SPOT_TOOL_LINK as link_name
+        self.grippers[arm] = create_gripper(self.body, arm=arm, link_name=link_name, **kwargs)
+        return self.grippers[arm]
+
+
+class PR2Robot(MobileRobot):
+
+    arms = ['left']
+    grasp_types = ['top', 'side']
     joint_groups = ['left', 'right', 'base', 'base-torso']
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
     finger_link = 7  ## for detecting if a grasp is pointing upwards
 
-    def __init__(self, body, DUAL_ARM=False, USE_TORSO=False, **kwargs):
+    def __init__(self, body, DUAL_ARM=False, **kwargs):
         super(PR2Robot, self).__init__(body, **kwargs)
         self.DUAL_ARM = DUAL_ARM
-        self.USE_TORSO = USE_TORSO
         self.grasp_aconfs = {}
         ## get away with the problem of Fluent stream outputs cannot be in action effects: ataconf
+
+    def get_arm_joints(self, arm):
+        from pybullet_tools.pr2_utils import get_arm_joints
+        return get_arm_joints(self.body, arm)
+
+    def get_group_joints(self, group):
+        from pybullet_tools.pr2_utils import get_group_joints
+        return get_group_joints(self.body, group)
+
+    def get_all_arms(self):
+        from pybullet_tools.pr2_utils import ARM_NAMES
+        return ARM_NAMES
 
     def add_collision_grasp(self, a, o, g):
         from world_builder.actions import AttachObjectAction
@@ -220,62 +325,6 @@ class PR2Robot(RobotAPI):
     def get_arm_joints(self, arm):
         from pybullet_tools.pr2_utils import get_arm_joints
         return get_arm_joints(self.body, arm)
-
-    def get_init(self, init_facts=[], conf_saver=None):
-        from pybullet_tools.pr2_utils import get_arm_joints, ARM_NAMES, get_group_joints
-
-        robot = self.body
-
-        def get_conf(joints):
-            if conf_saver is None:
-                return get_joint_positions(robot, joints)
-            return [conf_saver.conf[conf_saver.joints.index(n)] for n in joints]
-
-        def get_base_conf():
-            base_joints = get_group_joints(robot, 'base')
-            initial_bq = Conf(robot, base_joints, get_conf(base_joints))
-            for fact in init_facts:
-                if fact[0] == 'bconf' and equal(fact[1].values, initial_bq.values):
-                    return fact[1]
-            return initial_bq
-
-        def get_base_torso_conf():
-            base_joints = get_group_joints(robot, 'base-torso')
-            initial_bq = Conf(robot, base_joints, get_conf(base_joints))
-            for fact in init_facts:
-                if fact[0] == 'btconf' and equal(fact[1].values, initial_bq.values):
-                    return fact[1]
-            return initial_bq
-
-        def get_arm_conf(arm):
-            arm_joints = get_arm_joints(robot, arm)
-            conf = Conf(robot, arm_joints, get_conf(arm_joints))
-            for fact in init_facts:
-                if fact[0] == 'aconf' and fact[1] == arm and equal(fact[2].values, conf.values):
-                    return fact[2]
-            return conf
-
-        initial_bq = get_base_torso_conf() if self.USE_TORSO else get_base_conf()
-        init = [('BConf', initial_bq), ('AtBConf', initial_bq)]
-
-        for arm in ARM_NAMES:
-            conf = get_arm_conf(arm)
-            init += [('Arm', arm), ('AConf', arm, conf),
-                     ('DefaultAConf', arm, conf), ('AtAConf', arm, conf)]
-            if arm in self.arms:
-                init += [('Controllable', arm)]
-
-        init += [('HandEmpty', arm) for arm in ARM_NAMES]
-        return init
-
-    def get_stream_map(self, problem, collisions, custom_limits, teleport,
-                       domain_pddl=None, **kwargs):
-        from pybullet_tools.pr2_agent import get_stream_map
-        return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
-
-    def get_stream_info(self, **kwargs):
-        from pybullet_tools.pr2_agent import get_stream_info
-        return get_stream_info() ## partial=partial, defer=defer
 
     def create_gripper(self, arm='left', **kwargs):
         # TODO(caelan): gripper bodies are removed
