@@ -8,7 +8,8 @@ import time
 SPOT_URDF = "models/spot_description/model.urdf"
 SPOT_TOOL_LINK = "arm0.link_wr1"
 SPOT_JOINT_GROUPS = {
-    'base': ['x', 'y', 'theta', 'torso_lift_joint'],
+    'base-torso': ['x', 'y', 'theta', 'torso_lift_joint'],
+    'arm': ['arm0.sh0', 'arm0.sh1', 'arm0.hr0', 'arm0.el0', 'arm0.el1', 'arm0.wr0', 'arm0.wr1'],
     'leg': ['fl.hy', 'fl.kn', 'fr.hy', 'fr.kn', 'hl.hy', 'hl.kn', 'hr.hy', 'hr.kn']
 }
 
@@ -18,6 +19,10 @@ def load_spot():
         with HideOutput():
             pr2 = load_model(SPOT_URDF, fixed_base=False)
     return pr2
+
+
+def get_group_joints(robot, group):
+    return [joint_from_name(robot, name) for name in SPOT_JOINT_GROUPS[group]]
 
 
 def solve_leg_conf(body, torso_lift_value, verbose=True):

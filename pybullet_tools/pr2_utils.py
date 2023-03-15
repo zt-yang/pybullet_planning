@@ -794,8 +794,9 @@ def compute_grasp_width(robot, arm, body, grasp_pose, **kwargs):
     return close_until_collision(robot, gripper_joints, bodies=[body], **kwargs)
 
 
-def create_gripper(robot, arm, visual=True, color=None):
-    link_name = PR2_GRIPPER_ROOTS[arm]
+def create_gripper(robot, arm, visual=True, color=None, link_name=None):
+    if link_name is None:
+        link_name = PR2_GRIPPER_ROOTS[arm]
     # gripper = load_pybullet(os.path.join(get_data_path(), 'pr2_gripper.urdf'))
     # gripper = load_pybullet(os.path.join(get_models_path(), 'pr2_description/pr2_l_gripper.urdf'), fixed_base=False)
     # pybullet.error: Error receiving visual shape info for the DRAKE_PR2
