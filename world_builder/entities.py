@@ -24,11 +24,6 @@ LINK_STR = '::'  ## same as in pybullet_planning/lisdf_tools/lisdf_loader
 
 
 class Index(object):
-    # TODO: unify with some of the following?
-    # https://pypi.org/project/pybullet-planning/
-    # https://github.com/rachelholladay/pb_robot
-    # https://github.com/carismoses/pb_robot
-    # https://github.com/rachelholladay/tampExample
     def __int__(self):
         raise NotImplementedError()
     def __eq__(self, other):

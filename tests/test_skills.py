@@ -1035,7 +1035,8 @@ def get_placement_z(robot='pr2'):
 
 def test_tracik(robot, verbose=False):
     from pybullet_tools.tracik import IKSolver
-    from pybullet_tools.spot_utils import compute_link_lengths, solve_leg_conf
+    from pybullet_tools.spot_utils import compute_link_lengths
+    from pybullet_tools.spot_ik import solve_leg_conf
     world = get_test_world(robot=robot, width=1200, height=1200,
                            semantic_world=True, draw_origin=True,
                            custom_limits=((-3, -3), (3, 3)))
