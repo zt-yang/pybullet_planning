@@ -558,7 +558,7 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | P
     robot = problem.robot
     world = problem.world
     grasp_type = 'hand'
-    arm = 'left'
+    arm = robot.arms[0]
 
     def fn(body):
         from .bullet_utils import get_hand_grasps

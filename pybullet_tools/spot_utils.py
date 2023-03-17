@@ -1,16 +1,19 @@
 from pybullet_tools.utils import LockRenderer, HideOutput, load_model, link_from_name, \
-    get_aabb, get_aabb_center, draw_aabb, joint_from_name
+    get_aabb, get_aabb_center, draw_aabb, joint_from_name, PI
 from pybullet_tools.pr2_primitives import Conf
 import time
 import math
 
 SPOT_URDF = "models/spot_description/model.urdf"
 SPOT_TOOL_LINK = "arm0.link_wr1"
+SPOT_FINGER_LINK = "arm0.link_fngr"
 SPOT_JOINT_GROUPS = {
     'base-torso': ['x', 'y', 'theta', 'torso_lift_joint'],
     'arm': ['arm0.sh0', 'arm0.sh1', 'arm0.hr0', 'arm0.el0', 'arm0.el1', 'arm0.wr0', 'arm0.wr1'],
-    'leg': ['fl.hy', 'fl.kn', 'fr.hy', 'fr.kn', 'hl.hy', 'hl.kn', 'hr.hy', 'hr.kn']
+    'leg': ['fl.hy', 'fl.kn', 'fr.hy', 'fr.kn', 'hl.hy', 'hl.kn', 'hr.hy', 'hr.kn'],
+    'gripper': ['arm0.f1x']
 }
+SPOT_CARRY_ARM_CONF = (0, -PI, 0, PI, 0, 0, 0)
 
 
 def load_spot():
@@ -30,7 +33,6 @@ def solve_leg_conf(body, torso_lift_value, verbose=True):
     zO = 0.739675
     lA = 0.3058449991941452
     lB = 0.3626550008058548  ## 0.3826550008058548
-    # 'fl.toe' 'fl.hy'
 
     aA = Symbol('aA', real=True)
     # aB = Symbol('aB', real=True)

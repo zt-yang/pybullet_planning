@@ -928,7 +928,7 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=Fal
         if RETAIN_ALL:
             print(' grasp.value', nice(grasp.value))
             gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, body=grasp.body,
-                                                  color=colors[index%len(colors)], width=w)
+                                                  color=colors[index%len(colors)], width=w, new_gripper=True)
             if collisions and collided(gripper_grasp, state.obstacles, verbose=True):
                 remove_body(gripper_grasp)
                 return None
