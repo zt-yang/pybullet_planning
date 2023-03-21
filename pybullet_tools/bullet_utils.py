@@ -1451,6 +1451,8 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
     if not result or not RETAIN_ALL:
         remove_body(gripper_grasp)
         gripper_grasp = None
+        # weiyu: also remove the gripper from the robot
+        robot.remove_gripper()
 
     elif RETAIN_ALL:
         robot.open_cloned_gripper(gripper_grasp)

@@ -729,6 +729,10 @@ class FEGripper(RobotAPI):
             set_all_color(gripper, color)
         return gripper
 
+    def remove_gripper(self, arm="hand"):
+        if arm in self.grippers:
+            self.grippers.pop(arm)
+
     def get_gripper_joints(self, gripper_grasp=None):
         from pybullet_tools.flying_gripper_utils import get_joints_by_group, FINGERS_GROUP
         return get_joints_by_group(self.body, FINGERS_GROUP)

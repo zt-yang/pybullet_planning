@@ -269,6 +269,7 @@ def sample_clean_dish_v0(world, w=3, l=8, verbose=True, pause=True):
         'food': counters,
         'bottle': counters + [sink_bottom],
         'medicine': shelves,
+        'bowl': counters,
     }
     possible = []
     for v in all_counters.values():
@@ -298,9 +299,9 @@ def sample_clean_dish_v0(world, w=3, l=8, verbose=True, pause=True):
             load_storage_mechanism(world, cabi, epsilon=epsilon)
 
     ## load objects into reachable places
-    food_ids, bottle_ids, medicine_ids = \
+    food_ids, bottle_ids, medicine_ids, bowl_ids = \
         load_counter_moveables(world, all_counters, d_x_min=0.3, obstacles=obstacles)
-    moveables = food_ids + bottle_ids + medicine_ids
+    moveables = food_ids + bottle_ids + medicine_ids + bowl_ids
 
     """ step 6: take an image """
     set_camera_pose((4, 4, 3), (0, 4, 0))

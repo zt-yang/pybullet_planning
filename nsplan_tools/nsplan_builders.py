@@ -1,6 +1,6 @@
 import random
 from nsplan_tools.nsplan_loaders import sample_clean_dish_v0
-
+from pybullet_tools.utils import dump_world
 
 def test_clean_dish_feg(world, **kwargs):
     ## hyperparameters for world sampling
@@ -9,6 +9,10 @@ def test_clean_dish_feg(world, **kwargs):
 
     moveables, cabinets, counters, obstacles, x_food_min = \
         sample_clean_dish_v0(world, verbose=False, pause=False)
+
+    dump_world()
+    # input("here")
+
     goal = sample_clean_dish_goal(world)
     return goal
 
@@ -21,6 +25,7 @@ def sample_clean_dish_goal(world):
 
     food = random.choice(world.cat_to_bodies('edible'))
     bottle = random.choice(world.cat_to_bodies('bottle'))
+    bowl = random.choice(world.cat_to_bodies('bowl'))
     counter = world.name_to_body('sink_counter_left')
     # fridge = world.name_to_object('minifridge_storage')
     # fridge_door = fridge.doors[0]
@@ -59,7 +64,10 @@ def sample_clean_dish_goal(world):
     # goals = [('On', bottle, sink)]
     # goals = [('Cleaned', bottle)]
     # goals = [('In', bottle, cabinet_space), ('Cleaned', bottle)]
-    goals = [('In', bottle, cabinet_space), ('NoDirtyPlateInCabinet', cabinet_space)]
+    # goals = [('In', bottle, cabinet_space), ('NoDirtyPlateInCabinet', cabinet_space)]
+    # goals = [('On', bowl, sink)]
+    # goals = [('Holding', hand, bowl)]
+    goals = [('Holding', hand, bowl)]
     ## ------------------------------------------------
 
     ## removing all fridge doors to save planning time for testing domain
@@ -67,5 +75,19 @@ def sample_clean_dish_goal(world):
         world.open_joint(door[0], door[1], hide_door=True)
 
     world.remove_bodies_from_planning(goals=goals, exceptions=objects)
+
+
+
+
+    ################################################
+    # debug
+
+    from pybullet_tools.flying_gripper_utils import quick_demo_debug
+
+    quick_demo_debug(world)
+
+    input("after quick demo")
+
+
 
     return goals

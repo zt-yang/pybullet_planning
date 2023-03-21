@@ -646,3 +646,55 @@ def quick_demo(world):
     # wait_if_gui('end?')
     sys.exit()
 
+
+def quick_demo_debug(world):
+    from pybullet_tools.utils import set_all_static
+    from world_builder.world import State
+
+    class Problem():
+        def __init__(self, robot, obstacles):
+            self.robot = robot
+            self.fixed = obstacles
+
+    robot = world.robot
+    custom_limits = robot.custom_limits
+
+    set_all_static()
+    state = State(world)
+    world.summarize_all_objects()
+
+    problem = Problem(robot, state.fixed)
+    # bottle = random.choice(world.cat_to_bodies('bottle'))
+    bowl = random.choice(world.cat_to_bodies('bowl'))
+
+    ## sample grasp
+    g_sampler = get_grasp_list_gen(state, visualize=True)
+    outputs = g_sampler(bowl)
+    g = outputs[0][0]
+    body_pose = robot.get_body_pose(bowl, verbose=False)
+    approach_pose = multiply(body_pose, g.approach)
+
+    ## set approach pose as goal pose
+
+    joints = get_se3_joints(robot)
+    seconf1 = [0.9, 8, 0.7, 0, -math.pi/2, 0] ## [0.9, 8, 0.4, 0, 0, 0]
+    seconf2 = [0.9, 8, 1.4, 0, 0, 0]
+    seconf2 = se3_from_pose(approach_pose)
+    q1 = Conf(robot, joints, seconf1)
+    q2 = Conf(robot, joints, seconf2)
+    q1.assign()
+
+    ## plan and execute path, saving the first depth map and all se3 confs
+    funk = get_free_motion_gen(problem, custom_limits, visualize=True, time_step=0.1)
+
+    video_path = join('visualizations', 'video_tmp.mp4')
+    with VideoSaver(video_path):
+        raw_path = funk(q1, q2)
+    state.world.visualize_image(((1.7, 8.1, 1), (0.5, 0.5, -0.5, -0.5)))
+
+    ## output to json
+    print('len(raw_path)', len(raw_path))
+
+    with open('gripper_traj.txt', 'w') as f:
+        f.write('\n'.join([str(nice(p)) for p in raw_path]))
+

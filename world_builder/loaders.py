@@ -1466,7 +1466,7 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
     size_matter = len(obstacles) > 0 and obstacles[-1].name == 'braiser_bottom'
     satisfied = []
     if isinstance(counters, list):
-        counters = {k: counters for k in ['food', 'bottle', 'medicine']}
+        counters = {k: counters for k in ['food', 'bottle', 'medicine', 'bowl']}
     if d_x_min is None:
         d_x_min = - 0.3
     instances = {k: None for k in counters}
@@ -1592,12 +1592,21 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
         medicine_ids.append(obj)
         obstacles.append(obj.body)
 
+    ## add bowl
+    bowl_ids = []
+    for i in range(1):
+        obj = place_on_counter('bowl')
+        obj = ensure_cfree(obj, obstacles, obj_name='bowl')
+        # state = State(copy.deepcopy(world), gripper=state.gripper)
+        bowl_ids.append(obj)
+        obstacles.append(obj.body)
+
     if world.note in [3, 31]:
         put_lid_on_braiser(world)
     print('... finished loading moveables in {}s'.format(round(time.time() - start, 2)))
     # world.summarize_all_objects()
     # wait_unlocked()
-    return food_ids, bottle_ids, medicine_ids
+    return food_ids, bottle_ids, medicine_ids, bowl_ids
 
 
 def move_lid_away(world, counters, epsilon=1.0):
