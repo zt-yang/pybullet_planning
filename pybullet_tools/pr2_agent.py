@@ -606,7 +606,7 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
         solution = solve_focused(pddlstream_problem, stream_info=stream_info, constraints=constraints,
                                  planner='ff-astar1', max_planner_time=downward_time,
                                  unit_costs=False, success_cost=INF, initial_complexity=5,
-                                 max_time=max_time, visualize=visualize, verbose=True, debug=False,
+                                 max_time=max_time, visualize=visualize, verbose=True, debug=True,
                                  # unit_efforts=True, effort_weight=None,
                                  unique_optimistic=True, use_feedback=use_feedback,
                                  forbid=True, max_plans=max_plans,
@@ -943,6 +943,8 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=Fal
             # set_camera_target_body(gripper_approach, dx=0, dy=-1, dz=0)
             remove_body(gripper_grasp)
             remove_body(gripper_approach)
+            # weiyu: debug
+            robot.remove_gripper()
             return None
 
         return gripper_grasp
