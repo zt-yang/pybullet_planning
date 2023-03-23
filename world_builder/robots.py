@@ -753,7 +753,8 @@ class FEGripper(RobotAPI):
             # body = body[0]
 
         # with PoseSaver(body):
-        body_pose = unit_pose()
+        # debug: this should be not be unit pose, since grasp is with respect to the object
+        # body_pose = unit_pose()
         grasp = grasp.value
         grasp_pose = multiply(body_pose, grasp)
         if verbose:
@@ -762,7 +763,10 @@ class FEGripper(RobotAPI):
 
         with ConfSaver(self.body):
             with PoseSaver(body):
-                conf = se3_ik(self, grasp_pose)
+                print("se3_ik", grasp_pose)
+                conf = se3_ik(self, grasp_pose, verbose=True)
+                print("ik completed", conf)
+                input("next")
                 if conf is None:
                     print('\t\t\tFEGripper.conf is None', nice(grasp))
                     return None
@@ -774,6 +778,9 @@ class FEGripper(RobotAPI):
                 if verbose:
                     print(f'robots.compute_grasp_width | gripper_grasp {gripper} | object_pose {nice(body_pose)}'
                           f' | se_conf {nice(get_se3_conf(gripper))} | grasp = {nice(grasp)} ')
+
+                draw_pose(grasp_pose)
+                input("here")
 
                 gripper_joints = self.get_gripper_joints()
                 width = close_until_collision(gripper, gripper_joints, bodies=[body], **kwargs)
@@ -798,6 +805,7 @@ class FEGripper(RobotAPI):
             print(f'{title} grasp_pose = multiply(body_pose, grasp) = ', nice(grasp_pose))
 
         grasp_conf = se3_ik(self, grasp_pose, verbose=verbose, mod_target=mod_target)
+
         if verbose and grasp_conf == None:
             print(f'{title} body_pose = {nice(body_pose)} --> ik failed')
 

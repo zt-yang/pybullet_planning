@@ -90,10 +90,14 @@ def get_acronym_grasps():
         #     visual_count += 1
 
 
-def get_object_grasp(num_grasps=10):
+def get_object_grasp(num_grasps=100):
 
-    model_file = "/home/weiyu/data_drive/structformer_assets/acronym_handpicked_v4_textured_acronym_scale/visual/Bowl_8e840ba109f252534c6955b188e290e0_S.obj"
-    grasp_file = "/home/weiyu/data_drive/shapenet/acronym_meshes/grasps/Bowl_8e840ba109f252534c6955b188e290e0_0.020694713428071655.h5"
+    np.random.seed(0)
+
+    # model_file = "/home/weiyu/data_drive/structformer_assets/acronym_handpicked_v4_textured_acronym_scale/visual/Bowl_8e840ba109f252534c6955b188e290e0_S.obj"
+    # grasp_file = "/home/weiyu/data_drive/shapenet/acronym_meshes/grasps/Bowl_8e840ba109f252534c6955b188e290e0_0.020694713428071655.h5"
+    model_file = "/home/weiyu/data_drive/StructFormerDiffusion/structformer_assets/acronym_handpicked_v4_textured_acronym_scale/visual/Bowl_8e840ba109f252534c6955b188e290e0_S.obj"
+    grasp_file = "/home/weiyu/data_drive/shapenet/acronym/grasps/Bowl_8e840ba109f252534c6955b188e290e0_0.020694713428071655.h5"
 
     data = h5py.File(grasp_file, "r")
     mesh_fname = data["object/file"][()].decode('utf-8')
@@ -109,14 +113,26 @@ def get_object_grasp(num_grasps=10):
     obj_mesh = trimesh.load(model_file)
 
     for grasp in successful_grasps:
-        print(grasp)
+        # print(grasp)
+
+        offset_grasp = grasp @ tra.euler_matrix(0, 0, np.pi / 2)
 
         pos = grasp[:3, 3]
         rot = tra.euler_from_matrix(grasp)
-        print(pos.tolist() + [*rot])
+        print("grasp pose", pos.tolist() + [*rot])
+
+        # https://sites.google.com/nvidia.com/graspdataset
+        # gripper orientation convention is different
+        pos = offset_grasp[:3, 3]
+        rot = tra.euler_from_matrix(offset_grasp)
+        print("offset grasp pose", pos.tolist() + [*rot])
 
         vis_grasp = create_gripper_marker(color=[0, 255, 0]).apply_transform(grasp)
-        trimesh.Scene([obj_mesh, vis_grasp]).show()
+
+        vis_pose = trimesh.creation.axis(transform=grasp)
+        vis_pose_offset = trimesh.creation.axis(transform=offset_grasp)
+
+        trimesh.Scene([obj_mesh, vis_grasp, vis_pose]).show()
 
 
 
