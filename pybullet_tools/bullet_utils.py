@@ -1238,6 +1238,8 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
     robot = world.robot
     scale = get_loaded_scale(body)
 
+    print("get hand grasps scale", scale)
+
     # using_grasp_link, link = check_grasp_link(world, body, link)
 
     body_pose = get_model_pose(body, link=link, verbose=verbose)
