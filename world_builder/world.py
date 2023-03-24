@@ -75,7 +75,7 @@ class World(object):
         self.outpath = None
         self.camera = None
         self.instance_names = {}
-        self.constants = ['@movable', '@bottle', '@edible', '@medicine', '@world']
+        self.constants = ['@movable', '@bottle', '@edible', '@medicine', '@world', '@bowl']
         self.note = None
 
     def clear_viz(self):
