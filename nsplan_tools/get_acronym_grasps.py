@@ -135,7 +135,59 @@ def get_object_grasp(num_grasps=100):
         trimesh.Scene([obj_mesh, vis_grasp, vis_pose]).show()
 
 
+def get_object_grasp_debug(num_grasps=100):
+
+    np.random.seed(0)
+
+    # model_file = "/home/weiyu/data_drive/structformer_assets/acronym_handpicked_v4_textured_acronym_scale/visual/Bowl_8e840ba109f252534c6955b188e290e0_S.obj"
+    # grasp_file = "/home/weiyu/data_drive/shapenet/acronym_meshes/grasps/Bowl_8e840ba109f252534c6955b188e290e0_0.020694713428071655.h5"
+    model_file = "/home/weiyu/data_drive/StructFormerDiffusion/structformer_assets/acronym_handpicked_v4_textured_acronym_scale/visual/Bowl_8e840ba109f252534c6955b188e290e0_S.obj"
+    grasp_file = "/home/weiyu/data_drive/shapenet/acronym/grasps/Bowl_8e840ba109f252534c6955b188e290e0_0.020694713428071655.h5"
+
+    data = h5py.File(grasp_file, "r")
+    mesh_fname = data["object/file"][()].decode('utf-8')
+    mesh_scale = data["object/scale"][()]
+    print(mesh_scale)
+
+    T = np.array(data["grasps/transforms"])
+    success = np.array(data["grasps/qualities/flex/object_in_gripper"])
+    successful_grasps = [t
+        for t in T[np.random.choice(np.where(success == 1)[0], num_grasps)]
+    ]
+
+    obj_mesh = trimesh.load(model_file)
+
+    transform = tra.quaternion_matrix((0.0, 0.0, 1.0, 6.123234262925839e-17))
+    transform[:3, 3] = (0.0, 0.0, 0.03069899927079678)
+
+    obj_mesh.apply_transform(transform)
+
+    for grasp in successful_grasps:
+        # print(grasp)
+
+        approach_offset = np.eye(4)
+        approach_offset[2, 3] = 0.02
+        offset_grasp = grasp @ tra.euler_matrix(0, 0, np.pi / 2) @ approach_offset
+
+        pos = grasp[:3, 3]
+        rot = tra.euler_from_matrix(grasp)
+        print("grasp pose", pos.tolist() + [*rot])
+
+        # https://sites.google.com/nvidia.com/graspdataset
+        # gripper orientation convention is different
+        pos = offset_grasp[:3, 3]
+        rot = tra.euler_from_matrix(offset_grasp)
+        print("offset grasp pose", pos.tolist() + [*rot])
+
+        print("offset grasp pose quat", pos.tolist(), tra.quaternion_from_matrix(offset_grasp))
+
+        vis_grasp = create_gripper_marker(color=[0, 255, 0]).apply_transform(grasp)
+
+        vis_pose = trimesh.creation.axis(transform=grasp)
+        vis_pose_offset = trimesh.creation.axis(transform=offset_grasp)
+
+        trimesh.Scene([obj_mesh, vis_grasp, vis_pose, vis_pose_offset]).show()
 
 
 if __name__ == "__main__":
-    get_object_grasp()
+    get_object_grasp_debug()

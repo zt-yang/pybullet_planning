@@ -150,7 +150,7 @@ class RobotAPI(Robot):
 
         r = get_rotation_matrix(body) if body is not None else self.tool_from_hand
         new_body_pose = multiply(body_pose, r)  ##
-        # if verbose: print(f'{title} | multiply(body_pose, self.tool_from_hand) = {nice(new_body_pose)}')
+        if verbose: print(f'{title} | multiply(body_pose, self.tool_from_hand) = {nice(new_body_pose)}')
         return new_body_pose
 
     def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
@@ -753,7 +753,7 @@ class FEGripper(RobotAPI):
             # body = body[0]
 
         # with PoseSaver(body):
-        # debug: this should be not be unit pose, since grasp is with respect to the object
+        # weiyu debug: this should be not be unit pose, since grasp is with respect to the object
         # body_pose = unit_pose()
         grasp = grasp.value
         grasp_pose = multiply(body_pose, grasp)
@@ -763,10 +763,7 @@ class FEGripper(RobotAPI):
 
         with ConfSaver(self.body):
             with PoseSaver(body):
-                print("se3_ik", grasp_pose)
                 conf = se3_ik(self, grasp_pose, verbose=True)
-                print("ik completed", conf)
-                input("next")
                 if conf is None:
                     print('\t\t\tFEGripper.conf is None', nice(grasp))
                     return None
@@ -779,8 +776,7 @@ class FEGripper(RobotAPI):
                     print(f'robots.compute_grasp_width | gripper_grasp {gripper} | object_pose {nice(body_pose)}'
                           f' | se_conf {nice(get_se3_conf(gripper))} | grasp = {nice(grasp)} ')
 
-                draw_pose(grasp_pose)
-                input("here")
+                # draw_pose(grasp_pose)
 
                 gripper_joints = self.get_gripper_joints()
                 width = close_until_collision(gripper, gripper_joints, bodies=[body], **kwargs)
@@ -798,7 +794,13 @@ class FEGripper(RobotAPI):
         self.open_cloned_gripper(gripper, width)
         set_all_color(gripper, color)
 
+        # debug weiyu
+        # body_pose = (body_pose[0], (0, 0, 0, 1.0)
+        # debug weiyu
+        # grasp_pose = [[0.1430741134, -0.0502372999, 0.1107835627], [-0.48416652, 0.75595677, 0.31153823, -0.31153823]]
+
         grasp_pose = multiply(body_pose, grasp)
+
         if verbose:
             handles = draw_pose(grasp_pose, length=0.05)
             print(f'{title} body_pose = {nice(body_pose)} | grasp = {nice(grasp)}')

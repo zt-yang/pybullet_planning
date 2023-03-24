@@ -1243,6 +1243,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
     # using_grasp_link, link = check_grasp_link(world, body, link)
 
     body_pose = get_model_pose(body, link=link, verbose=verbose)
+    print("get hand grasps, body pose", body_pose)
 
     aabb, handles = draw_fitted_box(body, link=link, verbose=verbose, draw_box=False, draw_centroid=False)
 
@@ -1252,6 +1253,9 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
         body_pose = multiply(body_pose, invert(r)) ##
     else:  ## for handle grasps, use the original pose of handle_link
         body_pose = multiply(body_pose, invert(robot.tool_from_hand))
+
+    # weiyu debug
+    # visualize = True
 
     instance_name = world.get_instance_name(body_name)
     if instance_name is not None:

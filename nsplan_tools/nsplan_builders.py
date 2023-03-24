@@ -45,6 +45,7 @@ def sample_clean_dish_goal(world):
 
     world.add_to_cat(food, 'moveable')
     world.add_to_cat(bottle, 'moveable')
+    world.add_to_cat(bowl, 'moveable')
 
     hand = world.robot.arms[0]
     # goal_candidates = [
@@ -66,8 +67,8 @@ def sample_clean_dish_goal(world):
     # goals = [('In', bottle, cabinet_space), ('Cleaned', bottle)]
     # goals = [('In', bottle, cabinet_space), ('NoDirtyPlateInCabinet', cabinet_space)]
     # goals = [('On', bowl, sink)]
-    # goals = [('Holding', hand, bowl)]
     goals = [('Holding', hand, bowl)]
+    # goals = [('On', bowl, sink), ('On', bottle, sink)]
     ## ------------------------------------------------
 
     ## removing all fridge doors to save planning time for testing domain
@@ -79,14 +80,14 @@ def sample_clean_dish_goal(world):
 
 
 
-    ################################################
-    # debug
-
-    from pybullet_tools.flying_gripper_utils import quick_demo_debug
-
-    quick_demo_debug(world)
-
-    input("after quick demo")
+    # ################################################
+    # # debug
+    #
+    # from pybullet_tools.flying_gripper_utils import quick_demo_debug
+    #
+    # quick_demo_debug(world)
+    #
+    # input("after quick demo")
 
 
 

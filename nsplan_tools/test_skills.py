@@ -254,6 +254,127 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=F
     disconnect()
 
 
+def test_grasps_new(robot='feg', categories=[], skip_grasps=False, test_attachment=False):
+    world = get_test_world(robot)
+    draw_pose(unit_pose(), length=10)
+    robot = world.robot
+    problem = State(world, grasp_types=robot.grasp_types)  ## , 'side' , 'top'
+
+    i = -1
+    for cat in categories:
+
+        tpt = None # math.pi / 4 if cat in ['Knife'] else None ## , 'EyeGlasses', 'Plate'
+        funk = get_grasp_list_gen(problem, collisions=True, visualize=True,
+                                  RETAIN_ALL=False, top_grasp_tolerance=tpt, verbose=True)
+
+        def test_grasp(body):
+            set_renderer(True)
+            body_pose = get_pose(body)  ## multiply(get_pose(body), Pose(euler=Euler(math.pi/2, 0, -math.pi/2)))
+            print("body pose", body_pose)
+            outputs = funk(body)
+            if isinstance(outputs, list):
+                print(f'grasps on body {body}:', outputs)
+            visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=not test_attachment,
+                             TEST_ATTACHMENT=test_attachment)
+            set_renderer(True)
+            set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
+
+        if cat == 'box':
+            body = create_box(0.05, 0.05, 0.05, mass=0.2, color=GREEN)
+            set_pose(body, ((1, 1, 0.9), unit_pose()[1]))
+            test_grasp(body)
+            continue
+
+        i += 1
+        instances = get_instances(cat)
+        print('instances', instances)
+        for id in instances:
+            scale = instances[id]
+            if isinstance(id, tuple):
+                cat, id = id
+            path, body, _ = load_model_instance(cat, id, scale=scale)
+
+            instance_name = get_instance_name(abspath(path))
+            obj_name = f'{cat.lower()}#{id}'
+            world.add_body(body, obj_name, instance_name)
+            set_camera_target_body(body)
+            text = id.replace('veggie', '').replace('meat', '')
+            draw_text_label(body, text, offset=(0, -0.2, 0.1))
+
+            if cat == 'BraiserBody':
+                print('get_aabb_extent', nice(get_aabb_extent(get_aabb(body))))
+                set_camera_target_body(body, dx=0.05, dy=0, dz=0.5)
+                # draw_points(body, size=0.05)
+                # set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
+                # pose = get_pose(body)
+                # _, body, _ = load_model_instance('BraiserLid', id, scale=scale, location=locations[j])
+                # set_pose(body, pose)
+
+            # draw_aabb(get_aabb(body))
+
+            """ --- fixing texture issues ---"""
+            # world.add_joints_by_keyword(obj_name)
+            # world.open_all_doors()
+
+            """ test others """
+            # test_robot_rotation(body, world.robot)
+            # test_spatial_algebra(body, world.robot)
+            # draw_fitted_box(body, draw_centroid=True)
+            # grasps = get_hand_grasps(world, body)
+
+            """ test grasps """
+            if skip_grasps:
+                print('length', round(get_aabb_extent(get_aabb(body))[1], 3))
+                print('height', round(get_aabb_extent(get_aabb(body))[2], 3))
+                print('point', round(get_pose(body)[0][2], 3))
+                wait_if_gui()
+            else:
+                test_grasp(body)
+                wait_unlocked()
+
+        if len(categories) > 1:
+            wait_if_gui(f'------------- Next object category? finished ({i+1}/{len(categories)})')
+
+        if cat == 'MiniFridge':
+            set_camera_pose((3, 7, 2), (0, 7, 1))
+        elif cat == 'Food':
+            set_camera_pose((3, 3, 2), (0, 3, 1))
+        elif cat == 'Stapler':
+            set_camera_pose((3, 1.5, 2), (0, 1.5, 1))
+
+    remove_body(robot)
+
+    # set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
+    set_renderer(True)
+    wait_if_gui('Finish?')
+    disconnect()
+
+
+def test_grasps_new_new(robot='feg', categories=[], skip_grasps=False, test_attachment=False):
+    world = get_test_world(robot)
+    draw_pose(unit_pose(), length=10)
+    robot = world.robot
+    problem = State(world, grasp_types=robot.grasp_types)  ## , 'side' , 'top'
+
+    from pybullet_tools.utils import load_pybullet
+
+    body = load_pybullet("/home/weiyu/Research/nsplan/original/kitchen-worlds/assets/models/Bowl/0000/mobility.urdf", scale=1.0)
+
+    gripper = robot.create_gripper('arm', visual=True)
+
+    grasp_pose = [[0.1430741134, -0.0502372999, 0.1107835627], [-0.48416652, 0.75595677, 0.31153823, -0.31153823]]
+
+    handles = draw_pose(grasp_pose, length=0.05)
+    grasp_conf = se3_ik(robot, grasp_pose, verbose=False, mod_target=None)
+
+    input("end")
+
+    # set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
+    set_renderer(True)
+    wait_if_gui('Finish?')
+    disconnect()
+
+
 def load_body(path, scale, pose_2d=(0, 0), random_yaw=False):
     file = join(path, 'mobility.urdf')
     # if 'MiniFridge' in file:
@@ -1130,7 +1251,9 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    test_grasps(robot, ['Bowl'], skip_grasps=False, test_attachment=True)  ## 'EyeGlasses'
+    # test_grasps(robot, ['Bowl'], skip_grasps=False, test_attachment=True)  ## 'EyeGlasses'
+    # test_grasps(robot, ['Bowl'], skip_grasps=False, test_attachment=False)  ## 'EyeGlasses'
+    test_grasps(robot, ['Bowl'], skip_grasps=False, test_attachment=False)
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
 
