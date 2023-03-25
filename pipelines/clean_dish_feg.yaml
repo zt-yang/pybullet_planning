@@ -1,5 +1,6 @@
 ## debug related
-seed: 594585
+# seed: 594585
+seed: 15
 verbose: true
 
 ## pybullet related
@@ -16,7 +17,7 @@ monitoring: false
 
 ## data collection mode
 parallel: false
-n_data: 2
+n_data: 1
 
 
 robot:
@@ -40,7 +41,7 @@ world:
 
 
 data:
-  out_dir: ../outputs/test_clean_dish_feg_0324/
+  out_dir: ../outputs/test_clean_dish_feg_0325/
   save_failed_plans: true
   save_log: true
   save_commands: true

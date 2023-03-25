@@ -85,7 +85,7 @@ def create_pybullet_world(config, builder=None, SAVE_LISDF=False, SAVE_TESTCASE=
 
     """ ============== stop here or follow up with solving the problem ==================== """
 
-    input("world built, next?")
+    # input("world built, next?")
 
     if RESET:
         reset_simulation()

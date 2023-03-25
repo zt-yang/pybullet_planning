@@ -78,6 +78,8 @@ class World(object):
         self.constants = ['@movable', '@bottle', '@edible', '@medicine', '@world', '@bowl']
         self.note = None
 
+        self.clean_object = set()
+
     def clear_viz(self):
         self.remove_handles()
         self.remove_redundant_bodies()
@@ -1089,7 +1091,15 @@ class World(object):
             if f in init:
                 init.remove(f)
 
+        # weiyu debug
+        ## ---- clean object -------------
+        for obj in self.clean_object:
+            init.append(("Cleaned", obj))
+
         return init
+
+    def add_clean_object(self, obj):
+        self.clean_object.add(obj)
 
     def get_planning_config(self):
         import platform

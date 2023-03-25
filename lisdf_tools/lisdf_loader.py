@@ -637,7 +637,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
                 set_joint_position(body, joint_from_name(body, js.name), position)
 
     ## load objects transparent
-    if ('test_full_kitchen' in world.name or 'None_' in world.name) and transparent:
+    if ('test_full_kitchen' in world.name or 'None_' in world.name or 'clean_dish' in world.name) and transparent:
         make_furniture_transparent(bullet_world, lisdf_dir, lower_tpy=0.5, upper_tpy=0.2)
 
     if world.gui is not None:
@@ -666,8 +666,10 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
             if len(camera_zoomins) > 0:
                 bullet_world.camera_kwargs = [get_camera_kwargs(bullet_world, d) for d in camera_zoomins]
             else:
-                fridge = bullet_world.name_to_body['minifridge']
-                set_camera_target_body(fridge, dx=2, dy=0, dz=2)
+                # fridge = bullet_world.name_to_body['minifridge']
+                # set_camera_target_body(fridge, dx=2, dy=0, dz=2)
+                sink = bullet_world.name_to_body['sink#1']
+                set_camera_target_body(sink, dx=3, dy=1, dz=1)
 
     # wait_unlocked()
     bullet_world.run_dir = lisdf_dir
@@ -701,8 +703,15 @@ def make_furniture_transparent(bullet_world, lisdf_dir, lower_tpy=0.5, upper_tpy
             transparent.extend(['faucet']+upper_furnitures)
         # if 'minifridge' in target_body or 'cabinettop' in target_body:
         #     transparent.extend(['minifridge::', 'cabinettop::'])
+
+    # weiyu debug
+    transparent.append("cabinettop")
+
     for b in transparent:
         transparency = lower_tpy if b not in upper_furnitures else upper_tpy
+        if b == "cabinettop":
+            transparency = 0.5
+
         if transparency < 1:
             bullet_world.make_transparent(b, transparency=transparency, **kwargs)
 

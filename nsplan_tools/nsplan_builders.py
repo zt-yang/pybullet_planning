@@ -27,11 +27,17 @@ def sample_clean_dish_goal(world):
     world.summarize_supporting_surfaces()
     print("\n")
 
+    print("\nBODY_TO_OBJECT")
+    print(world.BODY_TO_OBJECT)
+    print("\n")
+
     # input("here")
 
     food = random.choice(world.cat_to_bodies('edible'))
     bottle = random.choice(world.cat_to_bodies('bottle'))
+    bottles = world.cat_to_bodies('bottle')
     bowl = random.choice(world.cat_to_bodies('bowl'))
+    bowls = world.cat_to_bodies('bowl')
     sink_counter_left = world.name_to_body('sink_counter_left')
     sink_counter_right = world.name_to_body('sink_counter_right')
     shelve = world.name_to_object('shelf_lower')
@@ -79,10 +85,24 @@ def sample_clean_dish_goal(world):
     # goals = [('On', bowl, sink)]
     # goals = [('Holding', hand, bowl)]
     # goals = [('On', bowl, sink), ('On', bottle, sink)]
-    goals = [('In', bowl, cabinet_space), ('NoDirtyPlateInCabinet', cabinet_space)]
+    # goals = [('In', bowl, cabinet_space), ('NoDirtyPlateInCabinet', cabinet_space)]
     # goals = [('On', bowl, shelve)]
     # goals = [('In', bowl, cabinet_space)]
+    # goals = [('In', bowl, cabinet_space), ('NoDirtyPlateInCabinet', cabinet_space)]
     ## ------------------------------------------------
+
+    # goals = [('Holding', hand, bowl)]
+    # goals = [('Holding', hand, bottle)]
+    # goals = [('On', bowl, sink)]
+    # goals = [('On', bowl, shelve)]
+    # goals = [('Cleaned', bottle)]
+    # goals = [('On', bottles[0], shelve)]
+    goals = [('In', bowl, cabinet_space), ('NoDirtyPlateInCabinet', cabinet_space)]
+    # goals = [('In', bowls[1], cabinet_space), ('NoDirtyPlateInCabinet', cabinet_space)]
+    # goals = [('In', bowls[0], cabinet_space), ('In', bowls[1], cabinet_space), ('NoDirtyPlateInCabinet', cabinet_space)]
+
+    ## set initial state
+    # world.add_clean_object(bowl)
 
     ## removing all fridge doors to save planning time for testing domain
     for door in cabinet.doors:

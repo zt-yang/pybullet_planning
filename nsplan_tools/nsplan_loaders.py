@@ -235,8 +235,8 @@ def sample_clean_dish_v0(world, w=3, l=8, verbose=True, pause=True):
     sink_bottom = world.add_surface_by_keyword(sink, 'sink_bottom')
 
     # weiyu debug
-    sink_left = world.name_to_object('sink_counter_left')
-    sink_right = world.name_to_object('sink_counter_right')
+    # sink_left = world.name_to_object('sink_counter_left')
+    # sink_right = world.name_to_object('sink_counter_right')
     # counter_left = world.add_surface_by_keyword(sink_left, 'counter_left')
     # counter_right = world.add_surface_by_keyword(sink_right, 'counter_right')
 
@@ -303,6 +303,9 @@ def sample_clean_dish_v0(world, w=3, l=8, verbose=True, pause=True):
 
             # TODO: instead of adding space, add surface in cabinet
             load_storage_mechanism(world, cabi, epsilon=epsilon)
+
+    # add space for dishwasher
+    # load_storage_mechanism(world, world.name_to_object('dishwasherbox'), epsilon=epsilon)
 
     ## load objects into reachable places
     food_ids, bottle_ids, medicine_ids, bowl_ids = \

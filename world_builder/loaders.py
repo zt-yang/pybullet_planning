@@ -1503,6 +1503,9 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
         instances['food'] = ['VeggieArtichoke', 'VeggiePotato']
         instances['bottle'] = ['3822', '3574']
 
+    # # weiyu debug
+    counters["bottle"] = [world.name_to_object(n) for n in ["sink#1::sink_bottom"]]
+
     pprint(counters)
     if verbose:
         print('\nload_counter_moveables(obstacles={})\n'.format([o.name for o in obstacles]))

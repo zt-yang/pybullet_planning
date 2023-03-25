@@ -47,10 +47,10 @@ def get_acronym_grasps():
         T = np.array(data["grasps/transforms"])
         success = np.array(data["grasps/qualities/flex/object_in_gripper"])
 
-        # successful_grasps = [
-        #     create_gripper_marker(color=[0, 255, 0]).apply_transform(t)
-        #     for t in T[np.random.choice(np.where(success == 1)[0], num_grasps)]
-        # ]
+        successful_grasps = [
+            create_gripper_marker(color=[0, 255, 0]).apply_transform(t)
+            for t in T[np.random.choice(np.where(success == 1)[0], num_grasps)]
+        ]
 
         grasp = T[np.random.choice(np.where(success == 1)[0], 1)][0]
         print(grasp)
@@ -60,7 +60,7 @@ def get_acronym_grasps():
 
         table_mesh = trimesh.creation.box([1, 1, 0])
 
-        trimesh.Scene([obj_mesh] + [vis_grasp] + [table_mesh]).show()
+        trimesh.Scene([obj_mesh] + [successful_grasps]).show()
 
         # # find object color mesh in shapenet
         # visual_mesh_file = os.path.join(shapenet_sem_dir, "{}.obj".format(shapenet_id))
@@ -94,10 +94,10 @@ def get_object_grasp(num_grasps=100):
 
     np.random.seed(0)
 
-    # model_file = "/home/weiyu/data_drive/structformer_assets/acronym_handpicked_v4_textured_acronym_scale/visual/Bowl_8e840ba109f252534c6955b188e290e0_S.obj"
-    # grasp_file = "/home/weiyu/data_drive/shapenet/acronym_meshes/grasps/Bowl_8e840ba109f252534c6955b188e290e0_0.020694713428071655.h5"
-    model_file = "/home/weiyu/data_drive/StructFormerDiffusion/structformer_assets/acronym_handpicked_v4_textured_acronym_scale/visual/Bowl_8e840ba109f252534c6955b188e290e0_S.obj"
-    grasp_file = "/home/weiyu/data_drive/shapenet/acronym/grasps/Bowl_8e840ba109f252534c6955b188e290e0_0.020694713428071655.h5"
+    model_file = "/home/weiyu/data_drive/structformer_assets/acronym_handpicked_v4_textured_acronym_scale/visual/Bowl_8e840ba109f252534c6955b188e290e0_S.obj"
+    grasp_file = "/home/weiyu/data_drive/shapenet/acronym_meshes/grasps/Bowl_8e840ba109f252534c6955b188e290e0_0.020694713428071655.h5"
+    # model_file = "/home/weiyu/data_drive/StructFormerDiffusion/structformer_assets/acronym_handpicked_v4_textured_acronym_scale/visual/Bowl_8e840ba109f252534c6955b188e290e0_S.obj"
+    # grasp_file = "/home/weiyu/data_drive/shapenet/acronym/grasps/Bowl_8e840ba109f252534c6955b188e290e0_0.020694713428071655.h5"
 
     data = h5py.File(grasp_file, "r")
     mesh_fname = data["object/file"][()].decode('utf-8')
@@ -190,4 +190,4 @@ def get_object_grasp_debug(num_grasps=100):
 
 
 if __name__ == "__main__":
-    get_object_grasp_debug()
+    get_acronym_grasps()
