@@ -280,6 +280,14 @@ class Object(Index):
         return self.aabb().upper[0] - self.get_pose()[0][0]
 
     @property
+    def y2ymin(self):
+        return self.get_pose()[0][1] - self.aabb().lower[1]
+
+    @property
+    def z2zmin(self):
+        return self.get_pose()[0][2] - self.aabb().lower[2]
+
+    @property
     def height(self):
         return get_aabb_extent(self.aabb())[2]
 

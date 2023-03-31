@@ -1121,13 +1121,13 @@ if __name__ == '__main__':
     robot = 'spot'  ## 'feg' | 'pr2' | 'spot'
     # test_gripper_joints()
     # test_gripper_range()
-    # test_torso()
+    test_torso()
     # test_reachability(robot)
     # test_tracik(robot)
 
     """ --- grasps related ---
     """
-    test_grasps(robot, ['Bottle'], skip_grasps=False, test_attachment=False)  ## 'EyeGlasses'
+    # test_grasps(robot, ['Bottle'], skip_grasps=False, test_attachment=False)  ## 'EyeGlasses'
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
 

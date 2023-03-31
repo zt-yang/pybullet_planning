@@ -3,7 +3,7 @@ from __future__ import print_function
 from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_link_pose, is_placement, \
     pairwise_collision, set_joint_positions, get_joint_positions, sample_placement, get_pose, waypoints_from_path, \
     unit_quat, plan_base_motion, plan_joint_motion, base_values_from_pose, pose_from_base_values, \
-    uniform_pose_generator, sub_inverse_kinematics, add_fixed_constraint, remove_debug, remove_fixed_constraint, \
+    uniform_pose_generator, add_fixed_constraint, remove_debug, remove_fixed_constraint, \
     disable_real_time, enable_gravity, joint_controller_hold, get_distance, Point, Euler, set_joint_position, \
     get_min_limit, user_input, step_simulation, get_body_name, get_bodies, BASE_LINK, get_joint_position, \
     add_segments, get_max_limit, link_from_name, BodySaver, get_aabb, interpolate_poses, \
@@ -218,10 +218,8 @@ def solve_nearby_ik(robot, arm, approach_pose, custom_limits={}):
                              custom_limits=custom_limits)  # TODO: cache
         approach_conf = ik_solver.solve(approach_pose, seed_conf=grasp_conf)
     else:
-        # TODO(caelan): sub_inverse_kinematics's clone_body has large overhead
         approach_conf = pr2_inverse_kinematics(robot, arm, approach_pose, custom_limits=custom_limits,
                                                upper_limits=USE_CURRENT, nearby_conf=USE_CURRENT)
-        # approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits)
     return approach_conf
 
 
@@ -321,14 +319,12 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
                                  custom_limits=custom_limits)  # TODO: cache
             approach_conf = ik_solver.solve(approach_pose, seed_conf=grasp_conf)
         else:
-            # TODO(caelan): sub_inverse_kinematics's clone_body has large overhead
             approach_conf = pr2_inverse_kinematics(robot, arm, approach_pose, custom_limits=custom_limits,
                                                    upper_limits=USE_CURRENT, nearby_conf=USE_CURRENT)
-            # approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits)
 
-        if (approach_conf is None) or collided(robot, **collided_kwargs):  ##
+        if (approach_conf is None) or collided(robot, **collided_kwargs):
             if verbose:
-                if approach_conf != None:
+                if approach_conf is not None:
                     approach_conf = nice(approach_conf)
                 print(f'{title}Approach IK failure', approach_conf)
             # wait_if_gui()
@@ -336,7 +332,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
                 remove_body(gripper_grasp)
             return None
         elif verbose:
-            print(f'{title}Approach IK success | sub_inverse_kinematics({robot} at {nice(base_conf.values)}, '
+            print(f'{title}Approach IK success | ik({robot} at {nice(base_conf.values)}, '
                   f'{arm}, {nice(approach_pose[0])}) | pose = {pose}, grasp = {nice(grasp.approach)} -> {nice(approach_conf)}')
 
         """ ======== get grasp_path -> approach_conf to grasp_conf ======= """
@@ -1268,14 +1264,13 @@ def get_base_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
     saver = BodySaver(robot)
     obstacles = problem.fixed if collisions else []
 
-    def fn(bq1, bq2, fluents=[], context=None):
+    def fn(bq1, bq2, fluents=[]):
         obstacles_here = copy.deepcopy(obstacles)
-        #print(context) # NOTE(caelan): should be None
         saver.restore()
-        print(f'get_base_motion_gen({nice(bq1.values)}, {nice(bq2.values)})')
-        attachments = process_motion_fluents(fluents, robot, verbose=True)
+        # print(f'get_base_motion_gen({nice(bq1.values)}, {nice(bq2.values)})')
+        attachments = process_motion_fluents(fluents, robot, verbose=False)
         if len(attachments) > 0:
-            print('get_base_motion_gen, attachments', attachments)
+            # print('get_base_motion_gen, attachments', attachments)
             obstacles_here = [o for o in obstacles if o not in attachments]
         bq1.assign()
         # TODO: did base motion planning fail?
@@ -1466,11 +1461,10 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
                 bconf = list(map(joint_state.get, base_joints))
                 bq = Conf(robot, base_joints, bconf, joint_state=joint_state)
                 bq.assign()
-                # wait_unlocked()
 
                 set_joint_positions(robot, arm_joints, default_conf)
                 if collided(robot, obstacles_here, articulated=True, tag='ik_default_conf',
-                            verbose=verbose and False, world=world):
+                            verbose=verbose, world=world):
                     continue
 
                 ik_solver.set_conf(conf)
