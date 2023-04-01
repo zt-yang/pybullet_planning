@@ -503,7 +503,10 @@ def parse_pddl_str(args, vs, inv_vs, indices={}):
 def get_successful_plan(run_dir, indices={}, skip_multiple_plans=True, **kwargs):
     plans = []
     ## default best plan is in 'plan.json'
-    with open(join(run_dir, 'plan.json'), 'r') as f:
+    plan_file = join(run_dir, 'plan.json')
+    if not isfile(plan_file):
+        plan_file = join(run_dir, 'time.json')
+    with open(plan_file, 'r') as f:
         data = json.load(f)[0]
         actions = data['plan']
         if actions == 'FAILED':
