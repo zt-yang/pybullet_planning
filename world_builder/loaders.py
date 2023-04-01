@@ -1460,16 +1460,18 @@ def load_kitchen_mini_scene(world, **kwargs):
 
 def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
                            verbose=False, reachability_check=True):
+    categories = ['food', 'bottle', 'medicine']
     start = time.time()
     robot = world.robot
     state = State(world)
     size_matter = len(obstacles) > 0 and obstacles[-1].name == 'braiser_bottom'
     satisfied = []
     if isinstance(counters, list):
-        counters = {k: counters for k in ['food', 'bottle', 'medicine']}
+        counters = {k: counters for k in categories}
     if d_x_min is None:
         d_x_min = - 0.3
     instances = {k: None for k in counters}
+    n_objects = {k: 2 for k in categories}
 
     if world.note in [31]:
         braiser_bottom = world.name_to_object('braiser_bottom')
@@ -1502,6 +1504,9 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
                             ["counter#1", "ovencounter", "sink_counter_left", "sink_counter_right"]]
         instances['food'] = ['VeggieArtichoke', 'VeggiePotato']
         instances['bottle'] = ['3822', '3574']
+    elif world.note in ['more_movables']:
+        n_objects['food'] = 3
+        n_objects['bottle'] = 3
 
     pprint(counters)
     if verbose:
@@ -1522,7 +1527,7 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
             adjust_for_reachability(obj, counter, d_x_min, world=world)
         return obj
 
-    def ensure_cfree(obj, obstacles, obj_name, category=None, trials=10, verbose=False, **kwargs):
+    def ensure_cfree(obj, obstacles, obj_name, category=None, trials=10, **kwargs):
         def check_conditions(o):
             collision = collided(o, obstacles, verbose=verbose, world=world)
             unreachable = False
@@ -1556,7 +1561,7 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
     ## add food items
     food_ids = []
     in_briaser = False
-    for i in range(2):
+    for i in range(n_objects['food']):
         kwargs = dict()
         if world.note in [31] and not in_briaser:
             kwargs['counter_choices'] = [braiser_bottom]
@@ -1573,7 +1578,7 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
 
     ## add bottles
     bottle_ids = []
-    for i in range(2):
+    for i in range(n_objects['bottle']):
         kwargs = dict()
         obj_cat = 'bottle'
         if instances['bottle'] is not None:
@@ -1585,7 +1590,7 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
 
     ## add medicine
     medicine_ids = []
-    for i in range(1):
+    for i in range(n_objects['medicine']):
         obj = place_on_counter('medicine')
         obj = ensure_cfree(obj, obstacles, obj_name='medicine')
         # state = State(copy.deepcopy(world), gripper=state.gripper)
@@ -2381,15 +2386,37 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
 
 
 def sample_table_plates(world, verbose=True):
+    """ a table facing the kitchen counters, with four plates on it """
     x = random.uniform(3, 3.5)
     y = random.uniform(2, 6)
-    floor = world.name_to_body('floor')
-    table = world.add_object(Supporter(
-        load_asset('DiningTable', x=x, y=y, yaw=0, verbose=verbose, floor=floor, RANDOM_INSTANCE=True)))
-    if table.aabb().upper[0] > 4:
-        table.adjust_pose(x=4-table.xmax2x)
+    table = sample_table(world, x=x, y=y, verbose=verbose)
     plates = load_plates_on_table(world, table, verbose)
     return table, plates
+
+
+def sample_two_tables_plates(world, verbose=True):
+    """ two tables side by side facing the kitchen counters, with four plates on each """
+    x = random.uniform(3, 3.5)
+    y1 = random.uniform(1, 3)
+
+    table1 = sample_table(world, x=x, y=y1, verbose=verbose)
+    plates = load_plates_on_table(world, table1, verbose)
+
+    table2 = sample_table(world, x=x, y=y1, verbose=verbose)
+    table2.adjust_next_to(table1, direction='+y', align='+x')
+    plates += load_plates_on_table(world, table2, verbose)
+
+    return [table1, table2], plates
+
+
+def sample_table(world, RANDOM_INSTANCE=True, **kwargs):
+    """ a table facing the kitchen counters, x < 4 """
+    floor = world.name_to_body('floor')
+    table = world.add_object(Supporter(
+        load_asset('DiningTable', yaw=0, floor=floor, RANDOM_INSTANCE=RANDOM_INSTANCE, **kwargs)))
+    if table.aabb().upper[0] > 4:
+        table.adjust_pose(x=4 - table.xmax2x)
+    return table
 
 
 def load_plates_on_table(world, table, verbose):
@@ -2414,6 +2441,9 @@ def load_plates_on_table(world, table, verbose):
         plate.adjust_pose(x=x, y=fixed[i])
         plates.append(plate)
     return plates
+
+
+######################################################################################
 
 
 if __name__ == '__main__':

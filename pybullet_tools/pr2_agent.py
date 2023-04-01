@@ -51,7 +51,7 @@ from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler
 from pddlstream.language.function import FunctionInfo
 from pddlstream.language.stream import StreamInfo, PartialInputs, universe_test
 from pddlstream.language.object import SharedOptValue
-from pddlstream.language.external import defer_shared, never_defer
+from pddlstream.language.external import defer_shared, never_defer, defer_unique
 from pddlstream.language.conversion import params_from_objects
 from collections import namedtuple
 
@@ -198,7 +198,7 @@ def get_stream_info(unique=False):
         'inverse-kinematics-ungrasp-handle': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
         'plan-base-pull-door-handle': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
 
-        'plan-base-motion': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e1),
+        'plan-base-motion': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e1, defer_fn=defer_unique),
     }
 
     return stream_info
@@ -608,7 +608,7 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
         solution = solve_focused(pddlstream_problem, stream_info=stream_info, constraints=constraints,
                                  planner='ff-astar1', max_planner_time=downward_time,
                                  unit_costs=False, success_cost=INF, initial_complexity=5,
-                                 max_time=max_time, visualize=visualize, verbose=True, debug=False,
+                                 max_time=max_time, visualize=visualize, verbose=True, debug=True,
                                  # unit_efforts=True, effort_weight=None,
                                  unique_optimistic=True, use_feedback=use_feedback,
                                  forbid=True, max_plans=max_plans,

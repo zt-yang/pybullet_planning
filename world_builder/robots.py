@@ -225,7 +225,7 @@ class MobileRobot(RobotAPI):
 
     def get_stream_info(self, **kwargs):
         from pybullet_tools.pr2_agent import get_stream_info
-        return get_stream_info() ## partial=partial, defer=defer
+        return get_stream_info(**kwargs) ## partial=partial, defer=defer
 
     def create_gripper(self, arm='left', **kwargs):
         if arm in self.grippers:

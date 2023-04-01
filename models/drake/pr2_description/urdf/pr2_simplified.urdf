@@ -781,6 +781,7 @@
       </geometry>
       <material name="Grey2"/>
     </visual>
+
     <visual group="non_gripper" name="torso_lift_visual_extra">
       <origin rpy="0 0 0" xyz="0 0 -0.6"/>
       <geometry>
@@ -816,6 +817,7 @@
         <mesh filename="../meshes/torso_v0/torso_lift_L.obj"/>
       </geometry>
     </collision>
+
     <collision group="non_gripper" name="torso_lift_collision_extra">
       <origin rpy="0 0 0" xyz="0 0 -0.6"/>
       <geometry>
@@ -843,6 +845,7 @@
       </geometry>
       <material name="Grey2"/>
     </collision>
+
   </link>
   <gazebo reference="torso_lift_link">
     <sensor:contact name="torso_lift_contact_sensor">

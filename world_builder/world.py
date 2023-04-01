@@ -154,8 +154,8 @@ class World(object):
     @property
     def fixed(self):
         objs = [obj for obj in self.objects if not isinstance(obj, tuple)]
-        objs = [o for o in objs if o not in self.floors and o not in self.movable]
         objs += [o for o in self.non_planning_objects if isinstance(o, int) and o not in objs]
+        objs = [o for o in objs if o not in self.floors and o not in self.movable]
         return objs
 
     @property
@@ -592,12 +592,16 @@ class World(object):
                 continue
             category = self.BODY_TO_OBJECT[body].category
             obj = self.BODY_TO_OBJECT.pop(body)
+            self.REMOVED_BODY_TO_OBJECT[body] = obj
+            self.non_planning_objects.append(body)
+
+            ## still need to find all floors
+            if category == 'floor':
+                continue
             self.OBJECTS_BY_CATEGORY[category] = [
                 o for o in self.OBJECTS_BY_CATEGORY[category] if not
                 (o.body == obj.body and o.link == obj.link and o.joint == obj.joint)
             ]
-            self.REMOVED_BODY_TO_OBJECT[body] = obj
-            self.non_planning_objects.append(body)
 
     def remove_category_from_planning(self, category, exceptions=[]):
         if len(exceptions) > 0 and isinstance(exceptions[0], str):
@@ -687,7 +691,7 @@ class World(object):
                 bodies.append(o.body)
         filtered_bodies = []
         for b in set(bodies):
-            if b in self.BODY_TO_OBJECT:
+            if b in self.BODY_TO_OBJECT or cat == 'floor':
                 filtered_bodies += [b]
             # else:
             #     print(f'   world.cat_to_bodies | category {cat} found {b}')
@@ -1165,7 +1169,7 @@ class World(object):
     def get_type(self, body):
         return [self.BODY_TO_OBJECT[body].category]
 
-    def find_surfaces_for_placement(self, obj, surfaces, verbose=False, obstacles=[]):
+    def find_surfaces_for_placement(self, obj, surfaces, verbose=False):
         from pybullet_tools.pr2_streams import get_stable_gen
         if verbose:
             self.summarize_supporting_surfaces()
