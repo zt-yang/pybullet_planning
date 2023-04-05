@@ -27,9 +27,9 @@ AUTO_REFRESH = False
 VIOLIN = False
 FPC = False
 EVALUATE_GEOMETRY = False
-PAPER_VERSION = True ## no preview, just save pdf
+PAPER_VERSION = False ## no preview, just save pdf
 DEBUG_LINES = False
-ANIMATION = 2
+ANIMATION = None
 
 SAVE_DATA = False
 USE_DATA = platform.system() == 'Darwin'
@@ -98,6 +98,14 @@ METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']  ## 'PIGI*',
 #     else:
 #         FIXED_COST.append(3)
 
+################################ rebuttal ######################################
+
+GROUPS = ['tt_storage', 'tt_braiser']
+GROUPNAMES = ['Counter-to-storage', 'Counter-to-pot']
+
+METHODS = ['None', 'pvt-br-1', 'oracle']
+METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']
+
 ############################ generalization ################################
 
 if EVALUATE_GEOMETRY:
@@ -122,7 +130,7 @@ colors_darker = [color_dict[k][0] for k in cc]
 ## see which files are missing
 # METHODS = ['None', 'oracle'] ## , 'pvt'
 SAME_Y_AXES = False
-RERUN_SUBDIR = 'rerun_3'
+RERUN_SUBDIR = 'rerun_4'
 
 
 def get_rundirs(task_name):
@@ -497,6 +505,8 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                 figsize = (5, 5)
 
         fig, axs = plt.subplots(1, len(groups), figsize=figsize)
+        if len(groups) == 1:
+            axs = [axs]
 
         scale = 0.4
         ll = [x for x in range(len(METHODS))]
@@ -513,7 +523,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
             yy = points_y[i]
 
             ## for animation
-            if not ANIMATION == 0:
+            if ANIMATION != 0:
 
                 if ANIMATION in [1]:
                     mean[2] = 0

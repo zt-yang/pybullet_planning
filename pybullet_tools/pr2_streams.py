@@ -427,7 +427,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
                 """ ========= compute the X_base^object for ungrasping ============ """
                 x, y, z, theta = base_conf.values
                 bpose = ((x, y, z), quat_from_euler(Euler(yaw=theta)))
-                aconf.x_base_to_object = multiply(bpose, invert(pose.value))
+                ## aconf.x_base_to_object = multiply(bpose, invert(pose.value))
 
                 return (aconf, cmd)
 
