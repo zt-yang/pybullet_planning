@@ -464,15 +464,13 @@ class Object(Index):
             remove_debug(self.text_handle)
             self.text += '_'
         self.text += text
-        # self.text_handle = p.addUserDebugText(self.text, textPosition=(0, 0, .5), textColorRGB=(1, 0, 0),  # textSize=1,
-        #                    lifeTime=0, parentObjectUniqueId=self.body, parentLinkIndex=-1)
-        self.text_handle = add_text(self.text, position=(0, 0, .5), color=(1, 0, 0),
-                           lifetime=0, parent=self.body)
+        self.text_handle = add_text(self.text, position=(0, 0.15, 0.15), color=(1, 0, 0),
+                                    lifetime=0, parent=self.body, parent_link=0)
 
     def is_active(self):
         return self.body is not None
 
-    def remove(self): # TODO: overload del
+    def remove(self):
         self.erase()
         if self.is_active():
             remove_body(self.body)
@@ -511,8 +509,8 @@ class Object(Index):
 
     @property
     def debug_name(self):
-        return f'{self.name}|{self.pybullet_name}'
-        # return f'{self.shorter_name}|{self.body}'
+        return f'{self.pybullet_name}|{self.name}'
+        # return f'{self.name}|{self.pybullet_name}'
 
 
 class Moveable(Object):

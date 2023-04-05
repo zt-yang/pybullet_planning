@@ -2236,7 +2236,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
     """ step 5: place movables on counters """
     all_counters = {
         'food': counters,
-        'bottle': counters + [sink_bottom],
+        'bottle': counters, ##  + [sink_bottom],
         'medicine': shelves + [microwave],
     }
     possible = []

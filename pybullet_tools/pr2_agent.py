@@ -23,7 +23,8 @@ from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custo
     get_gripper_joints, GripperCommand, apply_commands, State, Trajectory, Simultaneous, create_trajectory
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, get_handle_grasp_list_gen, \
     get_handle_grasp_gen, get_compute_pose_kin, get_compute_pose_rel_kin, \
-    get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test
+    get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
+    get_bconf_close_to_surface
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
     set_camera_target_robot, nice, BASE_LIMITS, initialize_collision_logs, collided, clean_preimage
 from pybullet_tools.pr2_problems import create_pr2
@@ -81,7 +82,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c)),
         'sample-pose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, verbose=False)),  ##
         'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False, verbose=False,
-                                                       top_grasp_tolerance=PI/4)), # TODO: collisions
+                                                       top_grasp_tolerance=PI/4, debug=True)),
         'compute-pose-kin': from_fn(get_compute_pose_kin()),
         'compute-pose-rel-kin': from_fn(get_compute_pose_rel_kin()),
 
@@ -100,6 +101,8 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         # 'plan-base-motion-with-obj': from_fn(get_base_motion_with_obj_gen(p, collisions=base_collisions,
         #                                                          teleport=t, custom_limits=l)),
 
+        'test-bconf-close-to-surface': from_test(get_bconf_close_to_surface(p)),
+
         'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(p.robot, collisions=c, visualize=False)),
         'test-cfree-approach-pose': from_test(get_cfree_approach_pose_test(p, collisions=c)),
         # 'test-cfree-pose-pose-rel': from_test(get_cfree_pose_pose_rel_test(collisions=c)),
@@ -115,8 +118,8 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
 
         # TODO: apply motion_collisions to pulling?
         'inverse-kinematics-grasp-handle': from_gen_fn(
-            get_ik_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l,
-                       pick_up=False, given_grasp_conf=False, learned=False, verbose=True)),
+            get_ik_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l, learned=False,
+                       pick_up=False, given_grasp_conf=True, verbose=True, visualize=True)),
         'inverse-kinematics-ungrasp-handle': from_gen_fn(
             get_ik_ungrasp_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l, verbose=False)),
 
@@ -570,7 +573,7 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
               fc=None, domain_modifier=None,
               max_time=INF, downward_time=10, evaluation_time=10,
               max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=0,
-              visualize=False, skeleton=None, **kwargs):
+              visualize=True, skeleton=None, **kwargs):
     # skeleton = [
     #     ('grasp_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
     #     ('pull_door_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
@@ -740,7 +743,7 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
     with LockRenderer(lock=lock):
         solution = solve_one(pddlstream_problem, stream_info,
                              domain_modifier=domain_modifier,
-                             collect_dataset=collect_dataset,
+                             collect_dataset=collect_dataset, world=world,
                              visualize=visualization, **kwargs)
 
     ## collect data of multiple solutions

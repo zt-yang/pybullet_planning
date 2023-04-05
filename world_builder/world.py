@@ -1067,10 +1067,11 @@ class World(object):
             if cat.lower() in ['edible', 'plate', 'cleaningsurface', 'heatingsurface']:
                 objects = self.OBJECTS_BY_CATEGORY[cat]
                 init += [(cat, obj.pybullet_name) for obj in objects if obj.pybullet_name in BODY_TO_OBJECT]
+                # init += [(cat, obj.pybullet_name) for obj in objects if obj.pybullet_name in BODY_TO_OBJECT]
 
             for obj in objects:
-                if cat in ['space', 'surface'] and (cat, obj) not in init:
-                    init += [(cat, obj)]
+                if cat in ['space', 'surface'] and (cat, obj.pybullet_name) not in init:
+                    init += [(cat, obj.pybullet_name)]
                 cat2 = f"@{cat}"
                 if cat2 in self.constants:
                     init += [('OfType', obj, cat2)]
@@ -1401,6 +1402,7 @@ def analyze_outcome(state):
 
 #######################################################
 
+
 class Observation(object):
     # TODO: just update a dictionary for everything
     def __init__(self, state, robot_conf=None, obj_poses=None, image=None, facts=None, variables=None, collision=False):
@@ -1446,6 +1448,7 @@ class Observation(object):
         return '{}({}, {})'.format(self.__class__.__name__, self.robot_conf, sorted(self.obj_poses))
 
 #######################################################
+
 
 class Process(object):
     def __init__(self, world, name=None, **kwargs):
@@ -1501,6 +1504,7 @@ class Process(object):
 
 #######################################################
 
+
 class Exogenous(Process):
     def __init__(self, world, **kwargs):
         super(Exogenous, self).__init__(world, **kwargs)
@@ -1517,6 +1521,7 @@ class Exogenous(Process):
         raise NotImplementedError()
 
 #######################################################
+
 
 class Agent(Process): # Decision
     # TODO: make these strings

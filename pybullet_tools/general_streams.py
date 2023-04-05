@@ -175,6 +175,28 @@ def get_compute_pose_rel_kin():
 
 """ ==============================================================
 
+            Testing configuration ?conf
+
+    ==============================================================
+"""
+
+
+def get_bconf_close_to_surface(problem):
+    world = problem.world
+
+    def test(bconf, surface, fluents=[]):
+        ## when the surface is a link
+        if isinstance(surface, tuple):
+            surface = surface[0]
+        point1 = np.asarray(bconf.values[:2])
+        point2 = np.asarray(get_pose(surface)[0][:2])
+        dist = np.linalg.norm(point1 - point2)
+        return dist < 1
+    return test
+
+
+""" ==============================================================
+
             Sampling placement ?p
 
     ==============================================================
@@ -224,7 +246,7 @@ def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visu
                         p0.assign()
                         yield (p,)
 
-        print(title, 'sample without check_kitchen_placement')
+        if verbose: print(title, 'sample without check_kitchen_placement')
 
         while count > 0: ## True
             count -= 1
@@ -398,7 +420,7 @@ def get_contain_gen(problem, collisions=True, num_samples=20, verbose=False,
                         attempts += 1
                         yield (p,)
         ## ------------------------------------------------
-        print(title, 'sample without check_kitchen_placement')
+        if verbose: print(title, 'sample without check_kitchen_placement')
 
         while attempts < num_samples:
             attempts += 1
@@ -554,7 +576,7 @@ def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=
 
 
 def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | PI/4 | INF
-                  randomize=True, verbose=True, **kwargs):
+                  randomize=True, verbose=True, debug=False, **kwargs):
     robot = problem.robot
     world = problem.world
     grasp_type = 'hand'
@@ -573,9 +595,18 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | P
                       f' selected {len(grasps)} out of {ori} grasps')
         if randomize:
             random.shuffle(grasps)
+        print(f'get_grasp_gen({body}, {world.get_name(body)}) = {len(grasps)} grasps')
         # return [(g,) for g in grasps]
+        i = 0
         for g in grasps:
-           yield (g,)
+            i += 1
+            yield (g,)
+
+        # if debug:
+        #     set_renderer(True)
+        #     wait_unlocked()
+        #     set_renderer(False)
+
     return fn
 
 
