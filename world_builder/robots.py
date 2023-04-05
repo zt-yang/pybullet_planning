@@ -669,7 +669,6 @@ class PR2Robot(MobileRobot):
         set_joint_positions(robot, arm_joints, start_conf)
         grasp_path = mp_fn(robot, arm_joints, end_conf, attachments=attachments.values(), **kwargs)
         if grasp_path is None:
-
             if debug:
                 ## try again without attachments, just for debugging purposes
                 set_joint_positions(robot, arm_joints, start_conf)
@@ -679,8 +678,9 @@ class PR2Robot(MobileRobot):
                     reason = 'object-world collision'
                     ## replay the grasp path to find colliding objects
                     debug_trajectory(grasp_path, obstacles=obss, title='investigate path collision')
+
                 if verbose:
-                    print(f'{title}Grasp path failure because of', reason)
+                    print(f'{title}path planning failure because of {reason}')
                     wait_unlocked()
             return None
         if debug:

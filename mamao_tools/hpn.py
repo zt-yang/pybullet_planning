@@ -18,16 +18,26 @@ sns.set_style("darkgrid", {"axes.facecolor": ".9"})
 
 from mamao_tools.plotting_utils import *
 
-exp_dir = '/home/yang/Documents/cognitive-architectures/bullet/experiments/'
-SUMMARIZE_SAMPLERS = True
 
+#############################################################################
+
+SUMMARIZE_SAMPLERS = True  ## when len(GROUPS) == 1
 GROUPS = ['kitchen_food']
 GROUPNAMES = ['Serve 6 Plates']
-
 METHODS = ['original_more_plates', 'original_more_movables', 'original', 'hpn', 'hpn_goal-related']
 METHOD_NAMES = ['original \n(+ 2 plates)', 'original \n(+ 2 food)', 'original', 'hpn', 'hpn \n(min object)']
-PAPER_VERSION = True
+#############################################################################
+SUMMARIZE_SAMPLERS = False
+GROUPS = ['kitchen_food', 'kitchen_food_cleaned']
+GROUPNAMES = ['Serve 6 Plates', 'Serve 2 Cleaned']
+METHODS = ['original', 'hpn']
+METHOD_NAMES = ['original', 'hpn']
 
+
+#############################################################################
+
+exp_dir = '/home/yang/Documents/cognitive-architectures/bullet/experiments/'
+PAPER_VERSION = True
 cc = ['b', 'r', 'g', 'p', 'y', 'gray'][:len(METHODS)]
 colors = [color_dict[k][0] for k in cc]
 colors_darker = [color_dict[k][0] for k in cc]
@@ -333,28 +343,30 @@ def get_sampler_summary(log_file, method, data):
     names = {s: n for s, n in zip(samplers, names)}
 
     ## extract sampler statistics from log.txt
-    found = None
+    found = []
     with open(log_file, 'r') as f:
         lines = f.readlines()
         for i in range(len(lines)):
             if 'Local External Statistics' in lines[i]:
-                found = [l.replace('External: ', '').split(' | ') for l in lines[i:i+9] if 'External: ' in l]
+                found.append([l.replace('External: ', '').split(' | ') for l in lines[i:i+9] if 'External: ' in l])
 
     ## create groups from the statistics
     if groups[0] not in data:
         data.update({g: defaultdict(list) for g in groups})
 
-    for sampler, n_calls, p_success, mean_overhead, overhead in found:
-        if sampler in samplers:
-            n_calls = int(n_calls[n_calls.index(':') + 1:].strip())
-            data[f"n_calls({names[sampler]})"][method].append(n_calls)
+    all_n_calls = {s: 0 for s in samplers}
+    all_overhead = {s: 0 for s in samplers}
+    for ff in found:
+        for sampler, n_calls, p_success, mean_overhead, overhead in ff:
+            if sampler in samplers:
+                all_n_calls[sampler] += int(n_calls[n_calls.index(':') + 1:].strip())
+                all_overhead[sampler] += float(overhead[overhead.index(':') + 1:].strip())
+                #     p_success = float(p_success[p_success.index(':') + 1:].strip())
 
-            # if names[sampler] != 'IR':
-            #     p_success = float(p_success[p_success.index(':') + 1:].strip())
-            #     data[f"p({names[sampler]})"][method].append(p_success)
-
-            overhead = float(overhead[overhead.index(':') + 1:].strip())
-            data[f"time({names[sampler]})"][method].append(overhead)
+    for sampler in samplers:
+        data[f"n_calls({names[sampler]})"][method].append(all_n_calls[sampler])
+        data[f"time({names[sampler]})"][method].append(all_overhead[sampler])
+        # data[f"p({names[sampler]})"][method].append(p_success)
 
     return data
 

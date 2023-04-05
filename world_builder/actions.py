@@ -23,6 +23,7 @@ from .world import State
 class Action(object): # TODO: command
     def transition(self, state):
         raise NotImplementedError()
+
     def __repr__(self):
         return '{}{}'.format(self.__class__.__name__, str_from_object(self.__dict__))
 
@@ -38,6 +39,7 @@ class RobotAction(object):
 class TeleportAction(Action):
     def __init__(self, conf):
         self.conf = conf
+
     def transition(self, state):
         joints = state.robot.get_joints()  ## all joints, not just x,y,yqw
         if len(self.conf) == len(joints):
@@ -53,6 +55,7 @@ class MoveAction(Action):
     def __init__(self, delta): # TODO: pass in the robot
         # TODO: clip or normalize if moving too fast?
         self.delta = delta
+
     def transition(self, state):
         if self.delta is None:
             return state
@@ -73,6 +76,7 @@ class MoveAction(Action):
 class MoveArmAction(Action):
     def __init__(self, conf):
         self.conf = conf
+
     def transition(self, state):
         set_joint_positions(state.robot, self.conf.joints, self.conf.values)
         return state.new_state()
@@ -99,6 +103,7 @@ class TurnAction(MoveAction):
 
 class AttachAction(Action):
     attach_distance = 5e-2
+
     def transition(self, state):
         new_attachments = dict(state.attachments)
         for obj in state.movable:
@@ -123,6 +128,7 @@ class FlipAction(Action):
     def __init__(self, switch): #, active=True):
         self.switch = switch
         #self.active = active
+
     def transition(self, new_state):
         if not any(is_above(robot, get_aabb(self.switch)) for robot in new_state.robots):
             return new_state
@@ -133,6 +139,7 @@ class FlipAction(Action):
 class PressAction(Action):
     def __init__(self, button):
         self.button = button
+
     def transition(self, new_state):
         # TODO: automatically pass a copy of the state
         if not any(is_above(robot, get_aabb(self.button)) for robot in new_state.robots):
@@ -144,6 +151,7 @@ class PressAction(Action):
 class OpenJointAction(Action):
     def __init__(self, affected):
         self.affected = affected
+
     def transition(self, state):
         for body, joint in self.affected:
             old_pose = get_joint_position(body, joint)
@@ -158,6 +166,7 @@ class PickUpAction(Action):
     def __init__(self, object, gripper='left'):
         self.object = object
         self.gripper = gripper
+
     def transition(self, state):
         obj = self.object
         tool_link = PR2_TOOL_FRAMES[self.gripper]
@@ -176,6 +185,7 @@ class PutDownAction(Action):
     def __init__(self, surface, gripper='left'):
         self.surface = surface
         self.gripper = gripper
+
     def transition(self, state):
         obj = state.robot.objects_in_hand[self.gripper]
         state.robot.objects_in_hand[self.gripper] = -1
@@ -195,6 +205,7 @@ OBJECT_PARTS = {k.lower():v for k,v in OBJECT_PARTS.items()}
 class ChopAction(Action):
     def __init__(self, object):
         self.object = object
+
     def transition(self, state):
         pose = self.object.get_pose()
         surface = self.object.supporting_surface
@@ -212,6 +223,7 @@ class CrackAction(Action):
     def __init__(self, object, surface):
         self.object = object
         self.surface = surface
+
     def transition(self, state):
         pose = self.object.get_pose()
 
@@ -233,6 +245,7 @@ class TeleportObjectAction(Action):
         self.object = object
         self.arm = arm
         self.grasp = grasp
+
     def transition(self, state):
         old_pose = get_pose(self.object)
         link = link_from_name(state.robot, PR2_TOOL_FRAMES.get(self.arm, self.arm))
@@ -285,6 +298,7 @@ class AttachObjectAction(Action):
         self.grasp = grasp
         self.object = object
         self.verbose = verbose
+
     def transition(self, state):
         link = state.robot.get_attachment_link(self.arm)
         # print(f'AttachObjectAction | picking object {self.object} from', nice(get_pose(self.object)))
@@ -300,6 +314,7 @@ class DetachObjectAction(Action):
     def __init__(self, arm, object, verbose=False):
         self.arm = arm
         self.object = object
+
     def transition(self, state):
         print(f'DetachObjectAction | placing object {self.object} at', nice(get_pose(self.object)))
         # print(f'bullet.actions | DetachObjectAction | remove {self.object} from state.attachment')
@@ -310,8 +325,9 @@ class DetachObjectAction(Action):
 class JustDoAction(Action):
     def __init__(self, body):
         self.body = body
+
     def transition(self, state):
-        label = self.__class__.__name__.lower().replace('just','').capitalize() + 'ed'
+        label = self.__class__.__name__.lower().replace('just', '').capitalize() + 'ed'
         if label.endswith('eed'): label = label.replace('eed', '')
         state.variables[label, self.body] = True
         if hasattr(state.world, 'BODY_TO_OBJECT'):
@@ -342,6 +358,7 @@ class JustServe(JustDoAction):
 class JustSucceed(Action):
     def __init__(self):
         pass
+
     def transition(self, state):
         return state.new_state()
 
@@ -349,6 +366,7 @@ class JustSucceed(Action):
 class ChangePositions(Action):
     def __init__(self, pstn):
         self.pstn = pstn
+
     def transition(self, state):
         self.pstn.assign()
         return state.new_state()
@@ -357,6 +375,7 @@ class ChangePositions(Action):
 class MagicDisappear(Action):
     def __init__(self, body):
         self.body = body
+
     def transition(self, state):
         state.world.remove_object(state.world.BODY_TO_OBJECT[self.body])
         objects = copy.deepcopy(state.objects)
@@ -368,6 +387,7 @@ class TeleportObject(Action):
     def __init__(self, body, pose):
         self.body = body
         self.pose = pose
+
     def transition(self, state):
         self.pose.assign()
         return state.new_state()
@@ -391,6 +411,7 @@ class ChangeLinkColorEvent(Action):
         self.body = body
         self.color = color
         self.link = link
+
     def transition(self, state):
         set_color(self.body, self.color, self.link)
         return state.new_state()
@@ -403,6 +424,7 @@ class CreateCylinderEvent(Action):
         self.color = color
         self.pose = pose
         self.body = None
+
     def transition(self, state):
         objects = state.objects
         if self.body == None:
@@ -418,6 +440,7 @@ class RemoveBodyEvent(Action):
     def __init__(self, body=None, event=None):
         self.body = body
         self.event = event
+
     def transition(self, state):
         body = None
         objects = state.objects
@@ -880,16 +903,16 @@ def get_primitive_actions(action, world, teleport=False):
     ##    symbolic high-level actions
     ## ------------------------------------
 
-    elif 'clean' in name:  # TODO: add text or change color?
-        body, sink = args[:2]
+    elif 'clean' in name:
+        body = args[1] if name == 'just-clean' else args[0]
         new_commands = [JustClean(body)]
 
     elif 'cook' in name:
-        body, stove = args[:2]
+        body = args[1] if name == 'just-cook' else args[0]
         new_commands = [JustCook(body)]
 
     elif 'serve' in name:
-        body, plate = args[:2]
+        body = args[1] if name == 'just-serve' else args[0]
         new_commands = [JustServe(body)]
 
     elif name == 'season':

@@ -2155,3 +2155,30 @@ def sample_random_pose(aabb):
     elif case == 2:
         yaw = np.random.uniform(0, 2 * np.pi)
     return Pose(Point(x, y, z), Euler(roll, pitch, yaw))
+
+
+def print_action_plan(action_plan, stream_plan, world=None):
+    from pddlstream.language.object import Object, UniqueOptValue
+    placements = {s.output_objects[0].repr_name: world.get_debug_name(s.input_objects[1].value)
+                  for s in stream_plan if s.name == 'sample-pose'}
+    action_plan_str = ''
+    for action in action_plan:
+        if action.name == 'move_base':
+            action_plan_str += f"\n\t_"
+            continue
+        elems = []
+        for elem in action.args:
+            if elem.value == 'left':
+                continue
+            if isinstance(elem.value, int) or \
+                    (isinstance(elem.value, tuple) and not isinstance(elem.value, UniqueOptValue)):
+                elem = world.get_debug_name(elem.value)
+            else:
+                elem = str(elem.value) if isinstance(elem, Object) else elem.repr_name
+                if '=' in elem:
+                    elem = elem.split('=')[0]
+                elif '#' in elem and elem in placements:
+                    elem = f"{elem}_[{placements[elem]}]_"
+            elems.append(elem)
+        action_plan_str += f"\n\t{action.name} ( {', '.join(elems)} )"
+    return action_plan_str
