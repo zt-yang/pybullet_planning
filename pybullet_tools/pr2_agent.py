@@ -119,7 +119,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         # TODO: apply motion_collisions to pulling?
         'inverse-kinematics-grasp-handle': from_gen_fn(
             get_ik_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l, learned=False,
-                       pick_up=False, given_grasp_conf=True, verbose=True, visualize=True)),
+                       pick_up=False, given_grasp_conf=True, verbose=True, visualize=False)),
         'inverse-kinematics-ungrasp-handle': from_gen_fn(
             get_ik_ungrasp_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l, verbose=False)),
 
