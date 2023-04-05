@@ -413,7 +413,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, verbos
 
         """ attached objects are only used for collision checking during holding up
             so they are not used for operator pick_half """
-        if pick_up:
+        if pick_up and False:
             attachment = grasp.get_attachment(problem.robot, arm, visualize=False)
             attachments = {attachment.child: attachment}
         else:
