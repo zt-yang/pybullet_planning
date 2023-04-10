@@ -4032,8 +4032,8 @@ def check_initial_end(start_conf, end_conf, collision_fn, verbose=False):
     if collision_fn(start_conf, verbose=verbose):
         print(f'bullet.Warning: initial configuration {nice(start_conf)} is in collision')
         # set_renderer(True)
+        # collision_fn(start_conf, verbose=True)
         # wait_unlocked()
-        collision_fn(start_conf, verbose=True)
         return False
     if collision_fn(end_conf, verbose=verbose):
         print(f'bullet.Warning: end configuration {nice(end_conf)} is in collision')

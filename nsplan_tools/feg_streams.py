@@ -7,6 +7,7 @@ def get_stream_map(p, c, l, t, **kwargs):
     stream_map = get_stream_map_base(p, c, l, t, **kwargs)
     stream_map.update({
         'test-plate-in-cabinet': from_test(get_pose_in_cabinet_test(p)),
+        # 'test-plate-in-cabinet': from_test(get_pose_in_cabinet_test(p)),
     })
     return stream_map
 

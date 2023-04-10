@@ -56,13 +56,13 @@ def sample_clean_dish_goal(world):
     cabinet = world.name_to_object('cabinettop')
     cabinet_space = world.name_to_body('cabinettop_storage')
     world.add_to_cat(sink, 'CleaningSurface')
-    objects += [sink, cabinet, cabinet_space]
+    objects += [sink, cabinet, cabinet_space] + bottles
     ## ----------------------------------------------------
 
     # objects += [fridge_door]
 
     world.add_to_cat(food, 'moveable')
-    world.add_to_cat(bottle, 'moveable')
+    [world.add_to_cat(b, 'moveable') for b in bottles]
     world.add_to_cat(bowl, 'moveable')
     world.add_to_cat(mug, 'moveable')
     world.add_to_cat(pan, 'moveable')
@@ -117,7 +117,7 @@ def sample_clean_dish_goal(world):
     objects += bottles
 
     ## set initial state
-    # world.add_clean_object(bowl)
+    world.add_clean_object(bowl)
 
     ## removing all fridge doors to save planning time for testing domain
     for door in cabinet.doors:
