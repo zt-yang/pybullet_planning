@@ -1253,7 +1253,7 @@ if __name__ == '__main__':
     """
     # test_grasps(robot, ['Bowl'], skip_grasps=False, test_attachment=True)  ## 'EyeGlasses'
     # test_grasps(robot, ['Bowl'], skip_grasps=False, test_attachment=False)  ## 'EyeGlasses'
-    test_grasps(robot, ['Bowl'], skip_grasps=False, test_attachment=False)
+    test_grasps(robot, ['Mug'], skip_grasps=False, test_attachment=True)
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
 

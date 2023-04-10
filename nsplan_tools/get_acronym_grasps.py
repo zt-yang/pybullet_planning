@@ -129,10 +129,10 @@ def get_object_grasp(num_grasps=100):
 
         vis_grasp = create_gripper_marker(color=[0, 255, 0]).apply_transform(grasp)
 
-        vis_pose = trimesh.creation.axis(transform=grasp)
-        vis_pose_offset = trimesh.creation.axis(transform=offset_grasp)
+        vis_pose = trimesh.creation.axis(transform=grasp, origin_size=0.01)
+        vis_pose_offset = trimesh.creation.axis(transform=offset_grasp, origin_size=0.01)
 
-        trimesh.Scene([obj_mesh, vis_grasp, vis_pose]).show()
+        trimesh.Scene([obj_mesh, vis_grasp, vis_pose, vis_pose_offset]).show()
 
 
 def get_object_grasp_debug(num_grasps=100):
@@ -159,8 +159,7 @@ def get_object_grasp_debug(num_grasps=100):
 
     transform = tra.quaternion_matrix((0.0, 0.0, 1.0, 6.123234262925839e-17))
     transform[:3, 3] = (0.0, 0.0, 0.03069899927079678)
-
-    obj_mesh.apply_transform(transform)
+    obj_mesh = obj_mesh.apply_transform(transform)
 
     for grasp in successful_grasps:
         # print(grasp)
@@ -183,8 +182,8 @@ def get_object_grasp_debug(num_grasps=100):
 
         vis_grasp = create_gripper_marker(color=[0, 255, 0]).apply_transform(grasp)
 
-        vis_pose = trimesh.creation.axis(transform=grasp)
-        vis_pose_offset = trimesh.creation.axis(transform=offset_grasp)
+        vis_pose = trimesh.creation.axis(transform=grasp, origin_size=0.01)
+        vis_pose_offset = trimesh.creation.axis(transform=offset_grasp, origin_size=0.01)
 
         trimesh.Scene([obj_mesh, vis_grasp, vis_pose, vis_pose_offset]).show()
 

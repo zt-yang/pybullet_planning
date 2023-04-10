@@ -11,7 +11,6 @@ def test_clean_dish_feg(world, **kwargs):
         sample_clean_dish_v0(world, verbose=False, pause=False)
 
     dump_world()
-    # input("here")
 
     goal = sample_clean_dish_goal(world)
     return goal
@@ -38,6 +37,10 @@ def sample_clean_dish_goal(world):
     bottles = world.cat_to_bodies('bottle')
     bowl = random.choice(world.cat_to_bodies('bowl'))
     bowls = world.cat_to_bodies('bowl')
+    mug = random.choice(world.cat_to_objects('mug'))
+    mugs = world.cat_to_bodies('mug')
+    pan = random.choice(world.cat_to_objects('pan'))
+
     sink_counter_left = world.name_to_body('sink_counter_left')
     sink_counter_right = world.name_to_body('sink_counter_right')
     shelve = world.name_to_object('shelf_lower')
@@ -61,6 +64,10 @@ def sample_clean_dish_goal(world):
     world.add_to_cat(food, 'moveable')
     world.add_to_cat(bottle, 'moveable')
     world.add_to_cat(bowl, 'moveable')
+    world.add_to_cat(mug, 'moveable')
+    world.add_to_cat(pan, 'moveable')
+    print("\nobjects by category after adding to moveable")
+    print(world.OBJECTS_BY_CATEGORY)
 
     hand = world.robot.arms[0]
     # goal_candidates = [
@@ -91,15 +98,23 @@ def sample_clean_dish_goal(world):
     # goals = [('In', bowl, cabinet_space), ('NoDirtyPlateInCabinet', cabinet_space)]
     ## ------------------------------------------------
 
-    # goals = [('Holding', hand, bowl)]
+    # goals = [('Holding', hand, bottle)]
     # goals = [('Holding', hand, bottle)]
     # goals = [('On', bowl, sink)]
     # goals = [('On', bowl, shelve)]
     # goals = [('Cleaned', bottle)]
     # goals = [('On', bottles[0], shelve)]
-    goals = [('In', bowl, cabinet_space), ('NoDirtyPlateInCabinet', cabinet_space)]
+    # goals = [('In', bowl, cabinet_space), ('NoDirtyPlateInCabinet', cabinet_space)]
+    # objects += bottles
     # goals = [('In', bowls[1], cabinet_space), ('NoDirtyPlateInCabinet', cabinet_space)]
     # goals = [('In', bowls[0], cabinet_space), ('In', bowls[1], cabinet_space), ('NoDirtyPlateInCabinet', cabinet_space)]
+
+    # 0410
+    # goals = [('Holding', hand, bowl)]
+    # goals = [('On', pan, shelve)]
+    # goals = [('In', mug, cabinet_space), ('NoDirtyMugInCabinet', cabinet_space)]
+    goals = [('In', bowl, cabinet_space), ('NoDirtyBowlInCabinet', cabinet_space), ('In', mug, cabinet_space), ('NoDirtyMugInCabinet', cabinet_space)]
+    objects += bottles
 
     ## set initial state
     # world.add_clean_object(bowl)
@@ -109,9 +124,6 @@ def sample_clean_dish_goal(world):
         world.open_joint(door[0], door[1], hide_door=True)
 
     world.remove_bodies_from_planning(goals=goals, exceptions=objects)
-
-
-
 
     # ################################################
     # # debug

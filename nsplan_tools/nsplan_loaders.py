@@ -8,6 +8,7 @@ def sample_clean_dish_v0(world, w=3, l=8, verbose=True, pause=True):
     # TODO: instead of making it one scale, sample different scales for sink base, sink, and faucet. but make sure they
     #       are compatible
     random_scale = np.random.uniform(0.7, 1.3)
+    random_scale = 1.0
     print("random scale:", random_scale)
 
     h_lower_cabinets = 1 * random_scale
@@ -276,6 +277,8 @@ def sample_clean_dish_v0(world, w=3, l=8, verbose=True, pause=True):
         'bottle': counters + [sink_bottom],
         'medicine': shelves,
         'bowl': counters,
+        'mug': counters,
+        'pan': counters,
     }
     possible = []
     for v in all_counters.values():
@@ -308,9 +311,9 @@ def sample_clean_dish_v0(world, w=3, l=8, verbose=True, pause=True):
     # load_storage_mechanism(world, world.name_to_object('dishwasherbox'), epsilon=epsilon)
 
     ## load objects into reachable places
-    food_ids, bottle_ids, medicine_ids, bowl_ids = \
+    food_ids, bottle_ids, medicine_ids, bowl_ids, mug_ids, pan_ids = \
         load_counter_moveables(world, all_counters, d_x_min=0.3, obstacles=obstacles)
-    moveables = food_ids + bottle_ids + medicine_ids + bowl_ids
+    moveables = food_ids + bottle_ids + medicine_ids + bowl_ids + mug_ids + pan_ids
 
     """ step 6: take an image """
     set_camera_pose((4, 4, 3), (0, 4, 0))

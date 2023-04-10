@@ -1,6 +1,6 @@
 ## debug related
 # seed: 594585
-seed: 15
+seed: 6
 verbose: true
 
 ## pybullet related

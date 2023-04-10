@@ -75,7 +75,7 @@ class World(object):
         self.outpath = None
         self.camera = None
         self.instance_names = {}
-        self.constants = ['@movable', '@bottle', '@edible', '@medicine', '@world', '@bowl']
+        self.constants = ['@movable', '@bottle', '@edible', '@medicine', '@world', '@bowl', '@mug']
         self.note = None
 
         self.clean_object = set()
