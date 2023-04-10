@@ -100,11 +100,11 @@ METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']  ## 'PIGI*',
 
 ################################ rebuttal ######################################
 
-GROUPS = ['tt_storage', 'tt_braiser']
-GROUPNAMES = ['Counter-to-storage', 'Counter-to-pot']
+GROUPS = ['tt_braiser_to_storage']  ## 'tt_braiser', 'tt_storage',
+GROUPNAMES = ['Pot-to-storage']  ## 'Counter-to-pot', 'Counter-to-storage',
 
-METHODS = ['None', 'pvt-br-1', 'oracle']
-METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']
+METHODS = ['None', 'pvt-br2-1', 'pvt-br2-0.75', 'oracle']
+METHOD_NAMES = ['Baseline', 'PIGI-250', 'PIGI-180', 'Oracle']
 
 ############################ generalization ################################
 
@@ -419,6 +419,8 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     if GROUPNAMES is not None:
         labels = tuple(GROUPNAMES)
 
+    print(means)
+
     if SAME_Y_AXES:
         figsize = (9, 6)
         fig, ax = plt.subplots(figsize=figsize)
@@ -503,6 +505,8 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                 figsize = (3.5, 3.5)
             else:
                 figsize = (5, 5)
+        if len(GROUPS) == 1:
+            figsize = (5, 5)
 
         fig, axs = plt.subplots(1, len(groups), figsize=figsize)
         if len(groups) == 1:

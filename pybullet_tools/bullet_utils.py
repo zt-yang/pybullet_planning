@@ -374,7 +374,7 @@ def log_collided(obj, obs, visualize=False):
 
 
 def collided(obj, obstacles=[], world=None, tag='', articulated=False, verbose=False, log_collisions=True,
-             visualize=False, min_num_pts=0, use_aabb=True, ignored_pairs=[], **kwargs):
+             visualize=False, min_num_pts=3, use_aabb=True, ignored_pairs=[], **kwargs):
 
     prefix = '\t\tbullet_utils.collided '
     if len(tag) > 0: prefix += f'( {tag} )'

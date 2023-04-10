@@ -461,7 +461,7 @@ def get_contain_gen(problem, collisions=True, num_samples=20, verbose=False,
     return gen
 
 
-def get_contain_list_gen(problem, collisions=True, num_samples=10, **kwargs):
+def get_contain_list_gen(problem, collisions=True, num_samples=50, **kwargs):
     funk = get_contain_gen(problem, collisions, num_samples=num_samples, **kwargs)
 
     def gen(body, space):
@@ -520,7 +520,7 @@ def sample_joint_position_list_gen(num_samples=6):
     return gen
 
 
-def sample_joint_position_gen(num_samples=6):
+def sample_joint_position_gen(num_samples=14):
     def fn(o, psn1):
         if psn1.extent == 'max':
             higher = psn1.value
@@ -548,6 +548,8 @@ def sample_joint_position_gen(num_samples=6):
             ptns.append(higher - math.pi/2)
             ptns.extend([np.random.uniform(lower, higher - math.pi/3) for k in range(num_samples)])
         ptns = [round(ptn, 3) for ptn in ptns]
+
+        ptns = [p for p in ptns if p > psn1.value]
         positions = [(Position(o, p), ) for p in ptns]
 
         for pstn in positions:
@@ -884,10 +886,11 @@ def process_motion_fluents(fluents, robot, verbose=False):
         elif predicate == 'ataconf': # TODO: the arm conf isn't being set pre/post moves correctly
             from pddlstream.language.object import UniqueOptValue
             a, q = args
-            if not isinstance(q, UniqueOptValue):
-                q.assign()
-            elif verbose:
-                print('Skipping bc UniqueOptValue', atom)
+            # if not isinstance(q, UniqueOptValue):
+            #     q.assign()
+            # elif verbose:
+            #     print('Skipping bc UniqueOptValue', atom)
+            pass
         elif predicate == 'atseconf':
             [q] = args
             q.assign()
