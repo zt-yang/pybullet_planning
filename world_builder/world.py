@@ -159,8 +159,8 @@ class World(object):
     @property
     def fixed(self):
         objs = [obj for obj in self.objects if not isinstance(obj, tuple)]
-        objs = [o for o in objs if o not in self.floors and o not in self.movable]
         objs += [o for o in self.non_planning_objects if isinstance(o, int) and o not in objs]
+        objs = [o for o in objs if o not in self.floors and o not in self.movable]
         return objs
 
     @property
@@ -597,12 +597,16 @@ class World(object):
                 continue
             category = self.BODY_TO_OBJECT[body].category
             obj = self.BODY_TO_OBJECT.pop(body)
+            self.REMOVED_BODY_TO_OBJECT[body] = obj
+            self.non_planning_objects.append(body)
+
+            ## still need to find all floors
+            if category == 'floor':
+                continue
             self.OBJECTS_BY_CATEGORY[category] = [
                 o for o in self.OBJECTS_BY_CATEGORY[category] if not
                 (o.body == obj.body and o.link == obj.link and o.joint == obj.joint)
             ]
-            self.REMOVED_BODY_TO_OBJECT[body] = obj
-            self.non_planning_objects.append(body)
 
     def remove_category_from_planning(self, category, exceptions=[]):
         if len(exceptions) > 0 and isinstance(exceptions[0], str):
@@ -692,7 +696,7 @@ class World(object):
                 bodies.append(o.body)
         filtered_bodies = []
         for b in set(bodies):
-            if b in self.BODY_TO_OBJECT:
+            if b in self.BODY_TO_OBJECT or cat == 'floor':
                 filtered_bodies += [b]
             # else:
             #     print(f'   world.cat_to_bodies | category {cat} found {b}')
@@ -1083,10 +1087,11 @@ class World(object):
             if cat.lower() in ['edible', 'plate', 'cleaningsurface', 'heatingsurface']:
                 objects = self.OBJECTS_BY_CATEGORY[cat]
                 init += [(cat, obj.pybullet_name) for obj in objects if obj.pybullet_name in BODY_TO_OBJECT]
+                # init += [(cat, obj.pybullet_name) for obj in objects if obj.pybullet_name in BODY_TO_OBJECT]
 
             for obj in objects:
-                if cat in ['space', 'surface'] and (cat, obj) not in init:
-                    init += [(cat, obj)]
+                if cat in ['space', 'surface'] and (cat, obj.pybullet_name) not in init:
+                    init += [(cat, obj.pybullet_name)]
                 cat2 = f"@{cat}"
                 if cat2 in self.constants:
                     init += [('OfType', obj, cat2)]
@@ -1193,7 +1198,7 @@ class World(object):
     def get_type(self, body):
         return [self.BODY_TO_OBJECT[body].category]
 
-    def find_surfaces_for_placement(self, obj, surfaces, verbose=False, obstacles=[]):
+    def find_surfaces_for_placement(self, obj, surfaces, verbose=False):
         from pybullet_tools.pr2_streams import get_stable_gen
         if verbose:
             self.summarize_supporting_surfaces()
@@ -1425,6 +1430,7 @@ def analyze_outcome(state):
 
 #######################################################
 
+
 class Observation(object):
     # TODO: just update a dictionary for everything
     def __init__(self, state, robot_conf=None, obj_poses=None, image=None, facts=None, variables=None, collision=False):
@@ -1470,6 +1476,7 @@ class Observation(object):
         return '{}({}, {})'.format(self.__class__.__name__, self.robot_conf, sorted(self.obj_poses))
 
 #######################################################
+
 
 class Process(object):
     def __init__(self, world, name=None, **kwargs):
@@ -1525,6 +1532,7 @@ class Process(object):
 
 #######################################################
 
+
 class Exogenous(Process):
     def __init__(self, world, **kwargs):
         super(Exogenous, self).__init__(world, **kwargs)
@@ -1541,6 +1549,7 @@ class Exogenous(Process):
         raise NotImplementedError()
 
 #######################################################
+
 
 class Agent(Process): # Decision
     # TODO: make these strings

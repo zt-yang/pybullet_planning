@@ -7,7 +7,6 @@ from os.path import isfile, dirname, abspath, join, isdir
 from os import mkdir
 import sys
 
-import PIL.Image
 import numpy as np
 import math
 import pybullet as p
@@ -21,7 +20,7 @@ from pybullet_tools.pr2_utils import draw_viewcone, get_viewcone, get_group_conf
     get_carry_conf, set_arm_conf, open_arm, close_arm, arm_conf, REST_LEFT_ARM, get_group_joints
 
 from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockRenderer, pairwise_collision, get_link_name, \
-    set_pose, get_movable_joints, draw_pose, pose_from_pose2d, set_velocity, set_joint_states, get_bodies, \
+    is_movable, get_movable_joints, draw_pose, pose_from_pose2d, set_velocity, set_joint_states, get_bodies, \
     flatten, INF, inf_generator, get_time_step, get_all_links, get_visual_data, pose2d_from_pose, multiply, invert, \
     get_sample_fn, pairwise_collisions, sample_placement, is_placement, aabb_contains_point, point_from_pose, \
     aabb2d_from_aabb, is_center_stable, aabb_contains_aabb, get_model_info, get_name, get_pose, dump_link, \
@@ -35,7 +34,7 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
     parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug, set_point, has_gui, get_rigid_clusters, \
     BASE_LINK as ROOT_LINK, link_pairs_collision, draw_collision_info, wait_unlocked, apply_alpha, set_color, \
-    dimensions_from_camera_matrix, get_field_of_view, tform_point, get_image, sample_placement_on_aabb, timeout
+    dimensions_from_camera_matrix, get_field_of_view, set_joint_positions, get_image, sample_placement_on_aabb, timeout
 
 
 OBJ = '?obj'
@@ -321,8 +320,8 @@ def articulated_collisions(obj, obstacles, **kwargs): # TODO: articulated_collis
 def collided_around(obj, obstacles, padding=0.05, **kwargs):
     """ if obj is collided within 0.2 away from its area """
     (x, y, z), quat = get_pose(obj)
-    # lx, ly, _ = get_aabb_extent(get_aabb(obj))
     lx = ly = padding
+    # lx, ly, _ = get_aabb_extent(get_aabb(obj))
 
     # aabb = get_aabb(obj)
     # draw_aabb(aabb)
@@ -375,7 +374,7 @@ def log_collided(obj, obs, visualize=False):
 
 
 def collided(obj, obstacles=[], world=None, tag='', articulated=False, verbose=False, log_collisions=True,
-             visualize=False, min_num_pts=0, use_aabb=True, ignored_pairs=[], **kwargs):
+             visualize=False, min_num_pts=3, use_aabb=True, ignored_pairs=[], **kwargs):
 
     prefix = '\t\tbullet_utils.collided '
     if len(tag) > 0: prefix += f'( {tag} )'
@@ -1247,11 +1246,11 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
 
     aabb, handles = draw_fitted_box(body, link=link, verbose=verbose, draw_box=False, draw_centroid=False)
 
-    if link is None:
+    if link is None:  ## grasp the whole body
         r = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
         # r = get_rotation_matrix(body)
-        body_pose = multiply(body_pose, invert(r)) ##
-    else:  ## for handle grasps, use the original pose of handle_link
+        body_pose = multiply(body_pose, invert(r))
+    else:  ## grasp handle links
         body_pose = multiply(body_pose, invert(robot.tool_from_hand))
 
     # weiyu debug
@@ -1267,7 +1266,6 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
                 bodies = []
                 for g in found:
                     bodies.append(robot.visualize_grasp(body_pose, g, verbose=verbose))
-                ## nice(get_cloned_se3_conf(robot, bodies[0]))[1] != nice(get_pose(body))[1] == nice(body_pose)[1]
                 # set_renderer(True)
                 set_camera_target_body(body)
                 # wait_unlocked()
@@ -1406,7 +1404,6 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
 
 def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, color=GREEN, body=None,
                         min_num_pts=40, RETAIN_ALL=False, verbose=False, collisions=False):
-    from pybullet_tools.flying_gripper_utils import get_cloned_se3_conf
     robot = world.robot
 
     ################# for debugging ################
@@ -1416,7 +1413,6 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
     #         visualize = True
     ################################################
 
-    # print(f'bullet_utils.check_cfree_gripper(object_pose={nice(object_pose)}) before robot.visualize_grasp')
     gripper_grasp = robot.visualize_grasp(object_pose, grasp, color=color, verbose=verbose)
     if gripper_grasp is None:
         return False, None, None
@@ -1447,7 +1443,7 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
             secondly = secondly or aabb_contains_aabb(get_aabb(gripper_grasp, robot.finger_link), get_aabb(body))
 
     ## criteria 3: the gripper shouldn't be pointing upwards, heuristically
-    finger_link = robot.finger_link
+    finger_link = robot.cloned_finger_link
     aabb = nice(get_aabb(gripper_grasp), round_to=2)
     upwards = get_aabb_center(get_aabb(gripper_grasp, link=finger_link))[2] - get_aabb_center(aabb)[2] > 0.01
 
@@ -1466,14 +1462,24 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
     return result, aabb, gripper_grasp
 
 
+def get_cloned_gripper_joints(gripper_cloned):
+    return [joint for joint in get_joints(gripper_cloned) if is_movable(gripper_cloned, joint)]
+
+
+########################################################################
+
+
 def add(elem1, elem2):
     return tuple(np.asarray(elem1)+np.asarray(elem2))
+
 
 def minus(elem1, elem2):
     return tuple(np.asarray(elem1)-np.asarray(elem2))
 
+
 def dist(elem1, elem2):
     return np.linalg.norm(np.asarray(elem1)-np.asarray(elem2))
+
 
 def draw_bounding_lines(pose, dimensions):
     w, l, h = dimensions  ## it's meshscale instead of wlh
@@ -2157,3 +2163,30 @@ def sample_random_pose(aabb):
     elif case == 2:
         yaw = np.random.uniform(0, 2 * np.pi)
     return Pose(Point(x, y, z), Euler(roll, pitch, yaw))
+
+
+def print_action_plan(action_plan, stream_plan, world=None):
+    from pddlstream.language.object import Object, UniqueOptValue
+    placements = {s.output_objects[0].repr_name: world.get_debug_name(s.input_objects[1].value)
+                  for s in stream_plan if s.name == 'sample-pose'}
+    action_plan_str = ''
+    for action in action_plan:
+        if action.name == 'move_base':
+            action_plan_str += f"\n\t_"
+            continue
+        elems = []
+        for elem in action.args:
+            if elem.value == 'left':
+                continue
+            if isinstance(elem.value, int) or \
+                    (isinstance(elem.value, tuple) and not isinstance(elem.value, UniqueOptValue)):
+                elem = world.get_debug_name(elem.value)
+            else:
+                elem = str(elem.value) if isinstance(elem, Object) else elem.repr_name
+                if '=' in elem:
+                    elem = elem.split('=')[0]
+                elif '#' in elem and elem in placements:
+                    elem = f"{elem}_[{placements[elem]}]_"
+            elems.append(elem)
+        action_plan_str += f"\n\t{action.name} ( {', '.join(elems)} )"
+    return action_plan_str

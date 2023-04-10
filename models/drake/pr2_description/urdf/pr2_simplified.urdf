@@ -70,7 +70,7 @@
   <material name="White">
     <color rgba="1.0 1.0 1.0 1.0"/>
   </material>
-  <material name="Caster">
+  <!--material name="Caster">
     <texture filename="pr2_ogre/Media/materials/textures/pr2_caster_texture.png"/>
   </material>
   <material name="Wheel_l">
@@ -81,32 +81,31 @@
   </material>
   <material name="RollLinks">
     <texture filename="pr2_ogre/Media/materials/textures/pr2_wheel_left.png"/>
-  </material>
+  </material-->
   <!-- Now we can start using the macros included above to define the actual PR2 -->
   <!-- The first use of a macro.  This one was defined in base.urdf.xacro above.
        A macro like this will expand to a set of link and joint definitions, and to additional
-       Gazebo-related extensions (sensor plugins, etc).  The macro takes an argument, name, 
-       that equals "base", and uses it to generate names for its component links and joints 
-       (e.g., base_link).  The included origin block is also an argument to the macro.  By convention, 
-       the origin block defines where the component is w.r.t its parent (in this case the parent 
+       Gazebo-related extensions (sensor plugins, etc).  The macro takes an argument, name,
+       that equals "base", and uses it to generate names for its component links and joints
+       (e.g., base_link).  The included origin block is also an argument to the macro.  By convention,
+       the origin block defines where the component is w.r.t its parent (in this case the parent
        is the world frame). For more, see http://www.ros.org/wiki/xacro -->
   <link name="world_link"/>
   <link name="base_link_0"/>
   <link name="base_link_1"/>
   <joint name="x" type="prismatic">
-    <limit lower="-5" upper="5" effort="1000.0" velocity="1.0"/>
+    <limit effort="30" velocity="1.0" lower="-5" upper="5"/>
     <parent link="world_link"/>
     <child link="base_link_0"/>
     <axis xyz="1 0 0"/>
   </joint>
   <joint name="y" type="prismatic">
-    <limit lower="-5" upper="5" effort="1000.0" velocity="1.0"/>
+    <limit effort="30" velocity="1.0" lower="-5" upper="5"/>
     <parent link="base_link_0"/>
     <child link="base_link_1"/>
     <axis xyz="0 1 0"/>
   </joint>
   <joint name="theta" type="continuous">
-    <limit effort="1000.0" velocity="1.5708"/>
     <parent link="base_link_1"/>
     <child link="base_footprint"/>
     <axis xyz="0 0 1"/>
@@ -245,7 +244,7 @@
       <geometry>
         <mesh filename="../meshes/base_v0/caster.obj"/>
       </geometry>
-      <material name="Caster"/>
+      <!--material name="Caster"/-->
     </visual>
     <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -280,7 +279,7 @@
       <geometry>
         <mesh filename="../meshes/base_v0/wheel.obj"/>
       </geometry>
-      <material name="Wheel_l"/>
+      <!--material name="Wheel_l"/-->
     </visual>
     <collision group="non_gripper">
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
@@ -323,7 +322,7 @@
       <geometry>
         <mesh filename="../meshes/base_v0/wheel.obj"/>
       </geometry>
-      <material name="Wheel_r"/>
+      <!--material name="Wheel_r"/-->
     </visual>
     <collision group="non_gripper">
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
@@ -371,7 +370,7 @@
       <geometry>
         <mesh filename="../meshes/base_v0/caster.obj"/>
       </geometry>
-      <material name="Caster"/>
+      <!--material name="Caster"/-->
     </visual>
     <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -406,7 +405,7 @@
       <geometry>
         <mesh filename="../meshes/base_v0/wheel.obj"/>
       </geometry>
-      <material name="Wheel_l"/>
+      <!--material name="Wheel_l"/-->
     </visual>
     <collision group="non_gripper">
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
@@ -449,7 +448,7 @@
       <geometry>
         <mesh filename="../meshes/base_v0/wheel.obj"/>
       </geometry>
-      <material name="Wheel_r"/>
+      <!--material name="Wheel_r"/-->
     </visual>
     <collision group="non_gripper">
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
@@ -497,7 +496,7 @@
       <geometry>
         <mesh filename="../meshes/base_v0/caster.obj"/>
       </geometry>
-      <material name="Caster"/>
+      <!--material name="Caster"/-->
     </visual>
     <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -532,7 +531,7 @@
       <geometry>
         <mesh filename="../meshes/base_v0/wheel.obj"/>
       </geometry>
-      <material name="Wheel_l"/>
+      <!--material name="Wheel_l"/-->
     </visual>
     <collision group="non_gripper">
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
@@ -575,7 +574,7 @@
       <geometry>
         <mesh filename="../meshes/base_v0/wheel.obj"/>
       </geometry>
-      <material name="Wheel_r"/>
+      <!--material name="Wheel_r"/-->
     </visual>
     <collision group="non_gripper">
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
@@ -623,7 +622,7 @@
       <geometry>
         <mesh filename="../meshes/base_v0/caster.obj"/>
       </geometry>
-      <material name="Caster"/>
+      <!--material name="Caster"/-->
     </visual>
     <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -658,7 +657,7 @@
       <geometry>
         <mesh filename="../meshes/base_v0/wheel.obj"/>
       </geometry>
-      <material name="Wheel_l"/>
+      <!--material name="Wheel_l"/-->
     </visual>
     <collision group="non_gripper">
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
@@ -701,7 +700,7 @@
       <geometry>
         <mesh filename="../meshes/base_v0/wheel.obj"/>
       </geometry>
-      <material name="Wheel_r"/>
+      <!--material name="Wheel_r"/-->
     </visual>
     <collision group="non_gripper">
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
@@ -757,7 +756,8 @@
   </gazebo>
   <joint name="torso_lift_joint" type="prismatic">
     <axis xyz="0 0 1"/>
-    <limit effort="10000" lower="0.0" upper="0.31" velocity="0.013"/>
+    <!-- <limit effort="10000" lower="0.0" upper="0.31" velocity="0.013"/> -->
+    <limit effort="10000" lower="0.0" upper="2" velocity="0.013"/>
     <!-- alpha tested velocity and effort limits -->
     <safety_controller k_position="100" k_velocity="2000000" soft_lower_limit="0.0115" soft_upper_limit="0.305"/>
     <!-- hold both reference_position and upper/lower for tick-tock, remove reference_positiion after verifying upper/lower works with calibration controllers.  if search velocity in pr2_calibration_controllers.yaml is +, the reference_position is rising, if - then it is falling -->
@@ -781,12 +781,71 @@
       </geometry>
       <material name="Grey2"/>
     </visual>
+
+    <visual group="non_gripper" name="torso_lift_visual_extra">
+      <origin rpy="0 0 0" xyz="0 0 -0.6"/>
+      <geometry>
+        <mesh filename="../meshes/torso_v0/torso_lift_extra.obj"/>
+      </geometry>
+      <material name="Grey2"/>
+    </visual>
+    <visual group="non_gripper" name="torso_lift_visual_extra">
+      <origin rpy="3.1415 0 0" xyz="0 0 -0.7"/>
+      <geometry>
+        <mesh filename="../meshes/torso_v0/torso_lift_extra.obj"/>
+      </geometry>
+      <material name="Grey2"/>
+    </visual>
+    <visual group="non_gripper" name="torso_lift_visual_extra">
+      <origin rpy="0 0 0" xyz="0 0 -1.5"/>
+      <geometry>
+        <mesh filename="../meshes/torso_v0/torso_lift_extra.obj"/>
+      </geometry>
+      <material name="Grey2"/>
+    </visual>
+    <visual group="non_gripper" name="torso_lift_visual_extra">
+      <origin rpy="3.1415 0 0" xyz="0 0 -1.6"/>
+      <geometry>
+        <mesh filename="../meshes/torso_v0/torso_lift_extra.obj"/>
+      </geometry>
+      <material name="Grey2"/>
+    </visual>
+
     <collision group="non_gripper" name="torso_lift_collision">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/torso_v0/torso_lift_L.obj"/>
       </geometry>
     </collision>
+
+    <collision group="non_gripper" name="torso_lift_collision_extra">
+      <origin rpy="0 0 0" xyz="0 0 -0.6"/>
+      <geometry>
+        <mesh filename="../meshes/torso_v0/torso_lift_extra.obj"/>
+      </geometry>
+    </collision>
+    <collision group="non_gripper" name="torso_lift_visual_extra">
+      <origin rpy="3.1415 0 0" xyz="0 0 -0.7"/>
+      <geometry>
+        <mesh filename="../meshes/torso_v0/torso_lift_extra.obj"/>
+      </geometry>
+      <material name="Grey2"/>
+    </collision>
+    <collision group="non_gripper" name="torso_lift_visual_extra">
+      <origin rpy="0 0 0" xyz="0 0 -1.5"/>
+      <geometry>
+        <mesh filename="../meshes/torso_v0/torso_lift_extra.obj"/>
+      </geometry>
+      <material name="Grey2"/>
+    </collision>
+    <collision group="non_gripper" name="torso_lift_visual_extra">
+      <origin rpy="3.1415 0 0" xyz="0 0 -1.6"/>
+      <geometry>
+        <mesh filename="../meshes/torso_v0/torso_lift_extra.obj"/>
+      </geometry>
+      <material name="Grey2"/>
+    </collision>
+
   </link>
   <gazebo reference="torso_lift_link">
     <sensor:contact name="torso_lift_contact_sensor">
@@ -1603,7 +1662,7 @@
       <geometry>
         <mesh filename="../meshes/shoulder_v0/upper_arm_roll.obj"/>
       </geometry>
-      <material name="RollLinks"/>
+      <!--material name="RollLinks"/-->
     </visual>
     <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -1736,7 +1795,7 @@
       <geometry>
         <mesh filename="../meshes/upper_arm_v0/forearm_roll.obj"/>
       </geometry>
-      <material name="RollLinks"/>
+      <!--material name="RollLinks"/-->
     </visual>
     <!-- TODO: collision tag should be optional -->
     <collision group="non_gripper">
@@ -1900,7 +1959,7 @@
       <geometry>
         <mesh filename="../meshes/forearm_v0/wrist_roll.obj"/>
       </geometry>
-      <material name="RollLinks"/>
+      <!--material name="RollLinks"/-->
     </visual>
     <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -1960,7 +2019,7 @@
   </gazebo>
   <!-- WristTransmission replaced for Drake compatibility -->
   <!--
-  <transmission name="r_wrist_trans" type="WristTransmission"> 
+  <transmission name="r_wrist_trans" type="WristTransmission">
     <rightActuator mechanicalReduction="60.1714285714" name="r_wrist_r_motor"/>
     <leftActuator mechanicalReduction="60.1714285714" name="r_wrist_l_motor"/>
     <flexJoint mechanicalReduction="-1.0" name="r_wrist_flex_joint"/>
@@ -2406,7 +2465,7 @@
   </gazebo>
   <!-- PR2GripperTransmission commented for Drake compatibility -->
   <!--
-  <transmission name="r_gripper_trans" type="PR2GripperTransmission"> 
+  <transmission name="r_gripper_trans" type="PR2GripperTransmission">
     <actuator name="r_gripper_motor"/>
     <gap_joint L0="0.0375528" a="0.0683698" b="0.0433849" gear_ratio="40.095" h="0.0" mechanical_reduction="1.0" name="r_gripper_joint" phi0="0.518518122146" r="0.0915" screw_reduction="0.004" t0="-0.0001914" theta0="0.0628824676201"/>
     < if a gazebo joint exists as [l|r]_gripper_joint, use this tag to have
@@ -2531,7 +2590,7 @@
       <geometry>
         <mesh filename="../meshes/shoulder_v0/upper_arm_roll.obj"/>
       </geometry>
-      <material name="RollLinks"/>
+      <!--material name="RollLinks"/-->
     </visual>
     <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -2664,7 +2723,7 @@
       <geometry>
         <mesh filename="../meshes/upper_arm_v0/forearm_roll.obj"/>
       </geometry>
-      <material name="RollLinks"/>
+      <!--material name="RollLinks"/-->
     </visual>
     <!-- TODO: collision tag should be optional -->
     <collision group="non_gripper">
@@ -2828,7 +2887,7 @@
       <geometry>
         <mesh filename="../meshes/forearm_v0/wrist_roll.obj"/>
       </geometry>
-      <material name="RollLinks"/>
+      <!--material name="RollLinks"/-->
     </visual>
     <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -3335,7 +3394,7 @@
   </gazebo>
   <!-- PR2GripperTransmission commented for Drake compatibility -->
   <!--
-  <transmission name="l_gripper_trans" type="PR2GripperTransmission"> 
+  <transmission name="l_gripper_trans" type="PR2GripperTransmission">
     <actuator name="l_gripper_motor"/>
     <gap_joint L0="0.0375528" a="0.0683698" b="0.0433849" gear_ratio="40.095" h="0.0" mechanical_reduction="1.0" name="l_gripper_joint" phi0="0.518518122146" r="0.0915" screw_reduction="0.004" t0="-0.0001914" theta0="0.0628824676201"/>
     < if a gazebo joint exists as [l|r]_gripper_joint, use this tag to have

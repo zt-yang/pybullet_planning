@@ -175,6 +175,28 @@ def get_compute_pose_rel_kin():
 
 """ ==============================================================
 
+            Testing configuration ?conf
+
+    ==============================================================
+"""
+
+
+def get_bconf_close_to_surface(problem):
+    world = problem.world
+
+    def test(bconf, surface, fluents=[]):
+        ## when the surface is a link
+        if isinstance(surface, tuple):
+            surface = surface[0]
+        point1 = np.asarray(bconf.values[:2])
+        point2 = np.asarray(get_pose(surface)[0][:2])
+        dist = np.linalg.norm(point1 - point2)
+        return dist < 1
+    return test
+
+
+""" ==============================================================
+
             Sampling placement ?p
 
     ==============================================================
@@ -224,7 +246,7 @@ def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visu
                         p0.assign()
                         yield (p,)
 
-        print(title, 'sample without check_kitchen_placement')
+        if verbose: print(title, 'sample without check_kitchen_placement')
 
         while count > 0: ## True
             count -= 1
@@ -398,7 +420,7 @@ def get_contain_gen(problem, collisions=True, num_samples=20, verbose=False,
                         attempts += 1
                         yield (p,)
         ## ------------------------------------------------
-        print(title, 'sample without check_kitchen_placement')
+        if verbose: print(title, 'sample without check_kitchen_placement')
 
         while attempts < num_samples:
             attempts += 1
@@ -439,7 +461,7 @@ def get_contain_gen(problem, collisions=True, num_samples=20, verbose=False,
     return gen
 
 
-def get_contain_list_gen(problem, collisions=True, num_samples=10, **kwargs):
+def get_contain_list_gen(problem, collisions=True, num_samples=50, **kwargs):
     funk = get_contain_gen(problem, collisions, num_samples=num_samples, **kwargs)
 
     def gen(body, space):
@@ -498,7 +520,7 @@ def sample_joint_position_list_gen(num_samples=6):
     return gen
 
 
-def sample_joint_position_gen(num_samples=6):
+def sample_joint_position_gen(num_samples=14):
     def fn(o, psn1):
         if psn1.extent == 'max':
             higher = psn1.value
@@ -526,6 +548,8 @@ def sample_joint_position_gen(num_samples=6):
             ptns.append(higher - math.pi/2)
             ptns.extend([np.random.uniform(lower, higher - math.pi/3) for k in range(num_samples)])
         ptns = [round(ptn, 3) for ptn in ptns]
+
+        ptns = [p for p in ptns if p > psn1.value]
         positions = [(Position(o, p), ) for p in ptns]
 
         for pstn in positions:
@@ -545,7 +569,7 @@ def sample_joint_position_gen(num_samples=6):
 def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=PI/4): # None | PI/4 | INF
     if top_grasp_tolerance is None:
         return True
-    if isinstance(grasp, Grasp):
+    if not isinstance(grasp, tuple):
         grasp = grasp.value
     grasp_pose = robot.get_grasp_pose(pose, grasp, arm, body=body)
     grasp_orientation = (Point(), quat_from_pose(grasp_pose))
@@ -554,11 +578,11 @@ def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=
 
 
 def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | PI/4 | INF
-                  randomize=True, verbose=True, **kwargs):
+                  randomize=True, verbose=True, debug=False, **kwargs):
     robot = problem.robot
     world = problem.world
     grasp_type = 'hand'
-    arm = 'left'
+    arm = robot.arms[0]
 
     def fn(body):
         from .bullet_utils import get_hand_grasps
@@ -576,9 +600,18 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | P
                       f' selected {len(grasps)} out of {ori} grasps')
         if randomize:
             random.shuffle(grasps)
+        print(f'get_grasp_gen({body}, {world.get_name(body)}) = {len(grasps)} grasps')
         # return [(g,) for g in grasps]
+        i = 0
         for g in grasps:
-           yield (g,)
+            i += 1
+            yield (g,)
+
+        # if debug:
+        #     set_renderer(True)
+        #     wait_unlocked()
+        #     set_renderer(False)
+
     return fn
 
 
@@ -856,10 +889,11 @@ def process_motion_fluents(fluents, robot, verbose=False):
         elif predicate == 'ataconf': # TODO: the arm conf isn't being set pre/post moves correctly
             from pddlstream.language.object import UniqueOptValue
             a, q = args
-            if not isinstance(q, UniqueOptValue):
-                q.assign()
-            elif verbose:
-                print('Skipping bc UniqueOptValue', atom)
+            # if not isinstance(q, UniqueOptValue):
+            #     q.assign()
+            # elif verbose:
+            #     print('Skipping bc UniqueOptValue', atom)
+            pass
         elif predicate == 'atseconf':
             [q] = args
             q.assign()

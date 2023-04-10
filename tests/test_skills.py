@@ -142,7 +142,8 @@ def test_spatial_algebra(body, robot):
     wait_if_gui()
 
 
-def get_gap(category):
+def get_gap(category: str) -> float:
+    """ gaps to lay assets in a line along y-axis"""
     gap = 2
     if category == 'KitchenCounter':
         gap = 3
@@ -163,8 +164,8 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=F
     for cat in categories:
 
         tpt = math.pi / 4 if cat in ['Knife'] else None ## , 'EyeGlasses', 'Plate'
-        funk = get_grasp_list_gen(problem, collisions=True, visualize=False,
-                                  RETAIN_ALL=False, top_grasp_tolerance=tpt, verbose=True)
+        funk = get_grasp_list_gen(problem, collisions=True, visualize=True,
+                                  RETAIN_ALL=True, top_grasp_tolerance=tpt, verbose=True)
 
         def test_grasp(body):
             set_renderer(True)
@@ -172,7 +173,7 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=F
             outputs = funk(body)
             if isinstance(outputs, list):
                 print(f'grasps on body {body}:', outputs)
-            visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=not test_attachment,
+            visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=not test_attachment or True,
                              TEST_ATTACHMENT=test_attachment)
             set_renderer(True)
             set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
@@ -194,10 +195,6 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=F
             if isinstance(id, tuple):
                 cat, id = id
             path, body, _ = load_model_instance(cat, id, scale=scale, location=locations[j])
-        # for id, scale in MODEL_SCALES[cat].items():
-        #     j += 1
-        #     path = join(ASSET_PATH, 'models', cat, id)
-        #     body = load_body(path, scale, locations[j], random_yaw=True)
             instance_name = get_instance_name(abspath(path))
             obj_name = f'{cat.lower()}#{id}'
             world.add_body(body, obj_name, instance_name)
@@ -1114,7 +1111,7 @@ if __name__ == '__main__':
     ----------------- ----------------- ----------------- --------- """
 
     """ --- models related --- """
-    get_data(categories=['DiningTable'])
+    # get_data(categories=['DiningTable'])
     # test_texture(category='CoffeeMachine', id='103127')
     # test_vhacd(category='BraiserBody')
     # get_partnet_aabbs()
@@ -1124,13 +1121,13 @@ if __name__ == '__main__':
     robot = 'spot'  ## 'feg' | 'pr2' | 'spot'
     # test_gripper_joints()
     # test_gripper_range()
-    # test_torso()
+    test_torso()
     # test_reachability(robot)
-    test_tracik(robot)
+    # test_tracik(robot)
 
     """ --- grasps related ---
     """
-    # test_grasps(robot, ['Bottle'], skip_grasps=False, test_attachment=True)  ## 'EyeGlasses'
+    # test_grasps(robot, ['Bottle'], skip_grasps=False, test_attachment=False)  ## 'EyeGlasses'
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
 

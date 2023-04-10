@@ -100,10 +100,11 @@ class Conf(object):
             values = get_joint_positions(self.body, self.joints)
         self.values = tuple(values)
         self.init = init
-        if index == None:
+        if index is None:
             index = id(self)
         self.index = index
         self.joint_state = joint_state
+        self.x_base_to_object = None
     @property
     def bodies(self): # TODO: misnomer
         return flatten_links(self.body, get_moving_links(self.body, self.joints))

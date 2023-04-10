@@ -1,16 +1,19 @@
 from pybullet_tools.utils import LockRenderer, HideOutput, load_model, link_from_name, \
-    get_aabb, get_aabb_center, draw_aabb, joint_from_name
+    get_aabb, get_aabb_center, draw_aabb, joint_from_name, PI
 from pybullet_tools.pr2_primitives import Conf
-from sympy import *
-import math
 import time
+import math
 
 SPOT_URDF = "models/spot_description/model.urdf"
 SPOT_TOOL_LINK = "arm0.link_wr1"
+SPOT_FINGER_LINK = "arm0.link_fngr"
 SPOT_JOINT_GROUPS = {
-    'base': ['x', 'y', 'theta', 'torso_lift_joint'],
-    'leg': ['fl.hy', 'fl.kn', 'fr.hy', 'fr.kn', 'hl.hy', 'hl.kn', 'hr.hy', 'hr.kn']
+    'base-torso': ['x', 'y', 'theta', 'torso_lift_joint'],
+    'arm': ['arm0.sh0', 'arm0.sh1', 'arm0.hr0', 'arm0.el0', 'arm0.el1', 'arm0.wr0', 'arm0.wr1'],
+    'leg': ['fl.hy', 'fl.kn', 'fr.hy', 'fr.kn', 'hl.hy', 'hl.kn', 'hr.hy', 'hr.kn'],
+    'gripper': ['arm0.f1x']
 }
+SPOT_CARRY_ARM_CONF = (0, -PI, 0, PI, 0, 0, 0)
 
 
 def load_spot():
@@ -20,11 +23,16 @@ def load_spot():
     return pr2
 
 
+def get_group_joints(robot, group):
+    return [joint_from_name(robot, name) for name in SPOT_JOINT_GROUPS[group]]
+
+
 def solve_leg_conf(body, torso_lift_value, verbose=True):
+    from sympy import Symbol, Eq, solve, cos, sin
+
     zO = 0.739675
     lA = 0.3058449991941452
     lB = 0.3626550008058548  ## 0.3826550008058548
-    # 'fl.toe' 'fl.hy'
 
     aA = Symbol('aA', real=True)
     # aB = Symbol('aB', real=True)
@@ -44,7 +52,7 @@ def solve_leg_conf(body, torso_lift_value, verbose=True):
     aA, aBB = solutions[0]
     aB = - math.pi/2 - aA + aBB
     joint_values = [aA, aB] * 4
-    joint_names = SPOT_JOINT_GROUPS['leg']
+    joint_names = get_group_joints(body, 'leg')
     joints = [joint_from_name(body, name) for name in joint_names]
     conf = Conf(body, joints, joint_values)
     return conf
@@ -80,7 +88,3 @@ def compute_link_lengths(body):
     lA = zO - zA
     lB = zA - zB
     return lA, lB
-
-
-if __name__ == '__main__':
-    lA, lB = compute_link_lengths()

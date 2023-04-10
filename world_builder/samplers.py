@@ -63,7 +63,7 @@ def get_learned_yaw(category, quat=None):
 
 
 def get_learned_poses(movable, surface, body, surface_body, num_samples=10, surface_point=None,
-                      verbose=True, visualize=False):
+                      verbose=False, visualize=False):
     global DATABASE
     if DATABASE is None:
         DATABASE = get_asset_to_poses(title='pickplace', full_pose=True)

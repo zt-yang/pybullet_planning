@@ -534,7 +534,7 @@
     <axis xyz="1 0 0"/>
     <parent link="arm0.link_wr0"/>
     <child link="arm0.link_wr1"/>
-     <limit effort="1000" velocity="1000.00" lower="-2.87979326579064354163" upper="2.87979326579064354163"/>
+    <limit effort="1000" velocity="1000.00" lower="-2.87979326579064354163" upper="2.87979326579064354163"/>
   </joint>
 
   <link name="arm0.link_fngr">
