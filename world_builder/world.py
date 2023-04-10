@@ -40,7 +40,7 @@ from world_builder.samplers import get_learned_yaw
 class World(object):
     """ api for building world and tamp problems """
     def __init__(self, time_step=1e-3, prevent_collisions=False, camera=True, segment=False,
-                 teleport=False, drive=True,
+                 teleport=False, drive=True, constants=None,
                  conf_noise=None, pose_noise=None, depth_noise=None, action_noise=None): # TODO: noise model class?
         # self.args = args
         self.time_step = time_step
@@ -64,6 +64,7 @@ class World(object):
         self.init_del = []
         self.articulated_parts = {k: [] for k in ['door', 'drawer', 'knob', 'button']}
         self.REMOVED_BODY_TO_OBJECT = {}
+        self.changed_joints = []
         self.non_planning_objects = []
         self.not_stackable = {}
         self.c_ignored_pairs = []
@@ -75,7 +76,9 @@ class World(object):
         self.outpath = None
         self.camera = None
         self.instance_names = {}
-        self.constants = ['@movable', '@bottle', '@edible', '@medicine', '@world', '@bowl', '@mug']
+        if constants is None:
+            constants = ['@movable', '@bottle', '@edible', '@medicine', '@world']
+        self.constants = constants
         self.note = None
 
         self.clean_object = set()
@@ -714,13 +717,24 @@ class World(object):
                 if pose != get_pose(child):  ## attachment made a difference
                     print(title, attach, nice(attach.grasp_pose))
 
+    def get_scene_joints(self):
+        c = self.cat_to_bodies
+        joints = c('door') + c('drawer') + c('knob')
+        joints += [bj for bj in self.changed_joints if bj not in joints]
+        return joints
+
+    def _change_joint_state(self, body, joint):
+        self.assign_attachment(body)
+        if (body, joint) not in self.changed_joints:
+            self.changed_joints.append((body, joint))
+
     def toggle_joint(self, body, joint):
         toggle_joint(body, joint)
-        self.assign_attachment(body)
+        self._change_joint_state(body, joint)
 
     def close_joint(self, body, joint):
         close_joint(body, joint)
-        self.assign_attachment(body)
+        self._change_joint_state(body, joint)
 
     def open_joint(self, body, joint, extent=1, pstn=None, random_gen=False, **kwargs):
         if random_gen:
@@ -729,7 +743,7 @@ class World(object):
             pstns = funk((body, joint), Position((body, joint)))
             pstn = random.choice(pstns)[0].value
         open_joint(body, joint, extent=extent, pstn=pstn, **kwargs)
-        self.assign_attachment(body)
+        self._change_joint_state(body, joint)
 
     def open_doors_drawers(self, body, ADD_JOINT=True, **kwargs):
         doors, drawers, knobs = self.get_doors_drawers(body, skippable=True)
@@ -778,6 +792,10 @@ class World(object):
             obj = self.name_to_object(obj)
         elif obj in self.BODY_TO_OBJECT:
             obj = self.BODY_TO_OBJECT[obj]
+        elif obj in self.REMOVED_BODY_TO_OBJECT:
+            obj = self.REMOVED_BODY_TO_OBJECT[obj]
+        elif obj in self.ROBOT_TO_OBJECT:
+            obj = self.ROBOT_TO_OBJECT[obj]
         else:
             obj = None
         return obj

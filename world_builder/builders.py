@@ -20,6 +20,7 @@ from pybullet_tools.bullet_utils import set_camera_target_body, set_camera_targe
     open_joint
 from world_builder.world_generator import EXP_PATH
 from world_builder.robot_builders import get_robot_builder, create_gripper_robot, create_pr2_robot
+from world_builder.utils import get_domain_constants
 
 
 def set_time_seed():
@@ -60,7 +61,9 @@ def create_pybullet_world(config, builder=None, SAVE_LISDF=False, SAVE_TESTCASE=
 
     """ ============== initiate simulator ==================== """
     initialize_pybullet(config)
-    world = World(time_step=config.time_step, camera=config.camera, segment=config.segment)
+    constants = get_domain_constants(config.planner.domain_pddl)
+    world = World(time_step=config.time_step, camera=config.camera, segment=config.segment,
+                  constants=constants)
 
     """ ============== load robot ==================== """
     robot_builder = get_robot_builder(config.robot.builder_name)

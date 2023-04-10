@@ -67,6 +67,22 @@ def parse_yaml(path, verbose=True):
     return conf
 
 
+def get_domain_constants(pddl_path):
+    lines = open(pddl_path, 'r').readlines()
+    constants = []
+    start = False
+    for i in range(len(lines)):
+        line = lines[i]
+        if '(:constants' in line:
+            start = True
+        elif start and ')' in line:
+            break
+        elif start:
+            constants.extend(line.strip().split(' '))
+    constants = [c.strip() for c in constants if c.strip()]
+    return constants
+
+
 def read_xml(plan_name, asset_path=ASSET_PATH):
     X_OFFSET, Y_OFFSET, SCALING = None, None, None
     FLOOR_X_MIN, FLOOR_X_MAX = inf, -inf

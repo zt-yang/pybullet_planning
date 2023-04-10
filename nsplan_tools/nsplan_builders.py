@@ -112,8 +112,8 @@ def sample_clean_dish_goal(world):
     # 0410
     # goals = [('Holding', hand, bowl)]
     # goals = [('On', pan, shelve)]
-    # goals = [('In', mug, cabinet_space), ('NoDirtyMugInCabinet', cabinet_space)]
-    goals = [('In', bowl, cabinet_space), ('NoDirtyBowlInCabinet', cabinet_space), ('In', mug, cabinet_space), ('NoDirtyMugInCabinet', cabinet_space)]
+    goals = [('In', mug, cabinet_space), ('NoDirtyMugInCabinet', cabinet_space)]
+    # goals = [('In', bowl, cabinet_space), ('NoDirtyBowlInCabinet', cabinet_space), ('In', mug, cabinet_space), ('NoDirtyMugInCabinet', cabinet_space)]
     objects += bottles
 
     ## set initial state
