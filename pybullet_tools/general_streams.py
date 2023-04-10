@@ -588,6 +588,9 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | P
         from .bullet_utils import get_hand_grasps
         grasps_O = get_hand_grasps(world, body, verbose=verbose, **kwargs)
         grasps = robot.make_grasps(grasp_type, arm, body, grasps_O, collisions=collisions)
+        # debug weiyu: assume that we don't need contact
+        # grasps = robot.make_grasps(grasp_type, arm, body, grasps_O, collisions=False)
+
         if top_grasp_tolerance is not None and world.get_category(body) not in ['braiserbody']:
             ori = len(grasps)
             grasps = [grasp for grasp in grasps if is_top_grasp(

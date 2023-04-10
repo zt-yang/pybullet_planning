@@ -555,6 +555,13 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     domain_pddl = read(domain_pddl)
     stream_pddl = read(stream_pddl)
     constant_map = {k: k for k in state.world.constants}
+
+    # # debug weiyu
+    # print("\nconstant map")
+    # print(constant_map)
+    # print("\n")
+    # input("here")
+
     goal = [g for g in goal if not (g[0] == 'not' and g[1][0] == '=')]
 
     if PRINT:
@@ -957,6 +964,8 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=Fal
             # set_camera_target_body(gripper_approach, dx=0, dy=-1, dz=0)
             remove_body(gripper_grasp)
             remove_body(gripper_approach)
+            # weiyu: debug
+            robot.remove_gripper()
             return None
 
         return gripper_grasp
