@@ -23,5 +23,7 @@ tests/tests/temp_urdfs/
 tests/pb_images/
 
 mamao_tools/*.pdf
+mamao_tools/*.json
+
 *.png
 *.ipynb_checkpoints/
