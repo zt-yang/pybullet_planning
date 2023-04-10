@@ -144,6 +144,17 @@ class RobotAPI(Robot):
         new_body_pose = multiply(body_pose, r)
         return new_body_pose
 
+    def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
+        ## those primitive shapes
+        if body is not None and isinstance(body, int) and len(get_all_links(body)) == 1:
+            tool_from_root = multiply(((0, 0.025, 0.025), unit_quat()), self.tool_from_hand,
+                                      self.get_tool_from_root(arm))
+        ## those urdf files made from one .obj file
+        else:
+            body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
+            tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
+        return multiply(body_pose, grasp, tool_from_root)
+
     def set_spawn_range(self, limits):
         self.spawn_range = limits
 
@@ -232,17 +243,6 @@ class MobileRobot(RobotAPI):
             print('gripper already exists!')
         self.grippers[arm] = create_gripper(self.body, arm=arm, link_name=self.tool_link, **kwargs)
         return self.grippers[arm]
-
-    def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
-        ## those primitive shapes
-        if body is not None and isinstance(body, int) and len(get_all_links(body)) == 1:
-            tool_from_root = multiply(((0, 0.025, 0.025), unit_quat()), self.tool_from_hand,
-                                      self.get_tool_from_root(arm))
-        ## those urdf files made from one .obj file
-        else:
-            body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
-            tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
-        return multiply(body_pose, grasp, tool_from_root)
 
     def set_gripper_pose(self, body_pose, grasp, gripper=None, arm='left', body=None, verbose=False, **kwargs):
         if gripper is None:

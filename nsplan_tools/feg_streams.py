@@ -1,12 +1,15 @@
 from pybullet_tools.utils import aabb_contains_point, get_aabb
 from pddlstream.language.generator import from_test
 from pybullet_tools.flying_gripper_agent import get_stream_map as get_stream_map_base
+from pybullet_tools.general_streams import get_seconf_close_to_surface
 
 
 def get_stream_map(p, c, l, t, **kwargs):
     stream_map = get_stream_map_base(p, c, l, t, **kwargs)
     stream_map.update({
         'test-plate-in-cabinet': from_test(get_pose_in_cabinet_test(p)),
+        'test-seconf-close-to-surface': from_test(get_seconf_close_to_surface(p)),
+
         # 'test-plate-in-cabinet': from_test(get_pose_in_cabinet_test(p)),
     })
     return stream_map

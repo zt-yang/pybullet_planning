@@ -331,7 +331,7 @@ class JustDoAction(Action):
         if label.endswith('eed'): label = label.replace('eed', '')
         state.variables[label, self.body] = True
         if hasattr(state.world, 'BODY_TO_OBJECT'):
-            state.world.BODY_TO_OBJECT[self.body].add_text(label)
+            state.world.get_object(self.body).add_text(label)
         return state.new_state()
 
 
@@ -904,7 +904,7 @@ def get_primitive_actions(action, world, teleport=False):
     ## ------------------------------------
 
     elif 'clean' in name:
-        body = args[1] if name == 'just-clean' else args[0]
+        body = args[1] if (name == 'just-clean') else args[0]
         new_commands = [JustClean(body)]
 
     elif 'cook' in name:

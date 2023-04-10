@@ -195,6 +195,20 @@ def get_bconf_close_to_surface(problem):
     return test
 
 
+def get_seconf_close_to_surface(problem):
+    world = problem.world
+
+    def test(bconf, surface, fluents=[]):
+        ## when the surface is a link
+        if isinstance(surface, tuple):
+            surface = surface[0]
+        point1 = np.asarray(bconf.values[:3])
+        point2 = np.asarray(get_pose(surface)[0][:3])
+        dist = np.linalg.norm(point1 - point2)
+        return dist < 0.5
+    return test
+
+
 """ ==============================================================
 
             Sampling placement ?p
