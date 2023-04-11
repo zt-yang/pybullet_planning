@@ -28,6 +28,7 @@ class RobotAPI(Robot):
 
     arms = []
     tool_from_hand = unit_pose()
+    cloned_finger_link = 1  ## for detecting if a grasp is pointing upwards
 
     def __init__(self, body, **kwargs):
         super(RobotAPI, self).__init__(body, **kwargs)
@@ -145,15 +146,8 @@ class RobotAPI(Robot):
         return new_body_pose
 
     def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
-        ## those primitive shapes
-        if body is not None and isinstance(body, int) and len(get_all_links(body)) == 1:
-            tool_from_root = multiply(((0, 0.025, 0.025), unit_quat()), self.tool_from_hand,
-                                      self.get_tool_from_root(arm))
-        ## those urdf files made from one .obj file
-        else:
-            body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
-            tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
-        return multiply(body_pose, grasp, tool_from_root)
+        body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
+        return multiply(body_pose, grasp, self.get_tool_from_root(arm))
 
     def set_spawn_range(self, limits):
         self.spawn_range = limits
@@ -265,6 +259,17 @@ class MobileRobot(RobotAPI):
 
     def mod_grasp_along_handle(self, grasp, dl):
         return multiply(grasp, Pose(point=(0, dl, 0)))
+
+    def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
+        ## those primitive shapes
+        if body is not None and isinstance(body, int) and len(get_all_links(body)) == 1:
+            tool_from_root = multiply(((0, 0.025, 0.025), unit_quat()), self.tool_from_hand,
+                                      self.get_tool_from_root(arm))
+        ## those urdf files made from one .obj file
+        else:
+            body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
+            tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
+        return multiply(body_pose, grasp, tool_from_root)
 
     def compute_grasp_width(self, arm, body_pose, grasp, body=None, verbose=False, **kwargs):
         result = None
@@ -792,7 +797,7 @@ class FEGripper(RobotAPI):
 
         with ConfSaver(self.body):
             with PoseSaver(body):
-                conf = se3_ik(self, grasp_pose, verbose=True)
+                conf = se3_ik(self, grasp_pose, verbose=False)
                 if conf is None:
                     print('\t\t\tFEGripper.conf is None', nice(grasp))
                     return None
@@ -837,7 +842,7 @@ class FEGripper(RobotAPI):
 
         grasp_conf = se3_ik(self, grasp_pose, verbose=verbose, mod_target=mod_target)
 
-        if verbose and grasp_conf == None:
+        if verbose and grasp_conf is None:
             print(f'{title} body_pose = {nice(body_pose)} --> ik failed')
 
         if verbose:

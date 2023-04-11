@@ -507,7 +507,7 @@ def adapt_action(a, problem, plan, verbose=True):
             aq1 = Conf(robot.body, robot.get_arm_joints(a.arm), aq1)
             funk = get_pull_door_handle_motion_gen(problem, collisions=False, verbose=verbose)
         else:
-            funk = get_pull_handle_motion_gen(problem, collisions=False, verbose=verbose)
+            funk = get_pull_handle_motion_gen(problem, collisions=False, visualize=False, verbose=verbose)
             aq1 = None
         # set_renderer(False)
         with LockRenderer(True):

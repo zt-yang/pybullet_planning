@@ -307,7 +307,7 @@ def sample_clean_dish_v0(world, w=3, l=8, verbose=True, pause=True):
             # TODO: instead of adding space, add surface in cabinet
             load_storage_mechanism(world, cabi, epsilon=epsilon)
 
-    # add space for dishwasher
+    ## add space for dishwasher
     # load_storage_mechanism(world, world.name_to_object('dishwasherbox'), epsilon=epsilon)
 
     ## load objects into reachable places

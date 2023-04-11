@@ -718,7 +718,7 @@ def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
         from bullet_utils import get_hand_grasps
 
         grasps = get_hand_grasps(world, body, link=handle_link, HANDLE_FILTER=True,
-                    visualize=visualize, RETAIN_ALL=False, LENGTH_VARIANTS=True, verbose=verbose)
+                                 visualize=visualize, RETAIN_ALL=False, LENGTH_VARIANTS=True, verbose=verbose)
 
         if verbose: print(f'\n{title} grasps =', [nice(g) for g in grasps])
 

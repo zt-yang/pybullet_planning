@@ -340,8 +340,8 @@ def get_free_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
     def fn(q1, q2, fluents=[]):
         if fluents:
             process_motion_fluents(fluents, robot)
-
-        saver.restore()
+        else:
+            saver.restore()
         q1.assign()
         # set_renderer(visualize)
 
@@ -441,8 +441,8 @@ def get_ik_fn(problem, teleport=False, verbose=False,
     return fn
 
 
-def get_pull_handle_motion_gen(problem, collisions=True, teleport=False,
-                               num_intervals=12, visualize=False, verbose=True):
+def get_pull_handle_motion_gen(problem, collisions=True, teleport=False, num_intervals=12,
+                               visualize=False, verbose=True, replay=False):
     from pybullet_tools.pr2_streams import LINK_POSE_TO_JOINT_POSITION
     if teleport:
         num_intervals = 1
@@ -473,7 +473,7 @@ def get_pull_handle_motion_gen(problem, collisions=True, teleport=False,
             gripper = robot.visualize_grasp(old_pose, g.value, verbose=verbose,
                                             width=g.grasp_width, body=g.body)
             set_camera_target_body(gripper, dx=0.2, dy=0, dz=1) ## look top down
-            remove_body(gripper)
+            # remove_body(gripper)
 
         ## saving the mapping between robot bconf to object pst for execution
         mapping = {}
@@ -481,9 +481,13 @@ def get_pull_handle_motion_gen(problem, collisions=True, teleport=False,
         mapping[rpose_rounded] = pst1.value
 
         path = []
+        positions = []
         for i in range(num_intervals):
             step_str = f"{title} {i}/{num_intervals}\t"
             value = (i + 1) / num_intervals * (pst2.value - pst1.value) + pst1.value
+            # if replay:
+            #     positions.append(value)
+            #     continue
             pst_after = Position((pst1.body, pst1.joint), value)
             pst_after.assign()
             # new_pose = get_link_pose(joint_object.body, joint_object.handle_link)
@@ -496,14 +500,14 @@ def get_pull_handle_motion_gen(problem, collisions=True, teleport=False,
             ## just visualizing
             if visualize:
                 gripper = robot.visualize_grasp(new_pose, g.value, color=BROWN, verbose=True,
-                                        width=1, body=g.body, mod_target=mod_grasp_pose)  ## g.grasp_width
+                                                width=1, body=g.body, mod_target=mod_grasp_pose)  ## g.grasp_width
                 if gripper is None:
                     if verbose:
                         print(step_str + f"se3_ik failed with g", nice(g.value))
                     break
                 set_camera_target_body(gripper, dx=0.2, dy=0, dz=1) ## look top down
                 set_camera_target_body(gripper, dx=0.2, dy=0, dz=1) ## look top down
-                remove_body(gripper)
+                # remove_body(gripper)
 
             ## actual computation
             gripper_after = multiply(new_pose, g.value)
@@ -526,6 +530,8 @@ def get_pull_handle_motion_gen(problem, collisions=True, teleport=False,
 
             rpose_rounded = tuple([round(n, 3) for n in q_after.values])
             mapping[rpose_rounded] = value
+        if replay:
+            return positions
 
         if len(path) < num_intervals: ## * 0.75:
             return None

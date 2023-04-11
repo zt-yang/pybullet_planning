@@ -55,6 +55,8 @@ def sample_clean_dish_goal(world):
     sink = world.name_to_body('sink_bottom')
     cabinet = world.name_to_object('cabinettop')
     cabinet_space = world.name_to_body('cabinettop_storage')
+    cabinet_door = cabinet.doors[0]
+
     world.add_to_cat(sink, 'CleaningSurface')
     objects += [sink, cabinet, cabinet_space] + bottles
     ## ----------------------------------------------------
@@ -113,15 +115,20 @@ def sample_clean_dish_goal(world):
     # goals = [('Holding', hand, bowl)]
     # goals = [('On', pan, shelve)]
     goals = [('In', mug, cabinet_space), ('NoDirtyMugInCabinet', cabinet_space)]
+
     # goals = [('In', bowl, cabinet_space), ('NoDirtyBowlInCabinet', cabinet_space), ('In', mug, cabinet_space), ('NoDirtyMugInCabinet', cabinet_space)]
-    objects += bottles
+    # objects += bottles  ## TODO: removed temporarily to speed up testing
+
+    # goals = [('OpenedJoint', cabinet_door)]
+    objects += cabinet.doors
 
     ## set initial state
     world.add_clean_object(bowl)
 
-    ## removing all fridge doors to save planning time for testing domain
+    # removing all fridge doors to save planning time for testing domain
     for door in cabinet.doors:
-        world.open_joint(door[0], door[1], hide_door=True)
+        # world.open_joint(door[0], door[1], hide_door=True)
+        world.close_joint(door[0], door[1])
 
     world.remove_bodies_from_planning(goals=goals, exceptions=objects)
 

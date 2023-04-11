@@ -1393,7 +1393,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
 
     ## lastly store the newly sampled grasps
     if instance_name is not None:
-        add_grasp_in_db(db, db_file, instance_name, grasps, name=world.get_name(body_name),
+        add_grasp_in_db(db, db_file, instance_name, grasps, name=str(world.get_name(body_name)),
                         LENGTH_VARIANTS=LENGTH_VARIANTS, scale=scale)
     remove_handles(handles)
     # if len(grasps) > num_samples:
@@ -1443,9 +1443,12 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
             secondly = secondly or aabb_contains_aabb(get_aabb(gripper_grasp, robot.finger_link), get_aabb(body))
 
     ## criteria 3: the gripper shouldn't be pointing upwards, heuristically
-    finger_link = robot.cloned_finger_link
-    aabb = nice(get_aabb(gripper_grasp), round_to=2)
-    upwards = get_aabb_center(get_aabb(gripper_grasp, link=finger_link))[2] - get_aabb_center(aabb)[2] > 0.01
+    if hasattr(robot, 'cloned_finger_link'):
+        finger_link = robot.cloned_finger_link
+        aabb = nice(get_aabb(gripper_grasp), round_to=2)
+        upwards = get_aabb_center(get_aabb(gripper_grasp, link=finger_link))[2] - get_aabb_center(aabb)[2] > 0.01
+    else:
+        upwards = False
 
     ## combining all criteria
     result = not firstly and secondly and not upwards
