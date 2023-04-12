@@ -2,7 +2,7 @@ from world_builder.loaders import *
 from nsplan_tools.nsplan_utils import debug_print
 
 
-def sample_clean_dish_v0(world, w=3, l=8, verbose=True, pause=True):
+def sample_clean_dish_v0(world, obj_dict, w=3, l=8, verbose=True, pause=True):
 
     # DEBUG:
     # TODO: instead of making it one scale, sample different scales for sink base, sink, and faucet. but make sure they
@@ -272,21 +272,10 @@ def sample_clean_dish_v0(world, w=3, l=8, verbose=True, pause=True):
     #     'medicine': shelves + [microwave],
     # }
     # Debug: no microwave for now
-    all_counters = {
-        'food': counters,
-        'bottle': counters + [sink_bottom],
-        'medicine': shelves,
-        'bowl': counters,
-        'mug': counters,
-        'pan': counters,
-    }
-    possible = []
-    for v in all_counters.values():
-        possible.extend(v)
 
     ## draw boundary of surfaces
     drawn = []
-    for c in possible:
+    for c in counters + [sink_bottom] + shelves:
         if c in drawn: continue
         mx, my, z = c.aabb().upper
         aabb = AABB(lower=(x_food_min, c.aabb().lower[1], z), upper=(mx, my, z + 0.1))
@@ -311,9 +300,7 @@ def sample_clean_dish_v0(world, w=3, l=8, verbose=True, pause=True):
     # load_storage_mechanism(world, world.name_to_object('dishwasherbox'), epsilon=epsilon)
 
     ## load objects into reachable places
-    food_ids, bottle_ids, medicine_ids, bowl_ids, mug_ids, pan_ids = \
-        load_counter_moveables(world, all_counters, d_x_min=0.3, obstacles=obstacles)
-    moveables = food_ids + bottle_ids + medicine_ids + bowl_ids + mug_ids + pan_ids
+    obj_dict = load_moveables(world, obj_dict=obj_dict, d_x_min=0.3, obstacles=obstacles)
 
     """ step 6: take an image """
     set_camera_pose((4, 4, 3), (0, 4, 0))
@@ -324,4 +311,4 @@ def sample_clean_dish_v0(world, w=3, l=8, verbose=True, pause=True):
     # pause = True
     if pause:
         wait_unlocked()
-    return moveables, cabinets, only_counters, obstacles, x_food_min
+    return obj_dict, cabinets, only_counters, obstacles, x_food_min

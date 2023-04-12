@@ -1,6 +1,6 @@
 ## debug related
 # seed: 594585
-seed: 6
+seed: 3
 verbose: true
 
 ## pybullet related
@@ -38,6 +38,7 @@ world:
     sampling: true
     movable_category: ['food']
     goal_predicates: ['holding', 'on', 'in']
+    use_doors: false
 
 
 data:
@@ -65,6 +66,6 @@ planner:
   timeout: 300
   domain_pddl: ../assets/pddl/feg_kitchen_clean.pddl
   stream_pddl: ../assets/pddl/feg_stream_kitchen_clean.pddl
-  diverse: true
+  diverse: false
   downward_time: 0.02
   dataset: false

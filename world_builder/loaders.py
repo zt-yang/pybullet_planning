@@ -7,6 +7,7 @@ import time
 from pprint import pprint
 import os
 import string
+from collections import defaultdict
 
 from world_builder.utils import LIGHT_GREY, read_xml, load_asset, FLOOR_HEIGHT, WALL_HEIGHT, \
     find_point_for_single_push, ASSET_PATH, FURNITURE_WHITE, FURNITURE_GREY, FURNITURE_YELLOW, HEX_to_RGB, \
@@ -1633,6 +1634,99 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
     # world.summarize_all_objects()
     # wait_unlocked()
     return food_ids, bottle_ids, medicine_ids, bowl_ids, mug_ids, pan_ids
+
+
+def load_moveables(world, obj_dict, d_x_min=None, obstacles=[], verbose=False, reachability_check=True):
+
+    start = time.time()
+    robot = world.robot
+    state = State(world)
+    size_matter = len(obstacles) > 0 and obstacles[-1].name == 'braiser_bottom'
+    satisfied = []
+    if d_x_min is None:
+        d_x_min = - 0.3
+
+    # # weiyu debug
+    # counters["bottle"] = [world.name_to_object(n) for n in ["sink#1::sink_bottom"]]
+
+    print("\nloading moveables")
+    pprint(obj_dict)
+    if verbose:
+        print('\nload_counter_moveables(obstacles={})\n'.format([o.name for o in obstacles]))
+
+    def check_size_matter(obj):
+        if size_matter and aabb_larger(obstacles[-1], obj):
+            satisfied.append(obj)
+
+    def place_on_counter(obj_name, counter_name, category=None, ins=True):
+        # retrieve counter name
+        counter = world.name_to_object(counter_name)
+        obj = counter.place_new_obj(obj_name, category=category, RANDOM_INSTANCE=ins, world=world)
+        if verbose:
+            print(f'placed {obj} on {counter.name}')
+        if 'bottom' not in counter.name:
+            adjust_for_reachability(obj, counter, d_x_min, world=world)
+        return obj
+
+    def ensure_cfree(obj, loc, obstacles, obj_name, category=None, trials=10, **kwargs):
+        def check_conditions(o):
+            collision = collided(o, obstacles, verbose=verbose, world=world)
+            unreachable = False
+            if not collision and reachability_check:
+                unreachable = not isinstance(o.supporting_surface, Space) and \
+                              not robot.check_reachability(o, state, verbose=verbose, debug=debug)
+            size = unreachable or ((obj_name == 'food' and size_matter and len(satisfied) == 0))
+            if collision or unreachable or size:
+                if verbose:
+                    print(f'\t\tremove {o} because collision={collision}, unreachable={unreachable}, size={size}')
+                return True
+            return False
+
+        debug = (obj_name == 'bottle')
+        again = check_conditions(obj)
+        while again:
+            # set_camera_target_body(obj.body)
+            # set_renderer(True)
+            # wait_if_gui()
+
+            world.remove_object(obj)
+            obj = place_on_counter(obj_name, loc, category, **kwargs)
+            check_size_matter(obj)
+
+            trials -= 1
+            if trials == 0:
+                sys.exit('Could not place object')
+            again = check_conditions(obj)
+        return obj
+
+    for oi in sorted(obj_dict.keys()):
+        cls = obj_dict[oi]["class"]
+        ins = obj_dict[oi]["instance"]
+        loc = obj_dict[oi]["location"]
+        if cls == 'food':
+            in_briaser = False
+            kwargs = dict()
+            obj_category = 'edible'
+            if ins is not None:
+                kwargs['ins'] = ins
+            obj = place_on_counter(cls, loc, category=obj_category, **kwargs)
+            check_size_matter(obj)
+            obj = ensure_cfree(obj, loc, obstacles, obj_name=cls, category=obj_category, **kwargs)
+            in_briaser = in_briaser or 'braiser_bottom' in obj.supporting_surface.name
+            obj_dict[oi]["name"] = obj
+            obstacles.append(obj.body)
+        elif cls in ["medicine", "bowl", "mug", "pan", "bottle"]:
+            kwargs = dict()
+            if ins is not None:
+                kwargs['ins'] = ins
+            obj = place_on_counter(cls, loc)
+            obj = ensure_cfree(obj, loc, obstacles, obj_name=cls, **kwargs)
+            obj_dict[oi]["name"] = obj
+            obstacles.append(obj.body)
+    print('... finished loading moveables in {}s'.format(round(time.time() - start, 2)))
+    # world.summarize_all_objects()
+    # wait_unlocked()
+    return obj_dict
 
 
 def move_lid_away(world, counters, epsilon=1.0):
