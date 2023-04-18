@@ -1,10 +1,10 @@
 ## debug related
 # seed: 594585
-seed: 3
+seed: 1
 verbose: true
 
 ## pybullet related
-viewer: true
+viewer: false  # default: true
 lock: true
 simulate: false
 teleport: false
@@ -42,7 +42,7 @@ world:
 
 
 data:
-  out_dir: ../outputs/test_clean_dish_feg_0325/
+  out_dir: ../outputs/test_clean_dish_feg_0418/
   save_failed_plans: true
   save_log: true
   save_commands: true
