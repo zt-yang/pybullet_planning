@@ -4,7 +4,7 @@ seed: 1
 verbose: true
 
 ## pybullet related
-viewer: false  # default: true
+viewer: true  # default: true
 lock: true
 simulate: false
 teleport: false

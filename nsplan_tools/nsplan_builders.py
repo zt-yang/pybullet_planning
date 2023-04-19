@@ -16,7 +16,7 @@ def test_clean_dish_feg(world, **kwargs):
     # cabinet_space = world.name_to_body('cabinettop_storage')
     obj_dict = {0: {"class": "pan", "instance": None, "location": "shelf_lower"},
                 1: {"class": "bottle", "instance": None, "location": "sink_bottom"}}
-    goal_dict = {0: {"goal_location": "cabinettop_storage"}}
+    goal_dict = {0: {"location": "cabinettop_storage", "state": None}}
     # goal_dict = {0: {"goal_location": "sink_bottom", "goal_state": "clean"}}
 
     obj_dict, cabinets, counters, obstacles, x_food_min = \
