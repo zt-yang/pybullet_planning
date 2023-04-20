@@ -1,5 +1,6 @@
 ## debug related
-seed: 594585
+# seed: 594585
+seed: 6
 verbose: true
 
 ## pybullet related
@@ -40,7 +41,7 @@ world:
 
 
 data:
-  out_dir: ../outputs/test_clean_dish_feg/
+  out_dir: ../outputs/test_clean_dish_feg_0325/
   save_failed_plans: true
   save_log: true
   save_commands: true

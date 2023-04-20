@@ -168,19 +168,13 @@ def to_lisdf(world, output_dir, world_name=None, verbose=True, **kwargs):
     model_joints = {}  ## model_name : joints_xml
     c = world.cat_to_bodies
     movables = c('moveable')
-    joints = c('door') + c('drawer') + c('knob')  ## [f[1] for f in init if f[0] == 'joint']
 
     ## first add all actor and models
     bodies = copy.deepcopy(get_bodies())
     bodies.sort()
     for body in bodies:
-        if body in world.BODY_TO_OBJECT:
-            obj = world.BODY_TO_OBJECT[body]
-        elif body in world.REMOVED_BODY_TO_OBJECT:
-            obj = world.REMOVED_BODY_TO_OBJECT[body]
-        elif body in world.ROBOT_TO_OBJECT:
-            obj = world.ROBOT_TO_OBJECT[body]
-        else:
+        obj = world.get_object(body)
+        if obj is None:
             continue
 
         is_static = 'false' if body in movables else 'true'
@@ -250,10 +244,11 @@ def to_lisdf(world, output_dir, world_name=None, verbose=True, **kwargs):
             )
 
     ## then add joint states of models
+    joints = world.get_scene_joints()
     for j in joints:
         body, joint = j
-        name = world.BODY_TO_OBJECT[body].name
-        joint_name = world.BODY_TO_OBJECT[j].name
+        name = world.get_object(body).name
+        joint_name = world.get_object(j).name
         if name not in model_joints:
             model_joints[name] = ""
         model_joints[name] += STATE_JOINTS_STR.format(
