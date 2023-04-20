@@ -239,7 +239,7 @@ def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
             attachment = grasp.get_attachment(problem.robot, arm, visualize=False)
             attachments = {attachment.child: attachment} ## {}  ## TODO: problem with having (body, joint) tuple
             attachments = {}
-            
+
         if isinstance(obj, tuple): ## may be a (body, joint) or a body with a marker
             body = obj[0]
         else:
