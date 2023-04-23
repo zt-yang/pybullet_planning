@@ -8,7 +8,7 @@ import argparse
 # WorldObject = namedtuple("Object", ["id", "class", "instance", "location", "state"], defaults=[None] * 3)
 # GoalCondition = namedtuple("Goal", ["location", "state"], defaults=[None] * 2)
 
-DISTRACTOR_OBJECTS = ["medicine", "bottle", "edible", "bowl", "mug", "pan"]
+DISTRACTOR_OBJECTS = ["medicine", "bottle", "food", "bowl", "mug", "pan"]
 GOAL_OBJECTS = ["bowl", "mug", "pan"]
 LOCATIONS = ["sink_counter_left", "sink_counter_right", "shelf_lower", "sink_bottom", "cabinettop_storage"]
 
@@ -90,6 +90,9 @@ def to_json_str(dict):
 
 def generate_semantic_specs(save_dir, max_seed, max_num_goal_objs, max_num_distractor_objs, exclude_initial_loc):
 
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
     params = locals()
     save_dict_to_json(params, os.path.join(save_dir, "params.json"))
 
@@ -104,9 +107,12 @@ def generate_semantic_specs(save_dir, max_seed, max_num_goal_objs, max_num_distr
             unique_dict_str_to_seed[json_str] = si
 
     print(f"generate {len(unique_dict_str_to_seed)} unique out of {max_seed} seeds")
-    # for json_str in unique_dict_str_to_seed:
-    #     print(unique_dict_str_to_seed[json_str], json_str)
+    for json_str in unique_dict_str_to_seed:
+        # print(unique_dict_str_to_seed[json_str], json_str)
+        save_dict_to_json(json.loads(json_str), os.path.join(save_dir, f"{unique_dict_str_to_seed[json_str]}.json"))
 
+def get_semantic_specs(save_dir):
+    return [f for f in sorted(os.listdir(save_dir)) if f != "params.json"]
 
 
 if __name__ == "__main__":
@@ -117,8 +123,8 @@ if __name__ == "__main__":
     # parser.add_argument('--exclude_initial_loc', type=int, default=0)
     # args = parser.parse_args()
 
-    save_dir = "/home/weiyu/Research/nsplan/original/kitchen-worlds/outputs/0418"
-    generate_semantic_specs(save_dir=save_dir, max_seed=10000, max_num_goal_objs=1, max_num_distractor_objs=3, exclude_initial_loc=False)
+    save_dir = "/home/weiyu/Research/nsplan/original/kitchen-worlds/outputs/0422"
+    generate_semantic_specs(save_dir=save_dir, max_seed=50, max_num_goal_objs=1, max_num_distractor_objs=3, exclude_initial_loc=False)
 
 
 

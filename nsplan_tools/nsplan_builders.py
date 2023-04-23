@@ -1,9 +1,10 @@
 import random
 from nsplan_tools.nsplan_loaders import sample_clean_dish_v0
+from nsplan_tools.generate_semantic_specification import load_dict_from_json
 from pybullet_tools.utils import dump_world
 
 
-def test_clean_dish_feg(world, **kwargs):
+def test_clean_dish_feg(world, semantic_spec_file, **kwargs):
     ## hyperparameters for world sampling
     world.set_skip_joints()
     world.note = 1
@@ -14,10 +15,15 @@ def test_clean_dish_feg(world, **kwargs):
     # shelve = world.name_to_object('shelf_lower')
     # sink = world.name_to_body('sink_bottom')
     # cabinet_space = world.name_to_body('cabinettop_storage')
-    obj_dict = {0: {"class": "pan", "instance": None, "location": "shelf_lower"},
-                1: {"class": "bottle", "instance": None, "location": "sink_bottom"}}
-    goal_dict = {0: {"location": "cabinettop_storage", "state": None}}
+    # obj_dict = {0: {"class": "pan", "instance": None, "location": "shelf_lower"},
+    #             1: {"class": "bottle", "instance": None, "location": "sink_bottom"}}
+    # goal_dict = {0: {"location": "cabinettop_storage", "state": None}}
     # goal_dict = {0: {"goal_location": "sink_bottom", "goal_state": "clean"}}
+    semantic_spec_dict = load_dict_from_json(semantic_spec_file)
+    obj_dict = semantic_spec_dict["objects"]
+    goal_dict =semantic_spec_dict["goals"]
+    print(obj_dict)
+    print(goal_dict)
 
     obj_dict, cabinets, counters, obstacles, x_food_min = \
         sample_clean_dish_v0(world, obj_dict, verbose=False, pause=False)
@@ -189,8 +195,9 @@ def sample_clean_dish_goal_v1(world, obj_dict, goal_dict, use_doors, **kwargs):
     cabinet_space = world.name_to_body('cabinettop_storage')
     world.add_to_cat(sink, 'CleaningSurface')
     # TODO: using all environments will make planning slow, but we don't know where to move distractor objects a priori
-    objects += [sink, cabinet, cabinet_space, sink_counter_left, sink_counter_right, shelve]
+    # objects += [sink, cabinet, cabinet_space, sink_counter_left, sink_counter_right, shelve]
     # objects += [sink, cabinet, cabinet_space, shelve]
+    objects += [sink]
 
     ## get objects
     # food = random.choice(world.cat_to_bodies('edible'))

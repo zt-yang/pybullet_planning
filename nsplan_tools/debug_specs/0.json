@@ -1,0 +1,20 @@
+{
+    "goals": {
+        "0": {
+            "location": "sink_bottom",
+            "state": null
+        }
+    },
+    "objects": {
+        "0": {
+            "class": "mug",
+            "instance": null,
+            "location": "sink_counter_left"
+        },
+        "1": {
+            "class": "bowl",
+            "instance": null,
+            "location": "sink_bottom"
+        }
+    }
+}
