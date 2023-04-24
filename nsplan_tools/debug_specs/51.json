@@ -1,0 +1,34 @@
+{
+    "goals": {
+        "0": {
+            "location": "cabinettop_storage",
+            "state": null
+        }
+    },
+    "objects": {
+        "0": {
+            "class": "mug",
+            "instance": null,
+            "location": "sink_counter_left",
+            "state": null
+        },
+        "1": {
+            "class": "pan",
+            "instance": null,
+            "location": "sink_counter_left",
+            "state": null
+        },
+        "2": {
+            "class": "mug",
+            "instance": null,
+            "location": "sink_counter_right",
+            "state": null
+        },
+        "3": {
+            "class": "food",
+            "instance": null,
+            "location": "cabinettop_storage",
+            "state": "clean"
+        }
+    }
+}

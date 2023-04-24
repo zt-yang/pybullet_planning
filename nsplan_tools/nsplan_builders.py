@@ -22,8 +22,6 @@ def test_clean_dish_feg(world, semantic_spec_file, **kwargs):
     semantic_spec_dict = load_dict_from_json(semantic_spec_file)
     obj_dict = semantic_spec_dict["objects"]
     goal_dict =semantic_spec_dict["goals"]
-    print(obj_dict)
-    print(goal_dict)
 
     obj_dict, cabinets, counters, obstacles, x_food_min = \
         sample_clean_dish_v0(world, obj_dict, verbose=False, pause=False)
@@ -31,6 +29,12 @@ def test_clean_dish_feg(world, semantic_spec_file, **kwargs):
     dump_world()
 
     goal = sample_clean_dish_goal_v1(world, obj_dict, goal_dict, **kwargs)
+
+    print("semantic specs")
+    print("obj dict:", obj_dict)
+    print("goal dict:", goal_dict)
+    input("next?")
+
     return goal
 
 
@@ -197,7 +201,7 @@ def sample_clean_dish_goal_v1(world, obj_dict, goal_dict, use_doors, **kwargs):
     # TODO: using all environments will make planning slow, but we don't know where to move distractor objects a priori
     # objects += [sink, cabinet, cabinet_space, sink_counter_left, sink_counter_right, shelve]
     # objects += [sink, cabinet, cabinet_space, shelve]
-    objects += [sink]
+    objects += [sink, shelve]
 
     ## get objects
     # food = random.choice(world.cat_to_bodies('edible'))
@@ -263,13 +267,17 @@ def sample_clean_dish_goal_v1(world, obj_dict, goal_dict, use_doors, **kwargs):
             world.open_joint(door[0], door[1], hide_door=True)
 
     ## set initial state
-    # world.add_clean_object(bowl)
+    for oi in sorted(obj_dict.keys()):
+        if obj_dict[oi]["state"] == "clean":
+            add_clean_object(world, obj_dict[oi]["name"])
 
     ## finally, remove irrelevant bodies to speed up planning
     world.remove_bodies_from_planning(goals=goals, exceptions=objects)
 
     return goals
 
+def add_clean_object(world, object):
+    world.add_to_init(("Cleaned", object))
 
 # def sample_clean_dish_goal_v2(world, obj_dict, goal_dict, use_doors, **kwargs):
 #

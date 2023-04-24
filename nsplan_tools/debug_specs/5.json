@@ -1,0 +1,30 @@
+{
+    "goals": {
+        "0": {
+            "location": "cabinettop_storage",
+            "state": null
+        }
+    },
+    "objects": {
+        "0": {
+            "class": "mug",
+            "instance": null,
+            "location": "sink_counter_left"
+        },
+        "1": {
+            "class": "bottle",
+            "instance": null,
+            "location": "sink_counter_left"
+        },
+        "2": {
+            "class": "mug",
+            "instance": null,
+            "location": "sink_bottom"
+        },
+        "3": {
+            "class": "medicine",
+            "instance": null,
+            "location": "sink_counter_left"
+        }
+    }
+}

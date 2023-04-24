@@ -1,0 +1,22 @@
+{
+    "goals": {
+        "0": {
+            "location": "cabinettop_storage",
+            "state": null
+        }
+    },
+    "objects": {
+        "0": {
+            "class": "bowl",
+            "instance": null,
+            "location": "sink_counter_right",
+            "state": null
+        },
+        "1": {
+            "class": "pan",
+            "instance": null,
+            "location": "cabinettop_storage",
+            "state": null
+        }
+    }
+}

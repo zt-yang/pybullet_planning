@@ -18,9 +18,9 @@ def generate_semantic_specification(seed=0, max_num_goal_objs=1, max_num_distrac
     np.random.seed(seed)
 
     # example
-    # objs_dict = {0: {"class": "pan", "instance": None, "location": "shelf_lower"},
-    #                 1: {"class": "bottle", "instance": None, "location": "sink_bottom"}}
-    # goals_dict = {0: {"goal_location": "cabinettop_storage"}}
+    # objs_dict = {0: {"class": "pan", "instance": None, "location": "shelf_lower", "state": "clean"},
+    #                 1: {"class": "bottle", "instance": None, "location": "sink_bottom", "state": None}}
+    # goals_dict = {0: {"location": "cabinettop_storage", "state": "clean"}}
 
     objs_dict = {}
     goals_dict = {}
@@ -40,15 +40,28 @@ def generate_semantic_specification(seed=0, max_num_goal_objs=1, max_num_distrac
         obj_ins = None
         obj_loc = np.random.choice(LOCATIONS)
         obj_id = len(objs_dict)
-        objs_dict[obj_id] = {"class": obj_cls, "instance": obj_ins, "location": obj_loc}
+
+        # if object in cabinet, initial state is clean
+        if obj_loc == "cabinettop_storage":
+            obj_state = "clean"
+        else:
+            obj_state = np.random.choice(["clean", None])
+
+        objs_dict[obj_id] = {"class": obj_cls, "instance": obj_ins, "location": obj_loc, "state": obj_state}
         goal_objs.append(obj_id)
-    # TODO: if object in cabinet, initial state is clean
 
     for oi in range(num_distractor_objs):
         obj_cls = np.random.choice(DISTRACTOR_OBJECTS)
         obj_ins = None
         obj_loc = np.random.choice(LOCATIONS)
-        objs_dict[len(objs_dict)] = {"class": obj_cls, "instance": obj_ins, "location": obj_loc}
+
+        # if object in cabinet, initial state is clean
+        if obj_loc == "cabinettop_storage":
+            obj_state = "clean"
+        else:
+            obj_state = np.random.choice(["clean", None])
+
+        objs_dict[len(objs_dict)] = {"class": obj_cls, "instance": obj_ins, "location": obj_loc, "state": obj_state}
 
     ########################
     # sample goal conditions
@@ -123,8 +136,8 @@ if __name__ == "__main__":
     # parser.add_argument('--exclude_initial_loc', type=int, default=0)
     # args = parser.parse_args()
 
-    save_dir = "/home/weiyu/Research/nsplan/original/kitchen-worlds/outputs/0422"
-    generate_semantic_specs(save_dir=save_dir, max_seed=50, max_num_goal_objs=1, max_num_distractor_objs=3, exclude_initial_loc=False)
+    save_dir = "/home/weiyu/Research/nsplan/original/kitchen-worlds/outputs/0423/semantic_specs"
+    generate_semantic_specs(save_dir=save_dir, max_seed=100, max_num_goal_objs=1, max_num_distractor_objs=3, exclude_initial_loc=False)
 
 
 

@@ -1,0 +1,34 @@
+{
+    "goals": {
+        "0": {
+            "location": "cabinettop_storage",
+            "state": null
+        }
+    },
+    "objects": {
+        "0": {
+            "class": "bowl",
+            "instance": null,
+            "location": "sink_counter_right",
+            "state": "clean"
+        },
+        "1": {
+            "class": "medicine",
+            "instance": null,
+            "location": "cabinettop_storage",
+            "state": "clean"
+        },
+        "2": {
+            "class": "bowl",
+            "instance": null,
+            "location": "shelf_lower",
+            "state": null
+        },
+        "3": {
+            "class": "bowl",
+            "instance": null,
+            "location": "sink_bottom",
+            "state": null
+        }
+    }
+}
