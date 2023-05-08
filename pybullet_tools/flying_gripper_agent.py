@@ -12,14 +12,14 @@ from pybullet_tools.flying_gripper_utils import get_ik_fn, get_free_motion_gen, 
     get_pull_handle_motion_gen, get_reachable_test
 
 
-def get_stream_map(p, c, l, t, **kwargs):
+def get_stream_map(p, c, l, t, num_grasp_samples=10, **kwargs):
     """ p = problem, c = collisions, l = custom_limits, t = teleport """
 
     stream_map = {
         'sample-pose-on': from_gen_fn(get_stable_gen(p, collisions=c)),
         'sample-pose-in': from_gen_fn(get_contain_gen(p, collisions=c, verbose=False)),
         # debug weiyu
-        'sample-grasp': from_list_fn(get_grasp_list_gen(p, collisions=c, visualize=False, top_grasp_tolerance=None)), #math.pi/4)),
+        'sample-grasp': from_list_fn(get_grasp_list_gen(p, collisions=c, visualize=False, top_grasp_tolerance=None, num_samples=num_grasp_samples)), #math.pi/4)),
 
         'inverse-kinematics-hand': from_fn(get_ik_fn(p, collisions=c, teleport=t, custom_limits=l, verbose=False)),
         'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(p.robot, collisions=c)),

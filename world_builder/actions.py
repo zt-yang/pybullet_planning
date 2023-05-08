@@ -519,7 +519,7 @@ def adapt_action(a, problem, plan, verbose=True):
 
 def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body_map=None,
                   SAVE_COMPOSED_JPG=False, SAVE_GIF=False, CHECK_COLLISIONS=False,
-                  cfree_range=0.1, VISUALIZE_COLLISIONS=False):
+                  cfree_range=0.1, VISUALIZE_COLLISIONS=False, debug=False):
     """ act out the whole plan and event in the world without observation/replanning """
     if actions is None:
         return

@@ -5,12 +5,12 @@
 #env_seed: 0
 #semantic_spec: 0.json
 verbose: true
-env_seed: 0
-semantic_spec: 51.json
+env_seed: 2
+semantic_spec: 3.json
 
 ## semantic spec related
-semantic_specs_dir: ../pybullet_planning/nsplan_tools/debug_specs
-# semantic_specs_dir: ../outputs/0423/semantic_specs
+# semantic_specs_dir: ../pybullet_planning/nsplan_tools/debug_specs
+semantic_specs_dir: ../outputs/0423/semantic_specs
 
 ## pybullet related
 viewer: true  # default: true

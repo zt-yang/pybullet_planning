@@ -837,7 +837,7 @@ class StaticCamera(object):
         self.pose = pose
 
     def get_image(self, segment=True, segment_links=False, far=8,
-                  camera_point=None, target_point=None, **kwargs):
+                  camera_point=None, target_point=None, tiny=False, **kwargs):
         # TODO: apply maximum depth
         self.index += 1
         if self.camera_point is not None and self.target_point is not None:
@@ -847,7 +847,7 @@ class StaticCamera(object):
             self.camera_point = camera_point
             self.target_point = target_point
             return get_camera_image_at_pose(camera_point, target_point, self.camera_matrix, far=far,
-                                 tiny=False, segment=segment, segment_links=segment_links, **kwargs)
+                                 tiny=tiny, segment=segment, segment_links=segment_links, **kwargs)
         return get_image_at_pose(self.get_pose(), self.camera_matrix, far=far,
                                  tiny=False, segment=segment, segment_links=segment_links, **kwargs)
 
