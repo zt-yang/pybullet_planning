@@ -420,6 +420,8 @@ def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=
         scale = random_scale * scale
 
         with HideOutput():
+
+            # debug
             body = load_model(file, scale=scale, fixed_base=True)
     else:
         body = create_box(w=w, l=l, h=1, color=BROWN, collision=True)

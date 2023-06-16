@@ -1699,10 +1699,17 @@ def load_moveables(world, obj_dict, d_x_min=None, obstacles=[], verbose=False, r
             again = check_conditions(obj)
         return obj
 
+    def assign_color(obj, color_name):
+        # link=-1 won't work
+        color = eval(color_name.upper())
+        set_color(obj.body, color, link=None)
+        return
+
     for oi in sorted(obj_dict.keys()):
         cls = obj_dict[oi]["class"]
         ins = obj_dict[oi]["instance"]
         loc = obj_dict[oi]["location"]
+        color = obj_dict[oi]["color"]
         if cls == 'food':
             in_briaser = False
             kwargs = dict()
@@ -1715,6 +1722,7 @@ def load_moveables(world, obj_dict, d_x_min=None, obstacles=[], verbose=False, r
             in_briaser = in_briaser or 'braiser_bottom' in obj.supporting_surface.name
             obj_dict[oi]["name"] = obj
             obstacles.append(obj.body)
+            assign_color(obj, color)
         elif cls in ["medicine", "bowl", "mug", "pan", "bottle"]:
             kwargs = dict()
             if ins is not None:
@@ -1723,6 +1731,8 @@ def load_moveables(world, obj_dict, d_x_min=None, obstacles=[], verbose=False, r
             obj = ensure_cfree(obj, loc, obstacles, obj_name=cls, **kwargs)
             obj_dict[oi]["name"] = obj
             obstacles.append(obj.body)
+            assign_color(obj, color)
+
     print('... finished loading moveables in {}s'.format(round(time.time() - start, 2)))
     # world.summarize_all_objects()
     # wait_unlocked()

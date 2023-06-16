@@ -6,7 +6,7 @@
 #semantic_spec: 0.json
 verbose: true
 env_seed: 2
-semantic_spec: 3.json
+semantic_spec: 4.json
 
 ## semantic spec related
 # semantic_specs_dir: ../pybullet_planning/nsplan_tools/debug_specs
