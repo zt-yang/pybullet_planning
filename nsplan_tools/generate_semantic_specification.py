@@ -248,6 +248,8 @@ def generate_semantic_specs(save_dir, max_seed, max_num_goal_objs, max_num_distr
 def get_semantic_specs(save_dir):
     return [f for f in sorted(os.listdir(save_dir)) if f != "params.json"]
 
+def get_semantic_spec(save_dir, id):
+    return os.path.join(save_dir, "{}.json".format(id))
 
 if __name__ == "__main__":
     # parser = argparse.ArgumentParser()
