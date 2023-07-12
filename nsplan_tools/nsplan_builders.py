@@ -34,6 +34,8 @@ def test_clean_dish_feg(world, semantic_spec_file, **kwargs):
     print("obj dict:", obj_dict)
     print("goal dict:", goal_dict)
 
+    world.obj_dict = obj_dict
+
     return goal
 
 
@@ -198,7 +200,7 @@ def sample_clean_dish_goal_v1(world, obj_dict, goal_dict, use_doors, **kwargs):
     cabinet_space = world.name_to_body('cabinettop_storage')
     world.add_to_cat(sink, 'CleaningSurface')
     # TODO: using all environments will make planning slow, but we don't know where to move distractor objects a priori
-    input("DEBUG: We are adding all locations. Planning will be slow. Press key to confirm")
+    # input("DEBUG: We are adding all locations. Planning will be slow. Press key to confirm")
     objects += [sink, cabinet, cabinet_space, sink_counter_left, sink_counter_right, shelve]
     # objects += [sink, cabinet, cabinet_space, shelve]
     # objects += [sink, shelve]

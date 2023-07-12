@@ -5,12 +5,12 @@
 #env_seed: 0
 #semantic_spec: 0.json
 verbose: true
-env_seed: 0
-semantic_spec: 0.json
+env_seed:
+semantic_spec:
 
 ## semantic spec related
 # semantic_specs_dir: ../pybullet_planning/nsplan_tools/debug_specs
-semantic_specs_dir: ../outputs/0707/semantic_specs
+semantic_specs_dir: /home/weiyu/data_drive/nsplan/0711/semantic_specs
 
 ## pybullet related
 viewer: false  # default: true
@@ -25,7 +25,7 @@ segment: false
 monitoring: false
 
 ## data collection mode
-parallel: false
+parallel: true
 
 robot:
   robot_name: feg
@@ -49,7 +49,7 @@ world:
 
 
 data:
-  out_dir: ../outputs/0711/data
+  out_dir: /home/weiyu/data_drive/nsplan/0711/data
   save_failed_plans: true
   save_log: true
   save_commands: true

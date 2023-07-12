@@ -81,7 +81,8 @@ class World(object):
         self.constants = constants
         self.note = None
 
-        # self.clean_object = set()
+        # WL: this is used to store the mapping from obj id to obj properties like color
+        self.obj_dict = None
 
     def clear_viz(self):
         self.remove_handles()
