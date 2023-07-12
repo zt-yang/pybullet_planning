@@ -257,7 +257,8 @@ if __name__ == "__main__":
     # parser.add_argument('--exclude_initial_loc', type=int, default=0)
     # args = parser.parse_args()
 
-    save_dir = "/home/weiyu/data_drive/nsplan/0711/semantic_specs"
+    # save_dir = "/home/weiyu/data_drive/nsplan/0711/semantic_specs"
+    save_dir = "/svl/u/weiyul/data_drive/nsplan/0712/semantic_specs"
     generate_semantic_specs(save_dir=save_dir, max_seed=1000, max_num_goal_objs=1, max_num_distractor_objs=3, exclude_initial_loc=False)
 
 
