@@ -177,6 +177,7 @@ def load_acronym_grasps(grasp_filename, model_filename,
         for g in successful_grasps_vis:
             g.apply_transform(mesh_T)
         original_acronym_mesh.apply_transform(mesh_T)
+        # trimesh.Scene([original_acronym_mesh] + [successful_grasps_vis] + [obj_mesh]).show()
         trimesh.Scene([original_acronym_mesh] + [successful_grasps_vis] + [obj_mesh]).show()
 
     grasp_poses = []
@@ -217,8 +218,143 @@ def load_acronym_grasps(grasp_filename, model_filename,
     return grasp_poses
 
 
+def test_kitchen_world_grasps():
+
+    obj_model_file = "/home/weiyu/Research/nsplan/original/kitchen-worlds/assets/models/Pan/7012/Pan_a5e0efaaf0ded23e88d29413a3dd87fd_M.obj"
+    obj_model = trimesh.load(obj_model_file)
+
+    g = [-0.002, 0.1678, 0.0829, 2.4213, -0.2838, 0.2167]
+    g_tform = tra.euler_matrix(g[3], g[4], g[5])
+    g_tform[:3, 3] = g[:3]
+
+    g_tform = g_tform @ tra.euler_matrix(0, 0, -np.pi / 2)
+
+    vis_grasp = create_gripper_marker(color=[0, 255, 0]).apply_transform(g_tform)
+
+    trimesh.Scene([obj_model, vis_grasp]).show()
+
+
+def test_main():
+
+    structformer_model_dir = "/home/weiyu/data_drive/StructFormerDiffusion/structformer_assets/acronym_handpicked_v4_textured_acronym_scale"
+    acronym_grasp_dir = "/home/weiyu/data_drive/shapenet/acronym/grasps"
+    acronym_mesh_dir = "/home/weiyu/data_drive/shapenet/acronym/meshes"
+
+    object_classes = ["Bowl", "Cup", "Mug", "Pan"]  # "WineBottle", "Bottle", "SodaCan", "Teapot"
+
+    objects_dir = os.path.join(structformer_model_dir, "objects")
+    visual_meshes_dir = os.path.join(structformer_model_dir, "visual")
+    collision_meshes_dir = os.path.join(structformer_model_dir, "meshes")
+
+    # this is used in 3 places, partnet_scale, grasp_db, and models instance dir name
+    kitchen_world_obj_num = 7000
+    model_scales = defaultdict(dict)
+    for obj in sorted(os.listdir(objects_dir)):
+        obj_id = os.path.splitext(obj)[0]
+
+        if obj_id != "Pan_e8cd2c495f1a33cdd068168ae86ef29a_S":
+            continue
+
+        obj_cls = obj.split("_")[0]
+        if obj_cls not in object_classes:
+            continue
+
+        obj_num_str = "{:04d}".format(kitchen_world_obj_num)
+
+        model_scales[obj_cls][obj_num_str] = 1
+
+        obj_data = json.load(open(os.path.join(objects_dir, obj), 'r'))
+
+        # retrieve grasps
+        grasp_filename = "{}_{}_{}.h5".format(obj_data["class"], obj_data["shapenet_id"], obj_data["scale"])
+        grasp_filename = os.path.join(acronym_grasp_dir, grasp_filename)
+
+        visual_mesh_filename = os.path.join(visual_meshes_dir, f"{obj_id}.obj")
+
+        # important: we can apply mesh_T and acronym scale to go from acronym mesh to the processed object mesh
+        #            mesh_T == acronym_scale @ obj_data["canonical_T"] @ obj_data["scale"] @ tra.translation_matrix(-1 * acronym_mesh.centroid)
+        #            acronym_scale is f["object/scale"][()] stored in the acronym grasp h5.
+        #            we can apply mesh_T to go from acronym grasps to grasps for the processed object mesh
+        # https://github.com/wliu88/rearrangement_gym/tree/main/python/rearrangement_gym/semantic_rearrangement/object_creation/acronym_objects
+        mesh_T = tra.quaternion_matrix(obj_data["T"]["rotation"])
+        mesh_T[:3, 3] = obj_data["T"]["translation"]
+
+        original_acronym_mesh_filename = os.path.join(acronym_mesh_dir, "{}/{}.obj".format(obj_data["class"], obj_data["shapenet_id"]))
+        print(original_acronym_mesh_filename)
+
+        # grasp_poses = load_acronym_grasps(grasp_filename, visual_mesh_filename,
+        #                              original_acronym_mesh_filename, obj_data["scale"],
+        #                              mesh_T,
+        #                              debug=True)
+
+        test_load_acronym_grasps(grasp_filename, visual_mesh_filename,
+                                 original_acronym_mesh_filename, obj_data["scale"],
+                                 mesh_T,
+                                 debug=True)
+
+        input("next?")
+
+
+def test_load_acronym_grasps(grasp_filename, model_filename,
+                        original_acronym_mesh_filename, scale,
+                        mesh_T,
+                        num_grasps=30, debug=False):
+
+    data = h5py.File(grasp_filename, "r")
+    # mesh_fname = data["object/file"][()].decode('utf-8')
+    # mesh_scale = data["object/scale"][()]
+    # print(mesh_scale)
+
+    T = np.array(data["grasps/transforms"])
+    success = np.array(data["grasps/qualities/flex/object_in_gripper"])
+    successful_grasps = T[np.random.choice(np.where(success == 1)[0], num_grasps)]
+
+    for g_tform in successful_grasps:
+
+        # --------------------------------------------
+        # important: transform grasp for acronym mesh to processed (centered, scaled, reoriented) object mesh
+        grasp = mesh_T @ g_tform
+
+        # https://sites.google.com/nvidia.com/graspdataset
+        # gripper orientation convention is different for kitchen-worlds and acronym
+        offset_grasp = grasp @ tra.euler_matrix(0, 0, np.pi / 2)
+
+        # optionally adjust grasp depth
+        # approach_offset = np.eye(4)
+        # approach_offset[2, 3] = 0.02
+        # offset_grasp = grasp @ tra.euler_matrix(0, 0, np.pi / 2) @ approach_offset
+
+        if debug:
+            pos = grasp[:3, 3]
+            rot = tra.euler_from_matrix(grasp)
+            print("acronym grasp pose", pos.tolist() + [*rot])
+
+        pos = offset_grasp[:3, 3].tolist()
+        rot = [*tra.euler_from_matrix(offset_grasp)]
+        if debug:
+            print("kitchen world grasp pose", pos + rot)
+            # print("offset grasp pose quat", pos.tolist(), tra.quaternion_from_matrix(offset_grasp))
+        # --------------------------------------------
+
+        obj_mesh = trimesh.load(model_filename)
+
+        # visualize original acronym mesh and grasps
+        original_acronym_mesh = trimesh.load(original_acronym_mesh_filename)
+        original_acronym_mesh.apply_scale(scale)
+        successful_grasp_vis = create_gripper_marker(color=[0, 255, 0]).apply_transform(g_tform)
+        trimesh.Scene([original_acronym_mesh] + [successful_grasp_vis] + [obj_mesh]).show()
+
+        # visualize transformed mesh and grasps
+        successful_grasp_vis.apply_transform(mesh_T)
+        original_acronym_mesh.apply_transform(mesh_T)
+        # trimesh.Scene([original_acronym_mesh] + [successful_grasps_vis] + [obj_mesh]).show()
+        trimesh.Scene([original_acronym_mesh] + [successful_grasp_vis] + [obj_mesh]).show()
+
 
 if __name__ == "__main__":
-    main()
+    # main()
 
     # TODO: use argparse
+
+    # test_kitchen_world_grasps()
+    test_main()
