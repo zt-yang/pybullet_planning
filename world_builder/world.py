@@ -809,6 +809,7 @@ class World(object):
         surface_obj = self.get_object(surface)
         surface = surface_obj.name
 
+        kwargs['world'] = self
         surface_obj.place_obj(obj, max_trial=max_trial, **kwargs)
 
         ## ----------- rules of locate specific objects

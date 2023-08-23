@@ -169,7 +169,7 @@ class Object(Index):
         obj = world.add_object(
             Object(load_asset(obj_name.lower(), **kwargs), category=category, name=name)
         )
-        world.put_on_surface(obj, max_trial=max_trial, surface=self.shorter_name, world=world)
+        world.put_on_surface(obj, max_trial=max_trial, surface=self.shorter_name)
         self.support_obj(obj)
         # set_renderer(True)
         return obj

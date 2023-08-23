@@ -1467,7 +1467,7 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
     size_matter = len(obstacles) > 0 and obstacles[-1].name == 'braiser_bottom'
     satisfied = []
     if isinstance(counters, list):
-        counters = {k: counters for k in ['food', 'bottle', 'medicine', 'bowl', 'mug', 'pan']}
+        counters = {k: counters for k in ['food', 'bottle', 'medicine']}  ## , 'bowl', 'mug', 'pan'
     if d_x_min is None:
         d_x_min = - 0.3
     instances = {k: None for k in counters}
@@ -1600,32 +1600,32 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
         medicine_ids.append(obj)
         obstacles.append(obj.body)
 
-    ## add bowl
-    bowl_ids = []
-    for i in range(1):
-        obj = place_on_counter('bowl')
-        obj = ensure_cfree(obj, obstacles, obj_name='bowl')
-        # state = State(copy.deepcopy(world), gripper=state.gripper)
-        bowl_ids.append(obj)
-        obstacles.append(obj.body)
-
-    ## add mug
-    mug_ids = []
-    for i in range(1):
-        obj = place_on_counter('mug')
-        obj = ensure_cfree(obj, obstacles, obj_name='mug')
-        # state = State(copy.deepcopy(world), gripper=state.gripper)
-        mug_ids.append(obj)
-        obstacles.append(obj.body)
-
-    ## add pan
-    pan_ids = []
-    for i in range(1):
-        obj = place_on_counter('pan')
-        obj = ensure_cfree(obj, obstacles, obj_name='pan')
-        # state = State(copy.deepcopy(world), gripper=state.gripper)
-        pan_ids.append(obj)
-        obstacles.append(obj.body)
+    # ## add bowl
+    # bowl_ids = []
+    # for i in range(1):
+    #     obj = place_on_counter('bowl')
+    #     obj = ensure_cfree(obj, obstacles, obj_name='bowl')
+    #     # state = State(copy.deepcopy(world), gripper=state.gripper)
+    #     bowl_ids.append(obj)
+    #     obstacles.append(obj.body)
+    #
+    # ## add mug
+    # mug_ids = []
+    # for i in range(1):
+    #     obj = place_on_counter('mug')
+    #     obj = ensure_cfree(obj, obstacles, obj_name='mug')
+    #     # state = State(copy.deepcopy(world), gripper=state.gripper)
+    #     mug_ids.append(obj)
+    #     obstacles.append(obj.body)
+    #
+    # ## add pan
+    # pan_ids = []
+    # for i in range(1):
+    #     obj = place_on_counter('pan')
+    #     obj = ensure_cfree(obj, obstacles, obj_name='pan')
+    #     # state = State(copy.deepcopy(world), gripper=state.gripper)
+    #     pan_ids.append(obj)
+    #     obstacles.append(obj.body)
 
     if world.note in [3, 31]:
         put_lid_on_braiser(world)
