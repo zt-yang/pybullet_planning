@@ -780,20 +780,20 @@
       </geometry>
       <material name="Grey2"/>
     </visual>
-    <!--visual>
+    <visual>
       <origin rpy="0 0 0" xyz="0 0 -0.6"/>
       <geometry>
         <mesh filename="../meshes/torso_v0/torso_lift_extra.obj"/>
       </geometry>
       <material name="Grey2"/>
-    </visual-->
-    <collision group="non_gripper" name="torso_lift_collision">
+    </visual>
+    <collision name="torso_lift_collision"> <!--group="non_gripper" -->
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/torso_v0/torso_lift_L.obj"/>
       </geometry>
     </collision>
-    <collision group="non_gripper" name="torso_lift_collision_extra">
+    <collision name="torso_lift_collision_extra">
       <origin rpy="0 0 0" xyz="0 0 -0.6"/>
       <geometry>
         <mesh filename="../meshes/torso_v0/torso_lift_extra.obj"/>
