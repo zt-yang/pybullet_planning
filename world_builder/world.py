@@ -1584,7 +1584,7 @@ class Agent(Process): # Decision
         if verbose: print(f'   wrapped_transition \ applied action in {round(time.time() - start_time, 4)} sec')
 
         ## --------- added by YANG to stop simulation if action is None ---------
-        if ONCE and action == None: result = None
+        if ONCE and action is None: result = None
         ## ----------------------------------------------------------------------
         return result
     def policy(self, observation): # Operates indirectly on the state

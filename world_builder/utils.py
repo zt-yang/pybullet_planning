@@ -406,7 +406,8 @@ def adjust_scale(body, category, file, w, l):
 def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=None,
                scale=1, verbose=False, RANDOM_INSTANCE=False, SAMPLING=False, random_scale=1.0):
 
-    if verbose: print(f"\nLoading ... {category}", end='\r')
+    if verbose:
+        print(f"\nLoading ... {category}", end='\r')
 
     """ ============= load body by category ============= """
     file = get_file_by_category(category, RANDOM_INSTANCE=RANDOM_INSTANCE, SAMPLING=SAMPLING)

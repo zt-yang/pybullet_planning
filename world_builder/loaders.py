@@ -1511,7 +1511,9 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
     # # weiyu debug
     # counters["bottle"] = [world.name_to_object(n) for n in ["sink#1::sink_bottom"]]
 
+    print('-' * 20 + 'places to sample  counter moveables' + '-' * 20)
     pprint(counters)
+    print('-' * 60)
     if verbose:
         print('\nload_counter_moveables(obstacles={})\n'.format([o.name for o in obstacles]))
 
@@ -1557,7 +1559,8 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
 
             trials -= 1
             if trials == 0:
-                sys.exit('Could not place object')
+                sys.exit()
+                # return None
             again = check_conditions(obj)
         return obj
 
@@ -1727,7 +1730,7 @@ COUNTER_THICKNESS = 0.05
 diswasher = 'DishwasherBox'
 
 
-def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=True, random_scale=1.0):
+def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=False, random_scale=1.0):
 
     if floor is None:
         floor = create_house_floor(world, w=2, l=2, x=0, y=1)
@@ -1857,7 +1860,7 @@ def sample_kitchen_furniture_ordering(all_necessary=True):
             right += 1
             if chosen in necessary:
                 necessary.remove(chosen)
-    print(ordering)
+    # print(ordering)
     return ordering[1:-1]
 
 
@@ -1991,7 +1994,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
     return cabinets, shelves
 
 
-def load_braiser(world, supporter, x_min=None, verbose=True):
+def load_braiser(world, supporter, x_min=None, verbose=False):
     ins = True
     if world.note in [551, 552]:
         ins = random.choice(['100038', '100023'])  ## larger braisers
@@ -2074,13 +2077,13 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
             if category == 'MiniFridge':
                 ins = random.choice(['11709'])  ## two doors
         return world.add_object(Object(
-            load_asset(category, yaw=math.pi, floor=floor, RANDOM_INSTANCE=ins, verbose=True),
+            load_asset(category, yaw=math.pi, floor=floor, RANDOM_INSTANCE=ins, verbose=False),
             name=category, category=category))
 
     def load_furniture_base(furniture):
         return world.add_object(Object(
             load_asset('MiniFridgeBase', l=furniture.ly, yaw=math.pi, floor=floor,
-                       RANDOM_INSTANCE=True, verbose=True),
+                       RANDOM_INSTANCE=True, verbose=False),
             name=f'{furniture.category}Base', category=f'{furniture.category}Base'))
 
     counter_regions = []
@@ -2250,7 +2253,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
         if len(wide_counters) > 0:
             counter = wide_counters[0]
             microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random(),
-                                              RANDOM_INSTANCE=True, verbose=True, world=world)
+                                              RANDOM_INSTANCE=True, verbose=False, world=world)
             microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)), world=world)
             obstacles.append(microwave)
     else:
@@ -2424,7 +2427,7 @@ def sample_table_plates(world, verbose=True):
     return table, plates
 
 
-def sample_two_tables_plates(world, verbose=True):
+def sample_two_tables_plates(world, verbose=False):
     """ two tables side by side facing the kitchen counters, with four plates on each """
     x = random.uniform(3, 3.5)
     y1 = random.uniform(1, 3)
