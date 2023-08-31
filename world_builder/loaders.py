@@ -1632,7 +1632,7 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
     print('... finished loading moveables in {}s'.format(round(time.time() - start, 2)))
     # world.summarize_all_objects()
     # wait_unlocked()
-    return food_ids, bottle_ids, medicine_ids, bowl_ids, mug_ids, pan_ids
+    return food_ids, bottle_ids, medicine_ids ## , bowl_ids, mug_ids, pan_ids
 
 
 def move_lid_away(world, counters, epsilon=1.0):
@@ -2283,7 +2283,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
         drawn.append(str(c))
 
     ## probility of each door being open
-    world.make_doors_transparent()
+    # world.make_doors_transparent()
     epsilon = 0
     load_storage_mechanism(world, world.name_to_object('minifridge'), epsilon=epsilon)
     for cabi_type in ['cabinettop', 'cabinetupper']:

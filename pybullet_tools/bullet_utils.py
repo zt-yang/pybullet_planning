@@ -1237,12 +1237,12 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
     robot = world.robot
     scale = get_loaded_scale(body)
 
-    print("get hand grasps scale", scale)
+    # print("get hand grasps scale", scale)
 
     # using_grasp_link, link = check_grasp_link(world, body, link)
 
     body_pose = get_model_pose(body, link=link, verbose=verbose)
-    print("get hand grasps, body pose", body_pose)
+    # print("get hand grasps, body pose", body_pose)
 
     aabb, handles = draw_fitted_box(body, link=link, verbose=verbose, draw_box=False, draw_centroid=False)
 

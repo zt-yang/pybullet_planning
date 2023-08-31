@@ -600,7 +600,7 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | P
                       f' selected {len(grasps)} out of {ori} grasps')
         if randomize:
             random.shuffle(grasps)
-        print(f'get_grasp_gen({body}, {world.get_name(body)}) = {len(grasps)} grasps')
+        # print(f'get_grasp_gen({body}, {world.get_name(body)}) = {len(grasps)} grasps')
         # return [(g,) for g in grasps]
         i = 0
         for g in grasps:
