@@ -6,18 +6,12 @@ import json
 from os.path import join, abspath, dirname, isdir, isfile
 from config import EXP_PATH
 
-from pybullet_tools.pr2_utils import get_group_conf
 from pybullet_tools.utils import disconnect, LockRenderer, has_gui, WorldSaver, wait_if_gui, \
     SEPARATOR, get_aabb, wait_for_duration
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice
 from pybullet_tools.pr2_agent import get_stream_info, post_process, move_cost_fn, get_stream_map
 
-from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
-    get_ik_ir_gen, get_motion_gen, get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
-    get_grasp_gen, Attach, Detach, Clean, Cook, control_commands, Command, \
-    get_gripper_joints, GripperCommand, State
-
-from pddlstream.language.generator import from_gen_fn, from_list_fn, from_fn, fn_from_constant, empty_gen, from_test
+from pybullet_tools.pr2_primitives import control_commands
 from pddlstream.language.constants import Equal, AND, print_solution, PDDLProblem
 from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, str_from_object
 from pddlstream.algorithms.meta import solve, create_parser
