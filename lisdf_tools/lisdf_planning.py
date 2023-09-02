@@ -1,7 +1,7 @@
 import copy
 import json
 from os.path import join, abspath, dirname, isdir, isfile
-
+import socket
 import lisdf.components as C
 from lisdf.parsing import load_all
 
@@ -89,7 +89,13 @@ def pddl_to_init_goal(exp_dir, world, domain_file=None, larger_world=False):
             domain_file = abspath(join(__file__, '..', '..', 'pddl', domain_file))
             print('lisdf_planning.pddl_to_init_goal | found domain file', domain_file)
     else:
-        domain_file = domain_file.replace('.pddl', '_noops.pddl')
+        noops_domain_file = domain_file.replace('.pddl', '_noops.pddl')  ## dev version
+        if isfile(noops_domain_file):
+            domain_file = noops_domain_file
+        else:
+            noops_domain_file = domain_file.replace('_full.pddl', '.pddl')
+            if isfile(noops_domain_file):
+                domain_file = noops_domain_file
 
     lisdf, domain, problem = load_all(
         join(exp_dir, 'scene.lisdf'),

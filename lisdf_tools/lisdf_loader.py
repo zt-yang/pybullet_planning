@@ -650,15 +650,16 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
     if isfile(planning_config):
         config = json.load(open(planning_config, 'r'))
 
-        ## add surfaces, spaces, joints accoring to body_to_name
-        body_to_name = config['body_to_name']
-        if larger_world and 'body_to_name_new' in config:
-            body_to_name = config['body_to_name_new']
+        ## add surfaces, spaces, joints according to body_to_name
+        if 'body_to_name' in config:
+            body_to_name = config['body_to_name']
+            if larger_world and 'body_to_name_new' in config:
+                body_to_name = config['body_to_name_new']
 
-        for k, v in body_to_name.items():
-            if v not in bullet_world.name_to_body:
-                bullet_world.add_body(eval(k), v)
-                ## e.g. k=(15, 1), v=minifridge::joint_0
+            for k, v in body_to_name.items():
+                if v not in bullet_world.name_to_body:
+                    bullet_world.add_body(eval(k), v)
+                    ## e.g. k=(15, 1), v=minifridge::joint_0
 
         ## camera
         if 'camera_zoomins' in config:

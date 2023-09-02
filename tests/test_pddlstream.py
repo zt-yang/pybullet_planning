@@ -34,12 +34,12 @@ def main(exp_name, verbose=True):
     args = get_args(exp_name)
 
     exp_dir = join(EXP_PATH, args.test)
-    world = load_lisdf_pybullet(exp_dir, width=720, height=560)
+    world = load_lisdf_pybullet(exp_dir, width=1440, height=1120)
     saver = WorldSaver()
     problem = Problem(world)
 
     pddlstream_problem = pddlstream_from_dir(problem, exp_dir=exp_dir, collisions=not args.cfree,
-                                             teleport=args.teleport, replace_pddl=True)
+                                             teleport=args.teleport, replace_pddl=False)
     world.summarize_all_objects()
 
     stream_info = world.robot.get_stream_info(partial=False, defer=False)
