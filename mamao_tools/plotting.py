@@ -758,6 +758,7 @@ def make_plot():
         data = get_time_data(diverse=True)
         if SAVE_DATA:
             dump_data(data)
+            print('saved data, exit')
             sys.exit()
 
     if not AUTO_REFRESH:

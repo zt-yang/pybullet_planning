@@ -1559,6 +1559,7 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
 
             trials -= 1
             if trials == 0:
+                print('cant ensure_cfree')
                 sys.exit()
                 # return None
             again = check_conditions(obj)
@@ -2378,6 +2379,7 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
                 counters_tmp[0].place_obj(something, **pkwargs)
 
         if time.time() - start > time_allowed:
+            print('cant make_sure_obstacles')
             sys.exit()
 
     """ make sure obstacles can be moved away """

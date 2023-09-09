@@ -10,7 +10,7 @@ from config import EXP_PATH
 from pybullet_tools.utils import disconnect, LockRenderer, has_gui, WorldSaver, wait_if_gui, \
     SEPARATOR, get_aabb, wait_for_duration
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, get_datetime
-from pybullet_tools.pr2_agent import get_stream_info, post_process, move_cost_fn, get_stream_map
+from pybullet_tools.pr2_agent import get_stream_info, post_process, get_diverse_kwargs
 
 from pybullet_tools.pr2_primitives import control_commands
 from pddlstream.language.constants import Equal, AND, print_solution, PDDLProblem
@@ -48,11 +48,13 @@ def main(args, execute=True):
     print(SEPARATOR)
     init_experiment(exp_dir)
 
+    planner_kwargs = dict(algorithm=args.algorithm, unit_costs=args.unit, stream_info=stream_info,
+                          success_cost=INF, verbose=True, debug=False, world=world)
+    # planner_kwargs, plan_dataset = get_diverse_kwargs(planner_kwargs)
+
     with Profiler():
         with LockRenderer(lock=not args.enable):
-            solution = solve(pddlstream_problem, algorithm=args.algorithm, unit_costs=args.unit,
-                             stream_info=stream_info, success_cost=INF, verbose=True,
-                             debug=False, world=world)
+            solution = solve(pddlstream_problem, **planner_kwargs)
             saver.restore()
 
     print_solution(solution)
@@ -86,7 +88,6 @@ def main(args, execute=True):
 def run_multiple(args, n=10):
     """ run planner multiple times & print stats """
     csv_file = join(EXP_PATH, args.test, 'results.csv')
-    read_csv(csv_file, summarize=True)
 
     success_count = []
     plan_len = []
@@ -107,8 +108,11 @@ def run_multiple(args, n=10):
 
 
 if __name__ == '__main__':
+    """
+    python test_pddlstream.py -t test_pr2_kitchen -n 10
+    """
     parser = get_parser(exp_name=DEFAULT_TEST)
-    parser.add_argument('-n', type=int, default=3, help='Number of trials')
+    parser.add_argument('-n', type=int, default=1, help='Number of trials')
     args = parser.parse_args()
     if args.n == 1:
         main(args)

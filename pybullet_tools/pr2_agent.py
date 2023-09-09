@@ -586,6 +586,22 @@ from pybullet_tools.utils import disconnect, LockRenderer, has_gui, WorldSaver, 
 from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, str_from_object, TmpCWD
 
 
+def get_diverse_kwargs(kwargs, diverse=True, max_plans=None):
+    if diverse:
+        max_plans = 100 if max_plans is None else max_plans
+        plan_dataset = []
+        max_skeletons = 1
+        use_feedback = False
+    else:
+        max_plans = 1
+        plan_dataset = None
+        max_skeletons = INF
+        use_feedback = True
+    kwargs.update(dict(max_plans=max_plans, plan_dataset=plan_dataset,
+                       max_skeletons=max_skeletons, use_feedback=use_feedback))
+    return kwargs, plan_dataset
+
+
 def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
               fc=None, domain_modifier=None,
               max_time=INF, downward_time=10, evaluation_time=10,
@@ -610,26 +626,15 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
         max_solutions = 6 if max_solutions == 0 else max_solutions
     diverse = diverse or collect_dataset
 
-    if diverse:
-        max_plans = 100 if max_plans is None else max_plans
-        plan_dataset = []
-        max_skeletons = 1
-        use_feedback = False
-    else:
-        max_plans = 1
-        plan_dataset = None
-        max_skeletons = INF
-        use_feedback = True
-
-    planner_dict_default = dict(planner='ff-astar1', unit_costs=False, success_cost=INF,
-                                verbose=True, debug=False, unique_optimistic=True, forbid=True, bind=True, )
-    planner_dict = dict(max_planner_time=downward_time, max_time=max_time,
-                        initial_complexity=5, visualize=visualize,use_feedback=use_feedback,
-                        # unit_efforts=True, effort_weight=None,
-                        max_plans=max_plans, fc=fc, domain_modifier=domain_modifier,
-                        max_skeletons=max_skeletons,
-                        plan_dataset=plan_dataset, evaluation_time=evaluation_time,
-                        max_solutions=max_solutions, search_sample_ratio=0, **kwargs)
+    planner_kwargs_default = dict(planner='ff-astar1', unit_costs=False, success_cost=INF, verbose=True,
+                                debug=False, unique_optimistic=True, forbid=True, bind=True)
+    planner_kwargs = dict(max_planner_time=downward_time, max_time=max_time,
+                          initial_complexity=5, visualize=visualize,
+                          # unit_efforts=True, effort_weight=None,
+                          fc=fc, domain_modifier=domain_modifier,
+                          evaluation_time=evaluation_time,
+                          max_solutions=max_solutions, search_sample_ratio=0, **kwargs)
+    planner_dict, plan_dataset = get_diverse_kwargs(planner_kwargs, diverse=diverse, max_plans=max_plans)
     pprint(planner_dict)
 
     # with Profiler():
@@ -637,7 +642,7 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
     set_cost_scale(cost_scale=1)
     with LockRenderer(lock=lock):
         solution = solve_focused(pddlstream_problem, stream_info=stream_info, constraints=constraints,
-                                 **planner_dict_default, **planner_dict)
+                                 **planner_kwargs_default, **planner_kwargs)
     if collect_dataset:
         return solution, plan_dataset
     return solution

@@ -644,7 +644,6 @@ def quick_demo(world):
         f.write('\n'.join([str(nice(p)) for p in raw_path]))
 
     # wait_if_gui('end?')
-    sys.exit()
 
 
 def quick_demo_debug(world):

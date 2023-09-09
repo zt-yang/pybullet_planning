@@ -68,7 +68,10 @@ To create IKFast bindings for a new robot, following the instructions in [ikfast
 
 ## Tests
 
-1) Test PyBullet - ```pybullet-planning$ python -c 'import pybullet'```
+Run a PR2 pick problem in kitchen simulation with 10 random seeds:
+```shell
+python tests/test_pddlstream.py -t test_pr2_kitchen -n 10
+```
 
 ## Tutorial
 

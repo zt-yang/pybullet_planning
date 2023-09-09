@@ -411,7 +411,9 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
         # get_depth_images(outpath, camera_pose=state.world.camera.pose,
         #                  rgbd=True, robot=False, img_dir=outpath)
 
-    if EXIT: sys.exit()
+    if EXIT:
+        print('exit at the end of save_to_kitchen_worlds')
+        sys.exit()
 
 
 def get_config_from_template(template_path):

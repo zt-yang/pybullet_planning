@@ -85,6 +85,7 @@ class FeasibilityChecker(object):
                     if f[0].lower() in ['atposition', 'atpose']:
                         f[2].assign()
                 if len(self._log['checks']) > 80:
+                    print('fc checks more than 80')
                     sys.exit()
         else:
             self._log['sequence'] = []
