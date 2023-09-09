@@ -75,7 +75,7 @@ class RobotAPI(Robot):
         app = self.get_approach_vector(arm, g_type)
         grasps_R = []
         for g in grasps_O:
-            if is_top_grasp(self, arm, body, g, get_pose(body)) and False:
+            if False and is_top_grasp(self, arm, body, g, get_pose(body)):
                 approach = g
             else:
                 approach = self.get_approach_pose(app, g)
@@ -792,7 +792,7 @@ class FEGripper(RobotAPI):
 
         with ConfSaver(self.body):
             with PoseSaver(body):
-                conf = se3_ik(self, grasp_pose, verbose=True)
+                conf = se3_ik(self, grasp_pose, verbose=False)
                 if conf is None:
                     print('\t\t\tFEGripper.conf is None', nice(grasp))
                     return None
@@ -916,7 +916,7 @@ class FEGripper(RobotAPI):
     def iterate_approach_path(self, arm, gripper, pose_value, grasp, obstacles=[], body=None):
         from pybullet_tools.flying_gripper_utils import get_approach_path, set_cloned_se3_conf
         path = get_approach_path(self, body, grasp, obstacles=obstacles, custom_limits=self.custom_limits)
-        if path == None:
+        if path is None:
             return
         for conf in path:
             set_cloned_se3_conf(self.body, gripper, conf.values)

@@ -790,7 +790,8 @@ def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True,
     problem.add_init(init)
 
     custom_limits = problem.world.robot.custom_limits ## planning_config['base_limits']
-    stream_map = world.robot.get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
+    stream_map = world.robot.get_stream_map(problem, collisions, custom_limits, teleport,
+                                            domain_pddl, **kwargs)
 
     print(f'Experiment: \t{exp_dir}\n'
           f'Domain PDDL: \t{domain_path}\n'
