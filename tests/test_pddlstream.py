@@ -52,7 +52,8 @@ def main(exp_name, verbose=True):
     with Profiler():
         with LockRenderer(lock=not args.enable):
             solution = solve(pddlstream_problem, algorithm=args.algorithm, unit_costs=args.unit,
-                             stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
+                             stream_info=stream_info, success_cost=INF, verbose=True,
+                             debug=False, world=world)
             saver.restore()
 
     print_solution(solution)

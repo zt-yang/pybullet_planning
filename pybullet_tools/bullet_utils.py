@@ -2167,7 +2167,7 @@ def sample_random_pose(aabb):
 
 def print_action_plan(action_plan, stream_plan, world=None):
     from pddlstream.language.object import Object, UniqueOptValue
-    placements = {s.output_objects[0].repr_name: world.get_debug_name(s.input_objects[1].value)
+    placements = {str(s.output_objects[0]): world.get_debug_name(s.input_objects[1].value)
                   for s in stream_plan if s.name == 'sample-pose'}
     action_plan_str = ''
     for action in action_plan:

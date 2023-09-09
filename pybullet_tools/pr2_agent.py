@@ -7,6 +7,7 @@ import time
 import numpy as np
 import types
 import json
+from pprint import pprint
 
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_pull_drawer_handle_motion_gen
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_turn_knob_handle_motion_gen
@@ -620,21 +621,23 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
         max_skeletons = INF
         use_feedback = True
 
+    planner_dict_default = dict(planner='ff-astar1', unit_costs=False, success_cost=INF,
+                                verbose=True, debug=False, unique_optimistic=True, forbid=True, bind=True, )
+    planner_dict = dict(max_planner_time=downward_time, max_time=max_time,
+                        initial_complexity=5, visualize=visualize,use_feedback=use_feedback,
+                        # unit_efforts=True, effort_weight=None,
+                        max_plans=max_plans, fc=fc, domain_modifier=domain_modifier,
+                        max_skeletons=max_skeletons,
+                        plan_dataset=plan_dataset, evaluation_time=evaluation_time,
+                        max_solutions=max_solutions, search_sample_ratio=0, **kwargs)
+    pprint(planner_dict)
+
     # with Profiler():
     initialize_collision_logs()
     set_cost_scale(cost_scale=1)
     with LockRenderer(lock=lock):
         solution = solve_focused(pddlstream_problem, stream_info=stream_info, constraints=constraints,
-                                 planner='ff-astar1', max_planner_time=downward_time,
-                                 unit_costs=False, success_cost=INF, initial_complexity=5,
-                                 max_time=max_time, visualize=visualize, verbose=True, debug=False,
-                                 # unit_efforts=True, effort_weight=None,
-                                 unique_optimistic=True, use_feedback=use_feedback,
-                                 forbid=True, max_plans=max_plans,
-                                 fc=fc, domain_modifier=domain_modifier,
-                                 bind=True, max_skeletons=max_skeletons,
-                                 plan_dataset=plan_dataset, evaluation_time=evaluation_time,
-                                 max_solutions=max_solutions, search_sample_ratio=0, **kwargs)
+                                 **planner_dict_default, **planner_dict)
     if collect_dataset:
         return solution, plan_dataset
     return solution

@@ -23,3 +23,7 @@ ASSET_PATH = absjoin(pbp_path, '..', 'assets')
 EXP_PATH = absjoin(pbp_path, '..', 'test_cases')
 OUTPUT_PATH = absjoin(pbp_path, '..', 'outputs')
 MAMAO_DATA_PATH = absjoin(workspace_path, 'fastamp-data')
+
+if 'cognitive-architectures' in workspace_path:
+    KITCHEN_WORLD_PATH = absjoin(workspace_path, '..', 'jupyter-worlds')
+    EXP_PATH = absjoin(KITCHEN_WORLD_PATH, 'test_cases')
