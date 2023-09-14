@@ -19,7 +19,7 @@ from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, g
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
     get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked, \
     get_movable_joints, apply_alpha, get_all_links, set_color, set_all_color, dump_body, clear_texture, \
-    get_link_name, get_aabb, draw_aabb, GREY, GREEN, quat_from_euler, wait_for_user
+    get_link_name, get_aabb, draw_aabb, GREY, GREEN, quat_from_euler, wait_for_user, get_camera_matrix
 from pybullet_tools.pr2_streams import Position, get_handle_grasp_gen, pr2_grasp
 from pybullet_tools.general_streams import pose_from_attachment
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
@@ -36,20 +36,94 @@ from .entities import Region, Environment, Robot, Surface, ArticulatedObjectPart
 from world_builder.utils import GRASPABLES
 from world_builder.samplers import get_learned_yaw
 
+DEFAULT_CONSTANTS = ['@movable', '@bottle', '@edible', '@medicine']  ## , '@world'
 
-class World(object):
-    """ api for building world and tamp problems """
-    def __init__(self, time_step=1e-3, prevent_collisions=False, camera=True, segment=False,
-                 teleport=False, drive=True, constants=None,
-                 conf_noise=None, pose_noise=None, depth_noise=None, action_noise=None): # TODO: noise model class?
-        # self.args = args
-        self.time_step = time_step
-        self.prevent_collisions = prevent_collisions
+
+class WorldBase(object):
+    """ parent api for working with planning + replanning architecture """
+    def __init__(self, time_step=1e-3, teleport=False, drive=True, prevent_collisions=False,
+                 constants=DEFAULT_CONSTANTS, segment=False):
+        ## for world attributes
         self.scramble = False
-        self.camera = camera
-        self.segment = segment
-        self.teleport = teleport
+        self.time_step = time_step
         self.drive = drive
+        self.teleport = teleport
+        self.prevent_collisions = prevent_collisions
+        self.segment = segment
+
+        ## for planning
+        self.constants = constants
+
+        ## for visualization
+        self.handles = []
+
+        ## for data generation
+        self.note = None
+        self.camera = None
+        self.cameras = []
+
+    def save_test_case(self, output_dir, save_rgb=False, save_depth=False, **kwargs):
+        if not isdir(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
+
+        self.save_problem(output_dir, **kwargs)
+
+        for suffix in ['log.txt', 'commands.pkl', 'time.json']:
+            if isfile(f"{output_dir}_{suffix}"):
+                shutil.move(f"{output_dir}_{suffix}", join(output_dir, suffix))
+
+        ## save the end image
+        if save_rgb:
+            self.visualize_image(img_dir=output_dir, rgb=True)
+        if save_depth:
+            self.visualize_image(img_dir=output_dir)
+
+    def save_problem(self, output_dir, **kwargs):
+        raise NotImplementedError
+
+    def add_camera(self, pose=unit_pose(), img_dir=join('visualizations', 'camera_images'),
+                   width=640, height=480, fx=400, **kwargs):
+
+        # camera_matrix = get_camera_matrix(width=width, height=height, fx=525., fy=525.)
+        camera_matrix = get_camera_matrix(width=width, height=height, fx=fx)
+        camera = StaticCamera(pose, camera_matrix=camera_matrix, **kwargs)
+        self.cameras.append(camera)
+        self.camera = camera
+        self.img_dir = img_dir
+
+    def visualize_image(self, pose=None, img_dir=None, index=None,
+                        image=None, segment=False, far=8, segment_links=False,
+                        camera_point=None, target_point=None, **kwargs):
+        from pybullet_tools.bullet_utils import visualize_camera_image
+
+        if not isinstance(self.camera, StaticCamera):
+            self.add_camera()
+        if pose is not None:
+            self.camera.set_pose(pose)
+        if img_dir is not None:
+            self.img_dir = img_dir
+        if index is None:
+            index = self.camera.index
+        if image is None:
+            image = self.camera.get_image(segment=segment, segment_links=segment_links, far=far,
+                                          camera_point=camera_point, target_point=target_point)
+        visualize_camera_image(image, index, img_dir=self.img_dir, **kwargs)
+
+    def remove_handles(self):
+        remove_handles(self.handles)
+
+    def add_handles(self, handles):
+        self.handles.extend(handles)
+
+
+#######################################################################################
+
+
+class World(WorldBase):
+    """ api for building world and tamp problems """
+    def __init__(self, **kwargs):
+        ## conf_noise=None, pose_noise=None, depth_noise=None, action_noise=None,  # TODO: noise model class?
+        super().__init__(**kwargs)
 
         self.BODY_TO_OBJECT = {}
         self.ROBOT_TO_OBJECT = {}
@@ -58,7 +132,6 @@ class World(object):
         self.sub_categories = {}
         self.sup_categories = {}
         self.SKIP_JOINTS = False
-        self.cameras = []
         self.floorplan = None  ## for saving LISDF
         self.init = []
         self.init_del = []
@@ -71,15 +144,9 @@ class World(object):
         self.planning_config = {'camera_zoomins': []}
 
         ## for visualization
-        self.handles = []
         self.path = None
         self.outpath = None
-        self.camera = None
         self.instance_names = {}
-        if constants is None:
-            constants = ['@movable', '@bottle', '@edible', '@medicine', '@world']
-        self.constants = constants
-        self.note = None
 
         self.clean_object = set()
 
@@ -94,12 +161,6 @@ class World(object):
                         and b not in self.non_planning_objects:
                     remove_body(b)
                     print('world.removed redundant body', b)
-
-    def remove_handles(self):
-        remove_handles(self.handles)
-
-    def add_handles(self, handles):
-        self.handles.extend(handles)
 
     def add_not_stackable(self, body, surface):
         if body not in self.not_stackable:
@@ -880,28 +941,28 @@ class World(object):
             obstacles.remove(parent)
         return obstacles
 
-    def add_camera(self, pose=unit_pose(), img_dir=join('visualizations', 'camera_images')):
-        camera = StaticCamera(pose, camera_matrix=CAMERA_MATRIX, max_depth=6)
-        self.cameras.append(camera)
-        self.camera = camera
-        self.img_dir = img_dir
-        if self.camera:
-            return self.cameras[-1].get_image(segment=self.segment)
-        return None
-
-    def visualize_image(self, pose=None, img_dir=None, far=8, index=None,
-                        camera_point=None, target_point=None, **kwargs):
-        if not isinstance(self.camera, StaticCamera):
-            self.add_camera()
-        if pose is not None:
-            self.camera.set_pose(pose)
-        if index is None:
-            index = self.camera.index
-        if img_dir is not None:
-            self.img_dir = img_dir
-        image = self.camera.get_image(segment=self.segment, far=far,
-                                      camera_point=camera_point, target_point=target_point)
-        visualize_camera_image(image, index, img_dir=self.img_dir, **kwargs)
+    # def add_camera(self, pose=unit_pose(), img_dir=join('visualizations', 'camera_images')):
+    #     camera = StaticCamera(pose, camera_matrix=CAMERA_MATRIX, max_depth=6)
+    #     self.cameras.append(camera)
+    #     self.camera = camera
+    #     self.img_dir = img_dir
+    #     if self.camera:
+    #         return self.cameras[-1].get_image(segment=self.segment)
+    #     return None
+    #
+    # def visualize_image(self, pose=None, img_dir=None, far=8, index=None,
+    #                     camera_point=None, target_point=None, **kwargs):
+    #     if not isinstance(self.camera, StaticCamera):
+    #         self.add_camera()
+    #     if pose is not None:
+    #         self.camera.set_pose(pose)
+    #     if index is None:
+    #         index = self.camera.index
+    #     if img_dir is not None:
+    #         self.img_dir = img_dir
+    #     image = self.camera.get_image(segment=self.segment, far=far,
+    #                                   camera_point=camera_point, target_point=target_point)
+    #     visualize_camera_image(image, index, img_dir=self.img_dir, **kwargs)
 
     def get_indices(self):
         """ for fastamp project """
@@ -1171,31 +1232,6 @@ class World(object):
         with open(join(output_dir, 'planning_config.json'), 'w') as f:
             json.dump(config, f, indent=4)
 
-    def save_test_case(self, goal, output_dir, init=None,
-                       domain=None, stream=None, problem=None, pddlstream_kwargs=None,
-                       save_rgb=False, save_depth=False, **kwargs):
-        if not isdir(output_dir):
-            os.makedirs(output_dir, exist_ok=True)
-        world_name = f"{problem}_{basename(output_dir)}"
-        if self.note is not None:
-            world_name += f"_{self.note}"
-
-        self.save_lisdf(output_dir, world_name=world_name, **kwargs)
-        self.save_problem_pddl(goal, output_dir, world_name=world_name, init=init)
-        self.save_planning_config(output_dir, domain=domain, stream=stream,
-                                  pddlstream_kwargs=pddlstream_kwargs)
-
-        ## move other log files:
-        for suffix in ['log.txt', 'commands.pkl', 'time.json']:
-            if isfile(f"{output_dir}_{suffix}"):
-                shutil.move(f"{output_dir}_{suffix}", join(output_dir, suffix))
-
-        ## save the end image
-        if save_rgb:
-            self.visualize_image(img_dir=output_dir, rgb=True)
-        if save_depth:
-            self.visualize_image(img_dir=output_dir)
-
     def get_type(self, body):
         return [self.BODY_TO_OBJECT[body].category]
 
@@ -1223,6 +1259,17 @@ class World(object):
             print(f'   find {len(possible)} out of {len(surfaces)} surfaces for {obj}', possible)
         possible = sorted(possible, key=get_area, reverse=True)
         return possible
+
+    def save_problem(self, output_dir, goal=None, init=None, domain=None, stream=None, problem=None,
+                     pddlstream_kwargs=None, **kwargs):
+        world_name = f"{problem}_{basename(output_dir)}"
+        if self.note is not None:
+            world_name += f"_{self.note}"
+
+        self.save_lisdf(output_dir, world_name=world_name, **kwargs)
+        self.save_problem_pddl(goal, output_dir, world_name=world_name, init=init)
+        self.save_planning_config(output_dir, domain=domain, stream=stream,
+                                  pddlstream_kwargs=pddlstream_kwargs)
 
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, self.robot)

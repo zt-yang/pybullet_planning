@@ -84,7 +84,7 @@ def create_pybullet_world(config, builder=None, SAVE_LISDF=False, SAVE_TESTCASE=
         file = world.save_lisdf(config.data.out_dir, verbose=config.verbose)
 
     if SAVE_TESTCASE:   ## save generated world conf, sampled problem and planning config
-        world.save_test_case(goal, config.data.out_dir, **config.data.images)
+        world.save_test_case(config.data.out_dir, goal=goal, **config.data.images)
 
     """ ============== stop here or follow up with solving the problem ==================== """
 

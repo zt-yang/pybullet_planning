@@ -22,20 +22,19 @@ from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove
     set_camera_pose, set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
     set_joint_positions, get_links, get_joints, get_joint_name, get_body_name, link_from_name, \
     parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK, read, get_client, \
-    reset_simulation, get_movable_joints, JOINT_TYPES, get_joint_type, is_movable, get_camera_matrix, \
-    wait_unlocked
+    reset_simulation, get_movable_joints, JOINT_TYPES, get_joint_type, is_movable, wait_unlocked
 from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link, \
     toggle_joint, get_door_links, set_camera_target_body, colorize_world, colorize_link, find_closest_match, \
     is_box_entity, summarize_facts
 from pybullet_tools.pr2_streams import get_handle_link
-from pybullet_tools.flying_gripper_utils import set_se3_conf
 
 from pddlstream.language.constants import AND, PDDLProblem
 
-from world_builder.entities import Space
+from world_builder.entities import Space, StaticCamera
 from world_builder.robot_builders import create_pr2_robot, create_gripper_robot
 from world_builder.utils import get_instance_name, get_camera_zoom_in, get_lisdf_name, get_mobility_id, \
     get_mobility_category, get_mobility_identifier
+from world_builder.world import WorldBase
 
 from lisdf_tools.lisdf_planning import pddl_to_init_goal
 
@@ -48,8 +47,9 @@ LINK_STR = '::'
 PART_INSTANCE_NAME = "{body_instance_name}" + LINK_STR + "{part_name}"
 
 
-class World():
-    def __init__(self, lisdf=None):
+class World(WorldBase):
+    def __init__(self, lisdf=None, **kwargs):
+        super().__init__(**kwargs)
         self.lisdf = lisdf
         self.body_to_name = {}
         self.instance_names = {}
@@ -58,7 +58,6 @@ class World():
         self.mobility_identifiers = {}
         self.name_to_body = {}
         self.ATTACHMENTS = {}
-        self.camera = None
         self.robot = None
         self.movable = None
         self.fixed = []
@@ -66,11 +65,17 @@ class World():
         self.body_types = {}
 
         ## for visualization
-        self.handles = []
-        self.cameras = []
         self.colored_links = []
         self.camera_kwargs = {}
         self.run_dir = None
+
+    """ same as World in world_builder, for replaying in run_pr2.py """
+    @property
+    def objects(self):
+        return [k for k in self.body_to_name if k != self.robot.body]
+
+    def save_problem(self, output_dir, **kwargs):
+        pass
 
     def clear_viz(self):
         self.remove_handles()
@@ -80,13 +85,6 @@ class World():
         for b in get_bodies():
             if b not in self.body_to_name:
                 remove_body(b)
-
-    def remove_handles(self):
-        pass
-        # remove_handles(self.handles)
-
-    def add_handles(self, handles):
-        self.handles.extend(handles)
 
     def make_doors_transparent(self, transparency=0.5):
         if len(self.fixed) == 0:
@@ -435,33 +433,6 @@ class World():
         from mamao_tools.data_utils import get_indices
         return get_indices(self.run_dir, **kwargs)
 
-    def add_camera(self, pose=unit_pose(), img_dir=join('visualizations', 'camera_images'),
-                   width=640, height=480, fx=400, **kwargs):
-        from world_builder.entities import StaticCamera
-
-        # camera_matrix = get_camera_matrix(width=width, height=height, fx=525., fy=525.)
-        camera_matrix = get_camera_matrix(width=width, height=height, fx=fx)
-        camera = StaticCamera(pose, camera_matrix=camera_matrix, **kwargs)
-        self.cameras.append(camera)
-        self.camera = camera
-        self.img_dir = img_dir
-
-    def visualize_image(self, pose=None, img_dir=None, index=None,
-                        image=None, segment=False, segment_links=False,
-                        camera_point=None, target_point=None, **kwargs):
-        from pybullet_tools.bullet_utils import visualize_camera_image
-
-        if pose is not None:
-            self.camera.set_pose(pose)
-        if img_dir is not None:
-            self.img_dir = img_dir
-        if index is None:
-            index = self.camera.index
-        if image is None:
-            image = self.camera.get_image(segment=segment, segment_links=segment_links,
-                                          camera_point=camera_point, target_point=target_point)
-        visualize_camera_image(image, index, img_dir=self.img_dir, **kwargs)
-
     def add_joints_by_keyword(self, body_name, joint_name=None):
         body = self.name_to_body[body_name]
         joints = [j for j in get_joints(body) if is_movable(body, j)]
@@ -551,7 +522,7 @@ def get_custom_limits(config_path):
 
 
 def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False,
-                        width=1980, height=1238, transparent=True, larger_world=False):
+                        width=1980, height=1238, transparent=True, larger_world=False, **kwargs):
 
     ## sometimes another lisdf name is given
     if lisdf_path.endswith('.lisdf'):
@@ -576,19 +547,19 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
 
     ## --- the floor and pose will become extra bodies
     connect(use_gui=use_gui, shadows=False, width=width, height=height)
-    # draw_pose(unit_pose(), length=1.)
+    draw_pose(unit_pose(), length=1.)
     # create_floor()
 
-    world = load_sdf(lisdf_path).worlds[0]
-    bullet_world = World(world)
+    lisdf_world = load_sdf(lisdf_path).worlds[0]
+    world = World(lisdf_world, **kwargs)
 
     ## may be changes in joint positions
     model_states = {}
-    if len(world.states) > 0:
-        model_states = world.states[0].model_states
+    if len(lisdf_world.states) > 0:
+        model_states = lisdf_world.states[0].model_states
         model_states = {s.name: s for s in model_states}
 
-    for model in world.models:
+    for model in lisdf_world.models:
         scale = 1
         if isinstance(model, URDFInclude):
             # uri = model.uri.replace('/home/yang/Documents/cognitive-architectures/bullet/', '../../')
@@ -623,13 +594,13 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
         if category in ['pr2', 'feg']:
             pose = model.pose.pos
             if category == 'pr2':
-                create_pr2_robot(bullet_world, base_q=pose, custom_limits=custom_limits, robot=body)
+                create_pr2_robot(world, base_q=pose, custom_limits=custom_limits, robot=body)
             elif category == 'feg':
-                robot = create_gripper_robot(bullet_world, custom_limits=custom_limits, robot=body)
+                create_gripper_robot(world, custom_limits=custom_limits, robot=body)
         else:
             pose = (tuple(model.pose.pos), quat_from_euler(model.pose.rpy))
             set_pose(body, pose)
-            bullet_world.add_body(body, model.name, instance_name=instance_name, path=uri)
+            world.add_body(body, model.name, instance_name=instance_name, path=uri)
 
         if not jointless and model.name in model_states:
             for js in model_states[model.name].joint_states:
@@ -637,11 +608,12 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
                 set_joint_position(body, joint_from_name(body, js.name), position)
 
     ## load objects transparent
-    if ('test_full_kitchen' in world.name or 'None_' in world.name or 'clean_dish' in world.name) and transparent:
-        make_furniture_transparent(bullet_world, lisdf_dir, lower_tpy=0.5, upper_tpy=0.2)
+    name = lisdf_world.name
+    if ('test_full_kitchen' in name or 'None_' in name or 'clean_dish' in name) and transparent:
+        make_furniture_transparent(world, lisdf_dir, lower_tpy=0.5, upper_tpy=0.2)
 
-    if world.gui is not None:
-        camera_pose = world.gui.camera.pose
+    if lisdf_world.gui is not None:
+        camera_pose = lisdf_world.gui.camera.pose
         ## when camera pose is not saved for generating training data
         if not np.all(camera_pose.pos == 0):
             set_camera_pose2((camera_pose.pos, camera_pose.quat_xyzw))
@@ -657,24 +629,24 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
                 body_to_name = config['body_to_name_new']
 
             for k, v in body_to_name.items():
-                if v not in bullet_world.name_to_body:
-                    bullet_world.add_body(eval(k), v)
+                if v not in world.name_to_body:
+                    world.add_body(eval(k), v)
                     ## e.g. k=(15, 1), v=minifridge::joint_0
 
         ## camera
         if 'camera_zoomins' in config:
             camera_zoomins = config['camera_zoomins']
             if len(camera_zoomins) > 0:
-                bullet_world.camera_kwargs = [get_camera_kwargs(bullet_world, d) for d in camera_zoomins]
+                world.camera_kwargs = [get_camera_kwargs(world, d) for d in camera_zoomins]
             else:
                 # fridge = bullet_world.name_to_body['minifridge']
                 # set_camera_target_body(fridge, dx=2, dy=0, dz=2)
-                sink = bullet_world.name_to_body['sink#1']
+                sink = world.name_to_body['sink#1']
                 set_camera_target_body(sink, dx=3, dy=1, dz=1)
 
     # wait_unlocked()
-    bullet_world.run_dir = lisdf_dir
-    return bullet_world
+    world.run_dir = lisdf_dir
+    return world
 
 
 def get_camera_kwargs(bullet_world, camera_zoomin):
@@ -738,13 +710,15 @@ def make_sdf_world(sdf_model):
 #######################
 
 
-def pddl_files_from_dir(exp_dir, replace_pddl=False):
+def pddl_files_from_dir(exp_dir, replace_pddl=False, domain_name='pr2_mamao.pddl',
+                        stream_name='pr2_stream_mamao.pddl'):
     if replace_pddl:
         root_dir = abspath(join(__file__, *[os.pardir]*4))
-        cognitive_dir = join(root_dir, 'cognitive-architectures')
-        pddl_dir = join(cognitive_dir, 'bullet', 'assets', 'pddl')
-        domain_path = join(pddl_dir, 'domains', 'pr2_mamao.pddl')
-        stream_path = join(pddl_dir, 'streams', 'pr2_stream_mamao.pddl')
+        if 'cognitive-architectures' not in root_dir:
+            root_dir = join(root_dir, 'cognitive-architectures')
+        pddl_dir = join(root_dir, 'bullet', 'assets', 'pddl')
+        domain_path = join(pddl_dir, 'domains', domain_name)
+        stream_path = join(pddl_dir, 'streams', stream_name)
     else:
         domain_path = join(exp_dir, 'domain_full.pddl')
         stream_path = join(exp_dir, 'stream.pddl')
@@ -769,17 +743,18 @@ def revise_goal(goal, world):
 
 
 def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True,
-                        teleport=False, goal=None, larger_world=False, **kwargs):
+                        teleport=False, goal=None, larger_world=False,
+                        domain_name=None, stream_name=None, **kwargs):
     exp_dir = abspath(exp_dir)
 
-    domain_path, stream_path, config_path = pddl_files_from_dir(exp_dir, replace_pddl)
+    domain_path, stream_path, config_path = pddl_files_from_dir(exp_dir, replace_pddl, domain_name=domain_name,
+                                                                stream_name=stream_name)
 
     domain_pddl = read(domain_path)
     stream_pddl = read(stream_path)
 
     world = problem.world
-    init, g, constant_map = pddl_to_init_goal(exp_dir, world, domain_file=domain_path,
-                                              larger_world=larger_world)
+    init, g, constant_map = pddl_to_init_goal(exp_dir, world, domain_file=domain_path, larger_world=larger_world)
     world.summarize_all_objects(init)  ## important to get obstacles
 
     if goal is not None:

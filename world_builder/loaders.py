@@ -1511,10 +1511,10 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
     # # weiyu debug
     # counters["bottle"] = [world.name_to_object(n) for n in ["sink#1::sink_bottom"]]
 
-    print('-' * 20 + 'places to sample  counter moveables' + '-' * 20)
-    pprint(counters)
-    print('-' * 60)
     if verbose:
+        print('-' * 20 + ' surfaces to sample moveables ' + '-' * 20)
+        pprint(counters)
+        print('-' * 60)
         print('\nload_counter_moveables(obstacles={})\n'.format([o.name for o in obstacles]))
 
     def check_size_matter(obj):
