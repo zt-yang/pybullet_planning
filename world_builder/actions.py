@@ -199,7 +199,7 @@ OBJECT_PARTS = {
     'Veggie': ['VeggieLeaf', 'VeggieStem'],
     'Egg': ['EggFluid', 'EggShell']
 } ## object.category are all lower case
-OBJECT_PARTS = {k.lower():v for k,v in OBJECT_PARTS.items()}
+OBJECT_PARTS = {k.lower(): v for k, v in OBJECT_PARTS.items()}
 
 
 class ChopAction(Action):

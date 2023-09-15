@@ -447,6 +447,7 @@ def collided(obj, obstacles=[], world=None, tag='', articulated=False, verbose=F
 
 #######################################################
 
+
 OBJ_YAWS = {
     'Microwave': PI, 'Toaster': PI / 2
 }

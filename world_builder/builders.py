@@ -306,7 +306,6 @@ def sample_one_fridge_goal(world, movable_category='food'):
 
 
 def test_fridge_table(world, movable_category='food', verbose=True, **kwargs):
-    #set_time_seed()
     sample_fridge_table_scene(world, movable_category, verbose, **kwargs)
     goal = sample_fridge_table_goal(world, movable_category)
     return goal
