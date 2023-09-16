@@ -96,7 +96,7 @@ def summarize_csv(csv_name):
                 write_average = False
             line_count += 1
 
-    if write_average:
+    if write_average and len(result_count) > 0:
         row = [f'{AVERAGE} {result_count} runs']
         row.extend([round(s / result_count, 4) for s in sums])
         data.append(row)

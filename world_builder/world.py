@@ -1661,14 +1661,13 @@ def evolve_processes(state, processes=[], max_steps=INF, ONCE=False, verbose=Fal
         for agent in processes:
             state = agent.evolve(state, ONCE=ONCE, verbose=verbose)
 
-            ## --------- added by YANG to stop simulation if action is None ---------
-            if ONCE and state == None: return None
-            ## ----------------------------------------------------------------------------
+            ## stop simulation if action is None
+            if ONCE and state is None:
+                return None
 
         # if verbose: print('state add', [f for f in state.facts if f not in facts])
         # if verbose: print('state del', [f for f in facts if f not in state.facts])
 
         current_time += time_step
         # wait_for_duration(read_parameter(parameter) * time_step)
-        #wait_if_gui()
     return state

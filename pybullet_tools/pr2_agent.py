@@ -557,12 +557,6 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     stream_pddl = read(stream_pddl)
     constant_map = {k: k for k in state.world.constants}
 
-    # # debug weiyu
-    # print("\nconstant map")
-    # print(constant_map)
-    # print("\n")
-    # input("here")
-
     goal = [g for g in goal if not (g[0] == 'not' and g[1][0] == '=')]
 
     if PRINT:
@@ -615,9 +609,10 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
     #     ('place', [WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
     # ]
     if skeleton is not None:
-        print('-' * 100)
-        print('\n'.join([str(s) for s in skeleton]))
-        print('-' * 100) 
+        if len(skeleton) > 0:
+            print('-' * 100)
+            print('\n'.join([str(s) for s in skeleton]))
+            print('-' * 100)
         constraints = PlanConstraints(skeletons=[repair_skeleton(skeleton)], exact=False, max_cost=max_cost + 1)
     else:
         constraints = PlanConstraints(max_cost=max_cost + 1)  # TODO: plus 1 in action costs?
@@ -635,7 +630,9 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
                           evaluation_time=evaluation_time,
                           max_solutions=max_solutions, search_sample_ratio=0, **kwargs)
     planner_dict, plan_dataset = get_diverse_kwargs(planner_kwargs, diverse=diverse, max_plans=max_plans)
+    print('-' * 30 + ' PLANNER KWARGS ' + '-' * 30)
     pprint(planner_dict)
+    print('-' * 60)
 
     # with Profiler():
     initialize_collision_logs()
@@ -649,8 +646,8 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
 
 
 def create_cwd_saver():
-    # temp_dir = '/tmp/pddlstream-{}-{}/'.format(os.getpid(), int(time.time()))
-    temp_dir = '/tmp/pddlstream-{}/'.format(os.getpid())
+    # temp_dir = '/tmp/pddlstream-{}/'.format(os.getpid())
+    temp_dir = '/tmp/pddlstream-{}-{}/'.format(os.getpid(), int(time.time()))
     print(f'\n\n\n\nsolve_multiple at temp dir {temp_dir} \n\n\n\n')
     safe_remove(temp_dir)
     ensure_dir(temp_dir)
