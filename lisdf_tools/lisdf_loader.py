@@ -756,6 +756,7 @@ def pddlstream_from_dir(problem, exp_dir, replace_pddl=False, collisions=True,
     world = problem.world
     init, g, constant_map = pddl_to_init_goal(exp_dir, world, domain_file=domain_path, larger_world=larger_world)
     world.summarize_all_objects(init)  ## important to get obstacles
+    world.summarize_facts(init, name='Initial loaded facts from pddl')
 
     if goal is not None:
         goal = [AND] + revise_goal(goal, world)
