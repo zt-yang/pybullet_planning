@@ -97,7 +97,7 @@ def generate_semantic_specification(seed=0, max_num_goal_objs=1, max_num_distrac
     return dict
 
 
-def generate_semantic_specification_with_color(seed=0, max_num_goal_objs=1, max_num_distractor_objs=0, exclude_initial_loc=False):
+def generate_semantic_specification_with_color(seed=0, max_num_goal_objs=1, max_num_distractor_objs=0, exclude_initial_loc=False, force_distractor_objs_in_sink_num=None):
 
     np.random.seed(seed)
 
@@ -150,6 +150,15 @@ def generate_semantic_specification_with_color(seed=0, max_num_goal_objs=1, max_
         objs_dict[obj_id] = {"class": obj_cls, "instance": obj_ins, "location": obj_loc, "state": obj_state, "color": obj_color}
         goal_objs.append(obj_id)
 
+    if force_distractor_objs_in_sink_num is not None:
+        assert force_distractor_objs_in_sink_num > 0, "force_distractor_objs_in_sink_num must be positive"
+        num_objs_in_sink = np.random.randint(1, force_distractor_objs_in_sink_num + 1)
+        if num_objs_in_sink > 0:
+            sink_obj_idxs = np.random.permutation(num_distractor_objs)[:num_objs_in_sink]
+        else:
+            sink_obj_idxs = []
+    else:
+        sink_obj_idxs = []
 
     for oi in range(num_distractor_objs):
 
@@ -159,7 +168,16 @@ def generate_semantic_specification_with_color(seed=0, max_num_goal_objs=1, max_
 
         obj_cls = np.random.choice(DISTRACTOR_OBJECTS)
         obj_ins = None
-        obj_loc = np.random.choice(LOCATIONS)
+
+        if len(sink_obj_idxs) > 0:
+            if oi in sink_obj_idxs:
+                obj_loc = "sink_bottom"
+            else:
+                location_copy = copy.deepcopy(LOCATIONS)
+                location_copy.remove("sink_bottom")
+                obj_loc = np.random.choice(location_copy)
+        else:
+            obj_loc = np.random.choice(LOCATIONS)
 
         if len(obj_class_to_colors[obj_cls]) == 0:
             return None
@@ -218,7 +236,17 @@ def to_json_str(dict):
     return json.dumps(dict, sort_keys=True)
 
 
-def generate_semantic_specs(save_dir, max_seed, max_num_goal_objs, max_num_distractor_objs, exclude_initial_loc):
+def generate_semantic_specs(save_dir, max_seed, max_num_goal_objs, max_num_distractor_objs, exclude_initial_loc, force_distractor_objs_in_sink_num):
+    """
+
+    :param save_dir:
+    :param max_seed:
+    :param max_num_goal_objs:
+    :param max_num_distractor_objs:
+    :param exclude_initial_loc:
+    :param force_distractor_objs_in_sink_num: if none, at least one and at most max_num_distractor_objs objects will be in the sink
+    :return:
+    """
 
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -229,9 +257,10 @@ def generate_semantic_specs(save_dir, max_seed, max_num_goal_objs, max_num_distr
     unique_dict_str_to_seed = {}
     for si in range(max_seed):
         dict = generate_semantic_specification_with_color(seed=si,
-                                               max_num_goal_objs=max_num_goal_objs,
-                                               max_num_distractor_objs=max_num_distractor_objs,
-                                               exclude_initial_loc=exclude_initial_loc)
+                                                          max_num_goal_objs=max_num_goal_objs,
+                                                          max_num_distractor_objs=max_num_distractor_objs,
+                                                          exclude_initial_loc=exclude_initial_loc,
+                                                          force_distractor_objs_in_sink_num=force_distractor_objs_in_sink_num)
 
         if dict is None:
             continue
@@ -259,9 +288,11 @@ if __name__ == "__main__":
     # parser.add_argument('--exclude_initial_loc', type=int, default=0)
     # args = parser.parse_args()
 
-    # save_dir = "/home/weiyu/data_drive/nsplan/0711/semantic_specs"
-    save_dir = "/svl/u/weiyul/data_drive/nsplan/0712/semantic_specs"
-    generate_semantic_specs(save_dir=save_dir, max_seed=1000, max_num_goal_objs=1, max_num_distractor_objs=3, exclude_initial_loc=False)
+    # save_dir = "/home/weiyu/data_drive/nsplan/0919_constrained_placing/semantic_specs"
+    save_dir = "/svl/u/weiyul/data_drive/nsplan/0919_constrained_placing/semantic_specs"
+    generate_semantic_specs(save_dir=save_dir, max_seed=1000,
+                            max_num_goal_objs=1, max_num_distractor_objs=3,
+                            exclude_initial_loc=False, force_distractor_objs_in_sink_num=3)
 
 
 

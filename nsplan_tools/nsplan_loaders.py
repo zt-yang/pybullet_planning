@@ -300,6 +300,8 @@ def sample_clean_dish_v0(world, obj_dict, w=3, l=8, verbose=True, pause=True):
     # load_storage_mechanism(world, world.name_to_object('dishwasherbox'), epsilon=epsilon)
 
     ## load objects into reachable places
+    # important: add sink to obstacles
+    obstacles.append(sink)
     obj_dict = load_moveables(world, obj_dict=obj_dict, d_x_min=0.3, obstacles=obstacles)
 
     """ step 6: take an image """
