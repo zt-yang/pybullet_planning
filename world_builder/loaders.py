@@ -941,7 +941,7 @@ def place_in_cabinet(fridgestorage, cabbage, place=True, world=None, learned=Tru
     if not isinstance(fridgestorage, tuple):
         b = fridgestorage.body
         l = fridgestorage.link
-        fridgestorage.place_obj(cabbage)
+        fridgestorage.place_obj(cabbage, world=world)
     else:
         b, _, l = fridgestorage
 
@@ -971,7 +971,7 @@ def place_in_cabinet(fridgestorage, cabbage, place=True, world=None, learned=Tru
         if hasattr(world, 'BODY_TO_OBJECT'):
             world.remove_body_attachment(cabbage)
         set_pose(cabbage, pose)
-        fridgestorage.include_and_attach(cabbage)
+        fridgestorage.place_obj(cabbage, world=world)
     else:
         return pose
 
@@ -1050,7 +1050,7 @@ def load_storage_mechanism(world, obj, epsilon=0.3):
     ## --- ADD ONE SPACE TO BE PUT INTO
     spaces = get_partnet_spaces(obj.path, obj.body)
     for b, _, l in spaces:
-        space = world.add_object(Space(b, l, name=f'{obj.category}_storage'))
+        space = world.add_object(Space(b, l, name=f'storage'))  ## f'{obj.category}_storage'
         break
     return doors, space
 
@@ -1079,7 +1079,7 @@ def load_fridge_with_food_on_surface(world, counter, name='minifridge',
 
     minifridge_doors, fridgestorage = load_storage_mechanism(world, minifridge)
     if cabbage is not None:
-        place_in_cabinet(fridgestorage, cabbage)
+        place_in_cabinet(fridgestorage, cabbage, world=world)
 
     return list(minifridge_doors.keys())
 
@@ -1095,7 +1095,7 @@ def ensure_doors_cfree(doors, verbose=True, **kwargs):
 
 def ensure_robot_cfree(world, verbose=True):
     obstacles = [o for o in get_bodies() if o != world.robot]
-    while collided(world.robot, obstacles, verbose=verbose, tag='ensure robot cfree'):
+    while collided(world.robot, obstacles, verbose=verbose, world=world, tag='ensure robot cfree'):
         world.robot.randomly_spawn()
 
 
@@ -1227,11 +1227,11 @@ def place_another_food(world, movable_category='food', SAMPLING=False, verbose=T
     ))
 
     s = random_space()
-    place_in_cabinet(s, new_food)
+    place_in_cabinet(s, new_food, world=world)
     max_trial = 20
     # print(f'\nfood ({max_trial})\t', new_food.name, nice(get_pose(new_food.body)))
     # print(f'first food\t', world.body_to_name(food), nice(get_pose(food)))
-    while collided(new_food, [food], verbose=verbose, tag='load food'):
+    while collided(new_food, [food], verbose=verbose, world=world, tag='load food'):
         s = random_space()
         max_trial -= 1
         place_in_cabinet(s, new_food)

@@ -175,6 +175,7 @@ class Object(Index):
         return obj
 
     def place_obj(self, obj, max_trial=8, timeout=1.5, world=None, obstacles=None, visualize=False):
+        """ place object on Surface or in Space """
         if isinstance(obj, str):
             raise NotImplementedError('place_obj: obj is str')
         if world is None:

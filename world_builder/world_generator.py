@@ -374,7 +374,7 @@ def save_to_outputs_folder(output_path, data_path, data_generation=False, multip
 def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXIT=True,
                            floorplan=None, world_name=None, root_path=None, DEPTH_IMAGES=False):
     exp_path = EXP_PATH
-    if root_path != None:
+    if root_path is not None:
         exp_path = join(root_path, exp_path)
     outpath = join(exp_path, exp_name)
     if isdir(outpath):
@@ -388,7 +388,7 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
 
     ## --- init and goal in problem.pddl
     all_pred_names = generate_problem_pddl(state.world, pddlstream_problem.init, pddlstream_problem.goal,
-                             world_name=world_name, out_path=join(outpath, 'problem.pddl'))
+                                           world_name=world_name, out_path=join(outpath, 'problem.pddl'))
 
     ## --- domain and stream copied over  ## shutil.copy()
     with open(join(outpath, 'domain_full.pddl'), 'w') as f:
@@ -496,12 +496,12 @@ def generate_problem_pddl(world, facts, goals, world_name='lisdf', domain_name='
         from pybullet_tools.logging import myprint as print
         print(f'----------------{problem_pddl}')
 
-    # all_pred_names = {}  # pred: arity
-    # for fact in list(set(facts)):
-    #     pred = fact[0]
-    #     if pred.lower() not in all_pred_names:
-    #         all_pred_names[pred.lower()] = len(fact[1:])
-    # return all_pred_names
+    all_pred_names = {}  # pred: arity
+    for fact in list(set(facts)):
+        pred = fact[0]
+        if pred.lower() not in all_pred_names:
+            all_pred_names[pred.lower()] = len(fact[1:])
+    return all_pred_names
 
 
 def get_pddl_from_list(fact, world):

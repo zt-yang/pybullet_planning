@@ -9,6 +9,8 @@ pbp_path = abs_join(current_dir, '..')
 ASSET_PATH = abs_join(pbp_path, '..', 'assets')
 
 workspace_path = abs_join(pbp_path, '..', '..')
+if 'cognitive-architectures' in workspace_path:
+    workspace_path = abs_join(workspace_path, '..')
 KITCHEN_WORLD = abs_join(workspace_path, 'kitchen-worlds')
 PARTNET_PATH = abs_join(workspace_path, 'dataset')
 
