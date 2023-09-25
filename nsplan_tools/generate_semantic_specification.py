@@ -601,23 +601,18 @@ if __name__ == "__main__":
     #                         force_distractor_obj_cls=None,
     #                         hard_sink=False, red_bowl=True)
 
-    # # generate test examples
-    # save_dir = "/home/weiyu/data_drive/nsplan/0923_constrained_placing/semantic_specs"
-    # generate_semantic_specs(save_dir=save_dir, max_seed=1000,
-    #                         max_num_goal_objs=1, max_num_distractor_objs=3,
-    #                         exclude_initial_loc=False, force_distractor_objs_in_sink_num=1, force_goal_loc="sink_bottom",
-    #                         force_distractor_obj_cls="pan",
-    #                         hard_sink=True)
-
     # generate test examples
-    save_dir = "/svl/u/weiyul/data_drive/nsplan/0923_constrained_placing/semantic_specs"
+    save_dir = "/home/weiyu/data_drive/nsplan/0923_constrained_placing/semantic_specs"
     generate_semantic_specs(save_dir=save_dir, max_seed=1000,
                             max_num_goal_objs=1, max_num_distractor_objs=3,
                             exclude_initial_loc=False, force_distractor_objs_in_sink_num=1, force_goal_loc="sink_bottom",
                             force_distractor_obj_cls="pan",
                             hard_sink=True)
 
-
-
-
-
+    # # generate test examples
+    # save_dir = "/svl/u/weiyul/data_drive/nsplan/0923_constrained_placing/semantic_specs"
+    # generate_semantic_specs(save_dir=save_dir, max_seed=1000,
+    #                         max_num_goal_objs=1, max_num_distractor_objs=3,
+    #                         exclude_initial_loc=False, force_distractor_objs_in_sink_num=1, force_goal_loc="sink_bottom",
+    #                         force_distractor_obj_cls="pan",
+    #                         hard_sink=True)
