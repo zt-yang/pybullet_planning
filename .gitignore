@@ -15,12 +15,12 @@ build/
 
 pybullet_tools/vhacd_utils.py
 
-tests/visualizations/
-tests/temp/
-tests/statistics/
-tests/txt_file.txt
-tests/tests/temp_urdfs/
-tests/pb_images/
+tutorials/visualizations/
+tutorials/temp/
+tutorials/statistics/
+tutorials/txt_file.txt
+tutorials/tests/temp_urdfs/
+tutorials/pb_images/
 
 mamao_tools/*.pdf
 *.png
