@@ -67,7 +67,66 @@ def parse_yaml(path, verbose=True):
     return conf
 
 
+def add_walls_given_rooms_doors(objects):
+    wall_thickness = 30
+    wall_offsets = {
+        "east": (0, 1),
+        "south": (1, 0),
+        "west": (0, -1),
+        "north": (-1, 0)
+    }
+    rooms = []
+    wall_objects = {}
+    for k, v in objects.items():
+        if v['category'] == 'room':
+            rooms.append(k)
+            index = k[k.index('_') + 1:]
+            walls = []
+            for direction, offsets in wall_offsets.items():
+                wall_name = f"wall_{index}_{direction}"
+                length = abs(offsets[0] * v['w'] + offsets[1] * v['l'])
+                yaw = 90 if offsets[0] == 0 else 0
+                wall_objects[wall_name] = {'x': v['x'] + offsets[0] * v['w'] / 2, 'y': v['y'] + offsets[1] * v['l'] / 2,
+                                           'yaw': yaw, 'w': length, 'l': wall_thickness, 'category': 'wall'}
+                walls.append(wall_name)
+
+            door_name = f"door_{index}"
+            if door_name in objects:
+                door_attr = objects[door_name]
+                for wall_name in walls:
+                    wall_attr = wall_objects[wall_name]
+                    if abs(wall_attr['x'] - door_attr['x']) <= door_attr['w'] / 2:
+                        left = wall_attr['y'] - wall_attr['w'] / 2
+                        right = wall_attr['y'] + wall_attr['w'] / 2
+                        door_left = door_attr['y'] - door_attr['w'] / 2
+                        door_right = door_attr['y'] + door_attr['w'] / 2
+                        seg_index = 0
+                        for l, r in [(left, door_left), (door_right, right)]:
+                            wall_objects[f"{wall_name}_{seg_index}"] = {
+                                'x': wall_attr['x'], 'y': (l + r) / 2, 'w': r - l, 'l': wall_attr['l'],
+                                'yaw': wall_attr['yaw'], 'category': 'wall'}
+                            seg_index += 1
+                    elif abs(wall_attr['y'] - door_attr['y']) <= door_attr['w'] / 2:
+                        top = wall_attr['x'] - wall_attr['w'] / 2
+                        bottom = wall_attr['x'] + wall_attr['w'] / 2
+                        door_top = door_attr['x'] - door_attr['w'] / 2
+                        door_bottom = door_attr['x'] + door_attr['w'] / 2
+                        seg_index = 0
+                        for l, r in [(top, door_top), (door_bottom, bottom)]:
+                            wall_objects[f"{wall_name}_{seg_index}"] = {
+                                'x': (l + r) / 2, 'y': wall_attr['y'], 'w': r - l, 'l': wall_attr['l'],
+                                'yaw': wall_attr['yaw'], 'category': 'wall'}
+                            seg_index += 1
+    objects.update(wall_objects)
+    for k in rooms:
+        del objects[k]
+    return objects
+
+
 def read_xml(plan_name, asset_path=ASSET_PATH):
+    """ load a svg file representing the floor plan in asset path
+        return a dictionary of object name: (category, pose) as well as world dimensions
+    """
     X_OFFSET, Y_OFFSET, SCALING = None, None, None
     FLOOR_X_MIN, FLOOR_X_MAX = inf, -inf
     FLOOR_Y_MIN, FLOOR_Y_MAX = inf, -inf
@@ -82,22 +141,28 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
         x = float(rect['y']) + w / 2
         y = float(rect['x']) + h / 2
 
-        text = ''.join([t.cdata for t in object.text.tspan])
-        if 'pr2' in text:
-            SCALING = w / 0.8
-            X_OFFSET, Y_OFFSET = x, y
-            continue
-        elif '/' in text:
+        text = ''.join([t.cdata for t in object.text.tspan]).lower()
+
+        if '/' in text:
+            if 'pr2' in text or 'spot' in text:
+                SCALING = w / 0.8
+                X_OFFSET, Y_OFFSET = x, y
+                continue
             category, yaw = text.split('/')
-        elif '.' in text:
+
+        elif text.startswith('.'):
             category = 'door'
+            if len(text) > 1:
+                name = f"{category}_{text[1:]}"
             if w > h:
                 yaw = 270
             else:
                 yaw = 180
-        else:
+
+        elif 'floor' in text:
             category = 'floor'
             yaw = 0
+            name = text
             if float(rect['y']) < FLOOR_X_MIN:
                 FLOOR_X_MIN = float(rect['y'])
             if float(rect['x']) < FLOOR_Y_MIN:
@@ -106,16 +171,26 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
                 FLOOR_X_MAX = float(rect['y']) + w
             if float(rect['x']) + w > FLOOR_Y_MAX:
                 FLOOR_Y_MAX = float(rect['x']) + h
+
+        elif 'office' in text:
+            category = 'room'
+            yaw = 0
             name = text
+
+        else:
+            print('what is this')
 
         if category not in objects_by_category:
             objects_by_category[category] = []
-        if name == None:
+        if name is None:
             next = len(objects_by_category[category])
             name = f"{category}#{next + 1}"
         objects_by_category[category].append(name)
 
         objects[name] = {'x': x, 'y': y, 'yaw': int(yaw), 'w': w, 'l': h, 'category': category}
+
+    ## associate rooms with doors for computing walls
+    objects = add_walls_given_rooms_doors(objects)
 
     return objects, X_OFFSET, Y_OFFSET, SCALING, FLOOR_X_MIN, FLOOR_X_MAX, FLOOR_Y_MIN, FLOOR_Y_MAX
 

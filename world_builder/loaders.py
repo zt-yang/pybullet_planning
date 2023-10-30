@@ -332,6 +332,11 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                 Pose(point=Point(x=round(x, 1), y=round(y, 1), z=-2 * FLOOR_HEIGHT)))
             continue
 
+        elif cat == 'room':
+            ## find the door to decide wall lengths
+            load_room(world, name, x, y, w, l, o['doors'], SCALING, asset_path=asset_path)
+            continue
+
         ## add the object itself
         yaw = {0: 0, 90: PI / 2, 180: PI, 270: -PI / 2}[o['yaw']]
         obj = world.add_object(Object(

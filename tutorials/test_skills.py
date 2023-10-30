@@ -24,7 +24,7 @@ from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, 
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, set_camera_target_body, \
     draw_bounding_lines, fit_dimensions, draw_fitted_box, get_hand_grasps, sample_random_pose, \
     open_joint, get_grasp_db_file, draw_points, take_selected_seg_images, dump_json
-from pybullet_tools.pr2_problems import create_floor
+
 from pybullet_tools.pr2_agent import get_stream_info, post_process, move_cost_fn, \
     visualize_grasps_by_quat, visualize_grasps
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, Position, \
@@ -39,7 +39,8 @@ from world_builder.robot_builders import create_gripper_robot, create_pr2_robot
 from world_builder.utils import load_asset, get_instance_name, get_partnet_doors, get_partnet_spaces
 from world_builder.utils import get_instances as get_instances_helper
 from world_builder.partnet_scales import MODEL_HEIGHTS, OBJ_SCALES, MODEL_SCALES
-from world_builder.robot_builders import build_skill_domain_robot
+
+from tutorials.test_utils import get_test_world
 
 import math
 
@@ -63,23 +64,6 @@ def get_instances(category, **kwargs):
         get_data(categories=[category])
     instances = get_instances_helper(category, **kwargs)
     return instances
-
-
-def get_test_world(robot='feg', semantic_world=False, draw_origin=False,
-                   width=1980, height=1238, **kwargs):
-    connect(use_gui=True, shadows=False, width=width, height=height)  ##  , width=360, height=270
-    if draw_origin:
-        draw_pose(unit_pose(), length=.5)
-        create_floor()
-    set_caching(cache=False)
-    if semantic_world:
-        from world_builder.world import World
-        world = World()
-    else:
-        from lisdf_tools.lisdf_loader import World
-        world = World()
-    build_skill_domain_robot(world, robot, **kwargs)
-    return world
 
 
 def get_z_on_floor(body):
@@ -1114,7 +1098,7 @@ if __name__ == '__main__':
     ----------------- ----------------- ----------------- --------- """
 
     """ --- models related --- """
-    # get_data(categories=['DiningTable'])
+    get_data(categories=['Cupboard'])
     # test_texture(category='CoffeeMachine', id='103127')
     # test_vhacd(category='BraiserBody')
     # get_partnet_aabbs()
@@ -1130,7 +1114,7 @@ if __name__ == '__main__':
 
     """ --- grasps related ---
     """
-    test_grasps(robot, ['Bottle'], skip_grasps=False, test_attachment=False)  ## 'EyeGlasses'
+    # test_grasps(robot, ['Bottle'], skip_grasps=False, test_attachment=False)  ## 'EyeGlasses'
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
 
