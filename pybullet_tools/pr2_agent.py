@@ -137,8 +137,9 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
             get_pull_door_handle_motion_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l)),
         # 'plan-base-pull-drawer-handle': from_fn(  ## get_pull_drawer_handle_motion_gen
         #     get_pull_door_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
-        # 'plan-arm-turn-knob-handle': from_fn(  ## get_turn_knob_handle_motion_gen
-        #     get_pull_door_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
+
+        'plan-arm-turn-knob-handle': from_fn(
+            get_turn_knob_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
 
         'sample-marker-grasp': from_list_fn(get_marker_grasp_gen(p, collisions=c)),
         'inverse-kinematics-grasp-marker': from_gen_fn(

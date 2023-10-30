@@ -374,7 +374,7 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                     surface = Surface(body, link=link)
                     world.add_object(surface)
                     for o in surfaces[cat][link_name]:
-                        obj = surface.place_new_obj(o)
+                        obj = surface.place_new_obj(o, RANDOM_INSTANCE=RANDOM_INSTANCE)
 
                         if verbose:
                             print(f'adding object {obj.name} to surface {surface.lisdf_name}')
@@ -383,7 +383,7 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                     space = Space(body, link=link)
                     world.add_object(space)
                     for o in spaces[cat][link_name]:
-                        obj = space.place_new_obj(o) ##, verbose=cat.lower() == 'dishwasher'
+                        obj = space.place_new_obj(o, RANDOM_INSTANCE=RANDOM_INSTANCE)
 
                         if verbose:
                             print(f'adding object {obj.name} to space {space.lisdf_name}')
@@ -613,6 +613,8 @@ def load_basin_faucet(world):
 
     handles = world.add_joints_by_keyword('faucet', 'joint_faucet', 'knob')
     # set_color(faucet, RED, name_to_object('joint_faucet_0').handle_link)
+
+    world.summarize_all_objects()
 
     ## left knob gives cold water
     left_knob = name_to_object('joint_faucet_0')

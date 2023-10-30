@@ -154,7 +154,6 @@ class Object(Index):
         link = self.link if self.link is not None else -1
         if world is None:
             world = self.world
-            raise NotImplementedError('place_new_obj: world is None')
         world.ATTACHMENTS[obj] = create_attachment(self, link, obj, OBJ=True)
         obj.change_supporting_surface(self)
 
@@ -164,7 +163,6 @@ class Object(Index):
             category = obj_name
         if world is None:
             world = self.world
-            raise NotImplementedError('place_new_obj: world is None')
 
         obj = world.add_object(
             Object(load_asset(obj_name.lower(), **kwargs), category=category, name=name)

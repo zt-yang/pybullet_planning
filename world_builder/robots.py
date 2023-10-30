@@ -227,8 +227,8 @@ class MobileRobot(RobotAPI):
         return get_stream_info() ## partial=partial, defer=defer
 
     def create_gripper(self, arm='left', **kwargs):
-        if arm in self.grippers:
-            print('gripper already exists!')
+        # if arm in self.grippers:
+        #     print('gripper already exists!')
         self.grippers[arm] = create_gripper(self.body, arm=arm, link_name=self.tool_link, **kwargs)
         return self.grippers[arm]
 

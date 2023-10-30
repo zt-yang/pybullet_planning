@@ -1532,28 +1532,36 @@ class Process(object):
         self.name = name
         self.runtimes = []
         self.outcomes = [] # TODO: outcome visiblity
+
     @property
     def robot(self):
         return self.world.robot
+
     @property
     def time_step(self):
         return self.world.time_step
+
     @property
     def max_velocities(self):
         return self.world.max_velocities
+
     @property
     def max_delta(self):
         return self.world.max_delta
+
     @property
     def num_steps(self):
         return len(self.runtimes)
+
     @property
     def current_time(self):
         return self.time_step*self.num_steps
+
     def initialize(self, state):
         # TODO: move creation of bodies to agents
         self.state = state ## YANG< HPN
         return state # TODO: return or just update?
+
     def evolve(self, state, ONCE=False, verbose=False):
         start_time = time.time()
         # new_state = self.wrapped_transition(state)
@@ -1575,6 +1583,7 @@ class Process(object):
             new_state = state.assign()
         self.runtimes.append(elapsed_time(start_time))
         return new_state
+
     def wrapped_transition(self, state, ONCE=False, verbose=False):
         raise NotImplementedError()
 
@@ -1603,11 +1612,13 @@ class Agent(Process): # Decision
     # TODO: make these strings
     requires_conf = requires_poses = requires_facts = requires_variables = \
         requires_rgb = requires_depth = requires_segment = False # requires_cloud
+
     def __init__(self, world, **kwargs):
         super(Agent, self).__init__(world, **kwargs)
         self.world = world
         self.observations = []
         self.actions = []
+
     def wrapped_transition(self, state, ONCE=False, verbose=False):
         # TODO: move this to another class
         start_time = time.time()
@@ -1634,6 +1645,7 @@ class Agent(Process): # Decision
         if ONCE and action is None: result = None
         ## ----------------------------------------------------------------------
         return result
+
     def policy(self, observation): # Operates indirectly on the state
         raise NotImplementedError()
 
