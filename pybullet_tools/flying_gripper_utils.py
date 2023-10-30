@@ -1,12 +1,14 @@
 import copy
 import random
 
+from os.path import join
 import numpy as np
 from itertools import product
 import pybullet as p
 from math import radians as rad
+import math
 
-from .utils import create_box, set_base_values, set_point, set_pose, get_pose, GREY, \
+from pybullet_tools.utils import create_box, set_base_values, set_point, set_pose, get_pose, GREY, \
     get_bodies, z_rotation, load_model, load_pybullet, HideOutput, create_body, assign_link_colors, \
     get_box_geometry, get_cylinder_geometry, create_shape_array, unit_pose, unit_quat, Pose, \
     Point, LockRenderer, FLOOR_URDF, TABLE_URDF, add_data_path, TAN, set_color, remove_body,\
@@ -17,16 +19,14 @@ from .utils import create_box, set_base_values, set_point, set_pose, get_pose, G
     approximate_as_prism, set_renderer, plan_joint_motion, create_flying_body, SE3, euler_from_quat, BodySaver, \
     intrinsic_euler_from_quat, quat_from_euler, wait_for_duration, get_aabb, get_aabb_extent, \
     joint_from_name, get_joint_limits, irange, is_pose_close, CLIENT, set_all_color, GREEN, RED, \
-    wait_unlocked
-
+    wait_unlocked, dump_joint, VideoSaver
 from pybullet_tools.pr2_primitives import Conf, Grasp, Trajectory, Commands, State
 from pybullet_tools.general_streams import Position, get_grasp_list_gen, get_handle_link, \
     process_motion_fluents
-from pybullet_tools.bullet_utils import collided
-from .pr2_utils import DRAKE_PR2_URDF
+from pybullet_tools.bullet_utils import collided, set_camera_target_body, nice
 
-from .ikfast.utils import IKFastInfo
-from .ikfast.ikfast import * # For legacy purposes
+from pybullet_tools.ikfast.utils import IKFastInfo
+from pybullet_tools.ikfast.ikfast import * # For legacy purposes
 
 FE_GRIPPER_URDF = "models/franka_description/robots/hand_se3.urdf"
 FE_POINTER_URDF = "models/franka_description/robots/pointer_se3.urdf"
@@ -49,6 +49,7 @@ def get_se3_custom_limits(custom_limits):
         return custom_limits
     x_limits, y_limits, z_limits = zip(*custom_limits)
     return { 0: x_limits, 1: y_limits, 2: z_limits }
+
 
 def create_franka():
     with LockRenderer():
@@ -587,20 +588,16 @@ def get_reachable_test(problem, custom_limits={}, visualize=False):
 
     return test
 
-from pybullet_tools.bullet_utils import set_camera_target_body, nice
-from pybullet_tools.utils import VideoSaver
-from os.path import join
-import math
+
+class Problem():
+    def __init__(self, robot, obstacles):
+        self.robot = robot
+        self.fixed = obstacles
 
 
 def quick_demo(world):
     from pybullet_tools.utils import set_all_static
     from world_builder.world import State
-
-    class Problem():
-        def __init__(self, robot, obstacles):
-            self.robot = robot
-            self.fixed = obstacles
 
     robot = world.robot
     custom_limits = robot.custom_limits
@@ -644,5 +641,124 @@ def quick_demo(world):
         f.write('\n'.join([str(nice(p)) for p in raw_path]))
 
     # wait_if_gui('end?')
-    sys.exit()
 
+
+def quick_demo_debug(world):
+    from pybullet_tools.utils import set_all_static
+    from world_builder.world import State
+
+    class Problem():
+        def __init__(self, robot, obstacles):
+            self.robot = robot
+            self.fixed = obstacles
+
+    robot = world.robot
+    custom_limits = robot.custom_limits
+
+    set_all_static()
+    state = State(world)
+    world.summarize_all_objects()
+
+    problem = Problem(robot, state.fixed)
+    # bottle = random.choice(world.cat_to_bodies('bottle'))
+    bowl = random.choice(world.cat_to_bodies('bowl'))
+
+    ## sample grasp
+    g_sampler = get_grasp_list_gen(state, visualize=True)
+    outputs = g_sampler(bowl)
+    g = outputs[0][0]
+    body_pose = robot.get_body_pose(bowl, verbose=False)
+    approach_pose = multiply(body_pose, g.approach)
+
+    ## set approach pose as goal pose
+
+    joints = get_se3_joints(robot)
+    seconf1 = [0.9, 8, 0.7, 0, -math.pi/2, 0] ## [0.9, 8, 0.4, 0, 0, 0]
+    seconf2 = [0.9, 8, 1.4, 0, 0, 0]
+    seconf2 = se3_from_pose(approach_pose)
+    q1 = Conf(robot, joints, seconf1)
+    q2 = Conf(robot, joints, seconf2)
+    q1.assign()
+
+    ## plan and execute path, saving the first depth map and all se3 confs
+    funk = get_free_motion_gen(problem, custom_limits, visualize=True, time_step=0.1)
+
+    video_path = join('visualizations', 'video_tmp.mp4')
+    with VideoSaver(video_path):
+        raw_path = funk(q1, q2)
+    state.world.visualize_image(((1.7, 8.1, 1), (0.5, 0.5, -0.5, -0.5)))
+
+    ## output to json
+    print('len(raw_path)', len(raw_path))
+
+    with open('gripper_traj.txt', 'w') as f:
+        f.write('\n'.join([str(nice(p)) for p in raw_path]))
+
+
+#########################################################################
+
+
+def tests():
+    connect(use_gui=True)
+    add_data_path()
+    draw_pose(Pose(), length=1.)
+    set_camera_pose(camera_point=[1, -1, 1])
+
+    ## create the world
+    obstacles = []
+    # obstacles = [p.loadURDF("plane.urdf")]
+    # obstacles.append(create_box(w=SIZE, l=SIZE, h=SIZE, color=RED))
+
+    ## create thr gripper robot
+    robot = create_fe_gripper()
+    # dump_body(robot)
+    tool_link = link_from_name(robot, 'tool_link')
+    draw_pose(Pose(), parent=robot, parent_link=tool_link)
+
+    problem = Problem(robot, obstacles)
+    custom_limits = {n: (-1, 1) for n in [0, 1, 2]}
+
+    # test_feg_joints(robot, custom_limits)
+    test_feg_motion_planning(problem, custom_limits)
+    disconnect()
+
+
+def test_feg_joints(robot, custom_limits):
+    se3_joints = get_se3_joints(robot)
+    for joint in se3_joints:
+        dump_joint(robot, joint)
+
+    seconf  = [0.6, -0.4, 0, math.pi/2, 0, 0]
+    set_joint_positions(robot, se3_joints, seconf)
+    print(get_joint_positions(robot, se3_joints))
+
+    ## don't mix them up! won't update the positions when you set pose
+    seconf[1] = -seconf[1]
+    pose = pose_from_se3(seconf)
+    set_pose(robot, pose)
+    print(get_pose(robot))
+
+    wait_for_user()
+
+
+def test_feg_motion_planning(problem, custom_limits):
+    from pybullet_tools.pr2_primitives import Conf
+
+    funk = get_free_motion_gen(problem, custom_limits, visualize=True)
+
+    robot = problem.robot
+    joints = get_se3_joints(robot)
+    seconf1 = [0.6, -0.4, 0, math.pi / 4, math.pi / 2, 0]
+    seconf2 = [-0.2, 0.2, 0.8, math.pi / 2, 0, 0]
+    q1 = Conf(robot, joints, seconf1)
+    q2 = Conf(robot, joints, seconf2)
+    q1.assign()
+    set_camera_pose(camera_point=[1, -1, 1])
+
+    funk(q1, q2)
+
+    wait_for_user('end?')
+
+
+if __name__ == '__main__':
+    tests()

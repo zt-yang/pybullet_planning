@@ -4028,16 +4028,17 @@ def plan_direct_joint_motion(body, joints, end_conf, **kwargs):
 
 def check_initial_end(start_conf, end_conf, collision_fn, verbose=False):
     from pybullet_tools.bullet_utils import nice  ## YANG
-    # TODO: collision_fn might not accept kwargs
     if collision_fn(start_conf, verbose=verbose):
         print(f'bullet.Warning: initial configuration {nice(start_conf)} is in collision')
         # set_renderer(True)
+        # collision_fn(start_conf, verbose=True)
         # wait_unlocked()
-        collision_fn(start_conf, verbose=True)
         return False
     if collision_fn(end_conf, verbose=verbose):
         print(f'bullet.Warning: end configuration {nice(end_conf)} is in collision')
-        collision_fn(end_conf, verbose=True)
+        # set_renderer(True)
+        # wait_unlocked()
+        # collision_fn(end_conf, verbose=True)
         return False
     return True
 

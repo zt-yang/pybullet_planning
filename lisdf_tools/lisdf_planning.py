@@ -1,7 +1,7 @@
 import copy
 import json
 from os.path import join, abspath, dirname, isdir, isfile
-
+import socket
 import lisdf.components as C
 from lisdf.parsing import load_all
 
@@ -79,8 +79,23 @@ class Problem():
         return self.world.get_world_fluents(**kwargs)
 
 
-def pddl_to_init_goal(exp_dir, world, domain_file=None, larger_world=False):
+def create_noops_domain_file(domain_file):
+    """ remove functions, domains, axioms from domain file """
+    with open(domain_file) as f:
+        lines = f.readlines()
+        new_lines = []
+        for line in lines:
+            if '(:functions' in line:
+                new_lines.append(')')
+                break
+            new_lines.append(line.lower())
+    new_domain_file = domain_file.replace('.pddl', '_noops.pddl')
+    with open(new_domain_file, 'w') as f:
+        f.writelines(new_lines)
+    return new_domain_file
 
+
+def get_noops_domain_file(domain_file, exp_dir):
     if domain_file is None:
         domain_file = join(exp_dir, 'domain.pddl')
         if not isfile(domain_file):
@@ -89,7 +104,22 @@ def pddl_to_init_goal(exp_dir, world, domain_file=None, larger_world=False):
             domain_file = abspath(join(__file__, '..', '..', 'pddl', domain_file))
             print('lisdf_planning.pddl_to_init_goal | found domain file', domain_file)
     else:
-        domain_file = domain_file.replace('.pddl', '_noops.pddl')
+        noops_domain_file = domain_file.replace('.pddl', '_noops.pddl')  ## dev version
+        if isfile(noops_domain_file):
+            domain_file = noops_domain_file
+        elif '_full.pddl' in domain_file:
+            noops_domain_file = domain_file.replace('_full.pddl', '.pddl')
+            if isfile(noops_domain_file):
+                domain_file = noops_domain_file
+        else:
+            ## create a version without operators and functions
+            domain_file = create_noops_domain_file(domain_file)
+    return domain_file
+
+
+def pddl_to_init_goal(exp_dir, world, domain_file=None, larger_world=False):
+
+    domain_file = get_noops_domain_file(domain_file, exp_dir)
 
     lisdf, domain, problem = load_all(
         join(exp_dir, 'scene.lisdf'),
@@ -100,6 +130,7 @@ def pddl_to_init_goal(exp_dir, world, domain_file=None, larger_world=False):
     robot = world.robot
 
     existed = [] ## {k: [] for k in ['q', 'aq', 'p', 'g', 'hg', 'pstn', 'lp']}
+
     def check_existed(o, debug=False):
         for e in existed:
             if debug:
@@ -167,20 +198,6 @@ def pddl_to_init_goal(exp_dir, world, domain_file=None, larger_world=False):
     goal = [prop_to_list(v) for v in problem.conjunctive_goal]
     init = [prop_to_list(v) for v in problem.init]
     init = [i for i in init if 'wconf' not in i[0].lower()]
-
-    # ## ----------- debugging
-    # new_init = []
-    # remove_objects = [(5, 19), (5, 23), 6, 7, 8, 9, 10, 11, (5, 10)]
-    # for i in init:
-    #     found = False
-    #     for elem in i:
-    #         if elem in remove_objects:
-    #             found = True
-    #     if not found:
-    #         new_init.append(i)
-    # init = new_init
-    # remove_objects = [str(o) for o in remove_objects]
-    # world.body_to_name = {k: v for k, v in world.body_to_name.items() if str(k) not in remove_objects}
 
     init += [Equal(('PickCost',), 1), Equal(('PlaceCost',), 1)]
     constants = {k: k for k in domain.constants}

@@ -18,6 +18,7 @@ import seaborn as sns
 sns.set_style("darkgrid", {"axes.facecolor": ".9"})
 
 from data_utils import DATASET_PATH, get_fc_record, get_fastdownward_time
+from mamao_tools.plotting_utils import *
 
 sys.path.append('/home/yang/Documents/fastamp')
 # from fastamp_utils import get_fc_record
@@ -26,9 +27,9 @@ AUTO_REFRESH = False
 VIOLIN = False
 FPC = False
 EVALUATE_GEOMETRY = False
-PAPER_VERSION = True ## no preview, just save pdf
+PAPER_VERSION = False ## no preview, just save pdf
 DEBUG_LINES = False
-ANIMATION = 2
+ANIMATION = None
 
 SAVE_DATA = False
 USE_DATA = platform.system() == 'Darwin'
@@ -97,6 +98,14 @@ METHOD_NAMES = ['Baseline', 'PIGI', 'Oracle']  ## 'PIGI*',
 #     else:
 #         FIXED_COST.append(3)
 
+################################ rebuttal ######################################
+
+GROUPS = ['tt_braiser_to_storage']  ## 'tt_braiser', 'tt_storage',
+GROUPNAMES = ['Pot-to-storage']  ## 'Counter-to-pot', 'Counter-to-storage',
+
+METHODS = ['None', 'pvt-br2-1', 'pvt-br2-0.75', 'oracle']
+METHOD_NAMES = ['Baseline', 'PIGI-250', 'PIGI-180', 'Oracle']
+
 ############################ generalization ################################
 
 if EVALUATE_GEOMETRY:
@@ -110,18 +119,7 @@ if EVALUATE_GEOMETRY:
 
 check_time = 1664255601 ## 1664255601 for baselines | 1664750094  ## for d4 | 1665010453 for d3
 
-color_dict = {
-    'b': ('#3498db', '#2980b9'),
-    'g': ('#2ecc71', '#27ae60'),
-    'r': ('#e74c3c', '#c0392b'),
-    'y': ('#f1c40f', '#f39c12'),
-    'p': ('#9b59b6', '#8e44ad'),
-    'gray': ('#95a5a6', '#7f8c8d'),
-    'w': ('#ffffff',),
-}
-gradients = ['#4392ce', '#528bc1', '#6185b3', '#707fa6', '#7f7899', '#8e728b',
-             '#9c6c7e', '#ab6571', '#ba5f64', '#c95957', '#d85249', '#e74c3c']
-cc = ['b', 'r', 'y', 'gray']
+
 if len(METHODS) == 5:
     cc = ['b', 'r', 'g', 'p', 'gray']
 elif len(METHODS) == 6:
@@ -132,13 +130,7 @@ colors_darker = [color_dict[k][0] for k in cc]
 ## see which files are missing
 # METHODS = ['None', 'oracle'] ## , 'pvt'
 SAME_Y_AXES = False
-RERUN_SUBDIR = 'rerun_3'
-
-
-def hex_to_rgb(value):
-    value = value.lstrip('#')
-    lv = len(value)
-    return tuple(int(value[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
+RERUN_SUBDIR = 'rerun_4'
 
 
 def get_rundirs(task_name):
@@ -427,6 +419,8 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
     if GROUPNAMES is not None:
         labels = tuple(GROUPNAMES)
 
+    print(means)
+
     if SAME_Y_AXES:
         figsize = (9, 6)
         fig, ax = plt.subplots(figsize=figsize)
@@ -511,8 +505,12 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
                 figsize = (3.5, 3.5)
             else:
                 figsize = (5, 5)
+        if len(GROUPS) == 1:
+            figsize = (5, 5)
 
         fig, axs = plt.subplots(1, len(groups), figsize=figsize)
+        if len(groups) == 1:
+            axs = [axs]
 
         scale = 0.4
         ll = [x for x in range(len(METHODS))]
@@ -529,7 +527,7 @@ def plot_bar_chart(data, update=False, save_path=None, diverse=False):
             yy = points_y[i]
 
             ## for animation
-            if not ANIMATION == 0:
+            if ANIMATION != 0:
 
                 if ANIMATION in [1]:
                     mean[2] = 0
@@ -760,6 +758,7 @@ def make_plot():
         data = get_time_data(diverse=True)
         if SAVE_DATA:
             dump_data(data)
+            print('saved data, exit')
             sys.exit()
 
     if not AUTO_REFRESH:

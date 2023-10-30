@@ -11,7 +11,6 @@ def absjoin(*args):
 
 pbp_path = absjoin(dirname(__file__), '..')
 workspace_path = absjoin(pbp_path, '..', '..')
-IS_COGARCH = 'cognitive-architectures' in workspace_path
 
 sys.path.extend([
     pbp_path,
@@ -24,13 +23,3 @@ ASSET_PATH = absjoin(pbp_path, '..', 'assets')
 EXP_PATH = absjoin(pbp_path, '..', 'test_cases')
 OUTPUT_PATH = absjoin(pbp_path, '..', 'outputs')
 MAMAO_DATA_PATH = absjoin(workspace_path, 'fastamp-data')
-
-if IS_COGARCH:
-    KITCHEN_WORLD_PATH = absjoin(workspace_path, '..', 'jupyter-worlds')
-    EXP_PATH = absjoin(KITCHEN_WORLD_PATH, 'test_cases')
-
-
-def modify_file_by_project(file_path):
-    name, suffix = file_path.split('.')
-    name += '_cogarch' if IS_COGARCH else '_kitchen'
-    return '.'.join([name, suffix])

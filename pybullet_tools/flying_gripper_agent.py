@@ -6,10 +6,12 @@ from pybullet_tools.general_streams import get_cfree_approach_pose_test, get_gra
     Position, get_contain_list_gen, get_pose_from_attachment, get_stable_gen, get_contain_gen
 
 from pddlstream.language.generator import from_gen_fn, from_list_fn, from_fn, from_test
-import math
+from pddlstream.language.function import FunctionInfo
+from pddlstream.language.stream import StreamInfo, PartialInputs
 
 from pybullet_tools.flying_gripper_utils import get_ik_fn, get_free_motion_gen, \
     get_pull_handle_motion_gen, get_reachable_test
+from pybullet_tools.pr2_agent import opt_move_cost_fn
 
 
 def get_stream_map(p, c, l, t, **kwargs):
@@ -18,7 +20,8 @@ def get_stream_map(p, c, l, t, **kwargs):
     stream_map = {
         'sample-pose-on': from_gen_fn(get_stable_gen(p, collisions=c)),
         'sample-pose-in': from_gen_fn(get_contain_gen(p, collisions=c, verbose=False)),
-        'sample-grasp': from_list_fn(get_grasp_list_gen(p, collisions=c, visualize=False, top_grasp_tolerance=math.pi/4)),
+        # debug weiyu
+        'sample-grasp': from_list_fn(get_grasp_list_gen(p, collisions=c, visualize=False, top_grasp_tolerance=None)), #math.pi/4)),
 
         'inverse-kinematics-hand': from_fn(get_ik_fn(p, collisions=c, teleport=t, custom_limits=l, verbose=False)),
         'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(p.robot, collisions=c)),
@@ -66,12 +69,6 @@ def get_stream_map(p, c, l, t, **kwargs):
         # 'TrajGraspCollision': fn_from_constant(False),
     }
     return stream_map
-
-
-from pddlstream.language.function import FunctionInfo
-from pddlstream.language.stream import StreamInfo, PartialInputs
-from pybullet_tools.pr2_agent import opt_move_cost_fn, opt_pose_fn, opt_pose_inside_fn, opt_ik_fn, \
-    opt_motion_fn, opt_position_fn
 
 
 def get_stream_info(unique=False):

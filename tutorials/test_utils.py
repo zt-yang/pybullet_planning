@@ -2,7 +2,7 @@ from __future__ import print_function
 import os
 import json
 from os.path import join, abspath, dirname, isdir, isfile
-from config import EXP_PATH
+from config import EXP_PATH, modify_file_by_project
 
 
 from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, load_pybullet, load_model, \
@@ -12,6 +12,7 @@ from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, 
     Pose, get_link_pose, get_joint_limits, WHITE, RGBA, set_all_color, RED, GREEN, set_renderer, clone_body, \
     add_text, joint_from_name, set_caching, Point, set_random_seed, set_numpy_seed, reset_simulation, \
     get_joint_name, get_link_name, dump_joint, set_joint_position, ConfSaver, pairwise_link_collision
+from pybullet_tools.bullet_utils import nice
 from pybullet_tools.pr2_problems import create_floor
 
 from world_builder.robot_builders import build_skill_domain_robot
@@ -52,3 +53,63 @@ def get_args(exp_name=None):
     args = parser.parse_args()
     print('Arguments:', args)
     return args
+
+
+def get_parser(exp_name=None):
+    parser = create_parser()
+    parser.add_argument('-test', type=str, default=exp_name, help='Name of the test case')
+    parser.add_argument('-cfree', action='store_true', help='Disables collisions during planning')
+    parser.add_argument('-enable', action='store_true', help='Enables rendering during planning')
+    parser.add_argument('-teleport', action='store_true', help='Teleports between configurations')
+    parser.add_argument('-simulate', action='store_true', help='Simulates the system')
+    return parser
+
+
+def get_args(exp_name=None):
+    parser = get_parser(exp_name=exp_name)
+    args = parser.parse_args()
+    print('Arguments:', args)
+    return args
+
+
+def save_csv(csv_file, data):
+    csv_file = modify_file_by_project(csv_file)
+    col_names = list(data.keys())
+    col_data = list(data.values())
+
+    file_exists = isfile(csv_file)
+    with open(csv_file, 'a') as csvfile:
+        writer = csv.writer(csvfile)
+        if not file_exists:
+            writer.writerow(col_names)
+        for row in zip(*col_data):
+            writer.writerow(row)
+
+
+def read_csv(csv_file, summarize=True):
+    from tabulate import tabulate
+    csv_file = modify_file_by_project(csv_file)
+    keys = None
+    data = {}
+    with open(csv_file, 'r') as csvfile:
+        reader = csv.reader(csvfile)
+        for j, row in enumerate(reader):
+            if j == 0:
+                keys = row
+                data = defaultdict(list)
+            else:
+                for i, elem in enumerate(row):
+                    data[keys[i]].append(elem if i == 0 else eval(elem))
+                    if i == 1 and elem == 0:  ## failed run
+                        break
+
+    ## summarize the average, min, max, and count of each column
+    if summarize:
+        stats = [["name", "avg", "min", "max", "count"]]
+        for key, value in data.items():
+            if key in ["date"]: continue
+            numbers = [sum(value) / len(value), min(value), max(value), len(value)]
+            stats.append([key] + [nice(n) for n in numbers])
+        print(tabulate(stats, headers="firstrow"))
+
+    return data

@@ -123,6 +123,22 @@ def add_walls_given_rooms_doors(objects):
     return objects
 
 
+def get_domain_constants(pddl_path):
+    lines = open(pddl_path, 'r').readlines()
+    constants = []
+    start = False
+    for i in range(len(lines)):
+        line = lines[i]
+        if '(:constants' in line:
+            start = True
+        elif start and ')' in line:
+            break
+        elif start:
+            constants.extend(line.strip().split(' '))
+    constants = [c.strip() for c in constants if c.strip()]
+    return constants
+
+
 def read_xml(plan_name, asset_path=ASSET_PATH):
     """ load a svg file representing the floor plan in asset path
         return a dictionary of object name: (category, pose) as well as world dimensions
@@ -465,7 +481,8 @@ def adjust_scale(body, category, file, w, l):
 def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=None,
                scale=1, verbose=False, RANDOM_INSTANCE=False, SAMPLING=False, random_scale=1.0):
 
-    if verbose: print(f"\nLoading ... {category}", end='\r')
+    if verbose:
+        print(f"\nLoading ... {category}", end='\r')
 
     """ ============= load body by category ============= """
     file = get_file_by_category(category, RANDOM_INSTANCE=RANDOM_INSTANCE, SAMPLING=SAMPLING)

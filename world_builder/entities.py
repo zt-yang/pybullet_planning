@@ -154,7 +154,6 @@ class Object(Index):
         link = self.link if self.link is not None else -1
         if world is None:
             world = self.world
-            raise NotImplementedError('place_new_obj: world is None')
         world.ATTACHMENTS[obj] = create_attachment(self, link, obj, OBJ=True)
         obj.change_supporting_surface(self)
 
@@ -164,17 +163,17 @@ class Object(Index):
             category = obj_name
         if world is None:
             world = self.world
-            raise NotImplementedError('place_new_obj: world is None')
 
         obj = world.add_object(
             Object(load_asset(obj_name.lower(), **kwargs), category=category, name=name)
         )
-        world.put_on_surface(obj, max_trial=max_trial, surface=self.shorter_name, world=world)
+        world.put_on_surface(obj, max_trial=max_trial, surface=self.shorter_name)
         self.support_obj(obj)
         # set_renderer(True)
         return obj
 
     def place_obj(self, obj, max_trial=8, timeout=1.5, world=None, obstacles=None, visualize=False):
+        """ place object on Surface or in Space """
         if isinstance(obj, str):
             raise NotImplementedError('place_obj: obj is str')
         if world is None:
@@ -278,6 +277,14 @@ class Object(Index):
     @property
     def xmax2x(self):
         return self.aabb().upper[0] - self.get_pose()[0][0]
+
+    @property
+    def y2ymin(self):
+        return self.get_pose()[0][1] - self.aabb().lower[1]
+
+    @property
+    def z2zmin(self):
+        return self.get_pose()[0][2] - self.aabb().lower[2]
 
     @property
     def height(self):
@@ -456,15 +463,13 @@ class Object(Index):
             remove_debug(self.text_handle)
             self.text += '_'
         self.text += text
-        # self.text_handle = p.addUserDebugText(self.text, textPosition=(0, 0, .5), textColorRGB=(1, 0, 0),  # textSize=1,
-        #                    lifeTime=0, parentObjectUniqueId=self.body, parentLinkIndex=-1)
-        self.text_handle = add_text(self.text, position=(0, 0, .5), color=(1, 0, 0),
-                           lifetime=0, parent=self.body)
+        self.text_handle = add_text(self.text, position=(0, 0.15, 0.15), color=(1, 0, 0),
+                                    lifetime=0, parent=self.body, parent_link=0)
 
     def is_active(self):
         return self.body is not None
 
-    def remove(self): # TODO: overload del
+    def remove(self):
         self.erase()
         if self.is_active():
             remove_body(self.body)
@@ -503,8 +508,8 @@ class Object(Index):
 
     @property
     def debug_name(self):
-        return f'{self.name}|{self.pybullet_name}'
-        # return f'{self.shorter_name}|{self.body}'
+        return f'{self.pybullet_name}|{self.name}'
+        # return f'{self.name}|{self.pybullet_name}'
 
 
 class Moveable(Object):

@@ -26,11 +26,11 @@ from world_builder.actions import apply_actions
 
 """ a scene with two food items, fridge, pot, and basin """
 DEFAULT_TEST = 'test_feg_pick'
+
 GOAL = None
 GOAL = [('holding', 'hand', 'veggiecabbage#1')]
-GOAL = [('holding', 'hand', 'meatturkeyleg#1')]
 GOAL = [('holding', 'hand', 'braiserlid#1')]
-GOAL = [('on', 'meatturkeyleg#1', 'fridge#1::shelf_bottom')]
+GOAL = [('on', 'veggiecabbage#1', 'fridge#1::shelf_bottom')]
 GOAL = [('on', 'veggiecabbage#1', 'counter#1::indigo_tmp')]
 GOAL = [('on', 'veggiecabbage#1', 'braiserbody#1::braiser_bottom')]  ## remove lid first
 GOAL = [('graspedhandle', 'faucet#1::joint_faucet_1')]
@@ -85,7 +85,7 @@ def main(exp_name, verbose=True):
     problem = Problem(world)
 
     pddlstream_problem = pddlstream_from_dir(problem, exp_dir=exp_dir, collisions=not args.cfree,
-                                             teleport=args.teleport, goal=GOAL)
+                                             teleport=args.teleport)  ## , goal=GOAL
     _, _, _, stream_map, init, goal = pddlstream_problem
     world.summarize_all_objects(init)
     stream_info = world.robot.get_stream_info()
@@ -101,10 +101,10 @@ def main(exp_name, verbose=True):
             solution = solve_focused(pddlstream_problem, stream_info=stream_info,
                                      planner='ff-astar1', max_planner_time=10, debug=False,
                                      unit_costs=True, success_cost=INF,
-                                     max_time=INF, verbose=True, visualize=True,
+                                     max_time=INF, verbose=True, visualize=False,
                                      unit_efforts=True, effort_weight=1,
                                      bind=True, max_skeletons=INF,
-                                     search_sample_ratio=0)
+                                     search_sample_ratio=0, world=world)
             # solution = solve(pddlstream_problem, algorithm=args.algorithm, unit_costs=args.unit,
             #                  stream_info=stream_info, success_cost=INF, verbose=True, debug=False)
             saver.restore()
@@ -135,9 +135,3 @@ def main(exp_name, verbose=True):
 
 if __name__ == '__main__':
     main(exp_name=DEFAULT_TEST)
-
-    # from lisdf_tools.lisdf_loader import get_depth_images
-    # exp_name = DEFAULT_TEST
-    # args = get_args(exp_name)
-    # exp_dir = join(EXP_PATH, args.test)
-    # get_depth_images(exp_dir=exp_dir)
