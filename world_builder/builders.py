@@ -62,8 +62,7 @@ def create_pybullet_world(config, builder=None, SAVE_LISDF=False, SAVE_TESTCASE=
     """ ============== initiate simulator ==================== """
     initialize_pybullet(config)
     constants = get_domain_constants(config.planner.domain_pddl)
-    world = World(time_step=config.time_step, camera=config.camera, segment=config.segment,
-                  constants=constants)
+    world = World(time_step=config.time_step, segment=config.segment, constants=constants)
 
     """ ============== load robot ==================== """
     robot_builder = get_robot_builder(config.robot.builder_name)
