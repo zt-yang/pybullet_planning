@@ -6,13 +6,15 @@ from itertools import islice, count
 import math
 
 import numpy as np
+import pybullet
 
 from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_link_pose, \
     pairwise_collision, sample_placement, get_pose, Point, Euler, set_joint_position, \
     BASE_LINK, get_joint_position, get_aabb, quat_from_euler, flatten_links, multiply, \
     get_joint_limits, unit_pose, point_from_pose, draw_point, PI, quat_from_pose, angle_between, \
     tform_point, interpolate_poses, draw_pose, RED, remove_handles, stable_z, wait_unlocked, \
-    get_aabb_center, set_renderer, timeout, get_aabb_extent, wait_if_gui, wait_for_duration
+    get_aabb_center, set_renderer, timeout, get_aabb_extent, wait_if_gui, wait_for_duration, \
+    get_joint_type
 from pybullet_tools.pr2_primitives import Pose, Grasp
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, is_contained, \
@@ -51,6 +53,10 @@ class Position(object):
         yield self
     def get_limits(self):
         return get_joint_limits(self.body, self.joint)
+    def is_prismatic(self):
+        return get_joint_type(self.body, self.joint) == pybullet.JOINT_PRISMATIC
+    def is_revolute(self):
+        return get_joint_type(self.body, self.joint) == pybullet.JOINT_REVOLUTE
     def __repr__(self):
         index = self.index
         #index = id(self) % 1000
@@ -521,39 +527,45 @@ def sample_joint_position_list_gen(num_samples=6):
 
 
 def sample_joint_position_gen(num_samples=14):
-    def fn(o, psn1):
-        if psn1.extent == 'max':
-            higher = psn1.value
-            lower = Position(o, 'min').value
-        elif psn1.extent == 'min':
-            higher = Position(o, 'max').value
-            lower = psn1.value
+    def fn(o, pstn1):
+
+        upper = Position(o, 'max').value
+        lower = Position(o, 'min').value
+        if pstn1.extent == 'max':
+            upper = pstn1.value
+        elif pstn1.extent == 'min':
+            lower = pstn1.value
+        elif lower > upper:
+            sometime = lower
+            lower = upper
+            upper = sometime
+
+        pstns = []
+        a_half = (upper - lower) / 2
+        a_third = (upper - lower) / 3
+
+        if pstn1.is_prismatic():
+            pstns.extend([np.random.uniform(lower + a_half, upper) for k in range(num_samples)])
+
         else:
-            higher = Position(o, 'max').value
-            lower = Position(o, 'min').value
-            if lower > higher:
-                sometime = lower
-                lower = higher
-                higher = sometime
 
-        ptns = []
-        if higher > 0:
-            if higher - lower > 3/4*math.pi:
-                higher = lower + 3/4*math.pi
-            ptns.append(lower + math.pi/2)
-            ptns.extend([np.random.uniform(lower + math.pi/3, higher) for k in range(num_samples)])
-        if lower < 0:
-            if higher - lower > 3/4*math.pi:
-                lower = higher - 3/4*math.pi
-            ptns.append(higher - math.pi/2)
-            ptns.extend([np.random.uniform(lower, higher - math.pi/3) for k in range(num_samples)])
-        ptns = [round(ptn, 3) for ptn in ptns]
+            if upper > 0:
+                if upper - lower > 3/4*math.pi:
+                    upper = lower + 3/4*math.pi
+                pstns.append(lower + math.pi/2)
+                pstns.extend([np.random.uniform(lower + a_third, upper) for k in range(num_samples)])
+            if lower < 0:
+                if upper - lower > 3/4*math.pi:
+                    lower = upper - 3/4*math.pi
+                pstns.append(upper - math.pi/2)
+                pstns.extend([np.random.uniform(lower, upper - a_third) for k in range(num_samples)])
 
-        ptns = [p for p in ptns if p > psn1.value]
-        positions = [(Position(o, p), ) for p in ptns]
+        pstns = [round(pstn, 3) for pstn in pstns]
+        pstns = [p for p in pstns if p > pstn1.value]
+        positions = [(Position(o, p), ) for p in pstns]
 
-        for pstn in positions:
-            yield pstn
+        for pstn1 in positions:
+            yield pstn1
         # return positions
     return fn
 
@@ -798,7 +810,7 @@ def get_cfree_obj_approach_pose_test(robot, collisions=True):
 
 def get_cfree_approach_pose_test(problem, collisions=True):
     # TODO: apply this before inverse kinematics as well
-    arm = 'left'
+    arm = problem.robot.arms[0]
     gripper = problem.get_gripper()
     def test(b1, p1, g1, b2, p2):
         if not collisions or (b1 == b2) or b2 in ['@world']:

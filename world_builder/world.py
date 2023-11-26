@@ -14,7 +14,7 @@ from pddlstream.language.constants import Equal, AND
 from pddlstream.algorithms.downward import set_cost_scale
 
 from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, get_pose, unit_pose, \
-    CameraImage, euler_from_quat, get_link_name, get_joint_position, joint_from_name, \
+    CameraImage, euler_from_quat, get_link_name, get_joint_position, joint_from_name, add_button, \
     BodySaver, set_pose, INF, add_parameter, irange, wait_for_duration, get_bodies, remove_body, \
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
     get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked, \
@@ -926,13 +926,15 @@ class World(WorldBase):
         container = self.name_to_object(space)
         if learned:
             ## one possible pose put into hitman_drawer_top
-            pose = {'hitman_drawer_top': ((1, 7.5, 0.7), (0, 0, 0.3, 0.95)),
-                    'indigo_drawer_top': ((0.75, 8.9, 0.7), (0, 0, 0.3, 0.95))}[space]
-            xyzyaw = list(pose[0])
-            xyzyaw.append(euler_from_quat(pose[1])[-1])
-            ## xyzyaw = (1.093, 7.088, 0.696, 2.8)
-        container.place_obj(obj, xyzyaw, max_trial=1)
-        container.attach_obj(obj)
+            # pose = {'hitman_drawer_top': ((1, 7.5, 0.7), (0, 0, 0.3, 0.95)),
+            #         'indigo_drawer_top': ((0.75, 8.9, 0.7), (0, 0, 0.3, 0.95))}[space]
+            rel_pose = ((0.2, 0, -0.022), (0, 0, 0, 1))
+            link_pose = get_link_pose(container.body, link_from_name(container.body, space))
+            pose = multiply(link_pose, rel_pose)
+            obj.set_pose(pose)
+            container.attach_obj(obj)
+        else:
+            container.place_obj(obj, xyzyaw, max_trial=1)
 
     def refine_marker_obstacles(self, marker, obstacles):
         ## for steerables
@@ -1289,6 +1291,8 @@ class State(object):
             grasp_types = world.robot.grasp_types
         self.objects = list(objects)
 
+        self.use_gpt4v_observation = False
+
         if len(attachments) == 0:
             attachments = copy.deepcopy(world.ATTACHMENTS)
         self.attachments = dict(attachments) # TODO: relative pose
@@ -1305,7 +1309,7 @@ class State(object):
         self.grasp_types = grasp_types
         ## allowing both types causes trouble when the AConf used for generating IK isn't the same as the one during execution
 
-    def get_gripper(self, arm='left', visual=True):
+    def get_gripper(self, arm=None, visual=True):
         if self.gripper is None:
             self.gripper = self.robot.get_gripper(arm=arm, visual=visual)
         return self.gripper
@@ -1401,9 +1405,12 @@ class State(object):
         return action.transition(self.copy())
 
     def camera_observation(self, include_rgb=False, include_depth=False, include_segment=False):
-        if not (self.world.amera or include_rgb or include_depth or include_segment):
+        if not (self.world.camera or include_rgb or include_depth or include_segment):
             return None
-        [camera] = self.robot.cameras
+        if len(self.robot.cameras) > 0:
+            [camera] = self.robot.cameras
+        else:
+            [camera] = self.world.cameras
         rgb, depth, seg, pose, matrix = camera.get_image(
             segment=(self.world.segment or include_segment), segment_links=False)
         if not include_rgb:
@@ -1415,15 +1422,25 @@ class State(object):
         return CameraImage(rgb, depth, seg, pose, matrix)
 
     def sample_observation(self, include_conf=False, include_poses=False,
-                           include_facts=False, include_variables=False, **kwargs): # Observation model
+                           include_facts=False, include_variables=False, step=None, **kwargs): # Observation model
         # TODO: could technically also not require robot, camera_pose, or camera_matrix
         # TODO: make confs and poses state variables
-        #robot_conf = self.robot.get_positions() if include_conf else None
+        # robot_conf = self.robot.get_positions() if include_conf else None
         robot_conf = BodySaver(self.robot) if include_conf else None # TODO: unknown base but known arms
         obj_poses = {obj: get_pose(obj) for obj in self.objects if obj in get_bodies()} if include_poses else None
         facts = list(self.facts) if include_facts else None
         variables = dict(self.variables) if include_variables else None
-        image = None  ##self.camera_observation(**kwargs)
+
+        image = None
+        if self.use_gpt4v_observation:
+            from vlm_tools.vlm_utils import save_rgb_jpg, query_gpt4v
+            kwargs['include_rgb'] = True
+            image = self.camera_observation(**kwargs)
+            jpg_path = join('observations', f'observation_{step}.jpg')
+            save_rgb_jpg(image.rgbPixels, jpg_path=jpg_path)
+            response = query_gpt4v(image.rgbPixels, jpg_path=jpg_path)
+            wait_for_user()
+
         return Observation(self, robot_conf=robot_conf, obj_poses=obj_poses,
                            facts=facts, variables=variables, image=image)
 
@@ -1493,25 +1510,30 @@ class Observation(object):
         self.collision = collision
         # TODO: noisy conf, pose, RGB, and depth observations
         # TODO: map observation
+
     @property
     def facts(self):
         return self.state.get_facts(conf_saver=self.robot_conf.conf_saver,
                                     obj_poses=self.obj_poses)
+
     @property
     def objects(self):
         if self.obj_poses is None:
             return None
         return sorted(self.obj_poses) # TODO: attachments
+
     # @property
     # def regions(self):
     #     if self.objects is None:
     #         return None
     #     return [obj for obj in self.objects if isinstance(obj, Region)]
+
     @property
     def obstacles(self):
         if self.objects is None:
             return None
         return [obj for obj in self.objects if obj in self.state.obstacles]
+
     def assign(self): # TODO: rename to update_pybullet
         if self.robot_conf is not None:
             self.robot_conf.restore() # TODO: sore all as Savers instead?
@@ -1520,6 +1542,7 @@ class Observation(object):
             for obj, pose in self.obj_poses.items():
                 set_pose(obj, pose)
         return self
+
     def __repr__(self):
         return '{}({}, {})'.format(self.__class__.__name__, self.robot_conf, sorted(self.obj_poses))
 
@@ -1562,11 +1585,11 @@ class Process(object):
         self.state = state ## YANG< HPN
         return state # TODO: return or just update?
 
-    def evolve(self, state, ONCE=False, verbose=False):
+    def evolve(self, state, ONCE=False, verbose=False, step=None):
         start_time = time.time()
         # new_state = self.wrapped_transition(state)
         if True:
-            new_state = self.wrapped_transition(state, ONCE=ONCE, verbose=verbose)
+            new_state = self.wrapped_transition(state, ONCE=ONCE, verbose=verbose, step=step)
             if verbose: print(f'  evolve \ finished wrapped_transition inner in {round(time.time() - start_time, 4)} sec')
         if verbose: print(f'  evolve \ finished wrapped_transition 2 in {round(time.time()-start_time, 4)} sec')
 
@@ -1619,14 +1642,14 @@ class Agent(Process): # Decision
         self.observations = []
         self.actions = []
 
-    def wrapped_transition(self, state, ONCE=False, verbose=False):
+    def wrapped_transition(self, state, ONCE=False, verbose=False, **kwargs):
         # TODO: move this to another class
         start_time = time.time()
         observation = state.sample_observation(
             include_conf=self.requires_conf, include_poses=self.requires_poses,
             include_facts=self.requires_facts, include_variables=self.requires_variables,
             include_rgb=self.requires_rgb, include_depth=self.requires_depth,
-            include_segment=self.requires_segment)  # include_cloud=self.requires_cloud,
+            include_segment=self.requires_segment, **kwargs)  # include_cloud=self.requires_cloud,
         if verbose: print(f'   wrapped_transition \ made observation in {round(time.time() - start_time, 4)} sec')
         start_time = time.time()
         if self.world.scramble:
@@ -1657,8 +1680,8 @@ def evolve_processes(state, processes=[], max_steps=INF, ONCE=False, verbose=Fal
     # TODO: explicitly separate into exogenous and agent?
     world = state.world
     time_step = world.time_step
-    # parameter = add_parameter(name='Real-time / sim-time', lower=0, upper=5, initial=0)
-    # button = add_button(name='Pause / Play')
+    parameter = add_parameter(name='Real-time / sim-time', lower=0, upper=5, initial=0)
+    button = add_button(name='Pause / Play')
     start_time = time.time()
     current_time = 0.
     for agent in processes:
@@ -1671,7 +1694,7 @@ def evolve_processes(state, processes=[], max_steps=INF, ONCE=False, verbose=Fal
 
         # TODO: sample nearby and then extend
         for agent in processes:
-            state = agent.evolve(state, ONCE=ONCE, verbose=verbose)
+            state = agent.evolve(state, ONCE=ONCE, verbose=verbose, step=step)
 
             ## stop simulation if action is None
             if ONCE and state is None:
@@ -1681,5 +1704,5 @@ def evolve_processes(state, processes=[], max_steps=INF, ONCE=False, verbose=Fal
         # if verbose: print('state del', [f for f in facts if f not in state.facts])
 
         current_time += time_step
-        # wait_for_duration(read_parameter(parameter) * time_step)
+        wait_for_duration(time_step)
     return state

@@ -19,8 +19,8 @@ SPOT_CARRY_ARM_CONF = (0, -PI, 0, PI, 0, 0, 0)
 def load_spot():
     with LockRenderer():
         with HideOutput():
-            pr2 = load_model(SPOT_URDF, fixed_base=False)
-    return pr2
+            spot = load_model(SPOT_URDF, fixed_base=False)
+    return spot
 
 
 def get_group_joints(robot, group):

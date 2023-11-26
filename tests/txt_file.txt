@@ -1,0 +1,59 @@
+
+
+log | number of evaluations: 54
+
+
+Iteration: 1 | Complexity: 0 | Skeletons: 0 | Skeleton Queue: 0 | Disabled: 0 | Evaluations: 54 | Eager Calls: 0 | Cost: inf | Search Time: 0.000 | Sample Time: 0.000 | Total Time: 0.000
+
+
+log | number of evaluations 1: 54
+
+Optimistic streams: Counter({'plan-free-motion-hand': 1})
+Exhausted optimistic: False
+No plans: increasing complexity from 0 to 1
+
+
+focused.py | time.time() - start_time = 0.01 (timeout = 360)
+
+Iteration: 2 | Complexity: 1 | Skeletons: 0 | Skeleton Queue: 0 | Disabled: 0 | Evaluations: 54 | Eager Calls: 0 | Cost: inf | Search Time: 0.013 | Sample Time: 0.000 | Total Time: 0.013
+
+
+log | number of evaluations 2: 54
+
+Optimistic streams: Counter({'sample-pose-on': 10, 'sample-handle-grasp': 3, 'get-joint-position-open': 3, 'sample-grasp': 2, 'plan-free-motion-hand': 1})
+Exhausted optimistic: False
+No plans: increasing complexity from 1 to 2
+
+
+focused.py | time.time() - start_time = 0.03 (timeout = 360)
+
+Iteration: 3 | Complexity: 2 | Skeletons: 0 | Skeleton Queue: 0 | Disabled: 0 | Evaluations: 54 | Eager Calls: 0 | Cost: inf | Search Time: 0.029 | Sample Time: 0.000 | Total Time: 0.029
+
+
+log | number of evaluations 3: 54
+
+Optimistic streams: Counter({'sample-pose-on': 10, 'plan-free-motion-hand': 9, 'inverse-kinematics-grasp-handle': 6, 'inverse-kinematics-hand': 4, 'sample-handle-grasp': 3, 'get-joint-position-open': 3, 'sample-grasp': 2})
+Exhausted optimistic: False
+Optimistic streams: Counter({'plan-free-motion-hand': 16, 'sample-pose-on': 10, 'inverse-kinematics-grasp-handle': 6, 'inverse-kinematics-hand': 4, 'sample-handle-grasp': 3, 'get-joint-position-open': 3, 'sample-grasp': 2})
+Exhausted optimistic: False
+0/1) Stream plan (4, 4, 3.000): 
+   1 > sample-grasp:(5)->(#g0)
+   2 > test-cfree-approach-pose:(5, p2=(0.464, 4.794, 0.838, 0.0, -0.0, 1.077), #g0, 4, p0=(0.569, 8.163, 0.821, 0.0, -0.0, 1.564))->()
+   3 > inverse-kinematics-hand:(hand, 5, p2=(0.464, 4.794, 0.838, 0.0, -0.0, 1.077), #g0)->(#q0, #t10)
+   4 > plan-free-motion-hand:(q168=(1.2, 8.0, 1.2, 0.0, -1.571, 0.0), #q0)->(#t18)
+Action plan (2, 2.000): 
+    move_cartesian ( q168, #q0, #t18 )
+    pick_hand ( hand, veggiecabbage#1|5, p2, #g0, #q0, #t10 )
+
+
+
+focused.py | time.time() - start_time = 2.14 (timeout = 360)
+Summary: {complexity: 2, cost: 2.000, evaluations: 75, iterations: 3, length: 2, run_time: 2.143, sample_time: 1.927, search_time: 0.215, skeletons: 1, solutions: 1, solved: True, timeout: False}
+
+Local External Statistics
+External: sample-grasp | n: 1 | p_success: 1.000 | mean overhead: 0.237 | overhead: 0.237
+External: inverse-kinematics-hand | n: 2 | p_success: 1.000 | mean overhead: 0.001 | overhead: 0.001
+External: plan-free-motion-hand | n: 2 | p_success: 0.500 | mean overhead: 0.842 | overhead: 1.684
+External: test-cfree-approach-pose | n: 2 | p_success: 1.000 | mean overhead: 0.003 | overhead: 0.006
+Overall calls: 7 | Overall overhead: 1.927
+Wrote: statistics/py3/fe-gripper-tamp.pkl

@@ -65,7 +65,9 @@ class RobotAPI(Robot):
     def get_approach_pose(self, approach_vector, g):
         raise NotImplementedError('should implement this for RobotAPI!')
 
-    def get_gripper(self, arm='left', **kwargs):
+    def get_gripper(self, arm=None, **kwargs):
+        if arm is None:
+            arm = self.arms[0]
         if arm not in self.grippers or self.grippers[arm] not in get_bodies():
             self.grippers[arm] = self.create_gripper(arm=arm, **kwargs)
         return self.grippers[arm]
@@ -115,6 +117,17 @@ class RobotAPI(Robot):
                 set_camera_target_body(o)
                 wait_for_user('robots.make_attachment | correct attachment?')
         return attachment
+
+    def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
+        ## those primitive shapes
+        if body is not None and isinstance(body, int) and len(get_all_links(body)) == 1:
+            tool_from_root = multiply(((0, 0.025, 0.025), unit_quat()), self.tool_from_hand,
+                                      self.get_tool_from_root(arm))
+        ## those urdf files made from one .obj file
+        else:
+            body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
+            tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
+        return multiply(body_pose, grasp, tool_from_root)
 
     def get_custom_limits(self):
         return self.custom_limits
@@ -226,22 +239,11 @@ class MobileRobot(RobotAPI):
         from pybullet_tools.pr2_agent import get_stream_info
         return get_stream_info() ## partial=partial, defer=defer
 
-    def create_gripper(self, arm='left', **kwargs):
+    def create_gripper(self, arm=None, **kwargs):
         # if arm in self.grippers:
         #     print('gripper already exists!')
         self.grippers[arm] = create_gripper(self.body, arm=arm, link_name=self.tool_link, **kwargs)
         return self.grippers[arm]
-
-    def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
-        ## those primitive shapes
-        if body is not None and isinstance(body, int) and len(get_all_links(body)) == 1:
-            tool_from_root = multiply(((0, 0.025, 0.025), unit_quat()), self.tool_from_hand,
-                                      self.get_tool_from_root(arm))
-        ## those urdf files made from one .obj file
-        else:
-            body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
-            tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
-        return multiply(body_pose, grasp, tool_from_root)
 
     def set_gripper_pose(self, body_pose, grasp, gripper=None, arm='left', body=None, verbose=False, **kwargs):
         if gripper is None:
@@ -738,6 +740,7 @@ class FEGripper(RobotAPI):
     joint_groups = ['hand']
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
     finger_link = 8  ## for detecting if a grasp is pointing upwards
+    cloned_finger_link = 7
 
     # def get_pose(self):
     #     from pybullet_tools.flying_gripper_utils import get_se3_conf

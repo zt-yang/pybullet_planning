@@ -160,7 +160,7 @@ def open_gripper(robot):
     set_gripper_positions(robot, w=0.08)
 
 
-def open_cloned_gripper(robot, gripper, w = 0.12): ## 0.08 is the limit
+def open_cloned_gripper(robot, gripper, w=0.12): ## 0.08 is the limit
     """ because link and joint names aren't cloned """
     joints = get_joints_by_group(robot, FINGERS_GROUP)
     w = min(w, 0.12)
@@ -263,7 +263,7 @@ def se3_ik(robot, target_pose, max_iterations=200, max_time=5, verbose=False, mo
 
     for iteration in irange(max_iterations):
         if not verbose and elapsed_time(start_time) >= max_time:
-            remove_body(sub_robot)
+            # remove_body(sub_robot)
             if verbose or report_failure: print(f'{title} failed after {max_time} sec')
             return None
         try:

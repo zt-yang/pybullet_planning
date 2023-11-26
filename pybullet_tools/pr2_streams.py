@@ -946,6 +946,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
         # print(f'pr2_streams.get_pull_door_handle_motion_gen | last bconf = {rpose_rounded}, pstn value = {value}')
 
         # apath.append(apath[-1])
+        # apath.append(apath[-1])
         # bpath.append(bpath[-1]) ## replicate the last one because somehow it's missing
         bt = Trajectory(bpath)
         at = Trajectory(apath) ## create_trajectory(robot, get_arm_joints(robot, a), apath)

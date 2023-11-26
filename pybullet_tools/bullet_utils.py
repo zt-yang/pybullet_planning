@@ -1075,7 +1075,7 @@ def fit_dimensions(body, body_pose=unit_pose()):
 ROTATIONAL_MATRICES = {}
 
 
-def get_rotation_matrix(body, verbose=False):
+def get_rotation_matrix(body, verbose=True):
     import untangle
     r = unit_pose()
     collision_data = get_collision_data(body, 0)
@@ -1087,27 +1087,29 @@ def get_rotation_matrix(body, verbose=False):
             count += 1
             urdf_file = dirname(collision_data[count].filename.decode())
         urdf_file = urdf_file.replace('/textured_objs', '').replace('/base_objs', '').replace('/vhacd', '')
-        if urdf_file not in ROTATIONAL_MATRICES:
-            if verbose:
-                print('get_rotation_matrix | urdf_file = ', abspath(urdf_file))
-            joints = untangle.parse(join(urdf_file, 'mobility.urdf')).robot.joint
-            if isinstance(joints, list):
-                for j in joints:
-                    if j.parent['link'] == 'base':
-                        joint = j
-                        break
-            else:
-                joint = joints
-            rpy = joint.origin['rpy'].split(' ')
-            rpy = tuple([eval(e) for e in rpy])
-            if equal(rpy, (1.57, 1.57, -1.57), epsilon=0.1):
-                r = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
-            elif equal(rpy, (3.14, 3.14, -1.57), epsilon=0.1):
-                r = Pose(euler=Euler(0, 0, -math.pi / 2))
-            elif equal(rpy, (1.57, 0, -1.57), epsilon=0.1):
-                r = Pose(euler=Euler(math.pi/2, 0, -math.pi / 2))
-            ROTATIONAL_MATRICES[urdf_file] = r
-        r = ROTATIONAL_MATRICES[urdf_file]
+        mobility_urdf_file = join(urdf_file, 'mobility.urdf')
+        if isfile(mobility_urdf_file):
+            if urdf_file not in ROTATIONAL_MATRICES:
+                if verbose:
+                    print('get_rotation_matrix | urdf_file = ', abspath(urdf_file))
+                joints = untangle.parse(mobility_urdf_file).robot.joint
+                if isinstance(joints, list):
+                    for j in joints:
+                        if j.parent['link'] == 'base':
+                            joint = j
+                            break
+                else:
+                    joint = joints
+                rpy = joint.origin['rpy'].split(' ')
+                rpy = tuple([eval(e) for e in rpy])
+                if equal(rpy, (1.57, 1.57, -1.57), epsilon=0.1):
+                    r = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
+                elif equal(rpy, (3.14, 3.14, -1.57), epsilon=0.1):
+                    r = Pose(euler=Euler(0, 0, -math.pi / 2))
+                elif equal(rpy, (1.57, 0, -1.57), epsilon=0.1):
+                    r = Pose(euler=Euler(math.pi/2, 0, -math.pi / 2))
+                ROTATIONAL_MATRICES[urdf_file] = r
+            r = ROTATIONAL_MATRICES[urdf_file]
     return r
 
 
@@ -1452,7 +1454,7 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
     result = not firstly and secondly and not upwards
 
     if not result or not RETAIN_ALL:
-        remove_body(gripper_grasp)
+        # remove_body(gripper_grasp)  ## TODO
         gripper_grasp = None
         # # weiyu: also remove the gripper from the robot
         # robot.remove_grippers()

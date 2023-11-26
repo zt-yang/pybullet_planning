@@ -1457,7 +1457,7 @@ def load_kitchen_mini_scene(world, **kwargs):
     camera_pose = Pose(point=Point(x=4.2, y=0, z=2.5), euler=Euler(roll=PI / 2 + PI / 8, pitch=0, yaw=-PI / 2))
     world.add_camera(camera_pose)
     # rgb, depth, segmented, view_pose, camera_matrix = world.camera.get_image()
-    wait_unlocked()
+    # wait_unlocked()
 
     return food_ids, bottle_ids, medicine_ids
 

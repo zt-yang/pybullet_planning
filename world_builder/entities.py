@@ -9,7 +9,7 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
     stable_z, get_joint_descendants, get_link_children, get_joint_info, get_links, link_from_name, set_renderer, \
     get_min_limit, get_max_limit, get_link_parent, LockRenderer, HideOutput, pairwise_collisions, get_bodies, \
     remove_debug, child_link_from_joint, unit_point, tform_point, buffer_aabb, get_aabb_center, get_aabb_extent, \
-    quat_from_euler, wait_unlocked
+    quat_from_euler, wait_unlocked, euler_from_quat
 from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_box_entity, collided, \
     get_camera_image_at_pose, sample_obj_in_body_link_space, sample_obj_on_body_link_surface, nice, \
     create_attachment
@@ -90,7 +90,7 @@ class Object(Index):
             self.mobility_id = get_mobility_id(path)
             self.mobility_category = get_mobility_category(path)
             self.mobility_identifier = get_mobility_identifier(path)
-            if not self.mobility_id.isdigit():
+            if self.mobility_id is not None and not self.mobility_id.isdigit():
                 name = self.mobility_id
             self.instance_name = get_instance_name(path)
         elif is_box_entity(body):
@@ -176,9 +176,9 @@ class Object(Index):
         """ place object on Surface or in Space """
         if isinstance(obj, str):
             raise NotImplementedError('place_obj: obj is str')
-        if world is None:
-            raise NotImplementedError('no world')
             # obj = self.place_new_obj(obj, max_trial=max_trial)
+        if world is None:
+            world = self.world
         if obstacles is None:
             obstacles = [o for o in get_bodies() if o not in [obj, self.body]]
 
@@ -347,7 +347,6 @@ class Object(Index):
         if self.supporting_surface is not None:
             if world is None:
                 world = self.world
-                raise ValueError('world is None')
             self.supporting_surface.attach_obj(self, world)
 
     def get_joint(self, joint): # int | str

@@ -159,11 +159,12 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
 
         text = ''.join([t.cdata for t in object.text.tspan]).lower()
 
+        if 'pr2' in text or 'spot' in text:
+            SCALING = w / 0.8
+            X_OFFSET, Y_OFFSET = x, y
+            continue
+
         if '/' in text:
-            if 'pr2' in text or 'spot' in text:
-                SCALING = w / 0.8
-                X_OFFSET, Y_OFFSET = x, y
-                continue
             category, yaw = text.split('/')
 
         elif text.startswith('.'):
@@ -175,7 +176,7 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
             else:
                 yaw = 180
 
-        elif 'floor' in text:
+        elif 'floor' in text or 'room' in text:
             category = 'floor'
             yaw = 0
             name = text
@@ -481,13 +482,10 @@ def adjust_scale(body, category, file, w, l):
 def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=None,
                scale=1, verbose=False, RANDOM_INSTANCE=False, SAMPLING=False, random_scale=1.0):
 
-    if verbose:
-        print(f"\nLoading ... {category}", end='\r')
-
     """ ============= load body by category ============= """
     file = get_file_by_category(category, RANDOM_INSTANCE=RANDOM_INSTANCE, SAMPLING=SAMPLING)
     if verbose and file is not None:
-        print(f"Loading ...... {abspath(file)}")
+        print(f"Loading ...... {abspath(file)}", end='\r')
 
     scale = get_scale_by_category(file=file, category=category, scale=scale)
     if file is not None:
