@@ -574,7 +574,6 @@ class Space(Region):
             category = obj_name
         if world is None:
             world = self.world
-            raise NotImplementedError('place_new_obj: world is None')
         # world.open_doors_drawers(self.body)
 
         obj = world.add_object(

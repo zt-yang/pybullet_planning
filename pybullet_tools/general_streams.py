@@ -561,7 +561,6 @@ def sample_joint_position_gen(num_samples=14):
                 pstns.extend([np.random.uniform(lower, upper - a_third) for k in range(num_samples)])
 
         pstns = [round(pstn, 3) for pstn in pstns]
-        pstns = [p for p in pstns if p > pstn1.value]
         positions = [(Position(o, p), ) for p in pstns]
 
         for pstn1 in positions:

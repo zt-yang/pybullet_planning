@@ -263,7 +263,7 @@ MODEL_HEIGHTS = {
         'models': ['2085', '12065', '12349', ]
     },
     'Microwave': {
-      'height': 0.298,
+      'height': 0.35,
       'models': ['7119', '7128', '7167', '7236', '7263', '7265', '7310']
     },
     'MicrowaveHanging': {

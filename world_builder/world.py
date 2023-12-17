@@ -19,14 +19,15 @@ from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, g
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
     get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked, \
     get_movable_joints, apply_alpha, get_all_links, set_color, set_all_color, dump_body, clear_texture, \
-    get_link_name, get_aabb, draw_aabb, GREY, GREEN, quat_from_euler, wait_for_user, get_camera_matrix
+    get_link_name, get_aabb, draw_aabb, GREY, GREEN, quat_from_euler, wait_for_user, get_camera_matrix, \
+    Euler, PI, get_center_extent, create_box, RED, unit_quat
 from pybullet_tools.pr2_streams import Position, get_handle_grasp_gen, pr2_grasp
 from pybullet_tools.general_streams import pose_from_attachment
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
     is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
     set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR, CAMERA_MATRIX, visualize_camera_image, equal, \
     draw_pose2d_path, draw_pose3d_path, sort_body_parts, get_root_links, colorize_world, colorize_link, \
-    draw_fitted_box, find_closest_match
+    draw_fitted_box, find_closest_match, get_objs_in_camera_images, multiply_quat
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
     Attach, Detach, Clean, Cook, control_commands, link_from_name, \
     get_gripper_joints, GripperCommand, apply_commands, State, Command
@@ -37,6 +38,7 @@ from world_builder.utils import GRASPABLES
 from world_builder.samplers import get_learned_yaw
 
 DEFAULT_CONSTANTS = ['@movable', '@bottle', '@edible', '@medicine']  ## , '@world'
+observation_models = ['gpt4v', 'exposed']
 
 
 class WorldBase(object):
@@ -62,6 +64,15 @@ class WorldBase(object):
         self.camera = None
         self.cameras = []
 
+        ## for exposed observation model
+        self.exposed_observation_cameras = None
+        self.space_markers = None
+
+    def get_name(self, body):
+        raise NotImplementedError
+
+    ###########################################################################
+
     def save_test_case(self, output_dir, save_rgb=False, save_depth=False, **kwargs):
         if not isdir(output_dir):
             os.makedirs(output_dir, exist_ok=True)
@@ -81,6 +92,8 @@ class WorldBase(object):
     def save_problem(self, output_dir, **kwargs):
         raise NotImplementedError
 
+    ###########################################################################
+
     def add_camera(self, pose=unit_pose(), img_dir=join('visualizations', 'camera_images'),
                    width=640, height=480, fx=400, **kwargs):
 
@@ -90,6 +103,7 @@ class WorldBase(object):
         self.cameras.append(camera)
         self.camera = camera
         self.img_dir = img_dir
+        return camera
 
     def visualize_image(self, pose=None, img_dir=None, index=None,
                         image=None, segment=False, far=8, segment_links=False,
@@ -109,6 +123,37 @@ class WorldBase(object):
                                           camera_point=camera_point, target_point=target_point)
         visualize_camera_image(image, index, img_dir=self.img_dir, **kwargs)
 
+    def initiate_exposed_cameras(self):
+        if self.exposed_observation_cameras is not None:
+            return
+        ## add cameras facing the front and front-down
+        self.exposed_observation_cameras = []
+        quat_front = (0.5, 0.5, -0.5, -0.5)
+        quat_right = multiply_quat(quat_front, quat_from_euler(Euler(yaw=0, pitch=PI / 2, roll=0)))
+        quat_left = multiply_quat(quat_front, quat_from_euler(Euler(yaw=0, pitch=-PI / 2, roll=0)))
+        quat_front_down = multiply_quat(quat_front, quat_from_euler(Euler(yaw=0, pitch=0, roll=-PI / 4)))
+        for pose in [((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5)),
+                     ((2.4, 8, 3.3), quat_front_down)]:
+            self.exposed_observation_cameras.append(self.add_camera(pose=pose))
+
+    def initiate_space_markers(self, s=0.03):
+        if self.space_markers is not None:
+            return
+        self.space_markers = {}
+        for space in self.cat_to_bodies('space'):
+            body, _, link = space
+            center, extent = get_center_extent(body, link=link)
+            marker = create_box(s, s, s, color=RED)
+            set_pose(marker, (center, unit_quat()))
+            size = extent[0] * extent[1] * extent[2]
+            self.space_markers[marker] = {
+                'space': space, 'name': self.get_name(space),
+                'size': size, 'extent': extent, 'center': center, 'marker': marker
+            }
+        return self.space_markers
+
+    ###########################################################################
+
     def remove_handles(self):
         remove_handles(self.handles)
 
@@ -125,6 +170,7 @@ class World(WorldBase):
         ## conf_noise=None, pose_noise=None, depth_noise=None, action_noise=None,  # TODO: noise model class?
         super().__init__(**kwargs)
 
+        self.robot = None
         self.BODY_TO_OBJECT = {}
         self.ROBOT_TO_OBJECT = {}
         self.OBJECTS_BY_CATEGORY = {}
@@ -230,7 +276,8 @@ class World(WorldBase):
         if self.floorplan is not None and 'kitchen' in self.floorplan:
             a = self.cat_to_bodies('counter')[0]
             b = self.cat_to_bodies('oven')[0]
-            found.extend([(a, b), (b, a)])
+            if (a, b) not in found:
+                found.extend([(a, b), (b, a)])
 
         # plate = self.name_to_body('plate')
         # if plate is not None:
@@ -737,7 +784,7 @@ class World(WorldBase):
 
     def name_to_object(self, name):
         if self.name_to_body(name) is None:
-            return name  ## object doesn't exist
+            return None  ## object doesn't exist
         return self.BODY_TO_OBJECT[self.name_to_body(name)]
 
     def cat_to_bodies(self, cat):
@@ -793,15 +840,21 @@ class World(WorldBase):
         if (body, joint) not in self.changed_joints:
             self.changed_joints.append((body, joint))
 
-    def toggle_joint(self, body, joint):
+    def toggle_joint(self, body, joint=None):
+        if joint is None and isinstance(body, tuple):
+            body, joint = body
         toggle_joint(body, joint)
         self._change_joint_state(body, joint)
 
-    def close_joint(self, body, joint):
+    def close_joint(self, body, joint=None):
+        if joint is None and isinstance(body, tuple):
+            body, joint = body
         close_joint(body, joint)
         self._change_joint_state(body, joint)
 
-    def open_joint(self, body, joint, extent=1, pstn=None, random_gen=False, **kwargs):
+    def open_joint(self, body, joint=None, extent=1, pstn=None, random_gen=False, **kwargs):
+        if joint is None and isinstance(body, tuple):
+            body, joint = body
         if random_gen:
             from pybullet_tools.general_streams import sample_joint_position_list_gen
             funk = sample_joint_position_list_gen()
@@ -1280,8 +1333,9 @@ class World(WorldBase):
 #######################################################
 
 class State(object):
-    def __init__(self, world, objects=[], attachments={}, facts=[],
-                 variables={}, grasp_types=None, gripper=None):
+    def __init__(self, world, objects=[], attachments={}, facts=[], variables={},
+                 grasp_types=None, gripper=None,
+                 unobserved_objs=None, observation_model='exposed'):
         self.world = world
         if len(objects) == 0:
             # objects = [o for o in world.objects if isinstance(o, int)]
@@ -1291,7 +1345,12 @@ class State(object):
             grasp_types = world.robot.grasp_types
         self.objects = list(objects)
 
-        self.use_gpt4v_observation = False
+        self.observation_model = observation_model
+        assert observation_model in observation_models
+        self.unobserved_objs = unobserved_objs
+        if self.observation_model == 'exposed' and unobserved_objs is None:
+            self.space_markers = self.initiate_space_markers()
+            self.unobserved_objs, self.unobserved_spaces = self.initiate_exposed_observation_model()
 
         if len(attachments) == 0:
             attachments = copy.deepcopy(world.ATTACHMENTS)
@@ -1371,10 +1430,9 @@ class State(object):
         set_zero_world(self.bodies)
 
     def copy(self): # __copy__
-        return State(self.world, objects=self.objects, attachments=self.attachments,
-                     facts=self.facts, variables=self.variables) # TODO: use instead of new_state
+        return self.new_state()
 
-    def new_state(self, objects=None, attachments=None, facts=None, variables=None):
+    def new_state(self, objects=None, attachments=None, facts=None, variables=None, unobserved_objs=None):
         # TODO: could also just update the current state
         if objects is None:
             objects = self.objects
@@ -1384,7 +1442,10 @@ class State(object):
             facts = self.facts
         if variables is None:
             variables = self.variables
-        return State(self.world, objects=objects, attachments=attachments, facts=facts, variables=variables)
+        if unobserved_objs is None:
+            unobserved_objs = self.unobserved_objs
+        return State(self.world, objects=objects, attachments=attachments, facts=facts,
+                     variables=variables, unobserved_objs=unobserved_objs)
 
     def assign(self):
         # TODO: topological sort
@@ -1404,13 +1465,16 @@ class State(object):
         # wait_for_user()
         return action.transition(self.copy())
 
-    def camera_observation(self, include_rgb=False, include_depth=False, include_segment=False):
-        if not (self.world.camera or include_rgb or include_depth or include_segment):
+    #########################################################################################################
+
+    def camera_observation(self, include_rgb=False, include_depth=False, include_segment=False, camera=None):
+        if not (include_rgb or include_depth or include_segment):
             return None
-        if len(self.robot.cameras) > 0:
-            [camera] = self.robot.cameras
-        else:
-            [camera] = self.world.cameras
+        if camera is None:
+            if len(self.robot.cameras) > 0:
+                [camera] = self.robot.cameras
+            else:
+                [camera] = self.world.cameras
         rgb, depth, seg, pose, matrix = camera.get_image(
             segment=(self.world.segment or include_segment), segment_links=False)
         if not include_rgb:
@@ -1420,6 +1484,32 @@ class State(object):
         if not include_segment:
             seg = None
         return CameraImage(rgb, depth, seg, pose, matrix)
+
+    def initiate_space_markers(self):
+        return self.world.initiate_space_markers()
+
+    def initiate_exposed_observation_model(self):
+        self.world.initiate_exposed_cameras()
+
+        ## get_observed and unobserved objects
+        objs = self.get_exposed_observation(show=True)
+        unobserved_objs = [b for b in set(get_bodies()) - set(objs)]
+
+        unobserved_spaces = [b for b in unobserved_objs if b in self.space_markers]
+        unobserved_objs = [b for b in unobserved_objs if b not in self.space_markers]
+        for unobserved, name in [(unobserved_objs, 'objs'), (unobserved_spaces, 'spaces')]:
+            printout = [self.world.get_name(b) for b in unobserved]
+            print(f'\tstate.initiate_exposed_observation_model | {name}', printout)
+        return unobserved_objs, unobserved_spaces
+
+    def get_exposed_observation(self, show=False):
+        kwargs = dict(include_rgb=True, include_depth=True, include_segment=True)
+        camera_images = []
+        for camera in self.world.cameras:
+            camera_images.append(self.camera_observation(camera=camera, **kwargs))
+        objs = get_objs_in_camera_images(camera_images, world=self.world, show=show)
+        objs.sort()
+        return objs
 
     def sample_observation(self, include_conf=False, include_poses=False,
                            include_facts=False, include_variables=False, step=None, **kwargs): # Observation model
@@ -1432,7 +1522,7 @@ class State(object):
         variables = dict(self.variables) if include_variables else None
 
         image = None
-        if self.use_gpt4v_observation:
+        if self.observation_model == 'gpt4v':
             from vlm_tools.vlm_utils import save_rgb_jpg, query_gpt4v
             kwargs['include_rgb'] = True
             image = self.camera_observation(**kwargs)
@@ -1441,16 +1531,41 @@ class State(object):
             response = query_gpt4v(image.rgbPixels, jpg_path=jpg_path)
             wait_for_user()
 
-        return Observation(self, robot_conf=robot_conf, obj_poses=obj_poses,
+        if self.observation_model == 'exposed':
+            objs = self.get_exposed_observation()
+            obj_poses = {obj: get_pose(obj) for obj in objs}
+
+        return Observation(self, robot_conf=robot_conf, obj_poses=obj_poses, unobserved_objs=self.unobserved_objs,
                            facts=facts, variables=variables, image=image)
+
+    #########################################################################################################
 
     def get_facts(self, **kwargs):
         init = self.world.get_facts(**kwargs)
+        init = self.modify_exposed_facts(init)
 
         ## ---- those added to state.variables[label, body]
         for k in self.variables:
             init += [(k[0], k[1])]
         return init
+
+    def modify_exposed_facts(self, init):
+        ## remove facts about unobserved objects
+        deleted = []
+        for fact in init:
+            if fact[0].lower() in ['pose', 'atpose'] and fact[1] in self.unobserved_objs:
+                init.remove(fact)
+                deleted.append(fact)
+
+        for obj in self.unobserved_objs:
+            space = self.space_markers[random.choice(self.unobserved_spaces)]['space']
+        return init
+
+    # def get_unexposed_spaces(self):
+    #     objs = self.get_exposed_observation(show=True)
+    #     unexposed_spaces = [spaces[i] for i in range(len(spaces)) if markers[i] not in objs]
+    #     print('state.unexposed_spaces', [self.world.get_name(s) for s in unexposed_spaces])
+    #     return unexposed_spaces
 
     def get_planning_config(self):
         return self.world.get_planning_config()
@@ -1498,10 +1613,12 @@ def analyze_outcome(state):
 
 class Observation(object):
     # TODO: just update a dictionary for everything
-    def __init__(self, state, robot_conf=None, obj_poses=None, image=None, facts=None, variables=None, collision=False):
+    def __init__(self, state, robot_conf=None, obj_poses=None, unobserved_objs=None,
+                 image=None, facts=None, variables=None, collision=False):
         self.state = state
         self.robot_conf = robot_conf
         self.obj_poses = obj_poses
+        self.unobserved_objs = unobserved_objs
         self.rgb_image = self.depth_image = self.seg_image = self.camera_matrix = self.camera_pose = None
         if image is not None:
             self.rgb_image, self.depth_image, self.seg_image, self.camera_matrix, self.camera_pose = image
@@ -1540,8 +1657,17 @@ class Observation(object):
             #self.robot.set_positions(observation.robot_conf)
         if self.obj_poses is not None:
             for obj, pose in self.obj_poses.items():
+                if obj in self.state.unobserved_objs:
+                    continue
                 set_pose(obj, pose)
         return self
+
+    def update_unobserved_objs(self):
+        objs = self.obj_poses.keys()
+        unobserved_objs = self.unobserved_objs
+        newly_observed = [b for b in objs if b in unobserved_objs]
+        self.unobserved_objs = [b for b in unobserved_objs if b not in objs]
+        return newly_observed
 
     def __repr__(self):
         return '{}({}, {})'.format(self.__class__.__name__, self.robot_conf, sorted(self.obj_poses))

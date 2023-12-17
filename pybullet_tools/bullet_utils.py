@@ -34,7 +34,8 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
     parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug, set_point, has_gui, get_rigid_clusters, \
     BASE_LINK as ROOT_LINK, link_pairs_collision, draw_collision_info, wait_unlocked, apply_alpha, set_color, \
-    dimensions_from_camera_matrix, get_field_of_view, set_joint_positions, get_image, sample_placement_on_aabb, timeout
+    dimensions_from_camera_matrix, get_field_of_view, set_joint_positions, get_image, sample_placement_on_aabb, \
+    timeout, unit_point
 
 
 OBJ = '?obj'
@@ -381,7 +382,10 @@ def collided(obj, obstacles=[], world=None, tag='', articulated=False, verbose=F
 
     ## first get answer
     if articulated:
-        return articulated_collisions(obj, obstacles, use_aabb=use_aabb, **kwargs)
+        if verbose:
+            print('bullet_utils.collided | articulated', obj, obstacles)
+        result = articulated_collisions(obj, obstacles, use_aabb=use_aabb, **kwargs)
+        return result
     # else:
     #     result = any(pairwise_collision(obj, b, use_aabb=use_aabb, **kwargs) for b in obstacles)
     # if not verbose:
@@ -1743,18 +1747,43 @@ def get_obj_keys_for_segmentation(indices, unique=None):
     return obj_keys
 
 
-def get_segmask(seg):
-    unique = {}
-    for row in range(seg.shape[0]):
-        for col in range(seg.shape[1]):
-            pixel = seg[row, col]
-            if pixel == -1: continue
-            obUid = pixel & ((1 << 24) - 1)
-            linkIndex = (pixel >> 24) - 1
-            if (obUid, linkIndex) not in unique:
-                unique[(obUid, linkIndex)] = []
-                # print("obUid=", obUid, "linkIndex=", linkIndex)
-            unique[(obUid, linkIndex)].append((row, col))
+def get_segmask(seg, use_np=True):
+    if use_np:
+        # Mask to ignore pixels with value -1
+        mask = seg != -1
+
+        # Extract obUid and linkIndex using vectorized operations
+        obUid = seg[mask] & ((1 << 24) - 1)
+        linkIndex = (seg[mask] >> 24) - 1
+
+        # Get coordinates
+        coordinates = np.argwhere(mask)
+
+        # Create a structured array with the necessary information
+        structured_array = np.zeros(coordinates.shape[0],
+                                    dtype=[('obUid', 'i4'), ('linkIndex', 'i4'), ('coordinates', 'i4', 2)])
+        structured_array['obUid'] = obUid
+        structured_array['linkIndex'] = linkIndex
+        structured_array['coordinates'] = coordinates
+
+        # Group by obUid and linkIndex
+        unique = {}
+        for uid_link in np.unique(structured_array[['obUid', 'linkIndex']], axis=0):
+            mask = (structured_array['obUid'] == uid_link[0]) & (structured_array['linkIndex'] == uid_link[1])
+            unique[tuple(uid_link)] = structured_array['coordinates'][mask].tolist()
+
+    else:
+        unique = {}
+        for row in range(seg.shape[0]):
+            for col in range(seg.shape[1]):
+                pixel = seg[row, col]
+                if pixel == -1: continue
+                obUid = pixel & ((1 << 24) - 1)
+                linkIndex = (pixel >> 24) - 1
+                if (obUid, linkIndex) not in unique:
+                    unique[(obUid, linkIndex)] = []
+                    # print("obUid=", obUid, "linkIndex=", linkIndex)
+                unique[(obUid, linkIndex)].append((row, col))
     return unique
 
 
@@ -2193,3 +2222,69 @@ def print_action_plan(action_plan, stream_plan, world=None):
             elems.append(elem)
         action_plan_str += f"\n\t{action.name} ( {', '.join(elems)} )"
     return action_plan_str
+
+
+def get_fine_rainbow_colors(steps=2):
+    from lisdf_tools.image_utils import RAINBOW_COLORS as rc
+    def lerp(color1, color2, frac):
+        return color1 * (1 - frac) + color2 * frac
+    colors = []
+    for i in range(len(rc) - 1):
+        colors.extend([lerp(rc[i], rc[i+1], frac) * 255 for frac in np.linspace(0, 1, steps)])
+    return colors
+
+
+def get_objs_in_camera_images(camera_images, world=None, show=False, verbose=False):
+    import matplotlib.pyplot as plt
+
+    objs = []
+    images = []
+    colors = get_fine_rainbow_colors(math.ceil(len(world.objects)/7))
+
+    for camera_image in camera_images:
+
+        rgb = camera_image.rgbPixels
+        depth = camera_image.depthPixels
+        seg = camera_image.segmentationMaskBuffer
+
+        ## create segmentation images
+        unique = get_segmask(seg)
+        seg = np.zeros_like(rgb[:, :, :4])
+        for (body, link), pixels in unique.items():
+            c, r = zip(*pixels)
+            color = colors[body]
+            if verbose and world is not None:
+                print('\t', world.get_name(body))
+            seg[(np.asarray(c), np.asarray(r))] = color
+
+        objs += [b for b, l in unique.keys() if b not in objs]
+        images.append((rgb, depth, seg, len(unique)))
+
+    ## show color, depth, and segmentation images
+    if show:
+
+        fig, axes = plt.subplots(len(images), 3, figsize=(15, 5*len(images)))
+        fig.suptitle('Camera Image', fontsize=24)
+
+        for i, (rgb, depth, seg, n_obj) in enumerate(images):
+            camera = f'Camera {i} | '
+
+            axes[i, 0].imshow(rgb)
+            axes[i, 0].set_title(f'{camera}RGB Image')
+
+            axes[i, 1].imshow(depth)
+            axes[i, 1].set_title(f'{camera}Depth Image')
+
+            axes[i, 2].imshow(seg)
+            axes[i, 2].set_title(f'{camera}Segmentation Image ({n_obj} obj)')
+
+        fig.tight_layout()
+        fig.show()
+
+    return objs
+
+
+def multiply_quat(quat1, quat2):
+    """ multiply two quaternions """
+    return multiply((unit_point(), quat1), (unit_point(), quat2))[1]
+

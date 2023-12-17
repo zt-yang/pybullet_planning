@@ -22,7 +22,7 @@ from pybullet_tools.pr2_primitives import Grasp, iterate_approach_path, \
     APPROACH_DISTANCE, TOP_HOLDING_LEFT_ARM, get_tool_from_root, Conf, Commands, create_trajectory, \
     Trajectory, State
 from pybullet_tools.pr2_problems import create_pr2
-from pybullet_tools.pr2_utils import open_arm, arm_conf, get_gripper_link, get_arm_joints, \
+from pybullet_tools.pr2_utils import open_arm, arm_conf, get_gripper_link, get_arm_joints, SIDE_HOLDING_LEFT_ARM, \
     learned_pose_generator, PR2_TOOL_FRAMES, get_group_joints, get_group_conf, TOOL_POSE, MAX_GRASP_WIDTH, GRASP_LENGTH, \
     SIDE_HEIGHT_OFFSET, approximate_as_prism, set_group_conf
 from pybullet_tools.utils import wait_unlocked, WorldSaver
@@ -218,7 +218,7 @@ def solve_nearby_ik(robot, arm, approach_pose, custom_limits={}):
 
 
 def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
-              ACONF=False, verbose=True, visualize=False):
+                  ACONF=False, verbose=True, visualize=False):
     robot = problem.robot
     world = problem.world
     obstacles = problem.fixed if collisions else []
@@ -231,7 +231,7 @@ def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
         ignored_pairs_here = copy.deepcopy(ignored_pairs)
 
         if fluents:
-            attachments = process_motion_fluents(fluents, robot) # TODO(caelan): use attachments
+            attachments = process_motion_fluents(fluents, robot)
             attachments = {a.child: a for a in attachments}
             obstacles_here.extend([p[1] for p in fluents if p[0] == 'atpose'])
         else:
@@ -290,8 +290,8 @@ def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
             grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose, custom_limits=custom_limits) #, upper_limits=USE_CURRENT)
                                                 #nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
 
-        if (grasp_conf is None) or collided(robot, obstacles_here, articulated=True, world=world,
-                                            verbose=verbose, ignored_pairs=ignored_pairs, min_num_pts=3): ## approach_obstacles): # [obj]
+        if (grasp_conf is None) or collided(robot, obstacles_here, articulated=True, world=world, tag=title,
+                                            verbose=verbose, ignored_pairs=ignored_pairs_here, min_num_pts=3): ## approach_obstacles): # [obj]
             #wait_unlocked()
             if verbose:
                 if grasp_conf is not None:
@@ -318,7 +318,7 @@ def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
             approach_conf = pr2_inverse_kinematics(robot, arm, approach_pose, custom_limits=custom_limits,
                                                    upper_limits=USE_CURRENT, nearby_conf=USE_CURRENT)
             #approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits)
-        if (approach_conf is None) or collided(robot, obstacles_here, articulated=True, world=world,
+        if (approach_conf is None) or collided(robot, obstacles_here, articulated=True, world=world, tag=title,
                                                verbose=verbose, ignored_pairs=ignored_pairs, min_num_pts=3): ##
             if verbose:
                 if approach_conf != None:
@@ -692,7 +692,7 @@ def get_arm_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, ve
         set_joint_positions(robot, arm_joints, grasp_conf) # default_conf | sample_fn()
         # grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose, custom_limits=custom_limits) #, upper_limits=USE_CURRENT)
         #                                     #nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
-        if (grasp_conf is None) or collided(robot, obstacles, articulated=True, world=world): ## approach_obstacles): # [obj]
+        if (grasp_conf is None) or collided(robot, obstacles, articulated=True, tag=title, world=world): ## approach_obstacles): # [obj]
             if verbose:
                 if grasp_conf != None:
                     grasp_conf = nice(grasp_conf)
@@ -710,7 +710,7 @@ def get_arm_ik_fn(problem, custom_limits={}, collisions=True, teleport=False, ve
 
         #approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits) ##, max_iterations=500
         approach_conf = solve_nearby_ik(robot, arm, approach_pose, custom_limits=custom_limits)
-        if (approach_conf is None) or collided(robot, obstacles, articulated=True, world=world): ##
+        if (approach_conf is None) or collided(robot, obstacles, articulated=True, tag=title, world=world): ##
             if verbose:
                 if approach_conf != None:
                     approach_conf = nice(approach_conf)
@@ -1665,7 +1665,7 @@ def process_ik_context(context, verbose=False):
 def get_ik_gen_old(problem, max_attempts=100, collisions=True, learned=True, teleport=False, ir_only=False,
                soft_failures=False, verbose=False, visualize=False, ACONF=False, **kwargs):
     """ given grasp of target object p, return base conf and arm traj """
-    ir_max_attempts = 40
+    ir_max_attempts = 100
     ir_sampler = get_ir_sampler(problem, collisions=collisions, learned=learned,
                                 max_attempts=ir_max_attempts, verbose=verbose, **kwargs)
     ik_fn = get_ik_fn_old(problem, collisions=collisions, teleport=teleport, verbose=False, ACONF=ACONF, **kwargs)

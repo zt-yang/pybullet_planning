@@ -34,6 +34,7 @@ class RobotAPI(Robot):
         self.grippers = {}
         self.possible_obstacles = {}  ## body: obstacles
         self.collision_animations = []
+        self.name = self.__class__.__name__.lower()
 
     def get_init(self, init_facts=[], conf_saver=None):
         raise NotImplementedError('should implement this for RobotAPI!')

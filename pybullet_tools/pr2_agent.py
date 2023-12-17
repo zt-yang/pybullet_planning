@@ -83,7 +83,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c)),
         'sample-pose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, verbose=False)),  ##
         'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False, verbose=False,
-                                                       top_grasp_tolerance=PI/4, debug=True)),
+                                                       top_grasp_tolerance=None, debug=True)),  ## PI/4
         'compute-pose-kin': from_fn(get_compute_pose_kin()),
         'compute-pose-rel-kin': from_fn(get_compute_pose_rel_kin()),
 
@@ -94,7 +94,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         #     get_ik_fn(p, collisions=motion_collisions, teleport=t, verbose=True, visualize=False)),
 
         'inverse-reachability': from_gen_fn(
-            get_ik_gen_old(p, collisions=c, teleport=t, ir_only=True, custom_limits=l,
+            get_ik_gen_old(p, collisions=False, teleport=t, ir_only=True, custom_limits=l,
                            learned=False, verbose=False, visualize=False)),
         'inverse-kinematics': from_fn(
             get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=True, visualize=False, ACONF=False)),
@@ -643,6 +643,8 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
                                  **planner_kwargs_default, **planner_kwargs)
     if collect_dataset:
         return solution, plan_dataset
+    if solution is None:
+        solution = None, 0, []
     return solution
 
 
@@ -907,6 +909,7 @@ def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=True, ve
 
 
 def test_grasps(state, name='cabbage', visualize=True):
+    set_renderer(True)
     title = 'pr2_agent.test_grasps | '
     if isinstance(name, str):
         body = state.world.name_to_body(name)
@@ -914,7 +917,7 @@ def test_grasps(state, name='cabbage', visualize=True):
         body = name
     robot = state.robot
 
-    funk = get_grasp_list_gen(state, verbose=True, visualize=True, RETAIN_ALL=False, top_grasp_tolerance=PI/4)
+    funk = get_grasp_list_gen(state, verbose=True, visualize=True, RETAIN_ALL=False, top_grasp_tolerance=None)  ## PI/4
     outputs = funk(body)
 
     if 'left' in robot.joint_groups:
@@ -923,7 +926,7 @@ def test_grasps(state, name='cabbage', visualize=True):
             print('body_pose', nice(body_pose))
             visualize_grasps(state, outputs, body_pose)
         print(f'{title}grasps:', outputs)
-        goals = [("AtGrasp", 'left', body, outputs[1][0])]
+        goals = [("AtGrasp", 'left', body, outputs[0][0])]
 
     elif 'hand' in robot.joint_groups:
         from pybullet_tools.bullet_utils import collided
@@ -944,7 +947,7 @@ def test_grasps(state, name='cabbage', visualize=True):
 
 
 def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=False,
-                     TEST_ATTACHMENT=True):
+                     TEST_ATTACHMENT=False):
     robot = state.robot
     colors = [BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED]
 
@@ -971,7 +974,7 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=Fal
             remove_body(gripper_grasp)
             remove_body(gripper_approach)
             # weiyu: debug
-            robot.remove_gripper()
+            # robot.remove_grippers()
             return None
 
         return gripper_grasp
@@ -984,10 +987,12 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=Fal
     i = 0
     gripper_grasp = None
     for grasp in outputs:
+        print('grasp', nice(grasp[0].value))
         output = visualize_grasp(grasp[0], index=i)
         if output is not None:
             gripper_grasp = output
             i += 1
+        wait_if_gui()
     if i > 0:
         set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.5)
 

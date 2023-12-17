@@ -808,6 +808,8 @@ BASE_VELOCITY = 0.25
 
 
 def get_base_custom_limits(robot, base_limits, yaw_limit=None):
+    if isinstance(base_limits, dict):
+        return base_limits
     if len(base_limits[0]) == 2:
         x_limits, y_limits = zip(*base_limits)
     if len(base_limits[0]) == 3:

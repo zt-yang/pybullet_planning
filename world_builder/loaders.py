@@ -20,7 +20,6 @@ from world_builder.robot_builders import create_pr2_robot
 from world_builder.utils import get_partnet_doors, get_partnet_spaces, get_partnet_links_by_type
 
 import sys
-from pybullet_tools.pr2_primitives import get_base_custom_limits
 from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, HideOutput, load_model, TURTLEBOT_URDF, \
     set_all_color, dump_body, draw_base_limits, multiply, Pose, Euler, PI, draw_pose, unit_pose, create_box, TAN, Point, \
     GREEN, create_cylinder, INF, BLACK, WHITE, RGBA, GREY, YELLOW, BLUE, BROWN, stable_z, set_point, set_camera_pose, \
@@ -38,6 +37,8 @@ from pybullet_tools.bullet_utils import place_body, add_body, Pose2d, nice, OBJ_
     open_joint, close_joint, set_camera_target_robot, summarize_joints, \
     set_pr2_ready, BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, draw_base_limits, \
     collided_around, collided, aabb_larger, equal, in_list
+from pybullet_tools.pr2_streams import Position
+from pybullet_tools.pr2_primitives import get_base_custom_limits
 
 OBJ = '?obj'
 
@@ -423,24 +424,28 @@ def load_five_table_scene(world):
     return cabbage, egg, plate, salter, sink, stove, counter, table
 
 
-def load_full_kitchen(world, **kwargs):
+def load_full_kitchen(world, load_cabbage=True, **kwargs):
     world.set_skip_joints()
 
-    custom_limits = ((0, 4), (4, 13))
-    robot = create_pr2_robot(world, base_q=(1.79, 6, PI / 2 + PI / 2),
-                             custom_limits=custom_limits, USE_TORSO=True)
+    if world.robot is None:
+        custom_limits = ((0, 4), (4, 13))
+        robot = create_pr2_robot(world, base_q=(1.79, 6, PI / 2 + PI / 2),
+                                 custom_limits=custom_limits, USE_TORSO=True)
 
-    floor = load_floor_plan(world, plan_name='kitchen_v2.svg', **kwargs)  ## studio0, studio0
-    cabbage = load_experiment_objects(world, CABBAGE_ONLY=True)
-    counter = world.name_to_object('indigo_tmp')
-    counter.place_obj(cabbage)
-    (_, y, z), _ = cabbage.get_pose()
-    cabbage.set_pose(Pose(point=Point(x=0.85, y=y, z=z)))
+    floor = load_floor_plan(world, plan_name='kitchen_v2.svg', **kwargs)
     world.remove_object(floor)
 
     lid = world.name_to_body('braiserlid')
     world.put_on_surface(lid, 'braiserbody')
-    return cabbage
+
+    if load_cabbage:
+        cabbage = load_experiment_objects(world, CABBAGE_ONLY=True)
+        counter = world.name_to_object('hitman_tmp')
+        counter.place_obj(cabbage)
+        (_, y, z), _ = cabbage.get_pose()
+        cabbage.set_pose(Pose(point=Point(x=0.85, y=y, z=z)))
+        return cabbage
+    return None
 
 
 def load_rooms(world, DOOR_GAP = 1.9):
@@ -942,6 +947,73 @@ def load_feg_kitchen(world):
     world.add_to_cat(turkey, 'cleaned')
 
     return cabbage, turkey, lid
+
+
+######################################################################################
+
+
+def place_in_nvidia_kitchen_space(obj, supporter, interactive=False):
+    obj_cat = obj.category if obj is not None else None
+    pose = ((0.73, 7.88, 1.11), (0.0, 0.0, -0.6816387600233342, 0.7316888688738208))
+    poses = {
+        ('potbody', 'indigo_tmp'): ((0.63, 8.88, 0.11), (0.0, 0.0, -0.6816387600233342, 0.7316888688738208)),
+        ('microwave', 'hitman_tmp'): ((0.43, 6.38, 0.98), (0.0, 0.0, -1, 0)),
+        ('vinegarbottle', 'sektion'): ((0.75, 7.3, 1.24), (0, 0, 0, 1)),
+        ('vinegarbottle', 'dagger'): ((0.45, 8.83, 1.54), (0.0, 0.0, 0.0, 1.0)),
+        ('vinegarbottle', 'indigo_tmp'): ((0.59, 8.88, 0.16), (0.0, 0.0, 0.0, 1.0)),
+    }
+    key = (obj_cat, supporter)
+    if key in poses:
+        pose = poses[key]
+        if obj is not None:
+            obj.set_pose(pose)
+
+    if interactive:
+        from pynput import keyboard
+
+        xyz, quat = pose
+        euler = euler_from_quat(quat)
+        pose = np.asarray([xyz, euler])
+        adjustments = {
+            'w': ((0, 0, 0.01), (0, 0, 0)),
+            's': ((0, 0, -0.01), (0, 0, 0)),
+            keyboard.Key.up: ((0, 0, 0.01), (0, 0, 0)),
+            keyboard.Key.down: ((0, 0, -0.01), (0, 0, 0)),
+            'a': ((0, -0.01, 0), (0, 0, 0)),
+            'd': ((0, 0.01, 0), (0, 0, 0)),
+            keyboard.Key.left: ((0, 0, -0.01), (0, 0, 0)),
+            keyboard.Key.right: ((0, 0, 0.01), (0, 0, 0)),
+            'f': ((0.01, 0, 0), (0, 0, 0)),
+            'r': ((-0.01, 0, 0), (0, 0, 0)),
+            'q': ((0, 0, 0), (0, 0, -0.1)),
+            'e': ((0, 0, 0), (0, 0, 0.1)),
+        }
+        adjustments = {k: np.asarray(v) for k, v in adjustments.items()}
+
+        def on_press(key, pose=pose):
+            try:
+                pressed = key.char.lower()
+                print('alphanumeric key {0} pressed'.format(key.char))
+            except AttributeError:
+                pressed = key
+                print('special key {0} pressed'.format(key))
+
+            if pressed in adjustments:
+                pose += adjustments[pressed]
+                pose = (nice(pose[0]), quat_from_euler(pose[1]))
+                print(f'\tnew pose: {pose}')
+                set_pose(obj.body, pose)
+
+        def on_release(key):
+            if key == keyboard.Key.esc:
+                return False
+
+        print('-' * 10 + ' Enter WASDRF for poses and QE for yaw ' + '-' * 10)
+        with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
+            listener.join()
+
+
+######################################################################################
 
 
 def place_in_cabinet(fridgestorage, cabbage, place=True, world=None, learned=True):
