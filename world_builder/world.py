@@ -1512,7 +1512,7 @@ class State(object):
         return objs
 
     def sample_observation(self, include_conf=False, include_poses=False,
-                           include_facts=False, include_variables=False, step=None, **kwargs): # Observation model
+                           include_facts=False, include_variables=False, step=None, observe_visual=True, **kwargs): # Observation model
         # TODO: could technically also not require robot, camera_pose, or camera_matrix
         # TODO: make confs and poses state variables
         # robot_conf = self.robot.get_positions() if include_conf else None
@@ -1531,7 +1531,7 @@ class State(object):
             response = query_gpt4v(image.rgbPixels, jpg_path=jpg_path)
             wait_for_user()
 
-        if self.observation_model == 'exposed':
+        if self.observation_model == 'exposed' and observe_visual:
             objs = self.get_exposed_observation()
             obj_poses = {obj: get_pose(obj) for obj in objs}
 
@@ -1548,7 +1548,6 @@ class State(object):
         for k in self.variables:
             init += [(k[0], k[1])]
         return init
-
     def modify_exposed_facts(self, init):
         ## remove facts about unobserved objects
         deleted = []
@@ -1771,11 +1770,12 @@ class Agent(Process): # Decision
     def wrapped_transition(self, state, ONCE=False, verbose=False, **kwargs):
         # TODO: move this to another class
         start_time = time.time()
+        observe_visual = len(self.actions) == 0 or 'GripperAction' in str(self.actions[-1])
         observation = state.sample_observation(
             include_conf=self.requires_conf, include_poses=self.requires_poses,
             include_facts=self.requires_facts, include_variables=self.requires_variables,
             include_rgb=self.requires_rgb, include_depth=self.requires_depth,
-            include_segment=self.requires_segment, **kwargs)  # include_cloud=self.requires_cloud,
+            include_segment=self.requires_segment, observe_visual=observe_visual, **kwargs)  # include_cloud=self.requires_cloud,
         if verbose: print(f'   wrapped_transition \ made observation in {round(time.time() - start_time, 4)} sec')
         start_time = time.time()
         if self.world.scramble:
