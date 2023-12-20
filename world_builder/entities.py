@@ -12,7 +12,7 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
     quat_from_euler, wait_unlocked, euler_from_quat
 from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_box_entity, collided, \
     get_camera_image_at_pose, sample_obj_in_body_link_space, sample_obj_on_body_link_surface, nice, \
-    create_attachment
+    create_attachment, change_pose_interactive
 from pybullet_tools.general_streams import check_kitchen_placement
 
 from world_builder.utils import get_mobility_id, get_mobility_category, get_mobility_identifier, \
@@ -227,7 +227,10 @@ class Object(Index):
         if self.supporting_surface is not None:
             self.supporting_surface.supported_objects.remove(self)
         obj.support_obj(self)
-    ##
+
+    def change_pose_interactive(self):
+        change_pose_interactive(self)
+
     ## ====================================================================
 
     def __int__(self):

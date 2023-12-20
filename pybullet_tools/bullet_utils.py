@@ -759,6 +759,14 @@ class ObjAttachment(Attachment):
 #######################################################
 
 
+def get_camera_point_target():
+    cam = p.getDebugVisualizerCamera()
+    camForward = cam[5]
+    dist, camTarget = cam[-2:]
+    camPos = np.array(camTarget) - dist * np.array(camForward)
+    return camPos, camTarget
+
+
 def get_camera_image_at_pose(camera_point, target_point, camera_matrix, far=5.0, **kwargs):
     # far is the maximum depth value
     width, height = map(int, dimensions_from_camera_matrix(camera_matrix))
@@ -1094,8 +1102,8 @@ def get_rotation_matrix(body, verbose=True):
         mobility_urdf_file = join(urdf_file, 'mobility.urdf')
         if isfile(mobility_urdf_file):
             if urdf_file not in ROTATIONAL_MATRICES:
-                if verbose:
-                    print('get_rotation_matrix | urdf_file = ', abspath(urdf_file))
+                # if verbose:
+                #     print('get_rotation_matrix | urdf_file = ', abspath(urdf_file))
                 joints = untangle.parse(mobility_urdf_file).robot.joint
                 if isinstance(joints, list):
                     for j in joints:
@@ -2287,4 +2295,52 @@ def get_objs_in_camera_images(camera_images, world=None, show=False, verbose=Fal
 def multiply_quat(quat1, quat2):
     """ multiply two quaternions """
     return multiply((unit_point(), quat1), (unit_point(), quat2))[1]
+
+
+######################################################################################
+
+
+def change_pose_interactive(obj):
+    from pynput import keyboard
+    pose = obj.get_pose()
+    xyz, quat = pose
+    euler = euler_from_quat(quat)
+    pose = np.asarray([xyz, euler])
+    adjustments = {
+        'w': ((0, 0, 0.01), (0, 0, 0)),
+        's': ((0, 0, -0.01), (0, 0, 0)),
+        keyboard.Key.up: ((0, 0, 0.01), (0, 0, 0)),
+        keyboard.Key.down: ((0, 0, -0.01), (0, 0, 0)),
+        'a': ((0, -0.01, 0), (0, 0, 0)),
+        'd': ((0, 0.01, 0), (0, 0, 0)),
+        keyboard.Key.left: ((0, 0, -0.01), (0, 0, 0)),
+        keyboard.Key.right: ((0, 0, 0.01), (0, 0, 0)),
+        'f': ((0.01, 0, 0), (0, 0, 0)),
+        'r': ((-0.01, 0, 0), (0, 0, 0)),
+        'q': ((0, 0, 0), (0, 0, -0.1)),
+        'e': ((0, 0, 0), (0, 0, 0.1)),
+    }
+    adjustments = {k: np.asarray(v) for k, v in adjustments.items()}
+
+    def on_press(key, pose=pose):
+        try:
+            pressed = key.char.lower()
+            print('alphanumeric key {0} pressed'.format(key.char))
+        except AttributeError:
+            pressed = key
+            print('special key {0} pressed'.format(key))
+
+        if pressed in adjustments:
+            pose += adjustments[pressed]
+            pose = (nice(pose[0]), quat_from_euler(pose[1]))
+            print(f'\tnew pose: {pose}')
+            set_pose(obj.body, pose)
+
+    def on_release(key):
+        if key == keyboard.Key.esc:
+            return False
+
+    print('-' * 10 + ' Enter WASDRF for poses and QE for yaw ' + '-' * 10)
+    with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
+        listener.join()
 

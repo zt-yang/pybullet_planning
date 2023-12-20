@@ -949,68 +949,49 @@ def load_feg_kitchen(world):
     return cabbage, turkey, lid
 
 
-######################################################################################
+##########################################################
 
 
-def place_in_nvidia_kitchen_space(obj, supporter, interactive=False):
-    obj_cat = obj.category if obj is not None else None
-    pose = ((0.73, 7.88, 1.11), (0.0, 0.0, -0.6816387600233342, 0.7316888688738208))
+def get_nvidia_kitchen_hacky_pose(obj, supporter_name):
+    if obj is None:
+        return None
+    world = obj.world
+    if isinstance(supporter_name, tuple):
+        supporter_name = world.get_name(supporter_name)
     poses = {
-        ('potbody', 'indigo_tmp'): ((0.63, 8.88, 0.11), (0.0, 0.0, -0.6816387600233342, 0.7316888688738208)),
+        ('potbody', 'indigo_tmp'): ((0.63, 8.88, 0.11), (0.0, 0.0, -0.68, 0.73)),
         ('microwave', 'hitman_tmp'): ((0.43, 6.38, 0.98), (0.0, 0.0, -1, 0)),
         ('vinegarbottle', 'sektion'): ((0.75, 7.3, 1.24), (0, 0, 0, 1)),
         ('vinegarbottle', 'dagger'): ((0.45, 8.83, 1.54), (0.0, 0.0, 0.0, 1.0)),
         ('vinegarbottle', 'indigo_tmp'): ((0.59, 8.88, 0.16), (0.0, 0.0, 0.0, 1.0)),
+        ('vinegarbottle', 'shelf_bottom'): ((0.64, 4.88, 0.89), (0.0, 0.0, 0.0, 1.0))
     }
-    key = (obj_cat, supporter)
+    key = (obj.category, supporter_name)
     if key in poses:
-        pose = poses[key]
-        if obj is not None:
-            obj.set_pose(pose)
+        return poses[key]
+    for kk, pose in poses.items():
+        if kk[0] == key[0] and kk[1] in key[1]:
+            return pose
+    return None
+
+
+def place_in_nvidia_kitchen_space(obj, supporter_name, interactive=False):
+    world = obj.world
+
+    pose = get_nvidia_kitchen_hacky_pose(obj, supporter_name)
+    if pose is not None:
+        obj.set_pose(pose)
+    else:
+        world.name_to_object(supporter_name).place_obj(obj, world=world)
+        print(get_pose(obj))
+        wait_unlocked()
 
     if interactive:
-        from pynput import keyboard
+        obj.change_pose_interactive()
 
-        xyz, quat = pose
-        euler = euler_from_quat(quat)
-        pose = np.asarray([xyz, euler])
-        adjustments = {
-            'w': ((0, 0, 0.01), (0, 0, 0)),
-            's': ((0, 0, -0.01), (0, 0, 0)),
-            keyboard.Key.up: ((0, 0, 0.01), (0, 0, 0)),
-            keyboard.Key.down: ((0, 0, -0.01), (0, 0, 0)),
-            'a': ((0, -0.01, 0), (0, 0, 0)),
-            'd': ((0, 0.01, 0), (0, 0, 0)),
-            keyboard.Key.left: ((0, 0, -0.01), (0, 0, 0)),
-            keyboard.Key.right: ((0, 0, 0.01), (0, 0, 0)),
-            'f': ((0.01, 0, 0), (0, 0, 0)),
-            'r': ((-0.01, 0, 0), (0, 0, 0)),
-            'q': ((0, 0, 0), (0, 0, -0.1)),
-            'e': ((0, 0, 0), (0, 0, 0.1)),
-        }
-        adjustments = {k: np.asarray(v) for k, v in adjustments.items()}
-
-        def on_press(key, pose=pose):
-            try:
-                pressed = key.char.lower()
-                print('alphanumeric key {0} pressed'.format(key.char))
-            except AttributeError:
-                pressed = key
-                print('special key {0} pressed'.format(key))
-
-            if pressed in adjustments:
-                pose += adjustments[pressed]
-                pose = (nice(pose[0]), quat_from_euler(pose[1]))
-                print(f'\tnew pose: {pose}')
-                set_pose(obj.body, pose)
-
-        def on_release(key):
-            if key == keyboard.Key.esc:
-                return False
-
-        print('-' * 10 + ' Enter WASDRF for poses and QE for yaw ' + '-' * 10)
-        with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
-            listener.join()
+    ## check if the object is in collision with the surface
+    collided(obj.body, [world.name_to_object(supporter_name).body],
+             world=world, verbose=True, tag='place_in_nvidia_kitchen_space')
 
 
 ######################################################################################

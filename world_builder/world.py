@@ -132,8 +132,8 @@ class WorldBase(object):
         quat_right = multiply_quat(quat_front, quat_from_euler(Euler(yaw=0, pitch=PI / 2, roll=0)))
         quat_left = multiply_quat(quat_front, quat_from_euler(Euler(yaw=0, pitch=-PI / 2, roll=0)))
         quat_front_down = multiply_quat(quat_front, quat_from_euler(Euler(yaw=0, pitch=0, roll=-PI / 4)))
-        for pose in [((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5)),
-                     ((2.4, 8, 3.3), quat_front_down)]:
+        for pose in [((3.9, 7, 1.3), (0.5, 0.5, -0.5, -0.5)),
+                     ((2.9, 7, 3.3), quat_front_down)]:
             self.exposed_observation_cameras.append(self.add_camera(pose=pose))
 
     def initiate_space_markers(self, s=0.03):
@@ -1129,7 +1129,7 @@ class World(WorldBase):
                     # if is_contained(body, space) != BODY_TO_OBJECT[space].is_contained(body):
                     #     print('   \n different conclusion about containment', body, space)
                     #     wait_unlocked()
-                    if verbose: print('   found contained', body, space)
+                    if verbose: print('   found contained', self.get_debug_name(body), self.get_debug_name(space))
                     init += [('Contained', body, pose, space)]
 
         if use_rel_pose:
@@ -1351,6 +1351,8 @@ class State(object):
         if self.observation_model == 'exposed' and unobserved_objs is None:
             self.space_markers = self.initiate_space_markers()
             self.unobserved_objs, self.unobserved_spaces = self.initiate_exposed_observation_model()
+            self.spaces = {v['space']: v for v in self.space_markers.values()}
+            self.assumed_obj_poses = {}
 
         if len(attachments) == 0:
             attachments = copy.deepcopy(world.ATTACHMENTS)
@@ -1485,6 +1487,8 @@ class State(object):
             seg = None
         return CameraImage(rgb, depth, seg, pose, matrix)
 
+    ####################################################################################
+
     def initiate_space_markers(self):
         return self.world.initiate_space_markers()
 
@@ -1492,15 +1496,26 @@ class State(object):
         self.world.initiate_exposed_cameras()
 
         ## get_observed and unobserved objects
-        objs = self.get_exposed_observation(show=True)
+        objs = self.get_exposed_observation(show=False)
         unobserved_objs = [b for b in set(get_bodies()) - set(objs)]
 
-        unobserved_spaces = [b for b in unobserved_objs if b in self.space_markers]
+        ## find unobserved spaces and objects
+        unobserved_spaces = [self.space_markers[b]['space'] for b in unobserved_objs if b in self.space_markers]
         unobserved_objs = [b for b in unobserved_objs if b not in self.space_markers]
         for unobserved, name in [(unobserved_objs, 'objs'), (unobserved_spaces, 'spaces')]:
             printout = [self.world.get_name(b) for b in unobserved]
             print(f'\tstate.initiate_exposed_observation_model | {name}', printout)
-        return unobserved_objs, unobserved_spaces
+
+        ## add assumed poses for unobserved objects
+        assumed_poses = {}
+        for body in unobserved_objs:
+            from world_builder.loaders import get_nvidia_kitchen_hacky_pose  ## TODO: hacky poses
+            space = random.choice(unobserved_spaces)
+            pose = get_nvidia_kitchen_hacky_pose(self.world.BODY_TO_OBJECT[body], space)
+            if pose is not None:
+                assumed_poses[body] = pose
+
+        return assumed_poses, unobserved_spaces
 
     def get_exposed_observation(self, show=False):
         kwargs = dict(include_rgb=True, include_depth=True, include_segment=True)
@@ -1548,16 +1563,18 @@ class State(object):
         for k in self.variables:
             init += [(k[0], k[1])]
         return init
-    def modify_exposed_facts(self, init):
-        ## remove facts about unobserved objects
-        deleted = []
-        for fact in init:
-            if fact[0].lower() in ['pose', 'atpose'] and fact[1] in self.unobserved_objs:
-                init.remove(fact)
-                deleted.append(fact)
 
-        for obj in self.unobserved_objs:
-            space = self.space_markers[random.choice(self.unobserved_spaces)]['space']
+    def modify_exposed_facts(self, init):
+        ## remove facts about the poses of unobserved objects
+        to_remove = []
+        to_add = []
+        for fact in init:
+            if fact[0].lower() in ['pose', 'atpose']:
+                obj_body = fact[1] if not isinstance(fact[1], str) else eval(fact[1].split('|')[0])
+                if obj_body in self.unobserved_objs:
+                    to_remove.append(fact)
+                    to_add.append((fact[0], fact[1], Pose(obj_body, self.unobserved_objs[obj_body])))
+        init = [f for f in init if f not in to_remove] + to_add
         return init
 
     # def get_unexposed_spaces(self):
@@ -1664,8 +1681,13 @@ class Observation(object):
     def update_unobserved_objs(self):
         objs = self.obj_poses.keys()
         unobserved_objs = self.unobserved_objs
-        newly_observed = [b for b in objs if b in unobserved_objs]
-        self.unobserved_objs = [b for b in unobserved_objs if b not in objs]
+        self.unobserved_objs = {b: v for b, v in unobserved_objs.items() if b not in objs}
+
+        newly_observed = []
+        for obj, pose in self.obj_poses.items():
+            if obj in self.unobserved_objs and self.unobserved_objs[obj] != pose:
+                newly_observed.append(obj)
+                print('world.update_unobserved_objs.newly_observed\t', newly_observed, pose)
         return newly_observed
 
     def __repr__(self):
