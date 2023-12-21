@@ -1665,7 +1665,7 @@ def process_ik_context(context, verbose=False):
 def get_ik_gen_old(problem, max_attempts=100, collisions=True, learned=True, teleport=False, ir_only=False,
                soft_failures=False, verbose=False, visualize=False, ACONF=False, **kwargs):
     """ given grasp of target object p, return base conf and arm traj """
-    ir_max_attempts = 100
+    ir_max_attempts = 40
     ir_sampler = get_ir_sampler(problem, collisions=collisions, learned=learned,
                                 max_attempts=ir_max_attempts, verbose=verbose, **kwargs)
     ik_fn = get_ik_fn_old(problem, collisions=collisions, teleport=teleport, verbose=False, ACONF=ACONF, **kwargs)

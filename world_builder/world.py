@@ -38,7 +38,7 @@ from world_builder.utils import GRASPABLES
 from world_builder.samplers import get_learned_yaw
 
 DEFAULT_CONSTANTS = ['@movable', '@bottle', '@edible', '@medicine']  ## , '@world'
-observation_models = ['gpt4v', 'exposed']
+observation_models = ['gpt4v', 'exposed', None]
 
 
 class WorldBase(object):
@@ -1335,7 +1335,7 @@ class World(WorldBase):
 class State(object):
     def __init__(self, world, objects=[], attachments={}, facts=[], variables={},
                  grasp_types=None, gripper=None,
-                 unobserved_objs=None, observation_model='exposed'):
+                 unobserved_objs=None, observation_model=None): ## 'exposed'
         self.world = world
         if len(objects) == 0:
             # objects = [o for o in world.objects if isinstance(o, int)]
@@ -1557,7 +1557,8 @@ class State(object):
 
     def get_facts(self, **kwargs):
         init = self.world.get_facts(**kwargs)
-        init = self.modify_exposed_facts(init)
+        if self.observation_model == 'exposed':
+            init = self.modify_exposed_facts(init)
 
         ## ---- those added to state.variables[label, body]
         for k in self.variables:
@@ -1670,10 +1671,10 @@ class Observation(object):
     def assign(self): # TODO: rename to update_pybullet
         if self.robot_conf is not None:
             self.robot_conf.restore() # TODO: sore all as Savers instead?
-            #self.robot.set_positions(observation.robot_conf)
+            # self.robot.set_positions(observation.robot_conf)
         if self.obj_poses is not None:
             for obj, pose in self.obj_poses.items():
-                if obj in self.state.unobserved_objs:
+                if self.state.unobserved_objs is not None and obj in self.state.unobserved_objs:
                     continue
                 set_pose(obj, pose)
         return self
