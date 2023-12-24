@@ -2307,14 +2307,14 @@ def change_pose_interactive(obj):
     euler = euler_from_quat(quat)
     pose = np.asarray([xyz, euler])
     adjustments = {
-        'w': ((0, 0, 0.01), (0, 0, 0)),
+        # 'w': ((0, 0, 0.01), (0, 0, 0)),
         's': ((0, 0, -0.01), (0, 0, 0)),
         keyboard.Key.up: ((0, 0, 0.01), (0, 0, 0)),
         keyboard.Key.down: ((0, 0, -0.01), (0, 0, 0)),
         'a': ((0, -0.01, 0), (0, 0, 0)),
         'd': ((0, 0.01, 0), (0, 0, 0)),
-        keyboard.Key.left: ((0, 0, -0.01), (0, 0, 0)),
-        keyboard.Key.right: ((0, 0, 0.01), (0, 0, 0)),
+        keyboard.Key.left: ((0, -0.01, 0), (0, 0, 0)),
+        keyboard.Key.right: ((0, 0.01, 0), (0, 0, 0)),
         'f': ((0.01, 0, 0), (0, 0, 0)),
         'r': ((-0.01, 0, 0), (0, 0, 0)),
         'q': ((0, 0, 0), (0, 0, -0.1)),

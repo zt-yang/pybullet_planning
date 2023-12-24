@@ -97,7 +97,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
             get_ik_gen_old(p, collisions=False, teleport=t, ir_only=True, custom_limits=l,
                            learned=False, verbose=False, visualize=False)),
         'inverse-kinematics': from_fn(
-            get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=True, visualize=False, ACONF=False)),
+            get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=False, visualize=False, ACONF=False)),
 
         # 'plan-arm-motion-grasp': from_fn(
         #     get_ik_fn(p, pick_up=False, collisions=motion_collisions, verbose=True, visualize=False)),

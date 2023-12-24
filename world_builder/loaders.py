@@ -961,7 +961,7 @@ def get_nvidia_kitchen_hacky_pose(obj, supporter_name):
     poses = {
         ('potbody', 'indigo_tmp'): ((0.63, 8.88, 0.11), (0.0, 0.0, -0.68, 0.73)),
         ('microwave', 'hitman_tmp'): ((0.43, 6.38, 0.98), (0.0, 0.0, -1, 0)),
-        ('vinegarbottle', 'sektion'): ((0.75, 7.3, 1.24), (0, 0, 0, 1)),
+        ('vinegarbottle', 'sektion'): ((0.75, 7.41, 1.24), (0.0, 0.0, 0.0, 1.0)), ## ((0.75, 7.3, 1.24), (0, 0, 0, 1)),
         ('vinegarbottle', 'dagger'): ((0.45, 8.83, 1.54), (0.0, 0.0, 0.0, 1.0)),
         ('vinegarbottle', 'indigo_tmp'): ((0.59, 8.88, 0.16), (0.0, 0.0, 0.0, 1.0)),
         ('vinegarbottle', 'shelf_bottom'): ((0.64, 4.88, 0.89), (0.0, 0.0, 0.0, 1.0))

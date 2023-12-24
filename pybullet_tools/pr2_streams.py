@@ -1662,10 +1662,11 @@ def process_ik_context(context, verbose=False):
             raise ValueError(stream.name)
 
 
-def get_ik_gen_old(problem, max_attempts=100, collisions=True, learned=True, teleport=False, ir_only=False,
-               soft_failures=False, verbose=False, visualize=False, ACONF=False, **kwargs):
+def get_ik_gen_old(problem, max_attempts=30, collisions=True, learned=True, teleport=False, ir_only=False,
+                   soft_failures=False, verbose=False, visualize=False, ACONF=False, **kwargs):
     """ given grasp of target object p, return base conf and arm traj """
     ir_max_attempts = 40
+    ## not using this if tracik compiled
     ir_sampler = get_ir_sampler(problem, collisions=collisions, learned=learned,
                                 max_attempts=ir_max_attempts, verbose=verbose, **kwargs)
     ik_fn = get_ik_fn_old(problem, collisions=collisions, teleport=teleport, verbose=False, ACONF=ACONF, **kwargs)
@@ -1675,9 +1676,9 @@ def get_ik_gen_old(problem, max_attempts=100, collisions=True, learned=True, tel
     heading = 'pr2_streams.get_ik_gen | '
 
     def gen(a, o, p, g, context=None):
-        #set_renderer(enable=False)
+        # set_renderer(enable=False)
         if visualize:
-            #set_renderer(enable=True)
+            # set_renderer(enable=True)
             samples = []
 
         process_ik_context(context)
@@ -1691,14 +1692,14 @@ def get_ik_gen_old(problem, max_attempts=100, collisions=True, learned=True, tel
         open_arm(robot, a)
         context_saver = WorldSaver(bodies=[robot, o])
 
-        #gripper_grasp = robot.visualize_grasp(pose_value, g.value, arm=a, body=g.body)
+        # gripper_grasp = robot.visualize_grasp(pose_value, g.value, arm=a, body=g.body)
         gripper_grasp = robot.set_gripper_pose(pose_value, g.value, arm=a, body=g.body)
         if collided(gripper_grasp, obstacles, articulated=True, world=world): # w is not None
-            #wait_unlocked()
-            #robot.remove_gripper(gripper_grasp)
+            # wait_unlocked()
+            # robot.remove_gripper(gripper_grasp)
             if verbose: print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
             return
-        #robot.remove_gripper(gripper_grasp)
+        # robot.remove_gripper(gripper_grasp)
         # Fix grasps
         # Fix negation
         # Open gripper

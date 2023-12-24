@@ -1335,7 +1335,7 @@ class World(WorldBase):
 class State(object):
     def __init__(self, world, objects=[], attachments={}, facts=[], variables={},
                  grasp_types=None, gripper=None,
-                 unobserved_objs=None, observation_model=None): ## 'exposed'
+                 unobserved_objs=None, observation_model='exposed'): ## None
         self.world = world
         if len(objects) == 0:
             # objects = [o for o in world.objects if isinstance(o, int)]
@@ -1569,12 +1569,17 @@ class State(object):
         ## remove facts about the poses of unobserved objects
         to_remove = []
         to_add = []
+        poses = {}
         for fact in init:
-            if fact[0].lower() in ['pose', 'atpose']:
+            if fact[0].lower() in ['pose', 'atpose', 'contained', 'supported']:
                 obj_body = fact[1] if not isinstance(fact[1], str) else eval(fact[1].split('|')[0])
                 if obj_body in self.unobserved_objs:
                     to_remove.append(fact)
-                    to_add.append((fact[0], fact[1], Pose(obj_body, self.unobserved_objs[obj_body])))
+                    mod_fact = list(copy.deepcopy(fact))
+                    if obj_body not in poses:
+                        poses[obj_body] = Pose(obj_body, self.unobserved_objs[obj_body])
+                    mod_fact[2] = poses[obj_body]
+                    to_add.append(mod_fact)
         init = [f for f in init if f not in to_remove] + to_add
         return init
 
