@@ -1211,7 +1211,7 @@ def draw_face_points(aabb, body_pose, dist=0.08):
 
 def get_loaded_scale(body):
     data = get_collision_data(body, 0)
-    scale = None
+    scale = 1
     if len(data) > 0:
         scale = data[0].dimensions[0]
     else:
@@ -1408,7 +1408,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
 
     ## lastly store the newly sampled grasps
     if instance_name is not None:
-        add_grasp_in_db(db, db_file, instance_name, grasps, name=world.get_name(body_name),
+        add_grasp_in_db(db, db_file, instance_name, grasps, name=world.get_name(body_name, use_default_link_name=True),
                         LENGTH_VARIANTS=LENGTH_VARIANTS, scale=scale)
     remove_handles(handles)
     # if len(grasps) > num_samples:

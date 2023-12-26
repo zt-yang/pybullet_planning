@@ -172,7 +172,8 @@ class Object(Index):
         # set_renderer(True)
         return obj
 
-    def place_obj(self, obj, max_trial=8, timeout=1.5, world=None, obstacles=None, visualize=False):
+    def place_obj(self, obj, max_trial=8, timeout=1.5, world=None, obstacles=None,
+                  visualize=False, interactive=False):
         """ place object on Surface or in Space """
         if isinstance(obj, str):
             raise NotImplementedError('place_obj: obj is str')
@@ -191,7 +192,7 @@ class Object(Index):
                                          visualize=visualize, num_samples=14)
         if result is not None:
             for body_pose in result:
-                obj.set_pose(body_pose, world=world)
+                obj.set_pose(body_pose)
                 coo = collided(obj, obstacles, tag='place_obj_database', world=world, verbose=False)
                 if not coo:
                     done = True
@@ -206,12 +207,16 @@ class Object(Index):
             x, y, z, yaw = place_fn(obj, self.body, self.link,
                                     PLACEMENT_ONLY=True, max_trial=max_trial)
             body_pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
-            obj.set_pose(body_pose, world=world)
+            obj.set_pose(body_pose)
             coo = collided(obj, obstacles, tag='place_obj', world=world, verbose=False)
             if not coo:
                 done = True
             if time.time() - start_time > timeout:
                 return obj
+
+        ## adjust with arrows
+        if interactive:
+            obj.change_pose_interactive()
 
         if self.verbose:
             if isinstance(self, Space):
@@ -339,18 +344,16 @@ class Object(Index):
             cz = z
         if theta is not None:
             r = quat_from_euler(Euler(yaw=theta))
-        self.set_pose(((cx, cy, cz), r), world=world)
+        self.set_pose(((cx, cy, cz), r))
 
-    def set_pose(self, conf, world=None):
+    def set_pose(self, conf):
         links = [get_link_name(self.body, l) for l in get_links(self.body)]
         if 'base' in links:
             set_group_conf(self.body, 'base', conf)
         else:
             set_pose(self.body, conf)
         if self.supporting_surface is not None:
-            if world is None:
-                world = self.world
-            self.supporting_surface.attach_obj(self, world)
+            self.supporting_surface.attach_obj(self, self.world)
 
     def get_joint(self, joint): # int | str
         # TODO: unify with get_joint in pybullet-planning

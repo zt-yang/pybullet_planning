@@ -193,7 +193,7 @@ def create_hollow(category, color=GREY, *args, **kwargs):
 
 
 def load_experiment_objects(world, w=.5, h=.7, wb=.07, hb=.1, mass=1, EXIST_PLATE=True,
-                            CABBAGE_ONLY=True, name='cabbage', color=(0, 1, 0, 1)):
+                            CABBAGE_ONLY=True, name='cabbage', color=(0, 1, 0, 1)) -> Object:
 
     if not CABBAGE_ONLY:
         table = world.add_object(
@@ -333,10 +333,10 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                 Pose(point=Point(x=round(x, 1), y=round(y, 1), z=-2 * FLOOR_HEIGHT)))
             continue
 
-        elif cat == 'room':
-            ## find the door to decide wall lengths
-            load_room(world, name, x, y, w, l, o['doors'], SCALING, asset_path=asset_path)
-            continue
+        # elif cat == 'room':
+        #     ## find the door to decide wall lengths
+        #     load_room(world, name, x, y, w, l, o['doors'], SCALING, asset_path=asset_path)
+        #     continue
 
         ## add the object itself
         yaw = {0: 0, 90: PI / 2, 180: PI, 270: -PI / 2}[o['yaw']]
@@ -424,6 +424,9 @@ def load_five_table_scene(world):
     return cabbage, egg, plate, salter, sink, stove, counter, table
 
 
+###############################################################################
+
+
 def load_full_kitchen(world, load_cabbage=True, **kwargs):
     world.set_skip_joints()
 
@@ -446,6 +449,35 @@ def load_full_kitchen(world, load_cabbage=True, **kwargs):
         cabbage.set_pose(Pose(point=Point(x=0.85, y=y, z=z)))
         return cabbage
     return None
+
+
+def load_fridge_and_food(world: World):
+    fridge = world.name_to_body('fridge')
+
+    door = world.add_joints_by_keyword('fridge', 'fridge_door')[0]
+    world.open_joint(door, extent=0.8)
+
+    shelf = world.add_object(Surface(
+        fridge, link=link_from_name(fridge, 'shelf_bottom'), name='shelf_bottom', category='supporter'
+    ))
+    set_camera_target_body(shelf.body, link=shelf.link, dx=1, dy=0, dz=0.5)
+
+    for food, pose in [
+        ('MeatTurkeyLeg', ((0.654, 5.062, 0.797), (0.0, 0.0, 0.97, 0.25))),
+        ('VeggieCabbage', ((0.668, 4.932, 0.83), (0.0, 0.0, 0.6, 0.8)))
+    ]:
+        movable = world.add_object(Moveable(
+            load_asset(food, x=0, y=0, yaw=random.uniform(-math.pi, math.pi), RANDOM_INSTANCE=True),
+            category='food'
+        ))
+        if pose is None:
+            shelf.place_obj(movable, interactive=True)
+        else:
+            movable.set_pose(pose)
+
+    world.close_joint(door)
+
+###############################################################################
 
 
 def load_rooms(world, DOOR_GAP = 1.9):

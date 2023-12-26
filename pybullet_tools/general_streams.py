@@ -19,7 +19,7 @@ from pybullet_tools.pr2_primitives import Pose, Grasp
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, is_contained, \
     visualize_point, collided, sample_pose, xyzyaw_to_pose, ObjAttachment, set_camera_target_body, \
-    sample_obj_on_body_link_surface, query_yes_no
+    sample_obj_on_body_link_surface, query_yes_no, get_hand_grasps
 
 from world_builder.samplers import get_learned_yaw, get_learned_poses
 
@@ -596,7 +596,6 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | P
     arm = robot.arms[0]
 
     def fn(body):
-        from .bullet_utils import get_hand_grasps
         grasps_O = get_hand_grasps(world, body, verbose=verbose, **kwargs)
         grasps = robot.make_grasps(grasp_type, arm, body, grasps_O, collisions=collisions)
         # debug weiyu: assume that we don't need contact
@@ -702,6 +701,7 @@ def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
     world = problem.world
     robot = problem.robot
     title = 'general_streams.get_handle_grasp_gen |'
+
     def fn(body_joint):
         body, joint = body_joint
         is_knob = body_joint in world.cat_to_bodies('knob')
@@ -712,10 +712,9 @@ def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
         arm = 'hand'
         if robot.name.startswith('pr2'):
             arm = 'left'
-        from bullet_utils import get_hand_grasps
 
         grasps = get_hand_grasps(world, body, link=handle_link, HANDLE_FILTER=True,
-                    visualize=visualize, RETAIN_ALL=False, LENGTH_VARIANTS=True, verbose=verbose)
+                                 visualize=visualize, RETAIN_ALL=False, LENGTH_VARIANTS=True, verbose=verbose)
 
         if verbose: print(f'\n{title} grasps =', [nice(g) for g in grasps])
 

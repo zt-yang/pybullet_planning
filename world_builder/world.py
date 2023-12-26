@@ -309,8 +309,11 @@ class World(WorldBase):
             return obj
         return getattr(obj, attr)
 
-    def get_name(self, body):
-        return self.get_attr(body, 'name')
+    def get_name(self, body, use_default_link_name=False):
+        name = self.get_attr(body, 'name')
+        if use_default_link_name and name == body and len(body) == 2:
+            name = get_link_name(body[0], body[1])
+        return name
 
     def get_category(self, body):
         return self.get_attr(body, 'category')
@@ -355,16 +358,16 @@ class World(WorldBase):
             draw_fitted_box(body, draw_box=True)
             # set_all_color(body, (1, 0, 0, 1))
 
-    def add_object(self, object, pose=None):
+    def add_object(self, obj: Object, pose=None) -> Object:
 
         OBJECTS_BY_CATEGORY = self.OBJECTS_BY_CATEGORY
         BODY_TO_OBJECT = self.BODY_TO_OBJECT
-        category = object.category
-        name = object.name
-        body = object.body
-        joint = object.joint
-        link = object.link
-        class_name = object.__class__.__name__.lower()
+        category = obj.category
+        name = obj.name
+        body = obj.body
+        joint = obj.joint
+        link = obj.link
+        class_name = obj.__class__.__name__.lower()
 
         if category not in OBJECTS_BY_CATEGORY:
             OBJECTS_BY_CATEGORY[category] = []
@@ -391,52 +394,52 @@ class World(WorldBase):
                     name = name[:name.index('#')]
                 name = '{}#{}'.format(name, count)
                 count += 1
-        object.name = name
+        obj.name = name
 
-        OBJECTS_BY_CATEGORY[category].append(object)
+        OBJECTS_BY_CATEGORY[category].append(obj)
 
         ## -------------- different types of object --------------
         ## object parts: doors, drawers, knobs
         if joint is not None:
-            BODY_TO_OBJECT[(body, joint)] = object
-            object.name = f"{BODY_TO_OBJECT[body].name}{LINK_STR}{object.name}"
+            BODY_TO_OBJECT[(body, joint)] = obj
+            obj.name = f"{BODY_TO_OBJECT[body].name}{LINK_STR}{obj.name}"
             from lisdf_tools.lisdf_loader import PART_INSTANCE_NAME
             n = self.get_instance_name(body)
-            part_name = get_link_name(body, object.handle_link)
+            part_name = get_link_name(body, obj.handle_link)
             n = PART_INSTANCE_NAME.format(body_instance_name=n, part_name=part_name)
-            self.instance_names[(body, object.handle_link)] = n
+            self.instance_names[(body, obj.handle_link)] = n
 
         ## object parts: surface, space
         elif link is not None:
-            BODY_TO_OBJECT[(body, None, link)] = object
-            object.name = f"{BODY_TO_OBJECT[body].name}{LINK_STR}{object.name}"
+            BODY_TO_OBJECT[(body, None, link)] = obj
+            obj.name = f"{BODY_TO_OBJECT[body].name}{LINK_STR}{obj.name}"
             if category == 'surface':
                 BODY_TO_OBJECT[body].surfaces.append(link)
             if category == 'space':
                 BODY_TO_OBJECT[body].spaces.append(link)
 
         ## object
-        elif not isinstance(object, Robot):
-            BODY_TO_OBJECT[body] = object
-            self.get_doors_drawers(object.body, skippable=True)
+        elif not isinstance(obj, Robot):
+            BODY_TO_OBJECT[body] = obj
+            self.get_doors_drawers(obj.body, skippable=True)
 
         ## robot
         else:
-            self.ROBOT_TO_OBJECT[body] = object
+            self.ROBOT_TO_OBJECT[body] = obj
 
         if link is not None or joint is not None:
             parent = BODY_TO_OBJECT[body]
-            object.path = parent.path
-            object.scale = parent.scale
-            object.mobility_id = parent.mobility_id
-            object.mobility_category = parent.mobility_category
-            object.mobility_identifier = parent.mobility_identifier
+            obj.path = parent.path
+            obj.scale = parent.scale
+            obj.mobility_id = parent.mobility_id
+            obj.mobility_category = parent.mobility_category
+            obj.mobility_identifier = parent.mobility_identifier
 
         if pose is not None:
-            add_body(object, pose)
+            add_body(obj, pose)
 
-        object.world = self
-        return object
+        obj.world = self
+        return obj
 
     def get_whole_fact(self, fact, init):
         if fact[0].lower() in ['isopenposition', 'isclosedposition']:
@@ -923,7 +926,6 @@ class World(WorldBase):
         surface_obj = self.get_object(surface)
         surface = surface_obj.name
 
-        kwargs['world'] = self
         surface_obj.place_obj(obj, max_trial=max_trial, **kwargs)
 
         ## ----------- rules of locate specific objects
