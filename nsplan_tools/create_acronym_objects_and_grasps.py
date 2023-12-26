@@ -135,7 +135,7 @@ def main():
 
         kitchen_world_obj_num += 1
 
-    print("Please manually update /pybullet_planning/world_builder/partnet_scales.py")
+    print("Please manually update /pybullet_planning/world_builder/asset_constants.py")
     #     'Mug': {
     #         'Mug_159e56c18906830278d8f8c02c47cde0_M': 1,
     #         'Mug_159e56c18906830278d8f8c02c47cde0_S': 1,

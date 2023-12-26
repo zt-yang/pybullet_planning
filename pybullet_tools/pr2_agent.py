@@ -946,7 +946,7 @@ def test_grasps(state, name='cabbage', visualize=True):
     return goals
 
 
-def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=False,
+def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=False, pause_each=False,
                      TEST_ATTACHMENT=False):
     robot = state.robot
     colors = [BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED]
@@ -992,7 +992,8 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=Fal
         if output is not None:
             gripper_grasp = output
             i += 1
-        wait_if_gui()
+        if pause_each:
+            wait_if_gui()
     if i > 0:
         set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.5)
 

@@ -75,10 +75,13 @@ MODEL_SCALES = {
         'VeggieGreenPepper': 0.0005,
     },
     'Salter': {
-        '3934': 0.05,
-        '5861': 0.06,
-        '6335': 0.06,
-        '6493': 0.06,
+        # '3934': 0.05,
+        # '5861': 0.06,
+        # '6335': 0.06,
+        # '6493': 0.06,
+        'BeehiveSalter': 0.02,
+        'SquareSalter': 0.02,
+        'TowerSalter': 0.02,
     },
     'Plate': {
         'SquarePlate': 0.025,

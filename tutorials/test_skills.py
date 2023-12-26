@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from __future__ import print_function
 import os
 import sys
@@ -38,12 +36,11 @@ from world_builder.loaders import sample_kitchen_sink, sample_full_kitchen, crea
 from world_builder.robot_builders import create_gripper_robot, create_pr2_robot
 from world_builder.utils import load_asset, get_instance_name, get_partnet_doors, get_partnet_spaces
 from world_builder.utils import get_instances as get_instances_helper
-from world_builder.partnet_scales import MODEL_HEIGHTS, OBJ_SCALES, MODEL_SCALES
+from world_builder.asset_constants import MODEL_HEIGHTS, OBJ_SCALES, MODEL_SCALES
 
 from tutorials.test_utils import get_test_world
 
 import math
-
 
 DEFAULT_TEST = 'kitchen' ## 'blocks_pick'
 
@@ -55,6 +52,58 @@ set_numpy_seed(seed)
 print('Seed:', seed)
 
 # ####################################
+
+
+def get_data(categories):
+    from world_builder.paths import PARTNET_PATH
+
+    for category in categories:
+        models = get_instances_helper(category)
+
+        target_model_path = join(ASSET_PATH, 'models', category)
+        if not isdir(target_model_path):
+            os.mkdir(target_model_path)
+
+        if isdir(PARTNET_PATH):
+            for idx in models:
+                old_path = join(PARTNET_PATH, idx)
+                new_path = join(target_model_path, idx)
+                if isdir(old_path) and not isdir(new_path):
+                    shutil.copytree(old_path, new_path)
+                    print(f'copying {old_path} to {new_path}')
+
+
+def test_texture(category, id):
+    connect(use_gui=True, shadows=False, width=1980, height=1238)
+    path = join(ASSET_PATH, 'models', category, id) ## , 'mobility.urdf'
+
+    body = load_body(path, 0.2)
+    set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
+    set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
+
+    # import untangle
+    # content = untangle.parse(path).robot
+    #
+    # import xml.etree.ElementTree as gfg
+    # root = gfg.Element("robot")
+    # tree = gfg.ElementTree(content)
+    # with open(path.replace('mobility', 'mobility_2'), "wb") as files:
+    #     tree.write(files)
+
+
+def load_body(path, scale, pose_2d=(0, 0), random_yaw=False):
+    file = join(path, 'mobility.urdf')
+    # if 'MiniFridge' in file:
+    #     file = file[file.index('../')+2:]
+    #     file = '/home/yang/Documents/cognitive-architectures/bullet' + file
+    print('loading', file)
+    with HideOutput(True):
+        body = load_model(file, scale=scale)
+        if isinstance(body, tuple): body = body[0]
+    pose = pose_from_2d(body, pose_2d, random_yaw=random_yaw)
+    # pose = (pose[0], unit_quat())
+    set_pose(body, pose)
+    return body, file
 
 
 def get_instances(category, **kwargs):
@@ -233,21 +282,6 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=F
     set_renderer(True)
     wait_if_gui('Finish?')
     disconnect()
-
-
-def load_body(path, scale, pose_2d=(0, 0), random_yaw=False):
-    file = join(path, 'mobility.urdf')
-    # if 'MiniFridge' in file:
-    #     file = file[file.index('../')+2:]
-    #     file = '/home/yang/Documents/cognitive-architectures/bullet' + file
-    print('loading', file)
-    with HideOutput(True):
-        body = load_model(file, scale=scale)
-        if isinstance(body, tuple): body = body[0]
-    pose = pose_from_2d(body, pose_2d, random_yaw=random_yaw)
-    # pose = (pose[0], unit_quat())
-    set_pose(body, pose)
-    return body, file
 
 
 def get_model_path(category, id):
@@ -768,43 +802,6 @@ def test_placement_counter():
     disconnect()
 
 
-def get_data(categories):
-    from world_builder.paths import PARTNET_PATH
-
-    for category in categories:
-        models = get_instances_helper(category)
-
-        target_model_path = join(ASSET_PATH, 'models', category)
-        if not isdir(target_model_path):
-            os.mkdir(target_model_path)
-
-        if isdir(PARTNET_PATH):
-            for idx in models:
-                old_path = join(PARTNET_PATH, idx)
-                new_path = join(target_model_path, idx)
-                if isdir(old_path) and not isdir(new_path):
-                    shutil.copytree(old_path, new_path)
-                    print(f'copying {old_path} to {new_path}')
-
-
-def test_texture(category, id):
-    connect(use_gui=True, shadows=False, width=1980, height=1238)
-    path = join(ASSET_PATH, 'models', category, id) ## , 'mobility.urdf'
-
-    body = load_body(path, 0.2)
-    set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
-    set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
-
-    # import untangle
-    # content = untangle.parse(path).robot
-    #
-    # import xml.etree.ElementTree as gfg
-    # root = gfg.Element("robot")
-    # tree = gfg.ElementTree(content)
-    # with open(path.replace('mobility', 'mobility_2'), "wb") as files:
-    #     tree.write(files)
-
-
 def test_pick_place_counter(robot):
     from world_builder.loaders import load_random_mini_kitchen_counter
     world = get_test_world(robot, semantic_world=True)
@@ -1086,32 +1083,31 @@ def test_tracik(robot, verbose=False):
 
 if __name__ == '__main__':
 
-    """ ---------------- object categories -----------------
+    """ ------------------------ object categories -------------------------
         Kitchen Moveable: 'Bottle', 'Food', 'BraiserLid', 'Sink', 'SinkBase', 'Faucet',
         Kitchen Furniture: 'MiniFridge', 'KitchenCounter', 'MiniFridgeBase',
                             'OvenCounter', 'OvenTop', 'MicrowaveHanging', 'MiniFridgeBase',
                             'CabinetLower', 'CabinetTall', 'CabinetUpper', 'DishwasherBox'
         Packing:    'Stapler', 'Camera', 'EyeGlasses', 'Knife', 'Tray',
-    ----------------- ----------------- ----------------- --------- """
+    ------------------------------------------------------------------------ """
 
     """ --- models related --- """
-    get_data(categories=['Cupboard'])
+    # get_data(categories=['Cupboard'])
     # test_texture(category='CoffeeMachine', id='103127')
     # test_vhacd(category='BraiserBody')
     # get_partnet_aabbs()
     # get_placement_z()
 
     """ --- robot (FEGripper) related  --- """
-    robot = 'spot'  ## 'feg' | 'pr2' | 'spot'
+    robot = 'pr2'  ## 'spot' | 'feg' | 'pr2'
     # test_gripper_joints()
     # test_gripper_range()
-    test_torso()
+    # test_torso()
     # test_reachability(robot)
     # test_tracik(robot)
 
-    """ --- grasps related ---
-    """
-    # test_grasps(robot, ['Bottle'], skip_grasps=False, test_attachment=False)  ## 'EyeGlasses'
+    """ --- grasps related --- """
+    test_grasps(robot, ['Salter'], skip_grasps=False, test_attachment=False)  ## 'Salter'
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
 

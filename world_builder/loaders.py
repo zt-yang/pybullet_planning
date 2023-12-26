@@ -462,25 +462,28 @@ def load_fridge_and_food(world: World):
     ))
     set_camera_target_body(shelf.body, link=shelf.link, dx=1, dy=0, dz=0.5)
 
+    movables = {}
     for food, pose in [
         ('MeatTurkeyLeg', ((0.654, 5.062, 0.797), (0.0, 0.0, 0.97, 0.25))),
-        ('VeggieCabbage', ((0.668, 4.932, 0.83), (0.0, 0.0, 0.6, 0.8)))
+        ('VeggieCabbage', ((0.668, 4.832, 0.83), (0.0, 0.0, 0.6, 0.8)))
     ]:
         movable = world.add_object(Moveable(
             load_asset(food, x=0, y=0, yaw=random.uniform(-math.pi, math.pi), RANDOM_INSTANCE=True),
             category='food'
         ))
+        movables[food] = movable.body
         if pose is None:
             shelf.place_obj(movable, interactive=True)
         else:
             movable.set_pose(pose)
 
     world.close_joint(door)
+    return movables
 
 ###############################################################################
 
 
-def load_rooms(world, DOOR_GAP = 1.9):
+def load_rooms(world, DOOR_GAP=1.9):
 
     kitchen = world.add_object(
         Environment(create_room(width=3, length=3, height=WALL_HEIGHT,
@@ -1576,14 +1579,14 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
         counters['food'] = [world.name_to_object(f"minifridge_storage")]
         counters['bottle'] = [world.name_to_object(f"sink_bottom")]
         counters['medicine'] = [world.name_to_object(f"cabinettop_storage")]
-        from world_builder.partnet_scales import DONT_LOAD
+        from world_builder.asset_constants import DONT_LOAD
         DONT_LOAD.append('VeggieZucchini')
     elif world.note in [552]:
         counters['food'] = [world.name_to_object(f"sink_bottom")]
         counters['bottle'] = [world.name_to_object(f"sink_counter_left"),
                               world.name_to_object(f"sink_counter_right"), ]
         counters['medicine'] = [world.name_to_object(f"cabinettop_storage")]
-        from world_builder.partnet_scales import DONT_LOAD
+        from world_builder.asset_constants import DONT_LOAD
         DONT_LOAD.append('VeggieZucchini')
     elif world.note in [553]:
         counters['food'] = [world.name_to_object(n) for n in \

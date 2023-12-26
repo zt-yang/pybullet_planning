@@ -38,7 +38,6 @@ from world_builder.utils import GRASPABLES
 from world_builder.samplers import get_learned_yaw
 
 DEFAULT_CONSTANTS = ['@movable', '@bottle', '@edible', '@medicine']  ## , '@world'
-observation_models = ['gpt4v', 'exposed', None]
 
 
 class WorldBase(object):
@@ -1337,7 +1336,7 @@ class World(WorldBase):
 class State(object):
     def __init__(self, world, objects=[], attachments={}, facts=[], variables={},
                  grasp_types=None, gripper=None,
-                 unobserved_objs=None, observation_model='exposed'): ## None
+                 unobserved_objs=None, observation_model=None): ##
         self.world = world
         if len(objects) == 0:
             # objects = [o for o in world.objects if isinstance(o, int)]
@@ -1348,7 +1347,7 @@ class State(object):
         self.objects = list(objects)
 
         self.observation_model = observation_model
-        assert observation_model in observation_models
+        assert observation_model in ['gpt4v', 'exposed', None]
         self.unobserved_objs = unobserved_objs
         if self.observation_model == 'exposed' and unobserved_objs is None:
             self.space_markers = self.initiate_space_markers()

@@ -21,7 +21,7 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sam
     set_renderer, link_from_name, parent_joint_from_link, set_random_seed, set_numpy_seed
 from pybullet_tools.bullet_utils import set_camera_target_body
 from pybullet_tools.logging import dump_json
-from world_builder.partnet_scales import DONT_LOAD
+from world_builder.asset_constants import DONT_LOAD
 from world_builder.paths import ASSET_PATH
 
 
@@ -414,7 +414,7 @@ def get_file_by_category(category, RANDOM_INSTANCE=False, SAMPLING=False):
 
 
 def get_scale_by_category(file=None, category=None, scale=1):
-    from world_builder.partnet_scales import MODEL_HEIGHTS, MODEL_SCALES, OBJ_SCALES
+    from world_builder.asset_constants import MODEL_HEIGHTS, MODEL_SCALES, OBJ_SCALES
 
     cat = category.lower()
 
@@ -446,7 +446,7 @@ def get_scale_by_category(file=None, category=None, scale=1):
 
 
 def get_parent_category(category):
-    from world_builder.partnet_scales import MODEL_SCALES
+    from world_builder.asset_constants import MODEL_SCALES
     for k, v in MODEL_SCALES.items():
         for vv in v:
             if vv == category:
@@ -629,7 +629,7 @@ def sort_instances(category, instances, get_all=False):
 
 
 def get_instances(category, **kwargs):
-    from world_builder.partnet_scales import MODEL_SCALES, MODEL_HEIGHTS, OBJ_SCALES
+    from world_builder.asset_constants import MODEL_SCALES, MODEL_HEIGHTS, OBJ_SCALES
     if category in MODEL_SCALES:
         instances = MODEL_SCALES[category]
     elif category in MODEL_HEIGHTS:
