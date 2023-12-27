@@ -90,7 +90,7 @@ class Object(Index):
             self.mobility_id = get_mobility_id(path)
             self.mobility_category = get_mobility_category(path)
             self.mobility_identifier = get_mobility_identifier(path)
-            if self.mobility_id is not None and not self.mobility_id.isdigit():
+            if name is None and self.mobility_id is not None and not self.mobility_id.isdigit():
                 name = self.mobility_id
             self.instance_name = get_instance_name(path)
         elif is_box_entity(body):
@@ -167,7 +167,7 @@ class Object(Index):
         obj = world.add_object(
             Object(load_asset(obj_name.lower(), **kwargs), category=category, name=name)
         )
-        world.put_on_surface(obj, max_trial=max_trial, surface=self.shorter_name)
+        world.put_on_surface(obj, surface=self.name, max_trial=max_trial)
         self.support_obj(obj)
         # set_renderer(True)
         return obj
@@ -509,7 +509,9 @@ class Object(Index):
 
     @property
     def shorter_name(self):
-        return self.name.replace('counter#1--', '')
+        name = self.name.replace('counter#1--', '')
+        name = ''.join(char for char in name if not (char == '#' or char.isdigit()))
+        return name
 
     @property
     def debug_name(self):

@@ -1218,7 +1218,7 @@ def get_loaded_scale(body):
         scale = data[0].dimensions[0]
     else:
         print('get_scale | no collision data for body', body)
-        wait_unlocked()
+        # wait_unlocked()
     return scale
 
 

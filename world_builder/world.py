@@ -1510,7 +1510,7 @@ class State(object):
         ## add assumed poses for unobserved objects
         assumed_poses = {}
         for body in unobserved_objs:
-            from world_builder.loaders import get_nvidia_kitchen_hacky_pose  ## TODO: hacky poses
+            from world_builder.loaders_nvidia_kitchen import get_nvidia_kitchen_hacky_pose  ## TODO: hacky poses
             space = random.choice(unobserved_spaces)
             pose = get_nvidia_kitchen_hacky_pose(self.world.BODY_TO_OBJECT[body], space)
             if pose is not None:

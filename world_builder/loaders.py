@@ -91,7 +91,6 @@ def get_room_boxes(width=1., length=None, height=None, thickness=0.01, gap=INF, 
         # Box(x1=width - thickness, x2=width,
         #     y1=0, y2=length,
         #     z1=0, z2=height),
-
         Box(x1=width - thickness, x2=width,
             y1=0, y2=0 + y_nongap,
             z1=0, z2=height),
@@ -422,65 +421,6 @@ def load_five_table_scene(world):
     counter = create_table(world, xy=(-2, 2), color=(.25, .75, .25, 1), category='counter', name='counter')
     table = create_table(world, xy=(-2, -2), color=(.75, .75, .25, 1), category='table', name='table')
     return cabbage, egg, plate, salter, sink, stove, counter, table
-
-
-###############################################################################
-
-
-def load_full_kitchen(world, load_cabbage=True, **kwargs):
-    world.set_skip_joints()
-
-    if world.robot is None:
-        custom_limits = ((0, 4), (4, 13))
-        robot = create_pr2_robot(world, base_q=(1.79, 6, PI / 2 + PI / 2),
-                                 custom_limits=custom_limits, USE_TORSO=True)
-
-    floor = load_floor_plan(world, plan_name='kitchen_v2.svg', **kwargs)
-    world.remove_object(floor)
-
-    lid = world.name_to_body('braiserlid')
-    world.put_on_surface(lid, 'braiserbody')
-
-    if load_cabbage:
-        cabbage = load_experiment_objects(world, CABBAGE_ONLY=True)
-        counter = world.name_to_object('hitman_tmp')
-        counter.place_obj(cabbage)
-        (_, y, z), _ = cabbage.get_pose()
-        cabbage.set_pose(Pose(point=Point(x=0.85, y=y, z=z)))
-        return cabbage
-    return None
-
-
-def load_fridge_and_food(world: World):
-    fridge = world.name_to_body('fridge')
-
-    door = world.add_joints_by_keyword('fridge', 'fridge_door')[0]
-    world.open_joint(door, extent=0.8)
-
-    shelf = world.add_object(Surface(
-        fridge, link=link_from_name(fridge, 'shelf_bottom'), name='shelf_bottom', category='supporter'
-    ))
-    set_camera_target_body(shelf.body, link=shelf.link, dx=1, dy=0, dz=0.5)
-
-    movables = {}
-    for food, pose in [
-        ('MeatTurkeyLeg', ((0.654, 5.062, 0.797), (0.0, 0.0, 0.97, 0.25))),
-        ('VeggieCabbage', ((0.668, 4.832, 0.83), (0.0, 0.0, 0.6, 0.8)))
-    ]:
-        movable = world.add_object(Moveable(
-            load_asset(food, x=0, y=0, yaw=random.uniform(-math.pi, math.pi), RANDOM_INSTANCE=True),
-            category='food'
-        ))
-        movables[food] = movable.body
-        if pose is None:
-            shelf.place_obj(movable, interactive=True)
-        else:
-            movable.set_pose(pose)
-
-    world.close_joint(door)
-    return movables
-
-###############################################################################
 
 
 def load_rooms(world, DOOR_GAP=1.9):
@@ -982,51 +922,6 @@ def load_feg_kitchen(world):
     world.add_to_cat(turkey, 'cleaned')
 
     return cabbage, turkey, lid
-
-
-##########################################################
-
-
-def get_nvidia_kitchen_hacky_pose(obj, supporter_name):
-    if obj is None:
-        return None
-    world = obj.world
-    if isinstance(supporter_name, tuple):
-        supporter_name = world.get_name(supporter_name)
-    poses = {
-        ('potbody', 'indigo_tmp'): ((0.63, 8.88, 0.11), (0.0, 0.0, -0.68, 0.73)),
-        ('microwave', 'hitman_tmp'): ((0.43, 6.38, 0.98), (0.0, 0.0, -1, 0)),
-        ('vinegarbottle', 'sektion'): ((0.75, 7.41, 1.24), (0.0, 0.0, 0.0, 1.0)), ## ((0.75, 7.3, 1.24), (0, 0, 0, 1)),
-        ('vinegarbottle', 'dagger'): ((0.45, 8.83, 1.54), (0.0, 0.0, 0.0, 1.0)),
-        ('vinegarbottle', 'indigo_tmp'): ((0.59, 8.88, 0.16), (0.0, 0.0, 0.0, 1.0)),
-        ('vinegarbottle', 'shelf_bottom'): ((0.64, 4.88, 0.89), (0.0, 0.0, 0.0, 1.0))
-    }
-    key = (obj.category, supporter_name)
-    if key in poses:
-        return poses[key]
-    for kk, pose in poses.items():
-        if kk[0] == key[0] and kk[1] in key[1]:
-            return pose
-    return None
-
-
-def place_in_nvidia_kitchen_space(obj, supporter_name, interactive=False):
-    world = obj.world
-
-    pose = get_nvidia_kitchen_hacky_pose(obj, supporter_name)
-    if pose is not None:
-        obj.set_pose(pose)
-    else:
-        world.name_to_object(supporter_name).place_obj(obj, world=world)
-        print(get_pose(obj))
-        wait_unlocked()
-
-    if interactive:
-        obj.change_pose_interactive()
-
-    ## check if the object is in collision with the surface
-    collided(obj.body, [world.name_to_object(supporter_name).body],
-             world=world, verbose=True, tag='place_in_nvidia_kitchen_space')
 
 
 ######################################################################################
