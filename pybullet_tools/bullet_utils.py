@@ -33,9 +33,9 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockR
     YELLOW, add_line, draw_point, RED, BROWN, BLACK, BLUE, GREY, remove_handles, apply_affine, vertices_from_rigid, \
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
     parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug, set_point, has_gui, get_rigid_clusters, \
-    BASE_LINK as ROOT_LINK, link_pairs_collision, draw_collision_info, wait_unlocked, apply_alpha, set_color, \
+    link_pairs_collision, draw_collision_info, wait_unlocked, apply_alpha, set_color, \
     dimensions_from_camera_matrix, get_field_of_view, set_joint_positions, get_image, sample_placement_on_aabb, \
-    timeout, unit_point
+    timeout, unit_point, get_joint_limits, ConfSaver, BASE_LINK as ROOT_LINK
 
 
 OBJ = '?obj'
@@ -1856,8 +1856,26 @@ def take_selected_seg_images(world, img_dir, body, indices, width=1280, height=9
         save_seg_image_given_obj_keys(rgb, keys, unique, file_name, crop=False)
 
 
+def get_joint_range(body, joint):
+    lower, upper = get_joint_limits(body, joint)
+    return upper - lower
+
+
+def is_joint_open(body, joint=-1):
+    if isinstance(body, tuple):
+        body, joint = body
+    lower, upper = get_joint_limits(body, joint)
+    pstn = get_joint_position(body, joint)
+    diff = pstn - lower
+    pstn_range = upper - lower
+    result = (diff > pstn_range / 4)
+    if lower < 0 and upper == 0:
+        result = (diff < -pstn_range / 4)
+    print((body, joint), f'\t{get_joint_name(body, joint)} at {pstn} in {(lower, upper)}\t', result)
+    return result
+
+
 def get_door_links(body, joint):
-    from pybullet_tools.utils import ConfSaver, get_joint_limits
     with ConfSaver(body):
         min_pstn, max_pstn = get_joint_limits(body, joint)
         set_joint_position(body, joint, min_pstn)
@@ -2250,7 +2268,7 @@ def get_objs_in_camera_images(camera_images, world=None, show=False, verbose=Fal
 
     objs = []
     images = []
-    colors = get_fine_rainbow_colors(math.ceil(len(world.objects)/7))
+    colors = get_fine_rainbow_colors(math.ceil(len(world.all_objects)/7))
 
     for camera_image in camera_images:
 

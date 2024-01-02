@@ -25,7 +25,7 @@ from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custo
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, get_handle_grasp_list_gen, \
     get_handle_grasp_gen, get_compute_pose_kin, get_compute_pose_rel_kin, \
     get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
-    get_bconf_close_to_surface
+    get_bconf_close_to_surface, sample_joint_position_closed_gen
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
     set_camera_target_robot, nice, BASE_LIMITS, initialize_collision_logs, collided, clean_preimage
 from pybullet_tools.pr2_problems import create_pr2
@@ -120,6 +120,8 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'test-cfree-btraj-pose': from_test(get_cfree_btraj_pose_test(p.robot, collisions=c)),
 
         'get-joint-position-open': from_gen_fn(sample_joint_position_gen(num_samples=6)),
+        'get-joint-position-closed': from_gen_fn(sample_joint_position_closed_gen()),
+        # 'get-joint-position-closed': from_gen_fn(sample_joint_position_gen(num_samples=6, closed=True)),
 
         'sample-handle-grasp': from_gen_fn(get_handle_grasp_gen(p, max_samples=None, collisions=c)),
 
@@ -507,6 +509,8 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
         elif test == 'test_pose_gen':
             goals, ff = test_pose_gen(state, init, args)
             init += ff
+        elif test == 'test_joint_closed':
+            goals = test_joint_closed(state, init, args)
         elif test == 'test_door_pull_traj':
             goals = test_door_pull_traj(state, init, args)
         elif test == 'test_reachable_pose':
@@ -889,22 +893,24 @@ def test_marker_pull_grasps(state, marker, visualize=False):
     return grasps
 
 
-def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=True, verbose=False):
+def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=False, verbose=False):
     if isinstance(name, str):
         body_joint = state.world.name_to_body(name)
-    else: ##if isinstance(name, Object):
+    elif isinstance(name, tuple):
         body_joint = name
-        name = state.world.BODY_TO_OBJECT[body_joint].shorter_name
+        name = state.world.BODY_TO_OBJECT[body_joint].name
+    else:
+        raise NotImplementedError(name)
 
+    name_to_object = state.world.name_to_object
     funk = get_handle_grasp_list_gen(state, num_samples=24, visualize=visualize, verbose=verbose)
     outputs = funk(body_joint)
     if visualize:
-        name_to_object = state.world.name_to_object
         body_pose = name_to_object(name).get_handle_pose()
         visualize_grasps_by_quat(state, outputs, body_pose, verbose=verbose)
     print(f'test_handle_grasps ({len(outputs)}): {outputs}')
     arm = state.robot.arms[0]
-    goals = [("AtHandleGrasp", arm, body_joint, outputs[1][0])]
+    goals = [("AtHandleGrasp", arm, body_joint, outputs[0][0])]
     return goals
 
 
@@ -1084,6 +1090,17 @@ def test_pose_gen(problem, init, args):
     print(f'test_pose_gen({o}, {s}) | {p}')
     pose.assign()
     return [('AtPose', o, p)], [('Pose', o, p), ('Supported', o, p, s)]
+
+
+def test_joint_closed(problem, init, o):
+    pstn = [i for i in init if i[0].lower() == "AtPosition".lower() and i[1] == o][0][-1]
+    funk = sample_joint_position_gen(closed=True)
+    funk = sample_joint_position_closed_gen()
+    goal = []
+    for (pstn1,) in funk(o, pstn):
+        print(pstn1)
+        goal = [('AtPosition', o, pstn1)]
+    return goal
 
 
 def test_door_pull_traj(problem, init, o):

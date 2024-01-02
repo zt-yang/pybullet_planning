@@ -27,7 +27,7 @@ from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_po
     is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
     set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR, CAMERA_MATRIX, visualize_camera_image, equal, \
     draw_pose2d_path, draw_pose3d_path, sort_body_parts, get_root_links, colorize_world, colorize_link, \
-    draw_fitted_box, find_closest_match, get_objs_in_camera_images, multiply_quat
+    draw_fitted_box, find_closest_match, get_objs_in_camera_images, multiply_quat, is_joint_open
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
     Attach, Detach, Clean, Cook, control_commands, link_from_name, \
     get_gripper_joints, GripperCommand, apply_commands, State, Command
@@ -61,6 +61,7 @@ class WorldBase(object):
         ## for data generation
         self.note = None
         self.camera = None
+        self.img_dir = None
         self.cameras = []
 
         ## for exposed observation model
@@ -68,6 +69,9 @@ class WorldBase(object):
         self.space_markers = None
 
     def get_name(self, body):
+        raise NotImplementedError
+
+    def cat_to_bodies(self, cat, **kwargs):
         raise NotImplementedError
 
     ###########################################################################
@@ -139,7 +143,7 @@ class WorldBase(object):
         if self.space_markers is not None:
             return
         self.space_markers = {}
-        for space in self.cat_to_bodies('space'):
+        for space in self.cat_to_bodies('space', get_all=True):
             body, _, link = space
             center, extent = get_center_extent(body, link=link)
             marker = create_box(s, s, s, color=RED)
@@ -170,9 +174,12 @@ class World(WorldBase):
         super().__init__(**kwargs)
 
         self.robot = None
-        self.BODY_TO_OBJECT = {}
         self.ROBOT_TO_OBJECT = {}
-        self.OBJECTS_BY_CATEGORY = {}
+        self.BODY_TO_OBJECT = {}
+        self.OBJECTS_BY_CATEGORY = defaultdict(list)
+        self.REMOVED_BODY_TO_OBJECT = {}
+        self.REMOVED_OBJECTS_BY_CATEGORY = defaultdict(list)
+
         self.ATTACHMENTS = {}
         self.sub_categories = {}
         self.sup_categories = {}
@@ -181,7 +188,6 @@ class World(WorldBase):
         self.init = []
         self.init_del = []
         self.articulated_parts = {k: [] for k in ['door', 'drawer', 'knob', 'button']}
-        self.REMOVED_BODY_TO_OBJECT = {}
         self.changed_joints = []
         self.non_planning_objects = []
         self.not_stackable = {}
@@ -254,6 +260,10 @@ class World(WorldBase):
         return [k for k in self.BODY_TO_OBJECT.keys() if k not in self.ROBOT_TO_OBJECT]
 
     @property
+    def all_objects(self):
+        return self.objects + [k for k in self.REMOVED_BODY_TO_OBJECT.keys()]
+
+    @property
     def movable(self):  ## include steerables if want to exclude them when doing base motion plannig
         return [self.robot] + self.cat_to_bodies('moveable')  ## + self.cat_to_bodies('steerable')
         # return [obj for obj in self.objects if obj not in self.fixed]
@@ -272,7 +282,7 @@ class World(WorldBase):
     @property
     def ignored_pairs(self):
         found = self.c_ignored_pairs
-        if self.floorplan is not None and 'kitchen' in self.floorplan:
+        if self.floorplan is not None and 'kitchen' in self.floorplan and len(self.cat_to_bodies('counter')) > 0:
             a = self.cat_to_bodies('counter')[0]
             b = self.cat_to_bodies('oven')[0]
             if (a, b) not in found:
@@ -699,24 +709,24 @@ class World(WorldBase):
             if str(body) not in bodies and str(body) not in exceptions:
                 self.remove_body_from_planning(body)
 
+        for cat, objs in self.REMOVED_OBJECTS_BY_CATEGORY.items():
+            print(f'\t{cat} ({len(objs)}) \t', [obj.name for obj in objs])
+
     def remove_body_from_planning(self, body):
         if body is None: return
         bodies = self.get_all_obj_in_body(body)
         for body in bodies:
             if body not in self.BODY_TO_OBJECT:
                 continue
-            category = self.BODY_TO_OBJECT[body].category
+            cat = self.BODY_TO_OBJECT[body].category
             obj = self.BODY_TO_OBJECT.pop(body)
             self.REMOVED_BODY_TO_OBJECT[body] = obj
             self.non_planning_objects.append(body)
 
             ## still need to find all floors
-            if category == 'floor':
+            if cat == 'floor':
                 continue
-            self.OBJECTS_BY_CATEGORY[category] = [
-                o for o in self.OBJECTS_BY_CATEGORY[category] if not
-                (o.body == obj.body and o.link == obj.link and o.joint == obj.joint)
-            ]
+            self.remove_object_from_category(cat, obj)
 
     def remove_category_from_planning(self, category, exceptions=[]):
         if len(exceptions) > 0 and isinstance(exceptions[0], str):
@@ -750,10 +760,7 @@ class World(WorldBase):
 
             # so cat_to_bodies('moveable') won't find it
             for cat in obj.categories:
-                self.OBJECTS_BY_CATEGORY[cat] = [
-                    o for o in self.OBJECTS_BY_CATEGORY[cat] if not
-                    (o.body == obj.body and o.link == obj.link and o.joint == obj.joint)
-                ]
+                self.remove_object_from_category(cat, obj)
             if hasattr(obj, 'supporting_surface') and isinstance(obj.supporting_surface, Surface):
                 surface = obj.supporting_surface
                 surface.supported_objects.remove(obj)
@@ -761,6 +768,19 @@ class World(WorldBase):
         if object in self.ATTACHMENTS:
             self.ATTACHMENTS.pop(object)
         remove_body(body)
+
+    def remove_object_from_category(self, cat, obj):
+        all_removed = [str(k) for k in self.REMOVED_OBJECTS_BY_CATEGORY[cat]]
+        self.REMOVED_OBJECTS_BY_CATEGORY[cat] += [
+            o for o in self.OBJECTS_BY_CATEGORY[cat] if str(o) not in all_removed and
+            (o.body == obj.body and o.link == obj.link and o.joint == obj.joint)
+        ]
+        self.OBJECTS_BY_CATEGORY[cat] = [
+            o for o in self.OBJECTS_BY_CATEGORY[cat] if not
+            (o.body == obj.body and o.link == obj.link and o.joint == obj.joint)
+        ]
+
+    ##################################################################################
 
     def body_to_name(self, body):
         if body in self.BODY_TO_OBJECT:
@@ -789,24 +809,31 @@ class World(WorldBase):
             return None  ## object doesn't exist
         return self.BODY_TO_OBJECT[self.name_to_body(name)]
 
-    def cat_to_bodies(self, cat):
+    def cat_to_bodies(self, cat, get_all=False):
         bodies = []
         objects = []
         if cat in self.OBJECTS_BY_CATEGORY:
             objects.extend(self.OBJECTS_BY_CATEGORY[cat])
+        if get_all and cat in self.REMOVED_OBJECTS_BY_CATEGORY:
+            objects.extend(self.REMOVED_OBJECTS_BY_CATEGORY[cat])
         if cat in self.sub_categories:
             for c in self.sub_categories[cat]:
                 objects.extend(self.OBJECTS_BY_CATEGORY[c])
+                if get_all:
+                    objects.extend(self.REMOVED_OBJECTS_BY_CATEGORY[c])
+
         for o in objects:
-            if o.link != None:
+            if o.link is not None:
                 bodies.append((o.body, o.joint, o.link))
-            elif o.joint != None:
+            elif o.joint is not None:
                 bodies.append((o.body, o.joint))
             else:
                 bodies.append(o.body)
         filtered_bodies = []
         for b in set(bodies):
             if b in self.BODY_TO_OBJECT or cat == 'floor':
+                filtered_bodies += [b]
+            elif get_all and b in self.REMOVED_BODY_TO_OBJECT or cat == 'floor':
                 filtered_bodies += [b]
             # else:
             #     print(f'   world.cat_to_bodies | category {cat} found {b}')
@@ -1157,7 +1184,7 @@ class World(WorldBase):
             position = get_link_position(body)  ## Position(body)
             init += [('Joint', body),
                      ('Position', body, position), ('AtPosition', body, position),
-                     ('IsClosedPosition', body, position),
+                     ('IsOpenedPosition' if is_joint_open(body) else 'IsClosedPosition', body, position),
                      ('IsJointTo', body, body[0])
                      ]
             if body in knobs:
@@ -1512,7 +1539,9 @@ class State(object):
         for body in unobserved_objs:
             from world_builder.loaders_nvidia_kitchen import get_nvidia_kitchen_hacky_pose  ## TODO: hacky poses
             space = random.choice(unobserved_spaces)
-            pose = get_nvidia_kitchen_hacky_pose(self.world.BODY_TO_OBJECT[body], space)
+            obj = self.world.BODY_TO_OBJECT[body] if body in self.world.BODY_TO_OBJECT \
+                else self.world.REMOVED_BODY_TO_OBJECT[body]
+            pose = get_nvidia_kitchen_hacky_pose(obj, space)
             if pose is not None:
                 assumed_poses[body] = pose
 

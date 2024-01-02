@@ -1927,8 +1927,8 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
 
                 ik_solver.set_conf(conf)
                 if collided(robot, obstacles_here, tag='ik_final_conf', **co_kwargs):
-                    robot.add_collision_grasp(a, o, g)
-                    robot.add_collision_conf(Conf(robot.body, ik_solver.joints, conf))
+                    # robot.add_collision_grasp(a, o, g)
+                    # robot.add_collision_conf(Conf(robot.body, ik_solver.joints, conf))
                     continue
 
                 if visualize:

@@ -526,16 +526,25 @@ def sample_joint_position_list_gen(num_samples=6):
     return gen
 
 
-def sample_joint_position_gen(num_samples=14):
+def sample_joint_position_closed_gen():
+    """ generate closed positions """
+    def fn(o, pstn1):
+        upper = Position(o, 'max').value
+        lower = Position(o, 'min').value
+        if upper > 0:
+            yield (Position(o, lower), )
+        if lower < 0:
+            yield (Position(o, upper), )
+    return fn
+
+
+def sample_joint_position_gen(num_samples=14, closed=False):
+    """ generate open positions if closed=False and closed positions if closed=True (deprecated) """
     def fn(o, pstn1):
 
         upper = Position(o, 'max').value
         lower = Position(o, 'min').value
-        if pstn1.extent == 'max':
-            upper = pstn1.value
-        elif pstn1.extent == 'min':
-            lower = pstn1.value
-        elif lower > upper:
+        if lower > upper:
             sometime = lower
             lower = upper
             upper = sometime
@@ -545,20 +554,31 @@ def sample_joint_position_gen(num_samples=14):
         a_third = (upper - lower) / 3
 
         if pstn1.is_prismatic():
-            pstns.extend([np.random.uniform(lower + a_half, upper) for k in range(num_samples)])
+            if closed:
+                pstns.extend([np.random.uniform(lower, upper - a_half) for k in range(num_samples)])
+            else:
+                pstns.extend([np.random.uniform(lower + a_half, upper) for k in range(num_samples)])
 
         else:
-
             if upper > 0:
-                if upper - lower > 3/4*math.pi:
-                    upper = lower + 3/4*math.pi
-                pstns.append(lower + math.pi/2)
-                pstns.extend([np.random.uniform(lower + a_third, upper) for k in range(num_samples)])
+                if closed:
+                    pstns.append(lower)
+                    pstns.extend([np.random.uniform(lower, lower + a_third) for k in range(num_samples)])
+                else:
+                    ## prevent from opening all the way is unreachable
+                    if upper - lower > 3/4*math.pi:
+                        upper = lower + 3/4*math.pi
+                    pstns.append(lower + math.pi/2)
+                    pstns.extend([np.random.uniform(lower + a_third, upper) for k in range(num_samples)])
             if lower < 0:
-                if upper - lower > 3/4*math.pi:
-                    lower = upper - 3/4*math.pi
-                pstns.append(upper - math.pi/2)
-                pstns.extend([np.random.uniform(lower, upper - a_third) for k in range(num_samples)])
+                if closed:
+                    pstns.append(upper)
+                    pstns.extend([np.random.uniform(upper - a_third, upper) for k in range(num_samples)])
+                else:
+                    if upper - lower > 3/4*math.pi:
+                        lower = upper - 3/4*math.pi
+                    pstns.append(upper - math.pi/2)
+                    pstns.extend([np.random.uniform(lower, upper - a_third) for k in range(num_samples)])
 
         pstns = [round(pstn, 3) for pstn in pstns]
         positions = [(Position(o, p), ) for p in pstns]

@@ -30,13 +30,15 @@ def load_full_kitchen(world, load_cabbage=True, **kwargs):
 ##########################################################
 
 
-def place_in_nvidia_kitchen_space(obj, supporter_name, interactive=False, open_doors=[]):
+def place_in_nvidia_kitchen_space(obj, supporter_name, interactive=False, doors=[]):
     world = obj.world
     opened = False
 
     pose = get_nvidia_kitchen_hacky_pose(obj, supporter_name)
     if pose is not None:
         obj.set_pose(pose)
+        if interactive:
+            obj.change_pose_interactive()
     else:
         ## initialize the object pose
         supporter = world.name_to_object(supporter_name)
@@ -44,7 +46,7 @@ def place_in_nvidia_kitchen_space(obj, supporter_name, interactive=False, open_d
 
         ## open all doors that may get in  the way
         set_camera_target_body(supporter.body, link=supporter.link, dx=1, dy=0, dz=0.5)
-        for door, extent in open_doors:
+        for door, extent in doors:
             world.open_joint(door, extent=extent)
 
         print(f'\n --- Putting {obj.shorter_name} on {supporter_name} starting at', get_pose(obj))
@@ -57,7 +59,7 @@ def place_in_nvidia_kitchen_space(obj, supporter_name, interactive=False, open_d
 
     ## close all doors that have been opened
     if opened:
-        for door, extent in open_doors:
+        for door, extent in doors:
             world.close_joint(door)
 
 
@@ -88,7 +90,7 @@ def get_nvidia_kitchen_hacky_pose(obj, supporter_name):
     return None
 
 
-def load_nvidia_kitchen_movables(world: World):
+def load_nvidia_kitchen_movables(world: World, open_doors_for: list = []):
 
     """ load joints """
     supporter_to_doors = load_nvidia_kitchen_joints(world)
@@ -120,16 +122,20 @@ def load_nvidia_kitchen_movables(world: World):
             load_asset(asset_name, x=0, y=0, yaw=random.uniform(-math.pi, math.pi), RANDOM_INSTANCE=rand_ins),
             category=category, name=name
         ))
-        open_doors = supporter_to_doors[supporter_name] if supporter_name in supporter_to_doors else []
-        place_in_nvidia_kitchen_space(movable, supporter_name, interactive=False, open_doors=open_doors)
+        doors = supporter_to_doors[supporter_name] if supporter_name in supporter_to_doors else []
+        place_in_nvidia_kitchen_space(movable, supporter_name, interactive=False, doors=doors)
 
         movables[name] = movable.body
-        movable_to_doors[name] = open_doors
+        movable_to_doors[name] = doors
+
+        if name in open_doors_for:
+            for door, extent in doors:
+                world.open_joint(door, extent=extent)
 
     return movables, movable_to_doors
 
 
-def load_nvidia_kitchen_joints(world: World):
+def load_nvidia_kitchen_joints(world: World, open_doors: bool = False):
 
     """ load joints """
     supporter_to_doors = {}
@@ -137,7 +143,7 @@ def load_nvidia_kitchen_joints(world: World):
             ('counter', ['chewie_door_left_joint', 'chewie_door_right_joint'], 1.4, 'sektion'),
             # ('counter', ['dagger_door_left_joint', 'dagger_door_right_joint'], 1, 'dagger'),
             # ('counter', ['indigo_door_left_joint', 'indigo_door_right_joint'], 1, 'indigo_tmp'),
-            ('fridge', ['fridge_door'], 0.8, 'shelf_bottom')
+            ('fridge', ['fridge_door'], 0.5, 'shelf_bottom')
         ]:
         doors = []
         for door_name in door_names:
