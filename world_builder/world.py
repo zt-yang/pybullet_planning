@@ -282,11 +282,23 @@ class World(WorldBase):
     @property
     def ignored_pairs(self):
         found = self.c_ignored_pairs
-        if self.floorplan is not None and 'kitchen' in self.floorplan and len(self.cat_to_bodies('counter')) > 0:
-            a = self.cat_to_bodies('counter')[0]
-            b = self.cat_to_bodies('oven')[0]
+        if self.floorplan is not None and 'kitchen' in self.floorplan:
+            a = self.cat_to_bodies('counter', get_all=True)[0]
+
+            ## not colliding with the oven which is placed inside the counter
+            b = self.cat_to_bodies('oven', get_all=True)[0]
             if (a, b) not in found:
                 found.extend([(a, b), (b, a)])
+
+            ## find all surfaces and spaces associated with the counter
+            counter = self.BODY_TO_OBJECT[a]
+            link_bodies = [(a, None, lk) for lk in counter.surfaces + counter.spaces]
+            for link_body in link_bodies:
+                objs = self.BODY_TO_OBJECT[link_body].supported_objects if link_body in self.BODY_TO_OBJECT \
+                    else self.REMOVED_BODY_TO_OBJECT[link_body].supported_objects
+                for obj in objs:
+                    if obj.body not in self.movable and (a, obj.body) not in found:
+                        found.extend([(a, obj.body), (obj.body, a)])
 
         # plate = self.name_to_body('plate')
         # if plate is not None:

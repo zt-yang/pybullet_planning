@@ -2361,7 +2361,7 @@ def change_pose_interactive(obj):
         if key == keyboard.Key.esc:
             return False
 
-    print('-' * 10 + ' Enter WASDRF for poses and QE for yaw ' + '-' * 10)
+    print('-' * 10 + ' Enter WASDRF for poses and QE for yaw (Press esc in terminal to exit) ' + '-' * 10)
     with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
         listener.join()
 
