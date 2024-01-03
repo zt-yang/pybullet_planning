@@ -949,6 +949,8 @@ def test_grasps(state, name='cabbage', visualize=True):
             # print(f'{title}collision between gripper {gripper} and object {g.body}: {body_collided}')
         else:
             remove_body(gripper)
+    else:
+        raise NotImplementedError(robot.joint_groups)
     return goals
 
 
@@ -956,13 +958,15 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=Fal
                      TEST_ATTACHMENT=False):
     robot = state.robot
     colors = [BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED]
+    color_names = ['BROWN', 'BLUE', 'WHITE', 'TAN', 'GREY', 'YELLOW', 'GREEN', 'BLACK', 'RED']
 
     def visualize_grasp(grasp, index=0):
         w = grasp.grasp_width
         if RETAIN_ALL:
-            print(' grasp.value', nice(grasp.value))
+            idx = index % len(colors)
+            print(' grasp.value', nice(grasp.value), 'color', color_names[idx])
             gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, body=grasp.body,
-                                                  color=colors[index%len(colors)], width=w, new_gripper=True)
+                                                  color=colors[idx], width=w, new_gripper=True)
             if collisions and collided(gripper_grasp, state.obstacles, verbose=True):
                 remove_body(gripper_grasp)
                 return None

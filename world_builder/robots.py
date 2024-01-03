@@ -51,9 +51,6 @@ class RobotAPI(Robot):
     def visualize_grasp(self, body_pose, grasp, arm='left', color=GREEN, **kwargs):
         raise NotImplementedError('should implement this for RobotAPI!')
 
-    def get_attachment(self, grasp, arm):
-        raise NotImplementedError('should implement this for RobotAPI!')
-
     def get_attachment_link(self, arm):
         raise NotImplementedError('should implement this for RobotAPI!')
 
@@ -66,12 +63,24 @@ class RobotAPI(Robot):
     def get_approach_pose(self, approach_vector, g):
         raise NotImplementedError('should implement this for RobotAPI!')
 
+    def create_gripper(self, arm='hand', visual=True, color=None):
+        raise NotImplementedError('should implement this for RobotAPI!')
+
     def get_gripper(self, arm=None, **kwargs):
         if arm is None:
             arm = self.arms[0]
         if arm not in self.grippers or self.grippers[arm] not in get_bodies():
             self.grippers[arm] = self.create_gripper(arm=arm, **kwargs)
         return self.grippers[arm]
+
+    def load_gripper(self, arm, color=GREEN, new_gripper=False):
+        if new_gripper:
+            gripper = self.create_gripper(arm)
+        else:
+            gripper = self.get_gripper(arm, visual=True)
+        if color is not None:
+            set_all_color(gripper, color)
+        return gripper
 
     def make_grasps(self, g_type, arm, body, grasps_O, collisions=True):
         from pybullet_tools.general_streams import is_top_grasp
@@ -129,6 +138,8 @@ class RobotAPI(Robot):
             body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
             tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
         return multiply(body_pose, grasp, tool_from_root)
+
+    ###############################################################################
 
     def get_custom_limits(self):
         return self.custom_limits
@@ -256,14 +267,9 @@ class MobileRobot(RobotAPI):
 
     def visualize_grasp(self, body_pose, grasp, arm='left', color=GREEN, cache=False,
                         body=None, verbose=False, new_gripper=False, **kwargs):
-        if new_gripper:
-            gripper_grasp = self.create_gripper(arm)
-        else:
-            gripper_grasp = self.get_gripper(arm, visual=True)
-        if color is not None:
-            set_all_color(gripper_grasp, color)
-        self.set_gripper_pose(body_pose, grasp, gripper=gripper_grasp, arm=arm, body=body, verbose=verbose)
-        return gripper_grasp
+        gripper = self.load_gripper(arm, color=color, new_gripper=new_gripper)
+        self.set_gripper_pose(body_pose, grasp, gripper=gripper, arm=arm, body=body, verbose=verbose)
+        return gripper
 
     def mod_grasp_along_handle(self, grasp, dl):
         return multiply(grasp, Pose(point=(0, dl, 0)))
@@ -815,22 +821,16 @@ class FEGripper(RobotAPI):
                 # remove_body(gripper)
         return width
 
-    def visualize_grasp(self, body_pose, grasp, arm='hand', color=GREEN, width=1, verbose=False,
-                        body=None, mod_target=None):
+    def visualize_grasp(self, body_pose, grasp, arm='hand', color=GREEN, width=1,
+                        body=None, verbose=False, new_gripper=False, mod_target=None):
         from pybullet_tools.flying_gripper_utils import se3_ik, set_cloned_se3_conf, get_cloned_se3_conf
 
         title = 'robots.visualize_grasp |'
 
-        body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
-        gripper = self.create_gripper(arm, visual=True)
+        gripper = self.load_gripper(arm, color=color, new_gripper=new_gripper)
         self.open_cloned_gripper(gripper, width)
-        set_all_color(gripper, color)
 
-        # debug weiyu
-        # body_pose = (body_pose[0], (0, 0, 0, 1.0)
-        # debug weiyu
-        # grasp_pose = [[0.1430741134, -0.0502372999, 0.1107835627], [-0.48416652, 0.75595677, 0.31153823, -0.31153823]]
-
+        body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
         grasp_pose = multiply(body_pose, grasp)
 
         if verbose:
@@ -840,7 +840,7 @@ class FEGripper(RobotAPI):
 
         grasp_conf = se3_ik(self, grasp_pose, verbose=verbose, mod_target=mod_target)
 
-        if verbose and grasp_conf == None:
+        if verbose and grasp_conf is None:
             print(f'{title} body_pose = {nice(body_pose)} --> ik failed')
 
         if verbose:

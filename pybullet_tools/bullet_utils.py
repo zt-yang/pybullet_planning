@@ -1411,7 +1411,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
 
     ## lastly store the newly sampled grasps
     if instance_name is not None:
-        add_grasp_in_db(db, db_file, instance_name, grasps, name=world.get_name(body_name, use_default_link_name=True),
+        add_grasp_in_db(db, db_file, instance_name, grasps, name=world.get_name(body_name),
                         LENGTH_VARIANTS=LENGTH_VARIANTS, scale=scale)
     remove_handles(handles)
     # if len(grasps) > num_samples:
@@ -1443,7 +1443,8 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
         # set_camera_target_body(gripper_grasp, dx=0.05, dy=-0.05, dz=0.5)  ## above dishwasher
         # set_camera_target_body(gripper_grasp, dx=0.05, dy=-0.05, dz=0.15)  ## inside dishwasher
         # set_camera_target_body(gripper_grasp, dx=0.15, dy=-0.15, dz=0)  ## bottles on floor
-        set_camera_target_body(gripper_grasp, dx=2, dy=1, dz=1)  ## minifridges on the floor
+        # set_camera_target_body(gripper_grasp, dx=2, dy=1, dz=1)  ## minifridges on the floor
+        set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=1)  ## fork inside indigo drawer top
 
     ## criteria 1: when gripper isn't closed, it shouldn't collide
     firstly = collided(gripper_grasp, obstacles, min_num_pts=min_num_pts,

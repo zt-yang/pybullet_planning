@@ -1107,7 +1107,8 @@ if __name__ == '__main__':
     # test_tracik(robot)
 
     """ --- grasps related --- """
-    test_grasps(robot, ['Salter'], skip_grasps=False, test_attachment=False)  ## 'Salter'
+    # test_grasps(robot, ['Salter'], skip_grasps=False, test_attachment=False)  ## 'Salter'
+    test_grasps(robot, ['KitchenFork'], skip_grasps=False, test_attachment=False)
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
 
