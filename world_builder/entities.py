@@ -536,8 +536,9 @@ class Supporter(Object):
 
 
 class Region(Object):
-    def __init__(self, body, **kwargs):
-       super(Region, self).__init__(body, collision=False, **kwargs)
+    def __init__(self, body, governing_joints=[], **kwargs):
+        super(Region, self).__init__(body, collision=False, **kwargs)
+        self.governing_joints = governing_joints
 
 
 class Stove(Region):
@@ -563,7 +564,7 @@ class Environment(Region):
 class Surface(Region):
     """ to support objects on top, like kitchentop and fridge shelves """
     def __init__(self, body, link, **kwargs):
-        super(Region, self).__init__(body, link=link, **kwargs)
+        super().__init__(body, link=link, **kwargs)
         if self.name is None:
             self.name = get_link_name(body, link)
 
@@ -571,7 +572,7 @@ class Surface(Region):
 class Space(Region):
     """ to support object inside, like cabinets and drawers """
     def __init__(self, body, link, **kwargs):
-        super(Region, self).__init__(body, link=link, **kwargs)
+        super().__init__(body, link=link, **kwargs)
         if self.name is None:
             self.name = get_link_name(body, link)
 

@@ -112,8 +112,8 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
 
         'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(p.robot, collisions=c, visualize=False)),
         'test-cfree-approach-pose': from_test(get_cfree_approach_pose_test(p, collisions=c)),
-        # 'test-cfree-pose-pose-rel': from_test(get_cfree_pose_pose_rel_test(collisions=c)),
-        # 'test-cfree-approach-pose-rel': from_test(get_cfree_approach_pose_rel_test(p, collisions=c)),
+        'test-cfree-rel-pose-pose': from_test(get_cfree_rel_pose_pose_test(collisions=c)),
+        'test-cfree-approach-rel-pose': from_test(get_cfree_approach_rel_pose_test(p, collisions=c)),
 
         'test-cfree-traj-pose': from_test(get_cfree_traj_pose_test(p, collisions=c)),
         'test-cfree-traj-position': from_test(get_cfree_traj_pose_test(p, collisions=c)),

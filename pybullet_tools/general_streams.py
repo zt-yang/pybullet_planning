@@ -23,6 +23,31 @@ from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, is_
 
 from world_builder.samplers import get_learned_yaw, get_learned_poses
 
+class LinkPose(Pose):
+    num = count()
+    def __init__(self, body, value=None, support=None, init=False, index=None,
+                 joint=None, position=None):
+        super().__init__(body, value=value, support=support, init=init, index=index)
+        self.joint = joint
+        self.position = position
+    def assign(self):
+        set_joint_position(self.body, self.joint, self.position)
+    def __repr__(self):
+        index = self.index
+        return 'lp{}={}'.format(index, nice(self.value))
+
+class RelPose(Pose):
+    num = count()
+    def __init__(self, body, value=None, support=None, init=False, index=None, support_value=None):
+        super().__init__(body, value=value, support=support, init=init, index=index)
+        self.support_value = support_value
+    def assign(self):
+        pose = multiply(self.support_value, self.value)
+        set_pose(self.body, pose)
+    def __repr__(self):
+        index = self.index
+        return 'rp{}={}'.format(index, nice(self.value))
+
 
 class Position(object):
     num = count()
@@ -794,22 +819,8 @@ def get_pose_from_attachment(problem):
 """
 
 
-def get_cfree_pose_pose_test(robot, collisions=True, visualize=False, **kwargs):
-    def test(b1, p1, b2, p2, fluents=[]):
-        if not collisions or (b1 == b2) or b2 in ['@world']:
-            return True
-        if fluents:
-            process_motion_fluents(fluents, robot)
-        p1.assign()
-        p2.assign()
-        result = not pairwise_collision(b1, b2, **kwargs)
-        if not result and visualize:
-            wait_unlocked()
-        return result #, max_distance=0.001)
-    return test
-
-
 def get_cfree_obj_approach_pose_test(robot, collisions=True):
+    """ KUKA version """
     def test(b1, p1, g1, b2, p2, fluents=[]):
         if not collisions or (b1 == b2) or b2 in ['@world']:
             return True
@@ -826,10 +837,27 @@ def get_cfree_obj_approach_pose_test(robot, collisions=True):
     return test
 
 
+def get_cfree_pose_pose_test(robot, collisions=True, visualize=False, **kwargs):
+    def test(b1, p1, b2, p2, fluents=[]):
+        if not collisions or (b1 == b2) or b2 in ['@world']:
+            return True
+        if fluents:
+            process_motion_fluents(fluents, robot)
+        p1.assign()
+        p2.assign()
+        result = not pairwise_collision(b1, b2, **kwargs)
+        if not result and visualize:
+            wait_unlocked()
+        return result #, max_distance=0.001)
+    return test
+
+
 def get_cfree_approach_pose_test(problem, collisions=True):
+    """ PR2 version """
     # TODO: apply this before inverse kinematics as well
     arm = problem.robot.arms[0]
     gripper = problem.get_gripper()
+
     def test(b1, p1, g1, b2, p2):
         if not collisions or (b1 == b2) or b2 in ['@world']:
             return True
@@ -837,6 +865,43 @@ def get_cfree_approach_pose_test(problem, collisions=True):
         result = False
         for _ in problem.robot.iterate_approach_path(arm, gripper, p1.value, g1, body=b1):
             if pairwise_collision(b1, b2) or pairwise_collision(gripper, b2):
+                result = False
+                break
+            result = True
+        return result
+    return test
+
+
+def get_cfree_rel_pose_pose_test(robot, collisions=True, visualize=False, **kwargs):
+    def test(b1, rp1, b2, p2, b3, p3, fluents=[]):
+        if not collisions or (b1 == b3) or b3 in ['@world']:
+            return True
+        if fluents:
+            process_motion_fluents(fluents, robot)
+        p2.assign()
+        rp1.assign()
+        p3.assign()
+        result = not pairwise_collision(b1, b3, **kwargs)
+        if not result and visualize:
+            wait_unlocked()
+        return result #, max_distance=0.001)
+    return test
+
+
+def get_cfree_approach_rel_pose_test(problem, collisions=True):
+    """ PR2 version """
+    # TODO: apply this before inverse kinematics as well
+    arm = problem.robot.arms[0]
+    gripper = problem.get_gripper()
+
+    def test(b1, rp1, b2, p2, g, b3, p3):
+        if not collisions or (b1 == b3) or b3 in ['@world']:
+            return True
+        p3.assign()
+        pose = multiply(p2.value, rp1.value)
+        result = False
+        for _ in problem.robot.iterate_approach_path(arm, gripper, pose, g, body=b1):
+            if pairwise_collision(b1, b3) or pairwise_collision(gripper, b3):
                 result = False
                 break
             result = True
