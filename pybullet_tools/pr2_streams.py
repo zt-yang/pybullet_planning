@@ -217,6 +217,152 @@ def solve_nearby_ik(robot, arm, approach_pose, custom_limits={}):
     return approach_conf
 
 
+def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
+                      world, robot, custom_limits, obstacles_here, ignored_pairs_here,
+                      title, ACONF=False, teleport=False, verbose=True, visualize=False):
+    attachments = {}
+
+    if isinstance(obj, tuple):  ## may be a (body, joint) or a body with a marker
+        body = obj[0]
+    else:
+        body = obj
+
+    ## TODO: change to world.get_grasp_parent
+    addons = [body]
+    if hasattr(world, 'BODY_TO_OBJECT') and body in world.BODY_TO_OBJECT and \
+            world.BODY_TO_OBJECT[body].grasp_parent is not None:
+        addons.append(world.BODY_TO_OBJECT[body].grasp_parent)
+    addon_obstacles = obstacles_here  ## + addons if collisions else []
+
+    # approach_obstacles = {obst for obst in obstacles_here if not is_placement(body, obst)}
+    approach_obstacles = obstacles_here
+    ignored_pairs_here.extend([[(body, obst), (obst, body)] for obst in obstacles_here if is_placement(body, obst)])
+    # approach_obstacles = problem.world.refine_marker_obstacles(obj, approach_obstacles)  ## for steerables
+
+    tool_from_root = get_tool_from_root(robot, arm)
+    gripper_pose = multiply(robot.get_grasp_pose(pose_value, grasp.value, body=obj), invert(tool_from_root))
+    approach_pose = multiply(robot.get_grasp_pose(pose_value, grasp.approach, body=obj), invert(tool_from_root))
+
+    arm_link = get_gripper_link(robot, arm)
+    arm_joints = get_arm_joints(robot, arm)
+
+    default_conf = arm_conf(arm, grasp.carry)
+    # sample_fn = get_sample_fn(robot, arm_joints)
+    base_conf.assign()
+    open_arm(robot, arm)
+    set_joint_positions(robot, arm_joints, default_conf)  # default_conf | sample_fn()
+
+    if visualize:
+        print('grasp_value', nice(grasp.value))
+        gripper_grasp = robot.visualize_grasp(pose_value, grasp.approach, body=obj)
+        set_camera_target_body(gripper_grasp)
+        wait_unlocked()
+
+    if base_conf.joint_state is not None:
+        grasp_conf = list(map(base_conf.joint_state.get, arm_joints))
+        set_joint_positions(robot, arm_joints, grasp_conf)
+    else:
+        grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose,
+                                            custom_limits=custom_limits)  # , upper_limits=USE_CURRENT)
+        # nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
+
+    if (grasp_conf is None) or collided(robot, obstacles_here, articulated=True, world=world, tag=title,
+                                        verbose=verbose, ignored_pairs=ignored_pairs_here,
+                                        min_num_pts=3):  ## approach_obstacles): # [obj]
+        # wait_unlocked()
+        if verbose:
+            if grasp_conf is not None:
+                grasp_conf = nice(grasp_conf)
+            print(
+                f'{title}Grasp IK failure | {grasp_conf} <- pr2_inverse_kinematics({robot}, {nice(base_conf.values)}, '
+                f'{arm}, {nice(gripper_pose[0])}) | pose {pose_value}, grasp {grasp}')
+        # if grasp_conf is not None:
+        #    print(grasp_conf)
+        #    #wait_if_gui()
+        if visualize:
+            remove_body(gripper_grasp)
+        return None
+    # elif verbose:
+    #     print(f'{title}Grasp IK success | {nice(grasp_conf)} = pr2_inverse_kinematics({robot} at {nice(base_conf.values)}, '
+    #           f'{arm}, {nice(gripper_pose[0])}) | pose = {pose}, grasp = {grasp}')
+
+    if has_tracik():
+        from pybullet_tools.tracik import IKSolver
+        tool_link = robot.get_tool_link(arm)
+        ik_solver = IKSolver(robot, tool_link=tool_link, first_joint=arm_joints[0],
+                             custom_limits=custom_limits)  # TODO: cache
+        approach_conf = ik_solver.solve(approach_pose, seed_conf=grasp_conf)
+    else:
+        # TODO(caelan): sub_inverse_kinematics's clone_body has large overhead
+        approach_conf = pr2_inverse_kinematics(robot, arm, approach_pose, custom_limits=custom_limits,
+                                               upper_limits=USE_CURRENT, nearby_conf=USE_CURRENT)
+        # approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits)
+    if (approach_conf is None) or collided(robot, obstacles_here, articulated=True, world=world, tag=title,
+                                           verbose=verbose, ignored_pairs=ignored_pairs_here, min_num_pts=3):  ##
+        if verbose:
+            if approach_conf != None:
+                approach_conf = nice(approach_conf)
+            print(f'{title}Approach IK failure', approach_conf)
+        # wait_if_gui()
+        if visualize:
+            remove_body(gripper_grasp)
+        return None
+    # elif verbose:
+    #     print(f'{title}Approach IK success | sub_inverse_kinematics({robot} at {nice(base_conf.values)}, '
+    #           f'{arm}, {nice(approach_pose[0])}) | pose = {pose}, grasp = {nice(grasp.approach)} -> {nice(approach_conf)}')
+
+    # ## -------------------------------------------
+    # arm_joints = get_arm_joints(robot, 'left')
+    # aconf = Conf(robot, arm_joints, get_joint_positions(robot, arm_joints))
+    # print(f'@ pr2_streams.get_ik_fn() -> aconf = {aconf} | bconf = {base_conf}')
+    # ## -------------------------------------------
+
+    set_joint_positions(robot, arm_joints, approach_conf)
+    # approach_conf = get_joint_positions(robot, arm_joints)
+
+    if teleport:
+        path = [default_conf, approach_conf, grasp_conf]
+    else:
+        resolutions = DEFAULT_RESOLUTION * np.ones(len(arm_joints))
+        if is_top_grasp(robot, arm, body, grasp) or True:
+            grasp_path = plan_direct_joint_motion(robot, arm_joints, grasp_conf, attachments=attachments.values(),
+                                                  obstacles=approach_obstacles, self_collisions=SELF_COLLISIONS,
+                                                  use_aabb=True, cache=True, ignored_pairs=ignored_pairs_here,
+                                                  custom_limits=custom_limits, resolutions=resolutions / 2.)
+            if grasp_path is None:
+                if verbose: print(f'{title}Grasp path failure')
+                if visualize:
+                    remove_body(gripper_grasp)
+                return None
+            dest_conf = approach_conf
+        else:
+            grasp_path = []
+            dest_conf = grasp_conf
+        set_joint_positions(robot, arm_joints, default_conf)
+        approach_path = plan_joint_motion(robot, arm_joints, dest_conf, attachments=attachments.values(),
+                                          obstacles=obstacles_here, self_collisions=SELF_COLLISIONS,
+                                          custom_limits=custom_limits, resolutions=resolutions,
+                                          use_aabb=True, cache=True, ignored_pairs=ignored_pairs_here,
+                                          restarts=2, iterations=25, smooth=0)  # smooth=25
+        if approach_path is None:
+            if verbose: print(f'{title}\tApproach path failure')
+            if visualize:
+                remove_body(gripper_grasp)
+            return None
+        path = approach_path + grasp_path
+
+    mt = create_trajectory(robot, arm_joints, path)
+    cmd = Commands(State(attachments=attachments), savers=[BodySaver(robot)], commands=[mt])
+
+    set_joint_positions(robot, arm_joints, default_conf)  # default_conf | sample_fn()
+
+    if visualize:
+        remove_body(gripper_grasp)
+    if ACONF:
+        return (mt.path[-1], cmd)
+    return (cmd,)
+
+
 def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
                   ACONF=False, verbose=True, visualize=False):
     robot = problem.robot
@@ -227,6 +373,7 @@ def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
     title = 'pr2_streams.get_ik_fn_old:\t'
 
     def fn(arm, obj, pose, grasp, base_conf, fluents=[]):
+
         obstacles_here = copy.deepcopy(obstacles)
         ignored_pairs_here = copy.deepcopy(ignored_pairs)
 
@@ -236,152 +383,55 @@ def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
             obstacles_here.extend([p[1] for p in fluents if p[0] == 'atpose'])
         else:
             world_saver.restore()
-            attachment = grasp.get_attachment(problem.robot, arm, visualize=False)
-            attachments = {attachment.child: attachment} ## {}  ## TODO: problem with having (body, joint) tuple
-
-        attachments = {}
-
-        if isinstance(obj, tuple): ## may be a (body, joint) or a body with a marker
-            body = obj[0]
-        else:
-            body = obj
+            attachment = grasp.get_attachment(robot, arm, visualize=False)
+            attachments = {attachment.child: attachment}  ## {}  ## TODO: problem with having (body, joint) tuple
 
         if 'pstn' in str(pose): ## isinstance(pose, Position):
             pose_value = linkpose_from_position(pose)
         else:
             pose_value = pose.value
-
-        ## TODO: change to world.get_grasp_parent
-        addons = [body]
-        if hasattr(world, 'BODY_TO_OBJECT') and body in world.BODY_TO_OBJECT and \
-                world.BODY_TO_OBJECT[body].grasp_parent is not None:
-            addons.append(world.BODY_TO_OBJECT[body].grasp_parent)
-        addon_obstacles = obstacles_here ## + addons if collisions else []
-
-        # approach_obstacles = {obst for obst in obstacles_here if not is_placement(body, obst)}
-        approach_obstacles = obstacles_here
-        ignored_pairs_here.extend([[(body, obst), (obst, body)] for obst in obstacles_here if is_placement(body, obst)])
-        # approach_obstacles = problem.world.refine_marker_obstacles(obj, approach_obstacles)  ## for steerables
-
-        tool_from_root = get_tool_from_root(robot, arm)
-        gripper_pose = multiply(robot.get_grasp_pose(pose_value, grasp.value, body=obj), invert(tool_from_root))
-        approach_pose = multiply(robot.get_grasp_pose(pose_value, grasp.approach, body=obj), invert(tool_from_root))
-
-        arm_link = get_gripper_link(robot, arm)
-        arm_joints = get_arm_joints(robot, arm)
-
-        default_conf = arm_conf(arm, grasp.carry)
-        #sample_fn = get_sample_fn(robot, arm_joints)
         pose.assign()
-        base_conf.assign()
-        open_arm(robot, arm)
-        set_joint_positions(robot, arm_joints, default_conf) # default_conf | sample_fn()
 
-        if visualize:
-            print('grasp_value', nice(grasp.value))
-            gripper_grasp = robot.visualize_grasp(pose_value, grasp.approach, body=obj)
-            set_camera_target_body(gripper_grasp)
-            wait_unlocked()
+        return solve_approach_ik(
+            arm, obj, pose_value, grasp, base_conf,
+            world, robot, custom_limits, obstacles_here, ignored_pairs_here,
+            title, ACONF=ACONF, teleport=teleport, verbose=verbose, visualize=visualize
+        )
+    return fn
 
-        if base_conf.joint_state is not None:
-            grasp_conf = list(map(base_conf.joint_state.get, arm_joints))
-            set_joint_positions(robot, arm_joints, grasp_conf)
+
+def get_ik_rel_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
+                      ACONF=False, verbose=True, visualize=False):
+    robot = problem.robot
+    world = problem.world
+    obstacles = problem.fixed if collisions else []
+    ignored_pairs = world.ignored_pairs
+    world_saver = WorldSaver()
+    title = 'pr2_streams.get_ik_rel_fn_old:\t'
+
+    def fn(arm, obj, relpose, obj2, pose2, grasp, base_conf, fluents=[]):
+
+        obstacles_here = copy.deepcopy(obstacles)
+        ignored_pairs_here = copy.deepcopy(ignored_pairs)
+
+        if fluents:
+            attachments = process_motion_fluents(fluents, robot)
+            attachments = {a.child: a for a in attachments}
+            obstacles_here.extend([p[1] for p in fluents if p[0] in ['atpose', 'atrelpose']])
         else:
-            grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose, custom_limits=custom_limits) #, upper_limits=USE_CURRENT)
-                                                #nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
+            world_saver.restore()
+            attachment = grasp.get_attachment(robot, arm, visualize=False)
+            attachments = {attachment.child: attachment}  ## {}  ## TODO: problem with having (body, joint) tuple
 
-        if (grasp_conf is None) or collided(robot, obstacles_here, articulated=True, world=world, tag=title,
-                                            verbose=verbose, ignored_pairs=ignored_pairs_here, min_num_pts=3): ## approach_obstacles): # [obj]
-            #wait_unlocked()
-            if verbose:
-                if grasp_conf is not None:
-                    grasp_conf = nice(grasp_conf)
-                print(f'{title}Grasp IK failure | {grasp_conf} <- pr2_inverse_kinematics({robot}, {nice(base_conf.values)}, '
-                      f'{arm}, {nice(gripper_pose[0])}) | pose {pose}, grasp {grasp}')
-            #if grasp_conf is not None:
-            #    print(grasp_conf)
-            #    #wait_if_gui()
-            if visualize:
-                remove_body(gripper_grasp)
-            return None
-        # elif verbose:
-        #     print(f'{title}Grasp IK success | {nice(grasp_conf)} = pr2_inverse_kinematics({robot} at {nice(base_conf.values)}, '
-        #           f'{arm}, {nice(gripper_pose[0])}) | pose = {pose}, grasp = {grasp}')
+        pose2.assign()
+        relpose.assign()
+        pose_value = multiply(pose2.value, relpose.value)
 
-        if has_tracik():
-            from pybullet_tools.tracik import IKSolver
-            tool_link = robot.get_tool_link(arm)
-            ik_solver = IKSolver(robot, tool_link=tool_link, first_joint=arm_joints[0], custom_limits=custom_limits) # TODO: cache
-            approach_conf = ik_solver.solve(approach_pose, seed_conf=grasp_conf)
-        else:
-            # TODO(caelan): sub_inverse_kinematics's clone_body has large overhead
-            approach_conf = pr2_inverse_kinematics(robot, arm, approach_pose, custom_limits=custom_limits,
-                                                   upper_limits=USE_CURRENT, nearby_conf=USE_CURRENT)
-            #approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits)
-        if (approach_conf is None) or collided(robot, obstacles_here, articulated=True, world=world, tag=title,
-                                               verbose=verbose, ignored_pairs=ignored_pairs, min_num_pts=3): ##
-            if verbose:
-                if approach_conf != None:
-                    approach_conf = nice(approach_conf)
-                print(f'{title}Approach IK failure', approach_conf)
-            # wait_if_gui()
-            if visualize:
-                remove_body(gripper_grasp)
-            return None
-        # elif verbose:
-        #     print(f'{title}Approach IK success | sub_inverse_kinematics({robot} at {nice(base_conf.values)}, '
-        #           f'{arm}, {nice(approach_pose[0])}) | pose = {pose}, grasp = {nice(grasp.approach)} -> {nice(approach_conf)}')
-
-        # ## -------------------------------------------
-        # arm_joints = get_arm_joints(robot, 'left')
-        # aconf = Conf(robot, arm_joints, get_joint_positions(robot, arm_joints))
-        # print(f'@ pr2_streams.get_ik_fn() -> aconf = {aconf} | bconf = {base_conf}')
-        # ## -------------------------------------------
-
-        set_joint_positions(robot, arm_joints, approach_conf)
-        #approach_conf = get_joint_positions(robot, arm_joints)
-
-        if teleport:
-            path = [default_conf, approach_conf, grasp_conf]
-        else:
-            resolutions = DEFAULT_RESOLUTION * np.ones(len(arm_joints))
-            if is_top_grasp(robot, arm, body, grasp) or True:
-                grasp_path = plan_direct_joint_motion(robot, arm_joints, grasp_conf, attachments=attachments.values(),
-                                                      obstacles=approach_obstacles, self_collisions=SELF_COLLISIONS,
-                                                      use_aabb=True, cache=True, ignored_pairs=ignored_pairs_here,
-                                                      custom_limits=custom_limits, resolutions=resolutions/2.)
-                if grasp_path is None:
-                    if verbose: print(f'{title}Grasp path failure')
-                    if visualize:
-                        remove_body(gripper_grasp)
-                    return None
-                dest_conf = approach_conf
-            else:
-                grasp_path = []
-                dest_conf = grasp_conf
-            set_joint_positions(robot, arm_joints, default_conf)
-            approach_path = plan_joint_motion(robot, arm_joints, dest_conf, attachments=attachments.values(),
-                                              obstacles=obstacles_here, self_collisions=SELF_COLLISIONS,
-                                              custom_limits=custom_limits, resolutions=resolutions,
-                                              use_aabb=True, cache=True, ignored_pairs=ignored_pairs,
-                                              restarts=2, iterations=25, smooth=0) # smooth=25
-            if approach_path is None:
-                if verbose: print(f'{title}\tApproach path failure')
-                if visualize:
-                    remove_body(gripper_grasp)
-                return None
-            path = approach_path + grasp_path
-
-        mt = create_trajectory(robot, arm_joints, path)
-        cmd = Commands(State(attachments=attachments), savers=[BodySaver(robot)], commands=[mt])
-
-        set_joint_positions(robot, arm_joints, default_conf)  # default_conf | sample_fn()
-
-        if visualize:
-            remove_body(gripper_grasp)
-        if ACONF:
-            return (mt.path[-1], cmd)
-        return (cmd,)
+        return solve_approach_ik(
+            arm, obj, pose_value, grasp, base_conf,
+            world, robot, custom_limits, obstacles_here, ignored_pairs_here,
+            title, ACONF=ACONF, teleport=teleport, verbose=verbose, visualize=visualize
+        )
     return fn
 
 
@@ -1662,9 +1712,309 @@ def process_ik_context(context, verbose=False):
             raise ValueError(stream.name)
 
 
+def sample_bconf(world, robot, inputs, pose_value, obstacles, heading, ir_sampler=None, ik_fn=None, ir_only=False,
+                 ir_max_attempts=40, max_attempts=30, soft_failures=False, verbose=False, visualize=False):
+    a, o = inputs[:2]
+    g = inputs[-1]
+    open_arm(robot, a)
+    context_saver = WorldSaver(bodies=[robot, o])
+
+    # set_renderer(enable=False)
+    if visualize:
+        # set_renderer(enable=True)
+        samples = []
+
+    # gripper_grasp = robot.visualize_grasp(pose_value, g.value, arm=a, body=g.body)
+    gripper_grasp = robot.set_gripper_pose(pose_value, g.value, arm=a, body=g.body)
+    if collided(gripper_grasp, obstacles, articulated=True, world=world):  # w is not None
+        # wait_unlocked()
+        # robot.remove_gripper(gripper_grasp)
+        if verbose: print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
+        return
+    # robot.remove_gripper(gripper_grasp)
+
+    arm_joints = get_arm_joints(robot, a)
+    default_conf = arm_conf(a, g.carry)
+
+    ## solve IK for all 13 joints
+    if robot.USE_TORSO and has_tracik():
+        from pybullet_tools.tracik import IKSolver
+        tool_from_root = robot.get_tool_from_root(a)
+        tool_pose = robot.get_grasp_pose(pose_value, g.value, a, body=g.body)
+        gripper_pose = multiply(tool_pose, invert(tool_from_root))
+
+        tool_link = robot.get_tool_link(a)
+        ik_solver = IKSolver(robot, tool_link=tool_link, first_joint=None,
+                             custom_limits=robot.custom_limits)  ## using all 13 joints
+
+        attempts = 0
+        for conf in ik_solver.generate(gripper_pose):  # TODO: islice
+            joint_state = dict(zip(ik_solver.joints, conf))
+            if max_attempts <= attempts:
+                if verbose:
+                    print(f'{get_ik_gen.__name__} failed after {attempts} attempts!')
+                # wait_unlocked()
+                if soft_failures:
+                    attempts = 0
+                    yield None
+                    context_saver.restore()
+                    continue
+                else:
+                    break
+            attempts += 1
+
+            base_joints = robot.get_base_joints()
+            bconf = list(map(joint_state.get, base_joints))
+            bq = Conf(robot, base_joints, bconf, joint_state=joint_state)
+            bq.assign()
+
+            set_joint_positions(robot, arm_joints, default_conf)
+            if collided(robot, obstacles, articulated=True, tag='ik_default_conf',
+                        verbose=verbose, world=world):
+                # wait_unlocked()
+                continue
+
+            ik_solver.set_conf(conf)
+            if collided(robot, obstacles, articulated=True, tag='ik_final_conf',
+                        visualize=visualize, verbose=verbose, world=world):
+                continue
+
+            if visualize:
+                samples.append(visualize_bconf(bconf))
+                # set_renderer(True)
+                # Conf(robot, joints, conf).assign()
+                # wait_for_user()
+
+            ir_outputs = (bq,)
+            if ir_only:
+                if visualize:
+                    [remove_body(samp) for samp in samples]
+                yield ir_outputs
+                continue
+
+            ik_outputs = ik_fn(*(inputs + ir_outputs))
+            if ik_outputs is None:
+                continue
+            if verbose: print('succeed after TracIK solutions:', attempts)
+
+            if visualize:
+                [remove_body(samp) for samp in samples]
+            yield ir_outputs + ik_outputs
+            context_saver.restore()
+
+    ## do ir sampling of x, y, theta, torso, then solve ik for arm
+    else:
+        ir_generator = ir_sampler(*inputs)
+        attempts = 0
+        while True:
+            if max_attempts <= attempts:
+                # print(f'{heading} exceeding max_attempts = {max_attempts}')
+                yield None
+                # break # TODO(caelan): probably should be break/return
+
+            attempts += 1
+            if verbose: print(f'{heading} | attempt {attempts} | inputs = {inputs}')
+
+            try:
+                ir_outputs = next(ir_generator)
+            except StopIteration:
+                if verbose: print('    stopped ir_generator in', attempts, 'attempts')
+                print(f'{heading} exceeding ir_generator ir_max_attempts = {ir_max_attempts}')
+                return
+
+            if ir_outputs is None:
+                continue
+            inp = ir_generator.gi_frame.f_locals
+            inp = [inp[k] for k in ['pose', 'grasp', 'custom_limits']]
+            if verbose:
+                print(f'           ir_generator  |  inputs = {inp}  |  ir_outputs = {ir_outputs}')
+
+            if visualize:
+                bconf = ir_outputs[0].values
+                samples.append(visualize_bconf(bconf))
+
+            if ir_only:
+                yield ir_outputs
+                continue
+
+            ik_outputs = ik_fn(*(inputs + ir_outputs))
+            if ik_outputs is None:
+                continue
+            if verbose: print('succeed after IK attempts:', attempts)
+
+            if visualize:
+                [remove_body(samp) for samp in samples]
+            yield ir_outputs + ik_outputs
+            return
+            # if not p.init:
+            #    return
+
+
+# def get_ik_gen_old(problem, max_attempts=30, collisions=True, learned=True, teleport=False, ir_only=False,
+#                    soft_failures=False, verbose=False, visualize=False, ACONF=False, **kwargs):
+#     """ given grasp of target object p, return base conf and arm traj """
+#     ir_max_attempts = 40
+#     ## not using this if tracik compiled
+#     ir_sampler = get_ir_sampler(problem, collisions=collisions, learned=learned,
+#                                 max_attempts=ir_max_attempts, verbose=verbose, **kwargs)
+#     ik_fn = get_ik_fn_old(problem, collisions=collisions, teleport=teleport, verbose=False, ACONF=ACONF, **kwargs)
+#     robot = problem.robot
+#     world = problem.world
+#     obstacles = problem.fixed if collisions else []
+#     heading = 'pr2_streams.get_ik_gen | '
+#
+#     def gen(a, o, p, g, context=None):
+#         # set_renderer(enable=False)
+#         if visualize:
+#             # set_renderer(enable=True)
+#             samples = []
+#
+#         process_ik_context(context)
+#
+#         """ check if hand pose is in collision """
+#         p.assign()
+#         if 'pstn' in str(p):
+#             pose_value = linkpose_from_position(p)
+#         else:
+#             pose_value = p.value
+#         open_arm(robot, a)
+#         context_saver = WorldSaver(bodies=[robot, o])
+#
+#         # gripper_grasp = robot.visualize_grasp(pose_value, g.value, arm=a, body=g.body)
+#         gripper_grasp = robot.set_gripper_pose(pose_value, g.value, arm=a, body=g.body)
+#         if collided(gripper_grasp, obstacles, articulated=True, world=world): # w is not None
+#             # wait_unlocked()
+#             # robot.remove_gripper(gripper_grasp)
+#             if verbose: print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
+#             return
+#         # robot.remove_gripper(gripper_grasp)
+#
+#         arm_joints = get_arm_joints(robot, a)
+#         default_conf = arm_conf(a, g.carry)
+#
+#         ## solve IK for all 13 joints
+#         if robot.USE_TORSO and has_tracik():
+#             from pybullet_tools.tracik import IKSolver
+#             tool_from_root = robot.get_tool_from_root(a)
+#             tool_pose = robot.get_grasp_pose(pose_value, g.value, a, body=g.body)
+#             gripper_pose = multiply(tool_pose, invert(tool_from_root))
+#
+#             tool_link = robot.get_tool_link(a)
+#             ik_solver = IKSolver(robot, tool_link=tool_link, first_joint=None,
+#                                  custom_limits=robot.custom_limits)  ## using all 13 joints
+#
+#             attempts = 0
+#             for conf in ik_solver.generate(gripper_pose): # TODO: islice
+#                 joint_state = dict(zip(ik_solver.joints, conf))
+#                 if max_attempts <= attempts:
+#                     if verbose:
+#                         print(f'{get_ik_gen.__name__} failed after {attempts} attempts!')
+#                     # wait_unlocked()
+#                     if soft_failures:
+#                         attempts = 0
+#                         yield None
+#                         context_saver.restore()
+#                         continue
+#                     else:
+#                         break
+#                 attempts += 1
+#
+#                 base_joints = robot.get_base_joints()
+#                 bconf = list(map(joint_state.get, base_joints))
+#                 bq = Conf(robot, base_joints, bconf, joint_state=joint_state)
+#                 bq.assign()
+#
+#                 set_joint_positions(robot, arm_joints, default_conf)
+#                 if collided(robot, obstacles, articulated=True, tag='ik_default_conf',
+#                             verbose=verbose, world=world):
+#                     # wait_unlocked()
+#                     continue
+#
+#                 ik_solver.set_conf(conf)
+#                 if collided(robot, obstacles, articulated=True, tag='ik_final_conf',
+#                             visualize=visualize, verbose=verbose, world=world):
+#                     continue
+#
+#                 if visualize:
+#                     samples.append(visualize_bconf(bconf))
+#                     # set_renderer(True)
+#                     # Conf(robot, joints, conf).assign()
+#                     # wait_for_user()
+#
+#                 ir_outputs = (bq,)
+#                 if ir_only:
+#                     if visualize:
+#                         [remove_body(samp) for samp in samples]
+#                     yield ir_outputs
+#                     continue
+#
+#                 inputs = a, o, p, g
+#                 ik_outputs = ik_fn(*(inputs + ir_outputs))
+#                 if ik_outputs is None:
+#                     continue
+#                 if verbose: print('succeed after TracIK solutions:', attempts)
+#
+#                 if visualize:
+#                     [remove_body(samp) for samp in samples]
+#                 yield ir_outputs + ik_outputs
+#                 context_saver.restore()
+#
+#         ## do ir sampling of x, y, theta, torso, then solve ik for arm
+#         else:
+#             inputs = a, o, p, g
+#             ir_generator = ir_sampler(*inputs)
+#             attempts = 0
+#             while True:
+#                 if max_attempts <= attempts:
+#                     # print(f'{heading} exceeding max_attempts = {max_attempts}')
+#                     yield None
+#                     # break # TODO(caelan): probably should be break/return
+#
+#                 attempts += 1
+#                 if verbose: print(f'{heading} | attempt {attempts} | inputs = {inputs}')
+#
+#                 try:
+#                     ir_outputs = next(ir_generator)
+#                 except StopIteration:
+#                     if verbose: print('    stopped ir_generator in', attempts, 'attempts')
+#                     print(f'{heading} exceeding ir_generator ir_max_attempts = {ir_max_attempts}')
+#                     return
+#
+#                 if ir_outputs is None:
+#                     continue
+#                 inp = ir_generator.gi_frame.f_locals
+#                 inp = [inp[k] for k in ['pose', 'grasp', 'custom_limits']]
+#                 if verbose:
+#                     print(f'           ir_generator  |  inputs = {inp}  |  ir_outputs = {ir_outputs}')
+#
+#                 if visualize:
+#                     bconf = ir_outputs[0].values
+#                     samples.append(visualize_bconf(bconf))
+#
+#                 if ir_only:
+#                     yield ir_outputs
+#                     continue
+#
+#                 ik_outputs = ik_fn(*(inputs + ir_outputs))
+#                 if ik_outputs is None:
+#                     continue
+#                 if verbose: print('succeed after IK attempts:', attempts)
+#
+#                 if visualize:
+#                     [remove_body(samp) for samp in samples]
+#                 yield ir_outputs + ik_outputs
+#                 return
+#                 #if not p.init:
+#                 #    return
+#     return gen
+
+
+
+
+
 def get_ik_gen_old(problem, max_attempts=30, collisions=True, learned=True, teleport=False, ir_only=False,
-                   soft_failures=False, verbose=False, visualize=False, ACONF=False, **kwargs):
-    """ given grasp of target object p, return base conf and arm traj """
+                       soft_failures=False, verbose=False, visualize=False, ACONF=False, **kwargs):
+    """ given grasp of target object at relative pose rp with regard to supporter at p2, return base conf and arm traj """
     ir_max_attempts = 40
     ## not using this if tracik compiled
     ir_sampler = get_ir_sampler(problem, collisions=collisions, learned=learned,
@@ -1673,14 +2023,9 @@ def get_ik_gen_old(problem, max_attempts=30, collisions=True, learned=True, tele
     robot = problem.robot
     world = problem.world
     obstacles = problem.fixed if collisions else []
-    heading = 'pr2_streams.get_ik_gen | '
+    heading = 'pr2_streams.get_ik_rel_gen | '
 
     def gen(a, o, p, g, context=None):
-        # set_renderer(enable=False)
-        if visualize:
-            # set_renderer(enable=True)
-            samples = []
-
         process_ik_context(context)
 
         """ check if hand pose is in collision """
@@ -1689,139 +2034,44 @@ def get_ik_gen_old(problem, max_attempts=30, collisions=True, learned=True, tele
             pose_value = linkpose_from_position(p)
         else:
             pose_value = p.value
-        open_arm(robot, a)
-        context_saver = WorldSaver(bodies=[robot, o])
 
-        # gripper_grasp = robot.visualize_grasp(pose_value, g.value, arm=a, body=g.body)
-        gripper_grasp = robot.set_gripper_pose(pose_value, g.value, arm=a, body=g.body)
-        if collided(gripper_grasp, obstacles, articulated=True, world=world): # w is not None
-            # wait_unlocked()
-            # robot.remove_gripper(gripper_grasp)
-            if verbose: print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
-            return
-        # robot.remove_gripper(gripper_grasp)
-        # Fix grasps
-        # Fix negation
-        # Open gripper
+        inputs = a, o, p, g
+        return sample_bconf(world, robot, inputs, pose_value, obstacles, heading, ir_sampler=ir_sampler, ik_fn=ik_fn,
+                     verbose=verbose, visualize=visualize, soft_failures=soft_failures,
+                     ir_max_attempts=ir_max_attempts, max_attempts=max_attempts, ir_only=ir_only)
 
-        arm_joints = get_arm_joints(robot, a)
-        default_conf = arm_conf(a, g.carry)
-
-        ## solve IK for all 13 joints
-        if robot.USE_TORSO and has_tracik():
-            from pybullet_tools.tracik import IKSolver
-            tool_from_root = robot.get_tool_from_root(a)
-            tool_pose = robot.get_grasp_pose(pose_value, g.value, a, body=g.body)
-            gripper_pose = multiply(tool_pose, invert(tool_from_root))
-
-            tool_link = robot.get_tool_link(a)
-            ik_solver = IKSolver(robot, tool_link=tool_link, first_joint=None,
-                                 custom_limits=robot.custom_limits)  ## using all 13 joints
-
-            attempts = 0
-            for conf in ik_solver.generate(gripper_pose): # TODO: islice
-                joint_state = dict(zip(ik_solver.joints, conf))
-                if max_attempts <= attempts:
-                    if verbose:
-                        print(f'{get_ik_gen.__name__} failed after {attempts} attempts!')
-                    # wait_unlocked()
-                    if soft_failures:
-                        attempts = 0
-                        yield None
-                        context_saver.restore()
-                        continue
-                    else:
-                        break
-                attempts += 1
-
-                base_joints = robot.get_base_joints()
-                bconf = list(map(joint_state.get, base_joints))
-                bq = Conf(robot, base_joints, bconf, joint_state=joint_state)
-                bq.assign()
-
-                set_joint_positions(robot, arm_joints, default_conf)
-                if collided(robot, obstacles, articulated=True, tag='ik_default_conf',
-                            verbose=verbose, world=world):
-                    # wait_unlocked()
-                    continue
-
-                ik_solver.set_conf(conf)
-                if collided(robot, obstacles, articulated=True, tag='ik_final_conf',
-                            visualize=visualize, verbose=verbose, world=world):
-                    continue
-
-                if visualize:
-                    samples.append(visualize_bconf(bconf))
-                    # set_renderer(True)
-                    # Conf(robot, joints, conf).assign()
-                    # wait_for_user()
-
-                ir_outputs = (bq,)
-                if ir_only:
-                    if visualize:
-                        [remove_body(samp) for samp in samples]
-                    yield ir_outputs
-                    continue
-
-                inputs = a, o, p, g
-                ik_outputs = ik_fn(*(inputs + ir_outputs))
-                if ik_outputs is None:
-                    continue
-                if verbose: print('succeed after TracIK solutions:', attempts)
-
-                if visualize:
-                    [remove_body(samp) for samp in samples]
-                yield ir_outputs + ik_outputs
-                context_saver.restore()
-
-        ## do ir sampling of x, y, theta, torso, then solve ik for arm
-        else:
-            inputs = a, o, p, g
-            ir_generator = ir_sampler(*inputs)
-            attempts = 0
-            while True:
-                if max_attempts <= attempts:
-                    # print(f'{heading} exceeding max_attempts = {max_attempts}')
-                    yield None
-                    # break # TODO(caelan): probably should be break/return
-
-                attempts += 1
-                if verbose: print(f'{heading} | attempt {attempts} | inputs = {inputs}')
-
-                try:
-                    ir_outputs = next(ir_generator)
-                except StopIteration:
-                    if verbose: print('    stopped ir_generator in', attempts, 'attempts')
-                    print(f'{heading} exceeding ir_generator ir_max_attempts = {ir_max_attempts}')
-                    return
-
-                if ir_outputs is None:
-                    continue
-                inp = ir_generator.gi_frame.f_locals
-                inp = [inp[k] for k in ['pose', 'grasp', 'custom_limits']]
-                if verbose:
-                    print(f'           ir_generator  |  inputs = {inp}  |  ir_outputs = {ir_outputs}')
-
-                if visualize:
-                    bconf = ir_outputs[0].values
-                    samples.append(visualize_bconf(bconf))
-
-                if ir_only:
-                    yield ir_outputs
-                    continue
-
-                ik_outputs = ik_fn(*(inputs + ir_outputs))
-                if ik_outputs is None:
-                    continue
-                if verbose: print('succeed after IK attempts:', attempts)
-
-                if visualize:
-                    [remove_body(samp) for samp in samples]
-                yield ir_outputs + ik_outputs
-                return
-                #if not p.init:
-                #    return
     return gen
+
+
+def get_ik_rel_gen_old(problem, max_attempts=30, collisions=True, learned=True, teleport=False, ir_only=False,
+                       soft_failures=False, verbose=False, visualize=False, ACONF=False, **kwargs):
+    """ given grasp of target object at relative pose rp with regard to supporter at p2, return base conf and arm traj """
+    ir_max_attempts = 40
+    ## not using this if tracik compiled
+    ir_sampler = get_ir_sampler(problem, collisions=collisions, learned=learned,
+                                max_attempts=ir_max_attempts, verbose=verbose, **kwargs)
+    ik_fn = get_ik_fn_old(problem, collisions=collisions, teleport=teleport, verbose=False, ACONF=ACONF, **kwargs)
+    robot = problem.robot
+    world = problem.world
+    obstacles = problem.fixed if collisions else []
+    heading = 'pr2_streams.get_ik_rel_gen | '
+
+    def gen(a, o1, rp1, o2, p2, g, context=None):
+        process_ik_context(context)
+
+        p2.assign()
+        rp1.assign()
+        pose_value = multiply(p2.value, rp1.value)
+
+        inputs = a, o1, rp1, o2, p2, g
+        return sample_bconf(world, robot, inputs, pose_value, obstacles, heading, ir_sampler=ir_sampler, ik_fn=ik_fn,
+                     verbose=verbose, visualize=visualize, soft_failures=soft_failures,
+                     ir_max_attempts=ir_max_attempts, max_attempts=max_attempts, ir_only=ir_only)
+
+    return gen
+
+
+######################################################################################################
 
 
 def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, teleport=False,

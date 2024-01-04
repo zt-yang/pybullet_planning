@@ -291,7 +291,7 @@ class World(WorldBase):
                 found.extend([(a, b), (b, a)])
 
             ## find all surfaces and spaces associated with the counter
-            counter = self.BODY_TO_OBJECT[a]
+            counter = self.BODY_TO_OBJECT[a] if a in self.BODY_TO_OBJECT else self.REMOVED_BODY_TO_OBJECT[a]
             link_bodies = [(a, None, lk) for lk in counter.surfaces + counter.spaces]
             for link_body in link_bodies:
                 objs = self.BODY_TO_OBJECT[link_body].supported_objects if link_body in self.BODY_TO_OBJECT \
@@ -1085,7 +1085,7 @@ class World(WorldBase):
         body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
         return body_to_name
 
-    def get_world_fluents(self, obj_poses=None, init_facts=[], objects=None, use_rel_pose=True,
+    def get_world_fluents(self, obj_poses=None, init_facts=[], objects=None, use_rel_pose=False,
                           cat_to_bodies=None, cat_to_objects=None, verbose=False,
                           only_fluents=False):
         """ if only_fluents = Ture: return only AtPose, AtPosition """
@@ -1195,6 +1195,9 @@ class World(WorldBase):
 
                 init += [(k, body, rel_pose, supporter, supporter_pose) for k in ['RelPose', 'AtRelPose']]
 
+                if ('Pose', supporter, supporter_pose) not in init:
+                    init += [(k, supporter, supporter_pose) for k in ('Pose', 'AtPose')]
+
             else:
                 init += [('Pose', body, pose), ('AtPose', body, pose)]
 
@@ -1222,11 +1225,6 @@ class World(WorldBase):
         if use_rel_pose:
             wp = Pose('@world', unit_pose())
             init += [('Pose', '@world', wp), ('AtPose', '@world', wp)]
-
-            for body_link in all_links:
-                obj = BODY_TO_OBJECT[body_link]
-                pose = get_body_link_pose(obj)
-                init += [('Pose', body_link, pose), ('AtPose', body_link, pose)]
 
         ## ---- cart poses / grasps ------------------
         for body in cat_to_bodies('steerable'):
@@ -1261,7 +1259,7 @@ class World(WorldBase):
         return init
 
     def get_facts(self, conf_saver=None, init_facts=[], obj_poses=None, objects=None,
-                  verbose=True, use_rel_pose=True):
+                  verbose=True, use_rel_pose=False):
 
         def cat_to_bodies(cat):
             ans = self.cat_to_bodies(cat)

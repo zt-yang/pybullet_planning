@@ -17,7 +17,9 @@ from pybullet_tools.pr2_streams import get_stable_gen, Position, get_pose_in_spa
     get_marker_pose_gen, get_pull_marker_to_pose_motion_gen, get_pull_marker_to_bconf_motion_gen,  \
     get_pull_marker_random_motion_gen, get_ik_ungrasp_gen, get_pose_in_region_test, \
     get_cfree_btraj_pose_test, get_joint_position_open_gen, get_ik_ungrasp_mark_gen, \
-    sample_joint_position_gen, get_ik_gen, get_ik_fn_old, get_ik_gen_old, get_base_from_ik_fn
+    sample_joint_position_gen, get_ik_gen, get_ik_fn_old, get_ik_gen_old, get_base_from_ik_fn, \
+    get_ik_rel_gen_old, get_ik_rel_fn_old
+
 
 from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
     get_ik_ir_gen, get_motion_gen, move_cost_fn, Attach, Detach, Clean, Cook, \
@@ -25,7 +27,8 @@ from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custo
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, get_handle_grasp_list_gen, \
     get_handle_grasp_gen, get_compute_pose_kin, get_compute_pose_rel_kin, \
     get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
-    get_bconf_close_to_surface, sample_joint_position_closed_gen
+    get_bconf_close_to_surface, sample_joint_position_closed_gen, get_cfree_rel_pose_pose_test, \
+    get_cfree_approach_rel_pose_test
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
     set_camera_target_robot, nice, BASE_LIMITS, initialize_collision_logs, collided, clean_preimage
 from pybullet_tools.pr2_problems import create_pr2
@@ -99,6 +102,12 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'inverse-kinematics': from_fn(
             get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=False, visualize=False, ACONF=False)),
 
+        'inverse-reachability-rel': from_gen_fn(
+            get_ik_rel_gen_old(p, collisions=False, teleport=t, ir_only=True, custom_limits=l,
+                               learned=False, verbose=False, visualize=False)),
+        'inverse-kinematics-rel': from_fn(
+            get_ik_rel_fn_old(p, collisions=motion_collisions, teleport=t, verbose=False, visualize=False, ACONF=False)),
+
         # 'plan-arm-motion-grasp': from_fn(
         #     get_ik_fn(p, pick_up=False, collisions=motion_collisions, verbose=True, visualize=False)),
         # 'plan-arm-motion-ungrasp': from_gen_fn(
@@ -112,7 +121,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
 
         'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(p.robot, collisions=c, visualize=False)),
         'test-cfree-approach-pose': from_test(get_cfree_approach_pose_test(p, collisions=c)),
-        'test-cfree-rel-pose-pose': from_test(get_cfree_rel_pose_pose_test(collisions=c)),
+        'test-cfree-rel-pose-pose': from_test(get_cfree_rel_pose_pose_test(p.robot, collisions=c)),
         'test-cfree-approach-rel-pose': from_test(get_cfree_approach_rel_pose_test(p, collisions=c)),
 
         'test-cfree-traj-pose': from_test(get_cfree_traj_pose_test(p, collisions=c)),
