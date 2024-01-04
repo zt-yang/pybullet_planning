@@ -31,7 +31,8 @@ class LinkPose(Pose):
         self.joint = joint
         self.position = position
     def assign(self):
-        set_joint_position(self.body, self.joint, self.position)
+        if self.joint is not None:
+            set_joint_position(self.body, self.joint, self.position)
     def __repr__(self):
         index = self.index
         return 'lp{}={}'.format(index, nice(self.value))

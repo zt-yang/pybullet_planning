@@ -742,10 +742,7 @@ def get_primitive_actions(action, world, teleport=False):
         return t
 
     name, args = action
-    if 'pull_door_handle' in name or 'pull_articulated_handle' in name:
-        if '_attachment' in name:
-            o3, p3, p4 = args[-3:]
-            args = args[:-3]
+    if name.startswith('pull_handle') or 'pull_articulated_handle' in name:
 
         ## FEG
         if len(args) == 8:
@@ -754,7 +751,7 @@ def get_primitive_actions(action, world, teleport=False):
 
         ## PR2
         else:
-            a, o, p1, p2, g, q1, q2, bt, aq1, aq2, at = args[:11]
+            a, o, p1, p2, g, q1, q2, bt = args[:8]
             new_commands = get_traj(bt)  ## list(get_traj(bt).path)
 
         ## for controlled event
@@ -763,6 +760,7 @@ def get_primitive_actions(action, world, teleport=False):
             new_commands += world.get_events(o)
 
     elif name == 'grasp_pull_handle':
+        """ grasp, pull, ungrasp together """
         a, o, p1, p2, g, q1, q2, t1, t2, t3 = args
 
         ## step 1: grasp handle
@@ -814,16 +812,16 @@ def get_primitive_actions(action, world, teleport=False):
     ##    variates of pick
     ## ------------------------------------
 
-    elif name in ['pick', 'pick_half']:
-        if '_rel' in name:
-            a, o, p, rp, o2, p2, g = args[:7]
+    elif name in ['pick', 'pick_half', 'pick_from_supporter']:
+        if 'from_supporter' in name:
+            a, o, rp, o2, p2, g = args[:6]
         else:
             a, o, p, g = args[:4]
         t = get_traj(args[-1])
         close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
         attach = AttachObjectAction(a, g, o)
         new_commands = t + [close_gripper, attach]
-        if name in ['pick']:
+        if name in ['pick', 'pick_from_supporter']:
             new_commands += t[::-1]
 
     elif name == 'grasp_handle':
@@ -860,13 +858,16 @@ def get_primitive_actions(action, world, teleport=False):
     ##    variates of place
     ## ------------------------------------
 
-    elif name in ['place', 'place_half']:
-        a, o, p, g = args[:4]
+    elif name in ['place', 'place_half', 'place_to_supporter']:
+        if 'to_supporter' in name:
+            a, o, rp, o2, p2, g = args[:6]
+        else:
+            a, o, p, g = args[:4]
         t = get_traj(args[-1])
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
         detach = DetachObjectAction(a, o)
         new_commands = [detach, open_gripper] + t[::-1]
-        if name in ['place']:
+        if name in ['place', 'place_to_supporter']:
             new_commands = t + new_commands
 
     elif name == 'ungrasp_handle':

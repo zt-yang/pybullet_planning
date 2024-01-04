@@ -20,7 +20,7 @@ from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, g
     get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked, \
     get_movable_joints, apply_alpha, get_all_links, set_color, set_all_color, dump_body, clear_texture, \
     get_link_name, get_aabb, draw_aabb, GREY, GREEN, quat_from_euler, wait_for_user, get_camera_matrix, \
-    Euler, PI, get_center_extent, create_box, RED, unit_quat, set_joint_position
+    Euler, PI, get_center_extent, create_box, RED, unit_quat, set_joint_position, get_joint_limits
 from pybullet_tools.pr2_streams import Position, get_handle_grasp_gen, pr2_grasp
 from pybullet_tools.general_streams import pose_from_attachment, LinkPose, RelPose
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
@@ -654,6 +654,7 @@ class World(WorldBase):
                 pose = get_joint_position(b, j)
                 if hasattr(object, 'handle_link') and object.handle_link is not None:
                     line += f'\t|  Handle: {get_link_name(b, object.handle_link)}'
+                line += f'\t|  JointLimit: {get_joint_limits(b, j)}'
             elif isinstance(body, tuple) and len(body) == 3:
                 b, _, l = body
                 pose = get_link_pose(b, l)
@@ -1138,8 +1139,10 @@ class World(WorldBase):
             body = obj.body
             link = obj.link
             if obj_poses is None:
-                joint = obj.governing_joints[0][1]
-                position = get_joint_position(body, joint)
+                joint, position = None, None
+                if len(obj.governing_joints) > 0:
+                    joint = obj.governing_joints[0][1]
+                    position = get_joint_position(body, joint)
                 pose = LinkPose(body, value=get_link_pose(body, link), joint=joint, position=position)
             else:  ## in observation
                 pose = obj_poses[body]
@@ -1165,6 +1168,24 @@ class World(WorldBase):
 
         init = []
 
+        ## ---- object joint positions ------------- TODO: may need to add to saver
+        for body in all_joints:
+            if BODY_TO_OBJECT[body].handle_link is None:
+                continue
+            if ('Joint', body) in init or ('joint', body) in init:
+                continue
+            ## initial position
+            position = get_link_position(body)  ## Position(body)
+            init += [('Joint', body), ('UnattachedJoint', body),
+                     ('Position', body, position), ('AtPosition', body, position),
+                     ('IsOpenedPosition' if is_joint_open(body) else 'IsClosedPosition', body, position),
+                     ('IsJointTo', body, body[0])
+                     ]
+            if body in knobs:
+                controlled = BODY_TO_OBJECT[body].controlled
+                if controlled is not None:
+                    init += [('ControlledBy', controlled, body)]
+
         ## ---- object poses / grasps ------------------
         for body in graspables:
             init += [('Graspable', body)]
@@ -1183,8 +1204,16 @@ class World(WorldBase):
 
             elif use_rel_pose:
                 supporter = BODY_TO_OBJECT[body].supporting_surface
-                supporter_pose = get_body_link_pose(supporter) if supporter.link is not None \
-                    else get_body_pose(supporter.body)
+                supporter_body_link = supporter.pybullet_name
+                if supporter.link is not None:
+                    supporter_pose = get_body_link_pose(supporter)
+                    if (isinstance(supporter_body_link, tuple) and len(supporter_body_link) == 3
+                            and supporter_pose.joint is not None):
+                        body_joint = (supporter.body, supporter_pose.joint)
+                        init += [('JointAffectLink', body_joint, supporter_body_link)]
+                        init.remove(('UnattachedJoint', body_joint))
+                else:
+                    supporter_pose = get_body_pose(supporter.body)
                 if supporter is None or body not in graspables + all_supporters:
                     supporter = '@world'
                     rel_pose = pose
@@ -1193,10 +1222,10 @@ class World(WorldBase):
                     rel_pose = pose_from_attachment(attachment)
                     # rel_pose_2 = multiply(invert(supporter_pose.value), pose.value)
 
-                init += [(k, body, rel_pose, supporter, supporter_pose) for k in ['RelPose', 'AtRelPose']]
+                init += [(k, body, rel_pose, supporter_body_link, supporter_pose) for k in ['RelPose', 'AtRelPose']]
 
-                if ('Pose', supporter, supporter_pose) not in init:
-                    init += [(k, supporter, supporter_pose) for k in ('Pose', 'AtPose')]
+                if ('Pose', supporter_body_link, supporter_pose) not in init:
+                    init += [(k, supporter_body_link, supporter_pose) for k in ('Pose', 'AtPose')]
 
             else:
                 init += [('Pose', body, pose), ('AtPose', body, pose)]
@@ -1235,31 +1264,13 @@ class World(WorldBase):
             for marker in obj.grasp_markers:
                 init += [('Marked', body, marker.body)]
 
-        ## ---- object joint positions ------------- TODO: may need to add to saver
-        for body in all_joints:
-            if BODY_TO_OBJECT[body].handle_link is None:
-                continue
-            if ('Joint', body) in init or ('joint', body) in init:
-                continue
-            ## initial position
-            position = get_link_position(body)  ## Position(body)
-            init += [('Joint', body),
-                     ('Position', body, position), ('AtPosition', body, position),
-                     ('IsOpenedPosition' if is_joint_open(body) else 'IsClosedPosition', body, position),
-                     ('IsJointTo', body, body[0])
-                     ]
-            if body in knobs:
-                controlled = BODY_TO_OBJECT[body].controlled
-                if controlled is not None:
-                    init += [('ControlledBy', controlled, body)]
-
         if only_fluents:
             fluents_pred = ['AtPose', 'AtPosition']
             init = [i for i in init if i[0] in fluents_pred]
         return init
 
     def get_facts(self, conf_saver=None, init_facts=[], obj_poses=None, objects=None,
-                  verbose=True, use_rel_pose=False):
+                  verbose=True, use_rel_pose=True):
 
         def cat_to_bodies(cat):
             ans = self.cat_to_bodies(cat)

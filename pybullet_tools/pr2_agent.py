@@ -18,7 +18,7 @@ from pybullet_tools.pr2_streams import get_stable_gen, Position, get_pose_in_spa
     get_pull_marker_random_motion_gen, get_ik_ungrasp_gen, get_pose_in_region_test, \
     get_cfree_btraj_pose_test, get_joint_position_open_gen, get_ik_ungrasp_mark_gen, \
     sample_joint_position_gen, get_ik_gen, get_ik_fn_old, get_ik_gen_old, get_base_from_ik_fn, \
-    get_ik_rel_gen_old, get_ik_rel_fn_old
+    get_ik_rel_gen_old, get_ik_rel_fn_old, get_pull_door_handle_with_link_motion_gen
 
 
 from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
@@ -81,6 +81,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
     # print('Pull collisions:', pull_collisions)
     # print('Base collisions:', base_collisions)
     # print('Teleport:', t)
+    tc = dict(teleport=t, custom_limits=l)
 
     stream_map = {
         'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c)),
@@ -97,14 +98,12 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         #     get_ik_fn(p, collisions=motion_collisions, teleport=t, verbose=True, visualize=False)),
 
         'inverse-reachability': from_gen_fn(
-            get_ik_gen_old(p, collisions=False, teleport=t, ir_only=True, custom_limits=l,
-                           learned=False, verbose=False, visualize=False)),
+            get_ik_gen_old(p, collisions=False, ir_only=True, learned=False, verbose=False, visualize=False, **tc)),
         'inverse-kinematics': from_fn(
             get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=False, visualize=False, ACONF=False)),
 
         'inverse-reachability-rel': from_gen_fn(
-            get_ik_rel_gen_old(p, collisions=False, teleport=t, ir_only=True, custom_limits=l,
-                               learned=False, verbose=False, visualize=False)),
+            get_ik_rel_gen_old(p, collisions=False, ir_only=True, learned=False, verbose=False, visualize=False, **tc)),
         'inverse-kinematics-rel': from_fn(
             get_ik_rel_fn_old(p, collisions=motion_collisions, teleport=t, verbose=False, visualize=False, ACONF=False)),
 
@@ -113,7 +112,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         # 'plan-arm-motion-ungrasp': from_gen_fn(
         #     get_ik_ungrasp_gen(p, given_base_conf=False, collisions=motion_collisions, verbose=True, visualize=False)),
 
-        'plan-base-motion': from_fn(get_base_motion_gen(p, collisions=base_collisions, teleport=t, custom_limits=l)),
+        'plan-base-motion': from_fn(get_base_motion_gen(p, collisions=base_collisions, **tc)),
         # 'plan-base-motion-with-obj': from_fn(get_base_motion_with_obj_gen(p, collisions=base_collisions,
         #                                                          teleport=t, custom_limits=l)),
 
@@ -138,29 +137,24 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         #     get_ik_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l, learned=False,
         #                pick_up=False, given_grasp_conf=True, verbose=True, visualize=False)),
         'inverse-kinematics-grasp-handle': from_gen_fn(
-            get_ik_gen_old(p, collisions=pull_collisions, teleport=t, custom_limits=l,
-                           learned=False, verbose=False, ACONF=True)),
+            get_ik_gen_old(p, collisions=pull_collisions, learned=False, verbose=False, ACONF=True, **tc)),
 
         'inverse-kinematics-ungrasp-handle': from_gen_fn(
-            get_ik_ungrasp_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l, verbose=False)),
+            get_ik_ungrasp_gen(p, collisions=pull_collisions, verbose=False, **tc)),
 
-        'plan-base-pull-door-handle': from_fn(
-            get_pull_door_handle_motion_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l)),
-        # 'plan-base-pull-drawer-handle': from_fn(  ## get_pull_drawer_handle_motion_gen
-        #     get_pull_door_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
+        'plan-base-pull-handle': from_fn(get_pull_door_handle_motion_gen(p, collisions=pull_collisions, **tc)),
+        'plan-base-pull-handle-with-link': from_fn(
+            get_pull_door_handle_with_link_motion_gen(p, collisions=pull_collisions, **tc)),
 
-        'plan-arm-turn-knob-handle': from_fn(
-            get_turn_knob_handle_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
+        'plan-arm-turn-knob-handle': from_fn(get_turn_knob_handle_motion_gen(p, collisions=c, **tc)),
 
         'sample-marker-grasp': from_list_fn(get_marker_grasp_gen(p, collisions=c)),
         'inverse-kinematics-grasp-marker': from_gen_fn(
-            get_ik_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l,
-                       pick_up=False, learned=False, verbose=False)), ## , ACONF=True
+            get_ik_gen(p, collisions=pull_collisions, pick_up=False, learned=False, verbose=False, **tc)),
         'inverse-kinematics-ungrasp-marker': from_fn(
-            get_ik_ungrasp_mark_gen(p, collisions=c, teleport=t, custom_limits=l)),
+            get_ik_ungrasp_mark_gen(p, collisions=c, **tc)),
         'plan-base-pull-marker-random': from_gen_fn(
-            get_pull_marker_random_motion_gen(p, collisions=c, teleport=t, custom_limits=l,
-                                              learned=False)),
+            get_pull_marker_random_motion_gen(p, collisions=c, learned=False, **tc)),
 
         'sample-marker-pose': from_list_fn(get_marker_pose_gen(p, collisions=c)),
         'plan-base-pull-marker-to-bconf': from_fn(get_pull_marker_to_bconf_motion_gen(p, collisions=c, teleport=t)),
