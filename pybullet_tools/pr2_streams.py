@@ -965,8 +965,8 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
             if verbose: print(f'{step_str} : {nice(bq_after.values)}\t{nice(aq_after.values)}')
 
         ## save the joint positions as the base moves
-        rpose_rounded = tuple([round(n, 3) for n in bq_after.values])
-        mapping[rpose_rounded] = value
+        bq_rounded = tuple([round(n, 3) for n in bq_after.values])
+        mapping[bq_rounded] = value
 
     if visualize:
         remove_body(gripper_before)
@@ -1056,7 +1056,7 @@ def get_pull_door_handle_with_link_motion_gen(problem, custom_limits={}, collisi
         bq2, base_cmd, aq2, arm_cmd = results
 
         pst2.assign()
-        pl2 = Pose(l, get_link_pose(l[0], l[-1]))
+        pl2 = LinkPose(l, get_link_pose(l[0], l[-1]), joint=pst2.joint, position=pst2.value)
         pst1.assign()
 
         return (bq2, base_cmd, aq2, pl2, arm_cmd)

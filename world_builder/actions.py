@@ -1,6 +1,7 @@
 import numpy as np
 import pybullet as p
 import copy
+from pprint import pprint
 
 from pybullet_tools.bullet_utils import clip_delta, multiply2d, is_above, nice, open_joint, set_camera_target_robot, \
     toggle_joint, add_attachment, remove_attachment, draw_pose2d_path, query_right_left, \
@@ -512,7 +513,8 @@ def adapt_action(a, problem, plan, verbose=True):
         # set_renderer(False)
         with LockRenderer(True):
             funk(a.arm, a.object, pstn1, pstn2, a.grasp, bq1, aq1)
-        # print(LINK_POSE_TO_JOINT_POSITION)
+        # print('LINK_POSE_TO_JOINT_POSITION')
+        # pprint(LINK_POSE_TO_JOINT_POSITION)
         set_renderer(True)
     return a
 

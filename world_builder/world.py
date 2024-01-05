@@ -43,7 +43,7 @@ DEFAULT_CONSTANTS = ['@movable', '@bottle', '@edible', '@medicine']  ## , '@worl
 class WorldBase(object):
     """ parent api for working with planning + replanning architecture """
     def __init__(self, time_step=1e-3, teleport=False, drive=True, prevent_collisions=False,
-                 constants=DEFAULT_CONSTANTS, segment=False):
+                 constants=DEFAULT_CONSTANTS, segment=False, use_rel_pose=False):
         ## for world attributes
         self.scramble = False
         self.time_step = time_step
@@ -54,6 +54,7 @@ class WorldBase(object):
 
         ## for planning
         self.constants = constants
+        self.use_rel_pose = use_rel_pose
 
         ## for visualization
         self.handles = []
@@ -1143,7 +1144,7 @@ class World(WorldBase):
                 if len(obj.governing_joints) > 0:
                     joint = obj.governing_joints[0][1]
                     position = get_joint_position(body, joint)
-                pose = LinkPose(body, value=get_link_pose(body, link), joint=joint, position=position)
+                pose = LinkPose(obj.pybullet_name, value=get_link_pose(body, link), joint=joint, position=position)
             else:  ## in observation
                 pose = obj_poses[body]
 
@@ -1270,7 +1271,7 @@ class World(WorldBase):
         return init
 
     def get_facts(self, conf_saver=None, init_facts=[], obj_poses=None, objects=None,
-                  verbose=True, use_rel_pose=True):
+                  verbose=True):
 
         def cat_to_bodies(cat):
             ans = self.cat_to_bodies(cat)
@@ -1294,7 +1295,7 @@ class World(WorldBase):
         init += self.robot.get_init(init_facts=init_facts, conf_saver=conf_saver)
 
         ## ---- poses, positions, grasps ------------------
-        init += self.get_world_fluents(obj_poses, init_facts, objects, use_rel_pose=use_rel_pose,
+        init += self.get_world_fluents(obj_poses, init_facts, objects, use_rel_pose=self.use_rel_pose,
                                        cat_to_bodies=cat_to_bodies, cat_to_objects=cat_to_objects,
                                        verbose=verbose)
 

@@ -27,12 +27,17 @@ class LinkPose(Pose):
     num = count()
     def __init__(self, body, value=None, support=None, init=False, index=None,
                  joint=None, position=None):
+        if value is None:
+            value = get_link_pose(body[0], body[-1])
         super().__init__(body, value=value, support=support, init=init, index=index)
         self.joint = joint
         self.position = position
+    @property
+    def bodies(self):
+        return flatten_links(self.body[0])
     def assign(self):
         if self.joint is not None:
-            set_joint_position(self.body, self.joint, self.position)
+            set_joint_position(self.body[0], self.joint, self.position)
     def __repr__(self):
         index = self.index
         return 'lp{}={}'.format(index, nice(self.value))
