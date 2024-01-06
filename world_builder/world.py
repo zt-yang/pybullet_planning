@@ -655,7 +655,7 @@ class World(WorldBase):
                 pose = get_joint_position(b, j)
                 if hasattr(object, 'handle_link') and object.handle_link is not None:
                     line += f'\t|  Handle: {get_link_name(b, object.handle_link)}'
-                line += f'\t|  JointLimit: {get_joint_limits(b, j)}'
+                line += f'\t|  JointLimit: {nice(get_joint_limits(b, j))}'
             elif isinstance(body, tuple) and len(body) == 3:
                 b, _, l = body
                 pose = get_link_pose(b, l)

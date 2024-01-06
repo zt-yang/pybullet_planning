@@ -423,7 +423,7 @@ def get_ik_rel_fn_old(problem, custom_limits={}, collisions=True, teleport=False
             attachment = grasp.get_attachment(robot, arm, visualize=False)
             attachments = {attachment.child: attachment}  ## {}  ## TODO: problem with having (body, joint) tuple
 
-        pose2.assign()
+        # pose2.assign()
         relpose.assign()
         pose_value = multiply(pose2.value, relpose.value)
 
@@ -2056,9 +2056,6 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading, ir_sample
 #     return gen
 
 
-
-
-
 def get_ik_gen_old(problem, max_attempts=30, collisions=True, learned=True, teleport=False, ir_only=False,
                        soft_failures=False, verbose=False, visualize=False, ACONF=False, **kwargs):
     """ given grasp of target object at relative pose rp with regard to supporter at p2, return base conf and arm traj """
@@ -2112,8 +2109,8 @@ def get_ik_rel_gen_old(problem, max_attempts=30, collisions=True, learned=True, 
 
         inputs = a, o1, rp1, o2, p2, g
         return sample_bconf(world, robot, inputs, pose_value, obstacles, heading, ir_sampler=ir_sampler, ik_fn=ik_fn,
-                     verbose=verbose, visualize=visualize, soft_failures=soft_failures,
-                     ir_max_attempts=ir_max_attempts, max_attempts=max_attempts, ir_only=ir_only)
+                            verbose=verbose, visualize=visualize, soft_failures=soft_failures,
+                            ir_max_attempts=ir_max_attempts, max_attempts=max_attempts, ir_only=ir_only)
 
     return gen
 

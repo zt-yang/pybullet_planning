@@ -588,7 +588,7 @@ def sample_joint_position_gen(num_samples=14, closed=False):
             if closed:
                 pstns.extend([np.random.uniform(lower, upper - a_half) for k in range(num_samples)])
             else:
-                pstns.extend([np.random.uniform(lower + a_half, upper) for k in range(num_samples)])
+                pstns.extend([np.random.uniform(lower + 2 * a_third, upper) for k in range(num_samples)])
 
         else:
             if upper > 0:
@@ -977,7 +977,7 @@ def process_motion_fluents(fluents, robot, verbose=False):
     attachments = []
     for atom in fluents:
         predicate, args = atom[0].lower(), atom[1:]
-        if predicate == 'atpose':
+        if predicate in ['atpose', 'atrelpose']:
             o, p = args
             if o not in ['@world']:
                 p.assign()
