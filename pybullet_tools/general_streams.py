@@ -389,7 +389,8 @@ def get_contain_gen(problem, collisions=True, num_samples=20, verbose=False, rel
                     if not coo:
                         attempts += 1
                         if relpose:
-                            p = get_rel_pose(body, space, body_pose)
+                            p = RelPose2(body, value=body_pose, support=space)
+                            # p = get_rel_pose(body, space, body_pose)
                         yield (p,)
 
             if verbose: print(title, 'sample without check_kitchen_placement')
@@ -949,7 +950,7 @@ def play_trajectory(cmd, p=None, attachment=None, obstacles=[], speed=0.02, titl
             conf.assign()
             if attachment is not None:
                 attachment.assign()
-                if collided(attachment.child, obstacles, verbose=True, tag='collided grasp path', world=self.world):
+                if collided(attachment.child, obstacles, verbose=True, tag='collided grasp path'):
                     print(title + '!!! test_trajectory | collided')
 
             if stepping:

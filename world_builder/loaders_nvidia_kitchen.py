@@ -8,6 +8,70 @@ from world_builder.loaders import *
 
 ###############################################################################
 
+default_supports = [
+    ['appliance', 'microwave', True, 'microwave', 'hitman_tmp'],
+    ['food', 'MeatTurkeyLeg', True, 'chicken-leg', 'shelf_bottom'],
+    ['food', 'VeggieCabbage', True, 'cabbage', 'upper_shelf'],  ## ['shelf_bottom', 'indigo_drawer_top]
+    ['food', 'Salter', '3934', 'salt-shaker', 'sektion'],
+    ['food', 'Salter', '5861', 'pepper-shaker', 'sektion'],
+    ['utensil', 'PotBody', True, 'pot', 'indigo_tmp'],
+    ['utensil', 'KitchenFork', True, 'fork', 'upper_shelf'],  ## ['indigo_drawer_top]
+    # ['utensil', 'KitchenKnife', True, 'knife', 'indigo_drawer_top'],
+]
+
+saved_joints = [
+    ('counter', ['chewie_door_left_joint', 'chewie_door_right_joint'], 1.4, 'sektion'),
+    # ('counter', ['dagger_door_left_joint', 'dagger_door_right_joint'], 1, 'dagger'),
+    # ('counter', ['indigo_door_left_joint', 'indigo_door_right_joint'], 1, 'indigo_tmp'),
+    ('counter', ['indigo_drawer_top'], 1, 'indigo_drawer_top'),
+    ('fridge', ['fridge_door'], 0.7, 'shelf_bottom'),  ## 0.5 if you want to close it
+    ('dishwasher', ['dishwasher_door'], 1, 'upper_shelf'),
+]
+
+saved_relposes = {
+    ('fork', 'indigo_drawer_top'): ((0.141, -0.012, -0.033), (0.0, 0.0, 0.94, 0.34)),
+    ('fork', 'upper_shelf'): ((1.051, 6.288, 0.42), (0.0, 0.0, 0.94, 0.338)),
+    ('cabbage', 'upper_shelf'): ((-0.062, 0.182, -0.256), (-0.64, 0.301, 0.301, 0.64)),
+    ('cabbage', 'indigo_drawer_top'): ((0.115, -0.172, 0.004), (0.0, 0.0, 0.173, 0.985)),
+}
+
+saved_poses = {
+    ('pot', 'indigo_tmp'): ((0.63, 8.88, 0.11), (0.0, 0.0, -0.68, 0.73)),
+    ('microwave', 'hitman_tmp'): ((0.43, 6.38, 1.0), (0.0, 0.0, 1.0, 0)),
+    ('vinegar-bottle', 'sektion'): ((0.75, 7.41, 1.24), (0.0, 0.0, 0.0, 1.0)), ## ((0.75, 7.3, 1.24), (0, 0, 0, 1)),
+    ('vinegar-bottle', 'dagger'): ((0.45, 8.83, 1.54), (0.0, 0.0, 0.0, 1.0)),
+    ('vinegar-bottle', 'indigo_tmp'): ((0.59, 8.88, 0.16), (0.0, 0.0, 0.0, 1.0)),
+    ('vinegar-bottle', 'shelf_bottom'): ((0.64, 4.88, 0.89), (0.0, 0.0, 0.0, 1.0)),
+    ('chicken-leg', 'shelf_bottom'): ((0.654, 5.062, 0.797), (0.0, 0.0, 0.97, 0.25)),
+    ('cabbage', 'shelf_bottom'): ((0.668, 4.862, 0.83), (0, 0, 0.747, 0.665)),
+    # ('cabbage', 'upper_shelf'): ((1.006, 6.295, 0.461), (0.0, 0.0, 0.941, 0.338)),
+    # ('cabbage', 'indigo_drawer_top'): ((1.12, 8.671, 0.726), (0.0, 0.0, 0.173, 0.985)),
+    ('salt-shaker', 'sektion'): ((0.771, 7.071, 1.146), (0.0, 0.0, 0.175, 0.98)),
+    ('pepper-shaker', 'sektion'): ((0.764, 7.303, 1.16), (0.0, 0.0, 0.95, 0.34))
+}
+
+saved_base_confs = {
+    ('cabbage', 'shelf_bottom'): [
+        (1.54, 4.693, 0.49, 2.081),
+        ((1.353, 4.55, 0.651, 1.732), {0: 1.353, 1: 4.55, 2: 1.732, 17: 0.651, 61: 0.574, 62: 0.996, 63: -0.63, 65: -0.822, 66: -2.804, 68: -1.318, 69: -2.06}),
+        ((1.374, 4.857, 0.367, -3.29), {0: 1.374, 1: 4.857, 2: -3.29, 17: 0.367, 61: 0.18, 62: 0.478, 63: 0.819, 65: -0.862, 66: 2.424, 68: -1.732, 69: 4.031}),
+        ((1.43, 5.035, 0.442, -3.284), {0: 1.43, 1: 5.035, 2: -3.284, 17: 0.442, 61: 0.195, 62: 0.147, 63: 2.962, 65: -0.34, 66: 0.2, 68: -1.089, 69: 3.011}),
+        ((1.369, 5.083, 0.366, 2.76), {0: 1.369, 1: 5.083, 2: 2.76, 17: 0.366, 61: 0.547, 62: -0.309, 63: 3.004, 65: -1.228, 66: 0.213, 68: -0.666, 69: -3.304}),
+    ],
+    ('cabbage', 'upper_shelf'): [
+        ((1.2067, 5.65, 0.0253, 1.35), {0: 1.2067001768469119, 1: 5.649899504044555, 2: 1.34932216824778, 17: 0.025273033185228437, 61: 0.5622022164634521, 62: -0.11050738689251488, 63: 2.3065452971538147, 65: -1.382707387923262, 66: 1.2637544829338638, 68: -0.8836125960523644, 69: 2.9453111543097945}),
+        ((1.166, 5.488, 0.222, 0.475), {0: 1.166, 1: 5.488, 2: 0.475, 17: 0.222, 61: 1.106, 62: 0.172, 63: 3.107, 65: -0.943, 66: 0.077, 68: -0.457, 69: -2.503}),
+        ((1.684, 6.371, 0.328, 1.767), {0: 1.684, 1: 6.371, 2: 1.767, 17: 0.328, 61: 1.422, 62: 0.361, 63: 3.127, 65: -1.221, 66: 2.251, 68: -0.018, 69: 1.634}),
+        ((1.392, 5.57, 0.141, 0.726), {0: 1.392, 1: 5.57, 2: 0.726, 17: 0.141, 61: 1.261, 62: -0.043, 63: 2.932, 65: -1.239, 66: 0.526, 68: -0.427, 69: 0.612}),
+        ((1.737, 6.033, 0.279, -5.162), {0: 1.737, 1: 6.033, 2: -5.162, 17: 0.279, 61: 1.966, 62: 0.37, 63: 2.515, 65: -1.125, 66: -4.711, 68: -0.579, 69: 2.463}),
+        ((1.666, 6.347, 0.404, 1.66), {0: 1.666, 1: 6.347, 2: 1.66, 17: 0.404, 61: 1.22, 62: 0.656, 63: 3.653, 65: -0.948, 66: -1.806, 68: -0.41, 69: 0.355}),
+
+    ],
+}
+
+
+#######################################################################################################
+
 
 def load_full_kitchen(world, load_cabbage=True, **kwargs):
     world.set_skip_joints()
@@ -34,28 +98,6 @@ def load_full_kitchen(world, load_cabbage=True, **kwargs):
 
 
 ##########################################################
-
-
-saved_relposes = {
-    ('fork', 'indigo_drawer_top'): ((0.141, -0.012, -0.033), (0.0, 0.0, 0.94, 0.34)),
-    ('fork', 'upper_shelf'): ((1.051, 6.288, 0.42), (0.0, 0.0, 0.94, 0.338)),
-    ('cabbage', 'upper_shelf'): ((-0.062, 0.182, -0.256), (-0.64, 0.301, 0.301, 0.64)),
-    ('cabbage', 'indigo_drawer_top'): ((0.115, -0.172, 0.004), (0.0, 0.0, 0.173, 0.985)),
-}
-saved_poses = {
-    ('pot', 'indigo_tmp'): ((0.63, 8.88, 0.11), (0.0, 0.0, -0.68, 0.73)),
-    ('microwave', 'hitman_tmp'): ((0.43, 6.38, 1.0), (0.0, 0.0, 1.0, 0)),
-    ('vinegar-bottle', 'sektion'): ((0.75, 7.41, 1.24), (0.0, 0.0, 0.0, 1.0)), ## ((0.75, 7.3, 1.24), (0, 0, 0, 1)),
-    ('vinegar-bottle', 'dagger'): ((0.45, 8.83, 1.54), (0.0, 0.0, 0.0, 1.0)),
-    ('vinegar-bottle', 'indigo_tmp'): ((0.59, 8.88, 0.16), (0.0, 0.0, 0.0, 1.0)),
-    ('vinegar-bottle', 'shelf_bottom'): ((0.64, 4.88, 0.89), (0.0, 0.0, 0.0, 1.0)),
-    ('chicken-leg', 'shelf_bottom'): ((0.654, 5.062, 0.797), (0.0, 0.0, 0.97, 0.25)),
-    ('cabbage', 'shelf_bottom'): ((0.668, 4.862, 0.83), (0, 0, 0.747, 0.665)),
-    # ('cabbage', 'upper_shelf'): ((1.006, 6.295, 0.461), (0.0, 0.0, 0.941, 0.338)),
-    # ('cabbage', 'indigo_drawer_top'): ((1.12, 8.671, 0.726), (0.0, 0.0, 0.173, 0.985)),
-    ('salt-shaker', 'sektion'): ((0.771, 7.071, 1.146), (0.0, 0.0, 0.175, 0.98)),
-    ('pepper-shaker', 'sektion'): ((0.764, 7.303, 1.16), (0.0, 0.0, 0.95, 0.34))
-}
 
 
 def get_nvidia_kitchen_hacky_pose(obj, supporter_name):
@@ -91,7 +133,7 @@ def get_nvidia_kitchen_hacky_pose(obj, supporter_name):
             link_pose = get_link_pose(supporter.body, supporter.link)
             return multiply(link_pose, pose), True
 
-    return None
+    return None, True
 
 
 def place_in_nvidia_kitchen_space(obj, supporter_name, interactive=False, doors=[]):
@@ -133,7 +175,11 @@ def place_in_nvidia_kitchen_space(obj, supporter_name, interactive=False, doors=
              world=world, verbose=True, tag='place_in_nvidia_kitchen_space')
 
 
-def load_nvidia_kitchen_movables(world: World, open_doors_for: list = []):
+def load_nvidia_kitchen_movables(world: World, open_doors_for: list = [], custum_supports: dict = {}):
+
+    for elems in default_supports:
+        if elems[-2] in custum_supports:
+            elems[-1] = custum_supports[elems[-2]]
 
     """ load joints """
     supporter_to_doors = load_nvidia_kitchen_joints(world)
@@ -153,19 +199,7 @@ def load_nvidia_kitchen_movables(world: World, open_doors_for: list = []):
     """ load movables """
     movables = {}
     movable_to_doors = {}
-    for category, asset_name, rand_ins, name, supporter_name in [
-        ('appliance', 'microwave', True, 'microwave', 'hitman_tmp'),
-        ('food', 'MeatTurkeyLeg', True, 'chicken-leg', 'shelf_bottom'),
-        # ('food', 'VeggieCabbage', True, 'cabbage', 'shelf_bottom'),
-        ('food', 'VeggieCabbage', True, 'cabbage', 'upper_shelf'),
-        # ('food', 'VeggieCabbage', True, 'cabbage', 'indigo_drawer_top'),
-        ('food', 'Salter', '3934', 'salt-shaker', 'sektion'),
-        ('food', 'Salter', '5861', 'pepper-shaker', 'sektion'),
-        ('utensil', 'PotBody', True, 'pot', 'indigo_tmp'),
-        # ('utensil', 'KitchenFork', True, 'fork', 'indigo_drawer_top'),
-        ('utensil', 'KitchenFork', True, 'fork', 'upper_shelf'),
-        # ('utensil', 'KitchenKnife', True, 'knife', 'indigo_drawer_top'),
-    ]:
+    for category, asset_name, rand_ins, name, supporter_name in default_supports:
         movable = world.add_object(Moveable(
             load_asset(asset_name, x=0, y=0, yaw=random.uniform(-math.pi, math.pi), RANDOM_INSTANCE=rand_ins),
             category=category, name=name
@@ -190,14 +224,7 @@ def load_nvidia_kitchen_joints(world: World, open_doors: bool = False):
 
     """ load joints """
     supporter_to_doors = {}
-    for body_name, door_names, pstn, supporter_name in [
-            ('counter', ['chewie_door_left_joint', 'chewie_door_right_joint'], 1.4, 'sektion'),
-            # ('counter', ['dagger_door_left_joint', 'dagger_door_right_joint'], 1, 'dagger'),
-            # ('counter', ['indigo_door_left_joint', 'indigo_door_right_joint'], 1, 'indigo_tmp'),
-            ('counter', ['indigo_drawer_top'], 1, 'indigo_drawer_top'),
-            ('fridge', ['fridge_door'], 0.5, 'shelf_bottom'),
-            ('dishwasher', ['dishwasher_door'], 1, 'upper_shelf'),
-        ]:
+    for body_name, door_names, pstn, supporter_name in saved_joints:
         doors = []
         for door_name in door_names:
             door = world.add_joints_by_keyword(body_name, door_name)[0]
@@ -264,31 +291,18 @@ def check_plate_placement(world, body, surfaces, obstacles=[], num_samples=30, n
 #####################################################################################################
 
 
-base_confs = {
-    ('cabbage', 'shelf_bottom'): [(1.54, 4.693, 0.49, 2.081)],
-    ('cabbage', 'upper_shelf'): [
-        ((1.2067, 5.65, 0.0253, 1.35), {0: 1.2067001768469119, 1: 5.649899504044555, 2: 1.34932216824778, 17: 0.025273033185228437, 61: 0.5622022164634521, 62: -0.11050738689251488, 63: 2.3065452971538147, 65: -1.382707387923262, 66: 1.2637544829338638, 68: -0.8836125960523644, 69: 2.9453111543097945}),
-        ((1.166, 5.488, 0.222, 0.475), {0: 1.166, 1: 5.488, 2: 0.475, 17: 0.222, 61: 1.106, 62: 0.172, 63: 3.107, 65: -0.943, 66: 0.077, 68: -0.457, 69: -2.503}),
-        ((1.684, 6.371, 0.328, 1.767), {0: 1.684, 1: 6.371, 2: 1.767, 17: 0.328, 61: 1.422, 62: 0.361, 63: 3.127, 65: -1.221, 66: 2.251, 68: -0.018, 69: 1.634}),
-        ((1.392, 5.57, 0.141, 0.726), {0: 1.392, 1: 5.57, 2: 0.726, 17: 0.141, 61: 1.261, 62: -0.043, 63: 2.932, 65: -1.239, 66: 0.526, 68: -0.427, 69: 0.612}),
-        ((1.737, 6.033, 0.279, -5.162), {0: 1.737, 1: 6.033, 2: -5.162, 17: 0.279, 61: 1.966, 62: 0.37, 63: 2.515, 65: -1.125, 66: -4.711, 68: -0.579, 69: 2.463}),
-        ((1.666, 6.347, 0.404, 1.66), {0: 1.666, 1: 6.347, 2: 1.66, 17: 0.404, 61: 1.22, 62: 0.656, 63: 3.653, 65: -0.948, 66: -1.806, 68: -0.41, 69: 0.355}),
-
-    ],
-}
-
-
 def learned_nvidia_bconf_list_gen(world, inputs):
     a, o, p = inputs[:3]
     robot = world.robot
     joints = robot.get_group_joints('base-torso')
     movable = world.BODY_TO_OBJECT[o].shorter_name
-    for key, bqs in base_confs.items():
+    for key, bqs in saved_base_confs.items():
         if key[0] == movable:
             results = []
+            random.shuffle(bqs)
             for bq in bqs:
                 joint_state = None
-                if isinstance(bq, tuple):
+                if isinstance(bq, tuple) and isinstance(bq[1], dict):
                     bq, joint_state = bq
                 results.append(Conf(robot.body, joints, bq, joint_state=joint_state))
 

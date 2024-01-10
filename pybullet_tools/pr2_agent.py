@@ -100,12 +100,12 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         #     get_ik_fn(p, collisions=motion_collisions, teleport=t, verbose=True, visualize=False)),
 
         'inverse-reachability': from_gen_fn(
-            get_ik_gen_old(p, collisions=False, ir_only=True, learned=False, verbose=False, visualize=False, **tc)),
+            get_ik_gen_old(p, collisions=False, ir_only=True, learned=True, verbose=False, visualize=False, **tc)),
         'inverse-kinematics': from_fn(
             get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=False, visualize=False, ACONF=False)),
 
         'inverse-reachability-rel': from_gen_fn(
-            get_ik_rel_gen_old(p, collisions=False, ir_only=True, learned=False, verbose=False, visualize=False, **tc)),
+            get_ik_rel_gen_old(p, collisions=False, ir_only=True, learned=True, verbose=False, visualize=False, **tc)),
         'inverse-kinematics-rel': from_fn(
             get_ik_rel_fn_old(p, collisions=motion_collisions, teleport=t, verbose=False, visualize=False, ACONF=False)),
 
@@ -193,7 +193,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
     return stream_map
 
 
-def get_stream_info(unique=False):
+def get_stream_info(unique=False, defer_fn=defer_unique):
     # TODO: automatically populate using stream_map
     opt_gen_fn = PartialInputs(unique=unique)
     stream_info = {
@@ -201,25 +201,32 @@ def get_stream_info(unique=False):
 
         # 'test-cfree-pose-pose': StreamInfo(p_success=1e-3, verbose=verbose),
         # 'test-cfree-approach-pose': StreamInfo(p_success=1e-2, verbose=verbose),
-        #'test-cfree-traj-pose': StreamInfo(p_success=1e-1),
-        #'test-cfree-approach-pose': StreamInfo(p_success=1e-1),
+        # 'test-cfree-traj-pose': StreamInfo(p_success=1e-1),
+        # 'test-cfree-approach-pose': StreamInfo(p_success=1e-1),
 
         'sample-grasp': StreamInfo(opt_gen_fn=opt_gen_fn),
         'sample-handle-grasp': StreamInfo(opt_gen_fn=opt_gen_fn),
 
         'get-joint-position-open': StreamInfo(opt_gen_fn=opt_gen_fn),
-        'sample-joint-position': StreamInfo(opt_gen_fn=opt_gen_fn),
+        'get-joint-position-closed': StreamInfo(opt_gen_fn=opt_gen_fn),
 
         # TODO: still not re-ordering quite right
         'sample-pose': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e-1),
         'sample-pose-inside': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e-1),
+        'sample-relpose': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e-1),
+        'sample-relpose-inside': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e-1),
 
+        'inverse-reachability': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
         'inverse-kinematics': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
+        'inverse-reachability-rel': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
+        'inverse-kinematics-rel': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
         'inverse-kinematics-grasp-handle': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
         'inverse-kinematics-ungrasp-handle': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
-        'plan-base-pull-door-handle': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
 
-        'plan-base-motion': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e1, defer_fn=defer_unique),
+        'plan-base-pull-handle': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
+        'plan-base-pull-handle-with-link': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e0),
+
+        'plan-base-motion': StreamInfo(opt_gen_fn=opt_gen_fn, overhead=1e1, defer_fn=defer_fn),
     }
 
     return stream_info
