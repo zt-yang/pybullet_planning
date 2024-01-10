@@ -18,10 +18,8 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
 from pybullet_tools.pr2_primitives import Pose, Grasp
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, is_contained, \
-    visualize_point, collided, sample_pose, xyzyaw_to_pose, ObjAttachment, set_camera_target_body, \
+    visualize_point, collided, ObjAttachment, set_camera_target_body, \
     sample_obj_on_body_link_surface, query_yes_no, get_hand_grasps
-
-from world_builder.samplers import get_learned_yaw, get_learned_poses
 
 class LinkPose(Pose):
     num = count()
@@ -42,13 +40,15 @@ class LinkPose(Pose):
         index = self.index
         return 'lp{}={}'.format(index, nice(self.value))
 
-class RelPose(Pose):
+
+class RelPose2(Pose):
     num = count()
-    def __init__(self, body, value=None, support=None, init=False, index=None, support_value=None):
-        super().__init__(body, value=value, support=support, init=init, index=index)
-        self.support_value = support_value
     def assign(self):
-        pose = multiply(self.support_value, self.value)
+        if isinstance(self.support, tuple):
+            support_value = get_link_pose(self.support[0], self.support[-1])
+        else:
+            support_value = get_pose(self.support)
+        pose = multiply(support_value, self.value)
         set_pose(self.body, pose)
     def __repr__(self):
         index = self.index
@@ -240,15 +240,22 @@ def get_bconf_close_to_surface(problem):
 """
 
 
+def get_rel_pose(body, surface, body_pose):
+    body_pose = multiply(invert(get_link_pose(surface[0], surface[-1])), body_pose)
+    p = RelPose2(body, value=body_pose, support=surface)
+    return p
+
+
 def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visualize=False,
-                   learned_sampling=True, **kwargs):
+                   learned_sampling=True, relpose=False, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
     from world_builder.utils import smarter_sample_placement
     obstacles = problem.fixed if collisions else []
     world = problem.world
     robot = world.robot
 
-    def gen(body, surface):  ## , fluents=[] ## RuntimeError: Fluent streams certified facts cannot be domain facts
+    def gen(body, surface):
+        ## , fluents=[] ## RuntimeError: Fluent streams certified facts cannot be domain facts
         # if fluents:
         #     attachments = process_motion_fluents(fluents, robot)
 
@@ -262,30 +269,26 @@ def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visu
         obs = [obst for obst in obstacles if obst not in {body, surface}]
         count = num_samples
 
-        if learned_sampling:
+        ## ------------------------------------------------
+        if learned_sampling and world.learned_pose_list_gen is not None:
 
-            ## --------- Special case for plates -------------
-            result = check_plate_placement(body, surfaces, obs, num_samples)
-            if result is not None:
-                return result
-            ## ------------------------------------------------
+            result = world.learned_pose_list_gen(world, body, surfaces, num_samples=num_samples-5)
+            for body_pose in result:
+                p = Pose(body, value=body_pose, support=surface)
+                p.assign()
+                coo = collided(body, obs, verbose=verbose, visualize=visualize,
+                               tag='stable_gen_database', world=world)
+                if not coo:
+                    count -= 1
+                    p0.assign()
+                    if relpose:
+                        p = get_rel_pose(body, surface, body_pose)
+                    yield (p,)
 
-            ## --------- Special case for full kitchen objects -------------
-            result = check_kitchen_placement(world, body, surface, num_samples=num_samples-5)
-            if result is not None:
-                for body_pose in result:
-                    p = Pose(body, value=body_pose, support=surface)
-                    p.assign()
-                    coo = collided(body, obs, verbose=verbose, visualize=visualize,
-                                   tag='stable_gen_database', world=world)
-                    if not coo:
-                        count -= 1
-                        p0.assign()
-                        yield (p,)
+            if verbose: print(title, 'sample without check_kitchen_placement')
+        ## ------------------------------------------------
 
-        if verbose: print(title, 'sample without check_kitchen_placement')
-
-        while count > 0: ## True
+        while count > 0:
             count -= 1
             surface = random.choice(surfaces) # TODO: weight by area
             if isinstance(surface, tuple): ## (body, link)
@@ -297,7 +300,7 @@ def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visu
 
             ## hack to reduce planning time
             if learned_sampling:
-                body_pose = learned_pose_sampler(world, body, surface, body_pose)
+                body_pose = adjust_sampled_pose(world, body, surface, body_pose)
 
             p = Pose(body, value=body_pose, support=surface)
             p.assign()
@@ -306,6 +309,8 @@ def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visu
                 # if ('braiser_bottom' in world.BODY_TO_OBJECT[surface].name):
                 #     print('\n\nallow bad samples inside pots')
                 p0.assign()
+                if relpose:
+                    p = get_rel_pose(body, surface, body_pose)
                 yield (p,)
             else:
                 if visualize:
@@ -313,38 +318,10 @@ def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visu
     return gen
 
 
-def check_kitchen_placement(world, body, surface, **kwargs):
-    body_id = world.get_mobility_identifier(body)
-    if isinstance(body_id, int): ## reachable space, feg
-        return None
-    if isinstance(surface, tuple):
-        surface_body = surface[0]
-        surface_point = get_pose(surface[0])[0]
-        surface_aabb = get_aabb(surface[0], link=surface[1])
-    else:
-        surface_body = surface
-        surface_point = get_pose(surface)[0]
-        surface_aabb = get_aabb(surface)
-    surface_id = world.get_mobility_identifier(surface)
-    poses = get_learned_poses(body_id, surface_id, body, surface_body,
-                              surface_point=surface_point, **kwargs)
-    if surface_id == 'box':
-        original_pose = get_pose(body)
-        y_lower = surface_aabb.lower[1]
-        y_upper = surface_aabb.upper[1]
-        def random_y(pose):
-            set_pose(body, pose)
-            aabb = get_aabb(body)
-            (x, y, z), quat = pose
-            y = np.random.uniform(y_lower+(y-aabb.lower[1]), y_upper-(aabb.upper[1]-y))
-            z += get_aabb_extent(surface_aabb)[2]/2  ## add counter thickness
-            return (x, y, z), quat
-        poses = [random_y(pose) for pose in poses]
-        set_pose(body, original_pose)
-    return poses
 
 
-def learned_pose_sampler(world, body, surface, body_pose):
+
+def adjust_sampled_pose(world, body, surface, body_pose):
     ## hack to reduce planning time
     (x, y, z), quat = body_pose
     if 'braiser_bottom' in world.get_name(surface):
@@ -376,57 +353,13 @@ def get_stable_list_gen(problem, num_samples=5, **kwargs):
     return gen
 
 
-def check_plate_placement(body, surfaces, obstacles, num_samples, num_trials=30):
-    from pybullet_tools.pr2_primitives import Pose
-    surface = random.choice(surfaces)
-    poses = []
-    trials = 0
-
-    if 'plate-fat' in get_name(body):
-        while trials < num_trials:
-            y = random.uniform(8.58, 9)
-            body_pose = ((0.84, y, 0.88), quat_from_euler((0, math.pi / 2, 0)))
-            p = Pose(body, body_pose, surface)
-            p.assign()
-            if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, surface}):
-                poses.append(p)
-                # for roll in [-math.pi/2, math.pi/2, math.pi]:
-                #     body_pose = (p.value[0], quat_from_euler((roll, math.pi / 2, 0)))
-                #     poses.append(Pose(body, body_pose, surface))
-
-                if len(poses) >= num_samples:
-                    return [(p,) for p in poses]
-            trials += 1
-        return []
-
-    if isinstance(surface, int) and 'plate-fat' in get_name(surface):
-        aabb = get_aabb(surface)
-        while trials < num_trials:
-            body_pose = xyzyaw_to_pose(sample_pose(body, aabb))
-            p = Pose(body, body_pose, surface)
-            p.assign()
-            if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, surface}):
-                poses.append(p)
-                if len(poses) >= num_samples:
-                    return [(p,) for p in poses]
-            trials += 1
-        return []
-
-    return None
-
-
 def get_mod_pose(pose):
     (x, y, z), quat = pose
     return ((x, y, z+0.01), quat)
 
 
-def is_cabinet_top(world, space):
-    return 'space' in world.get_name(space) or 'storage' in world.get_name(space) \
-        or 'space' in world.get_type(space) or 'storage' in world.get_type(space)
-
-
-def get_contain_gen(problem, collisions=True, num_samples=20, verbose=False,
-                    learned_sampling=False, **kwargs):
+def get_contain_gen(problem, collisions=True, num_samples=20, verbose=False, relpose=False,
+                    learned_sampling=True, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
     from world_builder.entities import Object
     obstacles = problem.fixed if collisions else []
@@ -444,9 +377,9 @@ def get_contain_gen(problem, collisions=True, num_samples=20, verbose=False,
         else:
             spaces = [space]
 
-        ## --------- Special case for full kitchen objects -------------
-        if learned_sampling:
-            result = check_kitchen_placement(world, body, space, num_samples=num_samples - 5)
+        ## ------------------------------------------------
+        if learned_sampling and world.learned_pose_list_gen is not None:
+            result = world.learned_pose_list_gen(world, body, spaces, num_samples=num_samples-5)
             if result is not None:
                 for body_pose in result:
                     p = Pose(body, value=body_pose, support=space)
@@ -455,9 +388,12 @@ def get_contain_gen(problem, collisions=True, num_samples=20, verbose=False,
                                    tag='contain_gen_database', world=world)
                     if not coo:
                         attempts += 1
+                        if relpose:
+                            p = get_rel_pose(body, space, body_pose)
                         yield (p,)
+
+            if verbose: print(title, 'sample without check_kitchen_placement')
         ## ------------------------------------------------
-        if verbose: print(title, 'sample without check_kitchen_placement')
 
         while attempts < num_samples:
             attempts += 1
@@ -478,19 +414,14 @@ def get_contain_gen(problem, collisions=True, num_samples=20, verbose=False,
             if body_pose is None:
                 break
 
-            ## special sampler for data collection
-            if is_cabinet_top(world, space) or learned_sampling:
-                from world_builder.loaders import place_in_cabinet
-                if verbose:
-                    print('use special pose sampler')
-                body_pose = place_in_cabinet(space, body, place=False)
-
             ## there will be collision between body and that link because of how pose is sampled
             p_mod = p = Pose(body, get_mod_pose(body_pose), space)
             p_mod.assign()
             if not collided(body, obs, articulated=False, verbose=verbose, tag='contain_gen', world=world):
                 p = Pose(body, body_pose, space)
                 p0.assign()
+                if relpose:
+                    p = get_rel_pose(body, space, body_pose)
                 yield (p,)
         if verbose:
             print(f'{title} reached max_attempts = {num_samples}')
@@ -498,8 +429,8 @@ def get_contain_gen(problem, collisions=True, num_samples=20, verbose=False,
     return gen
 
 
-def get_contain_list_gen(problem, collisions=True, num_samples=50, **kwargs):
-    funk = get_contain_gen(problem, collisions, num_samples=num_samples, **kwargs)
+def get_contain_list_gen(problem, collisions=True, num_samples=50, relpose=False, **kwargs):
+    funk = get_contain_gen(problem, collisions, num_samples=num_samples, relpose=relpose, **kwargs)
 
     def gen(body, space):
         g = funk(body, space)
@@ -851,7 +782,8 @@ def get_cfree_pose_pose_test(robot, collisions=True, visualize=False, **kwargs):
             process_motion_fluents(fluents, robot)
         p1.assign()
         p2.assign()
-        result = not pairwise_collision(b1, b2, **kwargs)
+        bb2 = b2[0] if isinstance(b2, tuple) else b2
+        result = not pairwise_collision(b1, bb2, **kwargs)
         if not result and visualize:
             wait_unlocked()
         return result #, max_distance=0.001)
@@ -868,9 +800,10 @@ def get_cfree_approach_pose_test(problem, collisions=True):
         if not collisions or (b1 == b2) or b2 in ['@world']:
             return True
         p2.assign()
+        bb2 = b2[0] if isinstance(b2, tuple) else b2
         result = False
         for _ in problem.robot.iterate_approach_path(arm, gripper, p1.value, g1, body=b1):
-            if pairwise_collision(b1, b2) or pairwise_collision(gripper, b2):
+            if pairwise_collision(b1, bb2) or pairwise_collision(gripper, bb2):
                 result = False
                 break
             result = True

@@ -259,7 +259,7 @@ def nice_tuple(tup, round_to=3):
     return tuple(new_tup)
 
 
-def nice(tuple_of_tuples, round_to=3, one_tuple=True):
+def nice(tuple_of_tuples, round_to=3, one_tuple=True, keep_quat=False):
     ## float, int
     if isinstance(tuple_of_tuples, float) or isinstance(tuple_of_tuples, int):
         return nice_float(tuple_of_tuples, round_to)
@@ -273,10 +273,15 @@ def nice(tuple_of_tuples, round_to=3, one_tuple=True):
 
         ## pose = (point, quat) -> (point, euler)
         if len(tuple_of_tuples[0]) == 3 and len(tuple_of_tuples[1]) == 4:
+            second_tuple = tuple_of_tuples[1]
+            if keep_quat:
+                one_tuple = False
+            else:
+                second_tuple = euler_from_quat(second_tuple)
             if one_tuple:
-                one_list = list(tuple_of_tuples[0]) + list(euler_from_quat(tuple_of_tuples[1]))
-                return nice( tuple(one_list) , round_to)
-            return nice( (tuple_of_tuples[0], euler_from_quat(tuple_of_tuples[1])) , round_to)
+                one_list = list(tuple_of_tuples[0]) + list(second_tuple)
+                return nice(tuple(one_list) , round_to)
+            return nice( (tuple_of_tuples[0], second_tuple), round_to)
             ## pose = (point, quat) -> (x, y, z, yaw)
             # return pose_to_xyzyaw(tuple_of_tuples)
 
@@ -1010,6 +1015,15 @@ def print_goal(goal, world=None, print_fn=None):
     for each in get_readable_list(goal[1:], world):
         print_fn(f'   {tuple(each)},')
     print_fn(')')
+
+
+def summarize_bconfs(preimage):
+    bconfs = [f[1] for f in preimage if f[0].lower() == 'bconf' and f[1].joint_state is not None]
+    print('-' * 50)
+    for bconf in bconfs:
+        joint_state = {k: nice(v) for k, v in bconf.joint_state.items()}
+        print(f"({nice(bconf.values)}, {joint_state}), ")
+    print('-'*50)
 
 
 #######################################################
@@ -1862,7 +1876,7 @@ def get_joint_range(body, joint):
     return upper - lower
 
 
-def is_joint_open(body, joint=-1):
+def is_joint_open(body, joint=-1, verbose=True):
     if isinstance(body, tuple):
         body, joint = body
     lower, upper = get_joint_limits(body, joint)
@@ -1872,7 +1886,9 @@ def is_joint_open(body, joint=-1):
     result = (diff > pstn_range / 4)
     if lower < 0 and upper == 0:
         result = (diff < -pstn_range / 4)
-    print((body, joint), f'\t{get_joint_name(body, joint)} at {pstn} in {(lower, upper)}\t', result)
+    if verbose:
+        joint_name = get_joint_name(body, joint)
+        print(f'is_joint_open({(body, joint)}|{joint_name})\t at {pstn} in {nice((lower, upper))}\t', result)
     return result
 
 
@@ -2324,6 +2340,9 @@ def multiply_quat(quat1, quat2):
 
 def change_pose_interactive(obj):
     from pynput import keyboard
+
+    exit_note = "(Press esc in terminal to exit)"
+
     pose = obj.get_pose()
     xyz, quat = pose
     euler = euler_from_quat(quat)
@@ -2347,22 +2366,22 @@ def change_pose_interactive(obj):
     def on_press(key, pose=pose):
         try:
             pressed = key.char.lower()
-            print('alphanumeric key {0} pressed'.format(key.char))
+            print(f'alphanumeric key {key.char} pressed {exit_note}')
         except AttributeError:
             pressed = key
-            print('special key {0} pressed'.format(key))
+            print(f'special key {key} pressed {exit_note}')
 
         if pressed in adjustments:
             pose += adjustments[pressed]
             pose = (nice(pose[0]), quat_from_euler(pose[1]))
-            print(f'\tnew pose: {pose}')
+            print(f'\tnew pose of {obj.shorter_name}\t{pose}')
             set_pose(obj.body, pose)
 
     def on_release(key):
         if key == keyboard.Key.esc:
             return False
 
-    print('-' * 10 + ' Enter WASDRF for poses and QE for yaw (Press esc in terminal to exit) ' + '-' * 10)
+    print('-' * 10 + f' Enter WASDRF for poses and QE for yaw {exit_note}' + '-' * 10)
     with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
         listener.join()
 

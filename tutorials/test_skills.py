@@ -31,8 +31,9 @@ from pybullet_tools.flying_gripper_utils import se3_from_pose, \
     pose_from_se3, se3_ik, set_cloned_se3_conf, create_fe_gripper, set_se3_conf
 
 from world_builder.world import State
-from world_builder.loaders import sample_kitchen_sink, sample_full_kitchen, create_house_floor, create_table, \
+from world_builder.loaders import create_house_floor, create_table, \
     create_movable
+from world_builder.loaders_partnet_kitchen import sample_kitchen_sink, sample_full_kitchen
 from world_builder.robot_builders import create_gripper_robot, create_pr2_robot
 from world_builder.utils import load_asset, get_instance_name, get_partnet_doors, get_partnet_spaces
 from world_builder.utils import get_instances as get_instances_helper
@@ -107,11 +108,13 @@ def load_body(path, scale, pose_2d=(0, 0), random_yaw=False):
 
 
 def get_instances(category, **kwargs):
-    cat_dir = join(ASSET_PATH, 'models', category)
-    if not isdir(cat_dir):
-        os.mkdir(cat_dir)
-        get_data(categories=[category])
     instances = get_instances_helper(category, **kwargs)
+    if len(instances) == 0:
+        cat_dir = join(ASSET_PATH, 'models', category)
+        if not isdir(cat_dir):
+            os.mkdir(cat_dir)
+            get_data(categories=[category])
+        instances = get_instances_helper(category, **kwargs)
     return instances
 
 
@@ -1088,6 +1091,7 @@ if __name__ == '__main__':
         Kitchen Furniture: 'MiniFridge', 'KitchenCounter', 'MiniFridgeBase',
                             'OvenCounter', 'OvenTop', 'MicrowaveHanging', 'MiniFridgeBase',
                             'CabinetLower', 'CabinetTall', 'CabinetUpper', 'DishwasherBox'
+        Kitchen Cooking: 'KitchenFork', 
         Packing:    'Stapler', 'Camera', 'EyeGlasses', 'Knife', 'Tray',
     ------------------------------------------------------------------------ """
 
@@ -1108,7 +1112,7 @@ if __name__ == '__main__':
 
     """ --- grasps related --- """
     # test_grasps(robot, ['Salter'], skip_grasps=False, test_attachment=False)  ## 'Salter'
-    test_grasps(robot, ['KitchenFork'], skip_grasps=False, test_attachment=False)
+    test_grasps(robot, ['VeggieCabbage'], skip_grasps=False, test_attachment=False)
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
 

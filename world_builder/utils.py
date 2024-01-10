@@ -372,6 +372,9 @@ def get_file_by_category(category, RANDOM_INSTANCE=False, SAMPLING=False):
         files = [join(asset_root, f) for f in listdir(join(asset_root))
                  if 'DS_Store' not in f and not f.startswith('_')]
 
+        if len(ids) == 0:
+            print(category)
+
         # if 'minifridge' in asset_root.lower():
         #     print('asset_root', asset_root)
         if len(ids) == len(files):  ## mobility objects
@@ -644,7 +647,7 @@ def get_instances(category, **kwargs):
             category = [c for c in listdir(join(ASSET_PATH, 'models')) if c.lower() == category.lower()][0]
             asset_root = join(ASSET_PATH, 'models', category)
             indices = [f for f in listdir(join(asset_root)) if isdir(join(asset_root, f))]
-            instances = {k : scale for k in indices}
+            instances = {k: scale for k in indices}
         else:
             instances = []
             print(f'world_builder.utils.get_instances({category}) didnt find any models')

@@ -49,7 +49,7 @@ def get_asset_to_poses(title='place', yaw_only=False, full_pose=True):
 def get_learned_yaw(category, quat=None):
     global DATABASE
     if DATABASE is None:
-        DATABASE = get_asset_to_poses(title='place', yaw_only=True)
+        DATABASE = get_asset_to_poses(title='pickplace', yaw_only=True)
 
     if category in DATABASE:
         possibilities = DATABASE[category]

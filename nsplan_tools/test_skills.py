@@ -33,8 +33,8 @@ from pybullet_tools.flying_gripper_utils import se3_from_pose, \
     pose_from_se3, se3_ik, set_cloned_se3_conf, create_fe_gripper, set_se3_conf
 
 from world_builder.world import State
-from world_builder.loaders import sample_kitchen_sink, sample_full_kitchen, create_house_floor, create_table, \
-    create_movable
+from world_builder.loaders import create_house_floor, create_table, create_movable
+from world_builder.loaders_partnet_kitchen import sample_kitchen_sink, sample_full_kitchen
 from world_builder.robot_builders import create_gripper_robot, create_pr2_robot
 from world_builder.utils import load_asset, get_instance_name, get_partnet_doors, get_partnet_spaces
 from world_builder.utils import get_instances as get_instances_helper

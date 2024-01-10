@@ -195,6 +195,10 @@ class World(WorldBase):
         self.c_ignored_pairs = []
         self.planning_config = {'camera_zoomins': []}
 
+        ## for speeding up planning
+        self.learned_bconf_list_gen = None
+        self.learned_pose_list_gen = None
+
         ## for visualization
         self.path = None
         self.outpath = None
@@ -799,6 +803,16 @@ class World(WorldBase):
 
     ##################################################################################
 
+    def set_learned_bconf_list_gen(self, list_gen_fn):
+        """ likely defined in world_builder/loaders_{DOMAIN}.py """
+        self.learned_bconf_list_gen = list_gen_fn
+
+    def set_learned_pose_list_gen(self, pose_list_gen):
+        """ likely defined in world_builder/loaders_{DOMAIN}.py """
+        self.learned_pose_list_gen = pose_list_gen
+
+    ##################################################################################
+
     def body_to_name(self, body):
         if body in self.BODY_TO_OBJECT:
             return self.BODY_TO_OBJECT[body].name
@@ -806,13 +820,13 @@ class World(WorldBase):
             return self.ROBOT_TO_OBJECT[body].name
         return None
 
-    def name_to_body(self, name):
+    def name_to_body(self, name, include_removed=False):
         name = name.lower()
         possible = {}
-        for body, obj in self.ROBOT_TO_OBJECT.items():
-            if name == obj.name:
-                return self.robot.body
-        for body, obj in self.BODY_TO_OBJECT.items():
+        all_objects = list(self.ROBOT_TO_OBJECT.items()) + list(self.BODY_TO_OBJECT.items())
+        if include_removed:
+            all_objects += list(self.REMOVED_BODY_TO_OBJECT.items())
+        for body, obj in all_objects:
             if name == obj.name:
                 return body
             if name in obj.name:
@@ -821,10 +835,14 @@ class World(WorldBase):
             return find_closest_match(possible)
         return None
 
-    def name_to_object(self, name):
-        if self.name_to_body(name) is None:
+    def name_to_object(self, name, **kwargs):
+        body = self.name_to_body(name, **kwargs)
+        if body is None:
             return name  ## None ## object doesn't exist
-        return self.BODY_TO_OBJECT[self.name_to_body(name)]
+        if body in self.BODY_TO_OBJECT:
+            return self.BODY_TO_OBJECT[body]
+        if body in self.REMOVED_BODY_TO_OBJECT:
+            return self.REMOVED_BODY_TO_OBJECT[body]
 
     def cat_to_bodies(self, cat, get_all=False):
         bodies = []
@@ -1064,7 +1082,7 @@ class World(WorldBase):
     #                                   camera_point=camera_point, target_point=target_point)
     #     visualize_camera_image(image, index, img_dir=self.img_dir, **kwargs)
 
-    def init_link_joint_relations(self, all_joints, all_links, verbose=False):
+    def init_link_joint_relations(self, all_joints, all_links, verbose=True):
         all_link_poses = {(body, _, link): get_link_pose(body, link) for (body, _, link) in all_links}
         for (body, joint) in all_joints:
             position = get_joint_position(body, joint)
@@ -1072,12 +1090,12 @@ class World(WorldBase):
             new_link_poses = {(body2, _, link): get_link_pose(body, link) for (body2, _, link) in all_links if body == body2}
             changed_links = [k for k, v in new_link_poses.items() if v != all_link_poses[k]]
             if verbose:
-                print(f'init_link_joint_relations | {get_joint_name(body, joint)} / {(body, joint)}')
+                print(f'init_link_joint_relations(joint={get_joint_name(body, joint)}|{(body, joint)})')
             for body_link in changed_links:
                 obj = self.BODY_TO_OBJECT[body_link]
-                obj.governing_joints.append((body, joint))
+                obj.set_governing_joints([(body, joint)])
                 if verbose:
-                    print(f'\t {get_link_name(body_link[0], body_link[-1])} / {body_link}')
+                    print(f'\t link={get_link_name(body_link[0], body_link[-1])}|{body_link}')
             set_joint_position(body, joint, position)
 
     def get_indices(self):
@@ -1118,7 +1136,7 @@ class World(WorldBase):
         knobs = cat_to_bodies('knob')
         all_joints = cat_to_bodies('drawer') + cat_to_bodies('door') + knobs
 
-        self.init_link_joint_relations(all_joints, all_links, verbose=False)
+        self.init_link_joint_relations(all_joints, all_links)
 
         # if 'feg' in self.robot.name or True:
         #     use_rel_pose = False
@@ -1187,10 +1205,31 @@ class World(WorldBase):
                 if controlled is not None:
                     init += [('ControlledBy', controlled, body)]
 
+        ## ---- surfaces & spaces -------------
+        supporter_poses = {}
+        if use_rel_pose:
+            for body_link in all_links:
+                obj = BODY_TO_OBJECT[body_link]
+                if isinstance(body_link, tuple) and len(obj.governing_joints) > 0:
+                    supporter_pose = get_body_link_pose(obj)
+                    supporter_poses[body_link] = supporter_pose
+                    init += [(k, body_link, supporter_pose) for k in ('Pose', 'AtPose')]
+
+                    init.append(('MovableLink', body_link))
+                    for body_joint in obj.governing_joints:
+                        init += [('JointAffectLink', body_joint, body_link)]
+                        if ('UnattachedJoint', body_joint) in init:
+                            init.remove(('UnattachedJoint', body_joint))
+                else:
+                    init.append(('StaticLink', body_link))
+        else:
+            init.extend([('StaticLink', body_link) for body_link in all_links])
+
         ## ---- object poses / grasps ------------------
         for body in graspables:
             init += [('Graspable', body)]
             pose = get_body_pose(body)
+            supporter_obj = BODY_TO_OBJECT[body].supporting_surface
 
             if body in self.ATTACHMENTS and not isinstance(self.ATTACHMENTS[body], ObjAttachment):
                 attachment = self.ATTACHMENTS[body]
@@ -1203,30 +1242,24 @@ class World(WorldBase):
                 init.remove(('HandEmpty', arm))
                 init += [('Grasp', body, grasp), ('AtGrasp', arm, body, grasp)]
 
-            elif use_rel_pose:
-                supporter = BODY_TO_OBJECT[body].supporting_surface
-                supporter_body_link = supporter.pybullet_name
-                if supporter.link is not None:
-                    supporter_pose = get_body_link_pose(supporter)
-                    if (isinstance(supporter_body_link, tuple) and len(supporter_body_link) == 3
-                            and supporter_pose.joint is not None):
-                        body_joint = (supporter.body, supporter_pose.joint)
-                        init += [('JointAffectLink', body_joint, supporter_body_link)]
-                        init.remove(('UnattachedJoint', body_joint))
-                else:
-                    supporter_pose = get_body_pose(supporter.body)
-                if supporter is None or body not in graspables + all_supporters:
+            elif use_rel_pose and supporter_obj is not None and len(supporter_obj.governing_joints) > 0:
+
+                if body not in graspables + all_supporters:
                     supporter = '@world'
+                    supporter_pose = unit_pose()
                     rel_pose = pose
+
                 else:
+                    supporter = supporter_obj.pybullet_name
+                    if supporter_obj.link is not None:
+                        supporter_pose = supporter_poses[supporter]
+                    else:
+                        supporter_pose = get_body_pose(supporter_obj.body)
                     attachment = self.ATTACHMENTS[body]
                     rel_pose = pose_from_attachment(attachment)
                     # rel_pose_2 = multiply(invert(supporter_pose.value), pose.value)
 
-                init += [(k, body, rel_pose, supporter_body_link, supporter_pose) for k in ['RelPose', 'AtRelPose']]
-
-                if ('Pose', supporter_body_link, supporter_pose) not in init:
-                    init += [(k, supporter_body_link, supporter_pose) for k in ('Pose', 'AtPose')]
+                init += [(k, body, rel_pose, supporter) for k in ['RelPose', 'AtRelPose']]
 
             else:
                 init += [('Pose', body, pose), ('AtPose', body, pose)]
@@ -1252,9 +1285,9 @@ class World(WorldBase):
                     if verbose: print('   found contained', self.get_debug_name(body), self.get_debug_name(space))
                     init += [('Contained', body, pose, space)]
 
-        if use_rel_pose:
-            wp = Pose('@world', unit_pose())
-            init += [('Pose', '@world', wp), ('AtPose', '@world', wp)]
+        # if use_rel_pose:
+        #     wp = Pose('@world', unit_pose())
+        #     init += [('Pose', '@world', wp), ('AtPose', '@world', wp)]
 
         ## ---- cart poses / grasps ------------------
         for body in cat_to_bodies('steerable'):

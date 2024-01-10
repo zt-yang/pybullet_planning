@@ -58,6 +58,12 @@ IKFast bindings are included for the following robots:
 sudo apt-get install build-essential libssl-dev libffi-dev python-dev
 ```
 
+### Troubleshooting: compiled but no built console output, and cannot import
+
+Make sure the python version in compiled output `ikLeft.cpython-38-x86_64-linux-gnu` is the same as your venv python version (3.8), by running 
+`pybullet-planning$ (cd pybullet_tools/ikfast/pr2; python3.8 setup.py)`
+
+
 <!-- `pybullet-planning$ ./setup_ikfast.sh` -->
 
 <!-- https://stackoverflow.com/questions/10382141/temporarily-change-current-working-directory-in-bash-to-run-a-command -->

@@ -317,8 +317,7 @@ class DetachObjectAction(Action):
         self.object = object
 
     def transition(self, state):
-        print(f'DetachObjectAction | placing object {self.object} at', nice(get_pose(self.object)))
-        # print(f'bullet.actions | DetachObjectAction | remove {self.object} from state.attachment')
+        print(f'DetachObjectAction({self.object})')
         new_attachments = remove_attachment(state, self.object)
         return state.new_state(attachments=new_attachments)
 

@@ -20,7 +20,6 @@ from pybullet_tools.pr2_streams import get_stable_gen, Position, get_pose_in_spa
     sample_joint_position_gen, get_ik_gen, get_ik_fn_old, get_ik_gen_old, get_base_from_ik_fn, \
     get_ik_rel_gen_old, get_ik_rel_fn_old, get_pull_door_handle_with_link_motion_gen
 
-
 from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
     get_ik_ir_gen, get_motion_gen, move_cost_fn, Attach, Detach, Clean, Cook, \
     get_gripper_joints, GripperCommand, apply_commands, State, Trajectory, Simultaneous, create_trajectory
@@ -30,7 +29,8 @@ from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_
     get_bconf_close_to_surface, sample_joint_position_closed_gen, get_cfree_rel_pose_pose_test, \
     get_cfree_approach_rel_pose_test
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
-    set_camera_target_robot, nice, BASE_LIMITS, initialize_collision_logs, collided, clean_preimage
+    set_camera_target_robot, nice, BASE_LIMITS, initialize_collision_logs, collided, clean_preimage, \
+    summarize_bconfs
 from pybullet_tools.pr2_problems import create_pr2
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, create_gripper, set_group_conf
 from pybullet_tools.utils import connect, disconnect, wait_if_gui, LockRenderer, HideOutput, get_client, \
@@ -38,11 +38,11 @@ from pybullet_tools.utils import connect, disconnect, wait_if_gui, LockRenderer,
     euler_from_quat, get_joint, get_joints, PoseSaver, get_pose, get_link_pose, get_aabb, \
     get_joint_position, aabb_overlap, add_text, remove_handles, get_com_pose, get_closest_points,\
     set_color, RED, YELLOW, GREEN, multiply, get_unit_vector, unit_quat, get_bodies, BROWN, \
-    pairwise_collision, connect, get_pose, point_from_pose, set_renderer, \
+    pairwise_collision, connect, get_pose, point_from_pose, set_renderer, get_joint_name, \
     disconnect, get_joint_positions, enable_gravity, save_state, restore_state, HideOutput, remove_body, \
     get_distance, LockRenderer, get_min_limit, get_max_limit, has_gui, WorldSaver, wait_if_gui, add_line, SEPARATOR, \
     BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS, wait_unlocked, get_movable_joints, set_all_color, \
-    TRANSPARENT, apply_alpha, get_all_links, get_color, get_texture, dump_body, clear_texture, get_link_name, get_joint_name
+    TRANSPARENT, apply_alpha, get_all_links, get_color, get_texture, dump_body, clear_texture, get_link_name
 from pybullet_tools.flying_gripper_utils import get_se3_joints
 
 from os.path import join, isfile
@@ -85,7 +85,9 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
 
     stream_map = {
         'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c)),
+        'sample-relpose': from_gen_fn(get_stable_gen(p, collisions=c, relpose=True)),
         'sample-pose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, verbose=False)),
+        'sample-relpose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, relpose=True, verbose=False)),
         'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False, verbose=True,
                                                        top_grasp_tolerance=None, debug=True)),  ## PI/4
         'compute-pose-kin': from_fn(get_compute_pose_kin()),
@@ -494,57 +496,10 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
         facts = state.get_facts(init_facts=init_facts, objects=objects)
     init = facts
 
+    goal = process_debug_goals(state, goals, init)
+
     if PRINT:
         summarize_facts(init, world, name='Facts extracted from observation', print_fn=print_fn)
-
-    if isinstance(goals, tuple): ## debugging
-        test, args = goals
-        # test_initial_region(state, init)
-        # test_marker_pull_bconfs(state, init)
-        if test == 'test_handle_grasps':
-            goals = test_handle_grasps(state, args)
-        elif test == 'test_grasps':
-            goals = test_grasps(state, args)
-        elif test == 'test_grasp_ik':
-            goals = test_grasp_ik(state, init, args)
-        # test_pulling_handle_ik(state)
-        # test_drawer_open(state, goals)
-        elif test == 'test_pose_gen':
-            goals, ff = test_pose_gen(state, init, args)
-            init += ff
-        elif test == 'test_joint_closed':
-            goals = test_joint_closed(state, init, args)
-        elif test == 'test_door_pull_traj':
-            goals = test_door_pull_traj(state, init, args)
-        elif test == 'test_reachable_pose':
-            goals = test_reachable_pose(state, init, args)
-        elif test == 'test_at_reachable_pose':
-            goals = test_at_reachable_pose(init, args)
-        elif test == 'test_pose_kin':
-            goals = test_rel_to_world_pose(init, args)
-        else:
-            print('\n\n\npr2_agent.pddlstream_from_state_goal | didnt implement', goals)
-            sys.exit()
-
-    goal = [AND]
-    goal += goals
-    if len(goals) > 0:
-        if goals[0][0] == 'AtBConf':
-            init += [('BConf', goals[0][1])]
-        elif goals[0][0] == 'AtSEConf':
-            init += [('SEConf', goals[0][1])]
-        elif goals[0][0] == 'AtPosition':
-            init += [('Position', goals[0][1], goals[0][2]), ('IsOpenedPosition', goals[0][1], goals[0][2])]
-        elif goals[0][0] == 'AtGrasp':
-            init += [('Grasp', goals[0][2], goals[0][3])]
-        elif goals[0][0] == 'AtHandleGrasp':
-            init += [('HandleGrasp', goals[0][2], goals[0][3])]
-        elif goals[0][0] == 'AtMarkerGrasp':
-            init += [('MarkerGrasp', goals[0][2], goals[0][3])]
-
-        if goal[-1] == ("not", ("AtBConf", "")):
-            atbconf = [i for i in init if i[0].lower() == "AtBConf".lower()][0]
-            goal[-1] = ("not", atbconf)
 
     ## make all pred lower case
     new_init = []
@@ -810,6 +765,7 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
         ## save_pickle(pddlstream_problem, plan, preimage) ## discarded
 
         summarize_facts(preimage, world, name='Preimage generated by PDDLStream')
+        summarize_bconfs(preimage)
 
         if is_plan_abstract(plan):
             from bullet.leap.hierarchical import check_preimage
@@ -848,7 +804,69 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
 
     reset_globals()  ## reset PDDLStream solutions
 
-    return plan, env, knowledge, time_log, preimage ##, log_dir
+    return plan, env, knowledge, time_log, preimage
+
+
+#######################################################
+
+
+def process_debug_goals(state, goals, init):
+    if isinstance(goals, tuple):
+        test, args = goals
+        if test == 'test_handle_grasps':
+            goals = test_handle_grasps(state, args)
+        elif test == 'test_grasps':
+            goals = test_grasps(state, args)
+        elif test == 'test_grasp_ik':
+            goals = test_grasp_ik(state, init, args)
+        elif test == 'test_pose_gen':
+            goals, ff = test_pose_gen(state, init, args)
+            init += ff
+        elif test == 'test_relpose_inside_gen':
+            goals, ff = test_relpose_inside_gen(state, init, args)
+            init += ff
+        elif test == 'test_joint_closed':
+            goals = test_joint_closed(state, init, args)
+        elif test == 'test_door_pull_traj':
+            goals = test_door_pull_traj(state, init, args)
+        elif test == 'test_reachable_pose':
+            goals = test_reachable_pose(state, init, args)
+        elif test == 'test_at_reachable_pose':
+            goals = test_at_reachable_pose(init, args)
+        elif test == 'test_pose_kin':
+            goals = test_rel_to_world_pose(init, args)
+        else:
+            # test_initial_region(state, init)
+            # test_marker_pull_bconfs(state, init)
+            # test_pulling_handle_ik(state)
+            # test_drawer_open(state, goals)
+            print('\n\n\npr2_agent.pddlstream_from_state_goal | didnt implement', goals)
+            sys.exit()
+
+    goal = [AND]
+    goal += goals
+    if len(goals) > 0:
+        if goals[0][0] == 'AtBConf':
+            init += [('BConf', goals[0][1])]
+        elif goals[0][0] == 'AtSEConf':
+            init += [('SEConf', goals[0][1])]
+        elif goals[0][0] == 'AtPosition':
+            init += [('Position', goals[0][1], goals[0][2]), ('IsOpenedPosition', goals[0][1], goals[0][2])]
+        elif goals[0][0] == 'AtGrasp':
+            init += [('Grasp', goals[0][2], goals[0][3])]
+        elif goals[0][0] == 'AtHandleGrasp':
+            init += [('HandleGrasp', goals[0][2], goals[0][3])]
+        elif goals[0][0] == 'AtMarkerGrasp':
+            init += [('MarkerGrasp', goals[0][2], goals[0][3])]
+
+        if goal[-1] == ("not", ("AtBConf", "")):
+            atbconf = [i for i in init if i[0].lower() == "AtBConf".lower()][0]
+            goal[-1] = ("not", atbconf)
+
+    return goal
+
+
+###############################################################################
 
 
 def test_initial_region(state, init):
@@ -1000,7 +1018,6 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=Fal
     i = 0
     gripper_grasp = None
     for grasp in outputs:
-        print('grasp', nice(grasp[0].value))
         output = visualize_grasp(grasp[0], index=i)
         if output is not None:
             gripper_grasp = output
@@ -1097,6 +1114,18 @@ def test_pose_gen(problem, init, args):
     print(f'test_pose_gen({o}, {s}) | {p}')
     pose.assign()
     return [('AtPose', o, p)], [('Pose', o, p), ('Supported', o, p, s)]
+
+
+def test_relpose_inside_gen(problem, init, args):
+    o, s = args
+    pose = [i for i in init if i[0].lower() == "AtPose".lower() and i[1] == o][0][-1]
+    if isinstance(o, Object):
+        o = o.body
+    outputs = get_contain_list_gen(problem, relpose=True)(o, s)
+    p = outputs[0][0]
+    print(f'test_relpose_inside_gen({o}, {s}) | {p}')
+    pose.assign()
+    return [('AtRelPose', o, p, s)], [('RelPose', o, p, s)]
 
 
 def test_joint_closed(problem, init, o):

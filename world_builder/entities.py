@@ -13,7 +13,6 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
 from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_box_entity, collided, \
     get_camera_image_at_pose, sample_obj_in_body_link_space, sample_obj_on_body_link_surface, nice, \
     create_attachment, change_pose_interactive
-from pybullet_tools.general_streams import check_kitchen_placement
 
 from world_builder.utils import get_mobility_id, get_mobility_category, get_mobility_identifier, \
     get_instance_name, get_lisdf_name, load_asset
@@ -150,36 +149,33 @@ class Object(Index):
         if obj not in self.supported_objects:
             self.supported_objects.append(obj)
 
-    def attach_obj(self, obj, world=None):
+    def attach_obj(self, obj):
         link = self.link if self.link is not None else -1
-        if world is None:
-            world = self.world
-        world.ATTACHMENTS[obj] = create_attachment(self, link, obj, OBJ=True)
+        self.world.ATTACHMENTS[obj] = create_attachment(self, link, obj, OBJ=True)
         obj.change_supporting_surface(self)
 
-    def place_new_obj(self, obj_name, category=None, name=None, max_trial=8, world=None, **kwargs):
+    def place_new_obj(self, obj_name, category=None, name=None, max_trial=8, **kwargs):
 
         if category is None:
             category = obj_name
-        if world is None:
-            world = self.world
 
-        obj = world.add_object(
+        obj = self.world.add_object(
             Object(load_asset(obj_name.lower(), **kwargs), category=category, name=name)
         )
-        world.put_on_surface(obj, surface=self.name, max_trial=max_trial)
+        self.world.put_on_surface(obj, surface=self.name, max_trial=max_trial)
         self.support_obj(obj)
         # set_renderer(True)
         return obj
 
-    def place_obj(self, obj, max_trial=8, timeout=1.5, world=None, obstacles=None,
+    def place_obj(self, obj, max_trial=8, timeout=1.5, obstacles=None,
                   visualize=False, interactive=False):
         """ place object on Surface or in Space """
+        from world_builder.loaders_partnet_kitchen import check_kitchen_placement
+
         if isinstance(obj, str):
             raise NotImplementedError('place_obj: obj is str')
             # obj = self.place_new_obj(obj, max_trial=max_trial)
-        if world is None:
-            world = self.world
+        world = self.world
         if obstacles is None:
             obstacles = [o for o in get_bodies() if o not in [obj, self.body]]
 
@@ -188,17 +184,18 @@ class Object(Index):
         #     set_camera_target_body(obj.body)
 
         done = False
-        result = check_kitchen_placement(world, obj.body, self.pybullet_name,
-                                         visualize=visualize, num_samples=14)
-        if result is not None:
-            for body_pose in result:
-                obj.set_pose(body_pose)
-                coo = collided(obj, obstacles, tag='place_obj_database', world=world, verbose=False)
-                if not coo:
-                    done = True
-                    break
-                # if visualize:
-                #     wait_unlocked()
+        if world.learned_pose_list_gen is not None:
+            results = world.learned_pose_list_gen(world, obj.body, self.pybullet_name,
+                                                  visualize=visualize, num_samples=14)
+            if results is not None:
+                for body_pose in results:
+                    obj.set_pose(body_pose)
+                    coo = collided(obj, obstacles, tag='place_obj_database', world=world, verbose=False)
+                    if not coo:
+                        done = True
+                        break
+                    # if visualize:
+                    #     wait_unlocked()
 
         start_time = time.time()
         place_fn = sample_obj_in_body_link_space if isinstance(self, Space) \
@@ -225,7 +222,7 @@ class Object(Index):
                 supporter_name = f"on {self.__class__.__name__.capitalize()} {self.name}"
             print(f'entities.place_obj.placed {obj.name} {supporter_name} at pose {nice(body_pose)}')
 
-        self.attach_obj(obj, world=world)
+        self.attach_obj(obj)
         return obj
 
     def change_supporting_surface(self, obj):
@@ -257,7 +254,10 @@ class Object(Index):
         return self.__class__.__name__
 
     def get_pose(self):
-        return get_pose(self.body)
+        if self.link is None:
+            return get_pose(self.body)
+        else:
+            return get_link_pose(self.body, self.link)
 
     def aabb(self):
         if self.link is not None:
@@ -353,10 +353,9 @@ class Object(Index):
         else:
             set_pose(self.body, conf)
         if self.supporting_surface is not None:
-            self.supporting_surface.attach_obj(self, self.world)
+            self.supporting_surface.attach_obj(self)
 
     def get_joint(self, joint): # int | str
-        # TODO: unify with get_joint in pybullet-planning
         try:
             return int(joint)
         except ValueError:
@@ -364,7 +363,7 @@ class Object(Index):
 
     def get_joints(self, joints=None):
         if joints is None:
-            return get_movable_joints(self.body) # get_joints | get_movable_joints
+            return get_movable_joints(self.body)  ## get_joints | get_movable_joints
         return tuple(map(self.get_joint, joints))
 
     def get_joint_position(self, *args, **kwags):
@@ -538,6 +537,11 @@ class Supporter(Object):
 class Region(Object):
     def __init__(self, body, governing_joints=[], **kwargs):
         super(Region, self).__init__(body, collision=False, **kwargs)
+        self.governing_joints = governing_joints
+
+    def set_governing_joints(self, governing_joints):
+        """ (body, joint) pairs that change the pose of (body, link) """
+        print(f'set_governing_joints({self.body}, {self.link})', governing_joints)
         self.governing_joints = governing_joints
 
 

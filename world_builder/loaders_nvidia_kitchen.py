@@ -1,4 +1,9 @@
-from pybullet_tools.utils import invert
+import random
+
+from pybullet_tools.pr2_primitives import Conf, get_group_joints
+from pybullet_tools.utils import invert, get_name, pairwise_collision
+from pybullet_tools.bullet_utils import sample_pose, xyzyaw_to_pose
+
 from world_builder.loaders import *
 
 ###############################################################################
@@ -31,13 +36,73 @@ def load_full_kitchen(world, load_cabbage=True, **kwargs):
 ##########################################################
 
 
+saved_relposes = {
+    ('fork', 'indigo_drawer_top'): ((0.141, -0.012, -0.033), (0.0, 0.0, 0.94, 0.34)),
+    ('fork', 'upper_shelf'): ((1.051, 6.288, 0.42), (0.0, 0.0, 0.94, 0.338)),
+    ('cabbage', 'upper_shelf'): ((-0.062, 0.182, -0.256), (-0.64, 0.301, 0.301, 0.64)),
+    ('cabbage', 'indigo_drawer_top'): ((0.115, -0.172, 0.004), (0.0, 0.0, 0.173, 0.985)),
+}
+saved_poses = {
+    ('pot', 'indigo_tmp'): ((0.63, 8.88, 0.11), (0.0, 0.0, -0.68, 0.73)),
+    ('microwave', 'hitman_tmp'): ((0.43, 6.38, 1.0), (0.0, 0.0, 1.0, 0)),
+    ('vinegar-bottle', 'sektion'): ((0.75, 7.41, 1.24), (0.0, 0.0, 0.0, 1.0)), ## ((0.75, 7.3, 1.24), (0, 0, 0, 1)),
+    ('vinegar-bottle', 'dagger'): ((0.45, 8.83, 1.54), (0.0, 0.0, 0.0, 1.0)),
+    ('vinegar-bottle', 'indigo_tmp'): ((0.59, 8.88, 0.16), (0.0, 0.0, 0.0, 1.0)),
+    ('vinegar-bottle', 'shelf_bottom'): ((0.64, 4.88, 0.89), (0.0, 0.0, 0.0, 1.0)),
+    ('chicken-leg', 'shelf_bottom'): ((0.654, 5.062, 0.797), (0.0, 0.0, 0.97, 0.25)),
+    ('cabbage', 'shelf_bottom'): ((0.668, 4.862, 0.83), (0, 0, 0.747, 0.665)),
+    # ('cabbage', 'upper_shelf'): ((1.006, 6.295, 0.461), (0.0, 0.0, 0.941, 0.338)),
+    # ('cabbage', 'indigo_drawer_top'): ((1.12, 8.671, 0.726), (0.0, 0.0, 0.173, 0.985)),
+    ('salt-shaker', 'sektion'): ((0.771, 7.071, 1.146), (0.0, 0.0, 0.175, 0.98)),
+    ('pepper-shaker', 'sektion'): ((0.764, 7.303, 1.16), (0.0, 0.0, 0.95, 0.34))
+}
+
+
+def get_nvidia_kitchen_hacky_pose(obj, supporter_name):
+    """ return a pose and whether to interactively adjust """
+    if obj is None:
+        return None, True
+    world = obj.world
+    if isinstance(supporter_name, tuple):
+        o, _, l = supporter_name
+        supporter_name = get_link_name(o, l)
+        # supporter_name = world.get_name(supporter_name)
+
+    key = (obj.shorter_name, supporter_name)
+    supporter = world.name_to_object(supporter_name)
+    if key in saved_relposes:
+        link_pose = get_link_pose(supporter.body, supporter.link)
+        return multiply(link_pose, saved_relposes[key]), False
+
+    if key in saved_poses:
+        return saved_poses[key], False
+
+    """ given surface name may be the full name """
+    for kk, pose in saved_poses.items():
+        if kk[0].lower == key[0].lower and kk[1] in key[1]:
+            return pose, False
+
+    """ same spot on the surface to start with """
+    for kk, pose in saved_relposes.items():
+        if kk[1] in key[1]:
+            return pose, True
+    for kk, pose in saved_poses.items():
+        if kk[1] in key[1]:
+            link_pose = get_link_pose(supporter.body, supporter.link)
+            return multiply(link_pose, pose), True
+
+    return None
+
+
 def place_in_nvidia_kitchen_space(obj, supporter_name, interactive=False, doors=[]):
     """ place an object on a supporter in the nvidia kitchen using saved poses for debugging """
     world = obj.world
     supporter = world.name_to_object(supporter_name)
-    pose = get_nvidia_kitchen_hacky_pose(obj, supporter_name)
+    pose, interactive2 = get_nvidia_kitchen_hacky_pose(obj, supporter_name)
+    interactive = interactive or interactive2
     if pose is not None:
         obj.set_pose(pose)
+        supporter.attach_obj(obj)
     else:
         ## initialize the object pose
         supporter.place_obj(obj, world=world)
@@ -53,12 +118,11 @@ def place_in_nvidia_kitchen_space(obj, supporter_name, interactive=False, doors=
             world.open_joint(door, extent=extent)
 
         ## enter the interactive program
-        print(f'\n{title} starting at', nice(get_pose(obj), one_tuple=False))
+        print(f'\n{title} starting at pose\t', nice(get_pose(obj), keep_quat=True))
         obj.change_pose_interactive()
         link_pose = get_link_pose(supporter.body, supporter.link)
-        print('relative_pose\t', link_pose)  ## ((1.0046393871307373, 8.843374252319336, 0.7221270799636841), (0.0, 0.0, 0.0, 1.0))
         pose_relative = multiply(invert(link_pose), get_pose(obj))
-        print(f'{title} ending at\t{nice(pose_relative, one_tuple=False)}\n')
+        print(f'{title} ending at relpose\t{nice(pose_relative, keep_quat=True)}\n')
 
         ## close all doors that have been opened
         for door, extent in doors:
@@ -67,42 +131,6 @@ def place_in_nvidia_kitchen_space(obj, supporter_name, interactive=False, doors=
     ## check if the object is in collision with the surface
     collided(obj.body, [world.name_to_object(supporter_name).body],
              world=world, verbose=True, tag='place_in_nvidia_kitchen_space')
-
-
-def get_nvidia_kitchen_hacky_pose(obj, supporter_name):
-    if obj is None:
-        return None
-    world = obj.world
-    if isinstance(supporter_name, tuple):
-        supporter_name = world.get_name(supporter_name)
-    relative_poses = {
-        ('fork', 'indigo_drawer_top'): ((0.141, -0.012, -0.033), (0.0, 0.0, 0.94, 0.34))
-    }
-    poses = {
-        ('pot', 'indigo_tmp'): ((0.63, 8.88, 0.11), (0.0, 0.0, -0.68, 0.73)),
-        ('microwave', 'hitman_tmp'): ((0.43, 6.38, 0.98), (0.0, 0.0, -1, 0)),
-        ('vinegar-bottle', 'sektion'): ((0.75, 7.41, 1.24), (0.0, 0.0, 0.0, 1.0)), ## ((0.75, 7.3, 1.24), (0, 0, 0, 1)),
-        ('vinegar-bottle', 'dagger'): ((0.45, 8.83, 1.54), (0.0, 0.0, 0.0, 1.0)),
-        ('vinegar-bottle', 'indigo_tmp'): ((0.59, 8.88, 0.16), (0.0, 0.0, 0.0, 1.0)),
-        ('vinegar-bottle', 'shelf_bottom'): ((0.64, 4.88, 0.89), (0.0, 0.0, 0.0, 1.0)),
-        ('chicken-leg', 'shelf_bottom'): ((0.654, 5.062, 0.797), (0.0, 0.0, 0.97, 0.25)),
-        ('cabbage', 'shelf_bottom'): ((0.668, 4.832, 0.83), (0.0, 0.0, 0.6, 0.8)),
-        ('salt-shaker', 'sektion'): ((0.771, 7.071, 1.146), (0.0, 0.0, 0.175, 0.98)),
-        ('pepper-shaker', 'sektion'): ((0.764, 7.303, 1.16), (0.0, 0.0, 0.95, 0.34)),
-        # ('fork', 'indigo_drawer_top'): ((1.146, 8.831, 0.689), (0.0, 0.0, 0.94, 0.34))
-    }
-    key = (obj.shorter_name, supporter_name)
-    if key in relative_poses:
-        supporter = world.name_to_object(supporter_name)
-        link_pose = get_link_pose(supporter.body, supporter.link)  ## ((0.593946099281311, 8.843374252319336, 0.7221270799636841), (0.0, 0.0, 0.0, 1.0))
-        print('relative_pose\t', link_pose)
-        return multiply(link_pose, relative_poses[key])
-    if key in poses:
-        return poses[key]
-    for kk, pose in poses.items():
-        if kk[0].lower == key[0].lower and kk[1] in key[1]:
-            return pose
-    return None
 
 
 def load_nvidia_kitchen_movables(world: World, open_doors_for: list = []):
@@ -128,11 +156,14 @@ def load_nvidia_kitchen_movables(world: World, open_doors_for: list = []):
     for category, asset_name, rand_ins, name, supporter_name in [
         ('appliance', 'microwave', True, 'microwave', 'hitman_tmp'),
         ('food', 'MeatTurkeyLeg', True, 'chicken-leg', 'shelf_bottom'),
-        ('food', 'VeggieCabbage', True, 'cabbage', 'shelf_bottom'),
+        # ('food', 'VeggieCabbage', True, 'cabbage', 'shelf_bottom'),
+        ('food', 'VeggieCabbage', True, 'cabbage', 'upper_shelf'),
+        # ('food', 'VeggieCabbage', True, 'cabbage', 'indigo_drawer_top'),
         ('food', 'Salter', '3934', 'salt-shaker', 'sektion'),
         ('food', 'Salter', '5861', 'pepper-shaker', 'sektion'),
         ('utensil', 'PotBody', True, 'pot', 'indigo_tmp'),
-        ('utensil', 'KitchenFork', True, 'fork', 'indigo_drawer_top'),
+        # ('utensil', 'KitchenFork', True, 'fork', 'indigo_drawer_top'),
+        ('utensil', 'KitchenFork', True, 'fork', 'upper_shelf'),
         # ('utensil', 'KitchenKnife', True, 'knife', 'indigo_drawer_top'),
     ]:
         movable = world.add_object(Moveable(
@@ -141,8 +172,9 @@ def load_nvidia_kitchen_movables(world: World, open_doors_for: list = []):
         ))
         movable.supporting_surface = world.name_to_object(supporter_name)
 
+        interactive = name in []  ## 'cabbage'
         doors = supporter_to_doors[supporter_name] if supporter_name in supporter_to_doors else []
-        place_in_nvidia_kitchen_space(movable, supporter_name, interactive=False, doors=doors)
+        place_in_nvidia_kitchen_space(movable, supporter_name, interactive=interactive, doors=doors)
 
         movables[name] = movable.body
         movable_to_doors[name] = doors
@@ -164,6 +196,7 @@ def load_nvidia_kitchen_joints(world: World, open_doors: bool = False):
             # ('counter', ['indigo_door_left_joint', 'indigo_door_right_joint'], 1, 'indigo_tmp'),
             ('counter', ['indigo_drawer_top'], 1, 'indigo_drawer_top'),
             ('fridge', ['fridge_door'], 0.5, 'shelf_bottom'),
+            ('dishwasher', ['dishwasher_door'], 1, 'upper_shelf'),
         ]:
         doors = []
         for door_name in door_names:
@@ -172,3 +205,102 @@ def load_nvidia_kitchen_joints(world: World, open_doors: bool = False):
         supporter_to_doors[supporter_name] = doors
 
     return supporter_to_doors
+
+
+#####################################################################################################
+
+
+def learned_nvidia_pose_list_gen(world, body, surfaces, num_samples=30, obstacles=[]):
+    ## --------- Special case for plates -------------
+    results = check_plate_placement(world, body, surfaces, num_samples=num_samples, obstacles=obstacles)
+
+    name = world.BODY_TO_OBJECT[body].shorter_name
+    for surface in surfaces:
+        body, _, link = surface
+        key = (name, get_link_name(body, link))
+        if key in saved_relposes:
+            results.append(saved_relposes[key])
+    return results
+
+
+def check_plate_placement(world, body, surfaces, obstacles=[], num_samples=30, num_trials=30):
+    from pybullet_tools.pr2_primitives import Pose
+    surface = random.choice(surfaces)
+    poses = []
+    trials = 0
+
+    if 'plate-fat' in get_name(body):
+        while trials < num_trials:
+            y = random.uniform(8.58, 9)
+            body_pose = ((0.84, y, 0.88), quat_from_euler((0, math.pi / 2, 0)))
+            p = Pose(body, body_pose, surface)
+            p.assign()
+            if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, surface}):
+                poses.append(p)
+                # for roll in [-math.pi/2, math.pi/2, math.pi]:
+                #     body_pose = (p.value[0], quat_from_euler((roll, math.pi / 2, 0)))
+                #     poses.append(Pose(body, body_pose, surface))
+
+                if len(poses) >= num_samples:
+                    return [(p,) for p in poses]
+            trials += 1
+        return []
+
+    if isinstance(surface, int) and 'plate-fat' in get_name(surface):
+        aabb = get_aabb(surface)
+        while trials < num_trials:
+            body_pose = xyzyaw_to_pose(sample_pose(body, aabb))
+            p = Pose(body, body_pose, surface)
+            p.assign()
+            if not any(pairwise_collision(body, obst) for obst in obstacles if obst not in {body, surface}):
+                poses.append(p)
+                if len(poses) >= num_samples:
+                    return [(p,) for p in poses]
+            trials += 1
+
+    return []
+
+
+#####################################################################################################
+
+
+base_confs = {
+    ('cabbage', 'shelf_bottom'): [(1.54, 4.693, 0.49, 2.081)],
+    ('cabbage', 'upper_shelf'): [
+        ((1.2067, 5.65, 0.0253, 1.35), {0: 1.2067001768469119, 1: 5.649899504044555, 2: 1.34932216824778, 17: 0.025273033185228437, 61: 0.5622022164634521, 62: -0.11050738689251488, 63: 2.3065452971538147, 65: -1.382707387923262, 66: 1.2637544829338638, 68: -0.8836125960523644, 69: 2.9453111543097945}),
+        ((1.166, 5.488, 0.222, 0.475), {0: 1.166, 1: 5.488, 2: 0.475, 17: 0.222, 61: 1.106, 62: 0.172, 63: 3.107, 65: -0.943, 66: 0.077, 68: -0.457, 69: -2.503}),
+        ((1.684, 6.371, 0.328, 1.767), {0: 1.684, 1: 6.371, 2: 1.767, 17: 0.328, 61: 1.422, 62: 0.361, 63: 3.127, 65: -1.221, 66: 2.251, 68: -0.018, 69: 1.634}),
+        ((1.392, 5.57, 0.141, 0.726), {0: 1.392, 1: 5.57, 2: 0.726, 17: 0.141, 61: 1.261, 62: -0.043, 63: 2.932, 65: -1.239, 66: 0.526, 68: -0.427, 69: 0.612}),
+        ((1.737, 6.033, 0.279, -5.162), {0: 1.737, 1: 6.033, 2: -5.162, 17: 0.279, 61: 1.966, 62: 0.37, 63: 2.515, 65: -1.125, 66: -4.711, 68: -0.579, 69: 2.463}),
+        ((1.666, 6.347, 0.404, 1.66), {0: 1.666, 1: 6.347, 2: 1.66, 17: 0.404, 61: 1.22, 62: 0.656, 63: 3.653, 65: -0.948, 66: -1.806, 68: -0.41, 69: 0.355}),
+
+    ],
+}
+
+
+def learned_nvidia_bconf_list_gen(world, inputs):
+    a, o, p = inputs[:3]
+    robot = world.robot
+    joints = robot.get_group_joints('base-torso')
+    movable = world.BODY_TO_OBJECT[o].shorter_name
+    for key, bqs in base_confs.items():
+        if key[0] == movable:
+            results = []
+            for bq in bqs:
+                joint_state = None
+                if isinstance(bq, tuple):
+                    bq, joint_state = bq
+                results.append(Conf(robot.body, joints, bq, joint_state=joint_state))
+
+            if key in saved_poses and equal(p.value[0], saved_poses[key][0]):
+                return results
+            if key in saved_relposes:
+                relpose = saved_relposes[key]
+                if len(inputs) == 4:
+                    supporter_pose = world.name_to_object(key[1], include_removed=True).get_pose()
+                    if equal(p.value[0], multiply(supporter_pose, relpose)[0]):
+                        return results
+                else:
+                    if equal(p.value[0], relpose[0]):
+                        return results
+    return []

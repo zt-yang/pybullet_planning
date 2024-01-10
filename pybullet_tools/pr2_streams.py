@@ -262,9 +262,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
         grasp_conf = list(map(base_conf.joint_state.get, arm_joints))
         set_joint_positions(robot, arm_joints, grasp_conf)
     else:
-        grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose,
-                                            custom_limits=custom_limits)  # , upper_limits=USE_CURRENT)
-        # nearby_conf=USE_CURRENT) # upper_limits=USE_CURRENT,
+        grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose, custom_limits=custom_limits)
 
     if (grasp_conf is None) or collided(robot, obstacles_here, articulated=True, world=world, tag=title,
                                         verbose=verbose, ignored_pairs=ignored_pairs_here,
@@ -380,7 +378,7 @@ def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
         if fluents:
             attachments = process_motion_fluents(fluents, robot)
             attachments = {a.child: a for a in attachments}
-            obstacles_here.extend([p[1] for p in fluents if p[0] == 'atpose'])
+            obstacles_here.extend([p[1] for p in fluents if p[0] in ['atpose', 'atrelpose'] if isinstance(p[1], int)])
         else:
             world_saver.restore()
             attachment = grasp.get_attachment(robot, arm, visualize=False)
@@ -1759,7 +1757,8 @@ def process_ik_context(context, verbose=False):
             raise ValueError(stream.name)
 
 
-def sample_bconf(world, robot, inputs, pose_value, obstacles, heading, ir_sampler=None, ik_fn=None, ir_only=False,
+def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
+                 ir_sampler=None, ik_fn=None, ir_only=False, learned=False,
                  ir_max_attempts=40, max_attempts=30, soft_failures=False, verbose=False, visualize=False):
     a, o = inputs[:2]
     g = inputs[-1]
@@ -1783,6 +1782,21 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading, ir_sample
     arm_joints = get_arm_joints(robot, a)
     default_conf = arm_conf(a, g.carry)
 
+    ## use domain specific bconf databases
+    if learned and world.learned_bconf_list_gen is not None:
+        results = world.learned_bconf_list_gen(world, inputs)
+        for bq in results:
+            ir_outputs = (bq,)
+            print('sample_bconf | found saved bconf', bq)
+            if ir_only:
+                yield ir_outputs
+                continue
+
+            ik_outputs = ik_fn(*(inputs + ir_outputs))
+            if ik_outputs is None:
+                continue
+            yield ir_outputs + ik_outputs
+
     ## solve IK for all 13 joints
     if robot.USE_TORSO and has_tracik():
         from pybullet_tools.tracik import IKSolver
@@ -1796,7 +1810,6 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading, ir_sample
 
         attempts = 0
         for conf in ik_solver.generate(gripper_pose):  # TODO: islice
-            joint_state = dict(zip(ik_solver.joints, conf))
             if max_attempts <= attempts:
                 if verbose:
                     print(f'{get_ik_gen.__name__} failed after {attempts} attempts!')
@@ -1809,6 +1822,10 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading, ir_sample
                 else:
                     break
             attempts += 1
+            if conf is None:
+                continue
+
+            joint_state = dict(zip(ik_solver.joints, conf))
 
             base_joints = robot.get_base_joints()
             bconf = list(map(joint_state.get, base_joints))
@@ -2057,7 +2074,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading, ir_sample
 
 
 def get_ik_gen_old(problem, max_attempts=30, collisions=True, learned=True, teleport=False, ir_only=False,
-                       soft_failures=False, verbose=False, visualize=False, ACONF=False, **kwargs):
+                   soft_failures=False, verbose=False, visualize=False, ACONF=False, **kwargs):
     """ given grasp of target object at relative pose rp with regard to supporter at p2, return base conf and arm traj """
     ir_max_attempts = 40
     ## not using this if tracik compiled
@@ -2081,7 +2098,7 @@ def get_ik_gen_old(problem, max_attempts=30, collisions=True, learned=True, tele
 
         inputs = a, o, p, g
         return sample_bconf(world, robot, inputs, pose_value, obstacles, heading, ir_sampler=ir_sampler, ik_fn=ik_fn,
-                     verbose=verbose, visualize=visualize, soft_failures=soft_failures,
+                     verbose=verbose, visualize=visualize, soft_failures=soft_failures, learned=learned,
                      ir_max_attempts=ir_max_attempts, max_attempts=max_attempts, ir_only=ir_only)
 
     return gen
@@ -2109,7 +2126,7 @@ def get_ik_rel_gen_old(problem, max_attempts=30, collisions=True, learned=True, 
 
         inputs = a, o1, rp1, o2, p2, g
         return sample_bconf(world, robot, inputs, pose_value, obstacles, heading, ir_sampler=ir_sampler, ik_fn=ik_fn,
-                            verbose=verbose, visualize=visualize, soft_failures=soft_failures,
+                            verbose=verbose, visualize=visualize, soft_failures=soft_failures, learned=learned,
                             ir_max_attempts=ir_max_attempts, max_attempts=max_attempts, ir_only=ir_only)
 
     return gen
