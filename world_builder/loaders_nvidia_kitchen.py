@@ -67,6 +67,14 @@ saved_base_confs = {
         ((1.666, 6.347, 0.404, 1.66), {0: 1.666, 1: 6.347, 2: 1.66, 17: 0.404, 61: 1.22, 62: 0.656, 63: 3.653, 65: -0.948, 66: -1.806, 68: -0.41, 69: 0.355}),
 
     ],
+    ('fork', 'indigo_drawer_top'): [
+        ((1.718, 8.893, 0.0, -2.825), {0: 1.718, 1: 8.893, 2: -2.825, 17: 0.0, 61: -0.669, 62: 0.358, 63: -0.757, 65: -0.769, 66: 3.234, 68: -0.274, 69: -0.961}),
+        ((1.718, 8.324, 0.439, 1.462), {0: 1.718, 1: 8.324, 2: 1.462, 17: 0.439, 61: 1.081, 62: 0.608, 63: 1.493, 65: -0.693, 66: 2.039, 68: -1.16, 69: -2.243}),
+    ],
+    ('fork', 'indigo_tmp'): [
+        ((1.248, 8.31, 0.337, 1.635), {0: 1.248, 1: 8.31, 2: 1.635, 17: 0.337, 61: 1.072, 62: 0.45, 63: -0.062, 65: -0.678, 66: 3.199, 68: -1.797, 69: -0.868}),
+        ((1.403, 8.465, 0.318, 1.688), {0: 1.403, 1: 8.465, 2: 1.688, 17: 0.318, 61: 0.803, 62: 1.281, 63: 0.998, 65: -1.401, 66: -1.814, 68: -1.627, 69: 3.132}),
+    ]
 }
 
 
@@ -237,7 +245,7 @@ def load_nvidia_kitchen_joints(world: World, open_doors: bool = False):
 #####################################################################################################
 
 
-def learned_nvidia_pose_list_gen(world, body, surfaces, num_samples=30, obstacles=[]):
+def learned_nvidia_pose_list_gen(world, body, surfaces, num_samples=30, obstacles=[], verbose=True):
     ## --------- Special case for plates -------------
     results = check_plate_placement(world, body, surfaces, num_samples=num_samples, obstacles=obstacles)
 
@@ -247,6 +255,8 @@ def learned_nvidia_pose_list_gen(world, body, surfaces, num_samples=30, obstacle
         key = (name, get_link_name(body, link))
         if key in saved_relposes:
             results.append(saved_relposes[key])
+            if verbose:
+                print('learned_nvidia_pose_list_gen | found pose for', key)
     return results
 
 
@@ -291,11 +301,13 @@ def check_plate_placement(world, body, surfaces, obstacles=[], num_samples=30, n
 #####################################################################################################
 
 
-def learned_nvidia_bconf_list_gen(world, inputs):
+def learned_nvidia_bconf_list_gen(world, inputs, verbose=True):
     a, o, p = inputs[:3]
     robot = world.robot
     joints = robot.get_group_joints('base-torso')
     movable = world.BODY_TO_OBJECT[o].shorter_name
+
+    to_return = []
     for key, bqs in saved_base_confs.items():
         if key[0] == movable:
             results = []
@@ -307,14 +319,18 @@ def learned_nvidia_bconf_list_gen(world, inputs):
                 results.append(Conf(robot.body, joints, bq, joint_state=joint_state))
 
             if key in saved_poses and equal(p.value[0], saved_poses[key][0]):
-                return results
+                to_return = results
             if key in saved_relposes:
                 relpose = saved_relposes[key]
                 if len(inputs) == 4:
                     supporter_pose = world.name_to_object(key[1], include_removed=True).get_pose()
                     if equal(p.value[0], multiply(supporter_pose, relpose)[0]):
-                        return results
+                        to_return = results
                 else:
                     if equal(p.value[0], relpose[0]):
-                        return results
-    return []
+                        to_return = results
+            if len(to_return) > 0:
+                if verbose:
+                    print('learned_nvidia_bconf_list_gen | found', len(to_return), 'base confs for', key)
+                break
+    return to_return

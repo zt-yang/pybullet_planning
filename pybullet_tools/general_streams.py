@@ -272,7 +272,7 @@ def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visu
         ## ------------------------------------------------
         if learned_sampling and world.learned_pose_list_gen is not None:
 
-            result = world.learned_pose_list_gen(world, body, surfaces, num_samples=num_samples-5)
+            result = world.learned_pose_list_gen(world, body, surfaces, num_samples=num_samples-5, verbose=verbose)
             for body_pose in result:
                 p = Pose(body, value=body_pose, support=surface)
                 p.assign()
@@ -285,7 +285,7 @@ def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visu
                         p = get_rel_pose(body, surface, body_pose)
                     yield (p,)
 
-            if verbose: print(title, 'sample without check_kitchen_placement')
+            if verbose: print(title, 'sample without learned_pose_list_gen')
         ## ------------------------------------------------
 
         while count > 0:
@@ -379,7 +379,7 @@ def get_contain_gen(problem, collisions=True, num_samples=20, verbose=False, rel
 
         ## ------------------------------------------------
         if learned_sampling and world.learned_pose_list_gen is not None:
-            result = world.learned_pose_list_gen(world, body, spaces, num_samples=num_samples-5)
+            result = world.learned_pose_list_gen(world, body, spaces, num_samples=num_samples-5, verbose=verbose)
             if result is not None:
                 for body_pose in result:
                     p = Pose(body, value=body_pose, support=space)
@@ -390,10 +390,9 @@ def get_contain_gen(problem, collisions=True, num_samples=20, verbose=False, rel
                         attempts += 1
                         if relpose:
                             p = RelPose2(body, value=body_pose, support=space)
-                            # p = get_rel_pose(body, space, body_pose)
                         yield (p,)
 
-            if verbose: print(title, 'sample without check_kitchen_placement')
+            if verbose: print(title, 'sample without learned_pose_list_gen')
         ## ------------------------------------------------
 
         while attempts < num_samples:

@@ -1796,6 +1796,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
             if ik_outputs is None:
                 continue
             yield ir_outputs + ik_outputs
+        print('sample_bconf | sampling beyond saved bconfs')
 
     ## solve IK for all 13 joints
     if robot.USE_TORSO and has_tracik():
