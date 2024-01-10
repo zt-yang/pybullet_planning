@@ -1,0 +1,1142 @@
+import sys
+import os
+from os.path import join, dirname, abspath
+ROOT_DIR = abspath(join(dirname(__file__), os.pardir))
+sys.path.extend([
+    join(ROOT_DIR, '..'),
+    join(ROOT_DIR, '..', 'pddlgym'),
+    join(ROOT_DIR, '..', 'pddlstream'),
+    join(ROOT_DIR, '..', 'bullet', 'pybullet-planning'),
+    join(ROOT_DIR, '..', 'bullet', 'pybullet-planning', 'examples'),
+    '/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages',  ## to use imgeio-ffmpeg
+    # join(ROOT_DIR, '..', 'pddlstream'),
+    # join(ROOT_DIR, '..', 'pddlstream', 'examples', 'pybullet', 'utils'),
+])
+import shutil
+import copy
+import time
+from pprint import pprint
+
+from pddlgym.core import PDDLEnv, _check_domain_for_strips
+from pddlgym.parser import PDDLDomainParser
+from pddlgym.inference import find_satisfying_assignments
+from pddlgym.structs import Literal, LiteralConjunction, \
+    Predicate, Type, TypedEntity, Exists, ForAll, LiteralDisjunction, DerivedPredicate
+from pddlgym.spaces import LiteralSpace, LiteralSetSpace
+
+from world_builder.entities import Object
+from pybullet_tools.bullet_utils import summarize_facts
+
+DEFAULT_TYPE = Type("default")
+DOMAIN_DIR = join(dirname(os.getcwd()), '..', 'bullet', 'assets', 'pddl', 'domains')
+
+
+def construct_problem(domain='pr2_kitchen.pddl', problem='test_studio', exp_dir='hierarchical'):
+    from pybullet_tools.utils import connect
+    from bullet.examples.run_pr2 import get_parser, get_pddlstream_problem
+
+    args = get_parser(problem, exp_dir)
+    connect(use_gui=False)
+    state, exogenous, goals, pddlstream_problem = get_pddlstream_problem(args, domain)
+
+    return pddlstream_problem, state
+
+
+def construct_test_plan(state):
+    from pddlstream.language.constants import Action
+    from pybullet_tools.pr2_primitives import Pose, Grasp, Conf, APPROACH_DISTANCE, \
+        TOP_HOLDING_LEFT_ARM
+    from pybullet_tools.utils import get_unit_vector, multiply, unit_quat
+
+    def pr2_grasp(grasp_type, body, value):
+        approach_vector = APPROACH_DISTANCE * get_unit_vector([1, 0, 0])
+        return Grasp(grasp_type, body, value,
+                     multiply((approach_vector, unit_quat()), value),
+                     TOP_HOLDING_LEFT_ARM)
+
+    robot = state.robot
+    def pr2_traj(arm='left'):
+        from pybullet_tools.pr2_primitives import Commands, Conf, Trajectory
+        from pybullet_tools.pr2_utils import get_arm_joints
+        from pybullet_tools.utils import BodySaver
+
+        arm_joints = get_arm_joints(robot, arm)
+        q0 = [0] * len(arm_joints)
+        path = [q0]
+        mt = Trajectory(Conf(robot, arm_joints, q) for q in path)
+        return Commands(state, savers=[BodySaver(robot)], commands=[mt])
+
+    return [
+        Action(name='pick',
+               args=[
+                   'left', 4, Pose(4, value=((4, 6, 0.95), (0, 0, 0, 1))),
+                   pr2_grasp('top', 4, value=((0.02, 0, 0), (0.5, -0.5, -0.5, 0.5))),
+                   Conf(0, [0, 1, 2], values=(4.269, 5.331, 0.28)),
+                   pr2_traj()
+               ]),
+        Action(name='place',
+               args=[
+                   'left', 4, Pose(4, value=((1.935, 4.867, 0.951), (0, 0, -0.74, 0.67))),
+                   pr2_grasp('top', 4, value=((0.02, 0, 0), (0.5, -0.5, -0.5, 0.5))),
+                   Conf(0, [0, 1, 2], values=(1.307, 5.431, -1.841)),
+                   pr2_traj()
+               ])
+    ]
+
+
+def get_required_pred(domain):
+    ## YANG's way to reduce inference problem_sets
+    for pred in domain.predicates.values():
+        if not pred.is_derived:
+            continue
+
+        ## -------------------------------------
+        ## YANG: avoid the prolog run if
+        required_preds = []
+
+        # required_types = []
+
+        def add(lit):
+            required_preds.append(lit.predicate)
+            # required_types.extend([v.var_type for v in lit.variables])
+
+        def add_exist(body):
+            if isinstance(body, Literal):
+                add(body)
+            elif isinstance(body, LiteralConjunction):
+                for lit in body.literals:
+                    add(lit)
+            else:
+                print('YANG7, what is this derived definition in Exist')
+
+        def add_literal(body):
+            if isinstance(body, Literal):
+                add(body)
+            elif isinstance(body, Exists) or isinstance(body, ForAll):
+                add_exist(body.body)
+            else:
+                print('YANG8, what is this AND/OR inside AND/OR')
+
+        if isinstance(pred.body, Literal) or isinstance(pred.body, Exists) or isinstance(pred.body, ForAll):
+            add_literal(pred.body)
+        elif isinstance(pred.body, LiteralConjunction) or isinstance(pred.body, LiteralDisjunction):
+            for lit in pred.body.literals:
+                add_literal(lit)
+        else:
+            print('YANG6, what is this derived definition')
+        pred.required_preds = required_preds
+        # pred.required_types = required_types
+    # print(f'computed required preds in {round(time.time()-start, 3)} sec')
+    return domain
+
+
+def get_preconds(pred):
+    literals = []
+    if isinstance(pred, DerivedPredicate):  ## axioms
+        if isinstance(pred.body, Exists):
+            literals.extend(pred.body.body.literals)
+        elif isinstance(pred.body, LiteralConjunction):
+            literals.extend(pred.body.literals)
+        if isinstance(pred.body, Literal):
+            literals.append(pred.body)
+    else:
+        literals.extend(pred.preconds.literals)
+    return literals
+
+
+def get_effects(action):
+    literals = []
+    if isinstance(action.effects, Literal):
+        literals.append(action.effects)
+    elif isinstance(action.effects, LiteralConjunction):
+        literals.extend(action.effects.literals)
+    return literals
+
+
+def get_dynamic_literals(domain):
+    literals = []
+    for operator in domain.operators.values():
+        for eff in get_effects(operator):
+            if eff.predicate.name not in literals:
+                literals.append(eff.predicate.name)
+    for name, pred in domain.predicates.items():
+        if pred.is_derived:
+            literals.append(name)
+    return literals
+
+
+def find_pred_in_state(state, name):
+    literals = []
+    for lit in list(state.literals):
+        if lit.predicate.name == name:
+            literals.append(lit)
+    return literals
+
+
+def find_poses(facts):
+    poses = {}
+    for literal in facts:
+        if literal.predicate.name == 'atpose':
+            body, pose = literal.variables
+            poses[body] = pose
+    return poses
+
+
+def find_on_pose(on_facts, facts):
+    on_map = {}
+    for on in on_facts:
+        for fa in facts:
+            if on.variables[0] == fa.variables[0]:
+                on_map[on] = fa
+    return on_map
+
+
+class PDDLProblemTranslator():
+    def __init__(self, pddlstream_problem, domain, init=None, objects=[]):
+        self.problem_fname = 'dontknow'
+        self.domain_name = domain.domain_name
+        self.types = domain.types
+        self.predicates = domain.predicates
+        self.action_names = domain.actions
+        self.uses_typing = not ("default" in self.types)
+        self.constants = domain.constants
+        self.bodies = objects
+
+        self._translate_problem(pddlstream_problem, init=init, objects=objects)
+        self.moveables = self._get_moveables(self.initial_state)
+
+    def _get_moveables(self, init):
+        moveables = []
+        for fact in init:
+            if fact.predicate.name == 'pose':
+                body = fact.variables[0]
+                if body not in moveables:
+                    moveables.append(body)
+        return moveables
+
+    def _translate_problem(self, pddlstream_problem, init=None, objects=[]):
+        sys.path.extend([
+            join(ROOT_DIR, '..', 'pddlstream'),
+            join(ROOT_DIR, '..', 'pddlstream', 'examples', 'pybullet', 'utils'),
+        ])
+        # self.objects = list(BODY_TO_OBJECT.keys())
+        # self.objects.extend(list(ROBOT_TO_OBJECT.keys()))
+        self.objects = objects
+        self.object_mapping = {str(k): k for k in self.objects}
+        self.objects = {str(k): DEFAULT_TYPE for k in self.object_mapping}
+
+        if init == None:
+            init = pddlstream_problem.init
+
+        self.initial_state = [self.to_literal(fact) for fact in init if '=' not in fact[0]]  ## cost
+        self.goal = LiteralConjunction([self.to_literal(fact) for fact in pddlstream_problem.goal[1:]])
+
+    def to_literal(self, literal_list):
+        params = self.objects
+        lst = []
+        for n in literal_list:
+            if not isinstance(n, Object):
+                lst.append(str(n).lower())
+            else:
+                lst.append(str(n.body).lower())
+        pred, args = lst[0], lst[1:]
+        typed_args = []
+        # Validate types against the given params dict.
+        if pred not in self.predicates:
+            # print("Adding predicate {} to domain".format(pred))
+            l = len(lst[1:])
+            self.predicates[pred] = Predicate(pred, l, [DEFAULT_TYPE for i in range(l)])
+            # print("Predicate {} is not defined".format(pred))
+        # assert pred in self.predicates, "Predicate {} is not defined".format(pred)
+        if self.predicates[pred].arity != len(args):
+            print('self.predicates[pred].arity', self.predicates[pred].arity)
+        assert self.predicates[pred].arity == len(args), pred
+        for i, arg in enumerate(args):
+            ## add object in to self.objects and self.object_mapping
+            if arg not in params:
+                self.objects[arg] = DEFAULT_TYPE
+                self.object_mapping[arg] = literal_list[i+1]
+            assert arg in params, "Argument {} is not in the params".format(arg)
+            if isinstance(params, dict):
+                typed_arg = TypedEntity(arg, params[arg])
+            else:
+                typed_arg = params[params.index(arg)]
+            typed_args.append(typed_arg)
+        return self.predicates[pred](*typed_args)
+
+    def from_literal(self, literal):
+        lst = [literal.predicate.name]
+        lst.extend([self.object_mapping[n.name] for n in literal.variables])
+        lst = tuple(lst)
+        if literal.is_negative:
+            lst = ('not', lst)
+        return lst
+
+
+class PDDLStreamEnv(PDDLEnv):
+    def __init__(self, domain_file, pddlstream_problem, init=None, objects=[], domain_modifier=None):
+        self._state = None
+        self._problem_dir = None
+        self._render = None
+        self._raise_error_on_invalid_action = False
+        self.operators_as_actions = True
+        self._problem_index_fixed = False
+        self._problem_idx = 0
+        self._problem_index_fixed = True
+
+        #------------------- construct the PDDLStream Env --------------------------
+        self._domain_file = domain_file
+        self._pddlstream_problem = pddlstream_problem
+        self.domain = self.load_domain(self._domain_file, self.operators_as_actions, domain_modifier)
+        # print('* '*20 + 'print operators' + ' *'*20)
+        # pprint(self.domain.operators)
+        # print('* '*40)
+        self.static_literals, self.externals = self.load_streams(pddlstream_problem)
+        self.dynamic_literals = get_dynamic_literals(self.domain)
+        self.tests = self.load_tests()
+        # self.domain = self.remove_static_preconditions(self.domain, pddlstream_problem)
+        self.problems = [PDDLProblemTranslator(self._pddlstream_problem, self.domain,
+                                               init=init, objects=objects)]
+        self._init_literals = []
+        #---------------------------------------------------------------------------
+
+        # Determine if the domain is STRIPS
+        self._domain_is_strips = _check_domain_for_strips(self.domain)
+        self._inference_mode = "csp" if self._domain_is_strips else "prolog"
+
+        # Initialize action space with problem-independent components
+        actions = list(self.domain.actions)
+        self.action_predicates = [self.domain.predicates[a] for a in actions]
+        self._dynamic_action_space = False
+        self._action_space = LiteralSpace(self.action_predicates,
+                                            type_to_parent_types=self.domain.type_to_parent_types)
+
+        # Initialize observation space with problem-independent components
+        self._observation_space = LiteralSetSpace(
+            set(self.domain.predicates.values()) - set(self.action_predicates),
+            type_hierarchy=self.domain.type_hierarchy,
+            type_to_parent_types=self.domain.type_to_parent_types)
+
+        # self._axioms = check_domain([domain_file], verbose=False)['axioms']
+
+        ## for getting extended plan
+        self.derived_literals = []
+        self.derived_assignments = {}
+        self.derived = {}
+        self.on_map = {}
+        self.on_map_inv = {}
+        self.poses_at_action = []  ## each item is {obj : pose}
+        self.poses_for_traj = {}  ## unsafetraj: poses
+        self.test_replacements = {}  ## unsafetraj: bodies
+
+        self.useful_variables = None
+
+    @staticmethod
+    def load_domain(domain_file, operators_as_actions=True, domain_modifier=None):
+        domain = PDDLDomainParser(domain_file,
+                                  expect_action_preds=(not operators_as_actions),
+                                  operators_as_actions=operators_as_actions)
+        if domain_modifier is not None:
+            domain = domain_modifier(domain)
+        domain = get_required_pred(domain)
+
+        return domain
+
+    @staticmethod
+    def load_streams(pddlstream_problem):
+        from pddlstream.algorithms.algorithm import parse_problem
+
+        domain_line = pddlstream_problem.domain_pddl.split('\n')[0]
+        if 'pr2' in domain_line:
+            from pybullet_tools.pr2_agent import get_stream_info
+            stream_info = get_stream_info()
+        else:  ## if 'feg' in domain_line:
+            from pybullet_tools.flying_gripper_agent import get_stream_info
+            stream_info = get_stream_info()
+
+        evaluations, goal_exp, _, externals = parse_problem(
+            pddlstream_problem, stream_info=stream_info, unit_costs=True, unit_efforts=True)
+        # streams, functions, negative, optimizers = partition_externals(externals, verbose=True)
+        static_literals = {}
+        for stream in externals:
+            for t in stream.certified:
+                if t[0] not in static_literals:
+                    static_literals[t[0]] = []
+                static_literals[t[0]].append(stream)
+        return static_literals, externals
+
+    def load_tests(self):
+        """ check which derived axioms depend on existential tests """
+        tests = {}
+        for name, pred in self.domain.predicates.items():
+            if not pred.is_derived: continue
+            if isinstance(pred.body, Exists):
+                for literal in pred.body.body.literals:  ## Cfree...
+                    if literal.predicate.name in self.static_literals:
+                        for stream in self.static_literals[literal.predicate.name]:
+                            if 'test-' in stream.name:
+                                tests[name] = stream.name
+        return tests
+
+    ## discarded
+    def remove_static_preconditions(self, domain, pddlstream_problem, verbose=True):
+        """ delete the static facts generated by streams from preconditions """
+        from pddlstream.algorithms.algorithm import parse_problem
+        # from pddlgym.downward_translate.pddl.conditions import Conjunction
+
+        if verbose: print('------------- REMOVING STATIC PRECONDITIONS -------------')
+        removed_preds = []
+
+        ## find certified predicates
+        evaluations, goal_exp, _, externals = parse_problem(
+            pddlstream_problem, stream_info=stream_info, unit_costs=True, unit_efforts=True)
+        # streams, functions, negative, optimizers = partition_externals(externals, verbose=True)
+        for stream in externals:
+            removed_preds.extend([t[0] for t in stream.certified])
+
+        ## find derived predicates that depend on certified predicates
+        for name, pred in domain.predicates.items():
+            if not pred.is_derived: continue
+            for literal in pred.body.positive.body.literals:
+                if literal.predicate.name in removed_preds and name not in removed_preds:
+                    if verbose: print(f' ignore derived {name} because of {literal}')
+                    removed_preds.append(name)
+
+        ## ignore those predicates from operator preconditions and
+        self.operators = copy.deepcopy(domain.operators)
+        new_operators = {}
+        for name, operator in domain.operators.items():
+            new_preconds = []
+            for cond in operator.preconds.literals:  ## is an Atom
+                if cond.predicate.name in removed_preds or 'unsafe' in cond.predicate.name:
+                    if verbose: print(f' in operator {name}, precondition {cond} is ignored')
+                else:
+                    new_preconds.append(cond)
+            new_operator = copy.deepcopy(operator)
+            new_operator.preconds = LiteralConjunction(new_preconds)
+            new_operators[name] = new_operator
+        domain.operators = new_operators
+        if verbose: print('---------------------------------------------------------')
+        return domain
+
+    def _find_existed_variables(self, pred, state_literals, assignment, verbose=False):
+        """ return dict of param: var assignments """
+        if pred.name in self.new_assignments:
+            new_assignments = self.new_assignments[pred.name]
+        else:
+            # if pred.name == 'closedjoint':
+            #     verbose = True
+            # verbose = True ## debug
+            new_assignments = find_satisfying_assignments(
+                state_literals, pred.body.body,
+                type_to_parent_types=self.domain.type_to_parent_types,
+                constants=self.domain.constants,
+                mode="prolog",
+                max_assignment_count=99999,
+                pred=pred,
+                INFER_TYPING=True,
+                verbose=verbose,
+            )
+            self.new_assignments[pred.name] = new_assignments
+
+        ## now it just choose the first one
+        if len(new_assignments) == 0:
+            print(f'\n\nhierarchical._find_existed_variables({pred}, {assignment}) found no new_assignments\n\n')
+            new_assignments = {}
+        else:
+            new_assignments = [n for n in new_assignments if set(assignment.values()).issubset(set(n.values()))][0]
+        return new_assignments
+
+    def _handle_derived_literals(self, state):
+        """ make sure the derived literals are saved in env """
+
+        ## -------------- added by YANG ------------------------------------------
+        self.derived_literals = []  ## grounded literals
+        self.derived_assignments = {}  ## grounded literal : assignments
+        self.new_assignments = {}  ## pre.name : assignments with existential vars
+        ## ------------------------------------------------------------------------
+
+        # first remove any old derived literals since they're outdated
+        to_remove = set()
+        for lit in state.literals:
+            if lit.predicate.is_derived:
+                to_remove.add(lit)
+        state = state.with_literals(state.literals - to_remove)
+        while True:  # loop, because derived predicates can be recursive
+            new_derived_literals = set()
+            for pred in self.domain.predicates.values():
+                if not pred.is_derived:
+                    continue
+
+                DEBUG = False
+                ## skip existential crisis to save time in preimage computation
+                # if isinstance(pred.body, Exists) and len(pred.body.variables) > 1:
+                if isinstance(pred.body, Exists) and \
+                        'unsafe' in pred.name.lower() or 'obstacle' in pred.name.lower():
+                    # print('\n\nexistential crisis', pred)
+                    DEBUG = True
+                    continue
+                # if pred.name.lower() == 'robinroom':
+                #     DEBUG = True
+
+                literals = [l for l in state.literals if 'uniqueoptvalue' not in str(l)]
+                assignments = find_satisfying_assignments(
+                    literals, pred.body,
+                    type_to_parent_types=self.domain.type_to_parent_types,
+                    constants=self.domain.constants, mode="prolog",
+                    max_assignment_count=99999,
+                    pred=pred,  ## for printing debug .pl and for resolving existential crisis
+                    verbose=DEBUG,
+                    INFER_TYPING=True
+                )
+
+                for assignment in assignments:
+                    objects = [assignment[param_type(param_name)]
+                               for param_name, param_type in zip(pred.param_names, pred.var_types)]
+                    derived_literal = pred(*objects)
+                    if derived_literal not in state.literals:
+                        new_derived_literals.add(derived_literal)
+
+                        ## --------------------- added by YANG -----------------------
+                        if derived_literal not in self.derived_literals:
+                            self.derived_literals.append(derived_literal)
+
+                            ## needs to find the assignments of things that exist
+                            if isinstance(pred.body, Exists):
+                                assignment.update(self._find_existed_variables(pred, literals, assignment))
+                            self.derived_assignments[derived_literal] = assignment
+                        ## ------------------------------------------------------------
+
+            if new_derived_literals:
+                state = state.with_literals(state.literals | new_derived_literals)
+            else:  # terminate
+                break
+        return state
+
+    def to_literal(self, literal_list):
+        from pddlstream.language.constants import Action
+        if isinstance(literal_list, Action):
+            name, args = literal_list
+            literal_list = [name]
+            literal_list.extend(args)
+        return self._problem.to_literal(literal_list)
+
+    def add_objects(self, env):
+        self._problem.object_mapping.update(env._problem.object_mapping)
+        self._problem.objects.update(env._problem.objects)
+
+    def from_literal(self, literal):
+        from pddlstream.language.constants import Action
+        tup = self._problem.from_literal(literal)
+        if tup[0] in self.domain.operators:
+            return Action(tup[0], tup[1:])
+        return tup
+
+    ## discarded
+    def _get_applied_streams(self, name, mapping):
+        applied_stream_candidates = []
+        for stream in self.streams[name]:
+
+            ## TODO : this mapping string is wrong
+            # mapping = {operator.params[i]: action.variables[i] for i in range(len(operator.params))}
+            mapping_str = {k.name: v for k, v in mapping.items()}
+
+            inputs = []
+            for ip in stream.inputs:
+                if ip in mapping_str:
+                    inputs.append(mapping_str[ip])
+                else:
+                    inputs.append(ip)
+            outputs = []
+            for ip in stream.outputs:
+                if ip in mapping_str:
+                    outputs.append(mapping_str[ip])
+                else:
+                    outputs.append(ip)
+            stream.inputs = inputs
+            stream.outputs = outputs
+            applied_stream_candidates.append(stream)
+
+        return applied_stream_candidates
+
+    def _resolve_cond(self, cond, need_preconditions, applied_axioms, need_tests, verbose=False):
+        pred = cond.predicate  ## self.domain.predicates[name]
+
+        ## don't add tests
+        if pred.is_derived and pred.name not in self.tests:
+            ## add both the grounded derived predicate,
+            # but also the assigned variables in its preconditions
+            applied_axioms.append((cond, self.derived_assignments))
+
+            if not isinstance(pred.body, Exists):  ## don't ground things in exist
+                params = [TypedEntity(pred.param_names[i], pred.var_types[i]) for i in range(len(pred.param_names))]
+                mapping = {params[i]: cond.variables[i] for i in range(len(params))}
+                for lit in pred.body.body.literals:
+                    n = lit.predicate.name
+                    args = []
+                    for v in lit.variables:
+                        if v in mapping:
+                            args.append(mapping[v])
+                        else:
+                            args.append(v)
+                    grounded = self.domain.predicates[n](*args)
+                    if grounded not in self._state.literals:
+                        need_preconditions.append(grounded)
+                    else:
+                        if verbose: print(f'grounded precondition to derived {cond} already in facts:  {grounded}')
+
+        elif cond.positive.predicate.name not in ['canmove', 'identical']:
+            need_tests.append(cond)
+
+        return need_preconditions, applied_axioms, need_tests
+
+    def ground_literal(self, literal, mapping):
+        if not hasattr(literal, 'predicate'):
+            return None
+        name = literal.predicate.name
+        args = [mapping[n] for n in literal.variables]
+
+        grounded_literal = self.domain.predicates[name](*args)
+        grounded_literal.is_anti = literal.is_anti
+        grounded_literal.is_negative = literal.is_negative
+        grounded_literal.predicate.is_negative = literal.predicate.is_negative
+        grounded_literal._update_variable_caches()
+
+        return grounded_literal
+
+    def identify_missing_facts(self, action, verbose=True):
+        """ find all facts that should be generated by streams or axioms to make action applicable """
+
+        operator = self.domain.operators[action.predicate.name]
+        mapping = {operator.params[i]: action.variables[i] for i in range(len(operator.params))}
+
+        ## ground the preconditions and effects
+        need_preconditions = [self.ground_literal(n, mapping) for n in operator.preconds.literals]
+        need_preconditions = [n for n in need_preconditions if n is not None and n not in self._state.literals]
+        add_effects = [self.ground_literal(n, mapping) for n in get_effects(operator)]
+        del_effects = [literal for literal in add_effects if literal.is_anti]
+        # for del_eff in del_effects:
+        #     del_eff.is_anti = False
+        add_effects = [n for n in add_effects if n not in self._state.literals]  ## and n not in del_effects
+
+        info = {
+            'need_preconditions': need_preconditions,
+            'add_effects': add_effects,
+            'del_effects': del_effects
+        }
+
+        ## update the state with the missing facts
+        self._state = self._state.with_literals(self._state.literals | frozenset(need_preconditions))
+        self.last_obs = self._state
+        # canmoves = [(l.is_anti, l.is_negative, l.predicate.is_anti, l.predicate.is_negative)
+        #             for l in self._state.literals if 'canmove' in l.predicate.name]
+        # print(f'\n\n\n\t!! before step() canmove ({len(canmoves)})', canmoves)
+
+        ## resolve all preconditions to facts
+        resolved_preconditions = []
+        applied_streams = []
+        applied_axioms = []
+        need_tests = []
+        while len(set(need_preconditions)) != len(set(resolved_preconditions)):
+
+            for cond in need_preconditions:
+                if cond in resolved_preconditions: continue
+                resolved_preconditions.append(cond)
+                name = cond.predicate.name
+
+                ## add the grounded streams/ axioms the extended plan
+                if name in self.static_literals:
+                    continue  ## don't care about how those streams are generated
+                    # applied_streams = self._get_applied_streams(name, mapping)
+
+                else:  ## missing predicates
+                    need_preconditions, applied_axioms, need_tests = self._resolve_cond(
+                        cond, need_preconditions, applied_axioms, need_tests, verbose=verbose)
+
+        info['applied_axioms'] = applied_axioms
+        info['need_tests'] = need_tests  ## now includes tests
+        info['need_preconditions'] = [n for n in info['need_preconditions'] if n not in need_tests]
+        if len(applied_streams) > 0:  ## no longer used because it's unnecessary
+            info['applied_streams'] = applied_streams
+
+        return info
+
+    def step(self, action):
+        ## first find the missing preconditions for applying the action
+        info = self.identify_missing_facts(action)
+
+        ## step() would add derived literals that the previous function doesn't detect,
+        ## because things like `on` just happens even it's not required for the next step
+        ## but required for a future step, like season()
+        obs, reward, done, _ = super().step(action)
+
+        # canmoves = [(l.is_anti, l.is_negative, l.predicate.is_anti, l.predicate.is_negative)
+        #             for l in obs.literals if 'canmove' in l.predicate.name]
+        # print(f'\t!! after step() canmove ({len(canmoves)})', canmoves)
+
+        ## include the changes and needed facts in debug_info
+        info['add'] = list(obs.literals - self.last_obs.literals)
+        derived = [n for n in info['add'] if n not in info['add_effects']]
+        info['triggered_axioms'] = [(n, self.derived_assignments) for n in self.derived_literals if n in derived]
+        info['del'] = list(self.last_obs.literals - obs.literals)
+        info['action'] = action
+
+        ## this is very special purpose
+        self.on_map.update(find_on_pose([n for n in derived if n.predicate.name == 'on'],
+                                        [n for n in info['add_effects'] if n.predicate.name == 'atpose']))
+
+        self.last_obs = obs
+        self.action_logs.append(info)
+
+        return obs, reward, done, info
+
+    def reset(self):
+        start_time = time.time()
+        obs, debug_info = super().reset()
+        print('prolog time', round(time.time() - start_time, 3))
+        self.last_obs = obs
+        self.action_logs = []
+        return obs, debug_info
+
+    def regress(self, preimage, op):
+        tests = []
+        add_list = []
+        del_list = []
+
+        if isinstance(op, tuple) and len(op) == 2:  ## (op, assignments) in derived axioms
+            ## assignments are necessary especially for ground variables in Exists
+            op, assignments = op
+            if op in assignments: ## with assignments, e.g. ON
+                assignment = assignments[op]
+                for literal in get_preconds(op.predicate):
+                    for n in literal.variables:
+                        if n not in assignment:
+                            print(f'\n\nhierarchical.regress: {n} not in {assignment}\n\n')
+                    add_list.append(literal.predicate(*[assignment[n] for n in literal.variables]))
+            else: ## e.g. UNSAFEAPPROACH
+                tests.append(op)
+            del_list.append(op)
+
+        elif op.predicate.name in self.domain.operators:  ## operator
+            action = self.domain.operators[op.predicate.name]
+            mapping = {action.params[i]: op.variables[i] for i in range(len(op.variables))}
+            for cond in get_preconds(action):
+                if isinstance(cond, ForAll):  ## HACK for OR[Notoftype(), In()]
+                    if isinstance(cond, LiteralDisjunction) and len(cond.body.literals) == 2:
+                        notoftype, something = cond.body.literals
+                        oftype = mapping[notoftype.variables[1]].name
+                        os = [f[1] for f in self.init_preimage if f[0].lower() == 'oftype' and f[2] == oftype.name]
+                        for o in os:
+                            new_mapping = copy.deepcopy(mapping)
+                            new_mapping[TypedEntity('?o', oftype.var_type)] = TypedEntity(o, oftype.var_type)
+                            add_list.append(something.predicate(*[new_mapping[n] for n in something.variables]))
+                    else:
+                        print('hierarchical.regress | not isinstance(cond, LiteralDisjunction) and len(cond.body.literals) == 2:', cond, cond.body.literals)
+                else:
+                    args = [mapping[n] for n in cond.variables]
+                    gounded_cond = cond.predicate(*args)
+                    if len(args) > 0:
+                        add_list.append(gounded_cond)
+                    elif gounded_cond in preimage:
+                        del_list.append(gounded_cond)
+
+            for eff in get_effects(action):
+                del_list.append(eff.predicate(*[mapping[n] for n in eff.variables]))
+
+        # else:  ## axioms
+        #     pred = self.domain.predicates[op.predicate.name]
+        #     params = [TypedEntity(pred.param_names[i], pred.var_types[i]) for i in range(len(pred.param_names))]
+        #     mapping = {params[i]: op.variables[i] for i in range(len(op.variables))}
+
+        for d in del_list:
+            if d in preimage:
+                preimage.remove(d)
+            if d in self.on_map_inv and self.on_map_inv[d] in preimage:
+                preimage.remove(self.on_map_inv[d])
+        for a in add_list:
+            if a.predicate.name in self.tests:  ## a derived literal that depends on a stream test
+                tests.append(a)
+            if a not in preimage and a.predicate.name not in self.static_literals: ## not a static fact
+                preimage.append(a)
+
+        preimage += [t for t in tests if t not in preimage]
+        return preimage, tests
+
+    def update_poses(self, op, facts):
+        ## the poses in preimages, may exist in the form of 'atpose' or 'on'
+        if isinstance(op, tuple): op = op[0]
+        if op.predicate.name == 'on' and op in self.on_map:
+            facts.append(self.on_map[op])
+        poses = find_poses(facts)
+
+        ## update the steps afterwards, until it's changed
+        for body, pose in poses.items():
+            for i in range(len(self.poses_at_action)):
+                j = len(self.poses_at_action) - 1 - i
+                previous = self.poses_at_action[j]
+                if body not in previous:
+                    self.poses_at_action[j][body] = pose
+                else:
+                    break
+        self.poses_at_action.append(poses)
+        return poses
+
+    # def _make_cfree_traj(self, t, o, p):
+    #     literal =
+
+    def compute_preimgae(self, extended_plan, verbose=True):
+        from pybullet_tools.logging import myprint as print
+
+        conditional_tests = []
+        all_preimages = []
+        all_tests = []
+        all_poses = []
+        test_map = {}
+
+        def print_preimages(op, preimage, tests=None, poses=None, replaced=None):
+            if isinstance(op, tuple): op = op[0]
+            op_str = str(op).replace(':default', '')
+            to_print = f'\nStep {step_idx} | op = {op_str}'
+
+            literals = {n: [] for n in ['dynamic', 'static', 'tests']}
+            for n in preimage:
+                if 'unsafe' in n.predicate.name:
+                    literals['tests'].append(n)
+                elif n.predicate.name in self.dynamic_literals:
+                    literals['dynamic'].append(n)
+                else:
+                    literals['static'].append(n)
+            if poses != None:
+                literals['poses'] = poses
+            if tests != None:
+                literals['tests_new'] = tests
+            if replaced != None:
+                literals['tests_replaced'] = replaced
+
+            for k, v in literals.items():
+                v_str = str(v).replace(':default', '')
+                to_print += f'\n       {k} ({len(v)}) = {v_str}'
+            print(to_print)
+
+        self.pre_images = {}  ## of actions
+        self.actions_after = {}
+        preimage = copy.deepcopy(self._problem.goal.literals)
+        print(f'Step {len(extended_plan)} | goal = {preimage}')
+        last_action = None
+        for i in range(len(extended_plan)):
+            step_idx = len(extended_plan) - 1 - i
+            op = extended_plan[step_idx]
+            if 'move_base' in str(op):
+                print('hierarchical.regress | move_base:', op)
+            preimage, tests = self.regress(preimage, op)
+            test_map.update({t: i for t in tests})
+            # preimage = preimage + tests
+
+            poses = self.update_poses(op, copy.deepcopy(preimage))
+
+            ## preimages of actions are to be saved as refinement goals
+            if isinstance(op, Literal):  ## op.predicate.name in self.action_predicates:
+                self.pre_images[op] = copy.deepcopy(preimage) ## + copy.deepcopy(tests)
+                self.actions_after[op] = last_action
+                last_action = op
+
+            if verbose:
+                print_preimages(op, preimage)
+
+            ## save and print in the end because poses will be propagated back
+            all_preimages.append(copy.deepcopy(preimage))
+            all_tests.append(tests)
+            all_poses.append(poses)
+
+        for i in range(len(extended_plan)):
+            step_idx = len(extended_plan) - 1 - i
+            op = extended_plan[step_idx]
+            preimage = all_preimages[i]
+            tests = all_tests[i]
+            poses = all_poses[i]
+            replaced = self.replace_tests(op, preimage, tests, poses)
+
+            if verbose:
+                print_preimages(op, preimage, tests, poses, replaced)
+
+        return preimage, conditional_tests
+
+    def replace_tests(self, op, preimage, tests, poses):
+        if isinstance(op, tuple): op = op[0]
+
+        replacements = {
+            'UnsafePose': 'PoseObstacle',
+            'UnsafeApproach':  'ApproachObstacle',
+            'UnsafeATraj': 'ATrajObstacle' ## 'cfreetrajpose' 'SafeATraj'.lower()  ##
+        }
+        for old_test, new_test in replacements.items():
+            old_test = old_test.lower()
+            new_test = new_test.lower()
+
+            unsafetraj = [n for n in tests if n.predicate.name == old_test]
+            if len(unsafetraj) > 0:
+                unsafetraj = unsafetraj[0]
+                self.poses_for_traj[unsafetraj] = poses
+
+            all_tests = [n for n in preimage if n.predicate.name == old_test]
+            for test in all_tests:
+                if test in self.poses_for_traj:
+                    that = self.poses_for_traj[test]
+                    diff = [k for k in poses if poses[k] == that[k]]
+                    pred = self.domain.predicates[new_test]
+                    if len(diff) < len(self._problem.moveables):
+
+                        ## --- method 1: (SafeATraj ?t ?o ?p)
+                        # diff = [pred(*[t, k, that[k]]) for k in diff] ## (SafeATraj ?t ?o ?p)
+
+                        ## --- method 2: (SafeATraj ?t ?o) with forall-imply
+                        # diff = [pred(*[t, k]) for k in diff]
+                        # self.test_replacements[test] = diff
+
+                        ## --- method 3: (not (ATrajObstacle ?t ?o))
+                        pp = []
+                        for k in diff:
+                            old_vars = copy.deepcopy(test.variables)
+                            old_vars.append(k)
+                            # if k in old_vars: continue
+                            literal = pred(*old_vars)
+                            literal.is_negative = True
+                            literal.predicate.is_negative = True
+                            literal._update_variable_caches()
+                            pp.append(literal)
+                        self.test_replacements[test] = pp
+
+        preimage = copy.deepcopy(preimage)
+        replaced = []
+        for k, v in self.test_replacements.items():
+            if k in preimage:
+                preimage.remove(k)
+                replaced.extend(v)
+        preimage.extend(replaced)
+        self.pre_images[op] = preimage
+
+        return replaced
+
+    def get_preimage(self, num):
+        return list(self.pre_images.values())[len(self.pre_images)-1-num]
+
+    def get_preimage_after(self, op):
+        from pybullet_tools.logging import myprint as print
+
+        ## the op can be an axiom, thus skip
+        if op not in self.actions_after: return None
+
+        plan = list(self.pre_images.keys())
+        images = list(self.pre_images.values())
+
+        if plan.index(op)  == 0:  ## the last abstract action of the plan
+            solution1 = self._problem.goal.literals
+        else:
+            action = self.actions_after[op]
+            step = self.from_literal(action)
+            if step not in self.after_images.keys():
+                new_list = [str(e) for e in self.after_images.keys()]
+                idx_print = new_list.index(str(step)) + 1
+                # print('\n'.join([str(k) for k in self.after_images.keys()]))
+            else:
+                idx_print = list(self.after_images.keys()).index(step) + 1
+            print(f'\nusing preimage of Step {idx_print} {step}')
+            idx = plan.index(action)
+            solution1 = [n for n in images[idx] if (n.predicate.name in self.dynamic_literals)]
+
+        return solution1
+
+    def get_all_preimages_after_op(self):
+        results = {op: self.get_preimage_after(op) for op in self.pre_images.keys()}
+        return {k: v for k, v in results.items() if v != None}
+
+    def literals_to_facts(self, literals):
+        return [self.from_literal(l) for l in literals
+                if not l.predicate.is_derived and l.predicate.name != '=']
+
+    def get_extended_plan(self, abstract_plan, init, verbose=True):
+        ## not all applied axioms are useful for achieving the goal
+        extended_plan = [] ## copy.deepcopy(self.derived_literals)
+        index = 0
+
+        print('\n ========= Computing Extended Plan ======== \n')
+
+        self.after_images = {}
+        self.derived = {0: self.derived_assignments}  ## the assignment after init facts
+        for step in abstract_plan:
+            action = self.to_literal(step)
+            obs, reward, done, debug_info = self.step(action)
+            extended_plan.extend(debug_info['applied_axioms'])  ## axioms needed for applying the operator
+            extended_plan.append(action)  ## operators
+            extended_plan.extend(debug_info['triggered_axioms'])  ## axioms triggered after applying the operator
+            index += 1
+            self.after_images[step] = self.literals_to_facts(obs.literals)
+            self.derived[index] = self.derived_assignments  ## the assignment after each step
+            if verbose:
+                print(f'\nStep {index}', done)
+                self.print_log(debug_info)
+            # print('\tposes\n\t\t' + '\n\t\t'.join([str(ppose) for ppose in obs.literals if ppose.predicate.name == 'atpose']))
+
+        print('\n ========= ----------------------- ======== \n')
+        summarize_facts([self.from_literal(n) for n in self._state.literals], name='Facts after executing the plan')
+        if self.useful_variables is None:
+            variables = [n for n in self._state.literals if n.predicate.name in ['pose', 'grasp']]
+            self.useful_variables = {n.variables[-1].name: n for n in variables}
+
+        ## the axioms used in the last step may be useful for achieving the goal
+        for literal in self.derived_literals:
+            if literal in self._problem.goal.literals:
+                if (literal, self.derived_assignments) not in extended_plan:
+                    extended_plan.append((literal, self.derived_assignments))
+        # print('\n'.join([str(n) for n in extended_plan]))
+
+        print('\n-------------- on map ---------------')
+        pprint(self.on_map)
+        self.on_map_inv = {v: k for k, v in self.on_map.items()}
+        print('--------------------------------------\n')
+        return extended_plan, done
+
+    def set_init_preimage(self, preimage):
+        self.init_preimage = []
+        self.add_init_preimage(preimage)
+        self.init_preimage = self.literals_to_facts(self._init_literals)
+
+    def add_init_preimage(self, facts):
+        allowed = ['atraj', 'bconf', 'not', 'pose', 'grasp', 'supported', 'kin',
+                   'traj', 'seconf', 'handdlegrasp', 'kinhandle']
+        facts = [f for f in facts if f not in self.init_preimage and \
+                 # (f[0].lower() in allowed
+                 #  # or 'cfree' in f[0].lower()  ## need to compute at replaning time
+                 #  ) and \
+                 not (f[0]=='not' and f[1][0] == '=')] ##
+        self.init_preimage.extend(facts)
+
+    @staticmethod
+    def print_log(debug_info):
+        new_info = {}
+        for k, v in debug_info.items():
+            if 'axioms' in k:
+                new_info[k] = [t[0] for t in v]
+            else:
+                new_info[k] = v
+        pprint(new_info)
+
+
+class PDDLStreamForwardEnv(PDDLStreamEnv):
+    """ only adding and deleting effects,
+        consider no preconditions and no derived axioms """
+    def _handle_derived_literals(self, state):
+        return state
+
+    def step(self, action):
+        action = self.to_literal(action)
+        obs, reward, done, debug_info = super().step(action)
+        facts = [self.from_literal(l) for l in obs.literals]
+        return [f for f in facts if not (f[0] == 'not' and f[1][0] == '=')]
+
+
+def empty_temp():
+    tmp_dir = join('../../leap/temp')
+    shutil.rmtree(tmp_dir)
+    os.mkdir(tmp_dir)
+
+
+def check_preimage(pddlstream_problem, plan, preimage, domain_pddl, init=[], **kwargs):
+    """ called right after making a plan """
+    pddl_file = join(DOMAIN_DIR, domain_pddl)
+
+    env = PDDLStreamEnv(pddl_file, pddlstream_problem, **kwargs)
+    env.reset()
+    i0 = env._state.literals
+
+    env._state = env._state.with_literals(i0 | frozenset([env.to_literal(f) for f in preimage]))
+    env._init_literals = copy.deepcopy(env._state.literals)
+    extended_plan, _ = env.get_extended_plan(plan, init)
+
+    env.set_init_preimage(preimage)
+    preimage, tests = env.compute_preimgae(extended_plan)
+    # goal = env.get_preimage(1)
+    # print('\nGoal before the second action', goal)
+
+    return env
+
+
+def test_modified_domain():
+    from cogarch_tools.domain_modifiers import initialize_domain_modifier
+    domain_file = join(DOMAIN_DIR, 'pr2_mamao.pddl')
+    domain_modifier = initialize_domain_modifier('atbconf')
+    domain = PDDLStreamEnv.load_domain(domain_file, True, domain_modifier)
+
+
+def test_constructed_problem():
+    """ test a reconstructed PDDLStream problem and plan,
+        but it doesn't have preimage generated by PDDLStream as input.
+        Mainly used to test basic functionality of this script """
+
+    current_dir = dirname(os.getcwd())
+    domain_dir = join(current_dir, '..', 'bullet', 'processes', 'pddlstream_agent', 'pddl', 'domains')
+    pddl_file = join(domain_dir, 'pr2_kitchen.pddl')
+    pddl_file = join(domain_dir, 'pr2_eggs_no_atbconf.pddl')
+    pddl_file = join(domain_dir, 'pr2_eggs.pddl')
+
+    problem, state = construct_problem()
+    abstract_plan = construct_test_plan(state)
+
+    env = PDDLStreamEnv(pddl_file, problem)
+    env.reset()
+
+    # action = env.to_literal(abstract_plan[0])
+    # obs, reward, done, debug_info = env.step(action)
+
+    # extended_plan = env.get_extended_plan(abstract_plan)
+    # preimage = env.compute_preimage(extended_plan)
+
+    # empty_temp()
+
+
+def test_gym_problem():
+    """ test native pddlgym examples. Used to learn structs """
+    from pddlgym.demo import demo_random
+    demo_random("blocks", render=True, verbose=True)
+
+
+def test_loaded_plan():
+    """ doesn't work because the reconstructed plan and preimage by pickle have different variable index """
+    import pickle
+    from pybullet_tools.pr2_agent import print_plan
+
+    with open(join(ROOT_DIR, 'leap','pddlstream_plan.pkl'), 'rb') as inp:
+        init = pickle.load(inp)
+        plan = pickle.load(inp)
+        preimage = pickle.load(inp)
+
+    summarize_facts(init, name='Init reconstructed through pickle')
+    summarize_facts(preimage, name='Preimage reconstructed through pickle')
+    print_plan(plan)
+
+    pddlstream_problem, state = construct_problem(domain='pr2_eggs_no_atbconf.pddl', problem='test_four_places')
+    summarize_facts(pddlstream_problem.init, name='pddlstream_problem.init reconstructed through pickle')
+
+    ## see if those with the same values are equals
+    elems_init = get_elem_in_tups(init)
+    elems_preimage = get_elem_in_tups(preimage)
+    elems_plan = get_elem_in_tups(plan)
+    elems_problem_init = get_elem_in_tups(pddlstream_problem.init)
+    print()
+
+    # check_preimage(pddlstream_problem, plan, preimage, init)
+
+
+def get_elem_in_tups(tups):
+    elems = []
+    for tup in tups:
+        elems.extend([n for n in tup[1:] if n not in elems])
+    elems.sort()
+    return elems
+
+
+if __name__ == '__main__':
+    # test_loaded_plan()
+    # test_constructed_problem()
+    # test_gym_problem()
+    test_modified_domain()

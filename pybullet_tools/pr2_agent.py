@@ -1,12 +1,9 @@
 from __future__ import print_function
 
 import os
-import random
 import sys
 import time
 import numpy as np
-import types
-import json
 from pprint import pprint
 
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_pull_drawer_handle_motion_gen
@@ -16,53 +13,43 @@ from pybullet_tools.pr2_streams import get_stable_gen, Position, get_pose_in_spa
     get_bconf_in_region_gen, get_pose_in_region_gen, get_base_motion_gen, \
     get_marker_pose_gen, get_pull_marker_to_pose_motion_gen, get_pull_marker_to_bconf_motion_gen,  \
     get_pull_marker_random_motion_gen, get_ik_ungrasp_gen, get_pose_in_region_test, \
-    get_cfree_btraj_pose_test, get_joint_position_open_gen, get_ik_ungrasp_mark_gen, \
-    sample_joint_position_gen, get_ik_gen, get_ik_fn_old, get_ik_gen_old, get_base_from_ik_fn, \
-    get_ik_rel_gen_old, get_ik_rel_fn_old, get_pull_door_handle_with_link_motion_gen
+    get_cfree_btraj_pose_test, get_ik_ungrasp_mark_gen, \
+    sample_joint_position_gen, get_ik_gen, get_ik_fn_old, get_ik_gen_old, get_ik_rel_gen_old, get_ik_rel_fn_old, get_pull_door_handle_with_link_motion_gen
 
-from pybullet_tools.pr2_primitives import get_group_joints, Conf, get_base_custom_limits, Pose, Conf, \
-    get_ik_ir_gen, get_motion_gen, move_cost_fn, Attach, Detach, Clean, Cook, \
-    get_gripper_joints, GripperCommand, apply_commands, State, Trajectory, Simultaneous, create_trajectory
+from pybullet_tools.pr2_primitives import get_group_joints, get_base_custom_limits, Pose, Conf, \
+    get_ik_ir_gen, move_cost_fn, Attach, Detach, Clean, Cook, \
+    get_gripper_joints, GripperCommand, Simultaneous, create_trajectory
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, get_handle_grasp_list_gen, \
     get_handle_grasp_gen, get_compute_pose_kin, get_compute_pose_rel_kin, \
     get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
     get_bconf_close_to_surface, sample_joint_position_closed_gen, get_cfree_rel_pose_pose_test, \
     get_cfree_approach_rel_pose_test
-from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, save_pickle, set_camera_target_body, \
-    set_camera_target_robot, nice, BASE_LIMITS, initialize_collision_logs, collided, clean_preimage, \
+from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, set_camera_target_body, \
+    nice, BASE_LIMITS, initialize_collision_logs, collided, clean_preimage, \
     summarize_bconfs
 from pybullet_tools.pr2_problems import create_pr2
-from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, create_gripper, set_group_conf
-from pybullet_tools.utils import connect, disconnect, wait_if_gui, LockRenderer, HideOutput, get_client, \
-    joint_from_name, WorldSaver, sample_placement, PI, add_parameter, add_button, Pose, Point, Euler, \
-    euler_from_quat, get_joint, get_joints, PoseSaver, get_pose, get_link_pose, get_aabb, \
-    get_joint_position, aabb_overlap, add_text, remove_handles, get_com_pose, get_closest_points,\
-    set_color, RED, YELLOW, GREEN, multiply, get_unit_vector, unit_quat, get_bodies, BROWN, \
-    pairwise_collision, connect, get_pose, point_from_pose, set_renderer, get_joint_name, \
-    disconnect, get_joint_positions, enable_gravity, save_state, restore_state, HideOutput, remove_body, \
-    get_distance, LockRenderer, get_min_limit, get_max_limit, has_gui, WorldSaver, wait_if_gui, add_line, SEPARATOR, \
-    BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS, wait_unlocked, get_movable_joints, set_all_color, \
-    TRANSPARENT, apply_alpha, get_all_links, get_color, get_texture, dump_body, clear_texture, get_link_name
+from pybullet_tools.pr2_utils import create_gripper, set_group_conf
+from pybullet_tools.utils import get_client, \
+    Pose, get_bodies, pairwise_collision, get_pose, point_from_pose, set_renderer, get_joint_name, \
+    remove_body, \
+    get_distance, get_max_limit, BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS, wait_unlocked
 from pybullet_tools.flying_gripper_utils import get_se3_joints
 
-from os.path import join, isfile
 from pddlstream.algorithms.focused import solve_focused
 from pddlstream.algorithms.algorithm import parse_problem, reset_globals
-from pddlstream.algorithms.constraints import PlanConstraints, WILD
+from pddlstream.algorithms.constraints import PlanConstraints
 from pddlstream.algorithms.downward import set_cost_scale
-from pddlstream.language.generator import from_gen_fn, from_list_fn, from_fn, fn_from_constant, empty_gen, from_test
-from pddlstream.language.constants import Equal, AND, PDDLProblem, is_plan
-from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler
+from pddlstream.language.generator import from_gen_fn, from_list_fn, from_fn, from_test
+from pddlstream.language.constants import AND, PDDLProblem, is_plan
 from pddlstream.language.function import FunctionInfo
 from pddlstream.language.stream import StreamInfo, PartialInputs, universe_test
 from pddlstream.language.object import SharedOptValue
-from pddlstream.language.external import defer_shared, never_defer, defer_unique
+from pddlstream.language.external import defer_unique
 from pddlstream.language.conversion import params_from_objects
 from collections import namedtuple
 
 from world_builder.entities import Object
 from world_builder.actions import get_primitive_actions, repair_skeleton
-from world_builder.world_generator import get_pddl_from_list
 
 
 def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
@@ -545,10 +532,9 @@ def is_plan_abstract(plan):
     return False
 
 
-from pddlstream.algorithms.meta import solve, DEFAULT_ALGORITHM
-from pybullet_tools.utils import disconnect, LockRenderer, has_gui, WorldSaver, wait_if_gui, \
-    SEPARATOR, get_aabb, wait_for_duration, safe_remove, ensure_dir, reset_simulation
-from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, str_from_object, TmpCWD
+from pybullet_tools.utils import LockRenderer, WorldSaver, wait_if_gui, \
+    SEPARATOR, safe_remove, ensure_dir
+from pddlstream.utils import read, INF, TmpCWD
 
 
 def get_diverse_kwargs(kwargs, diverse=True, max_plans=None):
@@ -776,7 +762,7 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
         summarize_bconfs(preimage)
 
         if is_plan_abstract(plan):
-            from bullet.leap.hierarchical import check_preimage
+            from cogarch_tools.hierarchical import check_preimage
             env = check_preimage(pddlstream_problem, plan, preimage, domain_pddl,
                                  init=pddlstream_problem.init, objects=objects,
                                  domain_modifier=domain_modifier)
@@ -1066,7 +1052,9 @@ def visualize_grasps_by_quat(state, outputs, body_pose, verbose=False):
         for visual in visuals:
             remove_body(visual)
 
-from pybullet_tools.flying_gripper_utils import get_cloned_se3_conf, se3_ik
+from pybullet_tools.flying_gripper_utils import get_cloned_se3_conf
+
+
 def test_grasp_ik(state, init, name='cabbage', visualize=True):
     goals = test_grasps(state, name, visualize=False)
     body, grasp = goals[0][-2:]

@@ -3574,7 +3574,7 @@ def get_closest_points(body1, body2, link1=None, link2=None, max_distance=MAX_DI
     else:
         results = p.getClosestPoints(bodyA=body1, bodyB=body2, linkIndexA=link1, linkIndexB=link2,
                                      distance=max_distance, physicsClientId=CLIENT)
-    if results == None:  ## after reinstalling pybullet, problems occur
+    if results == None:  ## after reinstalling pybullet, problem_sets occur
         return []
     return [CollisionInfo(*info) for info in results]
 

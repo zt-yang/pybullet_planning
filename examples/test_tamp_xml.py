@@ -110,7 +110,7 @@ def main():
     #problem = 'problem4' # Nonmono
 
     root_directory = os.path.dirname(os.path.abspath(__file__))
-    directory = os.path.join(root_directory, '..', 'problems', benchmark, problem)
+    directory = os.path.join(root_directory, '..', 'problem_sets', benchmark, problem)
     [mesh_directory] = list(filter(os.path.isdir, (os.path.join(directory, o)
                                                  for o in os.listdir(directory) if o.endswith('meshes'))))
     [xml_path] = [os.path.join(directory, o) for o in os.listdir(directory) if o.endswith('xml')]

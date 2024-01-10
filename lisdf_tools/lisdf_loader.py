@@ -35,6 +35,7 @@ from world_builder.robot_builders import create_pr2_robot, create_gripper_robot
 from world_builder.utils import get_instance_name, get_camera_zoom_in, get_lisdf_name, get_mobility_id, \
     get_mobility_category, get_mobility_identifier
 from world_builder.world import WorldBase
+from world_builder.paths import pbp_path
 
 from lisdf_tools.lisdf_planning import pddl_to_init_goal
 
@@ -568,7 +569,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
             category = model.content.name
         else:
             uri = join(tmp_path, f'{model.name}.sdf')
-            ## TODO: when solving in parallel causes problems
+            ## TODO: when solving in parallel causes problem_sets
             # if isfile(uri):
             #     os.remove(uri)
             with open(uri, 'w') as f:
@@ -719,6 +720,10 @@ def pddl_files_from_dir(exp_dir, replace_pddl=False, domain_name='pr2_mamao.pddl
         pddl_dir = join(root_dir, 'bullet', 'assets', 'pddl')
         domain_path = join(pddl_dir, 'domains', domain_name)
         stream_path = join(pddl_dir, 'streams', stream_name)
+        if not isfile(domain_path):
+            pddl_dir = join(pbp_path, 'pddl')
+            domain_path = join(pddl_dir, domain_name)
+            stream_path = join(pddl_dir, stream_name)
     else:
         domain_path = join(exp_dir, 'domain_full.pddl')
         stream_path = join(exp_dir, 'stream.pddl')

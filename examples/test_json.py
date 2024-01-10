@@ -52,7 +52,7 @@ def parse_task(task, robots, bodies, regions):
 
 ##################################################
 
-JSON_DIRECTORY = 'problems/json/'
+JSON_DIRECTORY = 'problem_sets/json/'
 
 def get_json_directory():
     root_directory = os.path.dirname(os.path.abspath(__file__))

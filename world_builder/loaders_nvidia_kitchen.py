@@ -183,11 +183,11 @@ def place_in_nvidia_kitchen_space(obj, supporter_name, interactive=False, doors=
              world=world, verbose=True, tag='place_in_nvidia_kitchen_space')
 
 
-def load_nvidia_kitchen_movables(world: World, open_doors_for: list = [], custum_supports: dict = {}):
+def load_nvidia_kitchen_movables(world: World, open_doors_for: list = [], custom_supports: dict = {}):
 
     for elems in default_supports:
-        if elems[-2] in custum_supports:
-            elems[-1] = custum_supports[elems[-2]]
+        if elems[-2] in custom_supports:
+            elems[-1] = custom_supports[elems[-2]]
 
     """ load joints """
     supporter_to_doors = load_nvidia_kitchen_joints(world)

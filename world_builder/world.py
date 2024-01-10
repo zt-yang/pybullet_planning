@@ -169,7 +169,7 @@ class WorldBase(object):
 
 
 class World(WorldBase):
-    """ api for building world and tamp problems """
+    """ api for building world and tamp problem_sets """
     def __init__(self, **kwargs):
         ## conf_noise=None, pose_noise=None, depth_noise=None, action_noise=None,  # TODO: noise model class?
         super().__init__(**kwargs)
