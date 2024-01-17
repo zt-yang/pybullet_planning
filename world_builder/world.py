@@ -55,6 +55,8 @@ class WorldBase(object):
         ## for planning
         self.constants = constants
         self.use_rel_pose = use_rel_pose
+        self.body_to_english_name = {}
+        self.english_name_to_body = {}
 
         ## for visualization
         self.handles = []
@@ -69,11 +71,33 @@ class WorldBase(object):
         self.exposed_observation_cameras = None
         self.space_markers = None
 
-    def get_name(self, body):
-        raise NotImplementedError
 
     def cat_to_bodies(self, cat, **kwargs):
         raise NotImplementedError
+
+    def get_name(self, body):
+        raise NotImplementedError
+
+    def get_english_name(self, body):
+        """ rephrasing joint names for llm communication """
+        name = self.get_name(body)
+        if body in self.body_to_english_name:
+            name = self.body_to_english_name[body]
+        name = ''.join([c for c in name if not c.isdigit()])
+        name = name.replace('#', '')
+        if '::' in name:
+            body_name, part_name = name.split('::')
+            if body_name in part_name:
+                name = part_name
+        name = name.replace('::', "'s ")
+        name = name.replace('_', ' ').replace('-', ' ')
+        self.english_name_to_body[name] = body
+        return name
+
+    def set_english_names(self, names):
+        for name, english_name in names.items():
+            body = self.name_to_body(name) if callable(self.name_to_body) else self.name_to_body[name]
+            self.body_to_english_name[body] = english_name
 
     ###########################################################################
 

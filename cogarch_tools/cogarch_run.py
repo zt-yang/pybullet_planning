@@ -71,11 +71,12 @@ def main(problem='test_studio', domain='pr2_mamao.pddl', stream='pr2_stream_mama
         state = State(world)
         exogenous = []
         goals = pddlstream_problem[-1]
+        goal_sequence = None
 
         """ sample problem """
     else:
         init_gui(args, width=1440, height=1120)
-        state, exogenous, goals, pddlstream_problem = get_pddlstream_problem(args, **kwargs)
+        state, exogenous, goals, pddlstream_problem, goal_sequence = get_pddlstream_problem(args, **kwargs)
 
     ## sometimes a skeleton is given by the problem loader
     skeleton = None
@@ -95,6 +96,8 @@ def main(problem='test_studio', domain='pr2_mamao.pddl', stream='pr2_stream_mama
     # agent = TeleOpAgent(state.world)
     agent = PDDLStreamAgent(state.world, init, goals=goals, processes=exogenous, pddlstream_kwargs=solver_kwargs)
     agent.set_pddlstream_problem(pddlstream_problem, state)
+    if goal_sequence is not None:
+        agent.set_goal_sequence(goal_sequence)
 
     # note = kwargs['world_builder_args'].get('note', None) if 'world_builder_args' in kwargs else None
     agent.init_experiment(args, domain_modifier=domain_modifier, object_reducer=object_reducer, comparing=comparing)

@@ -53,6 +53,11 @@ def test_template(args, robot_builder_fn, robot_builder_args, world_loader_fn,
     goals = world_loader_fn(world, **world_builder_args)
 
     skeleton = None
+    goal_sequence = None
+    if isinstance(goals, dict):
+        goal_sequence = goals['subgoals']
+        goals = goals['subgoals'][:1]
+
     if len(goals) == 2 and isinstance(goals[1], list):
         goals, skeleton = goals
 
@@ -66,4 +71,4 @@ def test_template(args, robot_builder_fn, robot_builder_args, world_loader_fn,
     # save_to_kitchen_worlds(state, pddlstream_problem, exp_name='blocks_pick', world_name='blocks_pick')
     if skeleton is not None:
         pddlstream_problem = pddlstream_problem, skeleton
-    return state, exogenous, goals, pddlstream_problem
+    return state, exogenous, goals, pddlstream_problem, goal_sequence
