@@ -885,9 +885,8 @@ def test_kitchen_chicken_soup(args, **kwargs):
         # world.open_joint_by_name('chewie_door_left_joint')
 
         world.remove_bodies_from_planning(goals, exceptions=objects)
-        world.set_learned_bconf_list_gen(learned_nvidia_bconf_list_gen)
-        world.set_learned_pose_list_gen(learned_nvidia_pose_list_gen)
 
         return goals, skeleton
 
     return test_nvidia_kitchen_domain(args, loader_fn, initial_xy=(2, 5), **kwargs)
+
