@@ -194,7 +194,9 @@ def get_pddlstream_problem(args, **kwargs):
     set_default_camera_pose()
 
     ## ------------------- old PR2 problem_sets
-    if args.problem == 'test_pick':
+    if callable(args.problem):
+        problem_fn = args.problem
+    elif args.problem == 'test_pick':
         set_kitchen_camera_pose()
         from problem_sets.pr2_problems import test_pick as problem_fn
     elif args.problem == 'test_plated_food':
