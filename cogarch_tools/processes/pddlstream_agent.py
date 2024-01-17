@@ -86,6 +86,10 @@ class PDDLStreamAgent(MotionAgent):
         self.mp4_path = None
         self.timestamped_name = None
 
+        self.pddlstream_problem = None
+        self.initial_state = None
+        self.goal_sequence = None
+
         self.state = init
         self.static_facts = []
         self.failed_count = None
@@ -102,6 +106,9 @@ class PDDLStreamAgent(MotionAgent):
     def set_pddlstream_problem(self, pddlstream_problem, state):
         self.pddlstream_problem = pddlstream_problem
         self.initial_state = state
+
+    def set_goal_sequence(self, goals):
+        self.goal_sequence = goals
 
     def init_experiment(self, args, domain_modifier=None, object_reducer=None, comparing=False):
         """ important for using the right files in replaning """

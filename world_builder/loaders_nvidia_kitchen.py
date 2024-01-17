@@ -225,6 +225,10 @@ def load_nvidia_kitchen_movables(world: World, open_doors_for: list = [], custom
             for door, extent in doors:
                 world.open_joint(door, extent=extent)
 
+    """ load some smarter samplers for those movables """
+    world.set_learned_bconf_list_gen(learned_nvidia_bconf_list_gen)
+    world.set_learned_pose_list_gen(learned_nvidia_pose_list_gen)
+
     return movables, movable_to_doors
 
 
