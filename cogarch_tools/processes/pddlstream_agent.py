@@ -21,7 +21,7 @@ from world_builder.actions import get_primitive_actions
 
 from cogarch_tools.processes.motion_agent import MotionAgent
 from problem_sets.pr2_problems import pddlstream_from_state_goal
-from leap_tools.hierarchical import PDDLStreamForwardEnv
+
 from leap_tools.domain_modifiers import initialize_domain_modifier
 from leap_tools.object_reducers import initialize_object_reducer
 
@@ -203,6 +203,7 @@ class PDDLStreamAgent(MotionAgent):
 
         ## the first planning problem - only for HPN planning mode
         if self.env_execution is None and 'hpn' in self.exp_name: ## and not self.pddlstream_kwargs['visualization']:
+            from leap_tools.hierarchical import PDDLStreamForwardEnv
 
             if self.plan is None:
                 self.save_stats(FAILED=True)
