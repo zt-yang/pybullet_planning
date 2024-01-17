@@ -25,7 +25,7 @@ IKFast solver for PR2 arm planning (see [troubleshooting notes](pybullet_tools/i
 
 ```shell
 ## sudo apt-get install python-dev
-(cd bullet/pybullet_planning/pybullet_tools/ikfast/pr2; python setup.py)
+(cd pybullet_tools/ikfast/pr2; python setup.py)
 ```
 
 TracIK for PR2 base, torso, and arm planning:
