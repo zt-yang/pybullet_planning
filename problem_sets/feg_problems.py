@@ -44,7 +44,7 @@ def change_world_state(world, test_case):
 def test_kitchen_domain(args, world_loader_fn, **kwargs):
     robot_builder_args = {
         'robot_name': 'feg',
-        'DRAW_BASE_LIMITS': True,
+        'draw_base_limits': True,
     }
     return test_template(args, robot_builder_fn=build_oven_domain_robot,
                          robot_builder_args=robot_builder_args,

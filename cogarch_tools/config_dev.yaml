@@ -17,7 +17,8 @@ planner:
 ## specify the TAMP problem with preconfigured scene layout & robot
 problem:
   problem: 'test_kitchen_chicken_soup'
-  exp_dir: 'test'
+  exp_dir: '../../experiments'
+  exp_subdir: 'test'
   exp_name: 'original'
   domain_pddl: pr2_domain_new.pddl
   stream_pddl: pr2_stream_new.pddl
@@ -27,6 +28,10 @@ problem:
   record_problem: true
   record_mp4: false
   save_testcase: true
+
+robot:
+  robot_name: pr2
+  draw_base_limits: true
 
 ## pybullet related
 sim:

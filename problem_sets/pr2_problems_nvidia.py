@@ -616,7 +616,7 @@ def test_nvidia_kitchen_domain(args, world_loader_fn, initial_xy=(1.5, 6), **kwa
     kwargs['robot_builder_args'].update({
         'custom_limits': ((1, 3, 0), (5, 10, 3)),
         'initial_xy': initial_xy,
-        'DRAW_BASE_LIMITS': True
+        'draw_base_limits': True
     })
     return test_template(args, robot_builder_fn=build_robot_from_args, world_loader_fn=world_loader_fn, **kwargs)
 

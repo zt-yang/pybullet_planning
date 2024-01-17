@@ -10,6 +10,8 @@ import json
 import csv
 import pickle
 from collections import defaultdict
+from os.path import join
+import sys
 
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, get_datetime
 from pybullet_tools.pr2_primitives import Trajectory
@@ -17,17 +19,13 @@ from pybullet_tools.pr2_agent import solve_pddlstream
 
 from world_builder.actions import get_primitive_actions
 
-from os.path import join
-
-import sys
-sys.path.insert(0, os.path.abspath(join('../../processes', '..', '..')))
-from pddlstream.language.constants import Action
-
-from cogarch_tools.motion_agent import MotionAgent
+from cogarch_tools.processes.motion_agent import MotionAgent
 from problem_sets.pr2_problems import pddlstream_from_state_goal
 from leap_tools.hierarchical import PDDLStreamForwardEnv
 from leap_tools.domain_modifiers import initialize_domain_modifier
 from leap_tools.object_reducers import initialize_object_reducer
+
+from pddlstream.language.constants import Action
 
 # ORIGINAL_DOMAIN = {
 #     'pr2_kitchen_abstract.pddl': 'pr2_kitchen.pddl',
@@ -52,8 +50,9 @@ from leap_tools.object_reducers import initialize_object_reducer
 ZOOM_IN_AT_OBJECT = False
 SAVE_TIME = False
 
-PDDL_PATH = join('../../processes', 'assets', 'pddl')
-VISUALIZATIONS_PATH = join('../../processes', 'examples', 'visualizations')
+from world_builder.paths import pbp_path
+PDDL_PATH = join(pbp_path, '..', 'assets', 'pddl')
+VISUALIZATIONS_PATH = join(pbp_path, '..', 'examples', 'visualizations')
 
 
 def get_traj(t):
@@ -104,13 +103,12 @@ class PDDLStreamAgent(MotionAgent):
         self.pddlstream_problem = pddlstream_problem
         self.initial_state = state
 
-    def init_experiment(self, args, root_dir='experiments',
-                        domain_modifier=None, object_reducer=None, note=None, comparing=False):
-        """ important for using the right files in replanning """
+    def init_experiment(self, args, domain_modifier=None, object_reducer=None, comparing=False):
+        """ important for using the right files in replaning """
         if object_reducer is not None:
             args.exp_name += '_' + object_reducer
         self.exp_name = args.exp_name
-        self.exp_dir = abspath(join(dirname(__file__), '..', '..', root_dir, args.exp_dir))
+        self.exp_dir = abspath(join(args.exp_dir, args.exp_subdir))
         if not isdir(self.exp_dir):
             os.makedirs(self.exp_dir, exist_ok=True)
         self.domain_pddl = args.domain_pddl

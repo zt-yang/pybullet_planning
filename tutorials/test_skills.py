@@ -320,7 +320,7 @@ def draw_text_label(body, text, offset=(0, -0.05, .5)):
 def test_handle_grasps(robot, category, skip_grasps=False):
     from pybullet_tools.pr2_streams import get_handle_pose
 
-    world = get_test_world(robot, DRAW_BASE_LIMITS=False)
+    world = get_test_world(robot, draw_base_limits=False)
     problem = State(world)
     funk = get_handle_grasp_gen(problem, visualize=False)
     funk2 = sample_joint_position_gen()
@@ -707,7 +707,7 @@ def test_handle_grasps_counter(robot='pr2'):
     # world = load_lisdf_pybullet(lisdf_path, verbose=True)
 
     # world = World()
-    world = get_test_world(robot, semantic_world=True, DRAW_BASE_LIMITS=False)
+    world = get_test_world(robot, semantic_world=True, draw_base_limits=False)
     robot = world.robot
     floor = load_floor_plan(world, plan_name='counter.svg')
     # robot = build_skill_domain_robot(world, 'feg')

@@ -16,10 +16,10 @@ def test_mini_kitchen_domain(args, world_loader_fn, **kwargs):
 
     if 'pr2' in args.domain_pddl:
         robot_builder_args = {'robot_name': 'pr2', 'custom_limits': ((0, -3), (3, 3)),
-                              'base_q': (2, 0, 0), 'DRAW_BASE_LIMITS': True}
+                              'base_q': (2, 0, 0), 'draw_base_limits': True}
     else:
         robot_builder_args = {'robot_name': 'feg', 'custom_limits': {0: (0, 3), 1: (-3, 3), 2: (0, 3)},
-                              'initial_q': (2, 0, 1, 0, 0, 0), 'DRAW_BASE_LIMITS': True}
+                              'initial_q': (2, 0, 1, 0, 0, 0), 'draw_base_limits': True}
         # args.domain_pddl = 'feg_kitchen.pddl'
         # args.stream_pddl = 'feg_stream_kitchen.pddl'
     return test_template(args, robot_builder_fn=build_robot_from_args, robot_builder_args=robot_builder_args,
@@ -151,7 +151,7 @@ def test_full_kitchen_domain(args, world_loader_fn, x_max=3, **kwargs):
     kwargs['robot_builder_args'].update({
         'custom_limits': ((-0.5, -2, 0), (x_max, 10, 3)),
         'initial_xy': (2, 4),
-        'DRAW_BASE_LIMITS': True
+        'draw_base_limits': True
     })
     return test_template(args, robot_builder_fn=build_robot_from_args, world_loader_fn=world_loader_fn, **kwargs)
 

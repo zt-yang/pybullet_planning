@@ -22,7 +22,7 @@ from pybullet_tools.pr2_primitives import get_base_custom_limits
 from pybullet_tools.pr2_utils import draw_viewcone, get_viewcone, get_group_conf, set_group_conf, get_other_arm, \
     get_carry_conf, set_arm_conf, open_arm, close_arm, arm_conf, REST_LEFT_ARM
 from pybullet_tools.bullet_utils import set_pr2_ready, BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, \
-    draw_base_limits, BASE_LIMITS, CAMERA_FRAME, CAMERA_MATRIX, EYE_FRAME, collided
+    draw_base_limits as draw_base_limits_bb, BASE_LIMITS, CAMERA_FRAME, CAMERA_MATRIX, EYE_FRAME, collided
 from pybullet_tools.utils import LockRenderer, HideOutput, PI
 
 
@@ -43,7 +43,7 @@ def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
 
 def create_pr2_robot(world, base_q=(0, 0, 0), DUAL_ARM=False, USE_TORSO=True,
                      custom_limits=BASE_LIMITS, resolutions=BASE_RESOLUTIONS,
-                     DRAW_BASE_LIMITS=False, max_velocities=BASE_VELOCITIES,
+                     draw_base_limits=False, max_velocities=BASE_VELOCITIES,
                      robot=None):
 
     if robot is None:
@@ -60,8 +60,8 @@ def create_pr2_robot(world, base_q=(0, 0, 0), DUAL_ARM=False, USE_TORSO=True,
     if isinstance(custom_limits, dict):
         custom_limits = np.asarray(list(custom_limits.values())).T.tolist()
 
-    if DRAW_BASE_LIMITS:
-        draw_base_limits(custom_limits)
+    if draw_base_limits:
+        draw_base_limits_bb(custom_limits)
 
     robot = PR2Robot(robot, base_link=BASE_LINK, joints=BASE_JOINTS,
                      DUAL_ARM=DUAL_ARM, USE_TORSO=USE_TORSO,
@@ -102,7 +102,7 @@ def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
 
 
 def create_spot_robot(world, base_q=(0, 0, 0), custom_limits=BASE_LIMITS, resolutions=BASE_RESOLUTIONS,
-                     DRAW_BASE_LIMITS=False, max_velocities=BASE_VELOCITIES, robot=None):
+                     draw_base_limits=False, max_velocities=BASE_VELOCITIES, robot=None):
 
     if robot is None:
         robot = load_spot()
@@ -111,8 +111,8 @@ def create_spot_robot(world, base_q=(0, 0, 0), custom_limits=BASE_LIMITS, resolu
     if isinstance(custom_limits, dict):
         custom_limits = np.asarray(list(custom_limits.values())).T.tolist()
 
-    if DRAW_BASE_LIMITS:
-        draw_base_limits(custom_limits)
+    if draw_base_limits:
+        draw_base_limits_bb(custom_limits)
 
     robot = SpotRobot(robot, custom_limits=get_base_custom_limits(robot, custom_limits),
                      resolutions=resolutions)
@@ -137,7 +137,7 @@ from pybullet_tools.flying_gripper_utils import create_fe_gripper, get_se3_joint
 
 
 def create_gripper_robot(world=None, custom_limits=((0, 0, 0), (6, 12, 2)),
-                         initial_q=(0, 0, 0, 0, 0, 0), DRAW_BASE_LIMITS=False, robot=None):
+                         initial_q=(0, 0, 0, 0, 0, 0), draw_base_limits=False, robot=None):
     from pybullet_tools.flying_gripper_utils import BASE_RESOLUTIONS, BASE_VELOCITIES, \
         BASE_LINK, get_se3_custom_limits
 
@@ -150,8 +150,8 @@ def create_gripper_robot(world=None, custom_limits=((0, 0, 0), (6, 12, 2)),
     with np.errstate(divide='ignore'):
         weights = np.reciprocal(BASE_RESOLUTIONS)
 
-    if DRAW_BASE_LIMITS:
-        draw_base_limits(custom_limits)
+    if draw_base_limits:
+        draw_base_limits_bb(custom_limits)
     custom_limits = get_se3_custom_limits(custom_limits)
 
     robot = FEGripper(robot, base_link=BASE_LINK, joints=get_se3_joints(robot),
@@ -169,8 +169,8 @@ def build_skill_domain_robot(world, robot_name, **kwargs):
     """ simplified cooking domain, pr2 no torso """
     if 'initial_xy' not in kwargs:
         kwargs['initial_xy'] = (0, 0)
-    if 'DRAW_BASE_LIMITS' not in kwargs:
-        kwargs['DRAW_BASE_LIMITS'] = False
+    if 'draw_base_limits' not in kwargs:
+        kwargs['draw_base_limits'] = False
     if 'custom_limits' not in kwargs:
         if robot_name == 'feg':
             kwargs['custom_limits'] = ((0, 0, 0), (2, 10, 2))

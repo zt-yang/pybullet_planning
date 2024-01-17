@@ -1,6 +1,5 @@
 from __future__ import print_function
 
-import copy
 import shutil
 import argparse
 import numpy as np
@@ -8,24 +7,13 @@ import pybullet as p
 import random
 
 import os
-import sys
 from os.path import join, abspath, dirname, isdir, isfile
-from os import listdir
 
-from pybullet_tools.utils import connect, disconnect, draw_pose, enable_preview, unit_pose, set_random_seed, reset_simulation, \
-    set_camera_pose, VideoSaver, wait_unlocked, set_numpy_seed, is_darwin, timeout
-from pybullet_tools.bullet_utils import BASE_LIMITS, get_datetime, initialize_logs
-from pybullet_tools.logging import summarize_csv
+from pybullet_tools.utils import connect, draw_pose, enable_preview, unit_pose, set_random_seed, set_camera_pose, \
+    set_numpy_seed
 from problem_sets import problem_fn_from_name
 
-from lisdf_tools.lisdf_loader import load_lisdf_pybullet, pddlstream_from_dir
-from lisdf_tools.lisdf_planning import Problem
-
-from world_builder.world import State, evolve_processes
-from world_builder.world_generator import save_to_outputs_folder
 from mamao_tools.data_utils import get_feasibility_checker
-
-from cogarch_tools.agent import PDDLStreamAgent
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -43,6 +31,7 @@ def parse_config(path):
     conf.sim = Namespace(**conf.sim)
     conf.problem = Namespace(**conf.problem)
     conf.planner = Namespace(**conf.planner)
+    conf.robot = Namespace(**conf.robot)
     return conf
 
 
@@ -77,6 +66,8 @@ def get_parser(config='config_dev.yaml', **kwargs):
     parser.add_argument('-p', '--problem', type=str, default=conf.problem.problem,
                         help='name of the problem function that initiate both the world and goal')
     parser.add_argument('-exdir', '--exp_dir', type=str, default=conf.problem.exp_dir,
+                        help='path to `experiments` to save outputs')
+    parser.add_argument('-exsubdir', '--exp_subdir', type=str, default=conf.problem.exp_subdir,
                         help='name of the sub-directory in `../experiments` to save outputs')
     parser.add_argument('-exname', '--exp_name', type=str, default=conf.problem.exp_name,
                         help='name of the comparison group for which planning time and success rate will be compared')
@@ -132,6 +123,9 @@ def get_parser(config='config_dev.yaml', **kwargs):
     for k, v in kwargs.items():
         args.__dict__[k] = v
 
+    ## other args
+    args.__dict__['robot_builder_args'] = conf.robot.__dict__
+
     print(f'Seed: {args.seed}')
     print(f'Args: {args}')
     return args
@@ -171,11 +165,109 @@ def init_gui(args, width=1980, height=1238):
     draw_pose(unit_pose(), length=1.)
 
 
-def clear_planning_dir():
-    temp_dir = join(dirname(__file__), 'temp')
+def clear_planning_dir(run_dir=dirname(__file__)):
+    temp_dir = join(run_dir, 'temp')
     if isdir(temp_dir):
         shutil.rmtree(temp_dir)
 
-    log_file = join(dirname(__file__), 'txt_file.txt')
+    log_file = join(run_dir, 'txt_file.txt')
     if isfile(log_file):
         os.remove(log_file)
+
+##################################################
+
+
+def get_pddlstream_problem(args, **kwargs):
+
+    problem_kwargs = dict(
+        movable_collisions=not args.movable,
+        motion_collisions=not args.movable,
+        base_collisions=not args.base,
+    )
+
+    def set_kitchen_camera_pose():
+        set_camera_pose(camera_point=[4, 7, 4], target_point=[3, 7, 2])
+
+    def set_default_camera_pose():
+        set_camera_pose(camera_point=[3, -3, 3], target_point=[0, 0, 0])
+
+    set_default_camera_pose()
+
+    ## ------------------- old PR2 problem_sets
+    if args.problem == 'test_pick':
+        set_kitchen_camera_pose()
+        from problem_sets.pr2_problems import test_pick as problem_fn
+    elif args.problem == 'test_plated_food':
+        set_kitchen_camera_pose()
+        from problem_sets.pr2_problems import test_plated_food as problem_fn
+    elif args.problem == 'test_small_sink':
+        set_kitchen_camera_pose()
+        from problem_sets.pr2_problems import test_small_sink as problem_fn
+    elif args.problem == 'test_five_tables':
+        from problem_sets.pr2_problems import test_five_tables as problem_fn
+    elif args.problem == 'test_exist_omelette':
+        from problem_sets.pr2_problems import test_exist_omelette as problem_fn
+    # elif args.problem == 'test_three_omelettes':
+    #     from bullet.examples.pr2_problems import test_three_omelettes as problem_fn
+    # elif args.problem == 'test_bucket_lift':
+    #     from bullet.examples.pr2_problems import test_bucket_lift as problem_fn
+    elif args.problem == 'test_navigation':
+        from problem_sets.pr2_problems import test_navigation as problem_fn
+    elif args.problem == 'test_cart_pull':
+        from problem_sets.pr2_problems import test_cart_pull as problem_fn
+    elif args.problem == 'test_cart_obstacle_wconf': ## testing with other regions in room
+        # set_camera_pose(camera_point=[4, -4, 4], target_point=[2, 0, 0])
+        from problem_sets.pr2_problems import test_cart_obstacle_wconf as problem_fn
+    elif args.problem == 'test_cart_obstacle':
+        from problem_sets.pr2_problems import test_cart_obstacle as problem_fn
+    elif args.problem == 'test_moving_carts':
+        set_camera_pose(camera_point=[4, -2, 4], target_point=[0, -2, 0])
+        set_camera_pose(camera_point=[5, -2, 4], target_point=[1, -2, 0])  ## laundry area
+        from problem_sets.pr2_problems import test_moving_carts as problem_fn
+    elif args.problem == 'test_three_moving_carts':
+        set_camera_pose(camera_point=[5, 0, 4], target_point=[1, 0, 0])
+        from problem_sets.pr2_problems import test_three_moving_carts as problem_fn
+    elif args.problem == 'test_fridge_pose':
+        set_camera_pose(camera_point=[3, 6.5, 2], target_point=[1, 4, 1])
+        from problem_sets.pr2_problems import test_fridge_pose as problem_fn
+    elif args.problem == 'test_kitchen_fridge':
+        set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
+        from problem_sets.pr2_problems import test_kitchen_fridge as problem_fn
+    elif args.problem == 'test_kitchen_oven':
+        set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
+        from problem_sets.pr2_problems import test_kitchen_oven as problem_fn
+    elif args.problem == 'test_oven_egg':
+        set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
+        set_kitchen_camera_pose()
+        from problem_sets.pr2_problems import test_oven_egg as problem_fn
+    elif args.problem == 'test_braiser_lid':
+        set_kitchen_camera_pose()
+        from problem_sets.pr2_problems import test_braiser_lid as problem_fn
+    elif args.problem == 'test_egg_movements':
+        set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
+        from problem_sets.pr2_problems import test_egg_movements as problem_fn
+
+    # ## ------------------- demo PR2 problem_sets
+    # elif args.problem == 'test_skill_knob_faucet':
+    #     set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
+    #     from bullet.examples.pr2_problems import test_skill_knob_faucet as problem_fn
+    # elif args.problem == 'test_skill_knob_stove':
+    #     set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
+    #     from bullet.examples.pr2_problems import test_skill_knob_stove as problem_fn
+    # elif args.problem == 'test_kitchen_demo':
+    #     set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
+    #     from bullet.examples.pr2_problems import test_kitchen_demo as problem_fn
+    # elif args.problem == 'test_kitchen_demo_two':
+    #     set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
+    #     from bullet.examples.pr2_problems import test_kitchen_demo_two as problem_fn
+    # elif args.problem == 'test_kitchen_demo_objects':
+    #     set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
+    #     from bullet.examples.pr2_problems import test_kitchen_demo_objects as problem_fn
+    # elif args.problem == 'test_kitchen_joints':
+    #     set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
+    #     from bullet.examples.pr2_problems import test_kitchen_joints as problem_fn
+
+    else:
+        problem_fn = problem_fn_from_name(args.problem)
+
+    return problem_fn(args, **kwargs, **problem_kwargs)
