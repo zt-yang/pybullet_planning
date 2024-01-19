@@ -35,13 +35,14 @@ def parse_config(path):
     return conf
 
 
-def get_parser(config='config_dev.yaml', **kwargs):
+def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwargs):
 
-    conf = parse_config(join(PROBLEM_CONFIG_PATH, config))
+    conf = parse_config(join(config_root, config))
 
     np.set_printoptions(precision=3, threshold=3, suppress=True)  #, edgeitems=1) #, linewidth=1000)
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--seed', type=int, default=conf.seed, help='')
+    parser.add_argument('--debug', action='store_true', default=conf.debug, help='')
 
     ## -------- simulation related
     parser.add_argument('-v', '--viewer', action='store_true', default=conf.sim.viewer,
@@ -65,6 +66,8 @@ def get_parser(config='config_dev.yaml', **kwargs):
     ## -------- planning problem related
     parser.add_argument('-p', '--problem', type=str, default=conf.problem.problem,
                         help='name of the problem function that initiate both the world and goal')
+    parser.add_argument('-g', '--goal', type=str, default=conf.problem.goal,
+                        help='natual language goal or predicates to initiate the problem function')
     parser.add_argument('-exdir', '--exp_dir', type=str, default=conf.problem.exp_dir,
                         help='path to `experiments` to save outputs')
     parser.add_argument('-exsubdir', '--exp_subdir', type=str, default=conf.problem.exp_subdir,

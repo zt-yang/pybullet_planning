@@ -17,6 +17,7 @@ planner:
 ## specify the TAMP problem with preconfigured scene layout & robot
 problem:
   problem: 'test_kitchen_chicken_soup'
+  goal: None
   exp_dir: '../../experiments'
   exp_subdir: 'test'
   exp_name: 'original'

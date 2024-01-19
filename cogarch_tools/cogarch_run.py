@@ -31,7 +31,7 @@ from world_builder.world_generator import save_to_outputs_folder
 
 from cogarch_tools.processes.pddlstream_agent import PDDLStreamAgent
 from cogarch_tools.cogarch_utils import get_parser, init_gui, get_pddlstream_kwargs, clear_planning_dir, \
-    get_pddlstream_problem
+    get_pddlstream_problem, PROBLEM_CONFIG_PATH
 
 
 SAVE_COLLISIONS = False
@@ -41,7 +41,8 @@ EXPERIMENT_DIR = abspath(join(dirname(__file__), '..', '..', 'experiments'))
 #######################################################
 
 
-def main(problem='test_studio', domain='pr2_mamao.pddl', stream='pr2_stream_mamao.pddl',
+def main(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH,
+         problem='test_studio', domain='pr2_mamao.pddl', stream='pr2_stream_mamao.pddl',
          exp_dir=EXPERIMENT_DIR, exp_subdir='test', exp_name='default', reset=False,
          record_mp4=False, record_problem=True, save_testcase=False,
          record_plans=False, data_generation=False, use_rel_pose=False,
@@ -55,11 +56,14 @@ def main(problem='test_studio', domain='pr2_mamao.pddl', stream='pr2_stream_mama
 
     from pybullet_tools.logging import myprint as print
     initialize_logs()  ## so everything would be loaded to txt log file
-    args = get_parser(problem=problem, exp_dir=exp_dir, exp_subdir=exp_subdir, exp_name=exp_name,
+    args = get_parser(config=config, config_root=config_root,
+                      problem=problem, exp_dir=exp_dir, exp_subdir=exp_subdir, exp_name=exp_name,
                       domain=domain, stream=stream, use_rel_pose=use_rel_pose,
                       record_problem=record_problem, record_mp4=record_mp4, save_testcase=save_testcase)
     if 'robot_builder_args' not in kwargs:
         kwargs['robot_builder_args'] = args.robot_builder_args
+    if args.goal != 'None':
+        kwargs['world_builder_args'] = {'english_goal': args.goal}
 
     """ load problem """
     if '/' in args.exp_subdir:

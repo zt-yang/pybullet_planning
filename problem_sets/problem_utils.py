@@ -48,16 +48,17 @@ def test_template(args, robot_builder_fn, robot_builder_args, world_loader_fn,
                   observation_model=None, world_builder_args={}, **kwargs):
     """ the most general form of a test """
     world = create_world(args)
-
     robot = robot_builder_fn(world, **robot_builder_args)
     goals = world_loader_fn(world, **world_builder_args)
 
-    skeleton = None
+    ## add a sequence of goals to be solved
     goal_sequence = None
     if isinstance(goals, dict):
         goal_sequence = goals['subgoals']
         goals = goals['subgoals'][:1]
 
+    ## add skeleton as planning constraint
+    skeleton = None
     if len(goals) == 2 and isinstance(goals[1], list):
         goals, skeleton = goals
 
