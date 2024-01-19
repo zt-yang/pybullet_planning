@@ -16,6 +16,7 @@ import sys
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, get_datetime
 from pybullet_tools.pr2_primitives import Trajectory
 from pybullet_tools.pr2_agent import solve_pddlstream
+from pybullet_tools.utils import SEPARATOR
 
 from world_builder.actions import get_primitive_actions
 
@@ -459,15 +460,35 @@ class PDDLStreamAgent(MotionAgent):
 
         """ if no more action to execute, check success or replan """
         if not self.plan:
-        # if not self.plan and self.state_changed(observation):
             if self.goal_achieved(observation):
-                self.save_stats() ## save the planning time statistics
-                return None
+                if self.goal_sequence is not None and len(self.goal_sequence) > 1:
+                    self.goal_sequence.pop(0)
+                    self.update_pddlstream_problem(observation.facts, [self.goal_sequence[0]])
+                else:
+                    self.save_stats() ## save the planning time statistics
+                    return None
             self.replan(observation)
         # if (self.plan is None) or (len(self.plan) == 0):
         #     return None
         return self.process_plan(observation)
         #return self.process_commands(current_conf)
+
+    def update_pddlstream_problem(self, init, goals):
+        from pddlstream.language.constants import AND, PDDLProblem
+        from pybullet_tools.logging import myprint as print_fn
+
+        goal = [AND] + goals
+
+        world = self.world
+        print_fn(SEPARATOR)
+        summarize_facts(init, self.world, name='Facts extracted from observation', print_fn=print_fn)
+        print_goal(goal, world=world, print_fn=print_fn)
+        print_fn(f'Robot: {world.robot} | Objects: {world.objects}\n'
+                 f'Movable: {world.movable} | Fixed: {world.fixed} | Floor: {world.floors}')
+        print_fn(SEPARATOR)
+
+        domain_pddl, constant_map, stream_pddl, stream_map, _, _ = self.pddlstream_problem
+        self.pddlstream_problem = PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
 
     def record_command(self, action):
         self.commands.append(action)

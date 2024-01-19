@@ -31,10 +31,11 @@ from pybullet_tools.pr2_problems import create_pr2
 from pybullet_tools.pr2_utils import create_gripper, set_group_conf
 from pybullet_tools.utils import get_client, \
     Pose, get_bodies, pairwise_collision, get_pose, point_from_pose, set_renderer, get_joint_name, \
-    remove_body, \
+    remove_body, LockRenderer, WorldSaver, wait_if_gui, SEPARATOR, safe_remove, ensure_dir, \
     get_distance, get_max_limit, BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS, wait_unlocked
 from pybullet_tools.flying_gripper_utils import get_se3_joints
 
+from pddlstream.utils import read, INF, TmpCWD
 from pddlstream.algorithms.focused import solve_focused
 from pddlstream.algorithms.algorithm import parse_problem, reset_globals
 from pddlstream.algorithms.constraints import PlanConstraints
@@ -481,9 +482,9 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
         custom_limits = get_base_custom_limits(robot, custom_limits)
 
     print_fn(f'pr2_agent.pddlstream_from_state_goal(\n'
-          f'\tdomain = {domain_pddl}, \n'
-          f'\tstream = {stream_pddl}, \n'
-          f'\tcustom_limits = {custom_limits}')
+             f'\tdomain = {domain_pddl}, \n'
+             f'\tstream = {stream_pddl}, \n'
+             f'\tcustom_limits = {custom_limits}')
 
     world.summarize_all_objects(print_fn=print_fn)
 
@@ -530,11 +531,6 @@ def is_plan_abstract(plan):
         if '--no-' in step.name:
             return True
     return False
-
-
-from pybullet_tools.utils import LockRenderer, WorldSaver, wait_if_gui, \
-    SEPARATOR, safe_remove, ensure_dir
-from pddlstream.utils import read, INF, TmpCWD
 
 
 def get_diverse_kwargs(kwargs, diverse=True, max_plans=None):
