@@ -199,6 +199,12 @@ class PDDLStreamAgent(MotionAgent):
 
     def replan(self, observation, **kwargs):
         """ the first planning """
+
+        if self.llamp_agent is not None:
+            obs_path = self.llamp_agent.log_obs_image(self.world.cameras)
+            self.llamp_agent.log_subgoal(self.pddlstream_problem.goal[1], obs_path, 'started')
+            self.llamp_agent.output_html()
+
         self.plan_step = self.num_steps
         self.plan, env, knowledge, time_log, preimage = self.solve_pddlstream(
             self.pddlstream_problem, observation.state, domain_pddl=self.domain_pddl,
@@ -243,8 +249,8 @@ class PDDLStreamAgent(MotionAgent):
 
         ## move the txt_file.txt to log directory
         if self.llamp_agent is not None:
-            obs_path = self.llamp_agent.log_obs_image(self.world.cameras)
-            self.llamp_agent.log_subgoal(self.pddlstream_problem.goal[1], obs_path)
+            status = 'failed' if self.plan is None else 'solved'
+            self.llamp_agent.log_subgoal(self.pddlstream_problem.goal[1], obs_path, status)
             self.llamp_agent.output_html()
 
         # wait_if_gui('continue to execute?')

@@ -63,7 +63,7 @@ def test_template(args, robot_builder_fn, robot_builder_args, world_loader_fn,
         goals, skeleton = goals
 
     set_all_static()
-    state = State(world, observation_model=observation_model)
+    state = State(world, objects=world.objects, observation_model=observation_model)
     exogenous = []
 
     ## may change the goal if they are debugging goals

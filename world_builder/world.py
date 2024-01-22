@@ -71,7 +71,6 @@ class WorldBase(object):
         self.observation_cameras = None
         self.space_markers = None
 
-
     def cat_to_bodies(self, cat, **kwargs):
         raise NotImplementedError
 
@@ -1135,9 +1134,8 @@ class World(WorldBase):
         body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
         return body_to_name
 
-    def get_world_fluents(self, obj_poses=None, init_facts=[], objects=None, use_rel_pose=False,
-                          cat_to_bodies=None, cat_to_objects=None, verbose=False,
-                          only_fluents=False):
+    def get_world_fluents(self, obj_poses=None, joint_positions=None, init_facts=[], objects=None, use_rel_pose=False,
+                          cat_to_bodies=None, cat_to_objects=None, verbose=False, only_fluents=False):
         """ if only_fluents = Ture: return only AtPose, AtPosition """
 
         robot = self.robot
@@ -1182,6 +1180,14 @@ class World(WorldBase):
                     return fact[2]
             return pose
 
+        def get_body_joint_position(body):
+            position = get_joint_position(body[0], body[1]) if joint_positions is None else joint_positions[body]
+            position = Position(body, position)
+            for fact in init_facts:
+                if fact[0] == 'position' and fact[1] == body and equal(fact[2].value, position.value):
+                    return fact[2]
+            return position
+
         def get_body_link_pose(obj):
             body = obj.body
             link = obj.link
@@ -1196,13 +1202,6 @@ class World(WorldBase):
                 if fact[0] == 'linkpose' and fact[1] == body and equal(fact[2].value, pose.value):
                     return fact[2]
             return pose
-
-        def get_link_position(body):
-            position = Position(body)
-            for fact in init_facts:
-                if fact[0] == 'position' and fact[1] == body and equal(fact[2].value, position.value):
-                    return fact[2]
-            return position
 
         def get_grasp(body, attachment):
             grasp = pr2_grasp(body, attachment.grasp_pose)
@@ -1220,7 +1219,7 @@ class World(WorldBase):
             if ('Joint', body) in init or ('joint', body) in init:
                 continue
             ## initial position
-            position = get_link_position(body)  ## Position(body)
+            position = get_body_joint_position(body)
             init += [('Joint', body), ('UnattachedJoint', body),
                      ('Position', body, position), ('AtPosition', body, position),
                      ('IsOpenedPosition' if is_joint_open(body) else 'IsClosedPosition', body, position),
@@ -1329,7 +1328,7 @@ class World(WorldBase):
             init = [i for i in init if i[0] in fluents_pred]
         return init
 
-    def get_facts(self, conf_saver=None, init_facts=[], obj_poses=None, objects=None, verbose=True):
+    def get_facts(self, conf_saver=None, init_facts=[], obj_poses=None, joint_positions=None, objects=None, verbose=True):
 
         def cat_to_bodies(cat):
             ans = self.cat_to_bodies(cat)
@@ -1353,7 +1352,7 @@ class World(WorldBase):
         init += self.robot.get_init(init_facts=init_facts, conf_saver=conf_saver)
 
         ## ---- poses, positions, grasps ------------------
-        init += self.get_world_fluents(obj_poses, init_facts, objects, use_rel_pose=self.use_rel_pose,
+        init += self.get_world_fluents(obj_poses, joint_positions, init_facts, objects, use_rel_pose=self.use_rel_pose,
                                        cat_to_bodies=cat_to_bodies, cat_to_objects=cat_to_objects,
                                        verbose=verbose)
 
@@ -1493,8 +1492,7 @@ class World(WorldBase):
 
 class State(object):
     def __init__(self, world, objects=[], attachments={}, facts=[], variables={},
-                 grasp_types=None, gripper=None,
-                 unobserved_objs=None, observation_model=None): ##
+                 grasp_types=None, gripper=None, unobserved_objs=None, observation_model=None): ##
         self.world = world
         if len(objects) == 0:
             # objects = [o for o in world.objects if isinstance(o, int)]
@@ -1577,8 +1575,8 @@ class State(object):
 
     @property
     def obstacles(self):
-        return {obj for obj in self.objects + self.world.fixed if obj not in self.regions} \
-            - set(self.attachments)
+        return ({obj for obj in self.objects + self.world.fixed if obj not in self.regions and isinstance(obj, int)}
+                - set(self.attachments))
 
     @property
     def ignored_pairs(self):
@@ -1694,6 +1692,9 @@ class State(object):
         # robot_conf = self.robot.get_positions() if include_conf else None
         robot_conf = BodySaver(self.robot) if include_conf else None # TODO: unknown base but known arms
         obj_poses = {obj: get_pose(obj) for obj in self.objects if obj in get_bodies()} if include_poses else None
+        joint_positions = {
+            obj: get_joint_position(obj[0], obj[1]) for obj in self.objects if isinstance(obj, tuple) and len(obj) == 2
+        } if include_poses else None
         facts = list(self.facts) if include_facts else None
         variables = dict(self.variables) if include_variables else None
 
@@ -1712,7 +1713,7 @@ class State(object):
             obj_poses = {obj: get_pose(obj) for obj in objs}
 
         return Observation(self, robot_conf=robot_conf, obj_poses=obj_poses, unobserved_objs=self.unobserved_objs,
-                           facts=facts, variables=variables, image=image)
+                           joint_positions=joint_positions, facts=facts, variables=variables, image=image)
 
     #########################################################################################################
 
@@ -1814,7 +1815,8 @@ class Observation(object):
 
     @property
     def facts(self):
-        return self.state.get_facts(conf_saver=self.robot_conf.conf_saver, obj_poses=self.obj_poses)
+        return self.state.get_facts(conf_saver=self.robot_conf.conf_saver, obj_poses=self.obj_poses,
+                                    joint_positions=self.joint_positions)
 
     @property
     def objects(self):
@@ -1843,6 +1845,11 @@ class Observation(object):
                 if self.state.unobserved_objs is not None and obj in self.state.unobserved_objs:
                     continue
                 set_pose(obj, pose)
+        if self.joint_positions is not None:
+            for obj, position in self.joint_positions.items():
+                if self.state.unobserved_objs is not None and obj in self.state.unobserved_objs:
+                    continue
+                set_joint_position(obj[0], obj[1], position)
         return self
 
     def update_unobserved_objs(self):
