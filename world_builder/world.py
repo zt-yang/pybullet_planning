@@ -14,7 +14,7 @@ from pddlstream.language.constants import Equal, AND
 from pddlstream.algorithms.downward import set_cost_scale
 
 from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, get_pose, unit_pose, \
-    CameraImage, euler_from_quat, get_link_name, get_joint_position, joint_from_name, add_button, \
+    euler_from_quat, get_link_name, get_joint_position, joint_from_name, add_button, \
     BodySaver, set_pose, INF, add_parameter, irange, wait_for_duration, get_bodies, remove_body, \
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
     get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked, \
@@ -34,7 +34,7 @@ from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_
 
 from .entities import Region, Environment, Robot, Surface, ArticulatedObjectPart, Door, Drawer, Knob, \
     Camera, Object, StaticCamera
-from world_builder.world_utils import GRASPABLES, get_objs_in_camera_images, make_camera_collage
+from world_builder.world_utils import GRASPABLES, get_objs_in_camera_images, make_camera_collage, get_camera_image
 from world_builder.samplers import get_learned_yaw
 
 DEFAULT_CONSTANTS = ['@movable', '@bottle', '@edible', '@medicine']  ## , '@world'
@@ -1174,10 +1174,8 @@ class World(WorldBase):
         #         self.constants.remove('@world')
 
         def get_body_pose(body):
-            if obj_poses is None:
-                pose = Pose(body, get_pose(body))
-            else:  ## in observation
-                pose = obj_poses[body]
+            pose = get_pose(body) if obj_poses is None else obj_poses[body]
+            pose = Pose(body, pose)
 
             for fact in init_facts:
                 if fact[0] == 'pose' and fact[1] == body and equal(fact[2].value, pose.value):
@@ -1187,14 +1185,12 @@ class World(WorldBase):
         def get_body_link_pose(obj):
             body = obj.body
             link = obj.link
-            if obj_poses is None:
-                joint, position = None, None
-                if len(obj.governing_joints) > 0:
-                    joint = obj.governing_joints[0][1]
-                    position = get_joint_position(body, joint)
-                pose = LinkPose(obj.pybullet_name, value=get_link_pose(body, link), joint=joint, position=position)
-            else:  ## in observation
-                pose = obj_poses[body]
+            link_pose = get_link_pose(body, link) if obj_poses is None else obj_poses[body]
+            joint, position = None, None
+            if len(obj.governing_joints) > 0:
+                joint = obj.governing_joints[0][1]
+                position = get_joint_position(body, joint)
+            pose = LinkPose(obj.pybullet_name, value=link_pose, joint=joint, position=position)
 
             for fact in init_facts:
                 if fact[0] == 'linkpose' and fact[1] == body and equal(fact[2].value, pose.value):
@@ -1333,8 +1329,7 @@ class World(WorldBase):
             init = [i for i in init if i[0] in fluents_pred]
         return init
 
-    def get_facts(self, conf_saver=None, init_facts=[], obj_poses=None, objects=None,
-                  verbose=True):
+    def get_facts(self, conf_saver=None, init_facts=[], obj_poses=None, objects=None, verbose=True):
 
         def cat_to_bodies(cat):
             ans = self.cat_to_bodies(cat)
@@ -1641,15 +1636,8 @@ class State(object):
                 [camera] = self.robot.cameras
             else:
                 [camera] = self.world.cameras
-        rgb, depth, seg, pose, matrix = camera.get_image(
-            segment=(self.world.segment or include_segment), segment_links=False)
-        if not include_rgb:
-            rgb = None
-        if not include_depth:
-            depth = None
-        if not include_segment:
-            seg = None
-        return CameraImage(rgb, depth, seg, pose, matrix)
+        include_segment = self.world.segment or include_segment
+        return get_camera_image(camera, include_rgb=include_rgb, include_depth=include_depth, include_segment=include_segment)
 
     ####################################################################################
 
@@ -1808,11 +1796,12 @@ def analyze_outcome(state):
 
 class Observation(object):
     # TODO: just update a dictionary for everything
-    def __init__(self, state, robot_conf=None, obj_poses=None, unobserved_objs=None,
+    def __init__(self, state, robot_conf=None, obj_poses=None, joint_positions=None, unobserved_objs=None,
                  image=None, facts=None, variables=None, collision=False):
         self.state = state
         self.robot_conf = robot_conf
         self.obj_poses = obj_poses
+        self.joint_positions = joint_positions
         self.unobserved_objs = unobserved_objs
         self.rgb_image = self.depth_image = self.seg_image = self.camera_matrix = self.camera_pose = None
         if image is not None:
@@ -1825,8 +1814,7 @@ class Observation(object):
 
     @property
     def facts(self):
-        return self.state.get_facts(conf_saver=self.robot_conf.conf_saver,
-                                    obj_poses=self.obj_poses)
+        return self.state.get_facts(conf_saver=self.robot_conf.conf_saver, obj_poses=self.obj_poses)
 
     @property
     def objects(self):

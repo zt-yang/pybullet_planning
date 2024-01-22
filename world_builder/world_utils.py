@@ -14,7 +14,7 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sam
     flatten, INF, inf_generator, get_time_step, get_all_links, get_visual_data, pose2d_from_pose, multiply, invert, \
     get_sample_fn, pairwise_collisions, sample_placement, is_placement, aabb_contains_point, point_from_pose, \
     aabb2d_from_aabb, is_center_stable, aabb_contains_aabb, get_model_info, get_name, get_pose, dump_link, \
-    dump_joint, dump_body, PoseSaver, get_aabb, add_text, GREEN, AABB, remove_body, HideOutput, \
+    CameraImage, dump_joint, dump_body, PoseSaver, get_aabb, add_text, GREEN, AABB, remove_body, HideOutput, \
     stable_z, Pose, Point, create_box, load_model, get_joints, set_joint_position, BROWN, Euler, PI, \
     set_camera_pose, TAN, RGBA, sample_aabb, get_min_limit, get_max_limit, set_color, WHITE, get_links, \
     get_link_name, get_link_pose, euler_from_quat, get_collision_data, get_joint_name, get_joint_position, \
@@ -826,10 +826,21 @@ def get_placement_z():
 #########################################################
 
 
+def get_camera_image(camera, include_rgb=False, include_depth=False, include_segment=False):
+    rgb, depth, seg, pose, matrix = camera.get_image(segment=include_segment, segment_links=False)
+    if not include_rgb:
+        rgb = None
+    if not include_depth:
+        depth = None
+    if not include_segment:
+        seg = None
+    return CameraImage(rgb, depth, seg, pose, matrix)
+
+
 def make_camera_collage(camera_images, output_path='observation.png'):
     import matplotlib.pyplot as plt
     images = [camera_image.rgbPixels for camera_image in camera_images]
-    fig, axes = plt.subplots(1, len(images), figsize=(4 * len(images), 5))
+    fig, axes = plt.subplots(1, len(images), figsize=(5 * len(images), 4))
     for i, rgb in enumerate(images):
         axes[i].imshow(rgb)
         axes[i].axis('off')

@@ -19,6 +19,7 @@ from pybullet_tools.pr2_agent import solve_pddlstream
 from pybullet_tools.utils import SEPARATOR
 
 from world_builder.actions import get_primitive_actions
+from world_builder.world_utils import get_camera_image
 
 from cogarch_tools.processes.motion_agent import MotionAgent
 from problem_sets.pr2_problems import pddlstream_from_state_goal
@@ -242,7 +243,8 @@ class PDDLStreamAgent(MotionAgent):
 
         ## move the txt_file.txt to log directory
         if self.llamp_agent is not None:
-            self.llamp_agent.log_subgoal(self.pddlstream_problem.goal[1])
+            obs_path = self.llamp_agent.log_obs_image(self.world.cameras)
+            self.llamp_agent.log_subgoal(self.pddlstream_problem.goal[1], obs_path)
             self.llamp_agent.output_html()
 
         # wait_if_gui('continue to execute?')
