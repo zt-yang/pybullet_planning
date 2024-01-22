@@ -32,7 +32,7 @@ from pddlstream.language.constants import AND, PDDLProblem
 
 from world_builder.entities import Space, StaticCamera
 from world_builder.robot_builders import create_pr2_robot, create_gripper_robot
-from world_builder.utils import get_instance_name, get_camera_zoom_in, get_lisdf_name, get_mobility_id, \
+from world_builder.world_utils import get_instance_name, get_camera_zoom_in, get_lisdf_name, get_mobility_id, \
     get_mobility_category, get_mobility_identifier
 from world_builder.world import WorldBase
 from world_builder.paths import pbp_path

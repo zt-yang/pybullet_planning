@@ -27,14 +27,14 @@ from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_po
     is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
     set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR, CAMERA_MATRIX, visualize_camera_image, equal, \
     draw_pose2d_path, draw_pose3d_path, sort_body_parts, get_root_links, colorize_world, colorize_link, \
-    draw_fitted_box, find_closest_match, get_objs_in_camera_images, multiply_quat, is_joint_open
+    draw_fitted_box, find_closest_match, multiply_quat, is_joint_open
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
     Attach, Detach, Clean, Cook, control_commands, link_from_name, \
     get_gripper_joints, GripperCommand, apply_commands, State, Command
 
 from .entities import Region, Environment, Robot, Surface, ArticulatedObjectPart, Door, Drawer, Knob, \
     Camera, Object, StaticCamera
-from world_builder.utils import GRASPABLES
+from world_builder.world_utils import GRASPABLES, get_objs_in_camera_images, make_camera_collage
 from world_builder.samplers import get_learned_yaw
 
 DEFAULT_CONSTANTS = ['@movable', '@bottle', '@edible', '@medicine']  ## , '@world'
@@ -67,8 +67,8 @@ class WorldBase(object):
         self.img_dir = None
         self.cameras = []
 
-        ## for exposed observation model
-        self.exposed_observation_cameras = None
+        ## for observation models
+        self.observation_cameras = None
         self.space_markers = None
 
 
@@ -151,18 +151,24 @@ class WorldBase(object):
                                           camera_point=camera_point, target_point=target_point)
         visualize_camera_image(image, index, img_dir=self.img_dir, **kwargs)
 
-    def initiate_exposed_cameras(self):
-        if self.exposed_observation_cameras is not None:
+    ####################################################################
+
+    def set_camera_points(self, front_camera_point, downward_camera_point):
+        self.front_camera_point = front_camera_point
+        self.downward_camera_point = downward_camera_point
+
+    def initiate_observation_cameras(self):
+        if self.observation_cameras is not None:
             return
         ## add cameras facing the front and front-down
-        self.exposed_observation_cameras = []
+        self.observation_cameras = []
         quat_front = (0.5, 0.5, -0.5, -0.5)
         quat_right = multiply_quat(quat_front, quat_from_euler(Euler(yaw=0, pitch=PI / 2, roll=0)))
         quat_left = multiply_quat(quat_front, quat_from_euler(Euler(yaw=0, pitch=-PI / 2, roll=0)))
         quat_front_down = multiply_quat(quat_front, quat_from_euler(Euler(yaw=0, pitch=0, roll=-PI / 4)))
-        for pose in [((3.9, 7, 1.3), (0.5, 0.5, -0.5, -0.5)),
-                     ((2.9, 7, 3.3), quat_front_down)]:
-            self.exposed_observation_cameras.append(self.add_camera(pose=pose))
+        for pose in [(self.front_camera_point, (0.5, 0.5, -0.5, -0.5)),
+                     (self.downward_camera_point, quat_front_down)]:
+            self.observation_cameras.append(self.add_camera(pose=pose))
 
     def initiate_space_markers(self, s=0.03):
         if self.space_markers is not None:
@@ -1651,10 +1657,10 @@ class State(object):
         return self.world.initiate_space_markers()
 
     def initiate_exposed_observation_model(self):
-        self.world.initiate_exposed_cameras()
+        self.world.initiate_observation_cameras()
 
         ## get_observed and unobserved objects
-        objs = self.get_exposed_observation(show=False)
+        objs = self.get_exposed_observation(show=False, save=True)
         unobserved_objs = [b for b in set(get_bodies()) - set(objs)]
 
         ## find unobserved spaces and objects
@@ -1677,14 +1683,21 @@ class State(object):
 
         return assumed_poses, unobserved_spaces
 
-    def get_exposed_observation(self, show=False):
-        kwargs = dict(include_rgb=True, include_depth=True, include_segment=True)
+    def get_exposed_observation(self, **kwargs):
+        camera_kwargs = dict(include_rgb=True, include_depth=True, include_segment=True)
         camera_images = []
         for camera in self.world.cameras:
-            camera_images.append(self.camera_observation(camera=camera, **kwargs))
-        objs = get_objs_in_camera_images(camera_images, world=self.world, show=show)
+            camera_images.append(self.camera_observation(camera=camera, **camera_kwargs))
+        objs = get_objs_in_camera_images(camera_images, world=self.world, **kwargs)
         objs.sort()
         return objs
+
+    def save_default_observation(self, **kwargs):
+        camera_kwargs = dict(include_rgb=True, include_depth=False, include_segment=False)
+        camera_images = []
+        for camera in self.world.cameras:
+            camera_images.append(self.camera_observation(camera=camera, **camera_kwargs))
+        make_camera_collage(camera_images, **kwargs)
 
     def sample_observation(self, include_conf=False, include_poses=False,
                            include_facts=False, include_variables=False, step=None, observe_visual=True, **kwargs): # Observation model

@@ -14,7 +14,7 @@ from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_bo
     get_camera_image_at_pose, sample_obj_in_body_link_space, sample_obj_on_body_link_surface, nice, \
     create_attachment, change_pose_interactive
 
-from world_builder.utils import get_mobility_id, get_mobility_category, get_mobility_identifier, \
+from world_builder.world_utils import get_mobility_id, get_mobility_category, get_mobility_identifier, \
     get_instance_name, get_lisdf_name, load_asset
 
 import numpy as np

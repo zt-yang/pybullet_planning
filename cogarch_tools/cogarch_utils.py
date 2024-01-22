@@ -128,6 +128,9 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
 
     ## other args
     args.__dict__['robot_builder_args'] = conf.robot.__dict__
+    for k, v in conf.problem.__dict__.items():
+        if k not in args.__dict__:
+            args.__dict__[k] = v
 
     print(f'Seed: {args.seed}')
     print(f'Args: {args}')

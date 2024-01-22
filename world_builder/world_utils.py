@@ -1,5 +1,4 @@
 import time
-
 import numpy as np
 import untangle
 from numpy import inf
@@ -7,6 +6,7 @@ from os.path import join, isdir, isfile, dirname, abspath, basename, split
 from os import listdir
 import json
 import random
+import math
 import inspect
 
 from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sample_placement_on_aabb, wait_unlocked, \
@@ -19,7 +19,7 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sam
     set_camera_pose, TAN, RGBA, sample_aabb, get_min_limit, get_max_limit, set_color, WHITE, get_links, \
     get_link_name, get_link_pose, euler_from_quat, get_collision_data, get_joint_name, get_joint_position, \
     set_renderer, link_from_name, parent_joint_from_link, set_random_seed, set_numpy_seed
-from pybullet_tools.bullet_utils import set_camera_target_body
+from pybullet_tools.bullet_utils import set_camera_target_body, get_fine_rainbow_colors, get_segmask
 from pybullet_tools.logging import dump_json
 from world_builder.asset_constants import DONT_LOAD
 from world_builder.paths import ASSET_PATH
@@ -821,6 +821,73 @@ def get_placement_z():
     z_correction = json.load(open(Z_CORRECTION_FILE, 'r'))
     z_correction.update({k.lower(): {kk.lower(): vv for kk, vv in v.items()} for k, v in z_correction.items()})
     return z_correction
+
+
+#########################################################
+
+
+def make_camera_collage(camera_images, output_path='observation.png'):
+    import matplotlib.pyplot as plt
+    images = [camera_image.rgbPixels for camera_image in camera_images]
+    fig, axes = plt.subplots(1, len(images), figsize=(4 * len(images), 5))
+    for i, rgb in enumerate(images):
+        axes[i].imshow(rgb)
+        axes[i].axis('off')
+    fig.tight_layout()
+    fig.savefig(output_path)
+
+
+def get_objs_in_camera_images(camera_images, world=None, show=False, save=False, verbose=False):
+    import matplotlib.pyplot as plt
+
+    objs = []
+    images = []
+    colors = get_fine_rainbow_colors(math.ceil(len(world.all_objects)/7))
+
+    for camera_image in camera_images:
+
+        rgb = camera_image.rgbPixels
+        depth = camera_image.depthPixels
+        seg = camera_image.segmentationMaskBuffer
+
+        ## create segmentation images
+        unique = get_segmask(seg)
+        seg = np.zeros_like(rgb[:, :, :4])
+        for (body, link), pixels in unique.items():
+            c, r = zip(*pixels)
+            color = colors[body]
+            if verbose and world is not None:
+                print('\t', world.get_name(body))
+            seg[(np.asarray(c), np.asarray(r))] = color
+
+        objs += [b for b, l in unique.keys() if b not in objs]
+        images.append((rgb, depth, seg, len(unique)))
+
+    ## show color, depth, and segmentation images
+    if show or save:
+
+        fig, axes = plt.subplots(len(images), 3, figsize=(15, 5*len(images)))
+        fig.suptitle('Camera Image', fontsize=24)
+
+        for i, (rgb, depth, seg, n_obj) in enumerate(images):
+            camera = f'Camera {i} | '
+
+            axes[i, 0].imshow(rgb)
+            axes[i, 0].set_title(f'{camera}RGB Image')
+
+            axes[i, 1].imshow(depth)
+            axes[i, 1].set_title(f'{camera}Depth Image')
+
+            axes[i, 2].imshow(seg)
+            axes[i, 2].set_title(f'{camera}Segmentation Image ({n_obj} obj)')
+
+        fig.tight_layout()
+        if show:
+            fig.show()
+        else:
+            fig.savefig('observation.png')
+
+    return objs
 
 
 if __name__ == "__main__":

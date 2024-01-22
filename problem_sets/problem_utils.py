@@ -54,7 +54,7 @@ def test_template(args, robot_builder_fn, robot_builder_args, world_loader_fn,
     ## add a sequence of goals to be solved
     goal_sequence = None
     if isinstance(goals, dict):
-        goal_sequence = goals['subgoals']
+        goal_sequence = (goals['subgoals'], goals['llamp_agent'])
         goals = goals['subgoals'][:1]
 
     ## add skeleton as planning constraint

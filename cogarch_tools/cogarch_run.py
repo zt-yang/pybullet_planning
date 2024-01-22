@@ -92,6 +92,9 @@ def main(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH,
     if args.save_testcase:
         disconnect()
         return
+    if args.save_initial_observation:
+        state.world.initiate_observation_cameras()
+        state.save_default_observation(output_path=join('log', 'media', 'observation_0.png'))
 
     """ load planning agent """
     solver_kwargs = get_pddlstream_kwargs(args, skeleton, [copy.deepcopy(state), goals, init])

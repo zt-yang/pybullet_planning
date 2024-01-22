@@ -249,7 +249,7 @@ def get_rel_pose(body, surface, body_pose):
 def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visualize=False,
                    learned_sampling=True, relpose=False, **kwargs):
     from pybullet_tools.pr2_primitives import Pose
-    from world_builder.utils import smarter_sample_placement
+    from world_builder.world_utils import smarter_sample_placement
     obstacles = problem.fixed if collisions else []
     world = problem.world
     robot = world.robot

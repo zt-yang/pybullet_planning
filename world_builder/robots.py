@@ -21,7 +21,7 @@ from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, close_until_co
 from pybullet_tools.general_streams import get_handle_link, get_grasp_list_gen, get_contain_list_gen, \
     get_cfree_approach_pose_test, get_stable_list_gen, play_trajectory
 
-from world_builder.utils import load_asset
+from world_builder.world_utils import load_asset
 
 
 class RobotAPI(Robot):

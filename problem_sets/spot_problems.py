@@ -2,7 +2,7 @@ from world_builder.builders import *
 from world_builder.loaders import *
 from world_builder.robot_builders import build_table_domain_robot, build_robot_from_args, \
     build_fridge_domain_robot
-from world_builder.utils import load_asset, FLOOR_HEIGHT, WALL_HEIGHT, visualize_point
+from world_builder.world_utils import load_asset, FLOOR_HEIGHT, WALL_HEIGHT, visualize_point
 from world_builder.world_generator import to_lisdf
 from world_builder.paths import KITCHEN_WORLD
 

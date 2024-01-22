@@ -77,6 +77,9 @@ saved_base_confs = {
     ]
 }
 
+FRONT_CAMERA_POINT = (3.9, 7, 1.3)
+DOWNWARD_CAMERA_POINT = (2.9, 7, 3.3)
+
 
 #######################################################################################################
 
@@ -91,6 +94,7 @@ def load_full_kitchen(world, load_cabbage=True, **kwargs):
 
     floor = load_floor_plan(world, plan_name='kitchen_v2.svg', **kwargs)
     world.remove_object(floor)
+    world.set_camera_points(FRONT_CAMERA_POINT, DOWNWARD_CAMERA_POINT)
 
     lid = world.name_to_body('braiserlid')
     world.put_on_surface(lid, 'braiserbody')

@@ -17,7 +17,7 @@ from pybullet_tools.general_streams import Position
 from pybullet_tools.pr2_primitives import Pose
 
 from world_builder.entities import Robot, LINK_STR
-from world_builder.utils import read_xml, get_file_by_category, get_model_scale
+from world_builder.world_utils import read_xml, get_file_by_category, get_model_scale
 
 from lisdf_tools.lisdf_loader import get_depth_images
 

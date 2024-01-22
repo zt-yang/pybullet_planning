@@ -35,8 +35,8 @@ from world_builder.loaders import create_house_floor, create_table, \
     create_movable
 from world_builder.loaders_partnet_kitchen import sample_kitchen_sink, sample_full_kitchen
 from world_builder.robot_builders import create_gripper_robot, create_pr2_robot
-from world_builder.utils import load_asset, get_instance_name, get_partnet_doors, get_partnet_spaces
-from world_builder.utils import get_instances as get_instances_helper
+from world_builder.world_utils import load_asset, get_instance_name, get_partnet_doors, get_partnet_spaces
+from world_builder.world_utils import get_instances as get_instances_helper
 from world_builder.asset_constants import MODEL_HEIGHTS, OBJ_SCALES, MODEL_SCALES
 
 from tutorials.test_utils import get_test_world
@@ -297,7 +297,7 @@ def get_model_path(category, id):
 
 
 def load_model_instance(category, id, scale=1, location = (0, 0)):
-    from world_builder.utils import get_model_scale
+    from world_builder.world_utils import get_model_scale
 
     path = get_model_path(category, id)
     if category in MODEL_HEIGHTS:
@@ -964,7 +964,7 @@ def get_partnet_aabbs():
 
 
 def add_heights_to_pose_database(movable, surface, zs):
-    from world_builder.utils import Z_CORRECTION_FILE as file
+    from world_builder.world_utils import Z_CORRECTION_FILE as file
     from scipy.stats import norm
     if len(zs) == 0:
         print('         no samples for', movable, surface)
@@ -985,7 +985,7 @@ def add_heights_to_pose_database(movable, surface, zs):
 
 
 def get_placement_z(robot='pr2'):
-    from world_builder.utils import Z_CORRECTION_FILE as file
+    from world_builder.world_utils import Z_CORRECTION_FILE as file
     kwargs = dict(num_samples=50, gen_z=True, learned_sampling=False)
     surfaces = ['box', 'Sink', 'Microwave', "OvenCounter"]
     storage = ['CabinetTop', 'MiniFridge']

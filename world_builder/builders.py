@@ -16,7 +16,7 @@ from world_builder.loaders_partnet_kitchen import load_random_mini_kitchen_count
     sample_full_kitchen
 from world_builder.world_generator import EXP_PATH
 from world_builder.robot_builders import get_robot_builder, create_gripper_robot, create_pr2_robot
-from world_builder.utils import get_domain_constants
+from world_builder.world_utils import get_domain_constants
 
 from pybullet_tools.utils import Pose, Euler, PI, create_box, TAN, Point, set_camera_pose, link_from_name, \
     connect, enable_preview, draw_pose, unit_pose, set_all_static, wait_if_gui, reset_simulation, get_aabb

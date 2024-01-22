@@ -2281,56 +2281,6 @@ def get_fine_rainbow_colors(steps=2):
     return colors
 
 
-def get_objs_in_camera_images(camera_images, world=None, show=False, verbose=False):
-    import matplotlib.pyplot as plt
-
-    objs = []
-    images = []
-    colors = get_fine_rainbow_colors(math.ceil(len(world.all_objects)/7))
-
-    for camera_image in camera_images:
-
-        rgb = camera_image.rgbPixels
-        depth = camera_image.depthPixels
-        seg = camera_image.segmentationMaskBuffer
-
-        ## create segmentation images
-        unique = get_segmask(seg)
-        seg = np.zeros_like(rgb[:, :, :4])
-        for (body, link), pixels in unique.items():
-            c, r = zip(*pixels)
-            color = colors[body]
-            if verbose and world is not None:
-                print('\t', world.get_name(body))
-            seg[(np.asarray(c), np.asarray(r))] = color
-
-        objs += [b for b, l in unique.keys() if b not in objs]
-        images.append((rgb, depth, seg, len(unique)))
-
-    ## show color, depth, and segmentation images
-    if show:
-
-        fig, axes = plt.subplots(len(images), 3, figsize=(15, 5*len(images)))
-        fig.suptitle('Camera Image', fontsize=24)
-
-        for i, (rgb, depth, seg, n_obj) in enumerate(images):
-            camera = f'Camera {i} | '
-
-            axes[i, 0].imshow(rgb)
-            axes[i, 0].set_title(f'{camera}RGB Image')
-
-            axes[i, 1].imshow(depth)
-            axes[i, 1].set_title(f'{camera}Depth Image')
-
-            axes[i, 2].imshow(seg)
-            axes[i, 2].set_title(f'{camera}Segmentation Image ({n_obj} obj)')
-
-        fig.tight_layout()
-        fig.show()
-
-    return objs
-
-
 def multiply_quat(quat1, quat2):
     """ multiply two quaternions """
     return multiply((unit_point(), quat1), (unit_point(), quat2))[1]

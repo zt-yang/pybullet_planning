@@ -8,7 +8,7 @@ from pprint import pprint
 import os
 import string
 
-from world_builder.utils import LIGHT_GREY, read_xml, load_asset, FLOOR_HEIGHT, WALL_HEIGHT, \
+from world_builder.world_utils import LIGHT_GREY, read_xml, load_asset, FLOOR_HEIGHT, WALL_HEIGHT, \
     find_point_for_single_push, ASSET_PATH, FURNITURE_WHITE, FURNITURE_GREY, FURNITURE_YELLOW, HEX_to_RGB, \
     get_instances, adjust_for_reachability
 
@@ -17,7 +17,7 @@ from world_builder.entities import Object, Region, Environment, Robot, Camera, F
     Surface, Moveable, Space, Steerable
 from world_builder.robots import PR2Robot, FEGripper
 from world_builder.robot_builders import create_pr2_robot
-from world_builder.utils import get_partnet_doors, get_partnet_spaces, get_partnet_links_by_type
+from world_builder.world_utils import get_partnet_doors, get_partnet_spaces, get_partnet_links_by_type
 
 import sys
 from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, HideOutput, load_model, TURTLEBOT_URDF, \

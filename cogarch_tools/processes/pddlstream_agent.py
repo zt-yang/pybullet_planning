@@ -90,6 +90,7 @@ class PDDLStreamAgent(MotionAgent):
         self.pddlstream_problem = None
         self.initial_state = None
         self.goal_sequence = None
+        self.llamp_agent = None
 
         self.state = init
         self.static_facts = []
@@ -108,11 +109,14 @@ class PDDLStreamAgent(MotionAgent):
         self.pddlstream_problem = pddlstream_problem
         self.initial_state = state
 
-    def set_goal_sequence(self, goals):
-        self.goal_sequence = goals
+    def set_goal_sequence(self, goal_sequence):
+        goal_sequence, llamp_agent = goal_sequence
+        self.goal_sequence = goal_sequence
+        self.llamp_agent = llamp_agent
+        self.llamp_agent.output_html()
 
     def init_experiment(self, args, domain_modifier=None, object_reducer=None, comparing=False):
-        """ important for using the right files in replaning """
+        """ important for using the right files in replanning """
         if object_reducer is not None:
             args.exp_name += '_' + object_reducer
         self.exp_name = args.exp_name
@@ -235,6 +239,11 @@ class PDDLStreamAgent(MotionAgent):
             print('-' * 20, '\non_map:')
             pprint(self.on_map)
             print('-' * 20)
+
+        ## move the txt_file.txt to log directory
+        if self.llamp_agent is not None:
+            self.llamp_agent.log_subgoal(self.pddlstream_problem.goal[1])
+            self.llamp_agent.output_html()
 
         # wait_if_gui('continue to execute?')
         return self.plan

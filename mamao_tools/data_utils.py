@@ -17,7 +17,7 @@ from pybullet_tools.bullet_utils import nice, is_box_entity
 
 from mamao_tools.text_utils import ACTION_ABV, ACTION_NAMES
 
-from world_builder.utils import get_partnet_doors
+from world_builder.world_utils import get_partnet_doors
 
 import sys
 sys.path.append('/home/yang/Documents/fastamp')
@@ -110,7 +110,7 @@ def add_to_planning_config(run_dir, new_data, safely=True):
 
 
 def check_unrealistic_placement_z(world, run_dir):
-    from world_builder.utils import Z_CORRECTION_FILE as file
+    from world_builder.world_utils import Z_CORRECTION_FILE as file
     z_correction = json.load(open(file, 'r'))
     placement_plan = load_planning_config(run_dir)['placement_plan']
     if placement_plan is not None:

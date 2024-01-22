@@ -10,7 +10,7 @@ import shutil
 import numpy as np
 import json
 
-from world_builder.utils import get_camera_zoom_in
+from world_builder.world_utils import get_camera_zoom_in
 from pybullet_tools.bullet_utils import nice, equal, get_datetime
 from pybullet_tools.utils import pose_from_tform, get_pose, get_joint_name, get_joint_position, \
     get_movable_joints, Euler, quat_from_euler
