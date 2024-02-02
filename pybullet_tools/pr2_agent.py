@@ -561,6 +561,23 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
     #     ('pick', [WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
     #     ('place', [WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
     # ]
+
+    use_subgoals = False
+    soft_subgoals = False
+
+    if use_subgoals:
+        init = pddlstream_problem.init
+        arms = [fact[1] for fact in init if fact[0] == 'arm']
+        objects = [fact[1] for fact in init if fact[0] == 'graspable']
+        print(f'Arms: {arms} | Objects: {objects}')
+        arm = arms[0]
+        obj = objects[0]
+        subgoals = [
+            ('Holding', arm, obj),
+        ]
+    else:
+        subgoals = []
+
     if skeleton is not None:
         if len(skeleton) > 0:
             print('-' * 100)
@@ -568,7 +585,8 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
             print('-' * 100)
         constraints = PlanConstraints(skeletons=[repair_skeleton(skeleton)], exact=False, max_cost=max_cost + 1)
     else:
-        constraints = PlanConstraints(max_cost=max_cost + 1)  # TODO: plus 1 in action costs?
+        subgoal_costs = len(subgoals) * [100] if soft_subgoals else None
+        constraints = PlanConstraints(subgoals=subgoals, subgoal_costs=subgoal_costs, max_cost=max_cost + 1)  # TODO: plus 1 in action costs?
 
     if collect_dataset:
         max_solutions = 6 if max_solutions == 0 else max_solutions
