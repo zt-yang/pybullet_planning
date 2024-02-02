@@ -91,6 +91,7 @@ class WorldBase(object):
         name = name.replace('::', "'s ")
         name = name.replace('_', ' ').replace('-', ' ')
         self.english_name_to_body[name] = body
+        self.english_name_to_body[name.replace("'s ", " ")] = body
         return name
 
     def set_english_names(self, names):
@@ -1446,7 +1447,8 @@ class World(WorldBase):
             json.dump(config, f, indent=4)
 
     def get_type(self, body):
-        return [self.BODY_TO_OBJECT[body].category]
+        obj = self.BODY_TO_OBJECT[body] if body in self.BODY_TO_OBJECT else self.REMOVED_BODY_TO_OBJECT[body]
+        return [obj.category]
 
     def find_surfaces_for_placement(self, obj, surfaces, verbose=False):
         from pybullet_tools.pr2_streams import get_stable_gen

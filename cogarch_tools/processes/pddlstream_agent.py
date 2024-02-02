@@ -498,7 +498,8 @@ class PDDLStreamAgent(MotionAgent):
 
         world = self.world
         print_fn(SEPARATOR)
-        summarize_facts(init, self.world, name='Facts extracted from observation', print_fn=print_fn)
+        world.summarize_all_objects()
+        summarize_facts(init, world, name='Facts extracted after execution', print_fn=print_fn)
         print_goal(goal, world=world, print_fn=print_fn)
         print_fn(f'Robot: {world.robot} | Objects: {world.objects}\n'
                  f'Movable: {world.movable} | Fixed: {world.fixed} | Floor: {world.floors}')
