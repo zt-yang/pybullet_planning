@@ -1276,8 +1276,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
     body_pose = get_model_pose(body, link=link, verbose=verbose)
     # print("get hand grasps, body pose", body_pose)
 
-    aabb, handles = draw_fitted_box(body, link=link, verbose=verbose, draw_box=True, draw_centroid=True)
-    # aabb, handles = draw_fitted_box(body, link=link, verbose=verbose, draw_box=False, draw_centroid=False)
+    aabb, handles = draw_fitted_box(body, link=link, verbose=verbose, draw_box=False, draw_centroid=False)
 
     if link is None:  ## grasp the whole body
         r = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))

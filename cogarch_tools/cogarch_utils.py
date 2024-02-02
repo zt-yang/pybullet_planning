@@ -42,7 +42,8 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     np.set_printoptions(precision=3, threshold=3, suppress=True)  #, edgeitems=1) #, linewidth=1000)
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--seed', type=int, default=conf.seed, help='')
-    parser.add_argument('--debug', action='store_true', default=conf.debug, help='')
+    if hasattr(conf, 'debug'):
+        parser.add_argument('--debug', action='store_true', default=conf.debug, help='')
 
     ## -------- simulation related
     parser.add_argument('-v', '--viewer', action='store_true', default=conf.sim.viewer,

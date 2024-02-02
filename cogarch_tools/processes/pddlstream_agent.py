@@ -480,7 +480,7 @@ class PDDLStreamAgent(MotionAgent):
             if self.goal_achieved(observation):
                 if self.goal_sequence is not None and len(self.goal_sequence) > 1:
                     self.goal_sequence.pop(0)
-                    self.update_pddlstream_problem(observation.facts, [self.goal_sequence[0]])
+                    self.update_pddlstream_problem(observation.facts, [self.goal_sequence[0]], observation.state)
                 else:
                     self.save_stats() ## save the planning time statistics
                     return None
@@ -490,11 +490,12 @@ class PDDLStreamAgent(MotionAgent):
         return self.process_plan(observation)
         #return self.process_commands(current_conf)
 
-    def update_pddlstream_problem(self, init, goals):
+    def update_pddlstream_problem(self, init, goals, state):
         from pddlstream.language.constants import AND, PDDLProblem
         from pybullet_tools.logging import myprint as print_fn
 
         goal = [AND] + goals
+        debug = (goals[0][0] == 'on')
 
         world = self.world
         print_fn(SEPARATOR)
@@ -505,8 +506,19 @@ class PDDLStreamAgent(MotionAgent):
                  f'Movable: {world.movable} | Fixed: {world.fixed} | Floor: {world.floors}')
         print_fn(SEPARATOR)
 
-        domain_pddl, constant_map, stream_pddl, stream_map, _, _ = self.pddlstream_problem
+        domain_pddl, constant_map, stream_pddl, _, _, _ = self.pddlstream_problem
+        stream_map = self.construct_stream_map(state, debug)
         self.pddlstream_problem = PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
+
+    def construct_stream_map(self, state, debug=False):
+        """ may need to change debug info for refinement problems """
+        robot = self.world.robot
+        collisions = True
+        teleport = False
+        custom_limits = robot.custom_limits
+        return robot.get_stream_map(state, collisions, custom_limits, teleport, debug=debug)
+
+    ############################################################################################
 
     def record_command(self, action):
         self.commands.append(action)

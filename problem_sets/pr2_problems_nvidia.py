@@ -819,8 +819,8 @@ def test_kitchen_chicken_soup(args, **kwargs):
             'cabbage': 'shelf_bottom',
             'fork': 'indigo_drawer_top'
         }
-        goal_object = ['chicken-leg', 'cabbage', 'fork'][2]
-        open_doors_for = ['fork']  ## [goal_object] | []
+        goal_object = ['chicken-leg', 'cabbage', 'fork'][0]
+        open_doors_for = [goal_object]
 
         load_full_kitchen(world, surfaces=surfaces, spaces=spaces, load_cabbage=False)
         movables, movable_to_doors = load_nvidia_kitchen_movables(world, open_doors_for=open_doors_for,
@@ -862,7 +862,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
         objects += [movable]  ## Holding
         # objects += [drawer_joint]  ## OpenedJoint
         # objects += [drawer_link]  ## In (place)
-        objects += [drawer_joint, drawer_link]  ## In (place_rel)
+        # objects += [drawer_joint, drawer_link]  ## In (place_rel)
         # objects += [dishwasher_space]  ## dishwasher_joint,
         # objects += [dishwasher_joint, dishwasher_space]
 

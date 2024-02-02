@@ -362,7 +362,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
 
 
 def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
-                  ACONF=False, verbose=True, visualize=False):
+                  ACONF=False, verbose=True, visualize=False, debug=False):
     robot = problem.robot
     world = problem.world
     obstacles = problem.fixed if collisions else []
@@ -371,6 +371,9 @@ def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
     title = 'pr2_streams.get_ik_fn_old:\t'
 
     def fn(arm, obj, pose, grasp, base_conf, fluents=[]):
+
+        if debug:
+            print(fluents)
 
         obstacles_here = copy.deepcopy(obstacles)
         ignored_pairs_here = copy.deepcopy(ignored_pairs)

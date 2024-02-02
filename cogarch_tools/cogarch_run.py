@@ -92,7 +92,9 @@ def main(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH,
     if args.save_testcase:
         disconnect()
         return
-    if args.save_initial_observation:
+
+    ## for visualizing observation
+    if hasattr(args, 'save_initial_observation') and args.save_initial_observation:
         state.world.initiate_observation_cameras()
         state.save_default_observation(output_path=join('log', 'media', 'observation_0.png'))
 

@@ -54,7 +54,7 @@ from world_builder.actions import get_primitive_actions, repair_skeleton
 
 
 def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
-                   pull_collisions=True, base_collisions=True):
+                   pull_collisions=True, base_collisions=True, debug=False):
     # p = problem
     # c = collisions
     # l = custom_limits
@@ -91,7 +91,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'inverse-reachability': from_gen_fn(
             get_ik_gen_old(p, collisions=False, ir_only=True, learned=True, verbose=False, visualize=False, **tc)),
         'inverse-kinematics': from_fn(
-            get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=False, visualize=False, ACONF=False)),
+            get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=False, visualize=False, ACONF=False, debug=debug)),
 
         'inverse-reachability-rel': from_gen_fn(
             get_ik_rel_gen_old(p, collisions=False, ir_only=True, learned=True, verbose=False, visualize=False, **tc)),
