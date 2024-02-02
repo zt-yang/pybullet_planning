@@ -96,7 +96,10 @@ def main(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH,
     ## for visualizing observation
     if hasattr(args, 'save_initial_observation') and args.save_initial_observation:
         state.world.initiate_observation_cameras()
-        state.save_default_observation(output_path=join('log', 'media', 'observation_0.png'))
+        obs_dir = join('log', 'media')
+        if not isdir(obs_dir):
+            os.makedirs(obs_dir)
+        state.save_default_observation(output_path=join(obs_dir, 'observation_0.png'))
 
     """ load planning agent """
     solver_kwargs = get_pddlstream_kwargs(args, skeleton, [copy.deepcopy(state), goals, init])
