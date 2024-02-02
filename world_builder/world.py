@@ -733,7 +733,7 @@ class World(WorldBase):
         return bodies
 
     def remove_bodies_from_planning(self, goals=[], exceptions=[]):
-        print('remove_bodies_from_planning | exceptions =', exceptions)
+        print('\nremove_bodies_from_planning | exceptions =', exceptions)
         bodies = []
         if isinstance(goals, tuple):
             goals = [goals]

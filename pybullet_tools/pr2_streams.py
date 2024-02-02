@@ -372,9 +372,6 @@ def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
 
     def fn(arm, obj, pose, grasp, base_conf, fluents=[]):
 
-        if debug:
-            print(fluents)
-
         obstacles_here = copy.deepcopy(obstacles)
         ignored_pairs_here = copy.deepcopy(ignored_pairs)
 

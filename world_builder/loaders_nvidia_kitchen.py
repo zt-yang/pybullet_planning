@@ -42,6 +42,7 @@ saved_poses = {
     ('vinegar-bottle', 'dagger'): ((0.45, 8.83, 1.54), (0.0, 0.0, 0.0, 1.0)),
     ('vinegar-bottle', 'indigo_tmp'): ((0.59, 8.88, 0.16), (0.0, 0.0, 0.0, 1.0)),
     ('vinegar-bottle', 'shelf_bottom'): ((0.64, 4.88, 0.89), (0.0, 0.0, 0.0, 1.0)),
+    ('chicken-leg', 'indigo_tmp'): ((0.717, 8.714, 0.849), (0.0, -0.0, -0.99987, 0.0163)),
     ('chicken-leg', 'shelf_bottom'): ((0.654, 5.062, 0.797), (0.0, 0.0, 0.97, 0.25)),
     ('cabbage', 'shelf_bottom'): ((0.668, 4.862, 0.83), (0, 0, 0.747, 0.665)),
     # ('cabbage', 'upper_shelf'): ((1.006, 6.295, 0.461), (0.0, 0.0, 0.941, 0.338)),
@@ -74,6 +75,9 @@ saved_base_confs = {
     ('fork', 'indigo_tmp'): [
         ((1.248, 8.31, 0.337, 1.635), {0: 1.248, 1: 8.31, 2: 1.635, 17: 0.337, 61: 1.072, 62: 0.45, 63: -0.062, 65: -0.678, 66: 3.199, 68: -1.797, 69: -0.868}),
         ((1.403, 8.465, 0.318, 1.688), {0: 1.403, 1: 8.465, 2: 1.688, 17: 0.318, 61: 0.803, 62: 1.281, 63: 0.998, 65: -1.401, 66: -1.814, 68: -1.627, 69: 3.132}),
+    ],
+    ('chicken-leg', 'indigo_tmp'):  [
+        ((1.44, 4.783, 0.011, 2.67), {0: 1.44, 1: 4.783, 2: 2.67, 17: 0.011, 61: 0.202, 62: 0.463, 63: 0.606, 65: -1.314, 66: 3.219, 68: -0.803, 69: 2.552})
     ]
 }
 
@@ -263,6 +267,10 @@ def learned_nvidia_pose_list_gen(world, body, surfaces, num_samples=30, obstacle
         key = (name, get_link_name(body, link))
         if key in saved_relposes:
             results.append(saved_relposes[key])
+            if verbose:
+                print('learned_nvidia_pose_list_gen | found relpose for', key)
+        if key in saved_poses:
+            results.append(saved_poses[key])
             if verbose:
                 print('learned_nvidia_pose_list_gen | found pose for', key)
     return results

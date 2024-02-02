@@ -527,9 +527,15 @@ def sample_joint_position_gen(num_samples=14, closed=False):
                     pstns.append(lower)
                     pstns.extend([np.random.uniform(lower, lower + a_third) for k in range(num_samples)])
                 else:
+                    lower_new, upper_new = None, None
                     ## prevent from opening all the way is unreachable
-                    if upper - lower > 3/4*math.pi:
-                        upper = lower + 3/4*math.pi
+                    if upper - lower > 3/4 * math.pi:
+                        upper_new = lower + 3/4 * math.pi
+                    ## prevent from opening too little
+                    if upper - lower > 1/2 * math.pi:
+                        lower_new = upper - 1/2 * math.pi
+                    lower = lower_new if lower_new else lower
+                    upper = upper_new if upper_new else upper
                     pstns.append(lower + math.pi/2)
                     pstns.extend([np.random.uniform(lower + a_third, upper) for k in range(num_samples)])
             if lower < 0:
@@ -543,6 +549,7 @@ def sample_joint_position_gen(num_samples=14, closed=False):
                     pstns.extend([np.random.uniform(lower, upper - a_third) for k in range(num_samples)])
 
         pstns = [round(pstn, 3) for pstn in pstns]
+        print(f'\tsample_joint_position_gen({o}, closed={closed})', pstns)
         positions = [(Position(o, p), ) for p in pstns]
 
         for pstn1 in positions:

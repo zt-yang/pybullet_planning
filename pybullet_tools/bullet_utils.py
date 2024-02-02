@@ -970,6 +970,26 @@ def get_readable_list(lst, world=None, NAME_ONLY=False, TO_LISDF=False):
     return to_print
 
 
+def filter_init_by_objects(facts, objects, constants):
+    from pybullet_tools.logging import myprint
+    myprint(f'\nfilter_init_by_objects({objects})')
+    new_facts = []
+    removed_facts = []
+    for fact in facts:
+        removed = False
+        if fact[0] not in ['=']:
+            for elem in fact[1:]:
+                if (isinstance(elem, int) or isinstance(elem, tuple)) and elem not in objects and elem not in constants:
+                    removed = True
+                    myprint(f'\t removing fact {fact}')
+                    break
+        if removed:
+            removed_facts.append(fact)
+        else:
+            new_facts.append(fact)
+    return new_facts, removed_facts
+
+
 def summarize_facts(facts, world=None, name='Initial facts', print_fn=None):
     if print_fn is None:
         from pybullet_tools.logging import myprint as print_fn

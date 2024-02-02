@@ -13,7 +13,7 @@ from collections import defaultdict
 from os.path import join
 import sys
 
-from pybullet_tools.bullet_utils import summarize_facts, print_goal, get_datetime
+from pybullet_tools.bullet_utils import summarize_facts, print_goal, get_datetime, filter_init_by_objects
 from pybullet_tools.pr2_primitives import Trajectory
 from pybullet_tools.pr2_agent import solve_pddlstream
 from pybullet_tools.utils import SEPARATOR
@@ -92,6 +92,7 @@ class PDDLStreamAgent(MotionAgent):
         self.initial_state = None
         self.goal_sequence = None
         self.llamp_agent = None
+        self.last_removed_facts = []
 
         self.state = init
         self.static_facts = []
@@ -497,7 +498,14 @@ class PDDLStreamAgent(MotionAgent):
         goal = [AND] + goals
         debug = (goals[0][0] == 'on')
 
-        world = self.world
+        ## create a version of the world with less planning objects
+        world = copy.deepcopy(self.world)
+        world.remove_bodies_from_planning(goals)
+
+        init += self.last_removed_facts
+        init, removed = filter_init_by_objects(init, world.objects, world.constants + world.robot.arms)
+        self.last_removed_facts = removed
+
         print_fn(SEPARATOR)
         world.summarize_all_objects()
         summarize_facts(init, world, name='Facts extracted after execution', print_fn=print_fn)
