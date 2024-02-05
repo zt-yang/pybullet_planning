@@ -1,23 +1,10 @@
 #!/usr/bin/env python
-
 from __future__ import print_function
-
-import copy
-import shutil
-
 import os
-import sys
 from os.path import join, abspath, dirname, isdir, isfile
 from os import listdir
-
-ROOT_DIR = abspath(join(dirname(__file__), os.pardir))
-sys.path.extend([
-    join(ROOT_DIR, '..'),
-    join(ROOT_DIR, '..', 'pddlstream'),
-    join(ROOT_DIR, '..', 'bullet'),
-    join(ROOT_DIR, '..', 'bullet', 'pybullet_planning'),
-    join(ROOT_DIR, '..', 'bullet', 'lisdf'),
-])
+import copy
+import shutil
 
 from pybullet_tools.utils import disconnect, reset_simulation, \
     VideoSaver, wait_unlocked, timeout
