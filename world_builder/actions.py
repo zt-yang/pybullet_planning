@@ -305,9 +305,9 @@ class AttachObjectAction(Action):
         # print(f'AttachObjectAction | picking object {self.object} from', nice(get_pose(self.object)))
         new_attachments = add_attachment(state=state, obj=self.object, parent=state.robot,
                                          parent_link=link, attach_distance=None, verbose=False)  ## can attach without contact
-        for k in new_attachments:
-            if k in state.world.ATTACHMENTS:
-                state.world.ATTACHMENTS.pop(k)
+        # for k in new_attachments:
+        #     if k in state.world.ATTACHMENTS:
+        #         state.world.ATTACHMENTS.pop(k)
         return state.new_state(attachments=new_attachments)
 
 

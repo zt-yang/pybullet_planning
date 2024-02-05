@@ -388,9 +388,9 @@ def collided(obj, obstacles=[], world=None, tag='', articulated=False, verbose=F
 
     ## first get answer
     if articulated:
-        if verbose:
-            print('bullet_utils.collided | articulated', obj, obstacles)
         result = articulated_collisions(obj, obstacles, use_aabb=use_aabb, **kwargs)
+        if verbose and result:
+            print('bullet_utils.collided | articulated', obj, obstacles)
         return result
     # else:
     #     result = any(pairwise_collision(obj, b, use_aabb=use_aabb, **kwargs) for b in obstacles)
@@ -641,7 +641,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
 
 def add_attachment(state=None, obj=None, parent=-1, parent_link=None, attach_distance=0.1, verbose=False):
     new_attachments = {}
-    if state != None:
+    if state is not None:
         new_attachments = dict(state.attachments)
 
     if parent == -1:  ## use robot as parent
@@ -952,6 +952,8 @@ def close_joint(body, joint):
 #######################################################
 
 def get_readable_list(lst, world=None, NAME_ONLY=False, TO_LISDF=False):
+    if len(lst) == 0:
+        import ipdb; ipdb.set_trace()
     to_print = [lst[0]]
     for word in lst[1:]:
         if world is not None:
@@ -968,26 +970,6 @@ def get_readable_list(lst, world=None, NAME_ONLY=False, TO_LISDF=False):
         else:
             to_print.append(word)
     return to_print
-
-
-def filter_init_by_objects(facts, objects, constants):
-    from pybullet_tools.logging import myprint
-    myprint(f'\nfilter_init_by_objects({objects})')
-    new_facts = []
-    removed_facts = []
-    for fact in facts:
-        removed = False
-        if fact[0] not in ['=']:
-            for elem in fact[1:]:
-                if (isinstance(elem, int) or isinstance(elem, tuple)) and elem not in objects and elem not in constants:
-                    removed = True
-                    myprint(f'\t removing fact {fact}')
-                    break
-        if removed:
-            removed_facts.append(fact)
-        else:
-            new_facts.append(fact)
-    return new_facts, removed_facts
 
 
 def summarize_facts(facts, world=None, name='Initial facts', print_fn=None):
@@ -1270,9 +1252,11 @@ def get_grasp_db_file(robot):
 def check_grasp_link(world, body, link):
     """ some movables, like pot and pot lid, have specific links for grasp """
     from world_builder.world import World
+    from world_builder.world_utils import get_grasp_link
     using_grasp_link = False
     if isinstance(world, World) and link is None:
-        grasp_link = get_grasp_link()
+        path = world.BODY_TO_OBJECT[body].path
+        grasp_link = get_grasp_link(path, body)
         if grasp_link is not None:
             link = grasp_link
             using_grasp_link = True
@@ -1908,7 +1892,7 @@ def is_joint_open(body, joint=-1, verbose=True):
         result = (diff < -pstn_range / 4)
     if verbose:
         joint_name = get_joint_name(body, joint)
-        print(f'is_joint_open({(body, joint)}|{joint_name})\t at {pstn} in {nice((lower, upper))}\t', result)
+        print(f'\tis_joint_open({(body, joint)}|{joint_name})\t at {pstn} in {nice((lower, upper))}\t', result)
     return result
 
 

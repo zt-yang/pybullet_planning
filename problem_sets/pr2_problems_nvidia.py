@@ -711,7 +711,7 @@ def test_kitchen_drawers(args, **kwargs):
         ## --------- temporary
         # goals = [("HandleGrasped", 'left', name_to_body('hitman_drawer_top_joint'))]
 
-        return goals, skeleton
+        return {'goals': goals, 'skeleton': skeleton}
 
     return test_nvidia_kitchen_domain(args, loader_fn, **kwargs)
 
@@ -780,7 +780,7 @@ def test_kitchen_doors(args, **kwargs):
         ## --- for recording door open demo
         # world.open_joint_by_name('chewie_door_left_joint')
 
-        return goals, skeleton
+        return {'goals': goals, 'skeleton': skeleton}
 
     return test_nvidia_kitchen_domain(args, loader_fn, initial_xy=(2, 5), **kwargs)
 
@@ -819,8 +819,8 @@ def test_kitchen_chicken_soup(args, **kwargs):
             'cabbage': 'shelf_bottom',
             'fork': 'indigo_drawer_top'
         }
-        goal_object = ['chicken-leg', 'cabbage', 'fork'][0]
-        open_doors_for = [goal_object]
+        goal_object = ['chicken-leg', 'cabbage', 'fork'][2]
+        open_doors_for = []  ## goal_object
 
         load_full_kitchen(world, surfaces=surfaces, spaces=spaces, load_cabbage=False)
         movables, movable_to_doors = load_nvidia_kitchen_movables(world, open_doors_for=open_doors_for,
@@ -830,6 +830,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
         #########################################################################
 
         """ goals """
+        subgoals = None
         arm = 'left'
         movable = movables[goal_object]
         objects = []
@@ -845,6 +846,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
         goals = ('test_grasps', movable)
         goals = [("Holding", arm, movable)]
         goals = [("On", movable, counter)]
+        subgoals = [("OpenedJoint", drawer_joint), ("On", movable, counter)]
         # goals = ('test_relpose_inside_gen', (movable, drawer_link))
         # goals = [("In", movable, drawer_link)]
 
@@ -859,10 +861,10 @@ def test_kitchen_chicken_soup(args, **kwargs):
 
         #########################################################################
 
-        objects += [movable]  ## Holding
+        # objects += [movable]  ## Holding
         # objects += [drawer_joint]  ## OpenedJoint
         # objects += [drawer_link]  ## In (place)
-        # objects += [drawer_joint, drawer_link]  ## In (place_rel)
+        objects += [drawer_joint, drawer_link]  ## In (place_rel)
         # objects += [dishwasher_space]  ## dishwasher_joint,
         # objects += [dishwasher_joint, dishwasher_space]
 
@@ -875,7 +877,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
         # skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
         # skeleton += [(k, arm, movable) for k in pick_place_rel_actions[:1]]
         # skeleton += [(k, arm, movable) for k in ['pick', 'place_to_supporter']]
-        skeleton += [(k, arm, movable) for k in ['pick_from_supporter', 'place']]
+        # skeleton += [(k, arm, movable) for k in ['pick_from_supporter', 'place']]
 
         # skeleton += [(k, arm, movable) for k in pick_place_rel_actions]
 
@@ -886,7 +888,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
 
         world.remove_bodies_from_planning(goals, exceptions=objects)
 
-        return goals, skeleton
+        return {'goals': goals, 'skeleton': skeleton, 'subgoals': subgoals}
 
     return test_nvidia_kitchen_domain(args, loader_fn, initial_xy=(2, 5), **kwargs)
 

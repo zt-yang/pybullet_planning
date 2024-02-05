@@ -30,7 +30,7 @@ def pddlstream_from_state_goal(state, goals, args=None, custom_limits=None,
         pddl_dir = join(pbp_path, 'pddl')
         domain_pddl = join(pddl_dir, domain_name)
         stream_pddl = join(pddl_dir, stream_name)
-    cfree = args.cfree if args is not None else cfree
+    cfree = cfree or (args.cfree if args is not None else False)
     teleport = args.teleport if args is not None else teleport
     if custom_limits is None:
         custom_limits = state.robot.custom_limits
@@ -49,27 +49,30 @@ def test_template(args, robot_builder_fn, robot_builder_args, world_loader_fn,
     """ the most general form of a test """
     world = create_world(args)
     robot = robot_builder_fn(world, **robot_builder_args)
-    goals = world_loader_fn(world, **world_builder_args)
 
-    ## add a sequence of goals to be solved
-    goal_sequence = None
-    if isinstance(goals, dict):
-        goal_sequence = (goals['subgoals'], goals['llamp_agent'])
-        goals = goals['subgoals'][:1]
+    ## add skeleton or a sequence of goals as planning constraint
+    problem_dict = {k: None for k in ['goals', 'skeleton', 'llamp_agent', 'subgoals', 'goal_sequence']}
+    loaded_problem_dict = world_loader_fn(world, **world_builder_args)
 
-    ## add skeleton as planning constraint
-    skeleton = None
-    if len(goals) == 2 and isinstance(goals[1], list):
-        goals, skeleton = goals
+    if not isinstance(loaded_problem_dict, dict):
+        goals = problem_dict['goals'] = loaded_problem_dict
+    else:
+        problem_dict.update(loaded_problem_dict)
+        goals = problem_dict['goals']
+        if goals is None:
+            if problem_dict['subgoals'] is not None:
+                goals = problem_dict['subgoals']
+            elif problem_dict['goal_sequence'] is not None:
+                goals = problem_dict['goal_sequence'][:1]
+        problem_dict['goals'] = goals
 
     set_all_static()
     state = State(world, objects=world.objects, observation_model=observation_model)
     exogenous = []
 
     ## may change the goal if they are debugging goals
-    pddlstream_problem = pddlstream_from_state_goal(state, goals, args, **kwargs)
-    goals = pddlstream_problem.goal[1:]
+    problem_dict['pddlstream_problem'] = pddlstream_from_state_goal(state, goals, args, **kwargs)
+    goals = problem_dict['pddlstream_problem'].goal[1:]
     # save_to_kitchen_worlds(state, pddlstream_problem, exp_name='blocks_pick', world_name='blocks_pick')
-    if skeleton is not None:
-        pddlstream_problem = pddlstream_problem, skeleton
-    return state, exogenous, goals, pddlstream_problem, goal_sequence
+
+    return state, exogenous, goals, problem_dict

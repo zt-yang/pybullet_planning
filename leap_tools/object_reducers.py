@@ -1,16 +1,16 @@
-from pybullet_tools.utils import wait_unlocked
-
-
 def initialize_object_reducer(name):
     if name == 'goal-related':
-        return reduce_facts_from_planning
+        return reduce_facts_given_goals
 
-    def return_as_is(facts, goals):
+    if name == 'object-related':
+        return reduce_facts_given_objects
+
+    def return_as_is(facts, inputs):
         return facts
     return return_as_is
 
 
-def reduce_facts_from_planning(facts, goals):
+def reduce_facts_given_goals(facts, goals):
     goal_objects = []
     for g in goals[:1]:
         for elem in g:
@@ -35,3 +35,24 @@ def reduce_facts_from_planning(facts, goals):
           'Remaining %d facts\n ' % len(filtered_facts))
     print('\n '.join([str(f) for f in reduced_facts]))
     return filtered_facts
+
+
+def reduce_facts_given_objects(facts, objects):
+    from pybullet_tools.logging import myprint
+    myprint(f'\nfilter_init_by_objects({objects})')
+
+    new_facts = []
+    removed_facts = []
+    for fact in facts:
+        removed = False
+        if fact[0] not in ['=']:
+            for elem in fact[1:]:
+                if (isinstance(elem, int) or isinstance(elem, tuple)) and elem not in objects:
+                    removed = True
+                    myprint(f'\t removing fact {fact}')
+                    break
+        if removed:
+            removed_facts.append(fact)
+        else:
+            new_facts.append(fact)
+    return new_facts

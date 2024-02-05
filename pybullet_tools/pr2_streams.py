@@ -290,15 +290,19 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
         ik_solver = IKSolver(robot, tool_link=tool_link, first_joint=arm_joints[0],
                              custom_limits=custom_limits)  # TODO: cache
         approach_conf = ik_solver.solve(approach_pose, seed_conf=grasp_conf)
-    else:
+
+    if not has_tracik() or approach_conf is None:
         # TODO(caelan): sub_inverse_kinematics's clone_body has large overhead
         approach_conf = pr2_inverse_kinematics(robot, arm, approach_pose, custom_limits=custom_limits,
                                                upper_limits=USE_CURRENT, nearby_conf=USE_CURRENT)
+        if not has_tracik() and approach_conf is not None:
+            print('\n\n FastIK succeeded after TracIK failed\n\n')
         # approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits)
+
     if (approach_conf is None) or collided(robot, obstacles_here, articulated=True, world=world, tag=title,
                                            verbose=verbose, ignored_pairs=ignored_pairs_here, min_num_pts=3):  ##
         if verbose:
-            if approach_conf != None:
+            if approach_conf is not None:
                 approach_conf = nice(approach_conf)
             print(f'{title}Approach IK failure', approach_conf)
         # wait_if_gui()

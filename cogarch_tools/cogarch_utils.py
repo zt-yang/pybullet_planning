@@ -32,6 +32,8 @@ def parse_config(path):
     conf.problem = Namespace(**conf.problem)
     conf.planner = Namespace(**conf.planner)
     conf.robot = Namespace(**conf.robot)
+    if hasattr(conf, 'agent'):
+        conf.agent = Namespace(**conf.agent)
     return conf
 
 
@@ -67,8 +69,6 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     ## -------- planning problem related
     parser.add_argument('-p', '--problem', type=str, default=conf.problem.problem,
                         help='name of the problem function that initiate both the world and goal')
-    parser.add_argument('-g', '--goal', type=str, default=conf.problem.goal,
-                        help='natual language goal or predicates to initiate the problem function')
     parser.add_argument('-exdir', '--exp_dir', type=str, default=conf.problem.exp_dir,
                         help='path to `experiments` to save outputs')
     parser.add_argument('-exsubdir', '--exp_subdir', type=str, default=conf.problem.exp_subdir,
@@ -127,21 +127,27 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     for k, v in kwargs.items():
         args.__dict__[k] = v
 
-    ## other args
+    ## other args, especially those related to problem and planner may be added directly in config files
     args.__dict__['robot_builder_args'] = conf.robot.__dict__
-    for k, v in conf.problem.__dict__.items():
-        if k not in args.__dict__:
-            args.__dict__[k] = v
+    for attr in ['problem', 'planner', 'agent']:
+        if attr not in conf.__dict__:
+            continue
+        for k, v in conf.__dict__[attr].__dict__.items():
+            if k not in args.__dict__:
+                args.__dict__[k] = v
 
     print(f'Seed: {args.seed}')
     print(f'Args: {args}')
     return args
 
 
-def get_pddlstream_kwargs(args, skeleton, initializer):
+def get_pddlstream_kwargs(args, skeleton, subgoals, initializer):
     fc = None if not args.use_heuristic_fc else get_feasibility_checker(initializer, mode='heuristic')
+    soft_subgoals = args.soft_subgoals if hasattr(args, 'soft_subgoals') else False
     solver_kwargs = dict(
         skeleton=skeleton,
+        subgoals=subgoals,
+        soft_subgoals=soft_subgoals,
         fc=fc,
         collect_dataset=args.data,
         lock=args.lock,

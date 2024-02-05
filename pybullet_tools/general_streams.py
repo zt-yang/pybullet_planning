@@ -534,10 +534,10 @@ def sample_joint_position_gen(num_samples=14, closed=False):
                     ## prevent from opening too little
                     if upper - lower > 1/2 * math.pi:
                         lower_new = upper - 1/2 * math.pi
+                    pstns.append(lower + math.pi/2)
                     lower = lower_new if lower_new else lower
                     upper = upper_new if upper_new else upper
-                    pstns.append(lower + math.pi/2)
-                    pstns.extend([np.random.uniform(lower + a_third, upper) for k in range(num_samples)])
+                    pstns.extend([np.random.uniform(lower, upper) for k in range(num_samples)])
             if lower < 0:
                 if closed:
                     pstns.append(upper)

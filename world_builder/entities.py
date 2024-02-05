@@ -541,8 +541,11 @@ class Region(Object):
 
     def set_governing_joints(self, governing_joints):
         """ (body, joint) pairs that change the pose of (body, link) """
-        print(f'set_governing_joints({self.body}, {self.link})', governing_joints)
         self.governing_joints = governing_joints
+        for j in self.governing_joints:
+            joint = self.world.BODY_TO_OBJECT[j]
+            if self.pybullet_name not in joint.affected_links:
+                joint.affected_links.append(self.pybullet_name)
 
 
 class Stove(Region):
@@ -613,6 +616,7 @@ class ArticulatedObjectPart(Object):
         self.max_limit = max_limit
         self.handle_link = self.find_handle_link(body, joint)
         self.handle_horizontal, self.handle_width = self.get_handle_orientation(body)
+        self.affected_links = []
 
     def find_handle_link(self, body, joint):
         link = get_joint_info(body, joint).linkName.decode("utf-8")

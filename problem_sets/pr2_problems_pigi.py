@@ -52,7 +52,7 @@ def test_mini_kitchen(args, **kwargs):
 
         goals = [('Holding', arm, cabbage)]
         goals = [('On', cabbage, shelf)]
-        return goals, skeleton
+        return {'goals': goals, 'skeleton': skeleton}
 
     return test_mini_kitchen_domain(args, loader_fn, **kwargs)
 
@@ -139,7 +139,7 @@ def test_mini_kitchen_data(args, **kwargs):
         for o in exclude_from_planning:
             world.remove_body_from_planning(o)
 
-        return goals, skeleton
+        return {'goals': goals, 'skeleton': skeleton}
 
     return test_mini_kitchen_domain(args, loader_fn, **kwargs)
 
@@ -488,7 +488,7 @@ def test_full_kitchen(args, **kwargs):
         })
         world.remove_bodies_from_planning(goals=goals, exceptions=objects)
         # wait_if_gui()
-        return goals, skeleton
+        return {'goals': goals, 'skeleton': skeleton}
 
     return test_full_kitchen_domain(args, loader_fn, **kwargs)
 
@@ -567,7 +567,7 @@ def test_kitchen_dinner(args, **kwargs):
         })
         world.remove_bodies_from_planning(goals=goals, exceptions=objects)
 
-        return goals, skeleton
+        return {'goals': goals, 'skeleton': skeleton}
 
     return test_full_kitchen_domain(args, loader_fn, x_max=4, **kwargs)
 

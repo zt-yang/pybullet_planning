@@ -62,8 +62,6 @@ def main(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH,
                       record_problem=record_problem, record_mp4=record_mp4, save_testcase=save_testcase)
     if 'robot_builder_args' not in kwargs:
         kwargs['robot_builder_args'] = args.robot_builder_args
-    if args.goal != 'None':
-        kwargs['world_builder_args'] = {'english_goal': args.goal}
 
     """ load problem """
     if '/' in args.exp_subdir:
@@ -75,17 +73,18 @@ def main(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH,
         state = State(world)
         exogenous = []
         goals = pddlstream_problem[-1]
-        goal_sequence = None
+        subgoals = None
+        skeleton = None
+        problem_dict = {'pddlstream_problem': pddlstream_problem}
 
         """ sample problem """
     else:
         init_gui(args, width=1440, height=1120)
-        state, exogenous, goals, pddlstream_problem, goal_sequence = get_pddlstream_problem(args, **kwargs)
+        state, exogenous, goals, problem_dict = get_pddlstream_problem(args, **kwargs)
+        pddlstream_problem = problem_dict['pddlstream_problem']
+        subgoals = problem_dict['subgoals']
+        skeleton = problem_dict['skeleton']
 
-    ## sometimes a skeleton is given by the problem loader
-    skeleton = None
-    if len(pddlstream_problem) == 2 and isinstance(pddlstream_problem[1], list):
-        pddlstream_problem, skeleton = pddlstream_problem
     init = pddlstream_problem.init
 
     ## load next test problem
@@ -102,14 +101,12 @@ def main(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH,
         state.save_default_observation(output_path=join(obs_dir, 'observation_0.png'))
 
     """ load planning agent """
-    solver_kwargs = get_pddlstream_kwargs(args, skeleton, [copy.deepcopy(state), goals, init])
+    solver_kwargs = get_pddlstream_kwargs(args, skeleton, subgoals, [copy.deepcopy(state), goals, init])
     if SAVE_COLLISIONS:
         solver_kwargs['evaluation_time'] = 10
     # agent = TeleOpAgent(state.world)
     agent = PDDLStreamAgent(state.world, init, goals=goals, processes=exogenous, pddlstream_kwargs=solver_kwargs)
-    agent.set_pddlstream_problem(pddlstream_problem, state)
-    if goal_sequence is not None:
-        agent.set_goal_sequence(goal_sequence)
+    agent.set_pddlstream_problem(problem_dict, state)
 
     # note = kwargs['world_builder_args'].get('note', None) if 'world_builder_args' in kwargs else None
     agent.init_experiment(args, domain_modifier=domain_modifier, object_reducer=object_reducer, comparing=comparing)

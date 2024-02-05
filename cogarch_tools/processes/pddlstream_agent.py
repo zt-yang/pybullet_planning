@@ -13,7 +13,7 @@ from collections import defaultdict
 from os.path import join
 import sys
 
-from pybullet_tools.bullet_utils import summarize_facts, print_goal, get_datetime, filter_init_by_objects
+from pybullet_tools.bullet_utils import summarize_facts, print_goal, get_datetime
 from pybullet_tools.pr2_primitives import Trajectory
 from pybullet_tools.pr2_agent import solve_pddlstream
 from pybullet_tools.utils import SEPARATOR
@@ -27,7 +27,7 @@ from problem_sets.pr2_problems import pddlstream_from_state_goal
 from leap_tools.domain_modifiers import initialize_domain_modifier
 from leap_tools.object_reducers import initialize_object_reducer
 
-from pddlstream.language.constants import Action
+from pddlstream.language.constants import Action, AND, PDDLProblem
 
 # ORIGINAL_DOMAIN = {
 #     'pr2_kitchen_abstract.pddl': 'pr2_kitchen.pddl',
@@ -90,6 +90,7 @@ class PDDLStreamAgent(MotionAgent):
 
         self.pddlstream_problem = None
         self.initial_state = None
+        self.problem_count = 0
         self.goal_sequence = None
         self.llamp_agent = None
         self.last_removed_facts = []
@@ -106,19 +107,19 @@ class PDDLStreamAgent(MotionAgent):
         self.on_map = {}
 
     """ planning related """
-
-    def set_pddlstream_problem(self, pddlstream_problem, state):
-        self.pddlstream_problem = pddlstream_problem
+    def set_pddlstream_problem(self, problem_dict, state):
+        self.pddlstream_problem = problem_dict['pddlstream_problem']
         self.initial_state = state
-
-    def set_goal_sequence(self, goal_sequence):
-        goal_sequence, llamp_agent = goal_sequence
-        self.goal_sequence = goal_sequence
-        self.llamp_agent = llamp_agent
-        self.llamp_agent.output_html()
+        if 'llamp_agent' in problem_dict and problem_dict['llamp_agent'] is not None:
+            self.llamp_agent = problem_dict['llamp_agent']
+            self.llamp_agent.output_html()
+        if 'goal_sequence' in problem_dict and problem_dict['goal_sequence'] is not None:
+            self.goal_sequence = problem_dict['goal_sequence']
 
     def init_experiment(self, args, domain_modifier=None, object_reducer=None, comparing=False):
         """ important for using the right files in replanning """
+        if hasattr(args, 'object_reducer'):
+            object_reducer = args.object_reducer
         if object_reducer is not None:
             args.exp_name += '_' + object_reducer
         self.exp_name = args.exp_name
@@ -129,9 +130,13 @@ class PDDLStreamAgent(MotionAgent):
         self.stream_pddl = args.stream_pddl
         self.domain_modifier = initialize_domain_modifier(domain_modifier)
         self.object_reducer = initialize_object_reducer(object_reducer)
-        self.base_limits = self.robot.custom_limits
+        self.custom_limits = self.robot.custom_limits
+
+        ## HPN experiments
         self.comparing = comparing
-        # print('\n\n\n agent.init_experiment | self.base_limits = ', self.base_limits)
+
+        ## LLAMP debugging
+        self.debug_step = args.debug_step if hasattr(args, 'debug_step') else None
 
     def dump_actions(self):
         import pickle
@@ -205,11 +210,13 @@ class PDDLStreamAgent(MotionAgent):
             obs_path = self.llamp_agent.log_obs_image(self.world.cameras)
             self.llamp_agent.log_subgoal(self.pddlstream_problem.goal[1], obs_path, 'started')
             self.llamp_agent.output_html()
+            if self.debug_step == -1 or self.problem_count != self.debug_step:
+                self.pddlstream_problem = self.modify_stream_map(observation.state)
 
         self.plan_step = self.num_steps
         self.plan, env, knowledge, time_log, preimage = self.solve_pddlstream(
             self.pddlstream_problem, observation.state, domain_pddl=self.domain_pddl,
-            domain_modifier=self.domain_modifier, **self.pddlstream_kwargs, **kwargs) ## observation.objects
+            domain_modifier=self.domain_modifier, **self.pddlstream_kwargs, **kwargs)  ## observation.objects
         self.record_time(time_log)
         self.initial_state.remove_gripper()  ## after the first planning
 
@@ -222,7 +229,7 @@ class PDDLStreamAgent(MotionAgent):
         self.state = list(set(self.pddlstream_problem.init + preimage))
 
         ## the first planning problem - only for HPN planning mode
-        if self.env_execution is None and 'hpn' in self.exp_name: ## and not self.pddlstream_kwargs['visualization']:
+        if self.env_execution is None and 'hpn' in self.exp_name:  ## and not self.pddlstream_kwargs['visualization']:
             from leap_tools.hierarchical import PDDLStreamForwardEnv
 
             if self.plan is None:
@@ -250,6 +257,7 @@ class PDDLStreamAgent(MotionAgent):
 
         ## move the txt_file.txt to log directory
         if self.llamp_agent is not None:
+            self.problem_count += 1
             status = 'failed' if self.plan is None else 'solved'
             self.llamp_agent.log_subgoal(self.pddlstream_problem.goal[1], obs_path, status)
             self.llamp_agent.output_html()
@@ -371,9 +379,10 @@ class PDDLStreamAgent(MotionAgent):
             domain_pddl = self.domains_for_action[action]
             domain_modifier = None
 
-        pddlstream_problem = pddlstream_from_state_goal(observation.state, goals, custom_limits=self.base_limits,
-                                                        domain_pddl=domain_pddl, stream_pddl=self.stream_pddl,
-                                                        facts=facts, PRINT=True)
+        pddlstream_problem = pddlstream_from_state_goal(
+            observation.state, goals, custom_limits=self.custom_limits,
+            domain_pddl=domain_pddl, stream_pddl=self.stream_pddl, facts=facts, PRINT=True
+        )
 
         sub_problem = pddlstream_problem
         sub_state = observation.state
@@ -478,53 +487,57 @@ class PDDLStreamAgent(MotionAgent):
 
         """ if no more action to execute, check success or replan """
         if not self.plan:
-            if self.goal_achieved(observation):
-                if self.goal_sequence is not None and len(self.goal_sequence) > 1:
+            if self.goal_sequence is not None and len(self.goal_sequence) > 1:
+                ## update the first planning problem to reduce objects
+                if self.problem_count > 0:
                     self.goal_sequence.pop(0)
-                    self.update_pddlstream_problem(observation.facts, [self.goal_sequence[0]], observation.state)
-                else:
-                    self.save_stats() ## save the planning time statistics
-                    return None
+                self.update_pddlstream_problem(observation.facts, [self.goal_sequence[0]])
+
+            elif self.goal_achieved(observation):
+                self.save_stats()  ## save the planning time statistics
+                return None
+
             self.replan(observation)
+
         # if (self.plan is None) or (len(self.plan) == 0):
         #     return None
         return self.process_plan(observation)
         #return self.process_commands(current_conf)
 
-    def update_pddlstream_problem(self, init, goals, state):
-        from pddlstream.language.constants import AND, PDDLProblem
+    def update_pddlstream_problem(self, init, goals):
         from pybullet_tools.logging import myprint as print_fn
 
         goal = [AND] + goals
-        debug = (goals[0][0] == 'on')
+        if self.problem_count == 2:
+            print()
 
         ## create a version of the world with less planning objects
         world = copy.deepcopy(self.world)
+        world.name = 'reduced_world'
         world.remove_bodies_from_planning(goals)
+        init = self.object_reducer(init, world.objects + world.constants + world.robot.arms)
 
-        init += self.last_removed_facts
-        init, removed = filter_init_by_objects(init, world.objects, world.constants + world.robot.arms)
-        self.last_removed_facts = removed
-
+        ## print out info about planning problem
         print_fn(SEPARATOR)
         world.summarize_all_objects()
-        summarize_facts(init, world, name='Facts extracted after execution', print_fn=print_fn)
+        summarize_facts(init, world, name='Facts updated with object_reducer', print_fn=print_fn)
         print_goal(goal, world=world, print_fn=print_fn)
         print_fn(f'Robot: {world.robot} | Objects: {world.objects}\n'
                  f'Movable: {world.movable} | Fixed: {world.fixed} | Floor: {world.floors}')
         print_fn(SEPARATOR)
 
-        domain_pddl, constant_map, stream_pddl, _, _, _ = self.pddlstream_problem
-        stream_map = self.construct_stream_map(state, debug)
+        ## construct planning problem
+        domain_pddl, constant_map, stream_pddl, stream_map, _, _ = self.pddlstream_problem
         self.pddlstream_problem = PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
 
-    def construct_stream_map(self, state, debug=False):
-        """ may need to change debug info for refinement problems """
+    def modify_stream_map(self, state, collisions=False, teleport=False, debug=False, **kwargs):
+        """ may need to change debug info for refinement problems
+        movable_collisions=True, motion_collisions=True, pull_collisions=True, base_collisions=True """
         robot = self.world.robot
-        collisions = True
-        teleport = False
-        custom_limits = robot.custom_limits
-        return robot.get_stream_map(state, collisions, custom_limits, teleport, debug=debug)
+        stream_map = robot.get_stream_map(state, collisions, self.custom_limits, teleport, debug=debug, **kwargs)
+
+        domain_pddl, constant_map, stream_pddl, _, init, goal = self.pddlstream_problem
+        return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
 
     ############################################################################################
 

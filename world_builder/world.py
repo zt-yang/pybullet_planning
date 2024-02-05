@@ -9,6 +9,7 @@ from os.path import join, isdir, abspath, basename, isfile
 import os
 import json
 import numpy as np
+from pprint import pformat, pprint
 
 from pddlstream.language.constants import Equal, AND
 from pddlstream.algorithms.downward import set_cost_scale
@@ -204,6 +205,7 @@ class World(WorldBase):
         ## conf_noise=None, pose_noise=None, depth_noise=None, action_noise=None,  # TODO: noise model class?
         super().__init__(**kwargs)
 
+        self.name = 'full_world'
         self.robot = None
         self.ROBOT_TO_OBJECT = {}
         self.BODY_TO_OBJECT = {}
@@ -224,6 +226,7 @@ class World(WorldBase):
         self.not_stackable = {}
         self.c_ignored_pairs = []
         self.planning_config = {'camera_zoomins': []}
+        self.inited_link_joint_relations = False
 
         ## for speeding up planning
         self.learned_bconf_list_gen = None
@@ -711,6 +714,13 @@ class World(WorldBase):
                 line += f"\t (static world objects)"
 
             print_fn(line)
+
+        print_fn('----------------')
+        print_fn(f'PART II: world attachments')
+        print_fn('----------------')
+
+        print_fn(pformat(self.ATTACHMENTS))
+
         print_fn('----------------')
 
     def get_all_obj_in_body(self, body):
@@ -734,16 +744,34 @@ class World(WorldBase):
 
     def remove_bodies_from_planning(self, goals=[], exceptions=[]):
         print('\nremove_bodies_from_planning | exceptions =', exceptions)
-        bodies = []
         if isinstance(goals, tuple):
             goals = [goals]
+
+        ## important for keeping related links and joints
+        self.init_link_joint_relations()
+
+        bodies = []
         for literal in goals:
             for item in literal:
                 if not isinstance(item, str) and str(item) not in bodies:
                     if isinstance(item, Object):
                         item = item.pybullet_name
+
+                    ## the surface that supports it for `pick_from_supporter`
+                    if isinstance(item, int):
+                        obj = self.BODY_TO_OBJECT[item]
+                        surface = obj.supporting_surface
+                        if surface is not None:
+                            bodies.append(str(surface.pybullet_name))
+
+                    ## links or joints
                     if isinstance(item, tuple):
                         bodies.append(str(item[0]))
+                        ## all links that are affected by joints for `pull_handle_with_link`
+                        if len(item) == 2:
+                            joint = self.BODY_TO_OBJECT[item]
+                            bodies.extend([str(link) for link in joint.affected_links])
+
                     bodies.append(str(item))
 
         new_exceptions = []
@@ -795,7 +823,10 @@ class World(WorldBase):
             self.remove_body_from_planning(body)
 
     def remove_body_attachment(self, body):
-        obj = self.BODY_TO_OBJECT[body]
+        if isinstance(body, Object):
+            obj = body
+        else:
+            obj = self.BODY_TO_OBJECT[body]
         if obj in self.ATTACHMENTS:
             print('world.remove_body_attachment\t', self.ATTACHMENTS[obj])
             self.ATTACHMENTS.pop(obj)
@@ -816,8 +847,7 @@ class World(WorldBase):
                 surface = obj.supporting_surface
                 surface.supported_objects.remove(obj)
 
-        if object in self.ATTACHMENTS:
-            self.ATTACHMENTS.pop(object)
+        self.remove_body_attachment(object)
         remove_body(body)
 
     def remove_object_from_category(self, cat, obj):
@@ -1112,7 +1142,13 @@ class World(WorldBase):
     #                                   camera_point=camera_point, target_point=target_point)
     #     visualize_camera_image(image, index, img_dir=self.img_dir, **kwargs)
 
-    def init_link_joint_relations(self, all_joints, all_links, verbose=True):
+    def init_link_joint_relations(self, all_links=None, all_joints=None, verbose=True):
+        if self.inited_link_joint_relations:
+            return
+        if all_joints is None:
+            all_links, all_joints = self.get_typed_objects()[-2:]
+        if verbose:
+            print(f'\ninit_link_joint_relations')
         all_link_poses = {(body, _, link): get_link_pose(body, link) for (body, _, link) in all_links}
         for (body, joint) in all_joints:
             position = get_joint_position(body, joint)
@@ -1120,13 +1156,14 @@ class World(WorldBase):
             new_link_poses = {(body2, _, link): get_link_pose(body, link) for (body2, _, link) in all_links if body == body2}
             changed_links = [k for k, v in new_link_poses.items() if v != all_link_poses[k]]
             if verbose:
-                print(f'init_link_joint_relations(joint={get_joint_name(body, joint)}|{(body, joint)})')
+                print(f'\tjoint={get_joint_name(body, joint)}|{(body, joint)}')
             for body_link in changed_links:
                 obj = self.BODY_TO_OBJECT[body_link]
                 obj.set_governing_joints([(body, joint)])
                 if verbose:
-                    print(f'\t link={get_link_name(body_link[0], body_link[-1])}|{body_link}')
+                    print(f'\t\tlink={get_link_name(body_link[0], body_link[-1])}|{body_link}')
             set_joint_position(body, joint, position)
+        self.inited_link_joint_relations = True
 
     def get_indices(self):
         """ for fastamp project """
@@ -1135,13 +1172,7 @@ class World(WorldBase):
         body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
         return body_to_name
 
-    def get_world_fluents(self, obj_poses=None, joint_positions=None, init_facts=[], objects=None, use_rel_pose=False,
-                          cat_to_bodies=None, cat_to_objects=None, verbose=False, only_fluents=False):
-        """ if only_fluents = Ture: return only AtPose, AtPosition """
-
-        robot = self.robot
-        BODY_TO_OBJECT = self.BODY_TO_OBJECT
-
+    def get_typed_objects(self, cat_to_bodies=None, cat_to_objects=None, objects=None):
         if cat_to_bodies is None:
             def cat_to_bodies(cat):
                 ans = self.cat_to_bodies(cat)
@@ -1164,8 +1195,20 @@ class World(WorldBase):
         all_links = [l for l in all_supporters if isinstance(l, tuple)]
         knobs = cat_to_bodies('knob')
         all_joints = cat_to_bodies('drawer') + cat_to_bodies('door') + knobs
+        return graspables, surfaces, spaces, knobs, all_links, all_joints
 
-        self.init_link_joint_relations(all_joints, all_links)
+    def get_world_fluents(self, obj_poses=None, joint_positions=None, init_facts=[], objects=None, use_rel_pose=False,
+                          cat_to_bodies=None, cat_to_objects=None, verbose=False, only_fluents=False):
+        """ if only_fluents = Ture: return only AtPose, AtPosition """
+
+        robot = self.robot
+        BODY_TO_OBJECT = self.BODY_TO_OBJECT
+
+        graspables, surfaces, spaces, knobs, all_links, all_joints = self.get_typed_objects(
+            cat_to_bodies=cat_to_bodies, cat_to_objects=cat_to_objects, objects=objects
+        )
+
+        self.init_link_joint_relations(all_links, all_joints)
 
         # if 'feg' in self.robot.name or True:
         #     use_rel_pose = False
@@ -1270,7 +1313,7 @@ class World(WorldBase):
 
             elif use_rel_pose and supporter_obj is not None and len(supporter_obj.governing_joints) > 0:
 
-                if body not in graspables + all_supporters:
+                if body not in graspables + surfaces + spaces:
                     supporter = '@world'
                     supporter_pose = unit_pose()
                     rel_pose = pose
@@ -1354,8 +1397,7 @@ class World(WorldBase):
 
         ## ---- poses, positions, grasps ------------------
         init += self.get_world_fluents(obj_poses, joint_positions, init_facts, objects, use_rel_pose=self.use_rel_pose,
-                                       cat_to_bodies=cat_to_bodies, cat_to_objects=cat_to_objects,
-                                       verbose=verbose)
+                                       cat_to_bodies=cat_to_bodies, cat_to_objects=cat_to_objects, verbose=verbose)
 
         ## ---- object types -------------
         for cat, objects in self.OBJECTS_BY_CATEGORY.items():
@@ -1910,11 +1952,9 @@ class Process(object):
 
     def evolve(self, state, ONCE=False, verbose=False, step=None):
         start_time = time.time()
-        # new_state = self.wrapped_transition(state)
-        if True:
-            new_state = self.wrapped_transition(state, ONCE=ONCE, verbose=verbose, step=step)
-            if verbose: print(f'  evolve \ finished wrapped_transition inner in {round(time.time() - start_time, 4)} sec')
-        if verbose: print(f'  evolve \ finished wrapped_transition 2 in {round(time.time()-start_time, 4)} sec')
+
+        new_state = self.wrapped_transition(state, ONCE=ONCE, verbose=verbose, step=step)
+        if verbose: print(f'  evolve \ finished wrapped_transition in {round(time.time() - start_time, 4)} sec')
 
         ## --------- added by YANG to stop simulation if action is None ---------
         if ONCE and new_state is None:

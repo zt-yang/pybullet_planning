@@ -55,20 +55,20 @@ from world_builder.actions import get_primitive_actions, repair_skeleton
 
 def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
                    pull_collisions=True, base_collisions=True, debug=False):
-    # p = problem
-    # c = collisions
-    # l = custom_limits
-    # t = teleport
+    """ p = problem, c = collisions, l = custom_limits, t = teleport """
+    from pybullet_tools.logging import myprint as print
+
     movable_collisions &= c
     motion_collisions &= c
     base_collisions &= c
     pull_collisions &= c
-    # print('\n------------ STREAM MAP -------------')
-    # print('Movable collisions:', movable_collisions)
-    # print('Motion collisions:', motion_collisions)
-    # print('Pull collisions:', pull_collisions)
-    # print('Base collisions:', base_collisions)
-    # print('Teleport:', t)
+    print('\n------------ STREAM MAP -------------')
+    print('\tMovable collisions:', movable_collisions)
+    print('\tMotion collisions:', motion_collisions)
+    print('\tPull collisions:', pull_collisions)
+    print('\tBase collisions:', base_collisions)
+    print('\tTeleport:', t)
+    print('\n-------------------------------------')
     tc = dict(teleport=t, custom_limits=l)
 
     stream_map = {
@@ -91,7 +91,8 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'inverse-reachability': from_gen_fn(
             get_ik_gen_old(p, collisions=False, ir_only=True, learned=True, verbose=False, visualize=False, **tc)),
         'inverse-kinematics': from_fn(
-            get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=False, visualize=False, ACONF=False, debug=debug)),
+            get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=not motion_collisions,
+                          visualize=False, ACONF=False, debug=debug)),
 
         'inverse-reachability-rel': from_gen_fn(
             get_ik_rel_gen_old(p, collisions=False, ir_only=True, learned=True, verbose=False, visualize=False, **tc)),
@@ -549,42 +550,47 @@ def get_diverse_kwargs(kwargs, diverse=True, max_plans=None):
     return kwargs, plan_dataset
 
 
-def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
+def get_test_subgoals(init):
+    arms = [fact[1] for fact in init if fact[0] == 'arm']
+    objects = [fact[1] for fact in init if fact[0] == 'graspable']
+    print(f'Arms: {arms} | Objects: {objects}')
+    arm = arms[0]
+    obj = objects[0]
+    return [('Holding', arm, obj),]
+
+
+def get_test_skeleton():
+    from pddlstream.algorithms.constraints import WILD
+    return [
+        ('grasp_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
+        ('pull_door_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
+        ('ungrasp_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
+        ('pick', [WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
+        ('place', [WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
+    ]
+
+
+def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visualize=True,
               fc=None, domain_modifier=None,
               max_time=INF, downward_time=10, evaluation_time=10,
               max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=0,
-              visualize=True, skeleton=None, **kwargs):
-    # skeleton = [
-    #     ('grasp_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
-    #     ('pull_door_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
-    #     ('ungrasp_handle', [WILD, WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
-    #     ('pick', [WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
-    #     ('place', [WILD, WILD, WILD, WILD, WILD, WILD, WILD]),
-    # ]
+              skeleton=None, subgoals=None, soft_subgoals=False, **kwargs):
 
-    use_subgoals = False
-    soft_subgoals = False
+    # skeleton = get_test_skeleton()
+    # subgoals = get_test_subgoals(pddlstream_problem.init)
 
-    if use_subgoals:
-        init = pddlstream_problem.init
-        arms = [fact[1] for fact in init if fact[0] == 'arm']
-        objects = [fact[1] for fact in init if fact[0] == 'graspable']
-        print(f'Arms: {arms} | Objects: {objects}')
-        arm = arms[0]
-        obj = objects[0]
-        subgoals = [
-            ('Holding', arm, obj),
-        ]
-    else:
-        subgoals = []
-
-    if skeleton is not None:
-        if len(skeleton) > 0:
-            print('-' * 100)
-            print('\n'.join([str(s) for s in skeleton]))
-            print('-' * 100)
+    if skeleton is not None and len(skeleton) > 0:
+        print('-' * 100)
+        print('\n'.join([str(s) for s in skeleton]))
+        print('-' * 100)
         constraints = PlanConstraints(skeletons=[repair_skeleton(skeleton)], exact=False, max_cost=max_cost + 1)
     else:
+        if subgoals is None:
+            subgoals = []
+        if len(subgoals) > 0:
+            print('-' * 40, f' soft_subgoals: {soft_subgoals} ', '-' * 40)
+            print('\n'.join([str(s) for s in subgoals]))
+            print('-' * 100)
         subgoal_costs = len(subgoals) * [100] if soft_subgoals else None
         constraints = PlanConstraints(subgoals=subgoals, subgoal_costs=subgoal_costs, max_cost=max_cost + 1)  # TODO: plus 1 in action costs?
 
@@ -593,7 +599,7 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False,
     diverse = diverse or collect_dataset
 
     planner_kwargs_default = dict(planner='ff-astar1', unit_costs=False, success_cost=INF, verbose=True,
-                                debug=False, unique_optimistic=True, forbid=True, bind=True)
+                                  debug=False, unique_optimistic=True, forbid=True, bind=True)
     planner_kwargs = dict(max_planner_time=downward_time, max_time=max_time,
                           initial_complexity=5, visualize=visualize,
                           # unit_efforts=True, effort_weight=None,
