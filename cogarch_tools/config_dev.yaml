@@ -8,7 +8,7 @@ planner:
   scene_only: false
   use_heuristic_fc: false
   dataset_mode: true
-  evaluation_time: 20
+  evaluation_time: 30
   downward_time: 0.5
   max_plans: 10
   max_solutions: 1

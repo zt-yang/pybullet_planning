@@ -875,8 +875,8 @@ def test_kitchen_chicken_soup(args, **kwargs):
         # skeleton += [(k, arm, goal_object) for k in pick_place_actions[:1]]
 
         # skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
-        # skeleton += [(k, arm, movable) for k in pick_place_rel_actions[:1]]
-        # skeleton += [(k, arm, movable) for k in ['pick', 'place_to_supporter']]
+        # # skeleton += [(k, arm, movable) for k in pick_place_rel_actions[:1]]
+        # # skeleton += [(k, arm, movable) for k in ['pick', 'place_to_supporter']]
         # skeleton += [(k, arm, movable) for k in ['pick_from_supporter', 'place']]
 
         # skeleton += [(k, arm, movable) for k in pick_place_rel_actions]

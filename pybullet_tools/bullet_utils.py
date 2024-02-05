@@ -697,8 +697,13 @@ class Attachment(object):
         return flatten_links(self.child) | flatten_links(self.parent, get_link_subtree(
             self.parent, self.parent_link))
 
-    def assign(self):
+    def assign(self, verbose=False):
         from .pr2_streams import LINK_POSE_TO_JOINT_POSITION as LP2JP
+
+        if verbose:
+            print('\nbullet.Attachment.assign() | LINK_POSE_TO_JOINT_POSITION')
+            pprint(LP2JP)
+
         # robot_base_pose = self.parent.get_positions(roundto=3)
         # robot_arm_pose = self.parent.get_positions(joint_group='left', roundto=3)  ## only left arm for now
         parent_link_pose = get_link_pose(self.parent, self.parent_link)
@@ -952,8 +957,6 @@ def close_joint(body, joint):
 #######################################################
 
 def get_readable_list(lst, world=None, NAME_ONLY=False, TO_LISDF=False):
-    if len(lst) == 0:
-        import ipdb; ipdb.set_trace()
     to_print = [lst[0]]
     for word in lst[1:]:
         if world is not None:
@@ -1004,6 +1007,9 @@ def print_plan(plan, world=None, print_fn=None):
     print_fn('Plan:')
     for action in plan:
         name, args = action
+        if name.startswith('_'):
+            print_fn(f' ) {name}')
+            continue
         args2 = [str(a) for a in get_readable_list(args, world)]
         print_fn('{:2}) {} {}'.format(step, name, ' '.join(args2)))
         step += 1

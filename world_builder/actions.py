@@ -512,8 +512,6 @@ def adapt_action(a, problem, plan, verbose=True):
         # set_renderer(False)
         with LockRenderer(True):
             funk(a.arm, a.object, pstn1, pstn2, a.grasp, bq1, aq1)
-        # print('LINK_POSE_TO_JOINT_POSITION')
-        # pprint(LINK_POSE_TO_JOINT_POSITION)
         set_renderer(True)
     return a
 
