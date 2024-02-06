@@ -508,8 +508,9 @@ class PDDLStreamAgent(MotionAgent):
         from pybullet_tools.logging import myprint as print_fn
 
         goal = [AND] + goals
-        if self.problem_count == 2:
-            print('self.problem_count == 2')
+        # if self.problem_count == 2:
+        #     print('self.proble== 2:
+        #     print('self.problem_count == 2')
 
         ## create a version of the world with less planning objects
         world = copy.deepcopy(self.world)

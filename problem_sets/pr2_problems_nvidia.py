@@ -891,4 +891,3 @@ def test_kitchen_chicken_soup(args, **kwargs):
         return {'goals': goals, 'skeleton': skeleton, 'subgoals': subgoals}
 
     return test_nvidia_kitchen_domain(args, loader_fn, initial_xy=(2, 5), **kwargs)
-
