@@ -14,7 +14,7 @@ default_supports = [
     ['food', 'VeggieCabbage', True, 'cabbage', 'upper_shelf'],  ## ['shelf_bottom', 'indigo_drawer_top]
     ['food', 'Salter', '3934', 'salt-shaker', 'sektion'],
     ['food', 'Salter', '5861', 'pepper-shaker', 'sektion'],
-    ['utensil', 'PotBody', True, 'pot', 'indigo_tmp'],
+    # ['utensil', 'PotBody', True, 'pot', 'indigo_tmp'],
     ['utensil', 'KitchenFork', True, 'fork', 'upper_shelf'],  ## ['indigo_drawer_top]
     # ['utensil', 'KitchenKnife', True, 'knife', 'indigo_drawer_top'],
 ]

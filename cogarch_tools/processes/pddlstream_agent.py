@@ -509,7 +509,7 @@ class PDDLStreamAgent(MotionAgent):
 
         goal = [AND] + goals
         if self.problem_count == 2:
-            print()
+            print('self.problem_count == 2')
 
         ## create a version of the world with less planning objects
         world = copy.deepcopy(self.world)

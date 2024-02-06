@@ -786,10 +786,12 @@ class World(WorldBase):
         all_bodies = list(self.BODY_TO_OBJECT.keys())
         for body in all_bodies:
             if str(body) not in bodies and str(body) not in exceptions:
+                if body == (3, None, 48):
+                    print()
                 self.remove_body_from_planning(body)
 
         for cat, objs in self.REMOVED_OBJECTS_BY_CATEGORY.items():
-            print(f'\t{cat} ({len(objs)}) \t', [obj.name for obj in objs])
+            print(f'\t{cat} ({len(objs)}) \t', [f"{obj.name}|{obj.pybullet_name}" for obj in objs])
 
     def remove_body_from_planning(self, body):
         if body is None: return
@@ -1311,7 +1313,8 @@ class World(WorldBase):
                 init.remove(('HandEmpty', arm))
                 init += [('Grasp', body, grasp), ('AtGrasp', arm, body, grasp)]
 
-            elif use_rel_pose and supporter_obj is not None and len(supporter_obj.governing_joints) > 0:
+            elif use_rel_pose and supporter_obj is not None and hasattr(supporter_obj, 'governing_joints') \
+                    and len(supporter_obj.governing_joints) > 0:
 
                 if body not in graspables + surfaces + spaces:
                     supporter = '@world'

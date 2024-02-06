@@ -10,7 +10,7 @@ sys.path.extend([
     join(ROOT_DIR, 'pybullet_planning'),
     join(ROOT_DIR, 'lisdf'),
 ])
-print('\n'.join(sys.path) + '\n')
+# print('\n'.join(sys.path) + '\n')
 
 ################################################################
 

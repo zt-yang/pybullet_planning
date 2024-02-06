@@ -1681,7 +1681,7 @@ def get_base_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
             bq1.assign()
 
         if raw_path is None:
-            print('Failed motion plan (with world config)!', obstacles)
+            print(f'Failed motion plan (with world config)! obstacles_here = {obstacles_here}, obstacles = {obstacles}')
             if debug:
                 for i, bq in enumerate([bq1, bq2]):
                     bq.assign()

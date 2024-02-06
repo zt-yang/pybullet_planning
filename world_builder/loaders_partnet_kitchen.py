@@ -638,10 +638,10 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
 
     ## add food items
     food_ids = []
-    in_briaser = False
+    in_braiser = False
     for i in range(n_objects['food']):
         kwargs = dict()
-        if world.note in [31] and not in_briaser:
+        if world.note in [31] and not in_braiser:
             kwargs['counter_choices'] = [braiser_bottom]
         obj_cat = 'food'
         obj_category = 'edible'
@@ -650,7 +650,7 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
         obj = place_on_counter(obj_cat, category=obj_category, **kwargs)
         check_size_matter(obj)
         obj = ensure_cfree(obj, obstacles, obj_name=obj_cat, category=obj_category, **kwargs)
-        in_briaser = in_briaser or 'braiser_bottom' in obj.supporting_surface.name
+        in_braiser = in_braiser or 'braiser_bottom' in obj.supporting_surface.name
         food_ids.append(obj)
         obstacles.append(obj.body)
 
