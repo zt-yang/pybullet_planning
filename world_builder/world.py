@@ -1237,15 +1237,21 @@ class World(WorldBase):
         def get_body_link_pose(obj):
             body = obj.body
             link = obj.link
-            link_pose = get_link_pose(body, link) if obj_poses is None else obj_poses[body]
+            body_link = obj.pybullet_name
+            link_pose = get_link_pose(body, link)
+            if obj_poses is not None and body_link in obj_poses:
+                link_pose = obj_poses[body_link]
+
+            ## the link pose is caused by joint position
             joint, position = None, None
             if len(obj.governing_joints) > 0:
                 joint = obj.governing_joints[0][1]
                 position = get_joint_position(body, joint)
-            pose = LinkPose(obj.pybullet_name, value=link_pose, joint=joint, position=position)
+
+            pose = LinkPose(body_link, value=link_pose, joint=joint, position=position)
 
             for fact in init_facts:
-                if fact[0] == 'linkpose' and fact[1] == body and equal(fact[2].value, pose.value):
+                if fact[0] == 'pose' and fact[1] == body and equal(fact[2].value, pose.value):
                     return fact[2]
             return pose
 
@@ -1733,7 +1739,7 @@ class State(object):
         make_camera_collage(camera_images, **kwargs)
 
     def sample_observation(self, include_conf=False, include_poses=False,
-                           include_facts=False, include_variables=False, step=None, observe_visual=True, **kwargs): # Observation model
+                           include_facts=False, include_variables=False, step=None, observe_visual=True, **kwargs):  # Observation model
         # TODO: could technically also not require robot, camera_pose, or camera_matrix
         # TODO: make confs and poses state variables
         # robot_conf = self.robot.get_positions() if include_conf else None
