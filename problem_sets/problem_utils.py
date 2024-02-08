@@ -51,7 +51,7 @@ def test_template(args, robot_builder_fn, robot_builder_args, world_loader_fn,
     robot = robot_builder_fn(world, **robot_builder_args)
 
     ## add skeleton or a sequence of goals as planning constraint
-    problem_dict = {k: None for k in ['goals', 'skeleton', 'llamp_agent', 'subgoals', 'goal_sequence']}
+    problem_dict = {k: None for k in ['goals', 'skeleton', 'llamp_api', 'subgoals', 'goal_sequence']}
     loaded_problem_dict = world_loader_fn(world, **world_builder_args)
 
     if not isinstance(loaded_problem_dict, dict):

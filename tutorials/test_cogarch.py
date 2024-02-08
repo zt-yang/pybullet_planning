@@ -14,12 +14,15 @@ sys.path.extend([
 
 ################################################################
 
-from cogarch_tools.cogarch_run import main
+from cogarch_tools.cogarch_run import run_agent
+from leap_tools.hierarchical_agent import HierarchicalAgent
 
 
 def test_vlm_tamp_domain():
-    main(
-        problem='test_kitchen_chicken_soup', exp_subdir='kitchen_gpt', use_rel_pose=True,
+    run_agent(
+        agent_class=HierarchicalAgent,
+        problem='test_kitchen_chicken_soup',
+        exp_subdir='kitchen_gpt', use_rel_pose=True,
         # observation_model='exposed'
     )
 

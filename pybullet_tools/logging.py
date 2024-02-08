@@ -138,3 +138,9 @@ def dump_json(db, db_file, indent=2, width=160, sort_dicts=True, **kwargs):
         # pprint(db, f, indent=2, width=120) ## single quote
         f.write(pprint.pformat(db, indent=indent, width=width, sort_dicts=sort_dicts,
                                **kwargs).replace("'", '"'))
+
+
+def save_commands(commands, commands_path):
+    import pickle
+    with open(commands_path, 'wb') as file:
+        pickle.dump(commands, file)

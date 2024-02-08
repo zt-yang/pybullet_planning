@@ -17,6 +17,7 @@ from pybullet_tools.bullet_utils import summarize_facts, print_goal, get_datetim
 from pybullet_tools.pr2_primitives import Trajectory
 from pybullet_tools.pr2_agent import solve_pddlstream
 from pybullet_tools.utils import SEPARATOR
+from pybullet_tools.logging import save_commands, TXT_FILE
 
 from world_builder.actions import get_primitive_actions
 from world_builder.world_utils import get_camera_image
@@ -29,25 +30,6 @@ from leap_tools.object_reducers import initialize_object_reducer
 
 from pddlstream.language.constants import Action, AND, PDDLProblem
 
-# ORIGINAL_DOMAIN = {
-#     'pr2_kitchen_abstract.pddl': 'pr2_kitchen.pddl',
-#     'pr2_eggs_no_atbconf.pddl': 'pr2_eggs.pddl',
-#     'pr2_eggs_no_on.pddl': 'pr2_eggs.pddl',
-#     'pr2_eggs_no_on_atbconf.pddl': 'pr2_eggs.pddl',
-#     'pr2_eggs_no_stuff.pddl': 'pr2_eggs.pddl',
-#     'pr2_rearrange_no_atbconf.pddl': 'pr2_rearrange.pddl',
-#     'pr2_kitchen_demo_no_atbconf.pddl': 'pr2_kitchen_demo.pddl',
-#     'pr2_kitchen_demo_no_on_atbconf.pddl': 'pr2_kitchen_demo.pddl',
-#     'pr2_food_rearrange_open_no_atbconf.pddl': 'pr2_food_rearrange_open.pddl',
-#     'pr2_food_rearrange_no_atbconf.pddl': 'pr2_food_rearrange.pddl',
-#     'feg_kitchen_no_atseconf.pddl': 'feg_kitchen.pddl',
-#     'pr2_mamao_no_atbconf.pddl': 'pr2_mamao.pddl',
-# }
-# REFINEMENT_DOMAIN = copy.deepcopy(ORIGINAL_DOMAIN)
-# REFINEMENT_DOMAIN.update({
-#     'pr2_eggs_no_on_atbconf.pddl': 'pr2_eggs_no_atbconf.pddl',
-#     'pr2_kitchen_demo_no_on_atbconf.pddl': 'pr2_kitchen_demo_no_atbconf.pddl'
-# })
 
 ZOOM_IN_AT_OBJECT = False
 SAVE_TIME = False
@@ -85,6 +67,8 @@ class PDDLStreamAgent(MotionAgent):
         self.preimages_after_op = {}  ## to be updated by each abstract planning call
         self.domains_for_action = {}
         self.time_log = []  ## for recording time
+
+        self.exp_dir = None
         self.mp4_path = None
         self.timestamped_name = None
 
@@ -92,7 +76,7 @@ class PDDLStreamAgent(MotionAgent):
         self.initial_state = None
         self.problem_count = 0
         self.goal_sequence = None
-        self.llamp_agent = None
+        self.llamp_api = None
         self.last_removed_facts = []
 
         self.state = init
@@ -110,9 +94,9 @@ class PDDLStreamAgent(MotionAgent):
     def set_pddlstream_problem(self, problem_dict, state):
         self.pddlstream_problem = problem_dict['pddlstream_problem']
         self.initial_state = state
-        if 'llamp_agent' in problem_dict and problem_dict['llamp_agent'] is not None:
-            self.llamp_agent = problem_dict['llamp_agent']
-            self.llamp_agent.output_html()
+        if 'llamp_api' in problem_dict and problem_dict['llamp_api'] is not None:
+            self.llamp_api = problem_dict['llamp_api']
+            self.llamp_api.output_html()
         if 'goal_sequence' in problem_dict and problem_dict['goal_sequence'] is not None:
             self.goal_sequence = problem_dict['goal_sequence']
 
@@ -122,10 +106,17 @@ class PDDLStreamAgent(MotionAgent):
             object_reducer = args.object_reducer
         if object_reducer is not None:
             args.exp_name += '_' + object_reducer
-        self.exp_name = args.exp_name
+
+        ## related to saving data
         self.exp_dir = abspath(join(args.exp_dir, args.exp_subdir))
         if not isdir(self.exp_dir):
             os.makedirs(self.exp_dir, exist_ok=True)
+        self.exp_name = args.exp_name
+        if self.llamp_api is not None:
+            self.timestamped_name = add_timestamp(self.exp_name)
+            exp_path = join(self.exp_dir, self.timestamped_name)
+            os.makedirs(exp_path)
+
         self.domain_pddl = args.domain_pddl
         self.stream_pddl = args.stream_pddl
         self.domain_modifier = initialize_domain_modifier(domain_modifier)
@@ -137,12 +128,6 @@ class PDDLStreamAgent(MotionAgent):
 
         ## LLAMP debugging
         self.debug_step = args.debug_step if hasattr(args, 'debug_step') else None
-
-    def dump_actions(self):
-        import pickle
-        with open(self.mp4_path.replace('.mp4', '_plan.pickle'), 'wb') as outp:
-            for action in self.actions:
-                pickle.dump(action, outp, pickle.HIGHEST_PROTOCOL)
 
     def process_plan(self, observation):
         """
@@ -206,12 +191,8 @@ class PDDLStreamAgent(MotionAgent):
     def replan(self, observation, **kwargs):
         """ the first planning """
 
-        if self.llamp_agent is not None:
-            obs_path = self.llamp_agent.log_obs_image(self.world.cameras)
-            self.llamp_agent.log_subgoal(self.pddlstream_problem.goal[1], obs_path, 'started')
-            self.llamp_agent.output_html()
-            if self.debug_step == -1 or self.problem_count != self.debug_step:
-                self.pddlstream_problem = self.modify_stream_map(observation.state)
+        if self.llamp_api is not None:
+            obs_path = self._replan_preprocess(observation)
 
         self.plan_step = self.num_steps
         self.plan, env, knowledge, time_log, preimage = self.solve_pddlstream(
@@ -220,222 +201,28 @@ class PDDLStreamAgent(MotionAgent):
         self.record_time(time_log)
         self.initial_state.remove_gripper()  ## after the first planning
 
-        ## save the failures
+        self.evaluations, self.goal_exp, self.domain, self.externals = knowledge
+        self.state = list(set(self.pddlstream_problem.init + preimage))
+
+        ## save the failed streams
         failures_file = join(VISUALIZATIONS_PATH, 'log.json')
         if self.exp_name == 'hpn' and isdir(VISUALIZATIONS_PATH) and isfile(failures_file):
             shutil.move(failures_file, join(VISUALIZATIONS_PATH, f'log_0.json'))
 
-        self.evaluations, self.goal_exp, self.domain, self.externals = knowledge
-        self.state = list(set(self.pddlstream_problem.init + preimage))
-
-        ## the first planning problem - only for HPN planning mode
-        if self.env_execution is None and 'hpn' in self.exp_name:  ## and not self.pddlstream_kwargs['visualization']:
-            from leap_tools.hierarchical import PDDLStreamForwardEnv
-
-            if self.plan is None:
-                self.save_stats(FAILED=True)
-            domain_pddl = self.domain_pddl
-            domain_pddl = join(PDDL_PATH, 'domains', domain_pddl)
-            init = self.state
-            self.env_execution = PDDLStreamForwardEnv(domain_pddl, self.pddlstream_problem, init=init)
-            self.env_execution.reset()
-
-        if env is not None:
-            self.env = env
-            self.process_hierarchical(env, self.plan, self.domain_pddl)
-            for f in preimage:
-                if f[0] in ['grasp', 'pose'] and str(f[-1]) in env.useful_variables:
-                    self.useful_variables[f[-1]] = f
-            print('-' * 20, '\nuseful_variables:')
-            pprint(list(self.useful_variables.keys()))
-
-            self.on_map = {v.variables[1].name: [kk.name for kk in k.variables] for k, v in env.on_map.items()}
-            self.on_map = {('on', eval(k[0]), eval(k[1].replace('none', 'None'))): v for v, k in self.on_map.items()}
-            print('-' * 20, '\non_map:')
-            pprint(self.on_map)
-            print('-' * 20)
+        if 'hpn' in self.exp_name:
+            self._replan_postprocess(env, preimage)
 
         ## move the txt_file.txt to log directory
-        if self.llamp_agent is not None:
-            self.problem_count += 1
-            status = 'failed' if self.plan is None else 'solved'
-            self.llamp_agent.log_subgoal(self.pddlstream_problem.goal[1], obs_path, status)
-            self.llamp_agent.output_html()
+        if self.llamp_api is not None:
+            self._replan_postprocess(obs_path)
 
-        # wait_if_gui('continue to execute?')
         return self.plan
 
-    def get_refinement_goal_init(self, action):
-        # facts = observation.get_facts(self.env.init_preimage)
-        op = self.env_execution.to_literal(action)
-        preimage = self.preimages_after_op[op]
-        goals = [self.env_execution.from_literal(n) for n in preimage]
+    def _replan_preprocess(self, observation):
+        assert NotImplemented
 
-        goals_not = [g for g in goals if g[0] == 'not']
-        goals = [g for g in goals if g[0] != 'not']
-        goals.extend(goals_not)
-        # goals.sort(key = len, reverse = True)
-        if self.failed_count is not None:
-            goals = goals[:self.failed_count]
-        # goals = [n for n in goals if n[0] != 'not']  ## for debugging 2nd refinement
-        # goals = [n for n in goals if n[0] != 'cfreetrajpose']  ## for debugging replacement tests
-        # goals = [n for n in goals if n[0] == 'safeatraj'][:1]  ## for debugging replacement tests
-
-        facts = []
-
-        ## add in potentially useful facts
-        all_goal_elements = goals + [g[1] for g in goals_not]
-        for goal in all_goal_elements:
-            for elem in goal:
-                if elem in self.useful_variables:
-                    useful = self.useful_variables[elem]
-                    if useful not in facts and useful not in self.state:
-                        facts.append(useful)
-                        print('\tadded useful fact', useful)
-
-        ## remove irrelevant facts
-        ignore = ['basemotion', 'btraj', 'cfreeapproachpose', 'cfreeposepose', 'not']
-        removed = []
-        for f in self.state:
-            if f[0] in self.env_execution.domain.predicates and f[0] not in ignore and \
-                    not self.env_execution.domain.predicates[f[0]].is_derived:
-                if f[0] == 'pose' and (
-                        ('atpose', f[1], f[2]) not in self.state and ('atpose', f[1], f[2]) not in goals):
-                    print('removed irrelevant pose', f)
-                    removed.append(f)
-                    continue
-                if f[0] == 'bconf' and ('atbconf', f[1]) not in self.state:
-                    print('removed irrelevant bconf', f)
-                    removed.append(f)
-                    continue
-                if f[0] == 'reach' and ('bconf', f[3]) not in self.state:
-                    print('removed irrelevant reach', f)
-                    removed.append(f)
-                    continue
-                if f[0] in ['supported', 'kin', 'atraj']:
-                    print('removed irrelevant', f)
-                    removed.append(f)
-                    continue
-                facts.append(f)
-                if f in goals:
-                    goals.remove(f)
-
-        ## hack to make sure the init is the minimal required to solve the sub problem
-        goals_check = copy.deepcopy(goals)
-        goal_on = [g for g in goals if g[0] == 'on']
-        if len(goal_on) > 0:
-            goal_on = goal_on[0]
-            pose = self.on_map[goal_on]
-            goals_check += [('pose', goal_on[1], pose)]
-
-        add_relevant_facts_given_goals(facts, goals_check, removed)
-
-        # ## hack to make sure the init is the minimal required to solve the sub problem
-        # goal_on = [g for g in goals if g[0] == 'on']
-        # if len(goal_on) > 0:
-        #     add_facts = []
-        #     goal_on = goal_on[0]
-        #     pose = self.on_map[goal_on]
-        #     reach = [f for f in removed if f[0] == 'reach' and f[3] == pose][0]
-        #     kin = [f for f in removed if f[[0] == 'kin' and f[3] == pose]][0]
-        #     add_facts += [('pose', goal_on[1], pose), ('bconf', reach[-1]), reach, kin]
-        #     add_facts += [f for f in removed if f[0] == 'supported' and f[2] == pose]
-        #     print(f'\n{goal_on}\t->\tadded facts\n\t'+'\n\t'.join([str(f) for f in add_facts]))
-        #     facts += add_facts
-        #
-        # goal_at_grasp = [g for g in goals if g[0] == 'atgrasp']
-        # if len(goal_at_grasp) > 0:
-        #     add_facts = []
-        #     goal_at_grasp = goal_at_grasp[0]
-        #     pose = [f[2] for f in facts if f[0] == 'atpose'][0]
-        #     reach = [f for f in removed if f[0] == 'reach' and f[3] == pose][0]
-        #     add_facts += [('bconf', reach[-1]), reach]
-        #     add_facts += [f for f in removed if f[0] == 'kin' and f[3] == pose]
-        #     print(f'\n{goal_at_grasp}\t->\tadded facts\n\t'+'\n\t'.join([str(f) for f in add_facts]))
-        #     facts += add_facts
-
-        return goals, facts
-
-    def refine_plan(self, action, observation, **kwargs):
-        from pybullet_tools.logging import myprint
-        from pddlstream.algorithms.algorithm import reset_globals
-
-        self.refinement_count += 1
-        myprint(f'\n## {self.refinement_count}th refinement problem')
-
-        goals, facts = self.get_refinement_goal_init(action)
-
-        facts = self.object_reducer(facts, goals)
-
-        # self.last_goals = goals  ## used to find new goals
-        if self.domain_modifier is not None:
-            domain_pddl = self.domain_pddl
-            predicates = action.name.split('--no-')[1:]
-            if len(predicates) == 1 or True:  ## TODO: better way to schedule the postponing
-                domain_modifier = None
-            else:
-                domain_modifier = initialize_domain_modifier(predicates[:-1])
-        else:
-            domain_pddl = self.domains_for_action[action]
-            domain_modifier = None
-
-        pddlstream_problem = pddlstream_from_state_goal(
-            observation.state, goals, custom_limits=self.custom_limits,
-            domain_pddl=domain_pddl, stream_pddl=self.stream_pddl, facts=facts, PRINT=True
-        )
-
-        sub_problem = pddlstream_problem
-        sub_state = observation.state
-        # sub_problem = get_smaller_world(pddlstream_problem, observation.state.world)
-
-        ## get new plan, by default it's using the original domain file
-        reset_globals()
-        plan, env, knowledge, time_log, preimage = self.solve_pddlstream(
-            sub_problem, sub_state, domain_pddl=domain_pddl,
-            domain_modifier=domain_modifier,
-            **self.pddlstream_kwargs, **kwargs)  ## observation.objects
-        observation.state.remove_gripper()
-
-        ## save the failures
-        failures_file = join(VISUALIZATIONS_PATH, 'log.json')
-        if isdir(VISUALIZATIONS_PATH) and isfile(failures_file):
-            shutil.move(failures_file, join(VISUALIZATIONS_PATH, f'log_{self.refinement_count}.json'))
-
-        print('------------------------ \nRefined plan:', plan)
-        if plan is not None:
-            self.plan = plan + self.plan
-            add_facts = [s for s in preimage if s not in self.state]
-            self.static_facts += add_facts
-
-            ## need to have here because it may have just been refining and no action yet
-            self.state += self.static_facts
-            self.state = list(set(self.state))
-            self.record_time(time_log)
-
-            print('\nnew plan:')
-            [print('  ', p.name) for p in self.plan]
-            print('\nadded facts:')
-            [print('  ', p) for p in sorted([str(f) for f in add_facts])]
-            print('\n')
-
-            if env is not None:
-                self.envs.append(env)
-                self.process_hierarchical(env, plan, domain_pddl)
-
-            if self.failed_count is not None:
-                print('self.failed_count is not None')
-                sys.exit()
-        else:
-            if plan is None:
-                self.save_stats(FAILED=True)
-                self.plan = None
-            print('failed to refine plan! exiting...')
-            sys.exit()
-            # if self.failed_count == None:
-            #     self.failed_count = len(goals) - 1
-            # else:
-            #     self.failed_count -= 1
-            # self.refine_plan(action, observation)
+    def _replan_postprocess(self, **kwargs):
+        assert NotImplemented
 
     """ state related """
 
@@ -453,29 +240,8 @@ class PDDLStreamAgent(MotionAgent):
             return True
         return False
 
-    def record_time(self, time_log):
-        self.time_log.append(time_log)
-        print('\n[TIME LOG]\n' + '\n'.join([str(v) for v in self.time_log]))
-
-    def process_hierarchical(self, env, plan, domain_pddl):
-
-        ## add new continuous vars to env_exeution so from_literal can be used
-        self.env_execution.add_objects(env)
-
-        self.preimages_after_op.update(env.get_all_preimages_after_op())
-
-        index = 0
-        print('\nupdated library of preimages:')
-        for action in self.plan:
-            index += 1
-            op = self.env_execution.to_literal(action)
-            preimage = self.preimages_after_op[op]
-            goals = [self.env_execution.from_literal(n) for n in preimage]
-            print(f"\n{index}\t{action}")
-            print('   eff:\n' + f'\n   '.join([str(g) for g in goals if g[0] != 'not']))
-            g2 = [str(g) for g in goals if g[0] == 'not']
-            if len(g2) > 0:
-                print('   ' + f'\n   '.join(g2))
+    def has_achieved_goal(self, goal):
+        pass
 
     def policy(self, observation):
         observation.assign()
@@ -486,12 +252,17 @@ class PDDLStreamAgent(MotionAgent):
             return action
 
         """ if no more action to execute, check success or replan """
-        if not self.plan:
-            if self.goal_sequence is not None and len(self.goal_sequence) > 1:
-                ## update the first planning problem to reduce objects
+        while not self.plan:
+            seq_planning_mode = self.goal_sequence is not None and len(self.goal_sequence) > 1
+            if seq_planning_mode:
+                ## the first planning problem also need to be processed to reduce objects
                 if self.problem_count > 0:
                     self.goal_sequence.pop(0)
-                self.update_pddlstream_problem(observation.facts, [self.goal_sequence[0]])
+                next_goal = self.goal_sequence[0]
+                while self.has_achieved_goal(next_goal):
+                    self.goal_sequence.pop(0)
+                    next_goal = self.goal_sequence[0]
+                self.update_pddlstream_problem(observation.facts, [next_goal])
 
             elif self.goal_achieved(observation):
                 self.save_stats()  ## save the planning time statistics
@@ -499,56 +270,38 @@ class PDDLStreamAgent(MotionAgent):
 
             self.replan(observation)
 
+            if not self.plan:
+                ## backtrack planning tree to use other subgoals
+                if seq_planning_mode:
+                    status = self.llamp_api.backtrack_planing_tree()
+                    if status in ['succeed', 'failed']:
+                        self.save_stats(solved=(status == 'succeed'))
+                    else:
+                        self.goal_sequence = status
+                else:
+                    break
+
         # if (self.plan is None) or (len(self.plan) == 0):
         #     return None
         return self.process_plan(observation)
         #return self.process_commands(current_conf)
 
-    def update_pddlstream_problem(self, init, goals):
-        from pybullet_tools.logging import myprint as print_fn
+    ###############################################################################
 
-        goal = [AND] + goals
-        # if self.problem_count == 2:
-        #     print('self.proble== 2:
-        #     print('self.problem_count == 2')
-
-        ## create a version of the world with less planning objects
-        world = copy.deepcopy(self.world)
-        world.name = 'reduced_world'
-        world.remove_bodies_from_planning(goals)
-        init = self.object_reducer(init, world.objects + world.constants + world.robot.arms)
-
-        ## print out info about planning problem
-        print_fn(SEPARATOR)
-        world.summarize_all_objects()
-        summarize_facts(init, world, name='Facts updated with object_reducer', print_fn=print_fn)
-        print_goal(goal, world=world, print_fn=print_fn)
-        print_fn(f'Robot: {world.robot} | Objects: {world.objects}\n'
-                 f'Movable: {world.movable} | Fixed: {world.fixed} | Floor: {world.floors}')
-        print_fn(SEPARATOR)
-
-        ## construct planning problem
-        domain_pddl, constant_map, stream_pddl, stream_map, _, _ = self.pddlstream_problem
-        self.pddlstream_problem = PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
-
-    def modify_stream_map(self, state, collisions=False, teleport=False, debug=False, **kwargs):
-        """ may need to change debug info for refinement problems
-        movable_collisions=True, motion_collisions=True, pull_collisions=True, base_collisions=True """
-        robot = self.world.robot
-        stream_map = robot.get_stream_map(state, collisions, self.custom_limits, teleport, debug=debug, **kwargs)
-
-        domain_pddl, constant_map, stream_pddl, _, init, goal = self.pddlstream_problem
-        return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
-
-    ############################################################################################
+    def record_time(self, time_log):
+        self.time_log.append(time_log)
+        print('\n[TIME LOG]\n' + '\n'.join([str(v) for v in self.time_log]))
 
     def record_command(self, action):
         self.commands.append(action)
 
-    def save_stats(self, FAILED=False):
+    def save_commands(self, commands_path):
+        save_commands(self.commands, commands_path)
+
+    def save_stats(self, solved=True):
         print('\n\nsaving statistics\n\n')
         IS_HPN = self.comparing and self.exp_name != 'original'
-        name = f'{get_datetime(TO_LISDF=True)}_{self.exp_name}'
+        name = add_timestamp(self.exp_name)
         exp_name = name if not IS_HPN else basename(self.exp_dir)
 
         for i in range(len(self.time_log)):
@@ -559,7 +312,7 @@ class PDDLStreamAgent(MotionAgent):
         durations2 = {i: self.time_log[i]['preimage'] for i in range(len(self.time_log))}
         total_planning = sum(list(durations.values()))
         total_preimage = sum(list(durations2.values()))
-        if FAILED:
+        if not solved:
             total_planning = 99999
 
         ## save a line in cvs of planning time
@@ -590,16 +343,20 @@ class PDDLStreamAgent(MotionAgent):
             json.dump(self.time_log, f, indent=4)
             # f.write('\n'.join([str(t) for t in self.time_log]))
 
-        from pybullet_tools.logging import TXT_FILE
-        import shutil
         if os.path.isfile(TXT_FILE):
             shutil.move(TXT_FILE, join(self.exp_dir, f"{name}_log.txt"))
 
         command_file = join(self.exp_dir, f"{name}_commands.pkl")
-        with open(command_file, 'wb') as file:
-            pickle.dump(self.commands, file)
+        self.save_commands(command_file)
         self.mp4_path = join(self.exp_dir, f"{name}.mp4")
         self.timestamped_name = name
+
+
+#########################
+
+
+def add_timestamp(exp_name):
+    return f'{get_datetime(seconds=True)}_{exp_name}'
 
 
 def get_action_name(action):
@@ -621,98 +378,3 @@ def print_action(action):
                     new_args.append(ele)
             return Action(name, new_args)
     return action
-
-
-def get_smaller_world(p, world):
-    from pddlstream.language.constants import PDDLProblem
-    hack = {
-        (2, None, 17): [(2, 19), (2, 23)],  ## dagger
-        (2, None, 0): [(2, 10), (2, 14)]  ## chewie
-    }
-
-    init = p.init
-    goal = p.goal
-    # world = state.world
-
-    ## find joints to keep because on things in the goal
-    movable = []
-    joints = []
-    for lit in goal:
-        if lit[0] == 'atgrasp':
-            o = lit[2]
-            movable.append(o)
-            pose = [f[2] for f in init if f[0] == 'atpose' and f[1] == o][0].value
-            containers = [f[3] for f in init if f[0] == 'contained' and f[1] == o]
-            if len(containers) > 0:
-                container = containers[0]
-                if container in hack:
-                    joints.extend(hack[container])
-        if lit[0]in ['on', 'in']:
-            movable.append(lit[1])
-            surface = lit[2]
-            if surface in hack:
-                joints.extend(hack[surface])
-    remove_movable = [f[1] for f in init if f[0] == 'graspable' and f[1] not in movable]
-    remove_joints = [f[1] for f in init if f[0] == 'joint' and f[1] not in joints]
-
-    new_init = []
-    removed_init = []
-    for lit in init:
-        result = True
-        for term in lit[1:]:
-            if term in remove_joints + remove_movable:
-                result = False
-                removed_init.append(lit)
-                break
-        if result:
-            new_init.append(lit)
-
-    print(f'\nagent.get_smaller_world | keeping only joints {joints} and movable {movable}')
-    print(f'agent.get_smaller_world | removing init {removed_init}\n')
-    summarize_facts(new_init, world, name='Facts modified for a smaller problem')
-    print_goal(goal)
-
-    sub_problem = PDDLProblem(p.domain_pddl, p.constant_map, p.stream_pddl, p.stream_map, new_init, goal)
-    return sub_problem
-
-
-def add_relevant_facts_given_goals(facts, goals, removed):
-    """
-    given a list of goal literals and a list of removed init literals,
-    find the init literals that has the same elements as those in goal literals
-    """
-    start = time.time()
-
-    all_elements = defaultdict(list)
-    for fact in removed:
-        for element in fact[1:]:
-            if '=' in str(element):
-                all_elements[element].append(fact)
-
-    useful_elements = []
-    for literal in goals + facts:
-        if literal[0] == 'not':
-            continue
-        for element in literal[1:]:
-            if '=' in str(element) and element not in useful_elements:
-                useful_elements.append(element)
-
-    used_elements = []
-    added_facts = []
-    while len(useful_elements) > 0:
-        element = useful_elements.pop(0)
-        used_elements.append(element)
-        found_facts = all_elements[element]
-        for fact in found_facts:
-            if fact not in added_facts:
-                if fact not in facts:
-                    added_facts.append(fact)
-                for ele in fact[1:]:
-                    if '=' in str(ele) and ele not in useful_elements + used_elements \
-                            and not str(ele).startswith('g') and not str(ele).startswith('hg'):
-                        useful_elements.append(ele)
-
-    print('\n' + '\n\t'.join([str(f) for f in goals]) +
-          f'\n->\tadded facts in {round(time.time() - start, 3)}\n\t' +
-          '\n\t'.join([str(f) for f in added_facts]) + '\n')
-    facts += added_facts

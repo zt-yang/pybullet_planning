@@ -529,7 +529,7 @@ def test_pr2_counter_minifridge(args, SAMPLED=True, robot_builder_args=None, **k
         set_camera_target_body(fridge[0], dx=2, dy=0, dz=2)
 
         set_renderer(False)
-        exp_name += f"_{get_datetime(TO_LISDF=True)}"
+        exp_name += f"_{get_datetime(seconds=True)}"
 
         door = world.name_to_object('minifridge').doors[0]
         # goals += [("OpenedJoint", door)]
@@ -584,7 +584,7 @@ def test_pick_ir_ik(args, w=.15, TEST=True, **kwargs):
         cabbage = world.add_object(
             Moveable(load_asset('VeggieCabbage', x=x, y=y, yaw=0, floor=table), name=f'cabbage_{h}'))
         goals = [("Holding", 'left', cabbage)]
-        exp_name += f"_{get_datetime(TO_LISDF=True)}"
+        exp_name += f"_{get_datetime(seconds=True)}"
 
     else:
         cabbages = {}

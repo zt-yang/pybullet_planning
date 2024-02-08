@@ -1947,10 +1947,10 @@ def sort_body_parts(bodies, existing=[]):
     return sorted_bodies
 
 
-def get_datetime(TO_LISDF=False, year=True):
+def get_datetime(seconds=False, year=True):
     from datetime import datetime
     form = "%m%d_%H:%M"
-    if TO_LISDF:
+    if seconds:
         form = "%m%d_%H%M%S"
     if year:
         form = "%y" + form
