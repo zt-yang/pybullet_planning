@@ -240,8 +240,9 @@ class PDDLStreamAgent(MotionAgent):
             return True
         return False
 
-    def has_achieved_goal(self, goal):
-        pass
+    def check_goal_achieved(self, facts, next_goal):
+        from world_builder.world_utils import check_goal_achieved
+        return check_goal_achieved(facts, next_goal, self.world)
 
     def policy(self, observation):
         observation.assign()
@@ -253,16 +254,20 @@ class PDDLStreamAgent(MotionAgent):
 
         """ if no more action to execute, check success or replan """
         while not self.plan:
+            facts = observation.facts
             seq_planning_mode = self.goal_sequence is not None and len(self.goal_sequence) > 1
             if seq_planning_mode:
                 ## the first planning problem also need to be processed to reduce objects
                 if self.problem_count > 0:
                     self.goal_sequence.pop(0)
                 next_goal = self.goal_sequence[0]
-                while self.has_achieved_goal(next_goal):
+                if str(next_goal) == 'on([10, (4, None, 1)])':
+                    print('check_goal_achieved on([10, (4, None, 1)])')
+                while self.check_goal_achieved(facts, next_goal):
+                    print(f'\ncheck_goal_achieved({next_goal})\n')
                     self.goal_sequence.pop(0)
                     next_goal = self.goal_sequence[0]
-                self.update_pddlstream_problem(observation.facts, [next_goal])
+                self.update_pddlstream_problem(facts, [next_goal])
 
             elif self.goal_achieved(observation):
                 self.save_stats()  ## save the planning time statistics

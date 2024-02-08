@@ -901,6 +901,15 @@ def get_objs_in_camera_images(camera_images, world=None, show=False, save=False,
     return objs
 
 
+def check_goal_achieved(facts, goal, world):
+    if goal[0] in ['on', 'in']:
+        body, supporter = goal[1], goal[2]
+        found = [f for f in facts if f[0].lower() in ['supported', 'contained'] and f[1] == body and f[-1] == supporter]
+        if len(found) > 0:
+            return True
+    return False
+
+
 if __name__ == "__main__":
     reduce_model_scale('/home/yang/Documents/jupyter-worlds/assets/models/Food/MeatTurkeyLeg/old_scale.txt',
                        scale_down=10)

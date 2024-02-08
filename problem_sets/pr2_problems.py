@@ -1,42 +1,16 @@
-from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, HideOutput, load_model, TURTLEBOT_URDF, \
-    set_all_color, dump_body, draw_base_limits, multiply, Pose, Euler, PI, draw_pose, unit_pose, create_box, TAN, Point, \
-    GREEN, create_cylinder, INF, BLACK, WHITE, RGBA, GREY, YELLOW, BLUE, BROWN, RED, stable_z, set_point, set_camera_pose, \
-    set_all_static, get_model_info, load_pybullet, remove_body, get_aabb, set_pose, wait_if_gui, get_joint_names, \
-    get_min_limit, get_max_limit, set_joint_position, set_joint_position, get_joints, get_joint_info, get_moving_links, \
-    get_pose, get_joint_position, enable_gravity, enable_real_time, get_links, set_color, dump_link, draw_link_name, \
-    get_link_pose, get_aabb, get_link_name, sample_aabb, aabb_contains_aabb, aabb2d_from_aabb, sample_placement, \
-    aabb_overlap, get_links, get_collision_data, get_visual_data, link_from_name, body_collision, get_closest_points, \
-    load_pybullet, FLOOR_URDF, pairwise_collision, is_movable, get_bodies, get_aabb_center, draw_aabb, VideoSaver, \
-    set_renderer, quat_from_euler, wait_unlocked
 from pybullet_tools.pr2_primitives import get_group_joints, Conf
-from pybullet_tools.pr2_utils import get_group_conf
-
-from pybullet_tools.pr2_agent import test_marker_pull_grasps
 from pybullet_tools.pr2_streams import get_marker_grasp_gen, Position, \
-    sample_points_along_line, get_bconf_in_region_test, get_bconf_in_region_gen, get_pull_marker_to_bconf_motion_gen, \
-    get_pull_marker_to_pose_motion_gen, get_pull_marker_random_motion_gen, get_parent_new_pose, get_bqs_given_p2
-from pybullet_tools.bullet_utils import set_camera_target_body, set_camera_target_robot, draw_collision_shapes, \
-    BASE_LIMITS, nice, open_joint, get_datetime, aabb_larger
+    sample_points_along_line, get_bconf_in_region_gen, get_parent_new_pose, get_bqs_given_p2
+from pybullet_tools.bullet_utils import get_datetime
 
-from world_builder.world import World, State
-from world_builder.entities import Object, Region, Environment, Robot, Camera, Floor, Stove, \
-    Surface, Moveable, Supporter, Steerable, Door
 from world_builder.builders import *
 from world_builder.loaders import *
-from world_builder.robot_builders import build_table_domain_robot, build_robot_from_args, \
-    build_fridge_domain_robot
-from world_builder.world_utils import load_asset, FLOOR_HEIGHT, WALL_HEIGHT, visualize_point
-from world_builder.world_generator import to_lisdf
-from world_builder.paths import KITCHEN_WORLD
+from world_builder.robot_builders import build_fridge_domain_robot
+from world_builder.world_utils import load_asset, FLOOR_HEIGHT, visualize_point
 
-from os.path import join, abspath
-import numpy as np
-import sys
-import math
 import random
 
-from problem_sets.problem_utils import create_world, pddlstream_from_state_goal, save_to_kitchen_worlds, \
-    test_template
+from problem_sets.problem_utils import create_world, pddlstream_from_state_goal, save_to_kitchen_worlds
 
 
 #######################################################
@@ -49,8 +23,7 @@ def test_bucket_lift(args, domain='pr2_eggs.pddl', w=.5, h=.9, mass=1):
         Floor(create_box(w=10, l=10, h=FLOOR_HEIGHT, color=BLACK, collision=True)),
         Pose(point=Point(x=0, y=0, z=-2 * FLOOR_HEIGHT)))
 
-    bucket = world.add_object(Object(
-        load_asset('Bucket', x=0, y=0, yaw=0, floor=floor), category='bucket'))
+    bucket = world.add_object(Object(load_asset('Bucket', floor=floor), category='bucket'))
     find_points_for_dual_grasp(bucket, world)
 
     robot = create_pr2_robot(world, base_q=(0, 2, -PI / 2), DUAL_ARM=True)
@@ -605,5 +578,4 @@ def test_pick_ir_ik(args, w=.15, TEST=True, **kwargs):
                                                     custom_limits=args.base_limits, stream_pddl=args.stream_pddl)
     save_to_kitchen_worlds(state, pddlstream_problem, exp_name=exp_name, world_name=exp_name)
     return state, exogenous, goals, pddlstream_problem
-
 

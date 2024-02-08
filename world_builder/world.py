@@ -2018,6 +2018,8 @@ class Agent(Process): # Decision
         # TODO: move this to another class
         start_time = time.time()
         observe_visual = len(self.actions) == 0 or 'GripperAction' in str(self.actions[-1])
+        if self.problem_count == 4:
+            print('self.problem_count == 4')
         observation = state.sample_observation(
             include_conf=self.requires_conf, include_poses=self.requires_poses,
             include_facts=self.requires_facts, include_variables=self.requires_variables,
