@@ -904,7 +904,15 @@ def get_objs_in_camera_images(camera_images, world=None, show=False, save=False,
 def check_goal_achieved(facts, goal, world):
     if goal[0] in ['on', 'in']:
         body, supporter = goal[1], goal[2]
-        found = [f for f in facts if f[0].lower() in ['supported', 'contained'] and f[1] == body and f[-1] == supporter]
+        atrelpose = [f[-1] for f in facts if f[0].lower() in ['atrelpose'] and f[1] == body and f[-1] == supporter]
+        if len(atrelpose) > 0:
+            return True
+
+        atpose = [f[-1] for f in facts if f[0].lower() in ['atpose'] and f[1] == body]
+        if len(atpose) == 0:
+            print('len(atpose) == 0', goal)
+        found = [f for f in facts if f[0].lower() in ['supported', 'contained'] and \
+                 f[1] == body and f[2] == atpose and f[2] == supporter]
         if len(found) > 0:
             return True
     return False

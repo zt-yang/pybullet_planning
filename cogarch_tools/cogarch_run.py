@@ -16,8 +16,9 @@ from world_builder.world import State, evolve_processes
 from world_builder.world_generator import save_to_outputs_folder
 
 from cogarch_tools.processes.pddlstream_agent import PDDLStreamAgent
+from cogarch_tools.processes.teleop_agent import TeleOpAgent
 from cogarch_tools.cogarch_utils import get_parser, init_gui, get_pddlstream_kwargs, clear_planning_dir, \
-    get_pddlstream_problem, PROBLEM_CONFIG_PATH
+    get_pddlstream_problem, PROBLEM_CONFIG_PATH, reorg_output_dirs
 
 from leap_tools.hierarchical_agent import HierarchicalAgent
 
@@ -93,49 +94,39 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
     if SAVE_COLLISIONS:
         solver_kwargs['evaluation_time'] = 10
     # agent = TeleOpAgent(state.world)
-    agent = agent_class(state.world, init, goals=goals, processes=exogenous, pddlstream_kwargs=solver_kwargs)
+    agent = agent_class(state.world, init=init, goals=goals, processes=exogenous, pddlstream_kwargs=solver_kwargs)
     agent.set_pddlstream_problem(problem_dict, state)
 
     # note = kwargs['world_builder_args'].get('note', None) if 'world_builder_args' in kwargs else None
     agent.init_experiment(args, domain_modifier=domain_modifier, object_reducer=object_reducer, comparing=comparing)
+    mp4_path = join(agent.exp_dir, f"{agent.timestamped_name}.mp4")
 
     """ before planning """
     if args.preview_scene and args.viewer:
         wait_unlocked()
 
     """ solving the problem """
+    output_dir = agent.exp_dir
     if not args.scene_only:
         agents = [agent]
         processes = exogenous + agents
         evolve_kwargs = dict(processes=processes, ONCE=not args.monitoring, verbose=False)
 
         if record_mp4:
-            video_path = 'video_tmp.mp4'
-            with VideoSaver(video_path):
+            with VideoSaver(mp4_path):
                 evolve_processes(state, **evolve_kwargs)
-            shutil.move(video_path, agent.mp4_path)
-            print(f'\n\nsaved mp4 to {agent.mp4_path}\n\n')
+            print(f'\n\nsaved mp4 to {mp4_path}\n\n')
         else:
             max_time = 8 * 60
             with timeout(duration=max_time):
                 evolve_processes(state, **evolve_kwargs)
 
         ## failed
-        if agent.mp4_path is None:
+        if agent.plan_len == 0:
             if not SAVE_COLLISIONS:
                 print('failed to find any plans')
                 disconnect()
                 return
-            agent.timestamped_name = f'{get_datetime(seconds=True)}'
-            if not comparing:
-                agent.timestamped_name += f'_{args.exp_name}'
-            agent.mp4_path = join(EXPERIMENT_DIR, args.exp_dir, f"{agent.timestamped_name}.mp4")
-
-        output_dir = agent.mp4_path.replace('.mp4', '')
-
-    else:
-        name = agent.timestamped_name = f'{get_datetime(seconds=True)}_{args.exp_name}'
-        output_dir = join(EXPERIMENT_DIR, args.exp_dir, name)
 
     if record_problem and not isinstance(goals, tuple):
         state.restore()  ## go back to initial state
@@ -144,36 +135,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
 
         ## putting solutions from all methods in the same directory as the problem
         if comparing:
-            if args.exp_name == 'original':
-                new_output_dir = output_dir.replace(f'_{args.exp_name}', '')
-                results_dir = join(new_output_dir, args.exp_name)
-                os.makedirs(results_dir, exist_ok=True)
-
-                ## move problem-related files
-                for file in ['scene.lisdf', 'problem.pddl', 'planning_config.json']:
-                    shutil.move(join(output_dir, file), join(new_output_dir, file))
-
-                ## move solution-related files
-                for file in ['commands.pkl', 'log.txt', 'time.json']:
-                    if isfile(join(output_dir, file)):
-                        shutil.move(join(output_dir, file), join(results_dir, file))
-
-                shutil.rmtree(output_dir)
-            else:
-                results_dir = join(dirname(output_dir), args.exp_name)
-                if isdir(results_dir):
-                    shutil.rmtree(results_dir)
-                shutil.move(output_dir, results_dir)
-                # os.remove(join(dirname(output_dir), 'tmp'))
-
-            ## move planning-related files
-            visualization_dir = join(dirname(__file__), 'visualizations')
-            if solver_kwargs['log_failures'] and isdir(visualization_dir):
-                logs = [f for f in listdir(visualization_dir) if f.startswith('log') and f.endswith('.json')]
-                for log_file in logs:
-                    shutil.move(join(visualization_dir, log_file), join(results_dir, log_file))
-
-            print('saved planning data to', results_dir)
+            reorg_output_dirs(args.exp_name, output_dir, log_failures=solver_kwargs['log_failures'])
         else:
             print('saved planning data to', output_dir)
 

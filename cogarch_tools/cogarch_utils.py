@@ -286,3 +286,35 @@ def get_pddlstream_problem(args, **kwargs):
         problem_fn = problem_fn_from_name(args.problem)
 
     return problem_fn(args, **kwargs, **problem_kwargs)
+
+
+def reorg_output_dirs(exp_name, output_dir, log_failures=False):
+    if exp_name == 'original':
+        new_output_dir = output_dir.replace(f'_{exp_name}', '')
+        results_dir = join(new_output_dir, exp_name)
+        os.makedirs(results_dir, exist_ok=True)
+
+        ## move problem-related files
+        for file in ['scene.lisdf', 'problem.pddl', 'planning_config.json']:
+            shutil.move(join(output_dir, file), join(new_output_dir, file))
+
+        ## move solution-related files
+        for file in ['commands.pkl', 'log.txt', 'time.json']:
+            if isfile(join(output_dir, file)):
+                shutil.move(join(output_dir, file), join(results_dir, file))
+
+        shutil.rmtree(output_dir)
+    else:
+        results_dir = join(dirname(output_dir), exp_name)
+        if isdir(results_dir):
+            shutil.rmtree(results_dir)
+        shutil.move(output_dir, results_dir)
+        # os.remove(join(dirname(output_dir), 'tmp'))
+
+    ## move planning-related files
+    visualization_dir = join(dirname(__file__), 'visualizations')
+    if log_failures and isdir(visualization_dir):
+        logs = [f for f in os.listdir(visualization_dir) if f.startswith('log') and f.endswith('.json')]
+        for log_file in logs:
+            shutil.move(join(visualization_dir, log_file), join(results_dir, log_file))
+    print('saved planning data to', results_dir)

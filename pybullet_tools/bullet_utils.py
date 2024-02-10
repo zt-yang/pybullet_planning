@@ -639,47 +639,7 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
     return maybe
 
 
-def add_attachment(state=None, obj=None, parent=-1, parent_link=None, attach_distance=0.1, verbose=False):
-    new_attachments = {}
-    if state is not None:
-        new_attachments = dict(state.attachments)
-
-    if parent == -1:  ## use robot as parent
-        parent = state.robot
-        link1 = None
-        parent_link = state.robot.base_link
-    else:
-        link1 = parent_link
-
-    joint = None
-    if isinstance(obj, tuple):
-        from pybullet_tools.general_streams import get_handle_link
-        link1 = get_handle_link(obj)
-        obj, joint = obj
-
-    collision_infos = get_closest_points(parent, obj, link1=link1, max_distance=INF)
-    min_distance = min([INF] + [info.contactDistance for info in collision_infos])
-    if True or attach_distance is None or (min_distance < attach_distance):  ## (obj not in new_attachments) and
-        if joint is not None:
-            attachment = create_attachment(parent, parent_link, obj,
-                                           child_link=link1, child_joint=joint)
-        else:
-            attachment = create_attachment(parent, parent_link, obj)
-        new_attachments[obj] = attachment  ## may overwrite older attachment
-        if verbose:
-            print('   added attachment', obj, parent, parent_link, link1, joint)
-    return new_attachments
-
-
-def create_attachment(parent, parent_link, child, child_link=None, child_joint=None, OBJ=False):
-    # print(f'      create_attachment({parent}, {parent_link}, {parent_link})')
-    parent_link_pose = get_link_pose(parent, parent_link)
-    child_pose = get_pose(child)
-    grasp_pose = multiply(invert(parent_link_pose), child_pose)
-    if OBJ:  ## attachment between objects
-        return ObjAttachment(parent, parent_link, grasp_pose, child)
-    return Attachment(parent, parent_link, grasp_pose, child,
-                      child_link=child_link, child_joint=child_joint)
+#################################################################
 
 
 class Attachment(object):
@@ -737,21 +697,7 @@ class Attachment(object):
             return '{}({},{}-{})'.format(name, self.parent, self.child, self.child_link)
 
 
-def remove_attachment(state, obj=None):
-    # print('bullet.utils | remove_attachment | old', state.attachments)
-    if isinstance(obj, tuple): obj = obj[0]
-    new_attachments = dict(state.attachments)
-    if obj in new_attachments:
-        new_attachments.pop(obj)
-    # print('bullet.utils | remove_attachment | new', new_attachments)
-    return new_attachments
-
-
 class ObjAttachment(Attachment):
-    def assign(self):
-        parent_link_pose = get_link_pose(self.parent, self.parent_link)
-        child_pose = body_from_end_effector(parent_link_pose, self.grasp_pose)
-        set_pose(self.child, child_pose)
 
     # def __init__(self, parent, parent_link, child, rel_pose=None):
     #     super(ObjAttachment, self).__init__(parent, parent_link, None, child)
@@ -765,6 +711,82 @@ class ObjAttachment(Attachment):
     #     _, r_child = get_pose(self.child)
     #     p_child = (p_parent[0][i] + self.rel_pose[i] for i in range(len(self.rel_pose)))
     #     set_pose(self.child, (p_child, r_child))
+
+    def assign(self):
+        parent_link_pose = get_link_pose(self.parent, self.parent_link)
+        child_pose = body_from_end_effector(parent_link_pose, self.grasp_pose)
+        set_pose(self.child, child_pose)
+
+
+def add_attachment_in_world(state=None, obj=None, parent=-1, parent_link=None, attach_distance=0.1, OBJ=True, verbose=False):
+
+    ## can attach without contact
+    new_attachments = add_attachment(state=state, obj=obj, parent=parent, parent_link=parent_link,
+                                     attach_distance=attach_distance, OBJ=OBJ, verbose=verbose)
+
+    ## update object info
+    world = state.world
+    for body, attachment in new_attachments.items():
+        obj = world.BODY_TO_OBJECT[body]
+        if hasattr(obj, 'supporting_surface') and obj.supporting_surface is not None:
+            obj.supporting_surface = None
+    # for k in new_attachments:
+    #     if k in state.world.ATTACHMENTS:
+    #         state.world.ATTACHMENTS.pop(k)
+
+    return new_attachments
+
+
+def add_attachment(state=None, obj=None, parent=-1, parent_link=None, attach_distance=0.1, OBJ=True, verbose=False):
+    """ can attach without contact """
+    new_attachments = {}
+
+    if parent == -1:  ## use robot as parent
+        parent = state.robot
+        link1 = None
+        parent_link = state.robot.base_link
+        OBJ = False
+    else:
+        link1 = parent_link
+
+    joint = None
+    if isinstance(obj, tuple):
+        from pybullet_tools.general_streams import get_handle_link
+        link1 = get_handle_link(obj)
+        obj, joint = obj
+
+    # collision_infos = get_closest_points(parent, obj, link1=link1, max_distance=INF)
+    # min_distance = min([INF] + [info.contactDistance for info in collision_infos])
+    # if True or attach_distance is None or (min_distance < attach_distance):  ## (obj not in new_attachments) and
+    if True:
+        if joint is not None:
+            attachment = create_attachment(parent, parent_link, obj, child_link=link1, child_joint=joint, OBJ=OBJ)
+        else:
+            attachment = create_attachment(parent, parent_link, obj, OBJ=OBJ)
+        new_attachments[obj] = attachment  ## may overwrite older attachment
+        if verbose:
+            print(f'\nbullet_utils.add_attachment | {new_attachments[obj]}\n')
+    return new_attachments
+
+
+def create_attachment(parent, parent_link, child, child_link=None, child_joint=None, OBJ=False):
+    parent_link_pose = get_link_pose(parent, parent_link)
+    child_pose = get_pose(child)
+    grasp_pose = multiply(invert(parent_link_pose), child_pose)
+    if OBJ:  ## attachment between objects
+        return ObjAttachment(parent, parent_link, grasp_pose, child)
+    return Attachment(parent, parent_link, grasp_pose, child,
+                      child_link=child_link, child_joint=child_joint)
+
+
+def remove_attachment(state, obj=None, verbose=False):
+    if isinstance(obj, tuple): obj = obj[0]
+    new_attachments = dict(state.attachments)
+    if obj in new_attachments:
+        if verbose:
+            print(f'\nbullet_utils.remove_attachment | {new_attachments[obj]}\n')
+        new_attachments.pop(obj)
+    return new_attachments
 
 
 #######################################################

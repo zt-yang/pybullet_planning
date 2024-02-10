@@ -68,16 +68,14 @@ class PDDLStreamAgent(MotionAgent):
         self.domains_for_action = {}
         self.time_log = []  ## for recording time
 
-        self.exp_dir = None
-        self.mp4_path = None
-        self.timestamped_name = None
+        self.exp_dir = None  ## path to store runs
+        self.exp_name = None  ## name to group runs
+        self.timestamped_name = None  ## name to identify a run
 
         self.pddlstream_problem = None
         self.initial_state = None
-        self.problem_count = 0
         self.goal_sequence = None
         self.llamp_api = None
-        self.last_removed_facts = []
 
         self.state = init
         self.static_facts = []
@@ -104,18 +102,18 @@ class PDDLStreamAgent(MotionAgent):
         """ important for using the right files in replanning """
         if hasattr(args, 'object_reducer'):
             object_reducer = args.object_reducer
-        if object_reducer is not None:
-            args.exp_name += '_' + object_reducer
 
         ## related to saving data
-        self.exp_dir = abspath(join(args.exp_dir, args.exp_subdir))
+        exp_name = args.exp_name
+        if comparing and (exp_name != 'original'):
+            exp_name = args.exp_subdir
+        if object_reducer is not None:
+            exp_name += '_' + object_reducer
+        self.exp_name = exp_name
+        self.timestamped_name = add_timestamp(exp_name)
+        self.exp_dir = abspath(join(args.exp_dir, args.exp_subdir, self.timestamped_name))
         if not isdir(self.exp_dir):
             os.makedirs(self.exp_dir, exist_ok=True)
-        self.exp_name = args.exp_name
-        if self.llamp_api is not None:
-            self.timestamped_name = add_timestamp(self.exp_name)
-            exp_path = join(self.exp_dir, self.timestamped_name)
-            os.makedirs(exp_path)
 
         self.domain_pddl = args.domain_pddl
         self.stream_pddl = args.stream_pddl
@@ -129,13 +127,40 @@ class PDDLStreamAgent(MotionAgent):
         ## LLAMP debugging
         self.debug_step = args.debug_step if hasattr(args, 'debug_step') else None
 
+    def goal_achieved(self, observation):
+        from pybullet_tools.logging import myprint as print
+
+        ## hack for checking if the plan has been executed
+        if self.plan is not None and len(self.plan) == 0: ## []
+            print('\n\nfinished executing plan\n')
+            # wait_if_gui('finish?')
+            return True
+        return False
+
+    def policy(self, observation):
+        observation.assign()
+        action = self.process_plan(observation)
+        if action is not None:
+            self.record_command(action)
+            return action
+
+        ## if no more action to execute, check success or replan
+        if not self.plan:
+            if self.goal_achieved(observation):
+                self.save_stats()
+                return None
+            self.replan(observation)
+
+        return self.process_plan(observation)
+
     def process_plan(self, observation):
         """
-        example self.plan
-        00 = {MoveBaseAction} MoveBaseAction{conf: q552=(1.529, 5.989, 0.228, 3.173)}
-        01 = {MoveBaseAction} MoveBaseAction{conf: q592=(1.607, 6.104, 0.371, 3.123)}
-        10 = {MoveBaseAction} MoveBaseAction{conf: q744=(1.474, 7.326, 0.808, 9.192)}
-        11 = {Action: 2} Action(name='pick', args=('left', 4, p1=(0.75, 7.3, 1.24, 0.0, -0.0, 0.0), g104=(-0.0, 0.027, -0.137, 0.0, -0.0, -3.142), q728=(1.474, 7.326, 0.808, 2.909), c544=t(7, 129)))
+        get the next action if a plan has been made
+            example self.plan
+            00 = {MoveBaseAction} MoveBaseAction{conf: q552=(1.529, 5.989, 0.228, 3.173)}
+            01 = {MoveBaseAction} MoveBaseAction{conf: q592=(1.607, 6.104, 0.371, 3.123)}
+            10 = {MoveBaseAction} MoveBaseAction{conf: q744=(1.474, 7.326, 0.808, 9.192)}
+            11 = {Action: 2} Action(name='pick', args=('left', 4, p1=(0.75, 7.3, 1.24, 0.0, -0.0, 0.0), g104=(-0.0, 0.027, -0.137, 0.0, -0.0, -3.142), q728=(1.474, 7.326, 0.808, 2.909), c544=t(7, 129)))
         """
         from pybullet_tools.logging import myprint as print
 
@@ -189,10 +214,10 @@ class PDDLStreamAgent(MotionAgent):
         return None
 
     def replan(self, observation, **kwargs):
-        """ the first planning """
+        """ make new plans given a pddlstream_probelm """
 
         if self.llamp_api is not None:
-            obs_path = self._replan_preprocess(observation)
+            self._replan_preprocess(observation)
 
         self.plan_step = self.num_steps
         self.plan, env, knowledge, time_log, preimage = self.solve_pddlstream(
@@ -214,7 +239,7 @@ class PDDLStreamAgent(MotionAgent):
 
         ## move the txt_file.txt to log directory
         if self.llamp_api is not None:
-            self._replan_postprocess(obs_path)
+            self._replan_postprocess()
 
         return self.plan
 
@@ -223,73 +248,6 @@ class PDDLStreamAgent(MotionAgent):
 
     def _replan_postprocess(self, **kwargs):
         assert NotImplemented
-
-    """ state related """
-
-    def state_changed(self, observation): # TODO: consider the continuous values
-        step = self.plan_step
-        return not self.observations or (self.observations[step].objects != observation.objects)
-
-    def goal_achieved(self, observation):
-        from pybullet_tools.logging import myprint as print
-
-        ## hack for checking if the plan has been executed
-        if self.plan is not None and len(self.plan) == 0: ## []
-            print('\n\nfinished executing plan\n')
-            # wait_if_gui('finish?')
-            return True
-        return False
-
-    def check_goal_achieved(self, facts, next_goal):
-        from world_builder.world_utils import check_goal_achieved
-        return check_goal_achieved(facts, next_goal, self.world)
-
-    def policy(self, observation):
-        observation.assign()
-        action = self.process_plan(observation)
-
-        if action is not None:
-            self.record_command(action)
-            return action
-
-        """ if no more action to execute, check success or replan """
-        while not self.plan:
-            facts = observation.facts
-            seq_planning_mode = self.goal_sequence is not None and len(self.goal_sequence) > 1
-            if seq_planning_mode:
-                ## the first planning problem also need to be processed to reduce objects
-                if self.problem_count > 0:
-                    self.goal_sequence.pop(0)
-                next_goal = self.goal_sequence[0]
-                if str(next_goal) == 'on([10, (4, None, 1)])':
-                    print('check_goal_achieved on([10, (4, None, 1)])')
-                while self.check_goal_achieved(facts, next_goal):
-                    print(f'\ncheck_goal_achieved({next_goal})\n')
-                    self.goal_sequence.pop(0)
-                    next_goal = self.goal_sequence[0]
-                self.update_pddlstream_problem(facts, [next_goal])
-
-            elif self.goal_achieved(observation):
-                self.save_stats()  ## save the planning time statistics
-                return None
-
-            self.replan(observation)
-
-            if not self.plan:
-                ## backtrack planning tree to use other subgoals
-                if seq_planning_mode:
-                    status = self.llamp_api.backtrack_planing_tree()
-                    if status in ['succeed', 'failed']:
-                        self.save_stats(solved=(status == 'succeed'))
-                    else:
-                        self.goal_sequence = status
-                else:
-                    break
-
-        # if (self.plan is None) or (len(self.plan) == 0):
-        #     return None
-        return self.process_plan(observation)
-        #return self.process_commands(current_conf)
 
     ###############################################################################
 
@@ -303,15 +261,11 @@ class PDDLStreamAgent(MotionAgent):
     def save_commands(self, commands_path):
         save_commands(self.commands, commands_path)
 
-    def save_stats(self, solved=True):
-        print('\n\nsaving statistics\n\n')
-        IS_HPN = self.comparing and self.exp_name != 'original'
-        name = add_timestamp(self.exp_name)
-        exp_name = name if not IS_HPN else basename(self.exp_dir)
-
+    def save_time_log(self, csv_name, solved=True):
+        """ compare the planning time and plan length across runs """
         for i in range(len(self.time_log)):
             if 'planning' not in self.time_log[i]:
-                print('save_stats', i, self.time_log[i])
+                print('save_time_log', i, self.time_log[i])
         print(self.time_log[0]['planning']) #  --monitoring
         durations = {i: self.time_log[i]['planning'] for i in range(len(self.time_log))}
         durations2 = {i: self.time_log[i]['preimage'] for i in range(len(self.time_log))}
@@ -320,10 +274,6 @@ class PDDLStreamAgent(MotionAgent):
         if not solved:
             total_planning = 99999
 
-        ## save a line in cvs of planning time
-        csv_name = join(self.exp_dir, f'{self.exp_name}.csv')
-        if IS_HPN:  ## put one directory up
-            csv_name = join(dirname(self.exp_dir), f'{self.exp_name}.csv')
         fieldnames = ['exp_name']
         fieldnames.extend(list(durations.keys()))
         fieldnames.append('total_planning')
@@ -335,29 +285,40 @@ class PDDLStreamAgent(MotionAgent):
                 writer.writeheader()
         with open(csv_name, mode='a') as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-            row = {'exp_name': exp_name}
+            row = {'exp_name': self.exp_name}
             row.update(durations)
             row['total_planning'] = total_planning
             row['preimage'] = total_preimage
             row['plan_len'] = self.plan_len
             writer.writerow(row)
 
-        ## save a txt of plan / time_log
+        return total_planning
+
+    def save_stats(self, solved=True):
+        print('\n\nsaving statistics\n\n')
+        name = self.timestamped_name
+
+        ## save one line in cvs of planning time and plan length
+        csv_name = join(dirname(self.exp_dir), f'{self.exp_name}.csv')
+        if self.comparing and ('original' not in self.exp_name):  ## put one directory up
+            csv_name = join(dirname(dirname(self.exp_dir)), f'{self.exp_name}.csv')
+        total_planning = self.save_time_log(csv_name, solved=solved)
+
+        ## save the final plan
+        plan_log_path = join(self.exp_dir, f'time.json')
         self.time_log.append({'total_planning': total_planning})
-        with open(join(self.exp_dir, f'{name}_time.json'), 'w') as f:
+        with open(plan_log_path, 'w') as f:
             json.dump(self.time_log, f, indent=4)
             # f.write('\n'.join([str(t) for t in self.time_log]))
 
+        ## save the log txt, commands, and video recording
         if os.path.isfile(TXT_FILE):
-            shutil.move(TXT_FILE, join(self.exp_dir, f"{name}_log.txt"))
+            shutil.move(TXT_FILE, join(self.exp_dir, f"log.txt"))
 
-        command_file = join(self.exp_dir, f"{name}_commands.pkl")
-        self.save_commands(command_file)
-        self.mp4_path = join(self.exp_dir, f"{name}.mp4")
-        self.timestamped_name = name
+        self.save_commands(join(self.exp_dir, f"commands.pkl"))
 
 
-#########################
+###########################################################################
 
 
 def add_timestamp(exp_name):

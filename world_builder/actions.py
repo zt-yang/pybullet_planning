@@ -4,7 +4,7 @@ import copy
 from pprint import pprint
 
 from pybullet_tools.bullet_utils import clip_delta, multiply2d, is_above, nice, open_joint, set_camera_target_robot, \
-    toggle_joint, add_attachment, remove_attachment, draw_pose2d_path, query_right_left, \
+    toggle_joint, remove_attachment, draw_pose2d_path, query_right_left, add_attachment_in_world, add_attachment, \
     draw_pose3d_path, get_obj_keys_for_segmentation, get_segmask, collided
 from pybullet_tools.pr2_streams import Position, get_pull_door_handle_motion_gen, \
     LINK_POSE_TO_JOINT_POSITION
@@ -21,7 +21,7 @@ from lisdf_tools.image_utils import RAINBOW_COLORS, save_seg_mask
 from .world import State
 
 
-class Action(object): # TODO: command
+class Action(object):  # TODO: command
     def transition(self, state):
         raise NotImplementedError()
 
@@ -121,124 +121,6 @@ class ReleaseAction(Action):
         return state.new_state(attachments={})
 
 
-######################## Teleop Agent ###############################
-
-
-class FlipAction(Action):
-    # TODO: parent action
-    def __init__(self, switch): #, active=True):
-        self.switch = switch
-        #self.active = active
-
-    def transition(self, new_state):
-        if not any(is_above(robot, get_aabb(self.switch)) for robot in new_state.robots):
-            return new_state
-        new_state.variables['Pressed', self.switch] = not new_state.variables['Pressed', self.switch]
-        return new_state
-
-
-class PressAction(Action):
-    def __init__(self, button):
-        self.button = button
-
-    def transition(self, new_state):
-        # TODO: automatically pass a copy of the state
-        if not any(is_above(robot, get_aabb(self.button)) for robot in new_state.robots):
-            return new_state
-        new_state.variables['Pressed', self.button] = True
-        return new_state
-
-
-class OpenJointAction(Action):
-    def __init__(self, affected):
-        self.affected = affected
-
-    def transition(self, state):
-        for body, joint in self.affected:
-            old_pose = get_joint_position(body, joint)
-            toggle_joint(body, joint)
-            new_pose = get_joint_position(body, joint)
-            obj = state.world.BODY_TO_OBJECT[(body, joint)]
-            print(f'{(body, joint)} | {obj.name} | limit: {nice((obj.min_limit, obj.max_limit))} | pose: {old_pose} -> {new_pose}')
-        return state.new_state()
-
-
-class PickUpAction(Action):
-    def __init__(self, object, gripper='left'):
-        self.object = object
-        self.gripper = gripper
-
-    def transition(self, state):
-        obj = self.object
-        tool_link = PR2_TOOL_FRAMES[self.gripper]
-        tool_pose = get_link_pose(state.robot, link_from_name(state.robot, tool_link))
-        old_pose = obj.get_pose()
-        obj.set_pose(tool_pose)
-        new_pose = obj.get_pose()
-        print(f"{obj.name} is teleported from {nice(old_pose)} to {self.gripper} gripper {nice(new_pose)}")
-
-        state.robot.objects_in_hand[self.gripper] = obj
-        new_attachments = add_attachment(state=state, obj=obj, attach_distance=0.1)
-        return state.new_state(attachments=new_attachments)
-
-
-class PutDownAction(Action):
-    def __init__(self, surface, gripper='left'):
-        self.surface = surface
-        self.gripper = gripper
-
-    def transition(self, state):
-        obj = state.robot.objects_in_hand[self.gripper]
-        state.robot.objects_in_hand[self.gripper] = -1
-        print(f'DEBUG1, PutDownAction transition {obj}')
-        self.surface.place_obj(obj)
-        new_attachments = remove_attachment(state, obj)
-        return state.new_state(attachments=new_attachments)
-
-
-OBJECT_PARTS = {
-    'Veggie': ['VeggieLeaf', 'VeggieStem'],
-    'Egg': ['EggFluid', 'EggShell']
-} ## object.category are all lower case
-OBJECT_PARTS = {k.lower(): v for k, v in OBJECT_PARTS.items()}
-
-
-class ChopAction(Action):
-    def __init__(self, object):
-        self.object = object
-
-    def transition(self, state):
-        pose = self.object.get_pose()
-        surface = self.object.supporting_surface
-        for obj_name in OBJECT_PARTS[self.object.category]:
-            part = surface.place_new_obj(obj_name)
-            yaw = np.random.uniform(0, PI)
-            part.set_pose(Pose(point=pose[0], euler=Euler(yaw=yaw)))
-        state.world.remove_object(self.object)
-        objects = state.objects
-        objects.remove(self.object.body)
-        return state.new_state(objects=objects)
-
-
-class CrackAction(Action):
-    def __init__(self, object, surface):
-        self.object = object
-        self.surface = surface
-
-    def transition(self, state):
-        pose = self.object.get_pose()
-
-
-class ToggleSwitchAction(Action):
-    def __init__(self, object):
-        self.object = object
-
-
-class InteractAction(Action):
-    def transition(self, state):
-        return state
-
-
 ######################## PR2 Agent ###############################
 
 class TeleportObjectAction(Action):
@@ -294,32 +176,44 @@ class GripperAction(Action):
 
 
 class AttachObjectAction(Action):
-    def __init__(self, arm, grasp, object, verbose=True):
+    def __init__(self, arm, grasp, body, verbose=True):
         self.arm = arm
         self.grasp = grasp
-        self.object = object
+        self.body = body
         self.verbose = verbose
 
     def transition(self, state):
+        parent = state.robot
         link = state.robot.get_attachment_link(self.arm)
-        # print(f'AttachObjectAction | picking object {self.object} from', nice(get_pose(self.object)))
-        new_attachments = add_attachment(state=state, obj=self.object, parent=state.robot,
-                                         parent_link=link, attach_distance=None, verbose=False)  ## can attach without contact
-        # for k in new_attachments:
-        #     if k in state.world.ATTACHMENTS:
-        #         state.world.ATTACHMENTS.pop(k)
+        added_attachments = add_attachment_in_world(state=state, obj=self.body, parent=parent, parent_link=link,
+                                                    attach_distance=None, verbose=False, OBJ=False)
+        new_attachments = dict(state.attachments)
+        new_attachments.update(added_attachments)
         return state.new_state(attachments=new_attachments)
 
 
 class DetachObjectAction(Action):
-    def __init__(self, arm, object, verbose=False):
+    def __init__(self, arm, body, supporter=None, verbose=False):
+        print(f'DetachObjectAction.__init__({body, supporter})')
         self.arm = arm
-        self.object = object
+        self.body = body
+        self.supporter = supporter
+        self.verbose = verbose
 
     def transition(self, state):
-        print(f'DetachObjectAction({self.object})')
-        new_attachments = remove_attachment(state, self.object)
-        return state.new_state(attachments=new_attachments)
+        print(f'DetachObjectAction({self.body})')
+        updated_attachments = remove_attachment(state, obj=self.body, verbose=self.verbose)
+        if self.supporter is not None:
+            parent = self.supporter
+            parent_link = None
+            if isinstance(self.supporter, tuple):
+                parent_link = self.supporter[-1]
+            parent = state.world.BODY_TO_OBJECT[parent]
+            obj = state.world.BODY_TO_OBJECT[self.body]
+            new_attachments = add_attachment_in_world(state=state, obj=obj, parent=parent,
+                                                      parent_link=parent_link, verbose=self.verbose, OBJ=True)
+            updated_attachments.update(new_attachments)
+        return state.new_state(attachments=updated_attachments)
 
 
 class JustDoAction(Action):
@@ -698,7 +592,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
         return seg_images
 
 
-def get_primitive_actions(action, world, teleport=False):
+def get_primitive_actions(action, world, teleport=False, verbose=True):
     def get_traj(t, sub=4, viz=True):
         world.remove_handles()
 
@@ -818,7 +712,7 @@ def get_primitive_actions(action, world, teleport=False):
             a, o, p, g = args[:4]
         t = get_traj(args[-1])
         close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
-        attach = AttachObjectAction(a, g, o)
+        attach = AttachObjectAction(a, g, o, verbose=verbose)
         new_commands = t + [close_gripper, attach]
         if name in ['pick', 'pick_from_supporter']:
             new_commands += t[::-1]
@@ -862,9 +756,10 @@ def get_primitive_actions(action, world, teleport=False):
             a, o, rp, o2, p2, g = args[:6]
         else:
             a, o, p, g = args[:4]
+            o2 = p.support
         t = get_traj(args[-1])
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
-        detach = DetachObjectAction(a, o)
+        detach = DetachObjectAction(a, o, supporter=o2, verbose=verbose)
         new_commands = [detach, open_gripper] + t[::-1]
         if name in ['place', 'place_to_supporter']:
             new_commands = t + new_commands
