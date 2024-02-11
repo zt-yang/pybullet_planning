@@ -266,7 +266,7 @@ class PDDLStreamAgent(MotionAgent):
         for i in range(len(self.time_log)):
             if 'planning' not in self.time_log[i]:
                 print('save_time_log', i, self.time_log[i])
-        print(self.time_log[0]['planning']) #  --monitoring
+        print(self.time_log[0]['planning'])  # --monitoring
         durations = {i: self.time_log[i]['planning'] for i in range(len(self.time_log))}
         durations2 = {i: self.time_log[i]['preimage'] for i in range(len(self.time_log))}
         total_planning = sum(list(durations.values()))
