@@ -134,7 +134,7 @@ class Object(Index):
     ##
     def is_placement(self, body):
         for o in self.supported_objects:
-            if o.body == body:
+            if o.pybullet_name == body:
                 return True
         return False
 
@@ -226,8 +226,9 @@ class Object(Index):
         return obj
 
     def change_supporting_surface(self, obj):
-        if self.supporting_surface is not None and obj in self.supporting_surface.supported_objects:
-            self.supporting_surface.supported_objects.remove(self)
+        if self.supporting_surface is not None:
+            if self in self.supporting_surface.supported_objects:
+                self.supporting_surface.supported_objects.remove(self)
         obj.support_obj(self)
 
     def change_pose_interactive(self):

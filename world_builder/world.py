@@ -592,25 +592,27 @@ class World(WorldBase):
         from pybullet_tools.logging import myprint as print
         return_dict = {}
         padding = '    '
-        print('--------------- summarize_supporting_surfaces --------------')
+        print('================ summarize_supporting_surfaces ================')
         print(padding, 'surface', self.cat_to_objects('surface'))
         print(padding, 'supporter', self.cat_to_objects('supporter'))
+        print('--------------- ')
         for surface in set(self.cat_to_objects('surface') + self.cat_to_objects('supporter')):
             print(padding, surface.name, surface.supported_objects)
             return_dict[surface.name] = [o.name for o in surface.supported_objects]
-        print('-------------------------------------------------')
+        print('================================================================\n')
         return return_dict
 
     def summarize_supported_movables(self):
         from pybullet_tools.logging import myprint as print
         return_dict = {}
         padding = '    '
-        print('--------------- summarize_supported_movables --------------')
+        print('================ summarize_supported_movables ================')
         print(padding, 'moveable', self.cat_to_objects('moveable'))
+        print('--------------- ')
         for movable in set(self.cat_to_objects('moveable')):
             print(padding, movable.name, movable.supporting_surface)
             return_dict[movable.name] = movable.supporting_surface.name
-        print('-------------------------------------------------')
+        print('================================================================')
         return return_dict
 
     def summarize_all_types(self):
@@ -743,12 +745,13 @@ class World(WorldBase):
         return bodies
 
     def remove_bodies_from_planning(self, goals=[], exceptions=[]):
-        print('\nremove_bodies_from_planning | exceptions =', exceptions)
-        if isinstance(goals, tuple):
-            goals = [goals]
 
         ## important for keeping related links and joints
         self.init_link_joint_relations()
+
+        print('\nremove_bodies_from_planning | exceptions =', exceptions)
+        if isinstance(goals, tuple):
+            goals = [goals]
 
         bodies = []
         for literal in goals:
