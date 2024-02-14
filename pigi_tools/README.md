@@ -61,5 +61,5 @@ you can also run the script inside `(fastamp_kitchen)` conda env, but the figure
 
 ```shell
 (base) ➜  pybullet_planning git:(fastamp) $ conda activate kitchen
-(kitchen) ➜  pybullet_planning git:(fastamp) $ (cd mamao_tools; python plotting.py)
+(kitchen) ➜  pybullet_planning git:(fastamp) $ (cd pigi_tools; python plotting.py)
 ```

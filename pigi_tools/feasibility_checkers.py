@@ -12,7 +12,7 @@ from pybullet_tools.bullet_utils import check_joint_state, open_joint
 from pybullet_tools.general_streams import Position
 from world_builder.world_utils import get_potential_placements
 from world_builder.robot_builders import create_gripper_robot
-from mamao_tools.data_utils import get_plan_skeleton, get_indices, get_action_elems, \
+from pigi_tools.data_utils import get_plan_skeleton, get_indices, get_action_elems, \
     get_successful_plan, modify_plan_with_body_map, load_planning_config, get_old_actions, \
     get_joint_name_chars, modify_skeleton_with_body_map
 sys.path.append('/home/yang/Documents/fastamp')

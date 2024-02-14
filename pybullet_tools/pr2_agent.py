@@ -750,7 +750,7 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
 
     ## collect data of multiple solutions
     if collect_dataset:
-        from mamao_tools.data_utils import save_multiple_solutions
+        from pigi_tools.data_utils import save_multiple_solutions
         solution, plan_dataset = solution
 
         indices = world.get_indices()

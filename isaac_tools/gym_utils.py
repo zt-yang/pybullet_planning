@@ -16,7 +16,7 @@ from pybullet_tools.utils import pose_from_tform, get_pose, get_joint_name, get_
     get_movable_joints, Euler, quat_from_euler
 from isaac_tools.urdf_utils import load_lisdf, test_is_robot
 from lisdf_tools.image_utils import images_to_mp4, images_to_gif
-from mamao_tools.data_utils import load_planning_config, get_worlds_aabb, \
+from pigi_tools.data_utils import load_planning_config, get_worlds_aabb, \
     get_instance_info, exist_instance
 
 ASSET_PATH = join(dirname(__file__), '..', 'assets')
