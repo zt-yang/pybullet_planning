@@ -811,7 +811,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
                 # 'back_left_stove': [],
                 # 'back_right_stove': [],
                 # 'range': [], ##
-                'hitman_tmp': [],  ##  'Microwave'
+                'hitman_tmp': [],  ## 'Microwave'
                 'indigo_tmp': ['BraiserLid'],  ## 'MeatTurkeyLeg', 'Toaster',
             },
         }
@@ -846,7 +846,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
         goals = ('test_grasps', movable)
         goals = [("Holding", arm, movable)]
         goals = [("On", movable, counter)]
-        subgoals = [("OpenedJoint", drawer_joint), ("On", movable, counter)]
+        # subgoals = [("OpenedJoint", drawer_joint), ("On", movable, counter)]
         # goals = ('test_relpose_inside_gen', (movable, drawer_link))
         # goals = [("In", movable, drawer_link)]
 

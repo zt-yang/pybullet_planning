@@ -1531,6 +1531,8 @@ class World(WorldBase):
 
     def save_problem(self, output_dir, goal=None, init=None, domain=None, stream=None, problem=None,
                      pddlstream_kwargs=None, **kwargs):
+        if callable(problem):
+            problem = problem.__name__
         world_name = f"{problem}_{basename(output_dir)}"
         if self.note is not None:
             world_name += f"_{self.note}"

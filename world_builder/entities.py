@@ -240,7 +240,7 @@ class Object(Index):
         if not hasattr(self, 'body'):
             print('what sy')
         if self.body is None:
-            return id(self) # TODO: hack
+            return id(self)  # TODO: hack
         if self.joint is not None:
             return (self.body, self.joint)
         # if self.link is not None:

@@ -799,11 +799,8 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
     time_log['preimage'] = round(time.time() - start_time, 4)
     time_log['goal'] = [f'{g[0]}({g[1:]})' for g in pddlstream_problem.goal[1:]]
     time_log['plan'] = plan_str
-    time_log['plan_len'] = len(plan) if plan != None else 0
-
-    ## for collecting data
-    if visualization:
-        time_log['init'] = [[str(a) for a in f] for f in preimage]
+    time_log['plan_len'] = len(plan) if plan is not None else 0
+    time_log['init'] = [[str(a) for a in f] for f in preimage]
 
     if preview:
         from lisdf_tools.lisdf_planning import Problem as LISDFProblem
