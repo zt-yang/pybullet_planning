@@ -9,7 +9,8 @@ import shutil
 from pybullet_tools.utils import disconnect, reset_simulation, VideoSaver, wait_unlocked, timeout
 from pybullet_tools.bullet_utils import get_datetime, initialize_logs
 
-from lisdf_tools.lisdf_loader import load_lisdf_pybullet, pddlstream_from_dir
+from lisdf_tools.lisdf_utils import pddlstream_from_dir
+from lisdf_tools.lisdf_loader import load_lisdf_pybullet
 from lisdf_tools.lisdf_planning import Problem
 
 from world_builder.world import State, evolve_processes
@@ -81,14 +82,6 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
         disconnect()
         return
 
-    ## for visualizing observation
-    if hasattr(args, 'save_initial_observation') and args.save_initial_observation:
-        state.world.initiate_observation_cameras()
-        obs_dir = join('log', 'media')
-        if not isdir(obs_dir):
-            os.makedirs(obs_dir)
-        state.save_default_observation(output_path=join(obs_dir, 'observation_0.png'))
-
     """ load planning agent """
     solver_kwargs = get_pddlstream_kwargs(args, skeleton, subgoals, [copy.deepcopy(state), goals, init])
     if SAVE_COLLISIONS:
@@ -100,6 +93,11 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
     # note = kwargs['world_builder_args'].get('note', None) if 'world_builder_args' in kwargs else None
     agent.init_experiment(args, domain_modifier=domain_modifier, object_reducer=object_reducer, comparing=comparing)
     mp4_path = join(agent.exp_dir, f"{agent.timestamped_name}.mp4")
+
+    ## for visualizing observation
+    if hasattr(args, 'save_initial_observation') and args.save_initial_observation:
+        state.world.initiate_observation_cameras()
+        state.save_default_observation(output_path=join(agent.llamp_api.obs_dir, 'observation_0.png'))
 
     """ before planning """
     if args.preview_scene and args.viewer:

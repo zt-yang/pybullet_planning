@@ -69,6 +69,8 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     ## -------- planning problem related
     parser.add_argument('-p', '--problem', type=str, default=conf.problem.problem,
                         help='name of the problem function that initiate both the world and goal')
+    parser.add_argument('--open_goal', type=str, default=conf.agent.open_goal,
+                        help='goal of the problem described in english')
     parser.add_argument('-exdir', '--exp_dir', type=str, default=conf.problem.exp_dir,
                         help='path to `experiments` to save outputs')
     parser.add_argument('-exsubdir', '--exp_subdir', type=str, default=conf.problem.exp_subdir,
@@ -179,13 +181,14 @@ def init_gui(args, width=1980, height=1238):
 
 
 def clear_planning_dir(run_dir=dirname(__file__)):
-    temp_dir = join(run_dir, 'temp')
-    if isdir(temp_dir):
-        shutil.rmtree(temp_dir)
+    for cwd in [run_dir, dirname(run_dir)]:
+        temp_dir = join(cwd, 'temp')
+        if isdir(temp_dir):
+            shutil.rmtree(temp_dir)
 
-    log_file = join(run_dir, 'txt_file.txt')
-    if isfile(log_file):
-        os.remove(log_file)
+        log_file = join(cwd, 'txt_file.txt')
+        if isfile(log_file):
+            os.remove(log_file)
 
 ##################################################
 

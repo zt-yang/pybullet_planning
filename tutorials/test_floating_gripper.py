@@ -18,7 +18,8 @@ from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, st
 from pddlstream.algorithms.meta import solve, create_parser
 from pddlstream.algorithms.focused import solve_focused
 
-from lisdf_tools.lisdf_loader import load_lisdf_pybullet, pddlstream_from_dir
+from lisdf_tools.lisdf_utils import pddlstream_from_dir
+from lisdf_tools.lisdf_loader import load_lisdf_pybullet
 from lisdf_tools.lisdf_planning import pddl_to_init_goal, Problem
 
 from world_builder.actions import apply_actions

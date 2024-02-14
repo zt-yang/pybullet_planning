@@ -94,7 +94,6 @@ class PDDLStreamAgent(MotionAgent):
         self.initial_state = state
         if 'llamp_api' in problem_dict and problem_dict['llamp_api'] is not None:
             self.llamp_api = problem_dict['llamp_api']
-            self.llamp_api.output_html()
         if 'goal_sequence' in problem_dict and problem_dict['goal_sequence'] is not None:
             self.goal_sequence = problem_dict['goal_sequence']
 
@@ -114,6 +113,9 @@ class PDDLStreamAgent(MotionAgent):
         self.exp_dir = abspath(join(args.exp_dir, args.exp_subdir, self.timestamped_name))
         if not isdir(self.exp_dir):
             os.makedirs(self.exp_dir, exist_ok=True)
+        if self.llamp_api is not None:
+            self.llamp_api.init_log_dir(join(self.exp_dir, 'log'))
+            self.llamp_api.output_html()
 
         self.domain_pddl = args.domain_pddl
         self.stream_pddl = args.stream_pddl
