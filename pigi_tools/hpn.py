@@ -16,7 +16,7 @@ from os import listdir
 import seaborn as sns
 sns.set_style("darkgrid", {"axes.facecolor": ".9"})
 
-from mamao_tools.plotting_utils import *
+from pigi_tools.plotting_utils import *
 
 
 #############################################################################

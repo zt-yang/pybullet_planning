@@ -13,7 +13,7 @@ from pybullet_tools.utils import connect, draw_pose, enable_preview, unit_pose, 
     set_numpy_seed
 from problem_sets import problem_fn_from_name
 
-from mamao_tools.data_utils import get_feasibility_checker
+from pigi_tools.data_utils import get_feasibility_checker
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -318,3 +318,4 @@ def reorg_output_dirs(exp_name, output_dir, log_failures=False):
         for log_file in logs:
             shutil.move(join(visualization_dir, log_file), join(results_dir, log_file))
     print('saved planning data to', results_dir)
+

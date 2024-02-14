@@ -718,7 +718,8 @@ class ObjAttachment(Attachment):
         set_pose(self.child, child_pose)
 
 
-def add_attachment_in_world(state=None, obj=None, parent=-1, parent_link=None, attach_distance=0.1, OBJ=True, verbose=False):
+def add_attachment_in_world(state=None, obj=None, parent=-1, parent_link=None, attach_distance=0.1,
+                            OBJ=True, verbose=False):
 
     ## can attach without contact
     new_attachments = add_attachment(state=state, obj=obj, parent=parent, parent_link=parent_link,
@@ -726,10 +727,12 @@ def add_attachment_in_world(state=None, obj=None, parent=-1, parent_link=None, a
 
     ## update object info
     world = state.world
-    for body, attachment in new_attachments.items():
-        obj = world.BODY_TO_OBJECT[body]
-        if hasattr(obj, 'supporting_surface') and obj.supporting_surface is not None:
-            obj.supporting_surface = None
+    if hasattr(world, 'BODY_TO_OBJECT'):
+        for body, attachment in new_attachments.items():
+            obj = world.BODY_TO_OBJECT[body]
+            if hasattr(obj, 'supporting_surface') and obj.supporting_surface is not None:
+                obj.supporting_surface = None
+
     # for k in new_attachments:
     #     if k in state.world.ATTACHMENTS:
     #         state.world.ATTACHMENTS.pop(k)
@@ -1413,7 +1416,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
         (0, 0, 1): [(P, 0, P/2), (P, 0, -P/2), (P, 0, 0), (P, 0, P)],
         (0, 0, -1): [(0, 0, -P/2), (0, 0, P/2), (0, 0, 0), (0, 0, P)],
     }
-    #set_renderer(visualize)
+    # set_renderer(visualize)
     grasps = []
     # aabbs = []
     for f in faces:
@@ -1609,6 +1612,7 @@ def equal(tup_a, tup_b, epsilon=0.001):
         return all([equal(a[i], b[i], epsilon) for i in range(len(a))])
 
     return None
+
 
 # def equal(tup1, tup2, epsilon=0.001):
 #     if isinstance(tup1, float):

@@ -15,7 +15,7 @@ from pybullet_tools.pr2_primitives import Pose
 from pybullet_tools.general_streams import Position
 from pybullet_tools.bullet_utils import nice, is_box_entity
 
-from mamao_tools.text_utils import ACTION_ABV, ACTION_NAMES
+from pigi_tools.text_utils import ACTION_ABV, ACTION_NAMES
 
 from world_builder.world_utils import get_partnet_doors
 
@@ -25,7 +25,7 @@ DATASET_PATH = '/home/yang/Documents/fastamp-data-rss'
 
 
 def get_feasibility_checker(run_dir, mode, diverse=False, world=None):
-    from mamao_tools.feasibility_checkers import PassAll, ShuffleAll, Oracle, PVT, \
+    from pigi_tools.feasibility_checkers import PassAll, ShuffleAll, Oracle, PVT, \
         Heuristic, LargerWorld
     inv_body_map = get_body_map(run_dir, world=world, inv=True) if isinstance(run_dir, str) else {}
     if mode == 'binary':
@@ -173,15 +173,8 @@ def parse_pddl_str(args, vs, inv_vs, indices={}):
     return new_args
 
 
-def get_plan(run_dir, indices={}, continuous={}, plan_json=None, **kwargs):
-    if indices == {}:
-        indices = get_indices_from_config(run_dir)
-    if plan_json is not None:
-        plan = json.load(open(plan_json, 'r'))['plan']
-    else:
-        plan = get_successful_plan(run_dir, indices, **kwargs)
-
-    ## add the continuous mentioned in plan
+def map_continuous_variables(plan, continuous={}):
+    """ add the continuous mentioned in plan """
     new_continuous = {}
     for a in plan:
         for arg in a[1:]:
@@ -192,6 +185,20 @@ def get_plan(run_dir, indices={}, continuous={}, plan_json=None, **kwargs):
                     v = list(eval(value)) if ('(' in value) else [eval(value)]
                     if len(v) != 2:  ## sampled trajectory
                         new_continuous[name] = process_value(v)
+    return new_continuous
+
+
+def get_plan(run_dir, indices={}, continuous={}, plan_json=None, **kwargs):
+    """ for piginet data """
+    if indices == {}:
+        indices = get_indices_from_config(run_dir)
+    if plan_json is not None:
+        plan = json.load(open(plan_json, 'r'))['plan']
+    else:
+        plans = get_successful_plan(run_dir, indices, **kwargs)
+        plan = plans[0]
+
+    new_continuous = map_continuous_variables(plan, continuous)
     return plan, new_continuous
 
 
@@ -501,19 +508,27 @@ def parse_pddl_str(args, vs, inv_vs, indices={}):
 
 
 def get_successful_plan(run_dir, indices={}, skip_multiple_plans=True, **kwargs):
-    plans = []
+    """ read the json file to extract the plans """
+
     ## default best plan is in 'plan.json'
     plan_file = join(run_dir, 'plan.json')
     if not isfile(plan_file):
         plan_file = join(run_dir, 'time.json')
+
+    plans = []
     with open(plan_file, 'r') as f:
-        data = json.load(f)[0]
-        actions = data['plan']
-        if actions == 'FAILED':
-            return None
-        vs, inv_vs = get_variables(data['init'])
-        plan = get_plan_from_strings(actions, vs=vs, inv_vs=inv_vs, indices=indices, **kwargs)
+        data = json.load(f)
+        plan = []
+        for episode in data:
+            if 'plan' not in episode:
+                continue
+            actions = episode['plan']
+            if len(data) == 2 and actions == 'FAILED':
+                return None
+            vs, inv_vs = get_variables(episode['init'])
+            plan += get_plan_from_strings(actions, vs=vs, inv_vs=inv_vs, indices=indices, **kwargs)
         plans.append(plan)
+
     if not skip_multiple_plans:
         solutions = get_multiple_solutions(run_dir, indices=indices)
         if len(solutions) > 1:

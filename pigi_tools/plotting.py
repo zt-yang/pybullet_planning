@@ -18,7 +18,7 @@ import seaborn as sns
 sns.set_style("darkgrid", {"axes.facecolor": ".9"})
 
 from data_utils import DATASET_PATH, get_fc_record, get_fastdownward_time
-from mamao_tools.plotting_utils import *
+from pigi_tools.plotting_utils import *
 
 sys.path.append('/home/yang/Documents/fastamp')
 # from fastamp_utils import get_fc_record

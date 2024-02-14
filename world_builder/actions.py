@@ -5,7 +5,7 @@ from pprint import pprint
 
 from pybullet_tools.bullet_utils import clip_delta, multiply2d, is_above, nice, open_joint, set_camera_target_robot, \
     toggle_joint, remove_attachment, draw_pose2d_path, query_right_left, add_attachment_in_world, add_attachment, \
-    draw_pose3d_path, get_obj_keys_for_segmentation, get_segmask, collided
+    draw_pose3d_path, get_obj_keys_for_segmentation, get_segmask, collided, equal
 from pybullet_tools.pr2_streams import Position, get_pull_door_handle_motion_gen, \
     LINK_POSE_TO_JOINT_POSITION
 from pybullet_tools.utils import str_from_object, get_closest_points, INF, create_attachment, wait_if_gui, \
@@ -175,7 +175,21 @@ class GripperAction(Action):
         return state.new_state()
 
 
-class AttachObjectAction(Action):
+class RevisedAction(Action):
+    """ previous version of some actions used 'self.object' instead of self.body """
+
+    def get_body(self):
+        return self.body if hasattr(self, 'body') else self.object
+
+    def set_body(self, body):
+        """ previous version of this class used 'object' """
+        if hasattr(self, 'body'):
+            self.body = body
+        else:
+            self.object = body
+
+
+class AttachObjectAction(RevisedAction):
     def __init__(self, arm, grasp, body, verbose=True):
         self.arm = arm
         self.grasp = grasp
@@ -185,14 +199,14 @@ class AttachObjectAction(Action):
     def transition(self, state):
         parent = state.robot
         link = state.robot.get_attachment_link(self.arm)
-        added_attachments = add_attachment_in_world(state=state, obj=self.body, parent=parent, parent_link=link,
+        added_attachments = add_attachment_in_world(state=state, obj=self.get_body(), parent=parent, parent_link=link,
                                                     attach_distance=None, verbose=False, OBJ=False)
         new_attachments = dict(state.attachments)
         new_attachments.update(added_attachments)
         return state.new_state(attachments=new_attachments)
 
 
-class DetachObjectAction(Action):
+class DetachObjectAction(RevisedAction):
     def __init__(self, arm, body, supporter=None, verbose=False):
         print(f'DetachObjectAction.__init__({body, supporter})')
         self.arm = arm
@@ -201,15 +215,21 @@ class DetachObjectAction(Action):
         self.verbose = verbose
 
     def transition(self, state):
-        print(f'DetachObjectAction({self.body})')
-        updated_attachments = remove_attachment(state, obj=self.body, verbose=self.verbose)
-        if self.supporter is not None:
+        body = self.get_body()
+        verbose = self.verbose if hasattr(self, 'verbose') else True
+        print(f'DetachObjectAction({body})')
+        updated_attachments = remove_attachment(state, obj=body, verbose=verbose)
+        if hasattr(self, 'supporter') and self.supporter is not None:
+            obj = body
             parent = self.supporter
             parent_link = None
             if isinstance(self.supporter, tuple):
                 parent_link = self.supporter[-1]
-            parent = state.world.BODY_TO_OBJECT[parent]
-            obj = state.world.BODY_TO_OBJECT[self.body]
+            if hasattr(state.world, 'BODY_TO_OBJECT'):
+                parent = state.world.BODY_TO_OBJECT[parent]
+                obj = state.world.BODY_TO_OBJECT[body]
+            elif isinstance(parent, tuple):
+                parent, _, parent_link = parent
             new_attachments = add_attachment_in_world(state=state, obj=obj, parent=parent,
                                                       parent_link=parent_link, verbose=self.verbose, OBJ=True)
             updated_attachments.update(new_attachments)
@@ -369,50 +389,64 @@ class MoveInSE3Action(Action):
 #######################################################
 
 
+def adapt_attach_action(a, problem, plan, verbose=True):
+    continuous = {}
+    if len(plan) == 2:
+        plan, continuous = plan
+    if len(plan) == 1 and len(plan[0]) > 1:
+        plan = plan[0]
+
+    def get_value(string):
+        name, tup = string.split('=')
+        # value = continuous[name]
+        # if name.startswith('pstn'):
+        #     value = value[0]
+        # return value
+        return eval(tup)
+
+    body = a.get_body()
+    robot = problem.world.robot
+    if ' ' in plan[0][0]:
+        act = [aa for aa in plan if aa[0].startswith('pull') and aa[2] == problem.world.body_to_name[body]][0]
+    else:
+        print(len(plan), [str(body), problem.world.body_to_name[body]], '->', plan)
+        pstn = get_joint_position(body[0], body[1])
+        act = [aa for aa in plan if aa[0] in ['pull_handle', 'pull_door_handle', 'pull_handle_with_link'] and \
+               aa[2] in [str(body), problem.world.body_to_name[body]] and \
+               equal(continuous[aa[3].split('=')[0]][0], pstn)][0]
+
+    pstn1 = Position(body, get_value(act[3]))
+    pstn2 = Position(body, get_value(act[4]))
+    bq1 = get_value(act[6])  ## continuous[act[6].split('=')[0]]
+    bq1 = Conf(robot.body, robot.get_base_joints(), bq1)
+    if 'pr2' in robot.name:
+        aq1 = get_value(act[9])  ## continuous[act[9].split('=')[0]]
+        aq1 = Conf(robot.body, robot.get_arm_joints(a.arm), aq1)
+        funk = get_pull_door_handle_motion_gen(problem, collisions=False, verbose=verbose)
+    else:
+        funk = get_pull_handle_motion_gen(problem, collisions=False, verbose=verbose)
+        aq1 = None
+
+    # set_renderer(False)
+    with LockRenderer(True):
+        funk(a.arm, body, pstn1, pstn2, a.grasp, bq1, aq1)
+    set_renderer(True)
+
+
 def adapt_action(a, problem, plan, verbose=True):
     if plan is None:
         return a
 
-    robot = problem.world.robot
-    if a.__class__.__name__ == 'AttachObjectAction' and isinstance(a.object, tuple):
+    ## find the joint positions to animate
+    if a.__class__.__name__ == 'AttachObjectAction' and isinstance(a.get_body(), tuple):
+        adapt_attach_action(a, problem, plan, verbose=verbose)
 
-        if len(plan) == 2:
-            plan, continuous = plan
-        if len(plan) == 1 and len(plan[0]) > 1:
-            plan = plan[0]
-        def get_value(string):
-            name, tup = string.split('=')
-            # value = continuous[name]
-            # if name.startswith('pstn'):
-            #     value = value[0]
-            # return value
-            return eval(tup)
-        if ' ' in plan[0][0]:
-            act = [aa for aa in plan if aa[0].startswith('pull') and aa[2] == problem.world.body_to_name[a.object]][0]
-        else:
-            act = [aa for aa in plan if aa[0] in ['pull_door_handle', 'grasp_pull_handle'] and \
-                   (aa[2] in [str(a.object), problem.world.body_to_name[a.object]])][0]
-        pstn1 = Position(a.object, get_value(act[3]))
-        pstn2 = Position(a.object, get_value(act[4]))
-        bq1 = get_value(act[6])  ## continuous[act[6].split('=')[0]]
-        bq1 = Conf(robot.body, robot.get_base_joints(), bq1)
-        if 'pr2' in robot.name:
-            aq1 = get_value(act[9]) ## continuous[act[9].split('=')[0]]
-            aq1 = Conf(robot.body, robot.get_arm_joints(a.arm), aq1)
-            funk = get_pull_door_handle_motion_gen(problem, collisions=False, verbose=verbose)
-        else:
-            funk = get_pull_handle_motion_gen(problem, collisions=False, verbose=verbose)
-            aq1 = None
-        # set_renderer(False)
-        with LockRenderer(True):
-            funk(a.arm, a.object, pstn1, pstn2, a.grasp, bq1, aq1)
-        set_renderer(True)
     return a
 
 
 def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body_map=None,
-                  SAVE_COMPOSED_JPG=False, SAVE_GIF=False, CHECK_COLLISIONS=False,
-                  cfree_range=0.1, VISUALIZE_COLLISIONS=False):
+                  save_composed_jpg=False, save_gif=False, check_collisions=False,
+                  cfree_range=0.1, visualize_collisions=False):
     """ act out the whole plan and event in the world without observation/replanning """
     if actions is None:
         return
@@ -424,16 +458,16 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
     last_name = None
     last_object = None
 
-    if not CHECK_COLLISIONS and (SAVE_COMPOSED_JPG or SAVE_GIF):
+    if not check_collisions and (save_composed_jpg or save_gif):
         colors = RAINBOW_COLORS
         color_index = 0
         indices = world.get_indices(body_map=body_map, larger=False)
-        if SAVE_COMPOSED_JPG:
+        if save_composed_jpg:
             imgs = world.camera.get_image(segment=True, segment_links=True)
             seg = imgs.segmentationMaskBuffer
             unique = get_segmask(seg)
             obj_keys = get_obj_keys_for_segmentation(indices, unique)
-        elif SAVE_GIF:
+        elif save_gif:
             obj_keys = get_obj_keys_for_segmentation(indices)
 
     robot = world.robot.body
@@ -447,7 +481,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
         action = actions[i]
         name = action.__class__.__name__
 
-        if 'GripperAction' in name and CHECK_COLLISIONS:
+        if 'GripperAction' in name and check_collisions:
             next_action = actions[i+1]
             next_name = next_action.__class__.__name__
             if 'AttachObjectAction' in next_name:
@@ -473,24 +507,25 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
 
         record_img = False
         if 'tachObjectAction' in name and body_map is not None:
-            if action.object in body_map:
-                action.object = body_map[action.object]
-            last_object = action.object
+            body = action.get_body()
+            if body in body_map:
+                action.set_body(body_map[body])
+            last_object = body
             action.verbose = verbose
-            if not CHECK_COLLISIONS and (SAVE_COMPOSED_JPG or SAVE_GIF):
+            if not check_collisions and (save_composed_jpg or save_gif):
                 record_img = True
                 if 'Attach' in name:
                     color = colors[color_index]
                     color_index += 1
 
-                    body_name = world.body_to_name[action.object]
+                    body_name = world.body_to_name[body]
                     for b, l in obj_keys[body_name]:
                         set_color(b, color, link=l)
                     recording = body_name
 
                 elif 'Detach' in name:
                     recording = False
-                    if SAVE_COMPOSED_JPG:
+                    if save_composed_jpg:
                         episodes.append((seg_images, isinstance(last_object, int)))
                         seg_images = []
         elif 'MoveArm' in name:
@@ -527,7 +562,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
 
         ###############################################
 
-        if CHECK_COLLISIONS:
+        if check_collisions:
 
             ## gripper colliding with object just placed down
             ## or braiser colliding with lid just picked away
@@ -548,7 +583,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
                 result = collided(body, obstacles, world=world, verbose=True,
                                   min_num_pts=3, log_collisions=False)
                 if result:
-                    if VISUALIZE_COLLISIONS:
+                    if visualize_collisions:
                         wait_if_gui()
                     return result
 
@@ -557,11 +592,11 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
         if recording:
             if not record_img:
                 continue
-            if SAVE_COMPOSED_JPG:
+            if save_composed_jpg:
                 imgs = world.camera.get_image(segment=True, segment_links=True)
                 body_name = recording
                 seg_images.append(save_seg_mask(imgs, obj_keys[body_name], verbose=False))
-            elif SAVE_GIF:
+            elif save_gif:
                 imgs = world.camera.get_image()
                 seg_images.append(imgs.rgbPixels[:, :, :3])
 
@@ -582,13 +617,13 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
 
         i += 1
 
-    if CHECK_COLLISIONS:
+    if check_collisions:
         return False
-    if SAVE_COMPOSED_JPG:
+    if save_composed_jpg:
         if recording:
             episodes.append((seg_images, isinstance(last_object, int)))
         return episodes
-    if SAVE_GIF:
+    if save_gif:
         return seg_images
 
 
