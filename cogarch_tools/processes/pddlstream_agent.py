@@ -128,6 +128,8 @@ class PDDLStreamAgent(MotionAgent):
 
         ## LLAMP debugging
         self.debug_step = args.debug_step if hasattr(args, 'debug_step') else None
+        self.try_again_with_full_world = args.try_again_with_full_world if \
+            hasattr(args, 'try_again_with_full_world') else False
 
     def goal_achieved(self, observation):
         from pybullet_tools.logging import myprint as print

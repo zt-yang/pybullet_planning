@@ -71,11 +71,11 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
                         help='name of the problem function that initiate both the world and goal')
     parser.add_argument('--open_goal', type=str, default=conf.agent.open_goal,
                         help='goal of the problem described in english')
-    parser.add_argument('-exdir', '--exp_dir', type=str, default=conf.problem.exp_dir,
+    parser.add_argument('--exp_dir', type=str, default=conf.problem.exp_dir,
                         help='path to `experiments` to save outputs')
-    parser.add_argument('-exsubdir', '--exp_subdir', type=str, default=conf.problem.exp_subdir,
+    parser.add_argument('--exp_subdir', type=str, default=conf.problem.exp_subdir,
                         help='name of the sub-directory in `../experiments` to save outputs')
-    parser.add_argument('-exname', '--exp_name', type=str, default=conf.problem.exp_name,
+    parser.add_argument('--exp_name', type=str, default=conf.problem.exp_name,
                         help='name of the comparison group for which planning time and success rate will be compared')
     parser.add_argument('-domain', '--domain_pddl', type=str, default=conf.problem.domain_pddl,
                         help='name to the domain pddl file')
