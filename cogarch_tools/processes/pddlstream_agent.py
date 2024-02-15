@@ -85,6 +85,7 @@ class PDDLStreamAgent(MotionAgent):
         self.commands = []
         self.plan_len = 0
         self.pddlstream_kwargs = pddlstream_kwargs
+        self.reduce_object = False
         self.useful_variables = {}
         self.on_map = {}
 
@@ -108,6 +109,7 @@ class PDDLStreamAgent(MotionAgent):
             exp_name = args.exp_subdir
         if object_reducer is not None:
             exp_name += '_' + object_reducer
+            self.reduce_object = True
         self.exp_name = exp_name
         self.timestamped_name = add_timestamp(exp_name)
         self.exp_dir = abspath(join(args.exp_dir, args.exp_subdir, self.timestamped_name))

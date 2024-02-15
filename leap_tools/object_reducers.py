@@ -49,8 +49,6 @@ def reduce_facts_given_objects(facts, objects):
             for elem in fact[1:]:
                 if (isinstance(elem, int) or isinstance(elem, tuple)) and elem not in objects:
                     removed = True
-                    if 'AtRelPose' in fact[0] and ', 48),(0.141, -0.012, -0.033, 0.0, -0.0, 2.447))' in str(fact[2]):
-                        print(fact)
                     myprint(f'\t removing fact {fact}')
                     break
         if removed:

@@ -30,7 +30,7 @@ def pddlstream_from_state_goal(state, goals, args=None, custom_limits=None,
         pddl_dir = join(pbp_path, 'pddl')
         domain_pddl = join(pddl_dir, domain_name)
         stream_pddl = join(pddl_dir, stream_name)
-    cfree = cfree or (args.cfree if args is not None else False)
+    cfree = args.cfree if args is not None else cfree
     teleport = args.teleport if args is not None else teleport
     if custom_limits is None:
         custom_limits = state.robot.custom_limits
