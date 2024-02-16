@@ -110,6 +110,8 @@ class PDDLStreamAgent(MotionAgent):
         if object_reducer is not None:
             exp_name += '_' + object_reducer
             self.reduce_object = True
+            if hasattr(self, 'reduce_object_next'):
+                self.reduce_object_next = True
         self.exp_name = exp_name
         self.timestamped_name = add_timestamp(exp_name)
         self.exp_dir = abspath(join(args.exp_dir, args.exp_subdir, self.timestamped_name))
@@ -122,7 +124,10 @@ class PDDLStreamAgent(MotionAgent):
         self.domain_pddl = args.domain_pddl
         self.stream_pddl = args.stream_pddl
         self.domain_modifier = initialize_domain_modifier(domain_modifier)
-        self.object_reducer = initialize_object_reducer(object_reducer)
+        if ';' in object_reducer:
+            self.object_reducer = [initialize_object_reducer(o) for o in object_reducer]
+        else:
+            self.object_reducer = initialize_object_reducer(object_reducer)
         self.custom_limits = self.robot.custom_limits
 
         ## HPN experiments
@@ -259,7 +264,9 @@ class PDDLStreamAgent(MotionAgent):
 
     def record_time(self, time_log):
         self.time_log.append(time_log)
+        print('-'*50)
         print('\n[TIME LOG]\n' + '\n'.join([str(v) for v in self.time_log]))
+        print('-'*50, '\n')
 
     def record_command(self, action):
         self.commands.append(action)

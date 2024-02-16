@@ -5,12 +5,15 @@ def initialize_object_reducer(name):
     if name == 'object-related':
         return reduce_facts_given_objects
 
-    def return_as_is(facts, inputs):
+    if name == 'object-heuristic':
+        return reduce_facts_given_objects_by_heuristic
+
+    def return_as_is(facts, objects, goals):
         return facts
     return return_as_is
 
 
-def reduce_facts_given_goals(facts, goals):
+def reduce_facts_given_goals(facts, objects=[], goals=[]):
     goal_objects = []
     for g in goals[:1]:
         for elem in g:
@@ -37,9 +40,9 @@ def reduce_facts_given_goals(facts, goals):
     return filtered_facts
 
 
-def reduce_facts_given_objects(facts, objects):
+def reduce_facts_given_objects(facts, objects=[], goals=[], use_heuristic=False):
     from pybullet_tools.logging import myprint
-    myprint(f'\nfilter_init_by_objects({objects})')
+    myprint(f'\nfilter_init_by_objects(use_heuristic={use_heuristic}) -> objects = {objects}')
 
     new_facts = []
     removed_facts = []
@@ -56,3 +59,8 @@ def reduce_facts_given_objects(facts, objects):
         else:
             new_facts.append(fact)
     return new_facts
+
+
+def reduce_facts_given_objects_by_heuristic(facts, objects=[], goals=[]):
+    """ add objects that are related to the goal """
+    return reduce_facts_given_objects(facts, objects=objects, goals=goals, use_heuristic=True)
