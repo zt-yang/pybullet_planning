@@ -74,8 +74,6 @@ class PDDLStreamAgent(MotionAgent):
 
         self.pddlstream_problem = None
         self.initial_state = None
-        self.goal_sequence = None
-        self.llamp_api = None
 
         self.state = init
         self.static_facts = []
@@ -85,7 +83,6 @@ class PDDLStreamAgent(MotionAgent):
         self.commands = []
         self.plan_len = 0
         self.pddlstream_kwargs = pddlstream_kwargs
-        self.reduce_object = False
         self.useful_variables = {}
         self.on_map = {}
 
@@ -93,50 +90,37 @@ class PDDLStreamAgent(MotionAgent):
     def set_pddlstream_problem(self, problem_dict, state):
         self.pddlstream_problem = problem_dict['pddlstream_problem']
         self.initial_state = state
-        if 'llamp_api' in problem_dict and problem_dict['llamp_api'] is not None:
-            self.llamp_api = problem_dict['llamp_api']
-        if 'goal_sequence' in problem_dict and problem_dict['goal_sequence'] is not None:
-            self.goal_sequence = problem_dict['goal_sequence']
 
     def init_experiment(self, args, domain_modifier=None, object_reducer=None, comparing=False):
         """ important for using the right files in replanning """
-        if hasattr(args, 'object_reducer'):
-            object_reducer = args.object_reducer
 
         ## related to saving data
         exp_name = args.exp_name
         if comparing and (exp_name != 'original'):
             exp_name = args.exp_subdir
-        if object_reducer is not None:
-            exp_name += '_' + object_reducer
-            self.reduce_object = True
-            if hasattr(self, 'reduce_object_next'):
-                self.reduce_object_next = True
+        exp_name = self._init_object_reducer(args, object_reducer, exp_name)
+
         self.exp_name = exp_name
         self.timestamped_name = add_timestamp(exp_name)
         self.exp_dir = abspath(join(args.exp_dir, args.exp_subdir, self.timestamped_name))
         if not isdir(self.exp_dir):
             os.makedirs(self.exp_dir, exist_ok=True)
-        if self.llamp_api is not None:
-            self.llamp_api.init_log_dir(join(self.exp_dir, 'log'))
-            self.llamp_api.output_html()
 
         self.domain_pddl = args.domain_pddl
         self.stream_pddl = args.stream_pddl
         self.domain_modifier = initialize_domain_modifier(domain_modifier)
-        if ';' in object_reducer:
-            self.object_reducer = [initialize_object_reducer(o) for o in object_reducer]
-        else:
-            self.object_reducer = initialize_object_reducer(object_reducer)
         self.custom_limits = self.robot.custom_limits
 
         ## HPN experiments
         self.comparing = comparing
 
-        ## LLAMP debugging
-        self.debug_step = args.debug_step if hasattr(args, 'debug_step') else None
-        self.try_again_with_full_world = args.try_again_with_full_world if \
-            hasattr(args, 'try_again_with_full_world') else False
+    def _init_object_reducer(self, args, object_reducer, exp_name):
+        if hasattr(args, 'object_reducer'):
+            object_reducer = args.object_reducer
+        if object_reducer is not None:
+            exp_name += '_' + object_reducer
+        self.object_reducer = initialize_object_reducer(object_reducer)
+        return exp_name
 
     def goal_achieved(self, observation):
         from pybullet_tools.logging import myprint as print

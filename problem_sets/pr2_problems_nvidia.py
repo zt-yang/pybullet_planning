@@ -581,7 +581,7 @@ def test_pr2_cabinets(args):
     # goals = [('Holding', 'hand', body), ('OpenedJoint', left_door), ('OpenedJoint', right_door)]
     # goals = [('On', oil, counter), ('OpenedJoint', left_door), ('OpenedJoint', right_door)]
     #
-    # ## ------- help task planing find joints to manipulation
+    # ## ------- help task planning find joints to manipulation
     # goals = [('Toggled', left_door)]
     # goals = ('test_reachable_pose', turkey)
     # goals = ('test_sample_wconf', body)

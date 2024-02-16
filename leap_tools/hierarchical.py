@@ -1006,7 +1006,7 @@ class PDDLStreamEnv(PDDLEnv):
                    'traj', 'seconf', 'handdlegrasp', 'kinhandle']
         facts = [f for f in facts if f not in self.init_preimage and \
                  # (f[0].lower() in allowed
-                 #  # or 'cfree' in f[0].lower()  ## need to compute at replaning time
+                 #  # or 'cfree' in f[0].lower()  ## need to compute at replanning time
                  #  ) and \
                  not (f[0]=='not' and f[1][0] == '=')] ##
         self.init_preimage.extend(facts)

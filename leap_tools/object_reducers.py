@@ -5,8 +5,11 @@ def initialize_object_reducer(name):
     if name == 'object-related':
         return reduce_facts_given_objects
 
-    if name == 'object-heuristic':
-        return reduce_facts_given_objects_by_heuristic
+    if name == 'heuristic-joints':
+        return reduce_by_object_heuristic_joints
+
+    if name == 'all-joints':
+        return reduce_by_object_all_joints
 
     def return_as_is(facts, objects, goals):
         return facts
@@ -40,9 +43,9 @@ def reduce_facts_given_goals(facts, objects=[], goals=[]):
     return filtered_facts
 
 
-def reduce_facts_given_objects(facts, objects=[], goals=[], use_heuristic=False):
+def reduce_facts_given_objects(facts, objects=[], goals=[]):
     from pybullet_tools.logging import myprint
-    myprint(f'\nfilter_init_by_objects(use_heuristic={use_heuristic}) -> objects = {objects}')
+    myprint(f'\nfilter_init_by_objects | objects = {objects}')
 
     new_facts = []
     removed_facts = []
@@ -61,6 +64,28 @@ def reduce_facts_given_objects(facts, objects=[], goals=[], use_heuristic=False)
     return new_facts
 
 
-def reduce_facts_given_objects_by_heuristic(facts, objects=[], goals=[]):
-    """ add objects that are related to the goal """
-    return reduce_facts_given_objects(facts, objects=objects, goals=goals, use_heuristic=True)
+def reduce_by_object_heuristic_joints(facts, objects=[], goals=[]):
+    """ add joints that are related to the surface / space mentioned in the goal """
+    all_joints = []
+    for f in facts:
+        for elem in f[1:]:
+            if isinstance(elem, tuple) and len(elem) == 2:
+                all_joints.append(elem)
+
+    if goals[0][0] in ['on', 'in']:
+        region = goals[0][2]
+        for o in all_joints:
+            if o[0] == region[0] and o not in objects:
+                objects.append(o)
+
+    return reduce_facts_given_objects(facts, objects=objects, goals=goals)
+
+
+def reduce_by_object_all_joints(facts, objects=[], goals=[]):
+    """ add all joints in the problem """
+    for f in facts:
+        for elem in f[1:]:
+            if isinstance(elem, tuple) and len(elem) == 2 and elem not in objects:
+                objects.append(elem)
+
+    return reduce_facts_given_objects(facts, objects=objects, goals=goals)

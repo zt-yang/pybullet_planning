@@ -83,6 +83,8 @@ class WorldBase(object):
         name = self.get_name(body)
         if body in self.body_to_english_name:
             name = self.body_to_english_name[body]
+        if name is None:
+            print('name is None')
         name = ''.join([c for c in name if not c.isdigit()])
         name = name.replace('#', '')
         if '::' in name:
