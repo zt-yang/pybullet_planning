@@ -909,8 +909,6 @@ def check_goal_achieved(facts, goal, world):
             return True
 
         atpose = [f[-1] for f in facts if f[0].lower() in ['atpose'] and f[1] == body]
-        if len(atpose) == 0:
-            print('len(atpose) == 0', goal)
         found = [f for f in facts if f[0].lower() in ['supported', 'contained'] and \
                  f[1] == body and f[2] == atpose and f[2] == supporter]
         if len(found) > 0:
@@ -919,5 +917,4 @@ def check_goal_achieved(facts, goal, world):
 
 
 if __name__ == "__main__":
-    reduce_model_scale('/home/yang/Documents/jupyter-worlds/assets/models/Food/MeatTurkeyLeg/old_scale.txt',
-                       scale_down=10)
+    reduce_model_scale(join(ASSET_PATH, 'models/Food/MeatTurkeyLeg/old_scale.txt'), scale_down=10)

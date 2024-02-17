@@ -117,8 +117,9 @@ class PDDLStreamAgent(MotionAgent):
     def _init_object_reducer(self, args, object_reducer, exp_name):
         if hasattr(args, 'object_reducer'):
             object_reducer = args.object_reducer
+
         if object_reducer is not None:
-            exp_name += '_' + object_reducer
+            exp_name += '_' + object_reducer.replace(';', '_')  ## for ffmpeg
         self.object_reducer = initialize_object_reducer(object_reducer)
         return exp_name
 
