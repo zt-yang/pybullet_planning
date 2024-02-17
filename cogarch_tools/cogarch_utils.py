@@ -182,9 +182,10 @@ def init_gui(args, width=1980, height=1238):
 
 def clear_planning_dir(run_dir=dirname(__file__)):
     for cwd in [run_dir, dirname(run_dir)]:
-        temp_dir = join(cwd, 'temp')
-        if isdir(temp_dir):
-            shutil.rmtree(temp_dir)
+        for dir_name in ['temp', 'statistics', 'visualization', 'cache']:
+            temp_dir = join(cwd, dir_name)
+            if isdir(temp_dir):
+                shutil.rmtree(temp_dir)
 
         log_file = join(cwd, 'txt_file.txt')
         if isfile(log_file):

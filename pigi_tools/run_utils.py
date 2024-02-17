@@ -13,15 +13,7 @@ import shutil
 import argparse
 
 from world_builder.world_utils import parse_yaml
-
-
-def clear_pddlstream_cache():
-    if isdir('visualizations'):
-        shutil.rmtree('visualizations')
-    if isdir('statistics'):
-        shutil.rmtree('statistics')
-    if isdir('temp'):
-        shutil.rmtree('temp')
+from cogarch_tools.cogarch_utils import clear_planning_dir
 
 
 def get_task_names(task_name):
@@ -74,7 +66,7 @@ def get_run_dirs(task_name):
 
 def process_all_tasks(process, task_name, parallel=False, cases=None, path=None,
                       dir=None, case_filter=None, return_dirs=False):
-    clear_pddlstream_cache()
+    clear_planning_dir()
 
     if path is not None:
         cases = [path]
