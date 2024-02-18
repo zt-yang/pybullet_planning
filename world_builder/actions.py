@@ -506,6 +506,8 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
                 cfree_until = i + 6
 
         record_img = False
+        if 'tachObjectAction' in name:
+            print()
         if 'tachObjectAction' in name and body_map is not None:
             body = action.get_body()
             if body in body_map:

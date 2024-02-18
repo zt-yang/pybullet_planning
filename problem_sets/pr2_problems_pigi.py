@@ -482,12 +482,7 @@ def test_full_kitchen(args, **kwargs):
         else:
             raise Exception('Invalid case')
 
-        world.planning_config.update({
-            'supporting_surfaces': world.summarize_supporting_surfaces(),
-            'supported_movables': world.summarize_supported_movables()
-        })
         world.remove_bodies_from_planning(goals=goals, exceptions=objects)
-        # wait_if_gui()
         return {'goals': goals, 'skeleton': skeleton}
 
     return test_full_kitchen_domain(args, loader_fn, **kwargs)

@@ -1,7 +1,7 @@
 ## ---- data source
 task_name: ''
-# given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/kitchen_gpt/230207_172000_original_551'
-given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/kitchen_gpt/240212_110836_vlm-tamp_object-related'
+given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/kitchen/240218_125039_default'
+#given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/kitchen_gpt/240212_110836_vlm-tamp_object-related'
 given_dir: none
 cases: none
 parallel: false

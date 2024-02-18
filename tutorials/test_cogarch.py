@@ -18,14 +18,14 @@ from cogarch_tools.cogarch_run import run_agent
 from leap_tools.hierarchical_agent import HierarchicalAgent
 
 
-def test_vlm_tamp_domain():
+def test_domain():
     run_agent(
         agent_class=HierarchicalAgent,
-        problem='test_kitchen_chicken_soup',
-        exp_subdir='kitchen_gpt', use_rel_pose=True,
+        problem='test_kitchen_chicken_soup',  ## 'test_kitchen_chicken_soup',
+        exp_subdir='kitchen', use_rel_pose=True,
         # observation_model='exposed'
     )
 
 
 if __name__ == '__main__':
-    test_vlm_tamp_domain()
+    test_domain()

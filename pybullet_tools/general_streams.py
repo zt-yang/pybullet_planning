@@ -171,7 +171,7 @@ class RelPose(object):
             pose = get_pose(self.body)
             return 'wp{}={}'.format(index, nice(pose))
         rel_pose = self.get_reference_from_body()
-        return 'rp{}=({},{})'.format(index, (self.reference_body, self.reference_link), nice(rel_pose))
+        return 'rp{}={}'.format(index, nice(rel_pose))
 
 
 def pose_from_attachment(attachment, **kwargs):

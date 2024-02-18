@@ -69,8 +69,6 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     ## -------- planning problem related
     parser.add_argument('-p', '--problem', type=str, default=conf.problem.problem,
                         help='name of the problem function that initiate both the world and goal')
-    parser.add_argument('--open_goal', type=str, default=conf.agent.open_goal,
-                        help='goal of the problem described in english')
     parser.add_argument('--exp_dir', type=str, default=conf.problem.exp_dir,
                         help='path to `experiments` to save outputs')
     parser.add_argument('--exp_subdir', type=str, default=conf.problem.exp_subdir,
@@ -81,6 +79,12 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
                         help='name to the domain pddl file')
     parser.add_argument('-stream', '--stream_pddl', type=str, default=conf.problem.stream_pddl,
                         help='name to the stream pddl file')
+    parser.add_argument('--use_skeleton_constraints', action='store_true',
+                        default=conf.problem.use_skeleton_constraints,
+                        help='When enabled, planner will use skeleton constraints predefined in problem loader, if any')
+    parser.add_argument('--use_subgoal_constraints', action='store_true',
+                        default=conf.problem.use_subgoal_constraints,
+                        help='When enabled, planner will use subgoal constraints predefined in problem loader, if any')
     parser.add_argument('-rel', '--use_rel_pose', action='store_true', default=conf.problem.use_rel_pose,
                         help='When enabled, domain will use relative pose for objects in movable links, e.g. drawers')
     parser.add_argument('--preview_scene', action='store_true', default=conf.problem.preview_scene,

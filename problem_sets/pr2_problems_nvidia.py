@@ -830,7 +830,6 @@ def test_kitchen_chicken_soup(args, **kwargs):
         #########################################################################
 
         """ goals """
-        subgoals = None
         arm = 'left'
         movable = movables[goal_object]
         objects = []
@@ -846,7 +845,6 @@ def test_kitchen_chicken_soup(args, **kwargs):
         goals = ('test_grasps', movable)
         goals = [("Holding", arm, movable)]
         goals = [("On", movable, counter)]
-        # subgoals = [("OpenedJoint", drawer_joint), ("On", movable, counter)]
         # goals = ('test_relpose_inside_gen', (movable, drawer_link))
         # goals = [("In", movable, drawer_link)]
 
@@ -870,15 +868,25 @@ def test_kitchen_chicken_soup(args, **kwargs):
 
         #########################################################################
 
+        subgoals = None
+        if args.use_subgoal_constraints:
+            if goals == [("On", movable, counter)]:
+                subgoals = [("OpenedJoint", drawer_joint), ("On", movable, counter)]
+
+        #########################################################################
+
         skeleton = []
+        if args.use_skeleton_constraints:
+            if goals == [("On", movable, counter)]:
+                skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
+                skeleton += [(k, arm, movable) for k in ['pick_from_supporter', 'place']]
+
         # skeleton += [(k, arm, drawer) for k in pull_actions]
         # skeleton += [(k, arm, goal_object) for k in pick_place_actions[:1]]
-
         # skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
-        # # skeleton += [(k, arm, movable) for k in pick_place_rel_actions[:1]]
-        # # skeleton += [(k, arm, movable) for k in ['pick', 'place_to_supporter']]
+        # skeleton += [(k, arm, movable) for k in pick_place_rel_actions[:1]]
+        # skeleton += [(k, arm, movable) for k in ['pick', 'place_to_supporter']]
         # skeleton += [(k, arm, movable) for k in ['pick_from_supporter', 'place']]
-
         # skeleton += [(k, arm, movable) for k in pick_place_rel_actions]
 
         #########################################################################

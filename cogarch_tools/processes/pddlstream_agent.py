@@ -210,10 +210,7 @@ class PDDLStreamAgent(MotionAgent):
         return None
 
     def replan(self, observation, **kwargs):
-        """ make new plans given a pddlstream_probelm """
-
-        if self.llamp_api is not None:
-            self._replan_preprocess(observation)
+        """ make new plans given a pddlstream_problem """
 
         self.plan_step = self.num_steps
         self.plan, env, knowledge, time_log, preimage = self.solve_pddlstream(
@@ -232,10 +229,6 @@ class PDDLStreamAgent(MotionAgent):
 
         if 'hpn' in self.exp_name:
             self._replan_postprocess(env, preimage)
-
-        ## move the txt_file.txt to log directory
-        if self.llamp_api is not None:
-            self._replan_postprocess()
 
         return self.plan
 

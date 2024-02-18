@@ -209,6 +209,7 @@ class World(WorldBase):
 
         self.name = 'full_world'
         self.robot = None
+        self.body_to_name = {}
         self.ROBOT_TO_OBJECT = {}
         self.BODY_TO_OBJECT = {}
         self.OBJECTS_BY_CATEGORY = defaultdict(list)
@@ -617,6 +618,9 @@ class World(WorldBase):
         print('================================================================')
         return return_dict
 
+    def summarize_attachments(self):
+        return {k.body: (v.parent.body, v.parent_link, v.grasp_pose) for k, v in self.ATTACHMENTS.items()}
+
     def summarize_all_types(self):
         printout = ''
         for typ in ['moveable', 'surface', 'door', 'drawer']:
@@ -748,13 +752,20 @@ class World(WorldBase):
 
     def remove_bodies_from_planning(self, goals=[], exceptions=[]):
 
-        ## important for keeping related links and joints
+        ## important for keeping related links and joints for planning
         self.init_link_joint_relations()
+
+        ## for logging and replaying before objects are removed
+        self.planning_config['supporting_surfaces'] = self.summarize_supporting_surfaces()
+        self.planning_config['supported_movables'] = self.summarize_supported_movables()
+        self.planning_config['attachments'] = self.summarize_attachments()
+        self.planning_config['body_to_name'] = self.get_indices()
 
         print('\nremove_bodies_from_planning | exceptions =', exceptions)
         if isinstance(goals, tuple):
             goals = [goals]
 
+        ## find all relevant objects mentioned in the goal literals
         bodies = []
         for literal in goals:
             for item in literal:
@@ -779,6 +790,7 @@ class World(WorldBase):
 
                     bodies.append(str(item))
 
+        ## find all relevant objects to the given exceptions
         new_exceptions = []
         for b in exceptions:
             if isinstance(b, Object):
@@ -788,6 +800,7 @@ class World(WorldBase):
             new_exceptions.append(str(b))
         exceptions = new_exceptions
 
+        ## remove all other objects
         all_bodies = list(self.BODY_TO_OBJECT.keys())
         for body in all_bodies:
             if str(body) not in bodies and str(body) not in exceptions:
@@ -880,7 +893,7 @@ class World(WorldBase):
 
     ##################################################################################
 
-    def body_to_name(self, body):
+    def get_name_from_body(self, body):
         if body in self.BODY_TO_OBJECT:
             return self.BODY_TO_OBJECT[body].name
         elif body in self.ROBOT_TO_OBJECT:
@@ -1150,6 +1163,7 @@ class World(WorldBase):
     #     visualize_camera_image(image, index, img_dir=self.img_dir, **kwargs)
 
     def init_link_joint_relations(self, all_links=None, all_joints=None, verbose=True):
+        """ find whether moving certain joints would change the link poses or spaces and surfaces """
         if self.inited_link_joint_relations:
             return
         if all_joints is None:
@@ -1177,6 +1191,7 @@ class World(WorldBase):
         body_to_name = {str(k): v.lisdf_name for k, v in self.BODY_TO_OBJECT.items()}
         body_to_name[str(self.robot.body)] = self.robot.name
         body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
+        self.body_to_name = body_to_name
         return body_to_name
 
     def get_typed_objects(self, cat_to_bodies=None, cat_to_objects=None, objects=None):
@@ -1461,7 +1476,6 @@ class World(WorldBase):
         import os
         config = {
             'base_limits': self.robot.custom_limits,
-            'body_to_name': self.get_indices(),
             'system': platform.system(),
             'host': os.uname()[1]
         }
