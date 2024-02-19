@@ -129,9 +129,10 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     set_numpy_seed(seed)
     args.seed = seed
 
-    ## replace the default values with values provided
+    ## replace the default values with values provided, when running in IDE
     for k, v in kwargs.items():
-        args.__dict__[k] = v
+        if v is not None:
+            args.__dict__[k] = v
 
     ## other args, especially those related to problem and planner may be added directly in config files
     args.__dict__['robot_builder_args'] = conf.robot.__dict__

@@ -614,7 +614,8 @@ class World(WorldBase):
         print('--------------- ')
         for movable in set(self.cat_to_objects('moveable')):
             print(padding, movable.name, movable.supporting_surface)
-            return_dict[movable.name] = movable.supporting_surface.name
+            surface = movable.supporting_surface
+            return_dict[movable.name] = surface.name if surface is not None else surface
         print('================================================================')
         return return_dict
 
@@ -918,7 +919,7 @@ class World(WorldBase):
     def name_to_object(self, name, **kwargs):
         body = self.name_to_body(name, **kwargs)
         if body is None:
-            return name  ## None ## object doesn't exist
+            return None ## object doesn't exist
         if body in self.BODY_TO_OBJECT:
             return self.BODY_TO_OBJECT[body]
         if body in self.REMOVED_BODY_TO_OBJECT:
@@ -1292,11 +1293,20 @@ class World(WorldBase):
                 continue
             ## initial position
             position = get_body_joint_position(body)
-            init += [('Joint', body), ('UnattachedJoint', body),
+            init += [('Joint', body), ('UnattachedJoint', body), ('IsJointTo', body, body[0]),
                      ('Position', body, position), ('AtPosition', body, position),
-                     ('IsOpenedPosition' if is_joint_open(body) else 'IsClosedPosition', body, position),
-                     ('IsJointTo', body, body[0])
+                     # ('IsOpenedPosition' if is_joint_open(body) else 'IsClosedPosition', body, position),
                      ]
+            if not is_joint_open(body, threshold=1):
+                init += [('IsClosedPosition', body, position)]
+            else:
+                print(f'get_world_fluents | joint {body} is fully open')
+
+            if not is_joint_open(body, threshold=1, is_closed=True):
+                init += [('IsOpenedPosition', body, position)]
+            else:
+                print(f'get_world_fluents | joint {body} is fully closed')
+
             if body in knobs:
                 controlled = BODY_TO_OBJECT[body].controlled
                 if controlled is not None:

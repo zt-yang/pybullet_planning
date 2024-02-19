@@ -50,6 +50,18 @@ def reduce_facts_given_objects(facts, objects=[], goals=[]):
     from pybullet_tools.logging import myprint
     myprint(f'\nfilter_init_by_objects | objects = {objects}')
 
+    ## identify goal related objects
+    objects_in_goals = []
+    for goal in goals:
+        for elem in goal[1:]:
+            if isinstance(elem, int) and elem in objects:
+                objects_in_goals.append(elem)
+
+    ## find relevant supporting surfaces of goal objects
+    surfaces = [f[-1] for f in facts if f[0].lower() in ['relpose', 'contained'] and f[1] in objects_in_goals]
+    objects += [o for o in surfaces if o not in objects]
+
+    ## retain only facts involving the objects
     new_facts = []
     removed_facts = []
     for fact in facts:

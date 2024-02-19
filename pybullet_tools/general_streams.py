@@ -548,12 +548,17 @@ def sample_joint_position_gen(num_samples=14, closed=False):
                     pstns.append(upper - math.pi/2)
                     pstns.extend([np.random.uniform(lower, upper - a_third) for k in range(num_samples)])
 
+        if closed:
+            pstns = [pstn for pstn in pstns if pstn < pstn1.value]
+        else:
+            pstns = [pstn for pstn in pstns if pstn > pstn1.value]
+
         pstns = [round(pstn, 3) for pstn in pstns]
         print(f'\tsample_joint_position_gen({o}, closed={closed})', pstns)
         positions = [(Position(o, p), ) for p in pstns]
 
-        for pstn1 in positions:
-            yield pstn1
+        for pstn2 in positions:
+            yield pstn2
         # return positions
     return fn
 

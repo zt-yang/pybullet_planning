@@ -774,8 +774,9 @@ def test_kitchen_doors(args, **kwargs):
         # goals = [("OpenedJoint", door)]
 
         skeleton = []
-        # skeleton += [(k, arm, door) for k in pull_actions]
-        # skeleton += [(k, arm, bottle) for k in pick_place_actions[:1]]
+        skeleton += [(k, arm, door) for k in pull_actions]
+        skeleton += [(k, arm, door) for k in pull_actions]
+        skeleton += [(k, arm, bottle) for k in pick_place_actions[:1]]
 
         ## --- for recording door open demo
         # world.open_joint_by_name('chewie_door_left_joint')
@@ -786,6 +787,63 @@ def test_kitchen_doors(args, **kwargs):
 
 
 ##########################################################################################
+
+
+def test_kitchen_braiser(args, **kwargs):
+    def loader_fn(world, **world_builder_args):
+        spaces = {
+            'counter': {
+                'sektion': [],
+            },
+        }
+        surfaces = {
+            'counter': {
+                'front_right_stove': ['BraiserBody'],
+                'indigo_tmp': ['BraiserLid'],
+            },
+        }
+        custom_supports = {
+            'fork': 'indigo_tmp'
+        }
+
+        load_full_kitchen(world, surfaces=surfaces, spaces=spaces, load_cabbage=False)
+        movables, movable_to_doors = load_nvidia_kitchen_movables(world, custom_supports=custom_supports)
+        load_braiser_bottom(world)
+
+        movable = world.name_to_body('fork')
+        obstacle = world.name_to_body('braiserlid')
+        counter = world.name_to_body('indigo_tmp')
+        target_surface = world.name_to_body('braiser_bottom')
+        objects = [obstacle, counter]
+        skeleton = []
+        subgoals = []
+
+        #########################################################################
+
+        """ goals """
+        arm = 'left'
+        goals = [("Holding", arm, movable)]
+        goals = [("On", movable, target_surface)]
+
+        #########################################################################
+
+        if args.use_skeleton_constraints:
+            skeleton += [(k, arm, obstacle) for k in pick_place_actions]
+            skeleton += [(k, arm, movable) for k in pick_place_actions]
+
+        if args.use_subgoal_constraints:
+            subgoals = [('on', obstacle, counter)] + goals
+
+        #########################################################################
+
+        ## --- for recording door open demo
+        # world.open_joint_by_name('chewie_door_left_joint')
+
+        world.remove_bodies_from_planning(goals, exceptions=objects)
+
+        return {'goals': goals, 'skeleton': skeleton, 'subgoals': subgoals}
+
+    return test_nvidia_kitchen_domain(args, loader_fn, initial_xy=(2, 5), **kwargs)
 
 
 def test_kitchen_chicken_soup(args, **kwargs):

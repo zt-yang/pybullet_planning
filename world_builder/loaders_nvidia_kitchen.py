@@ -117,6 +117,12 @@ def load_full_kitchen(world, load_cabbage=True, **kwargs):
     return None
 
 
+def load_braiser_bottom(world):
+    braiser = world.name_to_body('braiserbody')
+    world.add_object(Surface(braiser, link_from_name(braiser, 'braiser_bottom')))
+    world.add_to_cat(world.name_to_body('braiserlid'), 'moveable')
+
+
 ##########################################################
 
 
@@ -224,7 +230,11 @@ def load_nvidia_kitchen_movables(world: World, open_doors_for: list = [], custom
             load_asset(asset_name, x=0, y=0, yaw=random.uniform(-math.pi, math.pi), RANDOM_INSTANCE=rand_ins),
             category=category, name=name
         ))
-        movable.supporting_surface = world.name_to_object(supporter_name)
+        supporting_surface = world.name_to_object(supporter_name)
+        if supporting_surface is None:
+            print("load_nvidia_kitchen_movables | no supporting surface", supporter_name)
+            continue
+        movable.supporting_surface = supporting_surface
 
         interactive = name in []  ## 'cabbage'
         doors = supporter_to_doors[supporter_name] if supporter_name in supporter_to_doors else []

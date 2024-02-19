@@ -18,11 +18,12 @@ from cogarch_tools.cogarch_run import run_agent
 from leap_tools.hierarchical_agent import HierarchicalAgent
 
 
+problem = ['test_kitchen_chicken_soup', 'test_kitchen_doors', 'test_kitchen_braiser'][-1]
+
+
 def test_domain():
     run_agent(
-        agent_class=HierarchicalAgent,
-        problem='test_kitchen_chicken_soup',  ## 'test_kitchen_chicken_soup',
-        exp_subdir='kitchen', use_rel_pose=True,
+        agent_class=HierarchicalAgent, problem=None, use_rel_pose=True,
         # observation_model='exposed'
     )
 

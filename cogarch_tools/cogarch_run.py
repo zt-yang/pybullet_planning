@@ -33,7 +33,7 @@ EXPERIMENT_DIR = abspath(join(dirname(__file__), '..', '..', 'experiments'))
 
 def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH,
               problem='test_studio', domain='pr2_mamao.pddl', stream='pr2_stream_mamao.pddl',
-              exp_dir=EXPERIMENT_DIR, exp_subdir='test', exp_name='default', reset=False,
+              exp_dir=EXPERIMENT_DIR, exp_subdir=None, exp_name='default', reset=False,
               record_mp4=False, record_problem=True, save_testcase=False,
               record_plans=False, data_generation=False, use_rel_pose=False,
               domain_modifier=None, object_reducer=None, comparing=False, **kwargs):
@@ -45,7 +45,11 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
     """
 
     from pybullet_tools.logging import myprint as print
-    initialize_logs()  ## so everything would be loaded to txt log file
+
+    initialize_logs()  ## everything would be loaded to txt log file
+
+    if exp_subdir is None and isinstance(problem, str):
+        exp_subdir = problem
     args = get_parser(config=config, config_root=config_root,
                       problem=problem, exp_dir=exp_dir, exp_subdir=exp_subdir, exp_name=exp_name,
                       domain=domain, stream=stream, use_rel_pose=use_rel_pose,
