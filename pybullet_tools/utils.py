@@ -689,7 +689,7 @@ class VideoSaver(Saver):
     def restore(self):
         if self.log_id is not None:
             p.stopStateLogging(self.log_id)
-            print('Saved', self.path)
+            print('Saved mp4 to', self.path)
 
 class Profiler(Saver):
     fields = ['tottime', 'cumtime', None]

@@ -337,6 +337,8 @@ def reorg_output_dirs(exp_name, output_dir, log_failures=False):
 
 
 def clear_empty_exp_dirs(exp_dir):
+    if not isdir(exp_dir):
+        return
     run_dirs = [join(exp_dir, f) for f in listdir(exp_dir) if isdir(join(exp_dir, f))]
     for run_dir in run_dirs:
         if len(listdir(run_dir)) == 0:

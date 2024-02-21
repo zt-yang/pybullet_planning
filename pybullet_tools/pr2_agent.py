@@ -70,13 +70,16 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
     print('-------------------------------------')
     tc = dict(teleport=t, custom_limits=l)
 
-    stream_map = {
-        'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c, verbose=True)),
-        'sample-relpose': from_gen_fn(get_stable_gen(p, collisions=c, relpose=True, verbose=True)),
-        'sample-pose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, verbose=True)),
-        'sample-relpose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, relpose=True, verbose=True)),
+    debug_pose = False
+    debug_grasp = False
 
-        'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False, verbose=True,
+    stream_map = {
+        'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c, verbose=debug_pose)),
+        'sample-relpose': from_gen_fn(get_stable_gen(p, collisions=c, relpose=True, verbose=debug_pose)),
+        'sample-pose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, verbose=debug_pose)),
+        'sample-relpose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, relpose=True, verbose=debug_pose)),
+
+        'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False, verbose=debug_grasp,
                                                        top_grasp_tolerance=None, debug=True)),  ## PI/4
         'compute-pose-kin': from_fn(get_compute_pose_kin()),
         'compute-pose-rel-kin': from_fn(get_compute_pose_rel_kin()),

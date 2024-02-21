@@ -25,13 +25,13 @@ problem:
   exp_name: 'original'
   domain_pddl: pr2_domain_new.pddl
   stream_pddl: pr2_stream_new.pddl
-  use_skeleton_constraints: true
+  use_skeleton_constraints: false
   use_subgoal_constraints: false
   use_rel_pose: true
   preview_plan: false
   preview_scene: false
   record_problem: true
-  record_mp4: true
+  record_mp4: false
   save_testcase: true
 
 robot:
