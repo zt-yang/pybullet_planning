@@ -1,7 +1,13 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-from os.path import join
+
+import sys
+from os.path import join, abspath, dirname, isdir, isfile
+from os import listdir, pardir
+RD = abspath(join(dirname(__file__), pardir, pardir))
+sys.path.extend([join(RD), join(RD, 'pddlstream'), join(RD, 'pybullet_planning'), join(RD, 'lisdf')])
+
 from world_builder.paths import pbp_path
 from pigi_tools.replay_utils import run_replay
 

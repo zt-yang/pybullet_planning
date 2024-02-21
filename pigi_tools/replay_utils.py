@@ -138,9 +138,12 @@ def load_replay_conf(conf_path):
     # conf = SimpleNamespace(**kwargs)
 
     c['save_jpg'] = c['save_jpg'] or c['save_composed_jpg'] or c['save_gif']
-    c['step_by_step'] = c['step_by_step'] and has_getch()
     c['use_gym'] = c['use_gym'] and has_srl_stream()
+    c['step_by_step'] = c['step_by_step'] and has_getch()
     # c['cases'] = get_sample_envs_for_rss(task_name=c['task_name'], count=None)
+
+    if c['step_by_step']:
+        c['save_mp4'] = False
 
     if c['given_path']:
         c['visualize_collisions'] = True

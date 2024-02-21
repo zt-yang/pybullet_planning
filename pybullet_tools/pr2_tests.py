@@ -35,6 +35,7 @@ from world_builder.entities import Object
 def process_debug_goals(state, goals, init):
     if isinstance(goals, tuple):
         test, args = goals
+        ff = []
         if test == 'test_handle_grasps':
             goals = test_handle_grasps(state, args)
         elif test == 'test_grasps':
@@ -43,12 +44,12 @@ def process_debug_goals(state, goals, init):
             goals = test_grasp_ik(state, init, args)
         elif test == 'test_pose_gen':
             goals, ff = test_pose_gen(state, init, args)
-            init += ff
         elif test == 'test_relpose_inside_gen':
             goals, ff = test_relpose_inside_gen(state, init, args)
-            init += ff
+        elif test == 'test_joint_open':
+            goals, ff = test_joint_open(init, args)
         elif test == 'test_joint_closed':
-            goals = test_joint_closed(state, init, args)
+            goals, ff = test_joint_closed(init, args)
         elif test == 'test_door_pull_traj':
             goals = test_door_pull_traj(state, init, args)
         elif test == 'test_reachable_pose':
@@ -64,6 +65,7 @@ def process_debug_goals(state, goals, init):
             # test_drawer_open(state, goals)
             print('\n\n\npr2_agent.pddlstream_from_state_goal | didnt implement', goals)
             sys.exit()
+        init += ff
 
     goal = [AND]
     goal += goals
@@ -197,7 +199,7 @@ def test_grasps(state, name='cabbage', visualize=True):
     return goals
 
 
-def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=False, collisions=False, pause_each=False,
+def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=True, collisions=False, pause_each=False,
                      TEST_ATTACHMENT=False):
     robot = state.robot
     colors = [BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED]
@@ -351,36 +353,52 @@ def test_relpose_inside_gen(problem, init, args):
     return [('AtRelPose', o, p, s)], [('RelPose', o, p, s)]
 
 
-def test_joint_closed(problem, init, o):
-    pstn = [i for i in init if i[0].lower() == "AtPosition".lower() and i[1] == o][0][-1]
+def test_joint_open(init, o):
+    pstn1 = [i for i in init if i[0].lower() == "AtPosition".lower() and i[1] == o][0][-1]
+    funk = sample_joint_position_gen(visualize=True)
+    goal = []
+    new_facts = []
+    for (pstn2,) in funk(o, pstn1):
+        print(pstn2)
+        goal = [('AtPosition', o, pstn2)]
+        new_facts = [('IsSampledPosition', o, pstn1, pstn2)]
+        break
+    return goal, new_facts
+
+
+def test_joint_closed(init, o):
+    pstn1 = [i for i in init if i[0].lower() == "AtPosition".lower() and i[1] == o][0][-1]
     funk = sample_joint_position_gen(closed=True)
     funk = sample_joint_position_closed_gen()
     goal = []
-    for (pstn1,) in funk(o, pstn):
-        print(pstn1)
-        goal = [('AtPosition', o, pstn1)]
-    return goal
+    new_facts = []
+    for (pstn2,) in funk(o, pstn1):
+        print(pstn2)
+        goal = [('AtPosition', o, pstn2)]
+        new_facts = [('IsSampledPosition', o, pstn1, pstn2)]
+    return goal, new_facts
 
 
 def test_door_pull_traj(problem, init, o):
     pst1 = [f[2] for f in init if f[0].lower() == 'atposition' and f[1] == o][0]
     funk1 = sample_joint_position_gen()
-    pst2 = funk1(o, pst1)[0][0]
+    for (pst2, ) in funk1(o, pst1):
 
-    funk2 = get_handle_grasp_gen(problem, visualize=True)
-    # g = funk2(o)[0][0]
-    grasps = funk2(o)
+        funk2 = get_handle_grasp_gen(problem, visualize=True)
+        # g = funk2(o)[0][0]
+        grasps = funk2(o)
 
-    q1 = [f[1] for f in init if f[0].lower() == 'atseconf'][0]
-    funk3 = get_pull_door_handle_motion_gen(problem, visualize=False, verbose=False)
-    for i in range(len(grasps)):
-        (g,) = grasps[i]
-        print(f'\n!!!! pr2_agent.test_door_pull_traj | grasp {i}: {nice(g.value)}')
-        result = funk3('hand', o, pst1, pst2, g, q1)
-        if result != None:
-            [q2, cmd] = result
-            return [("AtPosition", o, pst2)]
-    print('\n\n!!!! cant find any handle grasp that works for', o)
+        q1 = [f[1] for f in init if f[0].lower() == 'atseconf'][0]
+        funk3 = get_pull_door_handle_motion_gen(problem, visualize=False, verbose=False)
+        for i in range(len(grasps)):
+            (g,) = grasps[i]
+            print(f'\n!!!! pr2_agent.test_door_pull_traj | grasp {i}: {nice(g.value)}')
+            result = funk3('hand', o, pst1, pst2, g, q1)
+            if result is not None:
+                [q2, cmd] = result
+                return [("AtPosition", o, pst2)]
+        print('\n\n!!!! cant find any handle grasp that works for', o)
+        break
     sys.exit()
 
 

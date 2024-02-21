@@ -27,3 +27,8 @@ mamao_tools/*.json
 
 *.png
 *.ipynb_checkpoints/
+
+temp/
+statistics/
+visualization/
+txt_file.txt

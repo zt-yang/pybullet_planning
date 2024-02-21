@@ -573,10 +573,9 @@ def get_test_skeleton():
 
 
 def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visualize=True,
-              fc=None, domain_modifier=None,
+              fc=None, domain_modifier=None, skeleton=None, subgoals=None, soft_subgoals=False,
               max_time=INF, downward_time=10, evaluation_time=10,
-              max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=0,
-              skeleton=None, subgoals=None, soft_subgoals=False, **kwargs):
+              max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=0, **kwargs):
 
     from pybullet_tools.logging import myprint as print
 
@@ -584,7 +583,7 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visual
     # subgoals = get_test_subgoals(pddlstream_problem.init)
 
     if skeleton is not None and len(skeleton) > 0:
-        print('-' * 40, f' skeleton ', '-' * 40)
+        print('-' * 40 + f' skeleton ' + '-' * 40)
         print('\n'.join([str(s) for s in skeleton]))
         print('-' * 100)
         constraints = PlanConstraints(skeletons=[repair_skeleton(skeleton)], exact=False, max_cost=max_cost + 1)
@@ -592,7 +591,7 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visual
         if subgoals is None:
             subgoals = []
         if len(subgoals) > 0:
-            print('-' * 40, f' soft_subgoals: {soft_subgoals} ', '-' * 40)
+            print('-' * 40 + f' soft_subgoals: {soft_subgoals} ' + '-' * 40)
             print('\n'.join([str(s) for s in subgoals]))
             print('-' * 100)
         subgoal_costs = len(subgoals) * [100] if soft_subgoals else None
@@ -604,11 +603,9 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visual
 
     planner_kwargs_default = dict(planner='ff-astar1', unit_costs=False, success_cost=INF, verbose=True,
                                   debug=False, unique_optimistic=True, forbid=True, bind=True)
-    planner_kwargs = dict(max_planner_time=downward_time, max_time=max_time,
-                          initial_complexity=5, visualize=visualize,
+    planner_kwargs = dict(max_planner_time=downward_time, max_time=max_time, evaluation_time=evaluation_time,
+                          initial_complexity=5, visualize=visualize, fc=fc, domain_modifier=domain_modifier,
                           # unit_efforts=True, effort_weight=None,
-                          fc=fc, domain_modifier=domain_modifier,
-                          evaluation_time=evaluation_time,
                           max_solutions=max_solutions, search_sample_ratio=0, **kwargs)
     planner_dict, plan_dataset = get_diverse_kwargs(planner_kwargs, diverse=diverse, max_plans=max_plans)
     print('-' * 25 + ' PLANNER KWARGS ' + '-' * 25)

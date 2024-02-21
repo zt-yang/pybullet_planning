@@ -6,6 +6,21 @@ from pybullet_tools.bullet_utils import sample_pose, xyzyaw_to_pose
 
 from world_builder.loaders import *
 
+part_names = {
+    'sektion': 'side cabinet',
+    'chewie_door_left_joint': 'side cabinet left door',
+    'chewie_door_right_joint': 'side cabinet right door',
+    'indigo_drawer_top': 'top drawer space',
+    'indigo_drawer_top_joint': 'top drawer',
+    'indigo_tmp': 'counter top on the right',
+    'hitman_tmp': 'counter top on the left',
+    'braiserlid': 'braiser lid',
+    'braiserbody': 'braiser body',
+    'braiser_bottom': 'braiser bottom',
+    'front_right_stove': 'stove',
+    'knob_joint_1': 'stove knob'
+}
+
 ###############################################################################
 
 default_supports = [
@@ -47,8 +62,8 @@ saved_poses = {
     ('cabbage', 'shelf_bottom'): ((0.668, 4.862, 0.83), (0, 0, 0.747, 0.665)),
     # ('cabbage', 'upper_shelf'): ((1.006, 6.295, 0.461), (0.0, 0.0, 0.941, 0.338)),
     # ('cabbage', 'indigo_drawer_top'): ((1.12, 8.671, 0.726), (0.0, 0.0, 0.173, 0.985)),
-    ('salt-shaker', 'sektion'): ((0.771, 7.071, 1.146), (0.0, 0.0, 0.175, 0.98)),
-    ('pepper-shaker', 'sektion'): ((0.764, 7.303, 1.16), (0.0, 0.0, 0.95, 0.34)),
+    ('salt-shaker', 'sektion'): ((0.771, 7.071, 1.146), (0.0, 0.0, 1.0, 0)),
+    ('pepper-shaker', 'sektion'): ((0.764, 7.303, 1.16), (0.0, 0.0, 1.0, 0)),
     ('fork', 'indigo_tmp'): ((0.767, 8.565, 0.842), (0.0, 0.0, 0.543415, 0.8395)),
 }
 
@@ -82,6 +97,9 @@ saved_base_confs = {
     # ],
     ('chicken-leg', 'indigo_tmp'):  [
         ((1.785, 8.656, 0.467, 0.816), {0: 1.785, 1: 8.656, 2: 0.816, 17: 0.467, 61: 2.277, 62: 0.716, 63: -0.8, 65: -0.399, 66: 1.156, 68: -0.468, 69: -0.476}),
+    ],
+    ('pepper-shaker', 'sektion'): [
+        ((1.619, 7.741, 0.458, -3.348), {0: 1.619, 1: 7.741, 2: -3.348, 17: 0.458, 61: 0.926, 62: 0.187, 63: 1.498, 65: -0.974, 66: 3.51, 68: -0.257, 69: 1.392}),
     ]
 }
 
@@ -121,6 +139,57 @@ def load_braiser_bottom(world):
     braiser = world.name_to_body('braiserbody')
     world.add_object(Surface(braiser, link_from_name(braiser, 'braiser_bottom')))
     world.add_to_cat(world.name_to_body('braiserlid'), 'moveable')
+
+
+def load_cooking_mechanism(world):
+    load_braiser_bottom(world)
+    stove_knob = world.add_joints_by_keyword('oven', 'knob_joint_1')[0]
+    # dishwasher_door = world.add_joints_by_keyword('dishwasher', 'dishwasher_door')[0]
+
+
+def reduce_objects_for_open_kitchen(world):
+    object_names = ['chicken-leg', 'fridge', 'fridge_door', 'fork',
+                    'braiserbody', 'braiserlid', 'braiser_bottom',
+                    'indigo_drawer_top', 'indigo_drawer_top_joint', 'indigo_tmp',
+                    'chewie_door_left_joint', 'chewie_door_right_joint',
+                    'salt-shaker', 'pepper-shaker',
+                    'front_right_stove', 'knob_joint_1']
+    objects = [world.name_to_body(name) for name in object_names]
+    world.set_english_names(part_names)
+    world.remove_bodies_from_planning([], exceptions=objects)
+    return objects
+
+
+def load_open_problem_kitchen(world, reduce_objects=False, open_doors_for=[]):
+    spaces = {
+        'counter': {
+            'sektion': [],
+            'indigo_drawer_top': [],
+        },
+        'dishwasher': {
+            'upper_shelf': []
+        }
+    }
+    surfaces = {
+        'counter': {
+            'front_right_stove': ['BraiserBody'],
+            'hitman_tmp': [],
+            'indigo_tmp': ['BraiserLid'],
+        },
+    }
+    custom_supports = {
+        'cabbage': 'shelf_bottom',
+        'fork': 'indigo_drawer_top'
+    }
+    load_full_kitchen(world, surfaces=surfaces, spaces=spaces, load_cabbage=False)
+    movables, movable_to_doors = load_nvidia_kitchen_movables(world, open_doors_for=open_doors_for,
+                                                              custom_supports=custom_supports)
+    load_cooking_mechanism(world)
+
+    objects = None
+    if reduce_objects:
+        reduce_objects_for_open_kitchen(world)
+    return objects, movables, movable_to_doors
 
 
 ##########################################################

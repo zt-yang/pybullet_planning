@@ -595,7 +595,7 @@ class World(WorldBase):
         from pybullet_tools.logging import myprint as print
         return_dict = {}
         padding = '    '
-        print('================ summarize_supporting_surfaces ================')
+        print('\n================ summarize_supporting_surfaces ================')
         print(padding, 'surface', self.cat_to_objects('surface'))
         print(padding, 'supporter', self.cat_to_objects('supporter'))
         print('--------------- ')
@@ -609,7 +609,7 @@ class World(WorldBase):
         from pybullet_tools.logging import myprint as print
         return_dict = {}
         padding = '    '
-        print('================ summarize_supported_movables ================')
+        print('\n================ summarize_supported_movables ================')
         print(padding, 'moveable', self.cat_to_objects('moveable'))
         print('--------------- ')
         for movable in set(self.cat_to_objects('moveable')):
@@ -696,19 +696,31 @@ class World(WorldBase):
             #         typ = self.sup_categories[typ]
 
             line = f'{body}\t  |  {typ_str}: {object.name}'
+
+            ## partnet mobility objects
+            if hasattr(object, 'mobility_identifier'):
+                line += f' | asset: {object.mobility_identifier}'
+
+            ## joints
             if isinstance(body, tuple) and len(body) == 2:
                 b, j = body
                 pose = get_joint_position(b, j)
                 if hasattr(object, 'handle_link') and object.handle_link is not None:
                     line += f'\t|  Handle: {get_link_name(b, object.handle_link)}'
                 line += f'\t|  JointLimit: {nice(get_joint_limits(b, j))}'
+
+            ## links
             elif isinstance(body, tuple) and len(body) == 3:
                 b, _, l = body
                 pose = get_link_pose(b, l)
+
+            ## whole objects
             else:
                 pose = get_pose(body)
+
             line += f"\t|  Pose: {nice(pose)}"
 
+            ## bodies not included in planning
             if body in REMOVED_BODY_TO_OBJECT:
                 # if object.category in ['filler']:
                 #     continue
@@ -716,6 +728,7 @@ class World(WorldBase):
                     print_fn('----------------')
                     print_not = True
                 line += f"\t (excluded from planning)"
+
             elif body in static_bodies:
                 if not print_not_2:
                     print_fn('----------------')
@@ -805,12 +818,11 @@ class World(WorldBase):
         all_bodies = list(self.BODY_TO_OBJECT.keys())
         for body in all_bodies:
             if str(body) not in bodies and str(body) not in exceptions:
-                if body == (3, None, 48):
-                    print()
                 self.remove_body_from_planning(body)
 
         for cat, objs in self.REMOVED_OBJECTS_BY_CATEGORY.items():
             print(f'\t{cat} ({len(objs)}) \t', [f"{obj.name}|{obj.pybullet_name}" for obj in objs])
+        print()
 
     def remove_body_from_planning(self, body):
         if body is None: return
@@ -1178,12 +1190,12 @@ class World(WorldBase):
             new_link_poses = {(body2, _, link): get_link_pose(body, link) for (body2, _, link) in all_links if body == body2}
             changed_links = [k for k, v in new_link_poses.items() if v != all_link_poses[k]]
             if verbose:
-                print(f'\tjoint={get_joint_name(body, joint)}|{(body, joint)}')
+                print(f'\tjoint = {get_joint_name(body, joint)}|{(body, joint)}')
             for body_link in changed_links:
                 obj = self.BODY_TO_OBJECT[body_link]
                 obj.set_governing_joints([(body, joint)])
                 if verbose:
-                    print(f'\t\tlink={get_link_name(body_link[0], body_link[-1])}|{body_link}')
+                    print(f'\t\tlink = {get_link_name(body_link[0], body_link[-1])}|{body_link}')
             set_joint_position(body, joint, position)
         self.inited_link_joint_relations = True
 

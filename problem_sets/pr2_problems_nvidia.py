@@ -616,7 +616,7 @@ def test_nvidia_kitchen_domain(args, world_loader_fn, initial_xy=(1.5, 6), **kwa
     kwargs['robot_builder_args'].update({
         'custom_limits': ((1, 3, 0), (5, 10, 3)),
         'initial_xy': initial_xy,
-        'draw_base_limits': True
+        'draw_base_limits': args.draw_base_limits
     })
     return test_template(args, robot_builder_fn=build_robot_from_args, world_loader_fn=world_loader_fn, **kwargs)
 
@@ -808,7 +808,7 @@ def test_kitchen_braiser(args, **kwargs):
 
         load_full_kitchen(world, surfaces=surfaces, spaces=spaces, load_cabbage=False)
         movables, movable_to_doors = load_nvidia_kitchen_movables(world, custom_supports=custom_supports)
-        load_braiser_bottom(world)
+        load_cooking_mechanism(world)
 
         movable = world.name_to_body('fork')
         obstacle = world.name_to_body('braiserlid')
@@ -848,64 +848,29 @@ def test_kitchen_braiser(args, **kwargs):
 
 def test_kitchen_chicken_soup(args, **kwargs):
     def loader_fn(world, **world_builder_args):
-        spaces = {
-            'counter': {
-                'sektion': [],  ## 'OilBottle',
-                # 'dagger': [],  ## 'Salter'
-                # 'hitman_drawer_top': [],  ## 'Pan'
-                # 'hitman_drawer_bottom': [],
-                'indigo_drawer_top': [],
-                # 'indigo_drawer_bottom': [],
-                # 'indigo_tmp': ['PotBody']
-            },
-            'dishwasher': {
-                'upper_shelf': []
-            }
-        }
-        surfaces = {
-            'counter': {
-                # 'front_left_stove': [],  ## 'Kettle'
-                'front_right_stove': ['BraiserBody'],  ## 'PotBody',
-                # 'back_left_stove': [],
-                # 'back_right_stove': [],
-                # 'range': [], ##
-                'hitman_tmp': [],  ## 'Microwave'
-                'indigo_tmp': ['BraiserLid'],  ## 'MeatTurkeyLeg', 'Toaster',
-            },
-        }
-        custom_supports = {
-            'cabbage': 'shelf_bottom',
-            'fork': 'indigo_drawer_top'
-        }
-        goal_object = ['chicken-leg', 'cabbage', 'fork'][2]
+        goal_object = ['chicken-leg', 'cabbage', 'fork', 'salt-shaker'][-1]
         open_doors_for = []  ## goal_object
+        objects, movables, movable_to_doors = load_open_problem_kitchen(world, open_doors_for=open_doors_for)
 
-        load_full_kitchen(world, surfaces=surfaces, spaces=spaces, load_cabbage=False)
-        movables, movable_to_doors = load_nvidia_kitchen_movables(world, open_doors_for=open_doors_for,
-                                                                  custom_supports=custom_supports)
-        counter = world.name_to_body('indigo_tmp')
 
         #########################################################################
 
         """ goals """
         arm = 'left'
-        movable = movables[goal_object]
         objects = []
-        door = world.name_to_body('fridge_door')
+        fridge_door = world.name_to_body('fridge_door')
+        counter = world.name_to_body('indigo_tmp')
         drawer_joint = world.name_to_body('indigo_drawer_top_joint')
         drawer_link = world.name_to_body('indigo_drawer_top')
+        cabinet_doors = [world.name_to_body(name) for name in ['chewie_door_left_joint', 'chewie_door_right_joint']]
         dishwasher_space = world.name_to_body('upper_shelf')
         dishwasher_joint = world.name_to_body('dishwasher_door')
 
         # world.open_joint(drawer_joint)
-        world.open_joint(dishwasher_joint)
+        # world.open_joint(dishwasher_joint)
 
-        goals = ('test_grasps', movable)
-        goals = [("Holding", arm, movable)]
-        goals = [("On", movable, counter)]
-        # goals = ('test_relpose_inside_gen', (movable, drawer_link))
-        # goals = [("In", movable, drawer_link)]
-
+        # door = cabinet_doors[1]  ## fridge_door | cabinet_doors[0] | cabinet_doors[1]
+        # goals = ('test_joint_open', door)
         # goals = ('test_joint_closed', door)
         # goals = ('test_handle_grasps', door)
         # goals = [("OpenedJoint", drawer_joint)]
@@ -915,29 +880,46 @@ def test_kitchen_chicken_soup(args, **kwargs):
         # goals = [("OpenedJoint", drawer)]
         # goals = [("OpenedJoint", drawer), ("Holding", arm, movable)]
 
+        movable = movables[goal_object]
+        goals = ('test_grasps', movable)
+        goals = [("Holding", arm, movable)]
+        # goals = [("On", movable, counter)]
+        # goals = ('test_relpose_inside_gen', (movable, drawer_link))
+        # goals = [("In", movable, drawer_link)]
+
         #########################################################################
 
         # objects += [movable]  ## Holding
         # objects += [drawer_joint]  ## OpenedJoint
         # objects += [drawer_link]  ## In (place)
-        objects += [drawer_joint, drawer_link]  ## In (place_rel)
+        # objects += [drawer_joint, drawer_link]  ## In (place_rel)
         # objects += [dishwasher_space]  ## dishwasher_joint,
         # objects += [dishwasher_joint, dishwasher_space]
+        objects += cabinet_doors
 
         #########################################################################
 
         subgoals = None
         if args.use_subgoal_constraints:
-            if goals == [("On", movable, counter)]:
+            if goals == [("On", movables['fork'], counter)]:
                 subgoals = [("OpenedJoint", drawer_joint), ("On", movable, counter)]
 
         #########################################################################
 
         skeleton = []
         if args.use_skeleton_constraints:
-            if goals == [("On", movable, counter)]:
+            if goals == [("On", movables['fork'], counter)]:
                 skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
                 skeleton += [(k, arm, movable) for k in ['pick_from_supporter', 'place']]
+            if goals in [
+                ('test_grasps', movables['salt-shaker']), ('test_grasps', movables['pepper-shaker']),
+                [('Holding', arm, movables['salt-shaker'])], [('Holding', arm, movables['pepper-shaker'])],
+            ]:
+                skeleton += [(k, arm, cabinet_doors[0]) for k in pull_actions]
+                skeleton += [(k, arm, cabinet_doors[1]) for k in pull_actions]
+                body = goals[-1] if isinstance(goals, tuple) else goals[0][-1]
+                skeleton += [(pick_place_actions[0], arm, body)]
+                set_camera_target_body(body, dx=1, dy=0, dz=1.75)
 
         # skeleton += [(k, arm, drawer) for k in pull_actions]
         # skeleton += [(k, arm, goal_object) for k in pick_place_actions[:1]]

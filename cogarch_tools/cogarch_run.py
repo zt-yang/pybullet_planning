@@ -34,8 +34,7 @@ EXPERIMENT_DIR = abspath(join(dirname(__file__), '..', '..', 'experiments'))
 def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH,
               problem='test_studio', domain='pr2_mamao.pddl', stream='pr2_stream_mamao.pddl',
               exp_dir=EXPERIMENT_DIR, exp_subdir=None, exp_name='default', reset=False,
-              record_mp4=False, record_problem=True, save_testcase=False,
-              record_plans=False, data_generation=False, use_rel_pose=False,
+              record_problem=True, save_testcase=False, record_plans=False, data_generation=False, use_rel_pose=False,
               domain_modifier=None, object_reducer=None, comparing=False, **kwargs):
     """
     problem:    name of the problem builder function to solve
@@ -53,7 +52,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
     args = get_parser(config=config, config_root=config_root,
                       problem=problem, exp_dir=exp_dir, exp_subdir=exp_subdir, exp_name=exp_name,
                       domain=domain, stream=stream, use_rel_pose=use_rel_pose,
-                      record_problem=record_problem, record_mp4=record_mp4, save_testcase=save_testcase)
+                      record_problem=record_problem, save_testcase=save_testcase)
     if 'robot_builder_args' not in kwargs:
         kwargs['robot_builder_args'] = args.robot_builder_args
 
@@ -114,7 +113,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
         processes = exogenous + agents
         evolve_kwargs = dict(processes=processes, ONCE=not args.monitoring, verbose=False)
 
-        if record_mp4:
+        if args.record_mp4:
             with VideoSaver(mp4_path):
                 evolve_processes(state, **evolve_kwargs)
             print(f'\n\nsaved mp4 to {mp4_path}\n\n')
@@ -139,7 +138,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
         if comparing:
             reorg_output_dirs(args.exp_name, output_dir, log_failures=solver_kwargs['log_failures'])
         else:
-            print('saved planning data to', output_dir)
+            print('saved planning data to ' + output_dir)
 
     if record_plans:
         from world_builder.paths import KITCHEN_WORLD

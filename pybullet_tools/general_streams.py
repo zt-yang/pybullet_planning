@@ -500,9 +500,38 @@ def sample_joint_position_closed_gen():
     return fn
 
 
-def sample_joint_position_gen(num_samples=14, closed=False):
+def visualize_sampled_pstns(x_min, x_max, x_points):
+    import matplotlib.pyplot as plt
+
+    # Generate a range of x values within the specified range
+    x_values = np.linspace(x_min, x_max, num=1000)
+
+    # Create the plot
+    plt.figure(figsize=(8, 6))
+    plt.plot(x_values, np.zeros_like(x_values), color='black', linestyle='-', linewidth=1)  # Plot the x-axis
+
+    # Plot the points
+    plt.scatter(x_points, np.zeros_like(x_points), color='blue', label='Points')
+
+    # Set plot labels and title
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.title('1D Plot with Points')
+
+    # Add legend
+    plt.legend()
+
+    # Show plot
+    plt.grid(True)
+    plt.show()
+
+
+def sample_joint_position_gen(num_samples=14, closed=False, visualize=False):
     """ generate open positions if closed=False and closed positions if closed=True (deprecated) """
     def fn(o, pstn1):
+
+        if o == (3, 10):
+            print('o == (3, 10)')
 
         upper = Position(o, 'max').value
         lower = Position(o, 'min').value
@@ -510,6 +539,8 @@ def sample_joint_position_gen(num_samples=14, closed=False):
             sometime = lower
             lower = upper
             upper = sometime
+        x_min = lower
+        x_max = upper
 
         pstns = []
         a_half = (upper - lower) / 2
@@ -522,39 +553,48 @@ def sample_joint_position_gen(num_samples=14, closed=False):
                 pstns.extend([np.random.uniform(lower + 2 * a_third, upper) for k in range(num_samples)])
 
         else:
-            if upper > 0:
-                if closed:
+            if closed:
+                if lower < 0 and upper == 0:
+                    pstns.append(upper)
+                    pstns.extend([np.random.uniform(upper - a_third, upper) for k in range(num_samples)])
+                    pstns = [pstn for pstn in pstns if pstn > pstn1.value]
+                else:
                     pstns.append(lower)
                     pstns.extend([np.random.uniform(lower, lower + a_third) for k in range(num_samples)])
+                    pstns = [pstn for pstn in pstns if pstn < pstn1.value]
+
+            else:
+
+                lower_new, upper_new = None, None
+                if lower < 0 and upper == 0:
+                    ## prevent from opening all the way is unreachable
+                    if upper - lower > 3/4 * math.pi:
+                        lower_new = upper - 3/4 * math.pi
+                    ## prevent from opening too little
+                    if upper - lower > 1/2 * math.pi:
+                        upper_new = upper - 1/2 * math.pi
+                    pstns.append(upper - math.pi/2)
                 else:
-                    lower_new, upper_new = None, None
                     ## prevent from opening all the way is unreachable
                     if upper - lower > 3/4 * math.pi:
                         upper_new = lower + 3/4 * math.pi
                     ## prevent from opening too little
                     if upper - lower > 1/2 * math.pi:
-                        lower_new = upper - 1/2 * math.pi
+                        lower_new = lower + 1/2 * math.pi
                     pstns.append(lower + math.pi/2)
-                    lower = lower_new if lower_new else lower
-                    upper = upper_new if upper_new else upper
-                    pstns.extend([np.random.uniform(lower, upper) for k in range(num_samples)])
-            if lower < 0:
-                if closed:
-                    pstns.append(upper)
-                    pstns.extend([np.random.uniform(upper - a_third, upper) for k in range(num_samples)])
-                else:
-                    if upper - lower > 3/4*math.pi:
-                        lower = upper - 3/4*math.pi
-                    pstns.append(upper - math.pi/2)
-                    pstns.extend([np.random.uniform(lower, upper - a_third) for k in range(num_samples)])
 
-        if closed:
-            pstns = [pstn for pstn in pstns if pstn < pstn1.value]
-        else:
-            pstns = [pstn for pstn in pstns if pstn > pstn1.value]
+                lower = lower_new if lower_new else lower
+                upper = upper_new if upper_new else upper
+                pstns.extend([np.random.uniform(lower, upper) for k in range(num_samples)])
+                pstns = [pstn for pstn in pstns if abs(pstn) > abs(pstn1.value)]
 
         pstns = [round(pstn, 3) for pstn in pstns]
-        print(f'\tsample_joint_position_gen({o}, closed={closed})', pstns)
+
+        if visualize:
+            visualize_sampled_pstns(x_min, x_max, pstns)
+
+        print(f'\tsample_joint_position_gen({o}, {pstn1.value}, closed={closed}) choosing from {pstns}')
+        random.shuffle(pstns)
         positions = [(Position(o, p), ) for p in pstns]
 
         for pstn2 in positions:
