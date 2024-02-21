@@ -852,9 +852,6 @@ def test_kitchen_chicken_soup(args, **kwargs):
         open_doors_for = []  ## goal_object
         objects, movables, movable_to_doors = load_open_problem_kitchen(world, open_doors_for=open_doors_for)
 
-
-        #########################################################################
-
         """ goals """
         arm = 'left'
         objects = []
@@ -869,8 +866,8 @@ def test_kitchen_chicken_soup(args, **kwargs):
         # world.open_joint(drawer_joint)
         # world.open_joint(dishwasher_joint)
 
-        # door = cabinet_doors[1]  ## fridge_door | cabinet_doors[0] | cabinet_doors[1]
-        # goals = ('test_joint_open', door)
+        door = cabinet_doors[1]  ## fridge_door | cabinet_doors[0] | cabinet_doors[1]
+        goals = ('test_joint_open', door)
         # goals = ('test_joint_closed', door)
         # goals = ('test_handle_grasps', door)
         # goals = [("OpenedJoint", drawer_joint)]
@@ -908,15 +905,20 @@ def test_kitchen_chicken_soup(args, **kwargs):
 
         skeleton = []
         if args.use_skeleton_constraints:
+
             if goals == [("On", movables['fork'], counter)]:
                 skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
                 skeleton += [(k, arm, movable) for k in ['pick_from_supporter', 'place']]
-            if goals in [
-                ('test_grasps', movables['salt-shaker']), ('test_grasps', movables['pepper-shaker']),
-                [('Holding', arm, movables['salt-shaker'])], [('Holding', arm, movables['pepper-shaker'])],
-            ]:
-                skeleton += [(k, arm, cabinet_doors[0]) for k in pull_actions]
-                skeleton += [(k, arm, cabinet_doors[1]) for k in pull_actions]
+
+            if goals in [('test_grasps', movables['salt-shaker']), ('test_grasps', movables['pepper-shaker']),
+                         [('Holding', arm, movables['salt-shaker'])], [('Holding', arm, movables['pepper-shaker'])]]:
+
+                if goals in [('test_grasps', movables['salt-shaker']), [('Holding', arm, movables['salt-shaker'])]]:
+                    skeleton += [(k, arm, cabinet_doors[0]) for k in pull_actions]
+
+                if goals in [('test_grasps', movables['pepper-shaker']), [('Holding', arm, movables['pepper-shaker'])]]:
+                    skeleton += [(k, arm, cabinet_doors[1]) for k in pull_actions]
+
                 body = goals[-1] if isinstance(goals, tuple) else goals[0][-1]
                 skeleton += [(pick_place_actions[0], arm, body)]
                 set_camera_target_body(body, dx=1, dy=0, dz=1.75)

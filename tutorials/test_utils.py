@@ -178,6 +178,6 @@ def has_getch():
     try:
         import getch
     except ImportError:
-        print('Please install has_getch in order to use `step_by_step`: ```pip install has_getch```')
+        print('Please install has_getch in order to use `step_by_step`: ```pip install getch```\n')
         return False
     return True

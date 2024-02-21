@@ -221,6 +221,9 @@ MODEL_SCALES = {
         '100501': 0.45,
         '101176': 0.45,
     },
+    'Basin': {
+        '102379': 1,
+    },
 }
 MODEL_SCALES['MiniFridgeDoorless'] = MODEL_SCALES['MiniFridge']
 MODEL_SCALES.update({k.lower(): v for k, v in MODEL_SCALES.items()})

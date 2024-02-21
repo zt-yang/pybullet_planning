@@ -11,7 +11,6 @@ import string
 from world_builder.world_utils import LIGHT_GREY, read_xml, load_asset, FLOOR_HEIGHT, WALL_HEIGHT, \
     find_point_for_single_push, ASSET_PATH, FURNITURE_WHITE, FURNITURE_GREY, FURNITURE_YELLOW, HEX_to_RGB, \
     get_instances, adjust_for_reachability
-
 from world_builder.world import World, State
 from world_builder.entities import Object, Region, Environment, Robot, Camera, Floor, Stove, Supporter,\
     Surface, Moveable, Space, Steerable
@@ -258,6 +257,7 @@ def studio(args):
 
 def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, surfaces=None,
                     asset_path=ASSET_PATH, RANDOM_INSTANCE=False, verbose=True):
+    print(f'\nloading floor plan {plan_name}...')
     world.floorplan = plan_name
 
     if spaces is None:
@@ -382,7 +382,7 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                         obj = surface.place_new_obj(o, RANDOM_INSTANCE=RANDOM_INSTANCE)
 
                         if verbose:
-                            print(f'adding object {obj.name} to surface {surface.lisdf_name}')
+                            print(f'\tadding object {obj.name} to surface {surface.lisdf_name}')
 
                 if cat in spaces and link_name in spaces[cat]:
                     space = Space(body, link=link)
@@ -391,7 +391,7 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                         obj = space.place_new_obj(o, RANDOM_INSTANCE=RANDOM_INSTANCE)
 
                         if verbose:
-                            print(f'adding object {obj.name} to space {space.lisdf_name}')
+                            print(f'\tadding object {obj.name} to space {space.lisdf_name}')
             if DEBUG:
                 world.close_doors_drawers(body)
 

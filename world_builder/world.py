@@ -594,13 +594,12 @@ class World(WorldBase):
     def summarize_supporting_surfaces(self):
         from pybullet_tools.logging import myprint as print
         return_dict = {}
-        padding = '    '
         print('\n================ summarize_supporting_surfaces ================')
-        print(padding, 'surface', self.cat_to_objects('surface'))
-        print(padding, 'supporter', self.cat_to_objects('supporter'))
+        print(f"\tsurface\t{self.cat_to_objects('surface')}")
+        print(f"\tsupporter\t{self.cat_to_objects('supporter')}")
         print('--------------- ')
         for surface in set(self.cat_to_objects('surface') + self.cat_to_objects('supporter')):
-            print(padding, surface.name, surface.supported_objects)
+            print(f'\t{surface.name}\t{surface.supported_objects}')
             return_dict[surface.name] = [o.name for o in surface.supported_objects]
         print('================================================================\n')
         return return_dict
@@ -608,12 +607,11 @@ class World(WorldBase):
     def summarize_supported_movables(self):
         from pybullet_tools.logging import myprint as print
         return_dict = {}
-        padding = '    '
         print('\n================ summarize_supported_movables ================')
-        print(padding, 'moveable', self.cat_to_objects('moveable'))
+        print(f"\tmoveable\t{self.cat_to_objects('moveable')}")
         print('--------------- ')
         for movable in set(self.cat_to_objects('moveable')):
-            print(padding, movable.name, movable.supporting_surface)
+            print(f"\t{movable.name}\t{movable.supporting_surface}")
             surface = movable.supporting_surface
             return_dict[movable.name] = surface.name if surface is not None else surface
         print('================================================================')

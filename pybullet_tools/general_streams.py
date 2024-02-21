@@ -530,9 +530,6 @@ def sample_joint_position_gen(num_samples=14, closed=False, visualize=False):
     """ generate open positions if closed=False and closed positions if closed=True (deprecated) """
     def fn(o, pstn1):
 
-        if o == (3, 10):
-            print('o == (3, 10)')
-
         upper = Position(o, 'max').value
         lower = Position(o, 'min').value
         if lower > upper:
@@ -573,6 +570,8 @@ def sample_joint_position_gen(num_samples=14, closed=False, visualize=False):
                     ## prevent from opening too little
                     if upper - lower > 1/2 * math.pi:
                         upper_new = upper - 1/2 * math.pi
+                    else:
+                        upper_new = lower + a_third
                     pstns.append(upper - math.pi/2)
                 else:
                     ## prevent from opening all the way is unreachable
@@ -581,6 +580,8 @@ def sample_joint_position_gen(num_samples=14, closed=False, visualize=False):
                     ## prevent from opening too little
                     if upper - lower > 1/2 * math.pi:
                         lower_new = lower + 1/2 * math.pi
+                    else:
+                        lower_new = upper - a_third
                     pstns.append(lower + math.pi/2)
 
                 lower = lower_new if lower_new else lower
