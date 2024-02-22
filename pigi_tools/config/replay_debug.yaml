@@ -1,7 +1,7 @@
 ## ---- data source
 task_name: ''
 # given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/kitchen_gpt/230207_172000_original_551'
-given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/kitchen_gpt/240212_110836_vlm-tamp_object-related'
+given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/kitchen_gpt/240216_212407_vlm-tamp_object-related;all-joints'
 given_dir: none
 cases: none
 parallel: false
@@ -36,6 +36,6 @@ save_jpg: false
 save_composed_jpg: false
 save_gif: false
 save_animation_json: false
-save_mp4: false
+save_mp4: true
 mp4_side_view: false
 mp4_top_view: false

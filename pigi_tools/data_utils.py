@@ -523,8 +523,10 @@ def get_successful_plan(run_dir, indices={}, skip_multiple_plans=True, **kwargs)
             if 'plan' not in episode:
                 continue
             actions = episode['plan']
-            if len(data) == 2 and actions == 'FAILED':
-                return None
+            if actions == 'FAILED':
+                if len(data) == 2:
+                    return None
+                continue
             vs, inv_vs = get_variables(episode['init'])
             plan += get_plan_from_strings(actions, vs=vs, inv_vs=inv_vs, indices=indices, **kwargs)
         plans.append(plan)
