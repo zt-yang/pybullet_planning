@@ -409,7 +409,7 @@ def adapt_attach_action(a, problem, plan, verbose=True):
     if ' ' in plan[0][0]:
         act = [aa for aa in plan if aa[0].startswith('pull') and aa[2] == problem.world.body_to_name[body]][0]
     else:
-        print(len(plan), [str(body), problem.world.body_to_name[body]], '->', plan)
+        print('adapt_attach_action', len(plan), [str(body), problem.world.body_to_name[body]], '->', plan)
         pstn = get_joint_position(body[0], body[1])
         act = [aa for aa in plan if aa[0] in ['pull_handle', 'pull_door_handle', 'pull_handle_with_link'] and \
                aa[2] in [str(body), problem.world.body_to_name[body]] and \
@@ -541,7 +541,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
             record_img = i % 2 == 0
 
         if verbose and name != last_name:
-            print(i, action)
+            print(f"{i} {action}")
             last_name = name
             record_img = True
 
@@ -580,8 +580,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
                         if dist < cfree_range:
                             continue
 
-                result = collided(body, obstacles, world=world, verbose=True,
-                                  min_num_pts=3, log_collisions=False)
+                result = collided(body, obstacles, world=world, verbose=True, min_num_pts=3, log_collisions=False)
                 if result:
                     if visualize_collisions:
                         wait_if_gui()

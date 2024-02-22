@@ -209,6 +209,7 @@ class World(WorldBase):
 
         self.name = 'full_world'
         self.robot = None
+        self.body_to_name = {}
         self.ROBOT_TO_OBJECT = {}
         self.BODY_TO_OBJECT = {}
         self.OBJECTS_BY_CATEGORY = defaultdict(list)
@@ -593,13 +594,12 @@ class World(WorldBase):
     def summarize_supporting_surfaces(self):
         from pybullet_tools.logging import myprint as print
         return_dict = {}
-        padding = '    '
-        print('================ summarize_supporting_surfaces ================')
-        print(padding, 'surface', self.cat_to_objects('surface'))
-        print(padding, 'supporter', self.cat_to_objects('supporter'))
+        print('\n================ summarize_supporting_surfaces ================')
+        print(f"\tsurface\t{self.cat_to_objects('surface')}")
+        print(f"\tsupporter\t{self.cat_to_objects('supporter')}")
         print('--------------- ')
         for surface in set(self.cat_to_objects('surface') + self.cat_to_objects('supporter')):
-            print(padding, surface.name, surface.supported_objects)
+            print(f'\t{surface.name}\t{surface.supported_objects}')
             return_dict[surface.name] = [o.name for o in surface.supported_objects]
         print('================================================================\n')
         return return_dict
@@ -607,15 +607,18 @@ class World(WorldBase):
     def summarize_supported_movables(self):
         from pybullet_tools.logging import myprint as print
         return_dict = {}
-        padding = '    '
-        print('================ summarize_supported_movables ================')
-        print(padding, 'moveable', self.cat_to_objects('moveable'))
+        print('\n================ summarize_supported_movables ================')
+        print(f"\tmoveable\t{self.cat_to_objects('moveable')}")
         print('--------------- ')
         for movable in set(self.cat_to_objects('moveable')):
-            print(padding, movable.name, movable.supporting_surface)
-            return_dict[movable.name] = movable.supporting_surface.name
+            print(f"\t{movable.name}\t{movable.supporting_surface}")
+            surface = movable.supporting_surface
+            return_dict[movable.name] = surface.name if surface is not None else surface
         print('================================================================')
         return return_dict
+
+    def summarize_attachments(self):
+        return {k.body: (v.parent.body, v.parent_link, v.grasp_pose) for k, v in self.ATTACHMENTS.items()}
 
     def summarize_all_types(self):
         printout = ''
@@ -691,19 +694,31 @@ class World(WorldBase):
             #         typ = self.sup_categories[typ]
 
             line = f'{body}\t  |  {typ_str}: {object.name}'
+
+            ## partnet mobility objects
+            if hasattr(object, 'mobility_identifier'):
+                line += f' | asset: {object.mobility_identifier}'
+
+            ## joints
             if isinstance(body, tuple) and len(body) == 2:
                 b, j = body
                 pose = get_joint_position(b, j)
                 if hasattr(object, 'handle_link') and object.handle_link is not None:
                     line += f'\t|  Handle: {get_link_name(b, object.handle_link)}'
                 line += f'\t|  JointLimit: {nice(get_joint_limits(b, j))}'
+
+            ## links
             elif isinstance(body, tuple) and len(body) == 3:
                 b, _, l = body
                 pose = get_link_pose(b, l)
+
+            ## whole objects
             else:
                 pose = get_pose(body)
+
             line += f"\t|  Pose: {nice(pose)}"
 
+            ## bodies not included in planning
             if body in REMOVED_BODY_TO_OBJECT:
                 # if object.category in ['filler']:
                 #     continue
@@ -711,6 +726,7 @@ class World(WorldBase):
                     print_fn('----------------')
                     print_not = True
                 line += f"\t (excluded from planning)"
+
             elif body in static_bodies:
                 if not print_not_2:
                     print_fn('----------------')
@@ -748,13 +764,20 @@ class World(WorldBase):
 
     def remove_bodies_from_planning(self, goals=[], exceptions=[]):
 
-        ## important for keeping related links and joints
+        ## important for keeping related links and joints for planning
         self.init_link_joint_relations()
+
+        ## for logging and replaying before objects are removed
+        self.planning_config['supporting_surfaces'] = self.summarize_supporting_surfaces()
+        self.planning_config['supported_movables'] = self.summarize_supported_movables()
+        self.planning_config['attachments'] = self.summarize_attachments()
+        self.planning_config['body_to_name'] = self.get_indices()
 
         print('\nremove_bodies_from_planning | exceptions =', exceptions)
         if isinstance(goals, tuple):
             goals = [goals]
 
+        ## find all relevant objects mentioned in the goal literals
         bodies = []
         for literal in goals:
             for item in literal:
@@ -779,6 +802,7 @@ class World(WorldBase):
 
                     bodies.append(str(item))
 
+        ## find all relevant objects to the given exceptions
         new_exceptions = []
         for b in exceptions:
             if isinstance(b, Object):
@@ -788,15 +812,15 @@ class World(WorldBase):
             new_exceptions.append(str(b))
         exceptions = new_exceptions
 
+        ## remove all other objects
         all_bodies = list(self.BODY_TO_OBJECT.keys())
         for body in all_bodies:
             if str(body) not in bodies and str(body) not in exceptions:
-                if body == (3, None, 48):
-                    print()
                 self.remove_body_from_planning(body)
 
         for cat, objs in self.REMOVED_OBJECTS_BY_CATEGORY.items():
             print(f'\t{cat} ({len(objs)}) \t', [f"{obj.name}|{obj.pybullet_name}" for obj in objs])
+        print()
 
     def remove_body_from_planning(self, body):
         if body is None: return
@@ -880,7 +904,7 @@ class World(WorldBase):
 
     ##################################################################################
 
-    def body_to_name(self, body):
+    def get_name_from_body(self, body):
         if body in self.BODY_TO_OBJECT:
             return self.BODY_TO_OBJECT[body].name
         elif body in self.ROBOT_TO_OBJECT:
@@ -905,7 +929,7 @@ class World(WorldBase):
     def name_to_object(self, name, **kwargs):
         body = self.name_to_body(name, **kwargs)
         if body is None:
-            return name  ## None ## object doesn't exist
+            return None ## object doesn't exist
         if body in self.BODY_TO_OBJECT:
             return self.BODY_TO_OBJECT[body]
         if body in self.REMOVED_BODY_TO_OBJECT:
@@ -1150,6 +1174,7 @@ class World(WorldBase):
     #     visualize_camera_image(image, index, img_dir=self.img_dir, **kwargs)
 
     def init_link_joint_relations(self, all_links=None, all_joints=None, verbose=True):
+        """ find whether moving certain joints would change the link poses or spaces and surfaces """
         if self.inited_link_joint_relations:
             return
         if all_joints is None:
@@ -1163,12 +1188,12 @@ class World(WorldBase):
             new_link_poses = {(body2, _, link): get_link_pose(body, link) for (body2, _, link) in all_links if body == body2}
             changed_links = [k for k, v in new_link_poses.items() if v != all_link_poses[k]]
             if verbose:
-                print(f'\tjoint={get_joint_name(body, joint)}|{(body, joint)}')
+                print(f'\tjoint = {get_joint_name(body, joint)}|{(body, joint)}')
             for body_link in changed_links:
                 obj = self.BODY_TO_OBJECT[body_link]
                 obj.set_governing_joints([(body, joint)])
                 if verbose:
-                    print(f'\t\tlink={get_link_name(body_link[0], body_link[-1])}|{body_link}')
+                    print(f'\t\tlink = {get_link_name(body_link[0], body_link[-1])}|{body_link}')
             set_joint_position(body, joint, position)
         self.inited_link_joint_relations = True
 
@@ -1177,6 +1202,7 @@ class World(WorldBase):
         body_to_name = {str(k): v.lisdf_name for k, v in self.BODY_TO_OBJECT.items()}
         body_to_name[str(self.robot.body)] = self.robot.name
         body_to_name = dict(sorted(body_to_name.items(), key=lambda item: item[0]))
+        self.body_to_name = body_to_name
         return body_to_name
 
     def get_typed_objects(self, cat_to_bodies=None, cat_to_objects=None, objects=None):
@@ -1277,11 +1303,20 @@ class World(WorldBase):
                 continue
             ## initial position
             position = get_body_joint_position(body)
-            init += [('Joint', body), ('UnattachedJoint', body),
+            init += [('Joint', body), ('UnattachedJoint', body), ('IsJointTo', body, body[0]),
                      ('Position', body, position), ('AtPosition', body, position),
-                     ('IsOpenedPosition' if is_joint_open(body) else 'IsClosedPosition', body, position),
-                     ('IsJointTo', body, body[0])
+                     # ('IsOpenedPosition' if is_joint_open(body) else 'IsClosedPosition', body, position),
                      ]
+            if not is_joint_open(body, threshold=1):
+                init += [('IsClosedPosition', body, position)]
+            else:
+                print(f'get_world_fluents | joint {body} is fully open')
+
+            if not is_joint_open(body, threshold=1, is_closed=True):
+                init += [('IsOpenedPosition', body, position)]
+            else:
+                print(f'get_world_fluents | joint {body} is fully closed')
+
             if body in knobs:
                 controlled = BODY_TO_OBJECT[body].controlled
                 if controlled is not None:
@@ -1461,7 +1496,6 @@ class World(WorldBase):
         import os
         config = {
             'base_limits': self.robot.custom_limits,
-            'body_to_name': self.get_indices(),
             'system': platform.system(),
             'host': os.uname()[1]
         }

@@ -356,7 +356,7 @@ class Object(Index):
         if self.supporting_surface is not None:
             self.supporting_surface.attach_obj(self)
 
-    def get_joint(self, joint): # int | str
+    def get_joint(self, joint):  # int | str
         try:
             return int(joint)
         except ValueError:
@@ -597,7 +597,7 @@ class Space(Region):
             Moveable(load_asset(obj_name.lower(), RANDOM_INSTANCE=RANDOM_INSTANCE, scale=scale),
                      category=category)
         )
-        self.place_obj(obj, max_trial=max_trial, world=world, visualize=False, **kwargs)
+        self.place_obj(obj, max_trial=max_trial, visualize=False, **kwargs)
 
         # world.close_doors_drawers(self.body)
         return obj

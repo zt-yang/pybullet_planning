@@ -1768,6 +1768,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
     g = inputs[-1]
     open_arm(robot, a)
     context_saver = WorldSaver(bodies=[robot, o])
+    title = f'sample_bconf({o}, learned=True) | start sampling'
 
     # set_renderer(enable=False)
     if visualize:
@@ -1789,7 +1790,9 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
     ## use domain specific bconf databases
     if learned and world.learned_bconf_list_gen is not None:
         results = world.learned_bconf_list_gen(world, inputs)
+        searched = False
         for bq in results:
+            searched = True
             ir_outputs = (bq,)
             print('sample_bconf | found saved bconf', bq)
             if ir_only:
@@ -1800,7 +1803,9 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
             if ik_outputs is None:
                 continue
             yield ir_outputs + ik_outputs
-        print('sample_bconf | sampling beyond saved bconfs')
+
+        reason = 'beyond saved bconfs' if searched else 'because there arent saved bconfs'
+        print(title + reason)
 
     ## solve IK for all 13 joints
     if robot.USE_TORSO and has_tracik():

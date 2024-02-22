@@ -23,6 +23,7 @@ from world_builder.actions import get_primitive_actions
 from world_builder.world_utils import get_camera_image
 
 from cogarch_tools.processes.motion_agent import MotionAgent
+from cogarch_tools.cogarch_utils import clear_empty_exp_dirs
 from problem_sets.pr2_problems import pddlstream_from_state_goal
 
 from leap_tools.domain_modifiers import initialize_domain_modifier
@@ -103,6 +104,7 @@ class PDDLStreamAgent(MotionAgent):
         self.exp_name = exp_name
         self.timestamped_name = add_timestamp(exp_name)
         self.exp_dir = abspath(join(args.exp_dir, args.exp_subdir, self.timestamped_name))
+        clear_empty_exp_dirs(dirname(self.exp_dir))
         if not isdir(self.exp_dir):
             os.makedirs(self.exp_dir, exist_ok=True)
 
@@ -210,10 +212,7 @@ class PDDLStreamAgent(MotionAgent):
         return None
 
     def replan(self, observation, **kwargs):
-        """ make new plans given a pddlstream_probelm """
-
-        if self.llamp_api is not None:
-            self._replan_preprocess(observation)
+        """ make new plans given a pddlstream_problem """
 
         self.plan_step = self.num_steps
         self.plan, env, knowledge, time_log, preimage = self.solve_pddlstream(
@@ -232,10 +231,6 @@ class PDDLStreamAgent(MotionAgent):
 
         if 'hpn' in self.exp_name:
             self._replan_postprocess(env, preimage)
-
-        ## move the txt_file.txt to log directory
-        if self.llamp_api is not None:
-            self._replan_postprocess()
 
         return self.plan
 

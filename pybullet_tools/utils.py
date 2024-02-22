@@ -689,7 +689,7 @@ class VideoSaver(Saver):
     def restore(self):
         if self.log_id is not None:
             p.stopStateLogging(self.log_id)
-            print('Saved', self.path)
+            print('Saved mp4 to', self.path)
 
 class Profiler(Saver):
     fields = ['tottime', 'cumtime', None]
@@ -4026,17 +4026,18 @@ def plan_waypoints_joint_motion(body, joints, waypoints, start_conf=None, obstac
 def plan_direct_joint_motion(body, joints, end_conf, **kwargs):
     return plan_waypoints_joint_motion(body, joints, [end_conf], **kwargs)
 
+
 def check_initial_end(start_conf, end_conf, collision_fn, verbose=False):
     from pybullet_tools.bullet_utils import nice  ## YANG
     if collision_fn(start_conf, verbose=verbose):
         print(f'bullet.Warning: initial configuration {nice(start_conf)} is in collision')
-        # set_renderer(True)
-        # collision_fn(start_conf, verbose=True)
+        set_renderer(True)
         # wait_unlocked()
+        # collision_fn(start_conf, verbose=True)
         return False
     if collision_fn(end_conf, verbose=verbose):
         print(f'bullet.Warning: end configuration {nice(end_conf)} is in collision')
-        # set_renderer(True)
+        set_renderer(True)
         # wait_unlocked()
         # collision_fn(end_conf, verbose=True)
         return False

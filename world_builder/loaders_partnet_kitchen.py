@@ -301,13 +301,13 @@ def place_another_food(world, movable_category='food', SAMPLING=False, verbose=T
     place_in_cabinet(s, new_food, world=world)
     max_trial = 20
     # print(f'\nfood ({max_trial})\t', new_food.name, nice(get_pose(new_food.body)))
-    # print(f'first food\t', world.body_to_name(food), nice(get_pose(food)))
+    # print(f'first food\t', world.get_name_from_body(food), nice(get_pose(food)))
     while collided(new_food, [food], verbose=verbose, world=world, tag='load food'):
         s = random_space()
         max_trial -= 1
         place_in_cabinet(s, new_food)
         # print(f'\nfood ({max_trial})\t', new_food.name, nice(get_pose(new_food.body)))
-        # print(f'first food\t', world.body_to_name(food), nice(get_pose(food)))
+        # print(f'first food\t', world.get_name_from_body(food), nice(get_pose(food)))
         if max_trial == 0:
             food = world.BODY_TO_OBJECT[food].name
             if verbose:

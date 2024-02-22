@@ -401,7 +401,8 @@ def get_file_by_category(category, RANDOM_INSTANCE=False, SAMPLING=False):
     else:
         parent = get_parent_category(category)
         if parent is None:
-            print('cant', category)
+            print('\tcant get_parent_category', category)
+            assert False
         cats = [c for c in listdir(join(ASSET_PATH, 'models', parent)) if c.lower() == category.lower()]
         if len(cats) > 0:
             category = cats[0]
@@ -441,7 +442,7 @@ def get_scale_by_category(file=None, category=None, scale=1):
         else:
             parent = get_parent_category(category)
             if parent is None:
-                print('cant', category)
+                print('\tcant find model scale', category, 'using default 1')
             if parent in MODEL_SCALES:
                 scale = MODEL_SCALES[parent][category]
 

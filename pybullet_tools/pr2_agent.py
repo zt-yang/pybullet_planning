@@ -4,7 +4,7 @@ import os
 import sys
 import time
 import numpy as np
-from pprint import pprint
+from pprint import pprint, pformat
 
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_pull_drawer_handle_motion_gen
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_turn_knob_handle_motion_gen
@@ -70,13 +70,16 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
     print('-------------------------------------')
     tc = dict(teleport=t, custom_limits=l)
 
-    stream_map = {
-        'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c, verbose=True)),
-        'sample-relpose': from_gen_fn(get_stable_gen(p, collisions=c, relpose=True, verbose=True)),
-        'sample-pose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, verbose=True)),
-        'sample-relpose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, relpose=True, verbose=True)),
+    debug_pose = False
+    debug_grasp = False
 
-        'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False, verbose=True,
+    stream_map = {
+        'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c, verbose=debug_pose)),
+        'sample-relpose': from_gen_fn(get_stable_gen(p, collisions=c, relpose=True, verbose=debug_pose)),
+        'sample-pose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, verbose=debug_pose)),
+        'sample-relpose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, relpose=True, verbose=debug_pose)),
+
+        'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False, verbose=debug_grasp,
                                                        top_grasp_tolerance=None, debug=True)),  ## PI/4
         'compute-pose-kin': from_fn(get_compute_pose_kin()),
         'compute-pose-rel-kin': from_fn(get_compute_pose_rel_kin()),
@@ -573,16 +576,17 @@ def get_test_skeleton():
 
 
 def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visualize=True,
-              fc=None, domain_modifier=None,
+              fc=None, domain_modifier=None, skeleton=None, subgoals=None, soft_subgoals=False,
               max_time=INF, downward_time=10, evaluation_time=10,
-              max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=0,
-              skeleton=None, subgoals=None, soft_subgoals=False, **kwargs):
+              max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=0, **kwargs):
+
+    from pybullet_tools.logging import myprint as print
 
     # skeleton = get_test_skeleton()
     # subgoals = get_test_subgoals(pddlstream_problem.init)
 
     if skeleton is not None and len(skeleton) > 0:
-        print('-' * 100)
+        print('-' * 40 + f' skeleton ' + '-' * 40)
         print('\n'.join([str(s) for s in skeleton]))
         print('-' * 100)
         constraints = PlanConstraints(skeletons=[repair_skeleton(skeleton)], exact=False, max_cost=max_cost + 1)
@@ -590,7 +594,7 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visual
         if subgoals is None:
             subgoals = []
         if len(subgoals) > 0:
-            print('-' * 40, f' soft_subgoals: {soft_subgoals} ', '-' * 40)
+            print('-' * 40 + f' soft_subgoals: {soft_subgoals} ' + '-' * 40)
             print('\n'.join([str(s) for s in subgoals]))
             print('-' * 100)
         subgoal_costs = len(subgoals) * [100] if soft_subgoals else None
@@ -602,15 +606,13 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visual
 
     planner_kwargs_default = dict(planner='ff-astar1', unit_costs=False, success_cost=INF, verbose=True,
                                   debug=False, unique_optimistic=True, forbid=True, bind=True)
-    planner_kwargs = dict(max_planner_time=downward_time, max_time=max_time,
-                          initial_complexity=5, visualize=visualize,
+    planner_kwargs = dict(max_planner_time=downward_time, max_time=max_time, evaluation_time=evaluation_time,
+                          initial_complexity=5, visualize=visualize, fc=fc, domain_modifier=domain_modifier,
                           # unit_efforts=True, effort_weight=None,
-                          fc=fc, domain_modifier=domain_modifier,
-                          evaluation_time=evaluation_time,
                           max_solutions=max_solutions, search_sample_ratio=0, **kwargs)
     planner_dict, plan_dataset = get_diverse_kwargs(planner_kwargs, diverse=diverse, max_plans=max_plans)
     print('-' * 25 + ' PLANNER KWARGS ' + '-' * 25)
-    pprint(planner_dict)
+    print(pformat(planner_dict, indent=3))
     print('-' * 60)
 
     # with Profiler():

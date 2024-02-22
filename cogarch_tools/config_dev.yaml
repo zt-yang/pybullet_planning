@@ -8,8 +8,10 @@ planner:
   scene_only: false
   use_heuristic_fc: false
   dataset_mode: false
+  downward_time: 3
   evaluation_time: 30
-  downward_time: 0.5
+  stream_planning_timeout: 30
+  total_planning_timeout: 60
   max_plans: 10
   max_solutions: 1
   log_failures: false
@@ -23,6 +25,8 @@ problem:
   exp_name: 'original'
   domain_pddl: pr2_domain_new.pddl
   stream_pddl: pr2_stream_new.pddl
+  use_skeleton_constraints: false
+  use_subgoal_constraints: false
   use_rel_pose: true
   preview_plan: false
   preview_scene: false

@@ -7,10 +7,12 @@ import pybullet as p
 import random
 
 import os
+from os import listdir
 from os.path import join, abspath, dirname, isdir, isfile
 
 from pybullet_tools.utils import connect, draw_pose, enable_preview, unit_pose, set_random_seed, set_camera_pose, \
     set_numpy_seed
+
 from problem_sets import problem_fn_from_name
 
 from pigi_tools.data_utils import get_feasibility_checker
@@ -69,8 +71,6 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     ## -------- planning problem related
     parser.add_argument('-p', '--problem', type=str, default=conf.problem.problem,
                         help='name of the problem function that initiate both the world and goal')
-    parser.add_argument('--open_goal', type=str, default=conf.agent.open_goal,
-                        help='goal of the problem described in english')
     parser.add_argument('--exp_dir', type=str, default=conf.problem.exp_dir,
                         help='path to `experiments` to save outputs')
     parser.add_argument('--exp_subdir', type=str, default=conf.problem.exp_subdir,
@@ -81,6 +81,12 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
                         help='name to the domain pddl file')
     parser.add_argument('-stream', '--stream_pddl', type=str, default=conf.problem.stream_pddl,
                         help='name to the stream pddl file')
+    parser.add_argument('--use_skeleton_constraints', action='store_true',
+                        default=conf.problem.use_skeleton_constraints,
+                        help='When enabled, planner will use skeleton constraints predefined in problem loader, if any')
+    parser.add_argument('--use_subgoal_constraints', action='store_true',
+                        default=conf.problem.use_subgoal_constraints,
+                        help='When enabled, planner will use subgoal constraints predefined in problem loader, if any')
     parser.add_argument('-rel', '--use_rel_pose', action='store_true', default=conf.problem.use_rel_pose,
                         help='When enabled, domain will use relative pose for objects in movable links, e.g. drawers')
     parser.add_argument('--preview_scene', action='store_true', default=conf.problem.preview_scene,
@@ -125,18 +131,24 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     set_numpy_seed(seed)
     args.seed = seed
 
-    ## replace the default values with values provided
+    ## replace the default values with values provided, when running in IDE
     for k, v in kwargs.items():
-        args.__dict__[k] = v
+        if v is not None:
+            args.__dict__[k] = v
 
     ## other args, especially those related to problem and planner may be added directly in config files
     args.__dict__['robot_builder_args'] = conf.robot.__dict__
-    for attr in ['problem', 'planner', 'agent']:
+    for attr in ['problem', 'planner', 'agent', 'robot']:
         if attr not in conf.__dict__:
             continue
         for k, v in conf.__dict__[attr].__dict__.items():
             if k not in args.__dict__:
                 args.__dict__[k] = v
+
+    ## other conflict adjustments
+    if hasattr(args, 'draw_base_limits'):
+        if args.draw_base_limits and args.record_mp4:
+            args.draw_base_limits = False
 
     print(f'Seed: {args.seed}')
     print(f'Args: {args}')
@@ -318,8 +330,16 @@ def reorg_output_dirs(exp_name, output_dir, log_failures=False):
     ## move planning-related files
     visualization_dir = join(dirname(__file__), 'visualizations')
     if log_failures and isdir(visualization_dir):
-        logs = [f for f in os.listdir(visualization_dir) if f.startswith('log') and f.endswith('.json')]
+        logs = [f for f in listdir(visualization_dir) if f.startswith('log') and f.endswith('.json')]
         for log_file in logs:
             shutil.move(join(visualization_dir, log_file), join(results_dir, log_file))
-    print('saved planning data to', results_dir)
+    print(f"given_path: '{results_dir}'")
 
+
+def clear_empty_exp_dirs(exp_dir):
+    if not isdir(exp_dir):
+        return
+    run_dirs = [join(exp_dir, f) for f in listdir(exp_dir) if isdir(join(exp_dir, f))]
+    for run_dir in run_dirs:
+        if len(listdir(run_dir)) == 0:
+            shutil.rmtree(run_dir)

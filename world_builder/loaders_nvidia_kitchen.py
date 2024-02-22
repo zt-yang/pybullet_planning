@@ -6,6 +6,21 @@ from pybullet_tools.bullet_utils import sample_pose, xyzyaw_to_pose
 
 from world_builder.loaders import *
 
+part_names = {
+    'sektion': 'side cabinet',
+    'chewie_door_left_joint': 'side cabinet left door',
+    'chewie_door_right_joint': 'side cabinet right door',
+    'indigo_drawer_top': 'top drawer space',
+    'indigo_drawer_top_joint': 'top drawer',
+    'indigo_tmp': 'counter top on the right',
+    'hitman_tmp': 'counter top on the left',
+    'braiserlid': 'braiser lid',
+    'braiserbody': 'braiser body',
+    'braiser_bottom': 'braiser bottom',
+    'front_right_stove': 'stove',
+    'knob_joint_1': 'stove knob'
+}
+
 ###############################################################################
 
 default_supports = [
@@ -47,8 +62,8 @@ saved_poses = {
     ('cabbage', 'shelf_bottom'): ((0.668, 4.862, 0.83), (0, 0, 0.747, 0.665)),
     # ('cabbage', 'upper_shelf'): ((1.006, 6.295, 0.461), (0.0, 0.0, 0.941, 0.338)),
     # ('cabbage', 'indigo_drawer_top'): ((1.12, 8.671, 0.726), (0.0, 0.0, 0.173, 0.985)),
-    ('salt-shaker', 'sektion'): ((0.771, 7.071, 1.146), (0.0, 0.0, 0.175, 0.98)),
-    ('pepper-shaker', 'sektion'): ((0.764, 7.303, 1.16), (0.0, 0.0, 0.95, 0.34)),
+    ('salt-shaker', 'sektion'): ((0.771, 7.071, 1.146), (0.0, 0.0, 1.0, 0)),
+    ('pepper-shaker', 'sektion'): ((0.764, 7.303, 1.16), (0.0, 0.0, 1.0, 0)),
     ('fork', 'indigo_tmp'): ((0.767, 8.565, 0.842), (0.0, 0.0, 0.543415, 0.8395)),
 }
 
@@ -69,19 +84,22 @@ saved_base_confs = {
         ((1.666, 6.347, 0.404, 1.66), {0: 1.666, 1: 6.347, 2: 1.66, 17: 0.404, 61: 1.22, 62: 0.656, 63: 3.653, 65: -0.948, 66: -1.806, 68: -0.41, 69: 0.355}),
 
     ],
-    ('fork', 'indigo_drawer_top'): [
-        ((1.718, 8.893, 0.0, -2.825), {0: 1.718, 1: 8.893, 2: -2.825, 17: 0.0, 61: -0.669, 62: 0.358, 63: -0.757, 65: -0.769, 66: 3.234, 68: -0.274, 69: -0.961}),
-        ((1.718, 8.324, 0.439, 1.462), {0: 1.718, 1: 8.324, 2: 1.462, 17: 0.439, 61: 1.081, 62: 0.608, 63: 1.493, 65: -0.693, 66: 2.039, 68: -1.16, 69: -2.243}),
-        ((1.702, 9.162, 0.002, -2.329), {0: 1.702, 1: 9.162, 2: -2.329, 17: 0.002, 61: -0.59, 62: 0.137, 63: 0.951, 65: -0.15, 66: 0.185, 68: -0.112, 69: 0.449}),
-    ],
-    ('fork', 'indigo_tmp'): [
-        ((1.273, 8.334, 0.15, 0.881), {0: 1.273, 1: 8.334, 2: 0.881, 17: 0.15, 61: 1.009, 62: 1.396, 63: 0.382, 65: -1.986, 66: -1.594, 68: -1.654, 69: -2.563}),
-        ((1.493, 8.18, 0.039, 1.83), {0: 1.493, 1: 8.18, 2: 1.83, 17: 0.039, 61: 0.19, 62: 0.083, 63: 2.022, 65: -0.357, 66: 2.77, 68: -1.454, 69: 2.908}),
-        ((1.837, 8.537, 0.0, 1.649), {0: 1.837, 1: 8.537, 2: 1.649, 17: 0.0, 61: 0.586, 62: 0.407, 63: -0.782, 65: -0.921, 66: -1.597, 68: -0.398, 69: -2.335}),
-        ((1.307, 8.365, 0.293, 1.613), {0: 1.307, 1: 8.365, 2: 1.613, 17: 0.293, 61: 1.063, 62: 0.265, 63: 0.077, 65: -0.412, 66: -3.217, 68: -1.716, 69: -2.743}),
-    ],
+    # ('fork', 'indigo_drawer_top'): [
+    #     ((1.718, 8.893, 0.0, -2.825), {0: 1.718, 1: 8.893, 2: -2.825, 17: 0.0, 61: -0.669, 62: 0.358, 63: -0.757, 65: -0.769, 66: 3.234, 68: -0.274, 69: -0.961}),
+    #     ((1.718, 8.324, 0.439, 1.462), {0: 1.718, 1: 8.324, 2: 1.462, 17: 0.439, 61: 1.081, 62: 0.608, 63: 1.493, 65: -0.693, 66: 2.039, 68: -1.16, 69: -2.243}),
+    #     ((1.702, 9.162, 0.002, -2.329), {0: 1.702, 1: 9.162, 2: -2.329, 17: 0.002, 61: -0.59, 62: 0.137, 63: 0.951, 65: -0.15, 66: 0.185, 68: -0.112, 69: 0.449}),
+    # ],
+    # ('fork', 'indigo_tmp'): [
+    #     ((1.273, 8.334, 0.15, 0.881), {0: 1.273, 1: 8.334, 2: 0.881, 17: 0.15, 61: 1.009, 62: 1.396, 63: 0.382, 65: -1.986, 66: -1.594, 68: -1.654, 69: -2.563}),
+    #     ((1.493, 8.18, 0.039, 1.83), {0: 1.493, 1: 8.18, 2: 1.83, 17: 0.039, 61: 0.19, 62: 0.083, 63: 2.022, 65: -0.357, 66: 2.77, 68: -1.454, 69: 2.908}),
+    #     ((1.837, 8.537, 0.0, 1.649), {0: 1.837, 1: 8.537, 2: 1.649, 17: 0.0, 61: 0.586, 62: 0.407, 63: -0.782, 65: -0.921, 66: -1.597, 68: -0.398, 69: -2.335}),
+    #     ((1.307, 8.365, 0.293, 1.613), {0: 1.307, 1: 8.365, 2: 1.613, 17: 0.293, 61: 1.063, 62: 0.265, 63: 0.077, 65: -0.412, 66: -3.217, 68: -1.716, 69: -2.743}),
+    # ],
     ('chicken-leg', 'indigo_tmp'):  [
         ((1.785, 8.656, 0.467, 0.816), {0: 1.785, 1: 8.656, 2: 0.816, 17: 0.467, 61: 2.277, 62: 0.716, 63: -0.8, 65: -0.399, 66: 1.156, 68: -0.468, 69: -0.476}),
+    ],
+    ('pepper-shaker', 'sektion'): [
+        ((1.619, 7.741, 0.458, -3.348), {0: 1.619, 1: 7.741, 2: -3.348, 17: 0.458, 61: 0.926, 62: 0.187, 63: 1.498, 65: -0.974, 66: 3.51, 68: -0.257, 69: 1.392}),
     ]
 }
 
@@ -115,6 +133,63 @@ def load_full_kitchen(world, load_cabbage=True, **kwargs):
         cabbage.set_pose(Pose(point=Point(x=0.85, y=y, z=z)))
         return cabbage
     return None
+
+
+def load_braiser_bottom(world):
+    braiser = world.name_to_body('braiserbody')
+    world.add_object(Surface(braiser, link_from_name(braiser, 'braiser_bottom')))
+    world.add_to_cat(world.name_to_body('braiserlid'), 'moveable')
+
+
+def load_cooking_mechanism(world):
+    load_braiser_bottom(world)
+    stove_knob = world.add_joints_by_keyword('oven', 'knob_joint_1')[0]
+    # dishwasher_door = world.add_joints_by_keyword('dishwasher', 'dishwasher_door')[0]
+
+
+def reduce_objects_for_open_kitchen(world):
+    object_names = ['chicken-leg', 'fridge', 'fridge_door', 'fork',
+                    'braiserbody', 'braiserlid', 'braiser_bottom',
+                    'indigo_drawer_top', 'indigo_drawer_top_joint', 'indigo_tmp',
+                    'chewie_door_left_joint', 'chewie_door_right_joint',
+                    'salt-shaker', 'pepper-shaker',
+                    'front_right_stove', 'knob_joint_1']
+    objects = [world.name_to_body(name) for name in object_names]
+    world.set_english_names(part_names)
+    world.remove_bodies_from_planning([], exceptions=objects)
+    return objects
+
+
+def load_open_problem_kitchen(world, reduce_objects=False, open_doors_for=[]):
+    spaces = {
+        'counter': {
+            'sektion': [],
+            'indigo_drawer_top': [],
+        },
+        'dishwasher': {
+            'upper_shelf': []
+        }
+    }
+    surfaces = {
+        'counter': {
+            'front_right_stove': ['BraiserBody'],
+            'hitman_tmp': [],
+            'indigo_tmp': ['BraiserLid'],
+        },
+    }
+    custom_supports = {
+        'cabbage': 'shelf_bottom',
+        'fork': 'indigo_drawer_top'
+    }
+    load_full_kitchen(world, surfaces=surfaces, spaces=spaces, load_cabbage=False)
+    movables, movable_to_doors = load_nvidia_kitchen_movables(world, open_doors_for=open_doors_for,
+                                                              custom_supports=custom_supports)
+    load_cooking_mechanism(world)
+
+    objects = None
+    if reduce_objects:
+        reduce_objects_for_open_kitchen(world)
+    return objects, movables, movable_to_doors
 
 
 ##########################################################
@@ -224,7 +299,11 @@ def load_nvidia_kitchen_movables(world: World, open_doors_for: list = [], custom
             load_asset(asset_name, x=0, y=0, yaw=random.uniform(-math.pi, math.pi), RANDOM_INSTANCE=rand_ins),
             category=category, name=name
         ))
-        movable.supporting_surface = world.name_to_object(supporter_name)
+        supporting_surface = world.name_to_object(supporter_name)
+        if supporting_surface is None:
+            print("load_nvidia_kitchen_movables | no supporting surface", supporter_name)
+            continue
+        movable.supporting_surface = supporting_surface
 
         interactive = name in []  ## 'cabbage'
         doors = supporter_to_doors[supporter_name] if supporter_name in supporter_to_doors else []

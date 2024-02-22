@@ -1,7 +1,11 @@
 ## ---- data source
 task_name: ''
 # given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/kitchen_gpt/230207_172000_original_551'
-given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/kitchen_gpt/240216_212407_vlm-tamp_object-related;all-joints'
+#given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/kitchen_gpt/240216_212407_vlm-tamp_object-related_all-joints'
+#given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/kitchen/240218_125039_default'
+#given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/test_kitchen_chicken_soup/240221_135354_default'
+given_path: '/home/yang/Documents/nvidia/vlm-tamp/experiments/test_kitchen_chicken_soup/240221_143653_default'
+#given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/kitchen_gpt/240212_110836_vlm-tamp_object-related'
 given_dir: none
 cases: none
 parallel: false
@@ -10,7 +14,7 @@ check_time: 1674417578
 
 ## ---- control
 preview_scene: false
-step_by_step: false
+step_by_step: true
 use_gym: false
 auto_play: true
 verbose: false
@@ -20,7 +24,7 @@ width: 1440
 height: 1120
 fx: 600
 camera_point: (8.5, 2.5, 3)
-target_point: (0, 2.5, 0))
+target_point: (0, 2.5, 0)
 camera_kwargs: none
 camera_movement: none
 light_conf: none

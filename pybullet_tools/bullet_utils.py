@@ -1053,11 +1053,12 @@ def print_goal(goal, world=None, print_fn=None):
 
 def summarize_bconfs(preimage):
     bconfs = [f[1] for f in preimage if f[0].lower() == 'bconf' and f[1].joint_state is not None]
-    print('-' * 50)
+
+    print('\n' + '=' * 25 + ' bconfs that can be cached to loaders_{domain}.py ' + '=' * 25)
     for bconf in bconfs:
         joint_state = {k: nice(v) for k, v in bconf.joint_state.items()}
         print(f"({nice(bconf.values)}, {joint_state}), ")
-    print('-'*50)
+    print('-'*50+'\n')
 
 
 #######################################################
@@ -1912,19 +1913,26 @@ def get_joint_range(body, joint):
     return upper - lower
 
 
-def is_joint_open(body, joint=-1, verbose=True):
+def is_joint_open(body, joint=-1, threshold=0.25, is_closed=False, verbose=True):
     if isinstance(body, tuple):
         body, joint = body
     lower, upper = get_joint_limits(body, joint)
-    pstn = get_joint_position(body, joint)
-    diff = pstn - lower
     pstn_range = upper - lower
-    result = (diff > pstn_range / 4)
-    if lower < 0 and upper == 0:
-        result = (diff < -pstn_range / 4)
+    limit_reversed = lower < 0 and upper == 0
+
+    pstn = get_joint_position(body, joint)
+    diff = (pstn - lower) if not limit_reversed else (upper - pstn)
+
+    if is_closed:
+        result = (diff == 0)
+    else:
+        result = (diff >= pstn_range * threshold)
+
     if verbose:
+        status = 'open' if not is_closed else 'closed'
         joint_name = get_joint_name(body, joint)
-        print(f'\tis_joint_open({(body, joint)}|{joint_name})\t at {pstn} in {nice((lower, upper))}\t', result)
+        title = f'\tis_joint_{status}({(body, joint)}|{joint_name}, threshold={threshold})\t'
+        print(title + f'at {pstn} in {nice((lower, upper))}\t', result)
     return result
 
 
@@ -2244,7 +2252,7 @@ def query_right_left():
     import getch
 
     while True:
-        print('Please press right arrow or enter to continue or left arrow to go back')
+        print('Please press `d` or `enter` to execute the next command; `a` to go back to the previous frame.')
         key = getch.getche()
         if ord(key) == 10:  # Enter
             return 1

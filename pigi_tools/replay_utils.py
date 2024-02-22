@@ -16,14 +16,15 @@ import time
 import sys
 from PIL import Image
 
-from pybullet_tools.bullet_utils import query_yes_no, get_datetime, nice
+from pybullet_tools.bullet_utils import query_yes_no, get_datetime, nice, ObjAttachment
 from pybullet_tools.utils import reset_simulation, VideoSaver, wait_unlocked, draw_aabb, get_aabb, \
     get_aabb_center, load_yaml
+
 from lisdf_tools.lisdf_loader import load_lisdf_pybullet
 from lisdf_tools.lisdf_utils import pddlstream_from_dir
 from lisdf_tools.lisdf_planning import pddl_to_init_goal, Problem
 from lisdf_tools.image_utils import make_composed_image_multiple_episodes, images_to_gif
-from isaac_tools.gym_utils import save_gym_run, interpolate_camera_pose
+
 from world_builder.actions import apply_actions
 
 from pigi_tools.data_utils import get_plan, get_body_map, get_multiple_solutions, add_to_planning_config, \
@@ -86,6 +87,8 @@ def load_pigi_data(run_dir, use_gui=True, width=1440, height=1120, verbose=False
     if verbose:
         world.summarize_all_objects()
     body_map = get_body_map(run_dir, world, larger=False)
+    load_attachments(run_dir, world, body_map=body_map)
+
     return world, problem, exp_dir, run_dir, commands, plan, body_map
 
 
@@ -108,10 +111,21 @@ def load_pigi_data_complex(run_dir_ori, use_gui=True, width=1440, height=1120, v
         shutil.rmtree(exp_dir)
         return
     commands, plan = result
+
     return world, problem, exp_dir, run_dir, commands, plan, body_map
 
 
 #############################################################################################
+
+
+def load_attachments(run_dir, world, body_map):
+    config = load_planning_config(run_dir)
+    if 'attachments' not in config:
+        return {}
+    attachments = config['attachments']
+    for child, (parent, parent_link, grasp_pose) in attachments.items():
+        body = body_map[child]
+        world.ATTACHMENTS[body] = ObjAttachment(parent, parent_link, grasp_pose, body)
 
 
 def load_replay_conf(conf_path):
@@ -124,9 +138,12 @@ def load_replay_conf(conf_path):
     # conf = SimpleNamespace(**kwargs)
 
     c['save_jpg'] = c['save_jpg'] or c['save_composed_jpg'] or c['save_gif']
-    c['step_by_step'] = c['step_by_step'] and has_getch()
     c['use_gym'] = c['use_gym'] and has_srl_stream()
+    c['step_by_step'] = c['step_by_step'] and has_getch()
     # c['cases'] = get_sample_envs_for_rss(task_name=c['task_name'], count=None)
+
+    if c['step_by_step']:
+        c['save_mp4'] = False
 
     if c['given_path']:
         c['visualize_collisions'] = True
@@ -402,7 +419,7 @@ def replay_all_in_gym(width=1440, height=1120, num_rows=5, num_cols=5, world_siz
                       camera_motion=None):
     from test_utils import get_dirs_camera
     from isaac_tools.gym_utils import load_envs_isaacgym, record_actions_in_gym, \
-        update_gym_world_by_wconf, images_to_gif, images_to_mp4
+        update_gym_world_by_wconf, images_to_gif, images_to_mp4, save_gym_run, interpolate_camera_pose
     from tqdm import tqdm
 
     img_dir = join('gym_images')
