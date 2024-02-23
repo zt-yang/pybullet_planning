@@ -143,12 +143,13 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
     """ load a svg file representing the floor plan in asset path
         return a dictionary of object name: (category, pose) as well as world dimensions
     """
+    plan_path = abspath(join(asset_path, 'floorplans', plan_name))
     X_OFFSET, Y_OFFSET, SCALING = None, None, None
     FLOOR_X_MIN, FLOOR_X_MAX = inf, -inf
     FLOOR_Y_MIN, FLOOR_Y_MAX = inf, -inf
     objects = {}
     objects_by_category = {}
-    content = untangle.parse(join(asset_path, 'floorplans', plan_name)).svg.g.g.g
+    content = untangle.parse(plan_path).svg.g.g.g
     for object in content:
         name = None
         rect = object.rect[0]
@@ -402,6 +403,7 @@ def get_file_by_category(category, RANDOM_INSTANCE=False, SAMPLING=False):
         parent = get_parent_category(category)
         if parent is None:
             print('\tcant get_parent_category', category)
+            return None
             assert False
         cats = [c for c in listdir(join(ASSET_PATH, 'models', parent)) if c.lower() == category.lower()]
         if len(cats) > 0:

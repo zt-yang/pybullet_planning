@@ -297,7 +297,7 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                 # 'shelf_bottom': []  ## 'VeggieCabbage' ## for HPN testing
             },
             'Basin': {
-                'faucet_platform': ['Faucet']
+                'faucet_platform': []  ## 'Faucet'
             }
         }
     spaces = {k.lower(): v for k, v in spaces.items()}
