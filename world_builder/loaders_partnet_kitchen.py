@@ -58,7 +58,7 @@ def load_random_mini_kitchen_counter(world, movable_category='food', w=6, l=6, h
     # h = random.uniform(0.4, 1.1)
     counter = world.add_object(Object(
         load_asset('KitchenCounter', x=w/2, y=l/2, yaw=math.pi, floor=floor, h=h,
-                   RANDOM_INSTANCE=True, verbose=False), category='supporter', name='counter'))
+                   random_instance=True, verbose=False), category='supporter', name='counter'))
 
     ## --- add cabage on an external table
     x, y = 1, 3
@@ -68,7 +68,7 @@ def load_random_mini_kitchen_counter(world, movable_category='food', w=6, l=6, h
     cat = movable_category.capitalize()
     cabbage = world.add_object(Moveable(
         load_asset(cat, x=x, y=y, yaw=random.uniform(-math.pi, math.pi),
-                   floor=floor, RANDOM_INSTANCE=True, SAMPLING=SAMPLING),
+                   floor=floor, random_instance=True, sampling=SAMPLING),
         category=cat
     ))
 
@@ -131,8 +131,8 @@ def load_fridge_with_food_on_surface(world, counter, name='minifridge',
     (x, y, _), _ = get_pose(counter)
     SAMPLING = cabbage if SAMPLING else False
     minifridge = world.add_object(Object(
-        load_asset('MiniFridge', x=x, y=y, yaw=math.pi, floor=counter, SAMPLING=SAMPLING,
-                   RANDOM_INSTANCE=True), name=name))
+        load_asset('MiniFridge', x=x, y=y, yaw=math.pi, floor=counter, sampling=SAMPLING,
+                   random_instance=True), name=name))
 
     x = get_aabb(counter).upper[0] - get_aabb_extent(get_aabb(minifridge))[0] / 2 + 0.2
     y_min = get_aabb(counter).lower[1] + get_aabb_extent(get_aabb(minifridge))[1] / 2
@@ -222,7 +222,7 @@ def load_another_table(world, w=6, l=6, table_name='table', four_ways=True):
     h = random.uniform(0.3, 0.9)
     table = world.add_object(Object(
         load_asset('KitchenCounter', x=w/2, y=0, yaw=math.pi, floor=floor, h=h,
-                   RANDOM_INSTANCE=True, verbose=False),
+                   random_instance=True, verbose=False),
         category='supporter', name=table_name))
     random_set_table_by_counter(table, counter, four_ways=four_ways)
     obstacles = [o for o in get_bodies() if o != table]
@@ -293,7 +293,7 @@ def place_another_food(world, movable_category='food', SAMPLING=False, verbose=T
     cat = movable_category.capitalize()
     new_food = world.add_object(Moveable(
         load_asset(cat, x=0, y=0, yaw=random.uniform(-math.pi, math.pi),
-                   floor=floor, RANDOM_INSTANCE=True, SAMPLING=SAMPLING),
+                   floor=floor, random_instance=True, sampling=SAMPLING),
         category=cat
     ))
 
@@ -433,10 +433,10 @@ def load_kitchen_mini_scene(world, **kwargs):
             fixture = {}
             if idx in [1, 2]:  # control height for center furniture
                 obj = Object(load_asset(cat, x=center_x, y=center_y, yaw=yaw, floor=floor,
-                                        w=w, l=l, h=center_z, RANDOM_INSTANCE=True), name=cat)
+                                        w=w, l=l, h=center_z, random_instance=True), name=cat)
             else:
                 obj = Object(load_asset(cat, x=center_x, y=center_y, yaw=yaw, floor=floor,
-                                        w=w, l=l, h=2.5 * MIN_COUNTER_Z, RANDOM_INSTANCE=True), name=cat)
+                                        w=w, l=l, h=2.5 * MIN_COUNTER_Z, random_instance=True), name=cat)
             fixture['id'] = world.add_object(obj)
             center_z = stable_z(obj.body, floor)
             # center_x = 1-get_aabb_extent(get_aabb(fixture['id'].body))[0]/2
@@ -505,13 +505,13 @@ def load_kitchen_mini_scene(world, **kwargs):
     if min_shelf_y > -0.5:
         ins = random.choice(['00001', '00002'])
         cabinet = world.add_object(
-            Object(load_asset('CabinetTop', x=0, y=min_shelf_y, z=SHELF_HEIGHT, yaw=math.pi, RANDOM_INSTANCE=ins),
+            Object(load_asset('CabinetTop', x=0, y=min_shelf_y, z=SHELF_HEIGHT, yaw=math.pi, random_instance=ins),
                    category='cabinet', name='cabinet')
             )
     else:  ## if max_shelf_y < 0.5:
         ins = random.choice(['00003'])
         cabinet = world.add_object(
-            Object(load_asset('CabinetTop', x=0, y=max_shelf_y, z=SHELF_HEIGHT, yaw=math.pi, RANDOM_INSTANCE=ins),
+            Object(load_asset('CabinetTop', x=0, y=max_shelf_y, z=SHELF_HEIGHT, yaw=math.pi, random_instance=ins),
                    category='cabinet', name='cabinet')
             )
 
@@ -742,13 +742,13 @@ def load_table_stationaries(world, w=6, l=6, h=0.9):
     h = random.uniform(h-0.1, h+0.1)
     counter = world.add_object(Supporter(
         load_asset('KitchenCounter', x=w/2, y=l/2, yaw=math.pi, floor=floor, h=h,
-                   RANDOM_INSTANCE=True, verbose=False), category='supporter', name='counter'))
+                   random_instance=True, verbose=False), category='supporter', name='counter'))
     # set_camera_target_body(counter, dx=3, dy=0, dz=2)
     aabb_ext = get_aabb_extent(get_aabb(counter.body))
     y = l/2 - aabb_ext[1] / 2 + aabb_ext[0] / 2
     tray = world.add_object(Object(
         load_asset('Tray', x=w/2, y=y, yaw=math.pi, floor=counter,
-                   RANDOM_INSTANCE=True, verbose=False), name='tray'))
+                   random_instance=True, verbose=False), name='tray'))
     tray_bottom = world.add_surface_by_keyword(tray, 'tray_bottom')
 
     ## --- add cabage on an external table
@@ -757,7 +757,7 @@ def load_table_stationaries(world, w=6, l=6, h=0.9):
         RI = '103104' if cat == 'Stapler' else True
         item = world.add_object(Moveable(
             load_asset(cat, x=0, y=0, yaw=random.uniform(-math.pi, math.pi),
-                       RANDOM_INSTANCE=RI), category=cat
+                       random_instance=RI), category=cat
         ))
         world.put_on_surface(item, 'counter')
         if collided(item.body, [tray]+items, verbose=False, tag='ensure item cfree'):
@@ -813,7 +813,7 @@ def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=False, random_s
         ins = '45305'
     base = world.add_object(Object(
         load_asset('SinkBase', x=x, y=y, yaw=math.pi, floor=floor,
-                   RANDOM_INSTANCE=ins, verbose=verbose, random_scale=random_scale), name='sinkbase'))
+                   random_instance=ins, verbose=verbose, random_scale=random_scale), name='sinkbase'))
     dx = base.lx / 2
     base.adjust_pose(dx=dx, world=world)
     x += dx
@@ -828,7 +828,7 @@ def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=False, random_s
     # stack on base, since floor is base.body, based on aabb not exact geometry
     sink = world.add_object(Object(
         load_asset('Sink', x=x, y=y, yaw=math.pi, floor=base.body,
-                   RANDOM_INSTANCE=ins, verbose=verbose, random_scale=random_scale), name='sink'))
+                   random_instance=ins, verbose=verbose, random_scale=random_scale), name='sink'))
     # TODO: instead of 0.05, make it random
     # align the front of the sink with the front of the base in the x direction
     dx = (base.aabb().upper[0] - sink.aabb().upper[0]) - 0.05 * random_scale
@@ -847,7 +847,7 @@ def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=False, random_s
         ins = '14'
     faucet = world.add_object(Object(
         load_asset('Faucet', x=x, y=y, yaw=math.pi, floor=base.body,
-                   RANDOM_INSTANCE=ins, verbose=verbose, random_scale=random_scale), name='faucet'))
+                   random_instance=ins, verbose=verbose, random_scale=random_scale), name='faucet'))
     # adjust placement of faucet to be behind the sink
     place_faucet_by_sink(faucet, sink, world=world, gap=0.01 * random_scale)
     faucet.adjust_pose(dz=COUNTER_THICKNESS, world=world)
@@ -1149,13 +1149,13 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
             if category == 'MiniFridge':
                 ins = random.choice(['11709'])  ## two doors
         return world.add_object(Object(
-            load_asset(category, yaw=math.pi, floor=floor, RANDOM_INSTANCE=ins, verbose=False),
+            load_asset(category, yaw=math.pi, floor=floor, random_instance=ins, verbose=False),
             name=category, category=category))
 
     def load_furniture_base(furniture):
         return world.add_object(Object(
             load_asset('MiniFridgeBase', l=furniture.ly, yaw=math.pi, floor=floor,
-                       RANDOM_INSTANCE=True, verbose=False),
+                       random_instance=True, verbose=False),
             name=f'{furniture.category}Base', category=f'{furniture.category}Base'))
 
     counter_regions = []
@@ -1519,7 +1519,7 @@ def sample_table(world, RANDOM_INSTANCE=True, **kwargs):
     """ a table facing the kitchen counters, x < 4 """
     floor = world.name_to_body('floor')
     table = world.add_object(Supporter(
-        load_asset('DiningTable', yaw=0, floor=floor, RANDOM_INSTANCE=RANDOM_INSTANCE, **kwargs)))
+        load_asset('DiningTable', yaw=0, floor=floor, random_instance=RANDOM_INSTANCE, **kwargs)))
     if table.aabb().upper[0] > 4:
         table.adjust_pose(x=4 - table.xmax2x)
     return table

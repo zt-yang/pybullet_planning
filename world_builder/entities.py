@@ -594,7 +594,7 @@ class Space(Region):
         # world.open_doors_drawers(self.body)
 
         obj = world.add_object(
-            Moveable(load_asset(obj_name.lower(), RANDOM_INSTANCE=RANDOM_INSTANCE, scale=scale),
+            Moveable(load_asset(obj_name.lower(), random_instance=RANDOM_INSTANCE, scale=scale),
                      category=category)
         )
         self.place_obj(obj, max_trial=max_trial, visualize=False, **kwargs)

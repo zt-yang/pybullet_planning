@@ -183,7 +183,7 @@ def test_egg_movements(args):
     world = create_world(args)
     world.set_skip_joints()
 
-    floor = load_floor_plan(world, plan_name='kitchen_v3.svg')
+    floor = load_kitchen_floor_plan(world, plan_name='kitchen_v3.svg')
     egg = load_experiment_objects(world, CABBAGE_ONLY=True, name='eggblock',
                                   color=TAN, wb=.03, hb =.04) ##
     bottom, lid = load_pot_lid(world)
@@ -253,7 +253,7 @@ def test_opened_space(args):
     world = create_world(args)
     world.set_skip_joints()
 
-    floor = load_floor_plan(world, plan_name='kitchen_v2.svg')
+    floor = load_kitchen_floor_plan(world, plan_name='kitchen_v2.svg')
     egg = load_experiment_objects(world, CABBAGE_ONLY=True, name='eggblock',
                                   color=TAN, wb=.03, hb =.04) ##
     bottom, lid = load_pot_lid(world)
@@ -384,7 +384,7 @@ def test_kitchen_demo(args):
         }
     }
 
-    floor = load_floor_plan(world, plan_name='kitchen_v3.svg', surfaces=surfaces)
+    floor = load_kitchen_floor_plan(world, plan_name='kitchen_v3.svg', surfaces=surfaces)
 
     egg = load_experiment_objects(world, CABBAGE_ONLY=True, name='eggblock',
                                   color=TAN, wb=.03, hb =.04) ##
@@ -447,7 +447,7 @@ def test_kitchen_demo_two(args):
         }
     }
 
-    floor = load_floor_plan(world, plan_name='kitchen_v3.svg', surfaces=surfaces)
+    floor = load_kitchen_floor_plan(world, plan_name='kitchen_v3.svg', surfaces=surfaces)
     world.remove_object(floor)
     robot = create_pr2_robot(world, base_q=(2.5, 6, PI / 2 + PI / 2))
     load_kitchen_mechanism(world)
@@ -508,7 +508,7 @@ def test_kitchen_demo_objects(args):
     name_to_body = world.name_to_body
     name_to_object = world.name_to_object
 
-    floor = load_floor_plan(world, plan_name='kitchen_v3.svg')
+    floor = load_kitchen_floor_plan(world, plan_name='kitchen_v3.svg')
     world.remove_object(floor)
     robot = create_pr2_robot(world, base_q=(2.5, 6, PI / 2 + PI / 2))
     load_kitchen_mechanism(world)

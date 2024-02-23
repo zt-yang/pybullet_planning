@@ -305,7 +305,7 @@ def test_three_moving_carts(args, domain='pr2_rearrange.pddl', stream='pr2_strea
 def test_kitchen_joints(args):
     world = create_world(args)
 
-    floor = load_floor_plan(world, plan_name='kitchen.svg') ## studio0, studio0
+    floor = load_kitchen_floor_plan(world, plan_name='kitchen.svg') ## studio0, studio0
     world.remove_object(floor)
     robot = create_pr2_robot(world, base_q=(1.79, 6, PI / 2 + PI / 2))
 
@@ -415,7 +415,7 @@ def test_kitchen_fridge(args, domain='pr2_food.pddl', stream='pr2_stream.pddl'):
     world = create_world(args)
     world.set_skip_joints()
 
-    floor = load_floor_plan(world, plan_name='kitchen_v2.svg')
+    floor = load_kitchen_floor_plan(world, plan_name='kitchen_v2.svg')
     # cabbage = load_experiment_objects(world)
     # floor = load_floor_plan(world, plan_name='fridge_v2.svg')
     egg = load_experiment_objects(world, CABBAGE_ONLY=True, name='eggblock', color=TAN)

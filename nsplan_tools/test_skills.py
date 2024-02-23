@@ -565,7 +565,7 @@ def test_placement_in(robot, category, movable_category='Food', movable_instance
                 # world.add_body(space, f'{category.lower()}#{id}-{body_link}')
 
                 cabbage, path = load_asset(movable_category, x=x, y=y, z=0, yaw=0,
-                                           RANDOM_INSTANCE=movable_instance)[:2]
+                                           random_instance=movable_instance)[:2]
                 cabbage_name = f'cabbage#{i}-{body_link}'
                 world.add_body(cabbage, cabbage_name, path=path)
 
@@ -583,7 +583,7 @@ def test_placement_in(robot, category, movable_category='Food', movable_instance
                 markers = []
                 for j in range(1, len(outputs)):
                     marker = load_asset(movable_category, x=x, y=y, z=0, yaw=0,
-                                        RANDOM_INSTANCE=movable_instance)[0]
+                                        random_instance=movable_instance)[0]
                     markers.append(marker)
                     set_pose(marker, outputs[j][0].value)
 
@@ -618,7 +618,7 @@ def test_placement_on(robot, category, surface_name=None, seg_links=False, gen_z
 
     if category == 'box' and gen_z:
         cabbage, path = load_asset(movable_category, x=0, y=0, z=0, yaw=0,
-                                   RANDOM_INSTANCE=movable_instance)[:2]
+                                   random_instance=movable_instance)[:2]
         z = get_pose(cabbage)[0][2] - get_aabb(cabbage).lower[2]
         zs = [z] * 20
 
@@ -673,7 +673,7 @@ def test_placement_on(robot, category, surface_name=None, seg_links=False, gen_z
             # world.add_body(space, f'{category.lower()}#{id}-{body_link}')
             x += 1
             cabbage, path = load_asset(movable_category, x=x, y=y, z=0, yaw=0,
-                                       RANDOM_INSTANCE=movable_instance)[:2]
+                                       random_instance=movable_instance)[:2]
             cabbage_name = f'{movable_category}#{i}-{body}'
             world.add_body(cabbage, cabbage_name, path=path)
 
@@ -694,7 +694,7 @@ def test_placement_on(robot, category, surface_name=None, seg_links=False, gen_z
             markers = []
             for j in range(1, len(outputs)):
                 marker = load_asset(movable_category, x=x, y=y, z=0, yaw=0,
-                                    RANDOM_INSTANCE=movable_instance)[0]
+                                    random_instance=movable_instance)[0]
                 markers.append(marker)
                 set_pose(marker, outputs[j][0].value)
 

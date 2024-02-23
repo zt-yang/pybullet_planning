@@ -60,13 +60,13 @@ def sample_clean_dish_v0(world, w=3, l=8, verbose=True, pause=True):
             if category == 'MiniFridge':
                 ins = random.choice(['11709'])  ## two doors
         return world.add_object(Object(
-            load_asset(category, yaw=math.pi, floor=floor, RANDOM_INSTANCE=ins, verbose=True, random_scale=random_scale),
+            load_asset(category, yaw=math.pi, floor=floor, random_instance=ins, verbose=True, random_scale=random_scale),
             name=category, category=category))
 
     def load_furniture_base(furniture):
         return world.add_object(Object(
             load_asset('MiniFridgeBase', l=furniture.ly, yaw=math.pi, floor=floor,
-                       RANDOM_INSTANCE=True, verbose=True),
+                       random_instance=True, verbose=True),
             name=f'{furniture.category}Base', category=f'{furniture.category}Base'))
 
     counter_regions = []

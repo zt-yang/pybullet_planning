@@ -52,7 +52,6 @@ CAMERA_FRAME = 'high_def_optical_frame'
 EYE_FRAME = 'wide_stereo_gazebo_r_stereo_camera_frame'
 CAMERA_MATRIX = get_camera_matrix(width=640, height=480, fx=525., fy=525.) # 319.5, 239.5 | 772.55, 772.5
 
-LOAD_MOVEABLES = True
 GRASPABLES = ['BraiserLid', 'Egg', 'VeggieCabbage', 'MeatTurkeyLeg', 'VeggieGreenPepper', 'VeggieArtichoke',
                         'VeggieTomato',
                         'VeggieZucchini', 'VeggiePotato', 'VeggieCauliflower',
@@ -224,7 +223,8 @@ def studio(args):
     """
     world = World(time_step=args.time_step, camera=args.camera, segment=args.segment)
 
-    floor = load_floor_plan(world, plan_name='kitchen.svg') ## studio0, studio1
+    # floor = load_floor_plan(world, plan_name='studio0.svg')  ## studio1
+    floor = load_kitchen_floor_plan(world, plan_name='kitchen.svg')
     # load_experiment_objects(world, CABBAGE_ONLY=False)
     world.remove_object(floor)  ## remove the floor for support
 
@@ -255,11 +255,7 @@ def studio(args):
     # run_thread(robot)
 
 
-def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, surfaces=None,
-                    asset_path=ASSET_PATH, RANDOM_INSTANCE=False, verbose=True):
-    print(f'\nloading floor plan {plan_name}...')
-    world.floorplan = plan_name
-
+def load_kitchen_floor_plan(world, spaces=None, surfaces=None, **kwargs):
     if spaces is None:
         spaces = {
             'counter': {
@@ -272,6 +268,7 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                 # 'indigo_tmp': ['Pot']
             },
         }
+
     if surfaces is None:
         surfaces = {
             'counter': {
@@ -300,15 +297,23 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                 'faucet_platform': []  ## 'Faucet'
             }
         }
+    return load_floor_plan(world, spaces=spaces, surfaces=surfaces, **kwargs)
+
+
+def load_floor_plan(world, plan_name='studio1.svg', debug=False, spaces=None, surfaces=None,
+                    asset_path=ASSET_PATH, random_instance=False, load_movables=True, verbose=True):
+    print(f'\nloading floor plan {plan_name}...')
+    world.floorplan = plan_name
+
     spaces = {k.lower(): v for k, v in spaces.items()}
     surfaces = {k.lower(): v for k, v in surfaces.items()}
     regions = list(surfaces.keys()) + list(spaces.keys())
 
     ## read xml file
-    objects, X_OFFSET, Y_OFFSET, SCALING, FLOOR_X_MIN, FLOOR_X_MAX, FLOOR_Y_MIN, FLOOR_Y_MAX = read_xml(plan_name, asset_path=asset_path)
+    objects, X_OFFSET, Y_OFFSET, SCALING, FLOOR_X_MIN, FLOOR_X_MAX, FLOOR_Y_MIN, FLOOR_Y_MAX = \
+        read_xml(plan_name, asset_path=asset_path)
 
-    #######################################################
-    ## add reference floor
+    ## add reference floor used to ground objects z, will be removed afterward
     w = (FLOOR_X_MAX - FLOOR_X_MIN) / SCALING
     l = (FLOOR_Y_MAX - FLOOR_Y_MIN) / SCALING
     x = ((FLOOR_X_MIN + FLOOR_X_MAX) / 2 - X_OFFSET) / SCALING
@@ -317,7 +322,6 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
         Floor(create_box(w=round(w, 1), l=round(l, 1), h=FLOOR_HEIGHT, color=TAN, collision=True)),
         Pose(point=Point(x=round(x, 1), y=round(y, 1), z=-2 * FLOOR_HEIGHT)))
 
-    #######################################################
     ## add each static object
     for name, o in objects.items():
         cat = o['category'].lower()
@@ -339,9 +343,10 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
 
         ## add the object itself
         yaw = {0: 0, 90: PI / 2, 180: PI, 270: -PI / 2}[o['yaw']]
+        ri = random_instance and not ('kitchen' in plan_name and cat == 'oven')
         obj = world.add_object(Object(
             load_asset(cat, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=floor,
-                       w=round(w, 1), l=round(l, 1), RANDOM_INSTANCE=RANDOM_INSTANCE),
+                       w=round(w, 1), l=round(l, 1), random_instance=ri),
             category=cat))
         body = obj.body
         if 'door' in cat.lower():
@@ -351,18 +356,11 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
 
         #######################################################
         ## add moveable objects on designated places
-        if not LOAD_MOVEABLES: continue
-
-        ## PLACE UTENCILS & INGREDIENTS
-        # if cat.lower() == 'dishwasher':
-        #     print("cat.lower() == 'dishwasher'")
-        #     DEBUG = True
-        # else:
-        #     DEBUG = False
+        if not load_movables: continue
 
         if cat in regions:
 
-            if DEBUG:
+            if debug:
                 world.open_doors_drawers(body, ADD_JOINT=False)
                 set_camera_target_body(body, dx=0.05, dy=0.05, dz=0.5)
 
@@ -370,17 +368,13 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                 # dump_link(body, link)
                 # set_color(body, YELLOW, link)
                 # draw_link_name(body, link)
-
                 link_name = get_link_name(body, link)
 
-                # if link_name == 'front_right_stove':
-                #     print('ss front_right_stove')
                 if cat in surfaces and link_name in surfaces[cat]:
                     surface = Surface(body, link=link)
                     world.add_object(surface)
                     for o in surfaces[cat][link_name]:
-                        obj = surface.place_new_obj(o, RANDOM_INSTANCE=RANDOM_INSTANCE)
-
+                        obj = surface.place_new_obj(o, RANDOM_INSTANCE=random_instance)
                         if verbose:
                             print(f'\tadding object {obj.name} to surface {surface.lisdf_name}')
 
@@ -388,11 +382,10 @@ def load_floor_plan(world, plan_name='studio1.svg', DEBUG=False, spaces=None, su
                     space = Space(body, link=link)
                     world.add_object(space)
                     for o in spaces[cat][link_name]:
-                        obj = space.place_new_obj(o, RANDOM_INSTANCE=RANDOM_INSTANCE)
-
+                        obj = space.place_new_obj(o, RANDOM_INSTANCE=random_instance)
                         if verbose:
                             print(f'\tadding object {obj.name} to space {space.lisdf_name}')
-            if DEBUG:
+            if debug:
                 world.close_doors_drawers(body)
 
     world.close_all_doors_drawers()
@@ -708,8 +701,8 @@ def load_cabinet_test_scene(world, RANDOM_INSTANCE=False, MORE_MOVABLE=False, ve
     if MORE_MOVABLE:
         surfaces['counter']['hitman_tmp'].append('VeggieCabbage')
 
-    floor = load_floor_plan(world, plan_name='counter.svg', DEBUG=True, verbose=verbose,
-                            surfaces=surfaces, spaces=spaces, RANDOM_INSTANCE=RANDOM_INSTANCE)
+    floor = load_floor_plan(world, plan_name='counter.svg', debug=True, verbose=verbose,
+                            surfaces=surfaces, spaces=spaces, random_instance=RANDOM_INSTANCE)
     world.remove_object(floor)
     pot, lid = load_pot_lid(world)
 
@@ -829,7 +822,7 @@ def load_feg_kitchen_dishwasher(world):
         #     # 'indigo_tmp': ['Pot']
         # }
     }
-    floor = load_floor_plan(world, plan_name='kitchen_v3.svg', surfaces=surfaces, spaces=spaces)
+    floor = load_kitchen_floor_plan(world, plan_name='kitchen_v3.svg', surfaces=surfaces, spaces=spaces)
     world.remove_object(floor)
     load_kitchen_mechanism(world)
     # load_kitchen_mechanism_stove(world)
@@ -902,7 +895,7 @@ def load_feg_kitchen(world):
             'faucet_platform': ['Faucet']
         },
     }
-    floor = load_floor_plan(world, plan_name='kitchen_v3.svg', surfaces=surfaces)
+    floor = load_kitchen_floor_plan(world, plan_name='kitchen_v3.svg', surfaces=surfaces)
     world.remove_object(floor)
     load_kitchen_mechanism(world)
     # load_kitchen_mechanism_stove(world)

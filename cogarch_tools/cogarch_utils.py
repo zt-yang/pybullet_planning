@@ -40,6 +40,7 @@ def parse_config(path):
 
 
 def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwargs):
+    """ default values are given at yaml, custom values are provided by commandline flags, overwritten by kwargs"""
 
     conf = parse_config(join(config_root, config))
 
@@ -122,6 +123,13 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
 
     ## seed determines asset instances and object poses initiated for the problem
     args = parser.parse_args()
+
+    ## replace the default values with values provided, when running in IDE
+    for k, v in kwargs.items():
+        if v is not None:
+            args.__dict__[k] = v
+
+    ## initialize random seed
     seed = args.seed
     if seed is None:
         seed = random.randint(0, 10**6-1)
@@ -130,11 +138,6 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     set_random_seed(seed)
     set_numpy_seed(seed)
     args.seed = seed
-
-    ## replace the default values with values provided, when running in IDE
-    for k, v in kwargs.items():
-        if v is not None:
-            args.__dict__[k] = v
 
     ## other args, especially those related to problem and planner may be added directly in config files
     args.__dict__['robot_builder_args'] = conf.robot.__dict__

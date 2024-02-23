@@ -118,7 +118,7 @@ def load_full_kitchen(world, load_cabbage=True, **kwargs):
         robot = create_pr2_robot(world, base_q=(1.79, 6, PI / 2 + PI / 2),
                                  custom_limits=custom_limits, USE_TORSO=True)
 
-    floor = load_floor_plan(world, plan_name='kitchen_v2.svg', **kwargs)
+    floor = load_kitchen_floor_plan(world, plan_name='kitchen_v2.svg', **kwargs)
     world.remove_object(floor)
     world.set_camera_points(FRONT_CAMERA_POINT, DOWNWARD_CAMERA_POINT)
 
@@ -296,7 +296,7 @@ def load_nvidia_kitchen_movables(world: World, open_doors_for: list = [], custom
     movable_to_doors = {}
     for category, asset_name, rand_ins, name, supporter_name in default_supports:
         movable = world.add_object(Moveable(
-            load_asset(asset_name, x=0, y=0, yaw=random.uniform(-math.pi, math.pi), RANDOM_INSTANCE=rand_ins),
+            load_asset(asset_name, x=0, y=0, yaw=random.uniform(-math.pi, math.pi), random_instance=rand_ins),
             category=category, name=name
         ))
         supporting_surface = world.name_to_object(supporter_name)

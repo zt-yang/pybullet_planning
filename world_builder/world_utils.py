@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import time
 import numpy as np
 import untangle
@@ -141,6 +143,7 @@ def get_domain_constants(pddl_path):
 
 def read_xml(plan_name, asset_path=ASSET_PATH):
     """ load a svg file representing the floor plan in asset path
+            treating the initial pose of robot as world origin
         return a dictionary of object name: (category, pose) as well as world dimensions
     """
     plan_path = abspath(join(asset_path, 'floorplans', plan_name))
@@ -329,13 +332,15 @@ def partnet_id_from_path(path):
     return id[id.rfind('/') + 1:]
 
 
-def get_sampled_file(SAMPLING, category, ids):
+def get_sampled_file(sampling, category, ids):
     from world_builder.entities import Object
     dists = json.load(open(SAMPLER_DB, 'r'))
+
+    ## conditioned on the instance distribution of another object
     dist = None
-    if isinstance(SAMPLING, Object):
-        key = SAMPLER_KEY.format(x=SAMPLING.category.lower(), y=category.lower())
-        id = partnet_id_from_path(SAMPLING.path)
+    if isinstance(sampling, Object):
+        key = SAMPLER_KEY.format(x=sampling.category.lower(), y=category.lower())
+        id = partnet_id_from_path(sampling.path)
         if id in dists[key]:
             dist = dists[key][id]
     elif category.lower() in dists:
@@ -359,36 +364,41 @@ def get_sampled_file(SAMPLING, category, ids):
     return None
 
 
-def get_file_by_category(category, RANDOM_INSTANCE=False, SAMPLING=False):
+def get_file_by_category(category : str, random_instance : str | bool = False, sampling : str | bool = False):
+    """ category:   name of the object category in assets/models/
+            see https://github.com/zt-yang/kitchen-models
+        random_instance:    sample an asset instance randomly, instead of using the first one.
+                            if random_instance is given a string value, use that instance
+        sampling:   sample an asset instance in a way that balances instance distribution
+                    or conditioned on the instance distribution of other categories
+    """
     file = None
 
     ## correct the capitalization because Ubuntu cares about it
     cats = [c for c in listdir(join(ASSET_PATH, 'models')) if c.lower() == category.lower()]
     if len(cats) > 0:
         category = cats[0]
-    asset_root = join(ASSET_PATH, 'models', category)  ## ROOT_DIR
+
+    ## sometimes the category name is a subcategory and there's only one instance of it, e.g. models/Food/VeggieCabbage
+    asset_root = join(ASSET_PATH, 'models', category)
     if isdir(asset_root):
-        ids = [f for f in listdir(join(asset_root))
-               if isdir(join(asset_root, f)) and not f.startswith('_')]
-        files = [join(asset_root, f) for f in listdir(join(asset_root))
-                 if 'DS_Store' not in f and not f.startswith('_')]
+        ids = [f for f in listdir(join(asset_root)) if isdir(join(asset_root, f)) and not f.startswith('_')]
+        files = [join(asset_root, f) for f in listdir(join(asset_root)) if 'DS_Store' not in f and not f.startswith('_')]
 
-        if len(ids) == 0:
-            print(category)
+        assert len(ids) > 0
 
-        # if 'minifridge' in asset_root.lower():
-        #     print('asset_root', asset_root)
-        if len(ids) == len(files):  ## mobility objects
+        ## for partnet-mobility objects, all files in the category directory are directories
+        if len(ids) == len(files):
             paths = [join(asset_root, p) for p in ids]
             paths.sort()
-            if RANDOM_INSTANCE:
+            if random_instance:
                 paths = [p for p in paths if basename(p) not in DONT_LOAD]
-                if isinstance(RANDOM_INSTANCE, str):
-                    paths = [join(asset_root, RANDOM_INSTANCE)]
+                if isinstance(random_instance, str):
+                    paths = [join(asset_root, random_instance)]
                 else:
                     sampled = False
-                    if SAMPLING:
-                        result = get_sampled_file(SAMPLING, category, ids)
+                    if sampling:
+                        result = get_sampled_file(sampling, category, ids)
                         if isinstance(result, str):
                             paths = [join(asset_root, result)]
                             sampled = True
@@ -396,26 +406,18 @@ def get_file_by_category(category, RANDOM_INSTANCE=False, SAMPLING=False):
                         random.shuffle(paths)
             file = join(paths[0], 'mobility.urdf')
 
+        ## for loading the digital twin of nvidia kitchen
         elif category == 'counter':
             file = join(ASSET_PATH, 'models', 'counter', 'urdf', 'kitchen_part_right_gen_convex.urdf')
 
     else:
         parent = get_parent_category(category)
-        if parent is None:
-            print('\tcant get_parent_category', category)
-            return None
-            assert False
-        cats = [c for c in listdir(join(ASSET_PATH, 'models', parent)) if c.lower() == category.lower()]
-        if len(cats) > 0:
-            category = cats[0]
+        assert parent
 
-        if parent is not None:
-            file = join(ASSET_PATH, 'models', parent, category, 'mobility.urdf')
+        ## find the subcategory
+        category = [c for c in listdir(join(ASSET_PATH, 'models', parent)) if c.lower() == category.lower()][0]
+        file = join(ASSET_PATH, 'models', parent, category, 'mobility.urdf')
 
-        else:  ## bookshelf
-            file = join(asset_root, 'model.sdf')
-            if not isfile(file):
-                file = join(asset_root, f'{category}.sdf')
     return file
 
 
@@ -486,10 +488,10 @@ def adjust_scale(body, category, file, w, l):
 
 
 def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=None,
-               scale=1, verbose=False, RANDOM_INSTANCE=False, SAMPLING=False, random_scale=1.0):
+               scale=1, verbose=False, random_instance=False, sampling=False, random_scale=1.0):
 
     """ ============= load body by category ============= """
-    file = get_file_by_category(category, RANDOM_INSTANCE=RANDOM_INSTANCE, SAMPLING=SAMPLING)
+    file = get_file_by_category(category, random_instance=random_instance, sampling=sampling)
     if verbose and file is not None:
         print(f"Loading ...... {abspath(file)}", end='\r')
 
