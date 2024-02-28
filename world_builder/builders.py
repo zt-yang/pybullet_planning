@@ -197,7 +197,7 @@ def test_feg_pick(world, floorplan='counter.svg', verbose=True):
 
     ## add all objects, with dynamic object instances randomly drawn from assets/{category}/
     ## and collision free poses randomly drawn for objects. all joints are set to closed state
-    pot, lid, turkey, counter, oil, vinegar = load_cabinet_test_scene(world, RANDOM_INSTANCE=True, verbose=verbose)
+    pot, lid, turkey, counter, oil, vinegar = load_cabinet_test_scene(world, random_instance=True, verbose=verbose)
 
     """ ============== [Init] Add robot ==================== """
 

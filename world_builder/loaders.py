@@ -374,7 +374,7 @@ def load_floor_plan(world, plan_name='studio1.svg', debug=False, spaces=None, su
                     surface = Surface(body, link=link)
                     world.add_object(surface)
                     for o in surfaces[cat][link_name]:
-                        obj = surface.place_new_obj(o, RANDOM_INSTANCE=random_instance)
+                        obj = surface.place_new_obj(o, random_instance=random_instance)
                         if verbose:
                             print(f'\tadding object {obj.name} to surface {surface.lisdf_name}')
 
@@ -382,7 +382,7 @@ def load_floor_plan(world, plan_name='studio1.svg', debug=False, spaces=None, su
                     space = Space(body, link=link)
                     world.add_object(space)
                     for o in spaces[cat][link_name]:
-                        obj = space.place_new_obj(o, RANDOM_INSTANCE=random_instance)
+                        obj = space.place_new_obj(o, random_instance=random_instance)
                         if verbose:
                             print(f'\tadding object {obj.name} to space {space.lisdf_name}')
             if debug:
@@ -678,7 +678,7 @@ def load_gripper_test_scene(world):
     return pot, lid, turkey, counter
 
 
-def load_cabinet_test_scene(world, RANDOM_INSTANCE=False, MORE_MOVABLE=False, verbose=True):
+def load_cabinet_test_scene(world, random_instance=False, MORE_MOVABLE=False, verbose=True):
     surfaces = {
         'counter': {
             'front_left_stove': [],
@@ -702,7 +702,7 @@ def load_cabinet_test_scene(world, RANDOM_INSTANCE=False, MORE_MOVABLE=False, ve
         surfaces['counter']['hitman_tmp'].append('VeggieCabbage')
 
     floor = load_floor_plan(world, plan_name='counter.svg', debug=True, verbose=verbose,
-                            surfaces=surfaces, spaces=spaces, random_instance=RANDOM_INSTANCE)
+                            surfaces=surfaces, spaces=spaces, random_instance=random_instance)
     world.remove_object(floor)
     pot, lid = load_pot_lid(world)
 

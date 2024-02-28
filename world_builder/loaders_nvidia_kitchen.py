@@ -242,7 +242,7 @@ def place_in_nvidia_kitchen_space(obj, supporter_name, interactive=False, doors=
         supporter.attach_obj(obj)
     else:
         ## initialize the object pose
-        supporter.place_obj(obj, world=world)
+        supporter.place_obj(obj)
 
     ## adjust the pose by pressing keyboard
     if pose is None or interactive:

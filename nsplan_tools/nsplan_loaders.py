@@ -251,7 +251,7 @@ def sample_clean_dish_v0(world, w=3, l=8, verbose=True, pause=True):
     #     if len(wide_counters) > 0:
     #         counter = wide_counters[0]
     #         microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random(),
-    #                                           RANDOM_INSTANCE=True, verbose=True, world=world)
+    #                                           random_instance=True, verbose=True, world=world)
     #         microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)), world=world)
     #         obstacles.append(microwave)
     # else:
