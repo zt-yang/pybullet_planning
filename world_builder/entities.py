@@ -128,7 +128,7 @@ class Object(Index):
         self.supporting_surface = None
         self.supported_objects = []
         self.events = []
-        self.categories = [category] ## for added categories like moveable
+        self.categories = [category] ## for added categories like movable
 
     ## =============== put other object on top of object =============
     ##
@@ -519,9 +519,9 @@ class Object(Index):
         # return f'{self.name}|{self.pybullet_name}'
 
 
-class Moveable(Object):
+class Movable(Object):
     def __init__(self, body, **kwargs):
-        super(Moveable, self).__init__(body, collision=False, **kwargs)
+        super(Movable, self).__init__(body, collision=False, **kwargs)
 
 
 class Steerable(Object):
@@ -585,7 +585,7 @@ class Space(Region):
             self.name = get_link_name(body, link)
 
     def place_new_obj(self, obj_name, category=None, max_trial=8, verbose=False,
-                      scale=1, world=None, RANDOM_INSTANCE=True, **kwargs):
+                      scale=1, world=None, random_instance=True, **kwargs):
 
         if category is None:
             category = obj_name
@@ -594,8 +594,8 @@ class Space(Region):
         # world.open_doors_drawers(self.body)
 
         obj = world.add_object(
-            Moveable(load_asset(obj_name.lower(), random_instance=RANDOM_INSTANCE, scale=scale),
-                     category=category)
+            Movable(load_asset(obj_name.lower(), random_instance=random_instance, scale=scale),
+                    category=category)
         )
         self.place_obj(obj, max_trial=max_trial, visualize=False, **kwargs)
 

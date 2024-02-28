@@ -251,7 +251,7 @@ def sample_clean_dish_v0(world, w=3, l=8, verbose=True, pause=True):
     #     if len(wide_counters) > 0:
     #         counter = wide_counters[0]
     #         microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random(),
-    #                                           RANDOM_INSTANCE=True, verbose=True, world=world)
+    #                                           random_instance=True, verbose=True, world=world)
     #         microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)), world=world)
     #         obstacles.append(microwave)
     # else:
@@ -312,8 +312,8 @@ def sample_clean_dish_v0(world, w=3, l=8, verbose=True, pause=True):
 
     ## load objects into reachable places
     food_ids, bottle_ids, medicine_ids, bowl_ids, mug_ids, pan_ids = \
-        load_counter_moveables(world, all_counters, d_x_min=0.3, obstacles=obstacles)
-    moveables = food_ids + bottle_ids + medicine_ids + bowl_ids + mug_ids + pan_ids
+        load_counter_movables(world, all_counters, d_x_min=0.3, obstacles=obstacles)
+    movables = food_ids + bottle_ids + medicine_ids + bowl_ids + mug_ids + pan_ids
 
     """ step 6: take an image """
     set_camera_pose((4, 4, 3), (0, 4, 0))
@@ -324,4 +324,4 @@ def sample_clean_dish_v0(world, w=3, l=8, verbose=True, pause=True):
     # pause = True
     if pause:
         wait_unlocked()
-    return moveables, cabinets, only_counters, obstacles, x_food_min
+    return movables, cabinets, only_counters, obstacles, x_food_min

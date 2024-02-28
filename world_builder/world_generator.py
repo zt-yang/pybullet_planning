@@ -167,7 +167,7 @@ def to_lisdf(world, output_dir, world_name=None, verbose=True, **kwargs):
     state_sdf = ''
     model_joints = {}  ## model_name : joints_xml
     c = world.cat_to_bodies
-    movables = c('moveable')
+    movables = c('movable')
 
     ## first add all actor and models
     bodies = copy.deepcopy(get_bodies())

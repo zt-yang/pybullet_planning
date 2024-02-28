@@ -69,24 +69,6 @@ def process_debug_goals(state, goals, init):
 
     goal = [AND]
     goal += goals
-    if len(goals) > 0:
-        if goals[0][0] == 'AtBConf':
-            init += [('BConf', goals[0][1])]
-        elif goals[0][0] == 'AtSEConf':
-            init += [('SEConf', goals[0][1])]
-        elif goals[0][0] == 'AtPosition':
-            init += [('Position', goals[0][1], goals[0][2]), ('IsOpenedPosition', goals[0][1], goals[0][2])]
-        elif goals[0][0] == 'AtGrasp':
-            init += [('Grasp', goals[0][2], goals[0][3])]
-        elif goals[0][0] == 'AtHandleGrasp':
-            init += [('HandleGrasp', goals[0][2], goals[0][3])]
-        elif goals[0][0] == 'AtMarkerGrasp':
-            init += [('MarkerGrasp', goals[0][2], goals[0][3])]
-
-        if goal[-1] == ("not", ("AtBConf", "")):
-            atbconf = [i for i in init if i[0].lower() == "AtBConf".lower()][0]
-            goal[-1] = ("not", atbconf)
-
     return goal
 
 

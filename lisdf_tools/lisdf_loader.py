@@ -245,7 +245,7 @@ class World(WorldBase):
             results[typ] = bodies
             num = len(bodies)
             if typ == 'graspable':
-                typ = 'moveable'
+                typ = 'movable'
             if num > 0:
                 printout += f"{typ}({num}) = {bodies}, "
         if return_string:

@@ -203,16 +203,16 @@ class PDDLProblemTranslator():
         self.bodies = objects
 
         self._translate_problem(pddlstream_problem, init=init, objects=objects)
-        self.moveables = self._get_moveables(self.initial_state)
+        self.movables = self._get_movables(self.initial_state)
 
-    def _get_moveables(self, init):
-        moveables = []
+    def _get_movables(self, init):
+        movables = []
         for fact in init:
             if fact.predicate.name == 'pose':
                 body = fact.variables[0]
-                if body not in moveables:
-                    moveables.append(body)
-        return moveables
+                if body not in movables:
+                    movables.append(body)
+        return movables
 
     def _translate_problem(self, pddlstream_problem, init=None, objects=[]):
         sys.path.extend([
@@ -884,7 +884,7 @@ class PDDLStreamEnv(PDDLEnv):
                     that = self.poses_for_traj[test]
                     diff = [k for k in poses if poses[k] == that[k]]
                     pred = self.domain.predicates[new_test]
-                    if len(diff) < len(self._problem.moveables):
+                    if len(diff) < len(self._problem.movables):
 
                         ## --- method 1: (SafeATraj ?t ?o ?p)
                         # diff = [pred(*[t, k, that[k]]) for k in diff] ## (SafeATraj ?t ?o ?p)

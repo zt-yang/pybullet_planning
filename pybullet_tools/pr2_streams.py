@@ -1768,7 +1768,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
     g = inputs[-1]
     open_arm(robot, a)
     context_saver = WorldSaver(bodies=[robot, o])
-    title = f'sample_bconf({o}, learned=True) | start sampling'
+    title = f'sample_bconf({o}, learned=True) | start sampling '
 
     # set_renderer(enable=False)
     if visualize:

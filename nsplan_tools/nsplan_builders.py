@@ -7,7 +7,7 @@ def test_clean_dish_feg(world, **kwargs):
     world.set_skip_joints()
     world.note = 1
 
-    moveables, cabinets, counters, obstacles, x_food_min = \
+    movables, cabinets, counters, obstacles, x_food_min = \
         sample_clean_dish_v0(world, verbose=False, pause=False)
 
     dump_world()
@@ -61,12 +61,12 @@ def sample_clean_dish_goal(world):
 
     # objects += [fridge_door]
 
-    world.add_to_cat(food, 'moveable')
-    [world.add_to_cat(b, 'moveable') for b in bottles]
-    world.add_to_cat(bowl, 'moveable')
-    world.add_to_cat(mug, 'moveable')
-    world.add_to_cat(pan, 'moveable')
-    print("\nobjects by category after adding to moveable")
+    world.add_to_cat(food, 'movable')
+    [world.add_to_cat(b, 'movable') for b in bottles]
+    world.add_to_cat(bowl, 'movable')
+    world.add_to_cat(mug, 'movable')
+    world.add_to_cat(pan, 'movable')
+    print("\nobjects by category after adding to movable")
     print(world.OBJECTS_BY_CATEGORY)
 
     hand = world.robot.arms[0]

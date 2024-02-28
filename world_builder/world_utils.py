@@ -531,8 +531,8 @@ def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=
         open_doors_drawers(body)
 
     """ ============= create an Object ============= """
-    # if moveable:
-    #     object = Moveable(body, category=category)
+    # if movable:
+    #     object = Movable(body, category=category)
     # elif category.lower() == 'food':
     #     # index = file.replace('/mobility.urdf', '')
     #     # index = index[index.index('models/')+7:]
@@ -605,14 +605,14 @@ def find_point_for_single_push(body):
 
 
 def visualize_point(point, world):
-    from .entities import Moveable
+    from .entities import Movable
     z = 0
     if len(point) == 3:
         x, y, z = point
     else:
         x, y = point
     world.add_object(
-        Moveable(create_box(.05, .05, .05, mass=1, color=(1, 0, 0, 1)), category='marker'),
+        Movable(create_box(.05, .05, .05, mass=1, color=(1, 0, 0, 1)), category='marker'),
         Pose(point=Point(x, y, z)))
 
 
@@ -919,6 +919,29 @@ def check_goal_achieved(facts, goal, world):
         if len(found) > 0:
             return True
     return False
+
+
+def sort_body_indices(lst):
+    """ given a list of int (whole object) and tuples (joints or links), return a sorted list """
+    bodies = [o for o in lst if isinstance(o, int)]
+    joints = [o for o in lst if isinstance(o, tuple) and len(o) == 2]
+    links = [o for o in lst if isinstance(o, tuple) and len(o) == 3]
+    all_bodies = list(set(bodies + [o[0] for o in joints + links]))
+    all_bodies.sort()
+
+    sorted_lst = []
+    for body in all_bodies:
+        if body in bodies:
+            sorted_lst.append(body)
+
+        found_joints = [o[-1] for o in joints if o[0] == body]
+        found_joints.sort()
+        sorted_lst.extend([(body, j) for j in found_joints])
+
+        found_links = [o[-1] for o in links if o[0] == body]
+        found_links.sort()
+        sorted_lst.extend([(body, None, l) for l in found_links])
+    return sorted_lst
 
 
 if __name__ == "__main__":

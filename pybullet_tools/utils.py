@@ -585,7 +585,7 @@ class HideOutput(object):
         if not self.enable:
             return
         self.fd = 1
-        #self.fd = sys.stdout.fileno()
+        # self.fd = sys.stdout.fileno()
         self._newstdout = os.dup(self.fd)
         os.dup2(self._devnull, self.fd)
         os.close(self._devnull)
@@ -4031,13 +4031,13 @@ def check_initial_end(start_conf, end_conf, collision_fn, verbose=False):
     from pybullet_tools.bullet_utils import nice  ## YANG
     if collision_fn(start_conf, verbose=verbose):
         print(f'bullet.Warning: initial configuration {nice(start_conf)} is in collision')
-        set_renderer(True)
+        # set_renderer(True)
         # wait_unlocked()
         # collision_fn(start_conf, verbose=True)
         return False
     if collision_fn(end_conf, verbose=verbose):
         print(f'bullet.Warning: end configuration {nice(end_conf)} is in collision')
-        set_renderer(True)
+        # set_renderer(True)
         # wait_unlocked()
         # collision_fn(end_conf, verbose=True)
         return False

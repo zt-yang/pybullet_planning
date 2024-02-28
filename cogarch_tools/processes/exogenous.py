@@ -35,9 +35,9 @@ class TeleportingObject(Exogenous):
         return state.new_state()
 
 
-class MoveableObject(Exogenous):
+class MovableObject(Exogenous):
     def __init__(self, world, obj, region, **kwargs):
-        super(MoveableObject, self).__init__(world, **kwargs)
+        super(MovableObject, self).__init__(world, **kwargs)
         self.obj = obj
         self.region = region
 

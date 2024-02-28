@@ -135,6 +135,13 @@ def draw_pose3d_path(path, **kwargs):
     elif len(path[0]) == 4:
         return list(flatten(draw_pose(pose_from_xyzyaw(q), **kwargs) for q in path))
 
+    ## object
+    elif len(path[0]) == 2:
+        return list(flatten(draw_pose(q, **kwargs) for q in path))
+
+    else:
+        assert "What's this path" + path
+
 
 def pose_from_xyzyaw(q):
     x, y, z, yaw = q
@@ -883,7 +890,7 @@ def check_joint_state(body, joint, verbose=False):
     pose = get_joint_position(body, joint)
     min_limit = get_min_limit(body, joint)
     max_limit = get_max_limit(body, joint)
-    moveable = joint in get_movable_joints(body)
+    movable = joint in get_movable_joints(body)
     joint_type = JOINT_TYPES[get_joint_type(body, joint)]
 
     category = 'fixed'
@@ -932,7 +939,7 @@ def check_joint_state(body, joint, verbose=False):
 
     if verbose:
         print(f'   joint {name}, pose = {pose}, limit = {nice((min_limit, max_limit))}, \
-            state = {state}, moveable = {moveable}')
+            state = {state}, movable = {movable}')
     return category, state
 
 
@@ -1051,11 +1058,26 @@ def print_goal(goal, world=None, print_fn=None):
     print_fn(')')
 
 
-def summarize_bconfs(preimage):
+def summarize_poses(preimage):
+    atposes = [f[-1] for f in preimage if f[0].lower() == 'atpose']
+    poses = [f[-1] for f in preimage if f[0].lower() == 'pose' if f[-1] not in atposes]
+
+    print('\n' + '=' * 25 + ' poses that can be cached to loaders_{domain}.py ' + '=' * 25)
+    for pose in poses:
+        print(nice(pose.value, keep_quat=True))
+    print('-'*50+'\n')
+
+
+def summarize_bconfs(preimage, plan):
     bconfs = [f[1] for f in preimage if f[0].lower() == 'bconf' and f[1].joint_state is not None]
+    bconfs_ordered = []
+    for action in plan:
+        for arg in action.args:
+            if arg in bconfs and arg not in bconfs_ordered:
+                bconfs_ordered.append(arg)
 
     print('\n' + '=' * 25 + ' bconfs that can be cached to loaders_{domain}.py ' + '=' * 25)
-    for bconf in bconfs:
+    for bconf in bconfs_ordered:
         joint_state = {k: nice(v) for k, v in bconf.joint_state.items()}
         print(f"({nice(bconf.values)}, {joint_state}), ")
     print('-'*50+'\n')

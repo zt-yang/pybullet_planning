@@ -129,7 +129,7 @@ def test_braiser_lid(args, domain='pr2_food.pddl', stream='pr2_stream.pddl'):
     goals = [('AtBConf', Conf(robot, get_group_joints(robot, 'base'), (1.239, 8.136, 3.113)))]
     goals = [("On", lid, surface)]
     # world.remove_object(name_to_object('braiserlid'))
-    world.add_to_cat(lid, 'moveable')
+    world.add_to_cat(lid, 'movable')
 
     ## ------ remove lid in order to put in egg
     goals = ('test_pose_gen', (egg, bottom))  ## success
@@ -848,7 +848,7 @@ def test_kitchen_braiser(args, **kwargs):
 
 def test_kitchen_chicken_soup(args, **kwargs):
     def loader_fn(world, **world_builder_args):
-        goal_object = ['chicken-leg', 'cabbage', 'fork', 'salt-shaker'][-1]
+        goal_object = ['chicken-leg', 'cabbage', 'fork', 'salt-shaker'][0]
         open_doors_for = []  ## goal_object
         objects, movables, movable_to_doors = load_open_problem_kitchen(world, open_doors_for=open_doors_for)
 
@@ -866,20 +866,20 @@ def test_kitchen_chicken_soup(args, **kwargs):
         # world.open_joint(drawer_joint)
         # world.open_joint(dishwasher_joint)
 
-        door = cabinet_doors[1]  ## fridge_door | cabinet_doors[0] | cabinet_doors[1]
-        goals = ('test_joint_open', door)
-        # goals = ('test_joint_closed', door)
-        # goals = ('test_handle_grasps', door)
-        # goals = [("OpenedJoint", drawer_joint)]
-        # goals = [("ClosedJoint", door)]
+        joint = fridge_door  ## fridge_door | cabinet_doors[0] | cabinet_doors[1]
+        goals = ('test_joint_open', joint)
+        # goals = ('test_joint_closed', joint)
+        # goals = ('test_handle_grasps', joint)
+        # goals = [("OpenedJoint", joint)]
+        # goals = [("ClosedJoint", joint)]
 
         # goals = ('test_handle_grasps', drawer)
         # goals = [("OpenedJoint", drawer)]
         # goals = [("OpenedJoint", drawer), ("Holding", arm, movable)]
 
         movable = movables[goal_object]
-        goals = ('test_grasps', movable)
-        goals = [("Holding", arm, movable)]
+        # goals = ('test_grasps', movable)
+        # goals = [("Holding", arm, movable)]
         # goals = [("On", movable, counter)]
         # goals = ('test_relpose_inside_gen', (movable, drawer_link))
         # goals = [("In", movable, drawer_link)]
@@ -892,7 +892,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
         # objects += [drawer_joint, drawer_link]  ## In (place_rel)
         # objects += [dishwasher_space]  ## dishwasher_joint,
         # objects += [dishwasher_joint, dishwasher_space]
-        objects += cabinet_doors
+        # objects += cabinet_doors
 
         #########################################################################
 

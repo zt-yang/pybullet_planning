@@ -39,8 +39,8 @@ def test_mini_kitchen(args, **kwargs):
         exclude_from_planning = [o for o in get_bodies() if o not in objects]
         for o in exclude_from_planning:
             world.remove_body_from_planning(o)
-        world.add_to_cat(cabbage, 'moveable')
-        world.add_to_cat(distractor, 'moveable')
+        world.add_to_cat(cabbage, 'movable')
+        world.add_to_cat(distractor, 'movable')
         world.add_highlighter(cabbage)
 
         skeleton = [
@@ -86,7 +86,7 @@ def test_mini_kitchen_data(args, **kwargs):
             cabinet = cabinetstorage.pybullet_name
 
             for item in bottle_ids:
-                world.add_to_cat(item, 'moveable')
+                world.add_to_cat(item, 'movable')
                 item = item.body
                 skeleton.append(('pick_hand', arm, item))
                 skeleton.append(('place_hand', arm, item))
@@ -113,7 +113,7 @@ def test_mini_kitchen_data(args, **kwargs):
             minifridge = fridgestorage.pybullet_name
 
             for item in food_ids:
-                world.add_to_cat(item, 'moveable')
+                world.add_to_cat(item, 'movable')
                 item = item.body
                 skeleton.append(('pick_hand', arm, item))
                 skeleton.append(('place_hand', arm, item))
@@ -125,7 +125,7 @@ def test_mini_kitchen_data(args, **kwargs):
             shelf = world.name_to_body('shelf')
             objects.append(shelf)
             for item in medicine_ids:
-                world.add_to_cat(item, 'moveable')
+                world.add_to_cat(item, 'movable')
                 item = item.body
                 skeleton.append(('pick_hand', arm, item))
                 skeleton.append(('place_hand', arm, item))
@@ -174,7 +174,7 @@ def test_full_kitchen(args, **kwargs):
             case = world_builder_args['note']
         world.note = case
 
-        moveables, cabinets, counters, obstacles, x_food_min = \
+        movables, cabinets, counters, obstacles, x_food_min = \
             sample_full_kitchen(world, verbose=False, pause=False, reachability_check=False)
 
         objects = []
@@ -219,7 +219,7 @@ def test_full_kitchen(args, **kwargs):
                 ]
 
                 for c in [food_cook, bottle_block]:
-                    world.add_to_cat(c, 'moveable')
+                    world.add_to_cat(c, 'movable')
                 world.add_to_cat(sink, 'cleaningsurface')
                 world.add_to_cat(food_cook, 'edible')
 
@@ -252,7 +252,7 @@ def test_full_kitchen(args, **kwargs):
                 ]
 
                 for c in [food_cook, food_block, lid, medicine]:
-                    world.add_to_cat(c, 'moveable')
+                    world.add_to_cat(c, 'movable')
 
                 objects += [braiser]
 
@@ -264,7 +264,7 @@ def test_full_kitchen(args, **kwargs):
                 counters[0].place_obj(zucchini, world=world)
                 world.remove_object(lid)
                 zucchini = zucchini.body
-                world.add_to_cat(zucchini, 'moveable')
+                world.add_to_cat(zucchini, 'movable')
 
                 skeleton += [(k, arm, zucchini) for k in pick_place_actions]
 
@@ -281,14 +281,14 @@ def test_full_kitchen(args, **kwargs):
                 x = sink_obj.aabb().lower[0] + 0.13
                 artichoke.adjust_pose(x=x, y=y, theta=-1.7, world=world)
                 artichoke = artichoke.body
-                world.add_to_cat(artichoke, 'moveable')
+                world.add_to_cat(artichoke, 'movable')
 
                 ## for generating good solutions
                 bottle1 = world.name_to_object('bottle#1')
                 bottle1.adjust_pose(x=0.534, y=3.42, z=1.072, theta=2.512, world=world)
                 bottle2 = world.name_to_object('bottle#2')
                 bottle2.adjust_pose(x=0.595, y=3.652, z=1.0, theta=1.324, world=world)
-                world.add_to_cat(bottle1.body, 'moveable')
+                world.add_to_cat(bottle1.body, 'movable')
                 skeleton += [(k, arm, bottle1.body) for k in pick_place_actions]
 
                 skeleton += [(k, arm, artichoke) for k in pick_place_actions[:1]]
@@ -302,7 +302,7 @@ def test_full_kitchen(args, **kwargs):
                 """ place object inside a cabinet with three doors , seed=892751 """
                 world.open_doors_drawers(fridge.pybullet_name, hide_door=True)
                 fridge_storage = world.name_to_body('minifridge_storage')
-                world.add_to_cat(medicine, 'moveable')
+                world.add_to_cat(medicine, 'movable')
                 objects += fridge.doors
 
                 skeleton += [(k, arm, medicine) for k in pick_place_actions]
@@ -316,16 +316,16 @@ def test_full_kitchen(args, **kwargs):
             doors = world.name_to_object('minifridge').doors  ## 'cabinettop'
             random.shuffle(doors)
 
-            moveable = moveables[0]
-            world.add_to_cat(moveable, 'moveable')
-            world.add_highlighter(moveable)
+            movable = movables[0]
+            world.add_to_cat(movable, 'movable')
+            world.add_highlighter(movable)
 
             goals = [('OpenedJoint', d) for d in doors]
 
             goals = [('HandleGrasped', doors[0], 'left')]  ## holding the handle
             goals = [('OpenedJoint', doors[0])]  ## having opened the joint
             goals = [('GraspedHandle', doors[0])]  ## having released the handle
-            # goals = [('Holding', arm, moveable)]
+            # goals = [('Holding', arm, movable)]
 
         elif case in [1, 31, 21, 11, 321, 991]:
             """ rearrange to cabinet / fridge """
@@ -369,7 +369,7 @@ def test_full_kitchen(args, **kwargs):
 
             """ add movable objects """
             for f in foods[:1]:
-                world.add_to_cat(f, 'moveable')
+                world.add_to_cat(f, 'movable')
                 # world.add_highlighter(f)
                 objects.append(f)
                 skeleton.extend([(k, arm, f) for k in pick_place_actions])
@@ -390,7 +390,7 @@ def test_full_kitchen(args, **kwargs):
 
             if case in [21, 31]:  ##
                 """ rearrange from and to cabinet / fridge, from braiser or sink """
-                _, obj_bottom, objects = make_sure_obstacles(world, case, moveables, counters, objects)
+                _, obj_bottom, objects = make_sure_obstacles(world, case, movables, counters, objects)
                 objects.extend(random.sample(counters[:2], 2))
                 objects.append(obj_bottom)
 
@@ -398,8 +398,8 @@ def test_full_kitchen(args, **kwargs):
             """ rearrange to and from sink bottom / pot bottom """
             # sink_counters = [world.name_to_body(n) for n in ['sink_counter_left', 'sink_counter_right']]
 
-            food, obj_bottom, objects = make_sure_obstacles(world, case, moveables, counters, objects)
-            world.add_to_cat(food, 'moveable')
+            food, obj_bottom, objects = make_sure_obstacles(world, case, movables, counters, objects)
+            world.add_to_cat(food, 'movable')
             lid = world.name_to_body('braiserlid')
 
             goals = ('test_grasps', food)
@@ -433,7 +433,7 @@ def test_full_kitchen(args, **kwargs):
 
             ## put braiser in space
             braiserbody = world.name_to_object('braiserbody')
-            world.add_to_cat(braiserbody.body, 'moveable')
+            world.add_to_cat(braiserbody.body, 'movable')
             cabinettop_space.place_obj(braiserbody, world=world)
             braiserbody.adjust_pose(theta=PI/2, world=world)
             if isinstance(world.robot, PR2Robot):
@@ -462,14 +462,14 @@ def test_full_kitchen(args, **kwargs):
 
         elif case == 41:
             lid = world.name_to_object('braiserlid')
-            world.add_to_cat(lid, 'moveable')
+            world.add_to_cat(lid, 'movable')
 
             shelf = world.name_to_object('shelf')
             ovencounter = world.name_to_body('ovencounter')
             world.add_to_cat(ovencounter, 'supporter')
 
             braiserbody = world.name_to_object('braiserbody')
-            world.add_to_cat(braiserbody.body, 'moveable')
+            world.add_to_cat(braiserbody.body, 'movable')
             world.add_to_cat(braiserbody.body, 'supporter')
             shelf.place_obj(braiserbody)
             braiserbody.adjust_pose(theta=PI/2)
@@ -499,7 +499,7 @@ def test_kitchen_dinner(args, **kwargs):
         skeleton = []
         goals = []
 
-        moveables, cabinets, counters, obstacles, x_food_min = \
+        movables, cabinets, counters, obstacles, x_food_min = \
             sample_full_kitchen(world, w=4, verbose=False, pause=False)
         # table, plates = sample_table_plates(world)
         tables, plates = sample_two_tables_plates(world)
@@ -525,19 +525,19 @@ def test_kitchen_dinner(args, **kwargs):
             i = 0
             for bottle in bottles:
                 sink.place_obj(bottle, world=world)
-                world.add_to_cat(bottle, 'moveable')
+                world.add_to_cat(bottle, 'movable')
                 objects += [bottle.body]
                 # goals += [('On', bottle, plates[i])]
                 i += 1
 
-        num_goal_objects = min([len(plates), len(moveables), 1])
+        num_goal_objects = min([len(plates), len(movables), 1])
         num_plates = num_goal_objects
         num_movables = num_goal_objects
 
         if world.note == 'more_plates':
             num_plates = len(plates)
         if world.note == 'more_movables':
-            num_movables = len(moveables)
+            num_movables = len(movables)
 
         for i in range(num_plates):
             world.add_to_cat(plates[i], 'surface')
@@ -545,15 +545,15 @@ def test_kitchen_dinner(args, **kwargs):
             objects += [plates[i]]
 
         for i in range(num_movables):
-            world.add_to_cat(moveables[i], 'moveable')
-            objects += [moveables[i]]
+            world.add_to_cat(movables[i], 'movable')
+            objects += [movables[i]]
 
         for i in range(num_goal_objects):
-            goals += [('Served', moveables[i], plates[i])]
-            # goals += [('Cleaned', moveables[i])]
-            # goals += [('Cooked', moveables[i])]
-            # goals += [('On', moveables[i], braiser.pybullet_name)]
-            # goals += [('On', moveables[i], sink.pybullet_name)]
+            goals += [('Served', movables[i], plates[i])]
+            # goals += [('Cleaned', movables[i])]
+            # goals += [('Cooked', movables[i])]
+            # goals += [('On', movables[i], braiser.pybullet_name)]
+            # goals += [('On', movables[i], sink.pybullet_name)]
             # break
 
         world.planning_config.update({

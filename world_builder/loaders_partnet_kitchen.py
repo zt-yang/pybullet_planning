@@ -66,7 +66,7 @@ def load_random_mini_kitchen_counter(world, movable_category='food', w=6, l=6, h
     #     Object(create_box(0.5, 0.5, h, color=(.75, .75, .75, 1)), category='supporter', name='table'),
     #     Pose(point=Point(x=x, y=y, z=h / 2)))
     cat = movable_category.capitalize()
-    cabbage = world.add_object(Moveable(
+    cabbage = world.add_object(Movable(
         load_asset(cat, x=x, y=y, yaw=random.uniform(-math.pi, math.pi),
                    floor=floor, random_instance=True, sampling=SAMPLING),
         category=cat
@@ -291,7 +291,7 @@ def place_another_food(world, movable_category='food', SAMPLING=False, verbose=T
         return random.choice(spaces)
 
     cat = movable_category.capitalize()
-    new_food = world.add_object(Moveable(
+    new_food = world.add_object(Movable(
         load_asset(cat, x=0, y=0, yaw=random.uniform(-math.pi, math.pi),
                    floor=floor, random_instance=True, sampling=SAMPLING),
         category=cat
@@ -515,7 +515,7 @@ def load_kitchen_mini_scene(world, **kwargs):
                    category='cabinet', name='cabinet')
             )
 
-    food_ids, bottle_ids, medicine_ids = load_counter_moveables(world, [counter, shelf], obstacles=[])
+    food_ids, bottle_ids, medicine_ids = load_counter_movables(world, [counter, shelf], obstacles=[])
 
     # add camera
     camera_pose = Pose(point=Point(x=4.2, y=0, z=2.5), euler=Euler(roll=PI / 2 + PI / 8, pitch=0, yaw=-PI / 2))
@@ -529,7 +529,7 @@ def load_kitchen_mini_scene(world, **kwargs):
 #################################################################
 
 
-def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
+def load_counter_movables(world, counters, d_x_min=None, obstacles=[],
                            verbose=False, reachability_check=True):
     categories = ['food', 'bottle', 'medicine']
     start = time.time()
@@ -583,10 +583,10 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
     # counters["bottle"] = [world.name_to_object(n) for n in ["sink#1::sink_bottom"]]
 
     if verbose:
-        print('-' * 20 + ' surfaces to sample moveables ' + '-' * 20)
+        print('-' * 20 + ' surfaces to sample movables ' + '-' * 20)
         pprint(counters)
         print('-' * 60)
-        print('\nload_counter_moveables(obstacles={})\n'.format([o.name for o in obstacles]))
+        print('\nload_counter_movables(obstacles={})\n'.format([o.name for o in obstacles]))
 
     def check_size_matter(obj):
         if size_matter and aabb_larger(obstacles[-1], obj):
@@ -596,7 +596,7 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
         if counter_choices is None:
             counter_choices = counters[obj_name]
         counter = random.choice(counter_choices)
-        obj = counter.place_new_obj(obj_name, category=category, RANDOM_INSTANCE=ins, world=world)
+        obj = counter.place_new_obj(obj_name, category=category, random_instance=ins, world=world)
         if verbose:
             print(f'          placed {obj} on {counter.name}')
         if 'bottom' not in counter.name:
@@ -704,14 +704,14 @@ def load_counter_moveables(world, counters, d_x_min=None, obstacles=[],
 
     if world.note in [3, 31]:
         put_lid_on_braiser(world)
-    print('... finished loading moveables in {}s'.format(round(time.time() - start, 2)))
+    print('... finished loading movables in {}s'.format(round(time.time() - start, 2)))
     # world.summarize_all_objects()
     # wait_unlocked()
     return food_ids, bottle_ids, medicine_ids ## , bowl_ids, mug_ids, pan_ids
 
 
 def move_lid_away(world, counters, epsilon=1.0):
-    lid = world.name_to_body('braiserlid')  ## , obstacles=moveables+obstacles
+    lid = world.name_to_body('braiserlid')  ## , obstacles=movables+obstacles
     counters_tmp = world.find_surfaces_for_placement(lid, counters)
     if len(counters_tmp) == 0:
         raise Exception('No counters found, try another seed')
@@ -755,7 +755,7 @@ def load_table_stationaries(world, w=6, l=6, h=0.9):
     items = []
     for cat in categories:
         RI = '103104' if cat == 'Stapler' else True
-        item = world.add_object(Moveable(
+        item = world.add_object(Movable(
             load_asset(cat, x=0, y=0, yaw=random.uniform(-math.pi, math.pi),
                        random_instance=RI), category=cat
         ))
@@ -1007,7 +1007,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
             color = add_wall_fillings(cabinet)
             cabinets.append(cabinet)
             obstacles.append(cabinet)
-            kwargs['RANDOM_INSTANCE'] = cabinet.mobility_id
+            kwargs['random_instance'] = cabinet.mobility_id
             if cabinet.aabb().upper[1] > counter.aabb().upper[1]:
                 blend.append(cabinet.aabb().upper[1])
         return obstacles, color, selected_counters, blend
@@ -1058,7 +1058,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
     ## load cabinets
     ins = world.note not in [11, 4, 41]
     obstacles, color, counters, bled = add_cabinets(counters, obstacles=obstacles,
-                                                    cabi_type=cabi_type, RANDOM_INSTANCE=ins)
+                                                    cabi_type=cabi_type, random_instance=ins)
     ## then load shelves
     add_shelves(counters+others, color, bled=bled, obstacles=obstacles)
     set_camera_target_body(cabinets[0])
@@ -1072,7 +1072,7 @@ def load_braiser(world, supporter, x_min=None, verbose=False):
         ins = random.choice(['100038', '100023'])  ## larger braisers
     elif world.note in [553]:
         ins = random.choice(['100015'])  ## shallower braisers big enough for zucchini, ,'100693'
-    braiser = supporter.place_new_obj('BraiserBody', RANDOM_INSTANCE=ins, verbose=verbose, world=world)
+    braiser = supporter.place_new_obj('BraiserBody', random_instance=ins, verbose=verbose, world=world)
     braiser.adjust_pose(theta=PI, world=world)
     if supporter.mobility_id == '102044':
         aabb = supporter.aabb()
@@ -1085,8 +1085,8 @@ def load_braiser(world, supporter, x_min=None, verbose=False):
     adjust_for_reachability(braiser, supporter, x_min, world=world)
     set_camera_target_body(braiser)
 
-    lid = braiser.place_new_obj('BraiserLid', category='moveable', name='BraiserLid', max_trial=1,
-                                RANDOM_INSTANCE=braiser.mobility_id, verbose=verbose, world=world)
+    lid = braiser.place_new_obj('BraiserLid', category='movable', name='BraiserLid', max_trial=1,
+                                random_instance=braiser.mobility_id, verbose=verbose, world=world)
     world.make_transparent(lid)
     put_lid_on_braiser(world, lid, braiser)
 
@@ -1325,7 +1325,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
         if len(wide_counters) > 0:
             counter = wide_counters[0]
             microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random(),
-                                              RANDOM_INSTANCE=True, verbose=False, world=world)
+                                              random_instance=True, verbose=False, world=world)
             microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)), world=world)
             obstacles.append(microwave)
     else:
@@ -1369,9 +1369,9 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
 
     ## load objects into reachable places
     food_ids, bottle_ids, medicine_ids = \
-        load_counter_moveables(world, all_counters, d_x_min=0.3, obstacles=obstacles,
+        load_counter_movables(world, all_counters, d_x_min=0.3, obstacles=obstacles,
                                reachability_check=reachability_check)
-    moveables = food_ids + bottle_ids + medicine_ids
+    movables = food_ids + bottle_ids + medicine_ids
 
     """ step 6: take an image """
     set_camera_pose((4, 4, 3), (0, 4, 0))
@@ -1379,10 +1379,10 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
     # pause = True
     if pause:
         wait_unlocked()
-    return moveables, cabinets, only_counters, obstacles, x_food_min
+    return movables, cabinets, only_counters, obstacles, x_food_min
 
 
-def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
+def make_sure_obstacles(world, case, movables, counters, objects, food=None):
     assert case in [
         2, ## to_sink
         3, ## to_braiser
@@ -1422,7 +1422,7 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
         existing = [o.body for o in obstacles]
         something = None
         if case in [2]:
-            something = [m for m in moveables if m.body not in existing]
+            something = [m for m in movables if m.body not in existing]
         elif case in [3]:
             something = world.cat_to_objects('edible') + world.cat_to_objects('medicine')
             something = [m for m in something if m.body not in existing]
@@ -1455,7 +1455,7 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
 
     """ make sure obstacles can be moved away """
     for o in obstacles:
-        world.add_to_cat(o, 'moveable')
+        world.add_to_cat(o, 'movable')
         # skeleton.extend([(k, arm, o) for k in pick_place_actions])
         # goals.append(('On', o.body, random.choice(sink_counters)))
         # goals = [('Holding', arm, o.body)]
@@ -1478,7 +1478,7 @@ def make_sure_obstacles(world, case, moveables, counters, objects, food=None):
                 food = foods[count]
         lid = world.name_to_body('braiserlid')
         objects += [food, lid]
-        world.add_to_cat(lid, 'moveable')
+        world.add_to_cat(lid, 'movable')
         counters_tmp = move_lid_away(world, counters, epsilon=epsilon)
         if counters_tmp is not None:
             objects += [counters_tmp.pybullet_name]
@@ -1515,11 +1515,11 @@ def sample_two_tables_plates(world, verbose=False):
     return [table1, table2], plates
 
 
-def sample_table(world, RANDOM_INSTANCE=True, **kwargs):
+def sample_table(world, random_instance=True, **kwargs):
     """ a table facing the kitchen counters, x < 4 """
     floor = world.name_to_body('floor')
     table = world.add_object(Supporter(
-        load_asset('DiningTable', yaw=0, floor=floor, random_instance=RANDOM_INSTANCE, **kwargs)))
+        load_asset('DiningTable', yaw=0, floor=floor, random_instance=random_instance, **kwargs)))
     if table.aabb().upper[0] > 4:
         table.adjust_pose(x=4 - table.xmax2x)
     return table

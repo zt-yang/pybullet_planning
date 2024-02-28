@@ -228,7 +228,7 @@
   )
   (:stream sample-pose-in-region
     :inputs (?o ?r)
-    :domain (and (Moveable ?o) (Environment ?r))
+    :domain (and (Movable ?o) (Environment ?r))
     :outputs (?p)
     :certified (and (Pose ?o ?p) (PoseInRegion ?o ?p ?r))
   )

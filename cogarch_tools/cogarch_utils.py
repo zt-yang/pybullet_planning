@@ -344,5 +344,6 @@ def clear_empty_exp_dirs(exp_dir):
         return
     run_dirs = [join(exp_dir, f) for f in listdir(exp_dir) if isdir(join(exp_dir, f))]
     for run_dir in run_dirs:
-        if len(listdir(run_dir)) == 0:
+        paths = listdir(run_dir)
+        if len(paths) <= 1:
             shutil.rmtree(run_dir)

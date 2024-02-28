@@ -141,6 +141,7 @@ def dump_json(db, db_file, indent=2, width=160, sort_dicts=True, **kwargs):
 
 
 def save_commands(commands, commands_path):
-    import pickle
-    with open(commands_path, 'wb') as file:
-        pickle.dump(commands, file)
+    if len(commands) > 0:
+        import pickle
+        with open(commands_path, 'wb') as file:
+            pickle.dump(commands, file)

@@ -48,7 +48,7 @@ def find_points_for_dual_grasp(body, world):
     pts = [(x_c, y_min, z_max), (x_c, y_max, z_max), (x_min, y_c, z_max), (x_max, y_c, z_max)]
     for (x,y,z) in pts:
         world.add_object(
-            Moveable(create_box(.05, .05, .05, mass=1, color=(0, 1, 0, 1)), category='marker'),
+            Movable(create_box(.05, .05, .05, mass=1, color=(0, 1, 0, 1)), category='marker'),
             Pose(point=Point(x, y, z)))
 
 
@@ -555,7 +555,7 @@ def test_pick_ir_ik(args, w=.15, TEST=True, **kwargs):
             Object(create_box(w, w, h, color=(.75, .75, .75, 1)), category='supporter', name=f'table_{h}'),
             Pose(point=Point(x=x, y=y, z=h / 2)))
         cabbage = world.add_object(
-            Moveable(load_asset('VeggieCabbage', x=x, y=y, yaw=0, floor=table), name=f'cabbage_{h}'))
+            Movable(load_asset('VeggieCabbage', x=x, y=y, yaw=0, floor=table), name=f'cabbage_{h}'))
         goals = [("Holding", 'left', cabbage)]
         exp_name += f"_{get_datetime(seconds=True)}"
 
@@ -566,7 +566,7 @@ def test_pick_ir_ik(args, w=.15, TEST=True, **kwargs):
                 Object(create_box(w, w, h, color=(.75, .75, .75, 1)), category='supporter', name=f'table_{h}'),
                 Pose(point=Point(x=x, y=y, z=h / 2)))
             cabbages[h] = world.add_object(
-                Moveable(load_asset('VeggieCabbage', x=x, y=y, yaw=0, floor=table), name=f'cabbage_{h}'))
+                Movable(load_asset('VeggieCabbage', x=x, y=y, yaw=0, floor=table), name=f'cabbage_{h}'))
             y += 1
         goals = [("Holding", 'left', cabbages[0.5])]
 

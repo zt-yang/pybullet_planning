@@ -13,7 +13,7 @@ from world_builder.world_utils import LIGHT_GREY, read_xml, load_asset, FLOOR_HE
     get_instances, adjust_for_reachability
 from world_builder.world import World, State
 from world_builder.entities import Object, Region, Environment, Robot, Camera, Floor, Stove, Supporter,\
-    Surface, Moveable, Space, Steerable
+    Surface, Movable, Space, Steerable
 from world_builder.robots import PR2Robot, FEGripper
 from world_builder.robot_builders import create_pr2_robot
 from world_builder.world_utils import get_partnet_doors, get_partnet_spaces, get_partnet_links_by_type
@@ -126,11 +126,11 @@ def create_table(world, w=0.5, h=0.9, xy=(0, 0), color=(.75, .75, .75, 1),
 def create_movable(world, supporter=None, xy=(0, 0), movable_category='VeggieCabbage',
                    category=None, name='cabbage'):
     # cabbage = world.add_box(
-    #     Moveable(create_box(.07, .07, .1, mass=mass, color=(0, 1, 0, 1)), name='cabbage'),
+    #     Movable(create_box(.07, .07, .1, mass=mass, color=(0, 1, 0, 1)), name='cabbage'),
     #     Pose(point=Point(x=4, y=6, z=h + .1 / 2)))
     return world.add_object(
-        Moveable(load_asset(movable_category, x=xy[0], y=xy[1], yaw=0, floor=supporter),
-                 category=category, name=name))
+        Movable(load_asset(movable_category, x=xy[0], y=xy[1], yaw=0, floor=supporter),
+                category=category, name=name))
 
 
 def create_house_floor(world, w=6, l=6, x=0.0, y=0.0):
@@ -198,9 +198,9 @@ def load_experiment_objects(world, w=.5, h=.7, wb=.07, hb=.1, mass=1, EXIST_PLAT
             Pose(point=Point(x=4, y=6, z=h / 2)))
 
     # cabbage = world.add_object(
-    #     Moveable(create_box(wb, wb, hb, mass=mass, color=color), name=name),
+    #     Movable(create_box(wb, wb, hb, mass=mass, color=color), name=name),
     #     Pose(point=Point(x=4, y=6, z=h + .1/2)))
-    cabbage = world.add_object(Moveable(load_asset('VeggieCabbage', x=2, y=0, yaw=0), name=name))
+    cabbage = world.add_object(Movable(load_asset('VeggieCabbage', x=2, y=0, yaw=0), name=name))
     cabbage.set_pose(Pose(point=Point(x=3, y=6, z=0.9 + .1/2)))
 
     if not CABBAGE_ONLY:
@@ -209,7 +209,7 @@ def load_experiment_objects(world, w=.5, h=.7, wb=.07, hb=.1, mass=1, EXIST_PLAT
             Pose(point=Point(x=2, y=5, z=h / 2)))
         if EXIST_PLATE:
             plate = world.add_object(
-                Moveable(create_box(.07, .07, .1, mass=mass, color=(1, 1, 1, 1)), name='plate'),
+                Movable(create_box(.07, .07, .1, mass=mass, color=(1, 1, 1, 1)), name='plate'),
                 Pose(point=Point(x=2, y=5, z=h + .1 / 2)))
 
     return cabbage
@@ -355,7 +355,7 @@ def load_floor_plan(world, plan_name='studio1.svg', debug=False, spaces=None, su
                 Pose(point=Point(x=round(x, 1), y=round(y, 1), z=-2 * FLOOR_HEIGHT)))
 
         #######################################################
-        ## add moveable objects on designated places
+        ## add movable objects on designated places
         if not load_movables: continue
 
         if cat in regions:
@@ -374,7 +374,7 @@ def load_floor_plan(world, plan_name='studio1.svg', debug=False, spaces=None, su
                     surface = Surface(body, link=link)
                     world.add_object(surface)
                     for o in surfaces[cat][link_name]:
-                        obj = surface.place_new_obj(o, RANDOM_INSTANCE=random_instance)
+                        obj = surface.place_new_obj(o, random_instance=random_instance)
                         if verbose:
                             print(f'\tadding object {obj.name} to surface {surface.lisdf_name}')
 
@@ -382,7 +382,7 @@ def load_floor_plan(world, plan_name='studio1.svg', debug=False, spaces=None, su
                     space = Space(body, link=link)
                     world.add_object(space)
                     for o in spaces[cat][link_name]:
-                        obj = space.place_new_obj(o, RANDOM_INSTANCE=random_instance)
+                        obj = space.place_new_obj(o, random_instance=random_instance)
                         if verbose:
                             print(f'\tadding object {obj.name} to space {space.lisdf_name}')
             if debug:
@@ -462,8 +462,8 @@ def load_cart(world, cart_x=-0.25, cart_y=0, marker_name='marker'):
 
     ## --------- mark the cart handle to grasp --------
     marker = world.add_object(
-        Moveable(create_box(.05, .05, .05, mass=1, color=LIGHT_GREY), ## (0, 1, 0, 1)
-                 category='marker', name=marker_name),
+        Movable(create_box(.05, .05, .05, mass=1, color=LIGHT_GREY),  ## (0, 1, 0, 1)
+                category='marker', name=marker_name),
         Pose(point=Point(x, y, z))) ## +0.05
     cart.add_grasp_marker(marker)
     # sample_points_along_line(cart, marker)
@@ -479,7 +479,7 @@ def load_cart_regions(world, w=.5, h=.9, mass=1):
         Pose(point=Point(x=-1.3, y=0, z=h / 2)))
 
     cabbage = world.add_object(
-        Moveable(create_box(.07, .07, .1, mass=mass, color=(0, 1, 0, 1)), name='cabbage'),
+        Movable(create_box(.07, .07, .1, mass=mass, color=(0, 1, 0, 1)), name='cabbage'),
         Pose(point=Point(x=-1.3, y=0, z=h + .1 / 2)))
 
     kitchen = world.add_object(
@@ -513,7 +513,7 @@ def load_blocked_kitchen(world, w=.5, h=.9, mass=1, DOOR_GAP=1.9):
         Pose(point=Point(x=-1.3, y=0, z=h / 2)))
 
     cabbage = world.add_object(
-        Moveable(create_box(.07, .07, .1, mass=mass, color=(0, 1, 0, 1)), name='cabbage'),
+        Movable(create_box(.07, .07, .1, mass=mass, color=(0, 1, 0, 1)), name='cabbage'),
         Pose(point=Point(x=-1.3, y=0, z=h + .1 / 2)))
 
     kitchen = world.add_object(
@@ -573,7 +573,7 @@ def load_pot_lid(world):
     lid = name_to_body('braiserlid')
     world.put_on_surface(lid, 'braiserbody')
     world.add_not_stackable(lid, bottom)
-    world.add_to_cat(lid, 'moveable')
+    world.add_to_cat(lid, 'movable')
 
     return bottom, lid
 
@@ -669,8 +669,8 @@ def load_gripper_test_scene(world):
     turkey = world.name_to_body('turkey')
     counter = world.name_to_body('indigo_tmp')
 
-    world.add_to_cat(turkey, 'moveable')
-    world.add_to_cat(lid, 'moveable')
+    world.add_to_cat(turkey, 'movable')
+    world.add_to_cat(lid, 'movable')
 
     camera_pose = ((1.7, 6.1, 1.5), (0.5, 0.5, -0.5, -0.5))
     world.add_camera(camera_pose)
@@ -678,7 +678,7 @@ def load_gripper_test_scene(world):
     return pot, lid, turkey, counter
 
 
-def load_cabinet_test_scene(world, RANDOM_INSTANCE=False, MORE_MOVABLE=False, verbose=True):
+def load_cabinet_test_scene(world, random_instance=False, MORE_MOVABLE=False, verbose=True):
     surfaces = {
         'counter': {
             'front_left_stove': [],
@@ -702,7 +702,7 @@ def load_cabinet_test_scene(world, RANDOM_INSTANCE=False, MORE_MOVABLE=False, ve
         surfaces['counter']['hitman_tmp'].append('VeggieCabbage')
 
     floor = load_floor_plan(world, plan_name='counter.svg', debug=True, verbose=verbose,
-                            surfaces=surfaces, spaces=spaces, random_instance=RANDOM_INSTANCE)
+                            surfaces=surfaces, spaces=spaces, random_instance=random_instance)
     world.remove_object(floor)
     pot, lid = load_pot_lid(world)
 
@@ -713,17 +713,17 @@ def load_cabinet_test_scene(world, RANDOM_INSTANCE=False, MORE_MOVABLE=False, ve
     oil = world.name_to_body('bottle')
     vinegar = world.name_to_body('vinegarbottle')
 
-    world.add_to_cat(oil, 'moveable')
-    world.add_to_cat(lid, 'moveable')
+    world.add_to_cat(oil, 'movable')
+    world.add_to_cat(lid, 'movable')
     world.add_joints_by_keyword('counter', 'chewie_door')
     world.add_joints_by_keyword('counter', 'dagger_door')
 
     ### ------- more objects
     if MORE_MOVABLE:
-        world.add_to_cat(turkey, 'moveable')
+        world.add_to_cat(turkey, 'movable')
 
         veggie = world.name_to_body('veggiecabbage')
-        world.add_to_cat(veggie, 'moveable')
+        world.add_to_cat(veggie, 'movable')
         world.put_on_surface(veggie, pot)
 
     camera_pose = ((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5))
@@ -766,11 +766,11 @@ def load_cabinet_rearrange_scene(world):
 
     world.add_to_cat(oil, 'bottle')
     world.add_to_cat(vinegar, 'bottle')
-    world.add_to_cat(vinegar, 'moveable')
-    world.add_to_cat(oil, 'moveable')
-    world.add_to_cat(lid, 'moveable')
-    world.add_to_cat(turkey, 'moveable')
-    world.add_to_cat(veggie, 'moveable')
+    world.add_to_cat(vinegar, 'movable')
+    world.add_to_cat(oil, 'movable')
+    world.add_to_cat(lid, 'movable')
+    world.add_to_cat(turkey, 'movable')
+    world.add_to_cat(veggie, 'movable')
     world.add_to_cat(turkey, 'edible')
     world.add_to_cat(veggie, 'edible')
 
@@ -832,7 +832,7 @@ def load_feg_kitchen_dishwasher(world):
     chicken = world.name_to_body('turkey')
     for ingredient in [cabbage, chicken]:
         world.add_to_cat(ingredient, 'edible')
-        world.add_to_cat(ingredient, 'moveable')
+        world.add_to_cat(ingredient, 'movable')
     world.put_on_surface(cabbage, 'shelf_bottom')
     world.put_on_surface(chicken, 'indigo_tmp')
 
@@ -904,7 +904,7 @@ def load_feg_kitchen(world):
     turkey = world.name_to_body('turkey')
     for ingredient in [cabbage, turkey]:
         world.add_to_cat(ingredient, 'edible')
-        world.add_to_cat(ingredient, 'moveable')
+        world.add_to_cat(ingredient, 'movable')
     world.put_on_surface(cabbage, 'shelf_bottom')
     world.put_on_surface(turkey, 'indigo_tmp')
 

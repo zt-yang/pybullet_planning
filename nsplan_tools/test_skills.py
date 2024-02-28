@@ -1227,7 +1227,7 @@ def test_tracik(robot, verbose=False):
 if __name__ == '__main__':
 
     """ ---------------- object categories -----------------
-        Kitchen Moveable: 'Bottle', 'Food', 'BraiserLid', 'Sink', 'SinkBase', 'Faucet',
+        Kitchen Movable: 'Bottle', 'Food', 'BraiserLid', 'Sink', 'SinkBase', 'Faucet',
         Kitchen Furniture: 'MiniFridge', 'KitchenCounter', 'MiniFridgeBase',
                             'OvenCounter', 'OvenTop', 'MicrowaveHanging', 'MiniFridgeBase',
                             'CabinetLower', 'CabinetTall', 'CabinetUpper', 'DishwasherBox'

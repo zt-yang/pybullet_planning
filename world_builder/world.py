@@ -15,7 +15,7 @@ from pddlstream.language.constants import Equal, AND
 from pddlstream.algorithms.downward import set_cost_scale
 
 from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, get_pose, unit_pose, \
-    euler_from_quat, get_link_name, get_joint_position, joint_from_name, add_button, \
+    euler_from_quat, get_link_name, get_joint_position, joint_from_name, add_button, SEPARATOR, \
     BodySaver, set_pose, INF, add_parameter, irange, wait_for_duration, get_bodies, remove_body, \
     read_parameter, pairwise_collision, str_from_object, get_joint_name, get_name, get_link_pose, \
     get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked, \
@@ -33,9 +33,10 @@ from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_
     Attach, Detach, Clean, Cook, control_commands, link_from_name, \
     get_gripper_joints, GripperCommand, apply_commands, State, Command
 
-from .entities import Region, Environment, Robot, Surface, ArticulatedObjectPart, Door, Drawer, Knob, \
-    Camera, Object, StaticCamera
-from world_builder.world_utils import GRASPABLES, get_objs_in_camera_images, make_camera_collage, get_camera_image
+from world_builder.entities import Region, Environment, Robot, Surface, ArticulatedObjectPart, Door, Drawer, \
+    Knob, Camera, Object, StaticCamera
+from world_builder.world_utils import GRASPABLES, get_objs_in_camera_images, make_camera_collage, \
+    get_camera_image, sort_body_indices
 from world_builder.samplers import get_learned_yaw
 
 DEFAULT_CONSTANTS = ['@movable', '@bottle', '@edible', '@medicine']  ## , '@world'
@@ -83,18 +84,22 @@ class WorldBase(object):
         name = self.get_name(body)
         if body in self.body_to_english_name:
             name = self.body_to_english_name[body]
-        if name is None:
-            print('name is None')
-        name = ''.join([c for c in name if not c.isdigit()])
-        name = name.replace('#', '')
-        if '::' in name:
-            body_name, part_name = name.split('::')
-            if body_name in part_name:
-                name = part_name
-        name = name.replace('::', "'s ")
-        name = name.replace('_', ' ').replace('-', ' ')
-        self.english_name_to_body[name] = body
-        self.english_name_to_body[name.replace("'s ", " ")] = body
+        else:
+            # if name is None:
+            #     print('name is None')
+            name = ''.join([c for c in name if not c.isdigit()])
+            name = name.replace('#', '')
+            if '::' in name:
+                body_name, part_name = name.split('::')
+                if body_name in part_name:
+                    name = part_name
+            name = name.replace('::', "'s ")
+            name = name.replace('_', ' ').replace('-', ' ')
+            self.body_to_english_name[body] = name
+
+        if name not in self.english_name_to_body:
+            self.english_name_to_body[name] = body
+            self.english_name_to_body[name.replace("'s ", " ")] = body
         return name
 
     def set_english_names(self, names):
@@ -210,13 +215,14 @@ class World(WorldBase):
         self.name = 'full_world'
         self.robot = None
         self.body_to_name = {}
+
         self.ROBOT_TO_OBJECT = {}
         self.BODY_TO_OBJECT = {}
         self.OBJECTS_BY_CATEGORY = defaultdict(list)
         self.REMOVED_BODY_TO_OBJECT = {}
         self.REMOVED_OBJECTS_BY_CATEGORY = defaultdict(list)
-
         self.ATTACHMENTS = {}
+
         self.sub_categories = {}
         self.sup_categories = {}
         self.SKIP_JOINTS = False
@@ -298,15 +304,17 @@ class World(WorldBase):
 
     @property
     def objects(self):
-        return [k for k in self.BODY_TO_OBJECT.keys() if k not in self.ROBOT_TO_OBJECT]
+        lst = [k for k in self.BODY_TO_OBJECT.keys() if k not in self.ROBOT_TO_OBJECT]
+        return sort_body_indices(lst)
 
     @property
     def all_objects(self):
-        return self.objects + [k for k in self.REMOVED_BODY_TO_OBJECT.keys()]
+        lst = [k for k in self.REMOVED_BODY_TO_OBJECT.keys()]
+        return self.objects + sort_body_indices(lst)
 
     @property
     def movable(self):  ## include steerables if want to exclude them when doing base motion plannig
-        return [self.robot] + self.cat_to_bodies('moveable')  ## + self.cat_to_bodies('steerable')
+        return [self.robot] + self.cat_to_bodies('movable')  ## + self.cat_to_bodies('steerable')
         # return [obj for obj in self.objects if obj not in self.fixed]
 
     @property
@@ -318,7 +326,7 @@ class World(WorldBase):
         objs = [obj for obj in self.objects if not isinstance(obj, tuple)]
         objs += [o for o in self.non_planning_objects if isinstance(o, int) and o not in objs]
         objs = [o for o in objs if o not in self.floors and o not in self.movable]
-        return objs
+        return sort_body_indices(objs)
 
     @property
     def ignored_pairs(self):
@@ -437,7 +445,7 @@ class World(WorldBase):
         if category not in OBJECTS_BY_CATEGORY:
             OBJECTS_BY_CATEGORY[category] = []
 
-        ## be able to find eggs as moveables
+        ## be able to find eggs as movables
         if class_name != category:
             if category not in self.sup_categories:
                 self.sup_categories[category] = class_name
@@ -608,9 +616,9 @@ class World(WorldBase):
         from pybullet_tools.logging import myprint as print
         return_dict = {}
         print('\n================ summarize_supported_movables ================')
-        print(f"\tmoveable\t{self.cat_to_objects('moveable')}")
+        print(f"\tmovable\t{self.cat_to_objects('movable')}")
         print('--------------- ')
-        for movable in set(self.cat_to_objects('moveable')):
+        for movable in set(self.cat_to_objects('movable')):
             print(f"\t{movable.name}\t{movable.supporting_surface}")
             surface = movable.supporting_surface
             return_dict[movable.name] = surface.name if surface is not None else surface
@@ -622,7 +630,7 @@ class World(WorldBase):
 
     def summarize_all_types(self):
         printout = ''
-        for typ in ['moveable', 'surface', 'door', 'drawer']:
+        for typ in ['movable', 'surface', 'door', 'drawer']:
             num = len(self.cat_to_bodies(typ))
             if num > 0:
                 printout += "{type}({num}), ".format(type=typ, num=num)
@@ -742,6 +750,10 @@ class World(WorldBase):
         print_fn(pformat(self.ATTACHMENTS))
 
         print_fn('----------------')
+
+    def summarize_body_indices(self, print_fn=print):
+        print_fn(SEPARATOR+f'Robot: {self.robot} | Objects: {self.objects}\n'
+                 f'Movable: {self.movable} | Fixed: {self.fixed} | Floor: {self.floors}'+SEPARATOR)
 
     def get_all_obj_in_body(self, body):
         if isinstance(body, tuple):
@@ -871,7 +883,7 @@ class World(WorldBase):
         for b in bodies:
             obj = self.BODY_TO_OBJECT.pop(b)
 
-            # so cat_to_bodies('moveable') won't find it
+            # so cat_to_bodies('movable') won't find it
             for cat in obj.categories:
                 self.remove_object_from_category(cat, obj)
             if hasattr(obj, 'supporting_surface') and isinstance(obj.supporting_surface, Surface):
@@ -963,7 +975,7 @@ class World(WorldBase):
                 filtered_bodies += [b]
             # else:
             #     print(f'   world.cat_to_bodies | category {cat} found {b}')
-        return filtered_bodies
+        return sort_body_indices(filtered_bodies)
 
     def cat_to_objects(self, cat):
         bodies = self.cat_to_bodies(cat)
@@ -1221,7 +1233,7 @@ class World(WorldBase):
                 return ans
 
         graspables = [o.body for o in cat_to_objects('object') if o.category in GRASPABLES]
-        graspables = list(set(cat_to_bodies('moveable') + graspables))
+        graspables = list(set(cat_to_bodies('movable') + graspables))
         surfaces = list(set(cat_to_bodies('supporter') + cat_to_bodies('surface')))
         spaces = list(set(cat_to_bodies('container') + cat_to_bodies('space')))
         all_supporters = surfaces + spaces
@@ -1450,7 +1462,7 @@ class World(WorldBase):
 
         ## ---- object types -------------
         for cat, objects in self.OBJECTS_BY_CATEGORY.items():
-            if cat.lower() == 'moveable': continue
+            if cat.lower() == 'movable': continue
             if cat.lower() in ['edible', 'plate', 'cleaningsurface', 'heatingsurface']:
                 objects = self.OBJECTS_BY_CATEGORY[cat]
                 init += [(cat, obj.pybullet_name) for obj in objects if obj.pybullet_name in BODY_TO_OBJECT]
@@ -1664,7 +1676,7 @@ class State(object):
     @property
     def movable(self): ## include steerables if want to exclude them when doing base motion plannig
         return self.world.movable
-        # return [self.robot] + self.world.cat_to_bodies('moveable') ## + self.world.cat_to_bodies('steerable')
+        # return [self.robot] + self.world.cat_to_bodies('movable') ## + self.world.cat_to_bodies('steerable')
         # return [obj for obj in self.objects if obj not in self.fixed]
 
     @property

@@ -116,7 +116,7 @@ def test_feg_joints(args, **kwargs):
         door = world.add_joints_by_keyword('counter', door)[0]
         world.remove_category_from_planning('space')
         world.remove_category_from_planning('surface')
-        world.remove_category_from_planning('moveable')
+        world.remove_category_from_planning('movable')
         # door = name_to_body(door)
 
         goals = ('test_handle_grasps', door)
@@ -333,7 +333,7 @@ def test_feg_dishwasher(args, **kwargs):
         surface = world.name_to_body('indigo_tmp')
 
         world.remove_category_from_planning('surface', exceptions=['surface_plate_left'])
-        world.remove_category_from_planning('moveable', exceptions=['plate'])
+        world.remove_category_from_planning('movable', exceptions=['plate'])
 
         goals = [("Holding", 'hand', world.name_to_body('turkey'))]
 
@@ -518,7 +518,7 @@ def test_feg_tray(args, **kwargs):
 
         ## -------- move the tray -----------
         # tray = tray_bottom.body
-        # world.add_to_cat(tray, 'moveable')
+        # world.add_to_cat(tray, 'movable')
         # goals = [("Holding", arm, tray)]
 
         return goals

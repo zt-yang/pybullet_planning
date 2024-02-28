@@ -46,7 +46,7 @@ def parse_object(obj, mesh_directory):
     mesh_filename = obj.find('geom').text
     geom = get_mesh_geometry(os.path.join(mesh_directory, mesh_filename))
     pose = parse_pose(obj.find('pose'))
-    movable = parse_boolean(obj.find('moveable'))
+    movable = parse_boolean(obj.find('movable'))
 
     color = (.75, .75, .75, 1)
     if 'red' in name:

@@ -290,8 +290,8 @@ def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visu
 
         while count > 0:
             count -= 1
-            surface = random.choice(surfaces) # TODO: weight by area
-            if isinstance(surface, tuple): ## (body, link)
+            surface = random.choice(surfaces)  # TODO: weight by area
+            if isinstance(surface, tuple):  ## (body, link)
                 body_pose = sample_placement(body, surface[0], bottom_link=surface[-1], **kwargs)
             else:
                 body_pose = smarter_sample_placement(body, surface, world, **kwargs)

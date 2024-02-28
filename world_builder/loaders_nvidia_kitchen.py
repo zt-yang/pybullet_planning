@@ -4,6 +4,7 @@ from pybullet_tools.pr2_primitives import Conf, get_group_joints
 from pybullet_tools.utils import invert, get_name, pairwise_collision
 from pybullet_tools.bullet_utils import sample_pose, xyzyaw_to_pose
 
+from world_builder.world_utils import sort_body_indices
 from world_builder.loaders import *
 
 part_names = {
@@ -97,6 +98,10 @@ saved_base_confs = {
     # ],
     ('chicken-leg', 'indigo_tmp'):  [
         ((1.785, 8.656, 0.467, 0.816), {0: 1.785, 1: 8.656, 2: 0.816, 17: 0.467, 61: 2.277, 62: 0.716, 63: -0.8, 65: -0.399, 66: 1.156, 68: -0.468, 69: -0.476}),
+        ((1.277, 8.072, 0.507, 1.023), {0: 1.277, 1: 8.072, 2: 1.023, 17: 0.507, 61: 0.939, 62: 0.347, 63: 2.877, 65: -0.893, 66: 2.076, 68: -1.644, 69: 0.396}),
+    ],
+    ('chicken-leg', 'shelf_bottom'):  [
+        ((1.473, 4.787, 0.502, 2.237), {0: 1.473, 1: 4.787, 2: 2.237, 17: 0.502, 61: 0.232, 62: 0.601, 63: 3.858, 65: -0.465, 66: 2.487, 68: -0.943, 69: -0.248}),
     ],
     ('pepper-shaker', 'sektion'): [
         ((1.619, 7.741, 0.458, -3.348), {0: 1.619, 1: 7.741, 2: -3.348, 17: 0.458, 61: 0.926, 62: 0.187, 63: 1.498, 65: -0.974, 66: 3.51, 68: -0.257, 69: 1.392}),
@@ -138,7 +143,7 @@ def load_full_kitchen(world, load_cabbage=True, **kwargs):
 def load_braiser_bottom(world):
     braiser = world.name_to_body('braiserbody')
     world.add_object(Surface(braiser, link_from_name(braiser, 'braiser_bottom')))
-    world.add_to_cat(world.name_to_body('braiserlid'), 'moveable')
+    world.add_to_cat(world.name_to_body('braiserlid'), 'movable')
 
 
 def load_cooking_mechanism(world):
@@ -151,12 +156,17 @@ def reduce_objects_for_open_kitchen(world):
     object_names = ['chicken-leg', 'fridge', 'fridge_door', 'fork',
                     'braiserbody', 'braiserlid', 'braiser_bottom',
                     'indigo_drawer_top', 'indigo_drawer_top_joint', 'indigo_tmp',
-                    'chewie_door_left_joint', 'chewie_door_right_joint',
+                    'sektion', 'chewie_door_left_joint', 'chewie_door_right_joint',
                     'salt-shaker', 'pepper-shaker',
                     'front_right_stove', 'knob_joint_1']
     objects = [world.name_to_body(name) for name in object_names]
+    objects = sort_body_indices(objects)
     world.set_english_names(part_names)
     world.remove_bodies_from_planning([], exceptions=objects)
+
+    print('reduce_objects_for_open_kitchen')
+    print(f"\t{len(objects)} objects provided:\t {objects}")
+    print(f"\t{len(world.BODY_TO_OBJECT.keys())} objects in world:\t {sort_body_indices(list(world.BODY_TO_OBJECT.keys()))}")
     return objects
 
 
@@ -188,7 +198,7 @@ def load_open_problem_kitchen(world, reduce_objects=False, open_doors_for=[]):
 
     objects = None
     if reduce_objects:
-        reduce_objects_for_open_kitchen(world)
+        objects = reduce_objects_for_open_kitchen(world)
     return objects, movables, movable_to_doors
 
 
@@ -295,7 +305,7 @@ def load_nvidia_kitchen_movables(world: World, open_doors_for: list = [], custom
     movables = {}
     movable_to_doors = {}
     for category, asset_name, rand_ins, name, supporter_name in default_supports:
-        movable = world.add_object(Moveable(
+        movable = world.add_object(Movable(
             load_asset(asset_name, x=0, y=0, yaw=random.uniform(-math.pi, math.pi), random_instance=rand_ins),
             category=category, name=name
         ))

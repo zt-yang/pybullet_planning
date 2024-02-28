@@ -7,7 +7,7 @@ import sys
 import pybullet as p
 from world_builder.world import World, State
 from world_builder.entities import Object, Region, Environment, Robot, Camera, Floor, Stove,\
-    Surface, Moveable, Supporter, Steerable, Door
+    Surface, Movable, Supporter, Steerable, Door
 from world_builder.loaders import load_rooms, load_cart, load_cart_regions, load_blocked_kitchen, \
     load_blocked_sink, load_blocked_stove, load_floor_plan, load_experiment_objects, load_pot_lid, load_basin_faucet, \
     load_kitchen_mechanism, load_cabinet_test_scene
@@ -104,7 +104,7 @@ def test_pick(world, w=.5, h=.9, mass=1):
         Pose(point=Point(x=2, y=0, z=h / 2)))
 
     cabbage = world.add_box(
-        Moveable(create_box(.07, .07, .1, mass=mass, color=(0, 1, 0, 1)), name='cabbage'),
+        Movable(create_box(.07, .07, .1, mass=mass, color=(0, 1, 0, 1)), name='cabbage'),
         Pose(point=Point(x=2, y=0, z=h + .1 / 2)))
 
     robot = create_pr2_robot(world, base_q=(0, 2, -PI / 2))
@@ -119,19 +119,19 @@ def test_exist_omelette(world, w=.5, h=.9, mass=1):
         Pose(point=Point(2, 0, h / 2)))
 
     egg = world.add_box(
-        Moveable(create_box(.07, .07, .1, mass=mass, color=(1, 1, 0, 1)), category='egg', name='egg'),
+        Movable(create_box(.07, .07, .1, mass=mass, color=(1, 1, 0, 1)), category='egg', name='egg'),
         Pose(point=Point(2, -0.18, h + .1 / 2)))
 
     cabbage = world.add_box(
-        Moveable(create_box(.07, .07, .1, mass=mass, color=(0, 1, 0, 1)), category='veggie', name='cabbage'),
+        Movable(create_box(.07, .07, .1, mass=mass, color=(0, 1, 0, 1)), category='veggie', name='cabbage'),
         Pose(point=Point(2, 0, h + .1 / 2)))
 
     salter = world.add_box(
-        Moveable(create_box(.07, .07, .1, mass=mass, color=(0, 0, 0, 1)), category='salter', name='salter'),
+        Movable(create_box(.07, .07, .1, mass=mass, color=(0, 0, 0, 1)), category='salter', name='salter'),
         Pose(point=Point(2, 0.18, h + .1 / 2)))
 
     plate = world.add_box(
-        Moveable(create_box(.07, .07, .1, mass=mass, color=(0.4, 0.4, 0.4, 1)), category='plate', name='plate'),
+        Movable(create_box(.07, .07, .1, mass=mass, color=(0.4, 0.4, 0.4, 1)), category='plate', name='plate'),
         Pose(point=Point(2 + 0.18, 0, h + .1 / 2)))
 
     sink = world.add_box(
@@ -197,7 +197,7 @@ def test_feg_pick(world, floorplan='counter.svg', verbose=True):
 
     ## add all objects, with dynamic object instances randomly drawn from assets/{category}/
     ## and collision free poses randomly drawn for objects. all joints are set to closed state
-    pot, lid, turkey, counter, oil, vinegar = load_cabinet_test_scene(world, RANDOM_INSTANCE=True, verbose=verbose)
+    pot, lid, turkey, counter, oil, vinegar = load_cabinet_test_scene(world, random_instance=True, verbose=verbose)
 
     """ ============== [Init] Add robot ==================== """
 
@@ -529,7 +529,7 @@ def sample_kitchen_mini_goal(world):
     ]
     goals = random.choice(goal_candidates)
 
-    world.add_to_cat(bottle, 'moveable')
+    world.add_to_cat(bottle, 'movable')
     world.remove_bodies_from_planning(goals=goals)
 
     return goals
@@ -543,7 +543,7 @@ def test_feg_kitchen_full(world, **kwargs):
     world.set_skip_joints()
     world.note = 1
 
-    moveables, cabinets, counters, obstacles, x_food_min = \
+    movables, cabinets, counters, obstacles, x_food_min = \
         sample_full_kitchen(world, verbose=False, pause=False)
     goal = sample_kitchen_full_goal(world)
     return goal
@@ -561,8 +561,8 @@ def sample_kitchen_full_goal(world):
 
     objects += [fridge_door]
 
-    world.add_to_cat(food, 'moveable')
-    world.add_to_cat(bottle, 'moveable')
+    world.add_to_cat(food, 'movable')
+    world.add_to_cat(bottle, 'movable')
 
     hand = world.robot.arms[0]
     goal_candidates = [

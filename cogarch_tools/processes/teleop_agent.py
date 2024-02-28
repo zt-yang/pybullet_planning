@@ -90,9 +90,9 @@ class TeleOpAgent(MotionAgent):
                 ## change object states
                 elif i in range(8, 17):
 
-                    category = {8: 'drawer', 9: 'door', 10: 'moveable', 11: 'moveable',
+                    category = {8: 'drawer', 9: 'door', 10: 'movable', 11: 'movable',
                                 12: 'surface', 13: 'surface', 14: 'switch',
-                                15: 'moveable', 16: 'moveable'}[i]
+                                15: 'movable', 16: 'movable'}[i]
                     objects = self.world.OBJECTS_BY_CATEGORY[category]
 
                     print(f'\nlooking for {category} in range')
