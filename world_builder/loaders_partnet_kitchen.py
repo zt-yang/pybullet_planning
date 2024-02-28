@@ -11,7 +11,7 @@ def place_in_cabinet(fridgestorage, cabbage, place=True, world=None, learned=Tru
     if not isinstance(fridgestorage, tuple):
         b = fridgestorage.body
         l = fridgestorage.link
-        fridgestorage.place_obj(cabbage, world=world)
+        fridgestorage.place_obj(cabbage)
     else:
         b, _, l = fridgestorage
 
@@ -41,7 +41,7 @@ def place_in_cabinet(fridgestorage, cabbage, place=True, world=None, learned=Tru
         if hasattr(world, 'BODY_TO_OBJECT'):
             world.remove_body_attachment(cabbage)
         set_pose(cabbage, pose)
-        fridgestorage.place_obj(cabbage, world=world)
+        fridgestorage.place_obj(cabbage)
     else:
         return pose
 
@@ -480,12 +480,12 @@ def load_kitchen_mini_scene(world, **kwargs):
     ## add microwave
     # microwave = world.name_to_body('microwave')
     # world.put_on_surface(microwave, counter)
-    microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random(), world=world)
-    microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)), world=world)
+    microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random())
+    microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)))
 
     ## add pot
-    pot = counter.place_new_obj('kitchenpot', scale=0.2, world=world)
-    pot.set_pose(Pose(point=pot.get_pose()[0], euler=Euler(yaw=yaw)), world=world)
+    pot = counter.place_new_obj('kitchenpot', scale=0.2)
+    pot.set_pose(Pose(point=pot.get_pose()[0], euler=Euler(yaw=yaw)))
 
     ## add shelf
     SHELF_HEIGHT = 2.3
@@ -596,11 +596,11 @@ def load_counter_movables(world, counters, d_x_min=None, obstacles=[],
         if counter_choices is None:
             counter_choices = counters[obj_name]
         counter = random.choice(counter_choices)
-        obj = counter.place_new_obj(obj_name, category=category, random_instance=ins, world=world)
+        obj = counter.place_new_obj(obj_name, category=category, random_instance=ins)
         if verbose:
             print(f'          placed {obj} on {counter.name}')
         if 'bottom' not in counter.name:
-            adjust_for_reachability(obj, counter, d_x_min, world=world)
+            adjust_for_reachability(obj, counter, d_x_min)
         return obj
 
     def ensure_cfree(obj, obstacles, obj_name, category=None, trials=10, **kwargs):
@@ -718,7 +718,7 @@ def move_lid_away(world, counters, epsilon=1.0):
     # world.add_highlighter(counters[0])
 
     if random.random() < epsilon:
-        counters_tmp[0].place_obj(world.BODY_TO_OBJECT[lid], world=world)
+        counters_tmp[0].place_obj(world.BODY_TO_OBJECT[lid])
     return counters_tmp[0]
 
 
@@ -793,7 +793,7 @@ def place_faucet_by_sink(faucet_obj, sink_obj, gap=0.01, world=None):
     aabb = get_aabb(body, base_link)
     lx = get_aabb_extent(aabb)[0]
     x_new = sink_obj.aabb().lower[0] - lx / 2 - gap
-    faucet_obj.adjust_pose(dx=x_new - x, world=world)
+    faucet_obj.adjust_pose(dx=x_new - x)
 
 
 WALL_HEIGHT = 2.5
@@ -815,7 +815,7 @@ def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=False, random_s
         load_asset('SinkBase', x=x, y=y, yaw=math.pi, floor=floor,
                    random_instance=ins, verbose=verbose, random_scale=random_scale), name='sinkbase'))
     dx = base.lx / 2
-    base.adjust_pose(dx=dx, world=world)
+    base.adjust_pose(dx=dx)
     x += dx
     if base.instance_name == 'partnet_5b112266c93a711b824662341ce2b233':  ##'46481'
         x += 0.1 * random_scale
@@ -834,8 +834,8 @@ def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=False, random_s
     dx = (base.aabb().upper[0] - sink.aabb().upper[0]) - 0.05 * random_scale
     # align the center of the sink with the center of the base in the y direction
     dy = sink.ly / 2 - (sink.aabb().upper[1] - y)
-    sink.adjust_pose(dx=dx, dy=dy, dz=0, world=world)
-    sink.adjust_pose(dx=0, dy=0, dz=-sink.height + COUNTER_THICKNESS, world=world)
+    sink.adjust_pose(dx=dx, dy=dy, dz=0)
+    sink.adjust_pose(dx=0, dy=0, dz=-sink.height + COUNTER_THICKNESS)
     # print('sink.get_pose()', sink.get_pose())
     if sink.instance_name == 'partnet_u82f2a1a8-3a4b-4dd0-8fac-6679970a9b29':  ##'100685'
         x += 0.2 * random_scale
@@ -850,7 +850,7 @@ def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=False, random_s
                    random_instance=ins, verbose=verbose, random_scale=random_scale), name='faucet'))
     # adjust placement of faucet to be behind the sink
     place_faucet_by_sink(faucet, sink, world=world, gap=0.01 * random_scale)
-    faucet.adjust_pose(dz=COUNTER_THICKNESS, world=world)
+    faucet.adjust_pose(dz=COUNTER_THICKNESS)
 
     xa, ya, _ = base.aabb().lower
     xb, yb, _ = sink.aabb().lower
@@ -976,7 +976,7 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
                    category=cabi_type, name=cabi_type)
         )
         cabinet.adjust_next_to(counter, direction='+z', align='+x', dz=dz)
-        cabinet.adjust_pose(dx=0.3 * random_scale, world=world)
+        cabinet.adjust_pose(dx=0.3 * random_scale)
         return cabinet, counter
 
     def ensure_cfree(obj, obstacles, selected_counters, **kwargs):
@@ -1072,21 +1072,21 @@ def load_braiser(world, supporter, x_min=None, verbose=False):
         ins = random.choice(['100038', '100023'])  ## larger braisers
     elif world.note in [553]:
         ins = random.choice(['100015'])  ## shallower braisers big enough for zucchini, ,'100693'
-    braiser = supporter.place_new_obj('BraiserBody', random_instance=ins, verbose=verbose, world=world)
-    braiser.adjust_pose(theta=PI, world=world)
+    braiser = supporter.place_new_obj('BraiserBody', random_instance=ins, verbose=verbose)
+    braiser.adjust_pose(theta=PI)
     if supporter.mobility_id == '102044':
         aabb = supporter.aabb()
         y = aabb.lower[1] + 2/5 * supporter.ly
-        braiser.adjust_pose(y=y, world=world)
+        braiser.adjust_pose(y=y)
     set_camera_target_body(braiser)
 
     if x_min is None:
         x_min = supporter.aabb().upper[0] - 0.3
-    adjust_for_reachability(braiser, supporter, x_min, world=world)
+    adjust_for_reachability(braiser, supporter, x_min)
     set_camera_target_body(braiser)
 
-    lid = braiser.place_new_obj('BraiserLid', category='movable', name='BraiserLid', max_trial=1,
-                                random_instance=braiser.mobility_id, verbose=verbose, world=world)
+    lid = braiser.place_new_obj('BraiserLid', category='moveable', name='BraiserLid', max_trial=1,
+                                random_instance=braiser.mobility_id, verbose=verbose)
     world.make_transparent(lid)
     put_lid_on_braiser(world, lid, braiser)
 
@@ -1101,8 +1101,8 @@ def put_lid_on_braiser(world, lid=None, braiser=None):
         braiser = world.name_to_object('BraiserBody')
     point, quat = get_pose(braiser)
     r, p, y = euler_from_quat(quat)
-    lid.set_pose((point, quat_from_euler((r, p, y + PI / 4))), world=world)
-    braiser.attach_obj(lid, world=world)
+    lid.set_pose((point, quat_from_euler((r, p, y + PI / 4))))
+    braiser.attach_obj(lid)
 
 
 def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_check=True):
@@ -1237,7 +1237,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
     counter_regions = new_counter_regions
 
     ## make doors easier to open
-    world.name_to_object('minifridge').adjust_pose(dx=0.2, world=world)
+    world.name_to_object('minifridge').adjust_pose(dx=0.2)
 
     ## make wall
     l = right_counter_upper - left_counter_lower
@@ -1246,7 +1246,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
     wall = world.add_object(
         Supporter(create_box(w=WALL_WIDTH, l=l, h=wall_height, color=color), name='wall'),
         Pose(point=Point(x=x, y=y, z=wall_height/2)))
-    floor.adjust_pose(dx=x_lower - WALL_WIDTH, world=world)
+    floor.adjust_pose(dx=x_lower - WALL_WIDTH)
 
     """ step 3: make all the counters """
     sink_left = world.name_to_object('sink_counter_left')
@@ -1325,8 +1325,8 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
         if len(wide_counters) > 0:
             counter = wide_counters[0]
             microwave = counter.place_new_obj('microwave', scale=0.4 + 0.1 * random.random(),
-                                              random_instance=True, verbose=False, world=world)
-            microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)), world=world)
+                                              random_instance=True, verbose=False)
+            microwave.set_pose(Pose(point=microwave.get_pose()[0], euler=Euler(yaw=math.pi)))
             obstacles.append(microwave)
     else:
         microwave = world.name_to_object('MicrowaveHanging')
@@ -1439,7 +1439,7 @@ def make_sure_obstacles(world, case, movables, counters, objects, food=None):
 
         """ move objects to the clustered region """
         for something in all_to_move:
-            pkwargs = dict(max_trial=5, world=world, obstacles=obstacles)
+            pkwargs = dict(max_trial=5, obstacles=obstacles)
             result = bottom_obj.place_obj(something, **pkwargs)
             if result is not None:
                 obstacles.append(something)

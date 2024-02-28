@@ -329,7 +329,7 @@ class Object(Index):
         # print('adjust_next_to | other', other.aabb().upper[0], 'self', self.aabb().upper[0])
         return gap
 
-    def adjust_pose(self, x=None, y=None, z=None, dx=None, dy=None, dz=None, theta=None, world=None):
+    def adjust_pose(self, x=None, y=None, z=None, dx=None, dy=None, dz=None, theta=None):
         (cx, cy, cz), r = self.get_pose()
         if dx is not None:
             cx += dx
@@ -480,13 +480,10 @@ class Object(Index):
             remove_body(self.body)
             self.body = None
 
-    def add_grasp_marker(self, object, world=None):
+    def add_grasp_marker(self, object):
         if object not in self.grasp_markers:
             self.grasp_markers.append(object)
-        if world is not None:
-            world = self.world
-            raise NotImplementedError('add_grasp_marker')
-        world.BODY_TO_OBJECT[object].grasp_parent = self.body
+        self.world.BODY_TO_OBJECT[object].grasp_parent = self.body
 
     def add_events(self, events):
         self.events.extend(events)
@@ -585,17 +582,15 @@ class Space(Region):
             self.name = get_link_name(body, link)
 
     def place_new_obj(self, obj_name, category=None, max_trial=8, verbose=False,
-                      scale=1, world=None, random_instance=True, **kwargs):
+                      scale=1, random_instance=True, **kwargs):
 
         if category is None:
             category = obj_name
-        if world is None:
-            world = self.world
-        # world.open_doors_drawers(self.body)
+        # self.world.open_doors_drawers(self.body)
 
-        obj = world.add_object(
+        obj = self.world.add_object(
             Movable(load_asset(obj_name.lower(), random_instance=random_instance, scale=scale),
-                    category=category)
+                     category=category)
         )
         self.place_obj(obj, max_trial=max_trial, visualize=False, **kwargs)
 
