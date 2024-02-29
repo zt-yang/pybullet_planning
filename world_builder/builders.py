@@ -556,7 +556,7 @@ def sample_kitchen_full_goal(world):
     bottle = random.choice(world.cat_to_bodies('bottle'))
     counter = world.name_to_body('counter#1')
     fridge = world.name_to_object('minifridge')
-    fridge_space = world.name_to_body(f'minifridge_storage')
+    fridge_space = world.name_to_body(f'minifridge::storage')
     fridge_door = fridge.doors[0]
 
     objects += [fridge_door]

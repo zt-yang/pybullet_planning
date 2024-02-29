@@ -1,5 +1,5 @@
 ## debug related
-seed: 168876
+seed: None
 verbose: true
 
 ## pybullet related
