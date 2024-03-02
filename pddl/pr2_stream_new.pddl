@@ -84,7 +84,7 @@
 
   (:stream plan-base-motion
     :inputs (?q1 ?q2)
-    :domain (and (BConf ?q1) (BConf ?q2)) ;;  (BConfSampled ?q2)
+    :domain (and (BConf ?q1) (BConf ?q2))
     :fluents (AtPose AtGrasp AtPosition AtAConf)
     :outputs (?t)
     :certified (and (BTraj ?t) (BaseMotion ?q1 ?t ?q2))

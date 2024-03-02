@@ -25,16 +25,14 @@
     (UnattachedJoint ?o)
 
     (Edible ?o)
-    (Surface ?s)
     (CleaningSurface ?s)
     (HeatingSurface ?s)
     (ControlledBy ?s ?n)
 
     (AConf ?a ?q)
     (DefaultAConf ?a ?q)
-    (UngraspAConf ?a ?aq)
+    (UngraspAConf ?a ?aq)  ;; for half-pick / place
     (BConf ?q)
-    (BConfSampled ?q)
     (UngraspBConf ?bq)
 
     (Pose ?o ?p)
@@ -57,7 +55,7 @@
 
     (Kin ?a ?o ?p ?g ?q ?t)
     (KinRel ?a ?o1 ?rp1 ?o2 ?p2 ?g ?q ?t)
-    (KinGrasp ?a ?o ?p ?g ?bq ?aq ?t)
+    (KinGrasp ?a ?o ?p ?g ?bq ?aq ?t)  ;; for half-pick / place
     (KinUngrasp ?a ?o ?p ?g ?bq ?aq1 ?aq2 ?t)
     (KinGraspHandle ?a ?o ?p ?g ?q ?aq ?t)  ;; grasp a handle
     (KinUngraspHandle ?a ?o ?p ?g ?q ?aq1 ?aq2 ?t)  ;; ungrasp a handle

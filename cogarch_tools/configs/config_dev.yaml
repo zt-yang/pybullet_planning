@@ -7,7 +7,7 @@ planner:
   visualization: false
   scene_only: false
   use_heuristic_fc: false
-  dataset_mode: false
+  dataset_mode: true
   downward_time: 3
   evaluation_time: 30
   stream_planning_timeout: 30
@@ -23,8 +23,8 @@ problem:
   exp_dir: '../../experiments'
   exp_subdir: 'test'
   exp_name: 'original'
-  domain_pddl: pr2_domain_new.pddl
-  stream_pddl: pr2_stream_new.pddl
+  domain_pddl: 'pr2_domain_new.pddl'
+  stream_pddl: 'pr2_stream_new.pddl'
   use_skeleton_constraints: false
   use_subgoal_constraints: false
   use_rel_pose: true
@@ -35,7 +35,7 @@ problem:
   save_testcase: true
 
 robot:
-  robot_name: pr2
+  robot_name: 'pr2'
   draw_base_limits: true
 
 ## pybullet related

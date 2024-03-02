@@ -621,6 +621,10 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visual
         print('\n'.join([str(s) for s in skeleton]))
         print('-' * 100)
         constraints = PlanConstraints(skeletons=[repair_skeleton(skeleton)], exact=False, max_cost=max_cost + 1)
+
+    elif subgoals is None or len(subgoals) == 0:
+        constraints = PlanConstraints(max_cost=max_cost + 1)
+
     else:
         if subgoals is None:
             subgoals = []

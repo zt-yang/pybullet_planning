@@ -1,0 +1,54 @@
+## debug related
+seed: none
+verbose: true
+
+## configuration for PDDLStream
+planner:
+  visualization: false
+  scene_only: false
+  use_heuristic_fc: false
+  dataset_mode: true
+  downward_time: 3
+  evaluation_time: 30
+  stream_planning_timeout: 30
+  total_planning_timeout: 60
+  max_plans: 10
+  max_solutions: 1
+  log_failures: false
+
+## specify the TAMP problem with preconfigured scene layout & robot
+problem:
+  problem: 'test_full_kitchen'
+  goal: [1]
+  exp_dir: '../../outputs'
+  exp_subdir: 'test_full_kitchen'
+  exp_name: 'original'
+  domain_pddl: 'pr2_domain_pigi.pddl'
+  stream_pddl: 'pr2_stream_pigi.pddl'
+  use_skeleton_constraints: false
+  use_subgoal_constraints: false
+  use_rel_pose: false
+  preview_plan: false
+  preview_scene: false
+  record_problem: true
+  record_mp4: false
+  save_testcase: true
+
+robot:
+  robot_name: 'pr2'
+  draw_base_limits: true
+
+## pybullet related
+sim:
+  viewer: true
+  lock: true
+  simulate: false
+  teleport: false
+  drive: false
+  cfree: false
+  disable_movable_collision: false
+  disable_base_collision: false
+  time_step: 0.05
+  camera: false
+  segment: false
+  monitoring: false

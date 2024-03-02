@@ -121,7 +121,7 @@ def load_storage_mechanism(world, obj, epsilon=0.3):
     ## --- ADD ONE SPACE TO BE PUT INTO
     spaces = get_partnet_spaces(obj.path, obj.body)
     for b, _, l in spaces:
-        space = world.add_object(Space(b, l, name=f'storage'))  ## f'{obj.category}_storage'
+        space = world.add_object(Space(b, l, name=f'storage'))  ## f'{obj.category}::storage'
         break
     return doors, space
 
@@ -550,9 +550,9 @@ def load_counter_movables(world, counters, d_x_min=None, obstacles=[],
         move_lid_away(world, [world.name_to_object('floor')], epsilon=1.0)
     elif world.note in [11]:
         from_storage = random.choice(['minifridge', 'cabinettop'])
-        counters['food'] = [world.name_to_object(f"{from_storage}_storage")]
+        counters['food'] = [world.name_to_object(f"{from_storage}::storage")]
     elif world.note in [551]:
-        counters['food'] = [world.name_to_object(f"minifridge_storage")]
+        counters['food'] = [world.name_to_object(f"minifridge::storage")]
         counters['bottle'] = [world.name_to_object(f"sink_bottom")]
         counters['medicine'] = [world.name_to_object(f"cabinettop_storage")]
         from world_builder.asset_constants import DONT_LOAD
@@ -1220,6 +1220,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
             #     right_most = furniture.aabb().upper[1]
             # else:
             #     left_most = furniture.aabb().lower[1]
+
     if right_counter_lower != right_counter_upper:
         counter_regions.append([right_counter_lower, right_counter_upper])
     if left_counter_lower != left_counter_upper:
@@ -1370,7 +1371,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
     ## load objects into reachable places
     food_ids, bottle_ids, medicine_ids = \
         load_counter_movables(world, all_counters, d_x_min=0.3, obstacles=obstacles,
-                               reachability_check=reachability_check)
+                              reachability_check=reachability_check)
     movables = food_ids + bottle_ids + medicine_ids
 
     """ step 6: take an image """
@@ -1379,7 +1380,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
     # pause = True
     if pause:
         wait_unlocked()
-    return movables, cabinets, only_counters, obstacles, x_food_min
+    return movables, only_counters
 
 
 def make_sure_obstacles(world, case, movables, counters, objects, food=None):
@@ -1558,6 +1559,9 @@ def is_cabinet_top(world, space):
 
 
 def check_kitchen_placement(world, body, surface, **kwargs):
+    if isinstance(surface, list):
+        surface = surface[0]
+
     body_id = world.get_mobility_identifier(body)
     if isinstance(body_id, int): ## reachable space, feg
         return []

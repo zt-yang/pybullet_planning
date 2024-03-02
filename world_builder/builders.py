@@ -579,3 +579,4 @@ def sample_kitchen_full_goal(world):
     world.remove_bodies_from_planning(goals=goals, exceptions=objects)
 
     return goals
+

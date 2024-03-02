@@ -32,8 +32,8 @@ EXPERIMENT_DIR = abspath(join(dirname(__file__), '..', '..', 'experiments'))
 
 
 def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH,
-              problem='test_studio', domain='pr2_mamao.pddl', stream='pr2_stream_mamao.pddl',
-              exp_dir=EXPERIMENT_DIR, exp_subdir=None, exp_name='default', reset=False,
+              problem=None, domain=None, stream=None,
+              exp_dir=None, exp_subdir=None, exp_name='default', reset=False,
               record_problem=True, save_testcase=False, record_plans=False, data_generation=False, use_rel_pose=False,
               domain_modifier=None, object_reducer=None, comparing=False, **kwargs):
     """
@@ -55,6 +55,8 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
                       record_problem=record_problem, save_testcase=save_testcase)
     if 'robot_builder_args' not in kwargs:
         kwargs['robot_builder_args'] = args.robot_builder_args
+    if isinstance(args.goal, list):
+        kwargs['world_builder_args'] = {'goal_variations': args.goal}
 
     """ load problem """
     if '/' in args.exp_subdir:

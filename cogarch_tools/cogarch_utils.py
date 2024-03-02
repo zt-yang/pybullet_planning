@@ -21,7 +21,7 @@ import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
-PROBLEM_CONFIG_PATH = abspath(dirname(__file__))
+PROBLEM_CONFIG_PATH = abspath(join(dirname(__file__), 'configs'))
 
 
 def parse_config(path):
@@ -36,6 +36,8 @@ def parse_config(path):
     conf.robot = Namespace(**conf.robot)
     if hasattr(conf, 'agent'):
         conf.agent = Namespace(**conf.agent)
+    if isinstance(conf.seed, str) and conf.seed.lower() == 'none':
+        conf.seed = None
     return conf
 
 
@@ -152,6 +154,9 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     if hasattr(args, 'draw_base_limits'):
         if args.draw_base_limits and args.record_mp4:
             args.draw_base_limits = False
+
+    ## other processing
+    args.exp_dir = abspath(args.exp_dir)
 
     print(f'Seed: {args.seed}')
     print(f'Args: {args}')

@@ -45,7 +45,7 @@ def sample_clean_dish_goal(world):
     sink_counter_right = world.name_to_body('sink_counter_right')
     shelve = world.name_to_object('shelf_lower')
 
-    # fridge = world.name_to_object('minifridge_storage')
+    # fridge = world.name_to_object('minifridge::storage')
     # fridge_door = fridge.doors[0]
     dishwasher = world.name_to_object('dishwasherbox')
     sink = world.name_to_object('sink#1')
