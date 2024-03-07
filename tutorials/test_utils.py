@@ -6,9 +6,7 @@ from collections import defaultdict
 import argparse
 from os.path import join, abspath, basename, isdir, isfile
 from os import listdir
-import os
 import shutil
-import argparse
 
 from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, load_pybullet, load_model, \
     sample_aabb, AABB, set_pose, get_aabb, get_aabb_center, quat_from_euler, Euler, HideOutput, get_aabb_extent, \
@@ -123,46 +121,6 @@ def read_csv(csv_file, summarize=True):
 
 
 ########################################################################
-
-
-def clear_constraint_networks(viz_dir):
-    constraint_dir = join(viz_dir, 'constraint_networks')
-    stream_dir = join(viz_dir, 'stream_plans')
-    if isdir(constraint_dir) and len(listdir(constraint_dir)) == 0:
-        shutil.rmtree(constraint_dir)
-    if isdir(stream_dir) and len(listdir(stream_dir)) == 0:
-        shutil.rmtree(stream_dir)
-
-
-def copy_dir_for_process(viz_dir, tag=None, verbose=True, print_fn=None):
-    if not verbose:
-        print_fn = print
-    elif print_fn is None:
-        from pybullet_tools.logging import myprint as print_fn
-
-    clear_constraint_networks(viz_dir)
-
-    subdir = basename(viz_dir)
-    task_name = basename(viz_dir.replace(f"/{subdir}", ''))
-
-    ## temporarily move the dir to the test_cases folder for asset paths to be found
-    test_dir = join(EXP_PATH, f"temp_{task_name}_{subdir}")
-    if isdir(test_dir):
-        if verbose:
-            print_fn('copy_dir_for_process | removing', test_dir)
-        shutil.rmtree(test_dir)
-    if not isdir(test_dir):
-        shutil.copytree(viz_dir, test_dir)
-
-    if not verbose:
-        print_fn(viz_dir)
-    else:
-        if tag is None:
-            print_fn(viz_dir, end='\r')
-        elif verbose:
-            print_fn(f'\n\n\n--------------------------\n    {tag} {viz_dir} \n------------------------\n\n\n')
-
-    return test_dir
 
 
 def has_srl_stream():

@@ -805,7 +805,7 @@ diswasher = 'DishwasherBox'
 def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=False, random_scale=1.0):
 
     if floor is None:
-        floor = create_house_floor(world, w=2, l=2, x=0, y=1)
+        floor = create_floor_covering_base_limits(world)
         x = 0
 
     ins = True
@@ -1066,6 +1066,9 @@ def load_full_kitchen_upper_cabinets(world, counters, x_min, y_min, y_max, dz=0.
     return cabinets, shelves
 
 
+#####################################################
+
+
 def load_braiser(world, supporter, x_min=None, verbose=False):
     ins = True
     if world.note in [551, 552]:
@@ -1105,29 +1108,11 @@ def put_lid_on_braiser(world, lid=None, braiser=None):
     braiser.attach_obj(lid)
 
 
-def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_check=True):
-    h_lower_cabinets = 1
-    dh_cabinets = 0.8
-    h_upper_cabinets = 0.768
-    wall_height = h_lower_cabinets + dh_cabinets + h_upper_cabinets + COUNTER_THICKNESS
+#####################################################
 
-    floor = create_house_floor(world, w=w, l=l, x=w/2, y=l/2)
 
-    ordering = sample_kitchen_furniture_ordering()
-    while 'SinkBase' not in ordering:
-        ordering = sample_kitchen_furniture_ordering()
-
-    """ step 1: sample a sink """
-    start = ordering.index('SinkBase')
-    sink_y = l * start / len(ordering) + np.random.normal(0, 0.5)
-    floor, base, counter_x, counter_w, counter_z, color, counters = \
-        sample_kitchen_sink(world, floor=floor, y=sink_y)
-
-    under_counter = ['SinkBase', 'CabinetLower', 'DishwasherBox']
-    on_base = ['MicrowaveHanging', 'MiniFridge']
-    full_body = ['CabinetTall', 'Fridge', 'OvenCounter']
-    tall_body = ['CabinetTall', 'Fridge', 'MiniFridge']
-
+def load_all_furniture(world, ordering, floor, base, start, color, wall_height,
+                       under_counter, on_base, full_body, tall_body):
     def update_x_lower(obj, x_lower):
         if obj.aabb().lower[0] < x_lower:
             x_lower = obj.aabb().lower[0]
@@ -1166,7 +1151,6 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
 
     adjust_y = {}
 
-    """ step 2: on the left and right of sink base, along with the extended counter """
     for direction in ['+y', '-y']:
         if direction == '+y':
             categories = [c for c in ordering[start+1:]]
@@ -1247,9 +1231,13 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
     wall = world.add_object(
         Supporter(create_box(w=WALL_WIDTH, l=l, h=wall_height, color=color), name='wall'),
         Pose(point=Point(x=x, y=y, z=wall_height/2)))
-    floor.adjust_pose(dx=x_lower - WALL_WIDTH)
+    # floor.adjust_pose(dx=x_lower - WALL_WIDTH)
 
-    """ step 3: make all the counters """
+    return counter_regions, tall_obstacles, adjust_y, x_lower, left_counter_lower, right_counter_upper
+
+
+def create_counter_top(world, counters, counter_regions, base, color,
+                       counter_x, counter_z, counter_w, adjust_y, x_lower):
     sink_left = world.name_to_object('sink_counter_left')
     sink_right = world.name_to_object('sink_counter_right')
 
@@ -1279,7 +1267,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
             counters.remove(sink_left)
             world.remove_object(sink_left)
         counters.append(world.add_object(
-            Supporter(create_box(w=counter_w, l=upper-lower,
+            Supporter(create_box(w=counter_w, l=upper - lower,
                                  h=COUNTER_THICKNESS, color=color), name=name),
             Pose(point=Point(x=counter_x, y=(upper + lower) / 2, z=counter_z))))
         # print('lower, upper', (round(lower, 2), round(upper, 2)))
@@ -1287,7 +1275,7 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
     ## to cover up the wide objects at the back
     if x_lower < base.aabb().lower[0]:
         x_upper = base.aabb().lower[0]
-        x = (x_upper+x_lower)/2
+        x = (x_upper + x_lower) / 2
         counter_regions.append([base.aabb().lower[1], base.aabb().upper[1]])
 
         ## merge those could be merged
@@ -1307,18 +1295,8 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
                 Pose(point=Point(x=x, y=(upper + lower) / 2, z=counter_z)))
             # print('lower, upper', (round(lower, 2), round(upper, 2)))
 
-    """ step 4: put upper cabinets and shelves """
-    oven = world.name_to_object('OvenCounter')
-    cabinets, shelves = load_full_kitchen_upper_cabinets(world, counters, x_lower, left_counter_lower,
-                                                         right_counter_upper, others=[oven],
-                                                         dz=dh_cabinets, obstacles=tall_obstacles)
 
-    """ step 5: add additional surfaces in furniture """
-    sink = world.name_to_object('sink')
-    sink_bottom = world.add_surface_by_keyword(sink, 'sink_bottom')
-
-    """ step 5: place electronics and cooking appliances on counters """
-    only_counters = [c for c in counters]
+def load_cooking_appliances(world, ordering, counters, x_food_min, oven):
     obstacles = []
     microwave = None
     if 'MicrowaveHanging' not in ordering:
@@ -1335,15 +1313,28 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
     #     counters.append(microwave)
     #     world.add_to_cat(microwave.body, 'supporter')
 
-    x_food_min = base.aabb().upper[0] - 0.3
     braiser, braiser_bottom = load_braiser(world, oven, x_min=x_food_min)
     obstacles.extend([braiser, braiser_bottom])
+    return microwave, obstacles
 
-    """ step 5: place movables on counters """
+
+def load_storage_spaces(world, epsilon=0.0, make_doors_transparent=True):
+    """ epsilon: probability of each door being open """
+    if make_doors_transparent:
+        world.make_doors_transparent()
+    load_storage_mechanism(world, world.name_to_object('minifridge'), epsilon=epsilon)
+    for cabi_type in ['cabinettop', 'cabinetupper']:
+        cabi = world.cat_to_objects(cabi_type)
+        if len(cabi) > 0:
+            cabi = world.name_to_object(cabi_type)
+            load_storage_mechanism(world, cabi, epsilon=epsilon)
+
+
+def load_movables(world, counters, shelves, obstacles, x_food_min, reachability_check):
     all_counters = {
         'food': counters,
-        'bottle': counters, ##  + [sink_bottom],
-        'medicine': shelves + [microwave],
+        'bottle': counters,  ##  + [sink_bottom],
+        'medicine': shelves,
     }
     possible = []
     for v in all_counters.values():
@@ -1358,29 +1349,80 @@ def sample_full_kitchen(world, w=3, l=8, verbose=True, pause=True, reachability_
         draw_aabb(aabb)
         drawn.append(str(c))
 
-    ## probility of each door being open
-    # world.make_doors_transparent()
-    epsilon = 0
-    load_storage_mechanism(world, world.name_to_object('minifridge'), epsilon=epsilon)
-    for cabi_type in ['cabinettop', 'cabinetupper']:
-        cabi = world.cat_to_objects(cabi_type)
-        if len(cabi) > 0:
-            cabi = world.name_to_object(cabi_type)
-            load_storage_mechanism(world, cabi, epsilon=epsilon)
-
     ## load objects into reachable places
     food_ids, bottle_ids, medicine_ids = \
         load_counter_movables(world, all_counters, d_x_min=0.3, obstacles=obstacles,
                               reachability_check=reachability_check)
     movables = food_ids + bottle_ids + medicine_ids
+    return movables
 
-    """ step 6: take an image """
+
+#####################################################
+
+
+def sample_full_kitchen(world, verbose=True, pause=True, reachability_check=True,
+                        open_door_epsilon=0.5, make_doors_transparent=False):
+    h_lower_cabinets = 1
+    dh_cabinets = 0.8
+    h_upper_cabinets = 0.768
+    l_max_kitchen = 8
+
+    under_counter = ['SinkBase', 'CabinetLower', 'DishwasherBox']
+    on_base = ['MicrowaveHanging', 'MiniFridge']
+    full_body = ['CabinetTall', 'Fridge', 'OvenCounter']
+    tall_body = ['CabinetTall', 'Fridge', 'MiniFridge']
+
+    ###############################################################
+
+    """ step 0: sample an ordering of lower furniture """
+    floor = create_floor_covering_base_limits(world)
+    ordering = sample_kitchen_furniture_ordering()
+    while 'SinkBase' not in ordering:
+        ordering = sample_kitchen_furniture_ordering()
+
+    """ step 1: sample a sink """
+    start = ordering.index('SinkBase')
+    sink_y = l_max_kitchen * start / len(ordering) + np.random.normal(0, 0.5)
+    floor, base, counter_x, counter_w, counter_z, color, counters = \
+        sample_kitchen_sink(world, floor=floor, y=sink_y)
+
+    """ step 2: arrange furniture on the left and right of sink base, 
+                along with the extended counter """
+    wall_height = h_lower_cabinets + dh_cabinets + h_upper_cabinets + COUNTER_THICKNESS
+    counter_regions, tall_obstacles, adjust_y, x_lower, left_counter_lower, right_counter_upper = \
+        load_all_furniture(world, ordering, floor, base, start, color, wall_height,
+                           under_counter, on_base, full_body, tall_body)
+
+    """ step 3: make all the counters """
+    create_counter_top(world, counters, counter_regions, base, color,
+                       counter_x, counter_z, counter_w, adjust_y, x_lower)
+
+    """ step 4: put upper cabinets and shelves """
+    oven = world.name_to_object('OvenCounter')
+    cabinets, shelves = load_full_kitchen_upper_cabinets(world, counters, x_lower, left_counter_lower,
+                                                         right_counter_upper, others=[oven],
+                                                         dz=dh_cabinets, obstacles=tall_obstacles)
+
+    """ step 5: add additional surfaces in furniture """
+    sink = world.name_to_object('sink')
+    sink_bottom = world.add_surface_by_keyword(sink, 'sink_bottom')
+
+    """ step 6: place electronics and cooking appliances on counters """
+    x_food_min = base.aabb().upper[0] - 0.3
+    microwave, obstacles = load_cooking_appliances(world, ordering, counters, x_food_min, oven)
+    shelves += [microwave]
+
+    """ step 7: place electronics and cooking appliances on counters """
+    load_storage_spaces(world, epsilon=open_door_epsilon, make_doors_transparent=make_doors_transparent)
+
+    """ step 8: place movables on counters """
+    movables = load_movables(world, counters, shelves, obstacles, x_food_min, reachability_check)
+
     set_camera_pose((4, 4, 3), (0, 4, 0))
-
-    # pause = True
     if pause:
+        set_renderer(True)
         wait_unlocked()
-    return movables, only_counters
+    return movables, counters
 
 
 def make_sure_obstacles(world, case, movables, counters, objects, food=None):

@@ -47,7 +47,7 @@ SAMPLER_DB = abspath(join(dirname(__file__), 'sampling_distributions.json'))
 SAMPLER_KEY = "{x}&{y}"
 
 Z_CORRECTION_FILE = join(dirname(__file__), '..', 'databases', 'pose_z_correction.json')
-SCENE_CONFIG_PATH = abspath(join(dirname(__file__), '..', 'pipelines'))
+SCENE_CONFIG_PATH = abspath(join(dirname(__file__), '..', 'data_generator', 'configs'))
 
 
 def parse_yaml(path, verbose=True):

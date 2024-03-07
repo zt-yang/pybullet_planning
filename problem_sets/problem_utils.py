@@ -4,7 +4,7 @@ from pybullet_tools.utils import set_all_static
 
 from world_builder.world import World, State
 from world_builder.world import World
-from world_builder.paths import KITCHEN_WORLD, pbp_path
+from world_builder.paths import KITCHEN_WORLD, PBP_PATH
 
 
 PDDL_PATH = abspath(join(__file__, '..', '..', 'assets', 'pddl'))
@@ -27,7 +27,7 @@ def pddlstream_from_state_goal(state, goals, args=None, custom_limits=None,
     stream_name = args.stream_pddl if args is not None else stream_name
     stream_pddl = join(PDDL_PATH, 'streams', stream_name)
     if not isfile(domain_pddl):
-        pddl_dir = join(pbp_path, 'pddl')
+        pddl_dir = join(PBP_PATH, 'pddl')
         domain_pddl = join(pddl_dir, domain_name)
         stream_pddl = join(pddl_dir, stream_name)
     cfree = args.cfree if args is not None else cfree

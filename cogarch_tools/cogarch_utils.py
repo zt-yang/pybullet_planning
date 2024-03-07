@@ -31,6 +31,7 @@ def parse_config(path):
     conf = yaml.safe_load(Path(path).read_text())
     conf = Namespace(**conf)
     conf.sim = Namespace(**conf.sim)
+    conf.data = Namespace(**conf.data)
     conf.problem = Namespace(**conf.problem)
     conf.planner = Namespace(**conf.planner)
     conf.robot = Namespace(**conf.robot)
@@ -42,7 +43,7 @@ def parse_config(path):
 
 
 def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwargs):
-    """ default values are given at yaml, custom values are provided by commandline flags, overwritten by kwargs"""
+    """ default values are given at yaml, custom values are provided by commandline flags, overwritten by kwargs """
 
     conf = parse_config(join(config_root, config))
 
@@ -74,12 +75,6 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     ## -------- planning problem related
     parser.add_argument('-p', '--problem', type=str, default=conf.problem.problem,
                         help='name of the problem function that initiate both the world and goal')
-    parser.add_argument('--exp_dir', type=str, default=conf.problem.exp_dir,
-                        help='path to `experiments` to save outputs')
-    parser.add_argument('--exp_subdir', type=str, default=conf.problem.exp_subdir,
-                        help='name of the sub-directory in `../experiments` to save outputs')
-    parser.add_argument('--exp_name', type=str, default=conf.problem.exp_name,
-                        help='name of the comparison group for which planning time and success rate will be compared')
     parser.add_argument('-domain', '--domain_pddl', type=str, default=conf.problem.domain_pddl,
                         help='name to the domain pddl file')
     parser.add_argument('-stream', '--stream_pddl', type=str, default=conf.problem.stream_pddl,
@@ -96,11 +91,19 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
                         help='When enabled, previews the scene and press Enter before solving the problem.')
     parser.add_argument('--preview_plan', action='store_true', default=conf.problem.preview_plan,
                         help='When enabled, previews the plan before returning.')
-    parser.add_argument('--record_problem', action='store_true', default=conf.problem.record_problem,
+
+    ## -------- output data related
+    parser.add_argument('--exp_dir', type=str, default=conf.data.exp_dir,
+                        help='path to `experiments` to save outputs')
+    parser.add_argument('--exp_subdir', type=str, default=conf.data.exp_subdir,
+                        help='name of the sub-directory in `../experiments` to save outputs')
+    parser.add_argument('--exp_name', type=str, default=conf.data.exp_name,
+                        help='name of the comparison group for which planning time and success rate will be compared')
+    parser.add_argument('--record_problem', action='store_true', default=conf.data.record_problem,
                         help='When enabled, the world lisdf, problem pddl, and solution json will be saved')
-    parser.add_argument('-mp4', '--record_mp4', action='store_true', default=conf.problem.record_mp4,
+    parser.add_argument('-mp4', '--record_mp4', action='store_true', default=conf.data.record_mp4,
                         help='When enabled, the solution mp4 will be saved')
-    parser.add_argument('--save_testcase', action='store_true', default=conf.problem.save_testcase,
+    parser.add_argument('--save_testcase', action='store_true', default=conf.data.save_testcase,
                         help='When enabled, the problem and solution will be saved into test_cases')
 
     ## -------- PDDLStream planner related

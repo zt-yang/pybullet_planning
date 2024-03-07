@@ -3,6 +3,7 @@ import random
 import json
 from os.path import join, abspath, basename
 import sys
+import os
 
 import pybullet as p
 from world_builder.world import World, State
@@ -21,7 +22,7 @@ from world_builder.world_utils import get_domain_constants
 from pybullet_tools.utils import Pose, Euler, PI, create_box, TAN, Point, set_camera_pose, link_from_name, \
     connect, enable_preview, draw_pose, unit_pose, set_all_static, wait_if_gui, reset_simulation, get_aabb
 from pybullet_tools.bullet_utils import set_camera_target_body, set_camera_target_robot, draw_collision_shapes, \
-    open_joint
+    open_joint, get_datetime
 
 
 def set_time_seed():
@@ -56,7 +57,7 @@ def get_world_builder(builder_name):
     return result[0]
 
 
-def create_pybullet_world(config, builder=None, SAVE_LISDF=False, SAVE_TESTCASE=False, RESET=False):
+def sample_world_and_goal(config, builder=None):
     """ build a pybullet world with lisdf & pddl files into test_cases folder,
         given a text_case folder to copy the domain, stream, and config from """
 
@@ -78,23 +79,25 @@ def create_pybullet_world(config, builder=None, SAVE_LISDF=False, SAVE_TESTCASE=
     set_all_static()
     if config.verbose: world.summarize_all_objects()
 
-    """ ============== save world configuration ==================== """
-    file = None
-    if SAVE_LISDF:   ## only lisdf files
-        file = world.save_lisdf(config.data.out_dir, verbose=config.verbose)
-
-    if SAVE_TESTCASE:   ## save generated world conf, sampled problem and planning config
-        world.save_test_case(config.data.out_dir, goal=goal, **config.data.images)
-
-    """ ============== stop here or follow up with solving the problem ==================== """
-
-    # input("world built, next?")
-
-    if RESET:
-        reset_simulation()
-        return file
-
     return world, goal
+
+
+def save_world_problem(world, goal, config, save_lisdf=True, save_problem=True):
+
+    ## if basename is already configured to be an index
+    out_dir = abspath(config.data.out_dir)
+    if not basename(config.data.out_dir).isdigit():
+        out_dir = join(out_dir, get_datetime(seconds=True))
+        config.data.out_dir = out_dir
+    os.makedirs(out_dir, exist_ok=True)
+
+    if save_lisdf:   ## only lisdf files
+        world.save_lisdf(out_dir, verbose=config.verbose)
+
+    if save_problem:   ## save generated world conf, sampled problem and planning config
+        world.save_test_case(out_dir, goal=goal, **config.data.images)
+
+    return out_dir
 
 
 def test_pick(world, w=.5, h=.9, mass=1):
@@ -538,43 +541,58 @@ def sample_kitchen_mini_goal(world):
 ##########################################################################################
 
 
-def test_feg_kitchen_full(world, **kwargs):
-    ## hyperparameters for world sampling
+def test_kitchen_full(world, **kwargs):
     world.set_skip_joints()
     world.note = 1
 
-    movables, cabinets, counters, obstacles, x_food_min = \
-        sample_full_kitchen(world, verbose=False, pause=False)
-    goal = sample_kitchen_full_goal(world)
+    sample_full_kitchen(world, verbose=kwargs['verbose'], pause=False)
+    goal = sample_kitchen_full_goal(world, **kwargs)
     return goal
 
 
-def sample_kitchen_full_goal(world):
+def sample_kitchen_full_goal(world, **kwargs):
     objects = []
 
-    food = random.choice(world.cat_to_bodies('edible'))
-    bottle = random.choice(world.cat_to_bodies('bottle'))
+    movable_categories = kwargs['movable_categories'] if 'movable_categories' in kwargs else ['edible', 'bottle']
+    movable_candidates = []
+    for category in movable_categories:
+        movable_candidates += world.cat_to_bodies(category)
+    movable = random.choice(movable_candidates)
+
     counter = world.name_to_body('counter#1')
     fridge = world.name_to_object('minifridge')
     fridge_space = world.name_to_body(f'minifridge::storage')
     fridge_door = fridge.doors[0]
-
-    objects += [fridge_door]
-
-    world.add_to_cat(food, 'movable')
-    world.add_to_cat(bottle, 'movable')
+    # objects += [fridge_door]
 
     hand = world.robot.arms[0]
-    goal_candidates = [
-        [('Holding', hand, bottle)],
-        [('On', food, counter)],
-        [('In', food, fridge_space)],
+    goals_candidates = [
+        [('Holding', hand, movable)],
+        [('On', movable, counter)],
+        [('In', movable, fridge_space)],
         [('OpenedJoint', fridge_door)],
     ]
-    goals = random.choice(goal_candidates)
-    if goals[0][0] == 'In':
-        for door in fridge.doors:
-            world.open_joint(door[0], door[1], hide_door=True)
+    goals = []
+    while len(goals) == 0:
+        goals = random.choice(goals_candidates)
+        if 'goal_predicates' in kwargs:
+            goals = [g for g in goals if g[0].lower() in kwargs['goal_predicates']]
+
+    """ optional: modify the world to work with the goal """
+    for goal in goals:
+        if goal[0] == 'In' and goal[-1] == fridge_space:
+            for door in fridge.doors:
+                world.open_joint(door[0], door[1], hide_door=True)
+
+        if goal[0] == 'OpenedJoint':
+            door = goal[-1]
+            world.close_joint(door[0], door[1])
+
+        if goal[0] in ['Holding']:
+            world.add_to_cat(goal[-1], 'movable')
+
+        if goal[0] in ['In', 'On']:
+            world.add_to_cat(goal[1], 'movable')
 
     world.remove_bodies_from_planning(goals=goals, exceptions=objects)
 

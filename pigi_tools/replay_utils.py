@@ -26,12 +26,13 @@ from lisdf_tools.lisdf_planning import pddl_to_init_goal, Problem
 from lisdf_tools.image_utils import make_composed_image_multiple_episodes, images_to_gif
 
 from world_builder.actions import apply_actions
+from data_generator.run_utils import copy_dir_for_process
 
 from pigi_tools.data_utils import get_plan, get_body_map, get_multiple_solutions, add_to_planning_config, \
     load_planning_config, exist_instance, get_world_aabb, check_unrealistic_placement_z, get_goals
 from pigi_tools.run_utils import process_all_tasks
 
-from tutorials.test_utils import get_test_base_parser, copy_dir_for_process, has_srl_stream, has_getch
+from tutorials.test_utils import get_test_base_parser, has_srl_stream, has_getch
 
 
 def get_pkl_run(run_dir, verbose=True):

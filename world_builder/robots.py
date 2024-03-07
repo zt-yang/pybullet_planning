@@ -441,7 +441,7 @@ class PR2Robot(MobileRobot):
     def get_lisdf_string(self):
         return """
     <include name="{name}">
-      <uri>../../assets/models/drake/pr2_description/urdf/pr2_simplified.urdf</uri>
+      <uri>../../pybullet_planning/models/drake/pr2_description/urdf/pr2_simplified.urdf</uri>
       {pose_xml}
     </include>
 """
@@ -908,10 +908,11 @@ class FEGripper(RobotAPI):
         from pybullet_tools.flying_gripper_utils import FE_GRIPPER_URDF
         return """
     <include name="{name}">
-      <uri>../../assets/models/franka_description/robots/hand_se3.urdf</uri>
+      <uri>../../pybullet_planning/models/franka_description/robots/hand_se3.urdf</uri>
       {pose_xml}
     </include>
 """
+
     def get_positions(self, joint_group='hand', roundto=None):
         from pybullet_tools.flying_gripper_utils import get_se3_conf
         return tuple([round(n, roundto) for n in get_se3_conf(self)])

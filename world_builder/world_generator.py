@@ -420,7 +420,7 @@ def get_config_from_template(template_path):
     print('\n\nget_config_from_template', get_config_from_template, '\n\n')
     planning_config = json.load(open(join(template_path, 'planning_config.json'), 'r'))
     config = {k: v for k, v in planning_config.items() \
-            if k in ['base_limits', 'robot_builder', 'robot_name', 'obs_camera_pose']}
+              if k in ['base_limits', 'robot_builder', 'robot_name', 'obs_camera_pose']}
     return config
 
 

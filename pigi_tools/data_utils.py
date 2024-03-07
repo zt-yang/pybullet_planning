@@ -723,7 +723,7 @@ def get_lisdf_aabbs(run_dir, keyw=None):
         ## urdf
         elif f'<include name="' in lines[i]:
             name = get_name_from_xml(lines[i])
-            if name in ['sinkbase', 'minifridgebase', 'faucet', 'diswasherbox'] or 'pr2' in name:
+            if name in ['sinkbase', 'minifridgebase', 'faucet', 'diswasherbox', 'fegripper'] or 'pr2' in name:
                 continue
             uri = lines[i + 1]
             static = lines[i + 2]

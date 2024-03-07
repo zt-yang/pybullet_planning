@@ -173,7 +173,8 @@ def test_full_kitchen(args, **kwargs):
         case = random.choice(world_builder_args['goal_variations'])
         world.note = case
 
-        movables, counters = sample_full_kitchen(world, pause=False, reachability_check=False)
+        movables, counters = sample_full_kitchen(world, pause=False, reachability_check=False,
+                                                 open_door_epsilon=0.5, make_doors_transparent=True)
 
         objects = []
         skeleton = []

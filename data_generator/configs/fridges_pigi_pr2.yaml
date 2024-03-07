@@ -14,7 +14,7 @@ camera:
 world_builder:
   builder_name: test_fridges_tables_conjunctive
   builder_args:
-    movable_category: ['food']
+    movable_categories: ['edible']
     goal_predicates: ['holding', 'on', 'in']
 
 planner:

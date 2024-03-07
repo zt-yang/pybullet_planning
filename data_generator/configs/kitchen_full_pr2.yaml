@@ -1,5 +1,7 @@
+## all relative paths in this file has pybullet_planning as the root dir
+
 ## debug related
-seed: null
+seed: None
 verbose: true
 
 ## pybullet related
@@ -9,43 +11,36 @@ simulate: false
 teleport: false
 drive: true
 cfree: false
-time_step: 5e-3
+time_step: 0.05
 camera: true
 segment: false
 monitoring: false
 
 ## data collection mode
 parallel: false
-n_data: 3
+n_data: 1
 
 
 robot:
-  robot_name: feg
-  builder_name: build_robot_from_args
+  robot_name: 'pr2'
+  builder_name: 'build_robot_from_args'
   builder_kwargs:
     ## x, y, z joint limits for base motion planning
-    custom_limits: [[0, -3, 0], [3, 3, 3]]
-    initial_q: [2, 0, 0.7, 0, -1.57, 0]
-    spawn_range:
-    ## variations in initial base conf in generated worlds
-      x: [2.5, 5.8]
-      y: [2, 3.5]
-      z: [0.5, 1.9]
+    custom_limits: [[0, -4, -0.5], [3, 8, 3]]
+    initial_xy: [2, 3]
 
 
 world:
   ## method 1: use pre-specified builder inside world_builder/builders,
   ##         followed by builder specific arguments
-  builder_name: test_feg_kitchen_mini
+  builder_name: 'test_kitchen_full'
   builder_kwargs:
-    ## sample assets in category from assets library, by default the 1st asset
-    sampling: true
-    movable_category: ['food']
+    movable_categories: ['edible']
     goal_predicates: ['holding', 'on', 'in']
 
 
 data:
-  out_dir: ../outputs/test_feg_kitchen_mini/
+  out_dir: '../outputs/test_pr2_kitchen_full/'
   save_failed_plans: true
   save_log: true
   save_commands: true
@@ -67,8 +62,8 @@ data:
 ## configuration for PDDLStream
 planner:
   timeout: 300
-  domain_pddl: ../assets/pddl/feg_kitchen.pddl
-  stream_pddl: ../assets/pddl/feg_stream_kitchen.pddl
+  domain_pddl: 'pddl/pr2_domain_pigi.pddl'
+  stream_pddl: 'pddl/pr2_stream_pigi.pddl'
   diverse: false
   downward_time: 1
   dataset: false

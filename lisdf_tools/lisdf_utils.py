@@ -26,7 +26,7 @@ from pddlstream.language.constants import AND, PDDLProblem
 
 from world_builder.entities import Space, StaticCamera
 from world_builder.world_utils import get_camera_zoom_in
-from world_builder.paths import pbp_path
+from world_builder.paths import PBP_PATH
 
 from lisdf_tools.lisdf_planning import pddl_to_init_goal
 
@@ -178,7 +178,7 @@ def pddl_files_from_dir(exp_dir, replace_pddl=False, domain_name='pr2_mamao.pddl
         domain_path = join(pddl_dir, 'domains', domain_name)
         stream_path = join(pddl_dir, 'streams', stream_name)
         if not isfile(domain_path):
-            pddl_dir = join(pbp_path, 'pddl')
+            pddl_dir = join(PBP_PATH, 'pddl')
             domain_path = join(pddl_dir, domain_name)
             stream_path = join(pddl_dir, stream_name)
     else:

@@ -35,9 +35,9 @@ from pddlstream.language.constants import Action, AND, PDDLProblem
 ZOOM_IN_AT_OBJECT = False
 SAVE_TIME = False
 
-from world_builder.paths import pbp_path
-PDDL_PATH = join(pbp_path, '..', 'assets', 'pddl')
-VISUALIZATIONS_PATH = join(pbp_path, '..', 'examples', 'visualizations')
+from world_builder.paths import PBP_PATH
+PDDL_PATH = join(PBP_PATH, '..', 'assets', 'pddl')
+VISUALIZATIONS_PATH = join(PBP_PATH, '..', 'examples', 'visualizations')
 
 
 def get_traj(t):

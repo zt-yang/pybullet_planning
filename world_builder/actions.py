@@ -208,7 +208,7 @@ class AttachObjectAction(RevisedAction):
 
 class DetachObjectAction(RevisedAction):
     def __init__(self, arm, body, supporter=None, verbose=False):
-        print(f'DetachObjectAction.__init__({body, supporter})')
+        if verbose: print(f'DetachObjectAction.__init__({body, supporter})')
         self.arm = arm
         self.body = body
         self.supporter = supporter
@@ -217,7 +217,7 @@ class DetachObjectAction(RevisedAction):
     def transition(self, state):
         body = self.get_body()
         verbose = self.verbose if hasattr(self, 'verbose') else True
-        print(f'DetachObjectAction({body})')
+        if verbose: print(f'DetachObjectAction({body})')
         updated_attachments = remove_attachment(state, obj=body, verbose=verbose)
         if hasattr(self, 'supporter') and self.supporter is not None:
             obj = body

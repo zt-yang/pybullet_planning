@@ -35,7 +35,7 @@ from world_builder.robot_builders import create_pr2_robot, create_gripper_robot
 from world_builder.world_utils import get_instance_name, get_camera_zoom_in, get_lisdf_name, get_mobility_id, \
     get_mobility_category, get_mobility_identifier
 from world_builder.world import WorldBase
-from world_builder.paths import pbp_path
+from world_builder.paths import PBP_PATH
 
 from lisdf_tools.lisdf_planning import pddl_to_init_goal
 from lisdf_tools.lisdf_utils import find_id, LINK_COLORS, ASSET_PATH, LINK_STR, PART_INSTANCE_NAME, \

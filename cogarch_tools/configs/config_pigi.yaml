@@ -20,9 +20,6 @@ planner:
 problem:
   problem: 'test_full_kitchen'
   goal: [1]
-  exp_dir: '../../outputs'
-  exp_subdir: 'test_full_kitchen'
-  exp_name: 'original'
   domain_pddl: 'pr2_domain_pigi.pddl'
   stream_pddl: 'pr2_stream_pigi.pddl'
   use_skeleton_constraints: false
@@ -30,6 +27,12 @@ problem:
   use_rel_pose: false
   preview_plan: false
   preview_scene: false
+
+## outputs to generate
+data:
+  exp_dir: '../../outputs'
+  exp_subdir: 'test_full_kitchen'
+  exp_name: 'original'
   record_problem: true
   record_mp4: false
   save_testcase: true

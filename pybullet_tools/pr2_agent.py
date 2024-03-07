@@ -686,7 +686,7 @@ def solve_multiple(pddlstream_problem, stream_info, lock=True, cwd_saver=None, *
     solution = solve_one(pddlstream_problem, stream_info, lock=lock, **kwargs)
 
     # profiler.restore()
-    return solution, cwd_saver.tmp_cwd
+    return solution, cwd_saver
 
 
 def get_named_colors(kind='tablaeu', alpha=1.):

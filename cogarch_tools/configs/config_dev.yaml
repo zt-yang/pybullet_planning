@@ -20,9 +20,6 @@ planner:
 problem:
   problem: 'test_kitchen_chicken_soup'
   goal: None
-  exp_dir: '../../experiments'
-  exp_subdir: 'test'
-  exp_name: 'original'
   domain_pddl: 'pr2_domain_new.pddl'
   stream_pddl: 'pr2_stream_new.pddl'
   use_skeleton_constraints: false
@@ -30,6 +27,12 @@ problem:
   use_rel_pose: true
   preview_plan: false
   preview_scene: false
+
+## outputs to generate
+data:
+  exp_dir: '../../experiments'
+  exp_subdir: 'test'
+  exp_name: 'original'
   record_problem: true
   record_mp4: false
   save_testcase: true
