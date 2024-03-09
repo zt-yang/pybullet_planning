@@ -15,20 +15,15 @@ build/
 
 pybullet_tools/vhacd_utils.py
 
-tutorials/visualizations/
-tutorials/temp/
-tutorials/statistics/
-tutorials/txt_file.txt
-tutorials/tests/temp_urdfs/
-tutorials/pb_images/
+*/visualizations/
+*/temp/
+*/statistics/
+*/txt_file.txt
+*/tests/temp_urdfs/
+*/pb_images/
+*.ipynb_checkpoints/
+*.png
 
 mamao_tools/*.pdf
 mamao_tools/*.json
 
-*.png
-*.ipynb_checkpoints/
-
-temp/
-statistics/
-visualization/
-txt_file.txt
