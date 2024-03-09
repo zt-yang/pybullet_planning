@@ -54,7 +54,7 @@ RAINBOW_COLORS = [RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, MIDNIGHT, GREY]
 DARKER_COLORS = [DARKER_RED, DARKER_ORANGE, DARKER_YELLOW, DARKER_GREEN,
                  DARKER_BLUE, DARKER_PURPLE, DARKER_MIDNIGHT, DARKER_GREY]
 
-mp4_dir = '/home/yang/Documents/jupyter-worlds/tests/gym_images/'
+mp4_dir = '/home/yang/Documents/jupyter-worlds/dev/gym_images/'
 
 
 def draw_bb(im, bb):

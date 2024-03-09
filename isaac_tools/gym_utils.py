@@ -30,7 +30,7 @@ ASSET_PATH = join(dirname(__file__), '..', 'assets')
 3. add python path to srl_stream (srl_stream/src)
 4. `pip install setuptools_scm trimesh`
 5. run from terminal. It will hang if ran in pycharm
-    `cd tests; python test_gym.py`
+    `cd dev; python test_gym.py`
 """
 
 

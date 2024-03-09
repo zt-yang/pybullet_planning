@@ -366,7 +366,7 @@ class PDDLStreamEnv(PDDLEnv):
         return static_literals, externals
 
     def load_tests(self):
-        """ check which derived axioms depend on existential tests """
+        """ check which derived axioms depend on existential dev """
         tests = {}
         for name, pred in self.domain.predicates.items():
             if not pred.is_derived: continue
@@ -798,10 +798,10 @@ class PDDLStreamEnv(PDDLEnv):
             op_str = str(op).replace(':default', '')
             to_print = f'\nStep {step_idx} | op = {op_str}'
 
-            literals = {n: [] for n in ['dynamic', 'static', 'tests']}
+            literals = {n: [] for n in ['dynamic', 'static', 'dev']}
             for n in preimage:
                 if 'unsafe' in n.predicate.name:
-                    literals['tests'].append(n)
+                    literals['dev'].append(n)
                 elif n.predicate.name in self.dynamic_literals:
                     literals['dynamic'].append(n)
                 else:

@@ -52,7 +52,7 @@ download test data
 run the script without any arguments (can't use argparse while using model-based feasibility checkers because it conflicts with that in other scripts. Fixable but I haven't looked into it).
 
 ```shell
-(fastamp_kitchen) ➜  kitchen-worlds git:(fastamp) $ (cd tests; python test_rerun.py)
+(fastamp_kitchen) ➜  kitchen-worlds git:(fastamp) $ (cd dev; python test_rerun.py)
 ```
 
 # Visualize planner performance

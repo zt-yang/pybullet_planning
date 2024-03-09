@@ -46,6 +46,7 @@ data:
   save_failed_plans: true
   save_log: true
   save_commands: true
+  ## by default images are generated afterward in batch by test_image_generation.py
   images:
     save_rgb: true
     save_depth: false
