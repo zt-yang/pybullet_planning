@@ -5,10 +5,10 @@ from os.path import join, abspath, dirname, isdir, isfile
 abs_join = lambda *args, **kwargs: abspath(join(*args, **kwargs))
 
 current_dir = abspath(dirname(__file__))
-PBP_PATH = join(current_dir, '..')
-TEMP_PATH = join(PBP_PATH, '..', 'temp')
-ASSET_PATH = join(PBP_PATH, '..', 'assets')
-DATA_CONFIG_PATH = join(PBP_PATH, 'data_generator', 'configs')
+PBP_PATH = abs_join(current_dir, '..')
+TEMP_PATH = abs_join(PBP_PATH, '..', 'temp')
+ASSET_PATH = abs_join(PBP_PATH, '..', 'assets')
+DATA_CONFIG_PATH = abs_join(PBP_PATH, 'data_generator', 'configs')
 
 ## different projects
 workspace_path = abs_join(PBP_PATH, '..', '..')
