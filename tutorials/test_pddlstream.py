@@ -1,29 +1,27 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-import os
-import json
 import time
-from os.path import join, abspath, dirname, isdir, isfile
+from os.path import join
 from config import EXP_PATH
 
 from pybullet_tools.utils import disconnect, LockRenderer, has_gui, WorldSaver, wait_if_gui, \
-    SEPARATOR, get_aabb, wait_for_duration
-from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, get_datetime
-from pybullet_tools.pr2_agent import get_stream_info, post_process, get_diverse_kwargs
+    SEPARATOR
+from pybullet_tools.bullet_utils import summarize_facts, print_goal, get_datetime
+from pybullet_tools.pr2_agent import post_process
 
 from pybullet_tools.pr2_primitives import control_commands
-from pddlstream.language.constants import Equal, AND, print_solution, PDDLProblem
-from pddlstream.utils import read, INF, get_file_path, find_unique, Profiler, str_from_object
-from pddlstream.algorithms.meta import solve, create_parser
+from pddlstream.language.constants import print_solution
+from pddlstream.utils import INF, Profiler
+from pddlstream.algorithms.meta import solve
 
 from lisdf_tools.lisdf_utils import pddlstream_from_dir
 from lisdf_tools.lisdf_loader import load_lisdf_pybullet
-from lisdf_tools.lisdf_planning import pddl_to_init_goal, Problem
+from lisdf_tools.lisdf_planning import Problem
 
 from world_builder.actions import apply_actions
 
-from test_utils import get_args, init_experiment, get_parser, save_csv, read_csv
+from examples.test_utils import init_experiment, get_parser, save_csv, read_csv
 
 DEFAULT_TEST = 'test_pr2_kitchen'
 

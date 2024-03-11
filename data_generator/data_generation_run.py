@@ -158,6 +158,8 @@ def data_generation_process(config, world_only=False):
 
 
 def clear_failed_out_dirs(out_dir):
+    if not isdir(out_dir):
+        return
     exp_dirs = [join(out_dir, f) for f in listdir(out_dir) if isdir(join(out_dir, f))]
     for exp_dir in exp_dirs:
         solution_file = join(exp_dir, 'plan.json')

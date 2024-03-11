@@ -43,7 +43,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
     comparing:  put solutions inside exp_dir/exp_name instead of inside exp_dir
     """
 
-    from pybullet_tools.logging import myprint as print
+    from pybullet_tools.logging import myprint
 
     initialize_logs()  ## everything would be loaded to txt log file
 
@@ -118,7 +118,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
         if args.record_mp4:
             with VideoSaver(mp4_path):
                 evolve_processes(state, **evolve_kwargs)
-            print(f'\n\nsaved mp4 to {mp4_path}\n\n')
+            myprint(f'\n\nsaved mp4 to {mp4_path}\n\n')
         else:
             max_time = 8 * 60
             with timeout(duration=max_time):
@@ -127,7 +127,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
         ## failed
         if agent.plan_len == 0:
             if not SAVE_COLLISIONS:
-                print('failed to find any plans')
+                myprint('failed to find any plans')
                 disconnect()
                 return
 

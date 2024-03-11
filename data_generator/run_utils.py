@@ -2,6 +2,7 @@ from __future__ import print_function
 from os.path import join, abspath, basename, isdir, isfile, dirname
 from os import listdir
 import os
+import sys
 import time
 import shutil
 import argparse
@@ -51,6 +52,7 @@ def get_config(config_file):
     config = parse_yaml(join(DATA_CONFIG_PATH, config_file))
     if isinstance(config.seed, str) and config.seed.lower() == 'none':
         config.seed = None
+    config.data.out_dir = join(PBP_PATH, config.data.out_dir)
     config.planner.domain_pddl = join(PBP_PATH, config.planner.domain_pddl)
     config.planner.stream_pddl = join(PBP_PATH, config.planner.stream_pddl)
 

@@ -15,6 +15,8 @@ from pybullet_tools.utils import connect, draw_pose, enable_preview, unit_pose, 
 
 from problem_sets import problem_fn_from_name
 
+from world_builder.paths import PBP_PATH
+
 from pigi_tools.data_utils import get_feasibility_checker
 
 import warnings
@@ -159,7 +161,7 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
             args.draw_base_limits = False
 
     ## other processing
-    args.exp_dir = abspath(args.exp_dir)
+    args.exp_dir = abspath(join(PBP_PATH, args.exp_dir))
 
     print(f'Seed: {args.seed}')
     print(f'Args: {args}')

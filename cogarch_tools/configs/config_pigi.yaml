@@ -1,3 +1,5 @@
+## all relative paths in this file has pybullet_planning as the root dir
+
 ## debug related
 seed: none
 verbose: true
@@ -30,8 +32,8 @@ problem:
 
 ## outputs to generate
 data:
-  exp_dir: '../../outputs'
-  exp_subdir: 'test_full_kitchen'
+  exp_dir: '../outputs'
+  exp_subdir: 'piginet_data'
   exp_name: 'original'
   record_problem: true
   record_mp4: false
