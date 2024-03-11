@@ -95,6 +95,7 @@ def save_world_problem(world, goal, config, save_lisdf=True, save_problem=True):
         world.save_lisdf(out_dir, verbose=config.verbose)
 
     if save_problem:   ## save generated world conf, sampled problem and planning config
+        world.planning_config['camera_poses'] = config.data.cameras
         world.save_test_case(out_dir, goal=goal, **config.data.images)
 
     return out_dir
@@ -568,7 +569,7 @@ def sample_kitchen_full_goal(world, **kwargs):
     hand = world.robot.arms[0]
     goals_candidates = [
         [('Holding', hand, movable)],
-        [('On', movable, counter)],
+        # [('On', movable, counter)],
         [('In', movable, fridge_space)],
         [('OpenedJoint', fridge_door)],
     ]

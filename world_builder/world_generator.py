@@ -16,6 +16,7 @@ from pybullet_tools.bullet_utils import get_readable_list, LINK_STR, nice, is_bo
 from pybullet_tools.general_streams import Position
 from pybullet_tools.pr2_primitives import Pose
 
+from world_builder.paths import ASSET_PATH
 from world_builder.entities import Robot, LINK_STR
 from world_builder.world_utils import read_xml, get_file_by_category, get_model_scale
 
@@ -218,24 +219,8 @@ def to_lisdf(world, output_dir, world_name=None, verbose=True, **kwargs):
         else:
             if not hasattr(obj, 'path'):
                 print('world_generator.file', obj)
-            file = obj.path
-            # scale = get_scale_by_category(file, obj.category)
+            file = join('..', '..', 'assets') + obj.path.replace(ASSET_PATH, '')
             scale = obj.scale
-
-            # if obj.category in OBJ_SCALES:
-            #     scale = OBJ_SCALES[obj.category]
-            #     file = get_file_by_category(obj.category)
-            # else:
-            #     file, scale = get_file_scale(obj.name)
-
-            """ useful but not used """
-            if '/home/' in file or '/afs/csail.mit.edu' in file:
-                file = '../..' + file[file.index('/assets'):]
-            # else:
-            #     if exp_name != None:
-            #         file = file.replace('../assets/', '../../assets/')
-            #     if out_path != None:
-            #         file = file.replace('../assets/', '../../')
 
             models_sdf += MODEL_URDF_STR.format(
                 name=obj.lisdf_name, file=file,

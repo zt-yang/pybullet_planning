@@ -17,10 +17,10 @@ segment: false
 monitoring: false
 
 ## data collection mode
-parallel: true
-n_data: 3
-#parallel: false
-#n_data: 1
+#parallel: true
+#n_data: 3
+parallel: false
+n_data: 1
 
 
 robot:
@@ -55,11 +55,12 @@ data:
   ## {name: pose} pairs
   cameras:
     ## pose format 1: (point, quaternion)
-    front: [[6.84, 2.9, 1.3], [0.5, 0.5, -0.5, -0.5]]
+    front_1: [[6.84, 2.9, 1.3], [0.5, 0.5, -0.5, -0.5]]
     ## pose format 2: (camera_point, target_point)
-    top: [[2, 4, 3], [0, 4, 1]]
+    front_2: {'camera_point': [3, 4, 1.8], 'target_point': [0, 4, 1]}
+    top: {'camera_point': [2, 4, 3], 'target_point': [0, 4, 1]}
     ## pose format 3: (object_name, delta_to_target)
-    zoomin1: ['minifridge', [2, 0, 2]]
+    zoomin1: {'name': 'minifridge', 'd': [2, 0, 1]}
 
 
 ## configuration for PDDLStream
@@ -67,6 +68,6 @@ planner:
   timeout: 300
   domain_pddl: 'pddl/feg_kitchen.pddl'
   stream_pddl: 'pddl/feg_stream_kitchen.pddl'
-  diverse: false
+  diverse: true
   downward_time: 1
   dataset: false

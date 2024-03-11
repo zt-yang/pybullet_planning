@@ -234,7 +234,7 @@ class World(WorldBase):
         self.non_planning_objects = []
         self.not_stackable = {}
         self.c_ignored_pairs = []
-        self.planning_config = {'camera_zoomins': []}
+        self.planning_config = {'camera_zoomins': [], 'camera_poses': {}}
         self.inited_link_joint_relations = False
 
         ## for speeding up planning
@@ -1503,23 +1503,20 @@ class World(WorldBase):
     def add_clean_object(self, obj):
         self.clean_object.add(obj)
 
-    def get_planning_config(self):
-        import platform
-        import os
-        config = {
-            'base_limits': self.robot.custom_limits,
-            'system': platform.system(),
-            'host': os.uname()[1]
-        }
-        config.update(self.planning_config)
-        if self.camera is not None:
-            t, r = self.camera.pose
-            if isinstance(t, np.ndarray):
-                if isinstance(t[0], np.ndarray):
-                    t = tuple(t[0]), t[1]
-                t = tuple(t)
-            config['obs_camera_pose'] = (t, r)
-        return config
+    ##################################################################
+
+    def save_problem(self, output_dir, goal=None, init=None, domain=None, stream=None, problem=None,
+                     pddlstream_kwargs=None, **kwargs):
+        if callable(problem):
+            problem = problem.__name__
+        world_name = f"{problem}_{basename(output_dir)}"
+        if self.note is not None:
+            world_name += f"_{self.note}"
+
+        self.save_lisdf(output_dir, world_name=world_name, **kwargs)
+        self.save_problem_pddl(goal, output_dir, world_name=world_name, init=init)
+        self.save_planning_config(output_dir, domain=domain, stream=stream,
+                                  pddlstream_kwargs=pddlstream_kwargs)
 
     def save_problem_pddl(self, goal, output_dir, world_name='world_name', init=None, **kwargs):
         from world_builder.world_generator import generate_problem_pddl
@@ -1547,6 +1544,24 @@ class World(WorldBase):
             config['pddlstream_kwargs'] = {k: str(v) for k, v in pddlstream_kwargs.items()}
         with open(join(output_dir, 'planning_config.json'), 'w') as f:
             json.dump(config, f, indent=4)
+
+    def get_planning_config(self):
+        import platform
+        import os
+        config = {
+            'base_limits': self.robot.custom_limits,
+            'system': platform.system(),
+            'host': os.uname()[1]
+        }
+        config.update(self.planning_config)
+        if self.camera is not None:
+            t, r = self.camera.pose
+            if isinstance(t, np.ndarray):
+                if isinstance(t[0], np.ndarray):
+                    t = tuple(t[0]), t[1]
+                t = tuple(t)
+            config['obs_camera_pose'] = (t, r)
+        return config
 
     def get_type(self, body):
         obj = self.BODY_TO_OBJECT[body] if body in self.BODY_TO_OBJECT else self.REMOVED_BODY_TO_OBJECT[body]
@@ -1576,19 +1591,6 @@ class World(WorldBase):
             print(f'   find {len(possible)} out of {len(surfaces)} surfaces for {obj}', possible)
         possible = sorted(possible, key=get_area, reverse=True)
         return possible
-
-    def save_problem(self, output_dir, goal=None, init=None, domain=None, stream=None, problem=None,
-                     pddlstream_kwargs=None, **kwargs):
-        if callable(problem):
-            problem = problem.__name__
-        world_name = f"{problem}_{basename(output_dir)}"
-        if self.note is not None:
-            world_name += f"_{self.note}"
-
-        self.save_lisdf(output_dir, world_name=world_name, **kwargs)
-        self.save_problem_pddl(goal, output_dir, world_name=world_name, init=init)
-        self.save_planning_config(output_dir, domain=domain, stream=stream,
-                                  pddlstream_kwargs=pddlstream_kwargs)
 
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, self.robot)
