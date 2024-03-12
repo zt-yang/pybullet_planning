@@ -55,8 +55,8 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
                       record_problem=record_problem, save_testcase=save_testcase)
     if 'robot_builder_args' not in kwargs:
         kwargs['robot_builder_args'] = args.robot_builder_args
-    if isinstance(args.goal, list):
-        kwargs['world_builder_args'] = {'goal_variations': args.goal}
+    if hasattr(args, 'goal_variations'):
+        kwargs['world_builder_args'] = {'goal_variations': args.goal_variations}
 
     """ load problem """
     if '/' in args.exp_subdir:
