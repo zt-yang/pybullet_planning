@@ -30,7 +30,6 @@ from data_generator.run_utils import copy_dir_for_process
 
 from pigi_tools.data_utils import get_plan, get_body_map, get_multiple_solutions, add_to_planning_config, \
     load_planning_config, exist_instance, get_world_aabb, check_unrealistic_placement_z, get_goals
-from pigi_tools.run_utils import process_all_tasks
 
 from tutorials.test_utils import get_test_base_parser, has_srl_stream, has_getch
 
@@ -168,22 +167,6 @@ def load_replay_conf(conf_path):
             c['light_conf'] = dict(direction=np.asarray([0, -1, 0]), intensity=np.asarray([1, 1, 1]))
 
     return c
-
-
-def run_replay(config_yaml_file, load_data_fn):
-    c = load_replay_conf(config_yaml_file)
-
-    def process(run_dir_ori):
-        return run_one(run_dir_ori, load_data_fn=load_data_fn, **c)
-
-    def _case_filter(run_dir_ori):
-        case_kwargs = dict(given_path=c['given_path'], cases=c['cases'], check_collisions=c['check_collisions'],
-                           save_jpg=c['save_jpg'], save_gif=c['save_gif'],
-                           skip_if_processed_recently=c['skip_if_processed_recently'], check_time=c['check_time'])
-        return case_filter(run_dir_ori, **case_kwargs)
-
-    process_all_tasks(process, c['task_name'], parallel=c['parallel'], cases=c['cases'],
-                      path=c['given_path'], dir=c['given_dir'], case_filter=_case_filter)
 
 
 def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path=None, given_dir=None, cases=None,
