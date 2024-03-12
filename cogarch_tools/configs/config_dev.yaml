@@ -30,7 +30,7 @@ problem:
 
 ## outputs to generate
 data:
-  exp_dir: '../../experiments'
+  exp_dir: '../experiments'
   exp_subdir: 'test'
   exp_name: 'original'
   record_problem: true

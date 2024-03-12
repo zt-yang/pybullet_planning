@@ -36,7 +36,7 @@ world:
   builder_name: 'test_kitchen_full'
   builder_kwargs:
     movable_categories: ['edible']
-    goal_predicates: ['holding', 'on', 'in']
+    goal_predicates: ['openedjoint', 'holding', 'on', 'in']
 
 
 data:

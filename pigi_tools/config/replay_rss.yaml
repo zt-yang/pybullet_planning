@@ -1,7 +1,7 @@
 ## ---- data source
 task_name: 'mm_braiser'
-given_dir: none
-cases: none
+given_dir: null
+cases: null
 parallel: false
 skip_if_processed_recently: false
 check_time: 1674417578
@@ -27,9 +27,9 @@ height: 1120
 fx: 600
 camera_point: (8.5, 2.5, 3)
 target_point: (0, 2.5, 0)
-#camera_kwargs: none
-camera_movement: none
-light_conf: none
+#camera_kwargs: null
+camera_movement: null
+light_conf: null
 
 ## ---- purposes
 check_collisions: false
