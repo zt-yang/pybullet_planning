@@ -10,8 +10,9 @@ from os.path import join, abspath, dirname, isdir, isfile, basename
 import numpy as np
 import sys
 
-from pybullet_tools.bullet_utils import query_yes_no, ObjAttachment
-from pybullet_tools.utils import reset_simulation, VideoSaver, wait_unlocked, get_aabb_center, load_yaml
+from pybullet_tools.bullet_utils import query_yes_no, ObjAttachment, has_srl_stream, has_getch
+from pybullet_tools.utils import reset_simulation, VideoSaver, wait_unlocked, get_aabb_center, load_yaml, \
+    set_camera_pose
 
 from lisdf_tools.lisdf_loader import load_lisdf_pybullet
 from lisdf_tools.lisdf_planning import Problem
@@ -21,10 +22,7 @@ from world_builder.actions import apply_actions
 from data_generator.run_utils import copy_dir_for_process
 
 from pigi_tools.data_utils import get_plan, get_body_map, get_multiple_solutions, add_to_planning_config, \
-    load_planning_config, exist_instance, get_world_aabb, check_unrealistic_placement_z, get_goals
-from pigi_tools.run_utils import process_all_tasks
-
-from examples.test_utils import has_srl_stream, has_getch
+    load_planning_config, get_world_aabb, check_unrealistic_placement_z, get_goals
 
 
 def get_pkl_run(run_dir, verbose=True):
@@ -162,6 +160,13 @@ def load_replay_conf(conf_path):
     return c
 
 
+def set_replay_camera_pose(camera_kwargs):
+    if 'camera_point' in camera_kwargs:
+        set_camera_pose(camera_kwargs['camera_point'], camera_kwargs['target_point'])
+    elif 'camera_point_begin' in camera_kwargs:
+        set_camera_pose(camera_kwargs['camera_point_begin'], camera_kwargs['target_point_begin'])
+
+
 def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path=None, given_dir=None, cases=None,
             parallel=False, skip_if_processed_recently=False, check_time=None, preview_scene=False, step_by_step=False,
             use_gym=False, auto_play=True, verbose=False, width=1280, height=800, fx=600,
@@ -173,6 +178,7 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
     world, problem, exp_dir, run_dir, commands, plan, body_map = load_data_fn(
         run_dir_ori, use_gui=not use_gym, width=width, height=height, verbose=verbose
     )
+    set_replay_camera_pose(camera_kwargs)
     if preview_scene:
         wait_unlocked()
 

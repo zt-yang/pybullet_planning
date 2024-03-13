@@ -118,24 +118,3 @@ def read_csv(csv_file, summarize=True):
         print(tabulate(stats, headers="firstrow"))
 
     return data
-
-
-########################################################################
-
-
-def has_srl_stream():
-    try:
-        import srl_stream
-    except ImportError:
-        print('Unfortunately, you cant use the library unless you are part of NVIDIA Seattle Robotics lab')
-        return False
-    return True
-
-
-def has_getch():
-    try:
-        import getch
-    except ImportError:
-        print('Please install has_getch in order to use `step_by_step`: ```pip install getch```\n')
-        return False
-    return True

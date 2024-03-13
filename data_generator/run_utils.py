@@ -80,6 +80,19 @@ def clear_constraint_networks(viz_dir):
         shutil.rmtree(stream_dir)
 
 
+def fix_robot_path(scene_path):
+    new_lines = []
+    with open(scene_path, 'r') as f:
+        lines = f.readlines()
+        for line in lines:
+            if '_description/' in line:
+                new_lines.append(line.replace('../../assets/', '../../pybullet_planning/'))
+            else:
+                new_lines.append(line)
+    with open(scene_path, 'w') as f:
+        f.writelines(new_lines)
+
+
 def copy_dir_for_process(viz_dir, tag=None, verbose=True, print_fn=None):
     """ for lisdf loader to run successfully, the run_dir need to reside on the same level as pybullet_planning """
     if not verbose:
@@ -100,6 +113,9 @@ def copy_dir_for_process(viz_dir, tag=None, verbose=True, print_fn=None):
         shutil.rmtree(test_dir)
     if not isdir(test_dir):
         shutil.copytree(viz_dir, test_dir)
+
+    ## fix tht robot path in assets/models/ to pybullet_planning/models/
+    fix_robot_path(join(test_dir, 'scene.lisdf'))
 
     if not verbose:
         print_fn(viz_dir)

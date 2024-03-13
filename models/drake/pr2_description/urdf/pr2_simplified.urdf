@@ -138,7 +138,7 @@
       </geometry>
       <material name="White"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/base_v0/base_L.obj"/>
@@ -158,7 +158,7 @@
       </geometry>
       <material name="White"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <!-- represent base collision with a simple rectangular model, positioned by base_size_z s.t. top
              surface of the collision box matches the top surface of the PR2 base -->
       <origin rpy="0 0 0" xyz="0 0 0.071"/>
@@ -191,7 +191,7 @@
       </geometry>
       <material name="Red"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <box size=".001 .001 .001"/>
@@ -246,7 +246,7 @@
       </geometry>
       <!--material name="Caster"/-->
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/base_v0/caster_L.obj"/>
@@ -281,7 +281,7 @@
       </geometry>
       <!--material name="Wheel_l"/-->
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
       <!-- rotation because cyl. geom primitive has symmetry axis in +x direction -->
       <geometry>
@@ -324,7 +324,7 @@
       </geometry>
       <!--material name="Wheel_r"/-->
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
       <!-- rotation because cyl. geom primitive has symmetry axis in +x direction -->
       <geometry>
@@ -372,7 +372,7 @@
       </geometry>
       <!--material name="Caster"/-->
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/base_v0/caster_L.obj"/>
@@ -407,7 +407,7 @@
       </geometry>
       <!--material name="Wheel_l"/-->
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
       <!-- rotation because cyl. geom primitive has symmetry axis in +x direction -->
       <geometry>
@@ -450,7 +450,7 @@
       </geometry>
       <!--material name="Wheel_r"/-->
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
       <!-- rotation because cyl. geom primitive has symmetry axis in +x direction -->
       <geometry>
@@ -498,7 +498,7 @@
       </geometry>
       <!--material name="Caster"/-->
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/base_v0/caster_L.obj"/>
@@ -533,7 +533,7 @@
       </geometry>
       <!--material name="Wheel_l"/-->
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
       <!-- rotation because cyl. geom primitive has symmetry axis in +x direction -->
       <geometry>
@@ -576,7 +576,7 @@
       </geometry>
       <!--material name="Wheel_r"/-->
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
       <!-- rotation because cyl. geom primitive has symmetry axis in +x direction -->
       <geometry>
@@ -624,7 +624,7 @@
       </geometry>
       <!--material name="Caster"/-->
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/base_v0/caster_L.obj"/>
@@ -659,7 +659,7 @@
       </geometry>
       <!--material name="Wheel_l"/-->
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
       <!-- rotation because cyl. geom primitive has symmetry axis in +x direction -->
       <geometry>
@@ -702,7 +702,7 @@
       </geometry>
       <!--material name="Wheel_r"/-->
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
       <!-- rotation because cyl. geom primitive has symmetry axis in +x direction -->
       <geometry>
@@ -781,7 +781,6 @@
       </geometry>
       <material name="Grey2"/>
     </visual>
-
     <visual name="torso_lift_visual_extra">
       <origin rpy="0 0 0" xyz="0 0 -0.6"/>
       <geometry>
@@ -811,41 +810,36 @@
       <material name="Grey2"/>
     </visual>
 
-    <collision name="torso_lift_collision">
+    <collision group="non_gripper" name="torso_lift_collision">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/torso_v0/torso_lift_L.obj"/>
       </geometry>
     </collision>
-
-    <collision name="torso_lift_collision_extra">
+    <collision group="non_gripper" name="torso_lift_collision_extra">
       <origin rpy="0 0 0" xyz="0 0 -0.6"/>
       <geometry>
         <mesh filename="../meshes/torso_v0/torso_lift_extra.obj"/>
       </geometry>
     </collision>
-    <collision name="torso_lift_visual_extra">
+    <collision group="non_gripper" name="torso_lift_visual_extra">
       <origin rpy="3.1415 0 0" xyz="0 0 -0.7"/>
       <geometry>
         <mesh filename="../meshes/torso_v0/torso_lift_extra.obj"/>
       </geometry>
-      <material name="Grey2"/>
     </collision>
-    <collision name="torso_lift_visual_extra">
+    <collision group="non_gripper" name="torso_lift_visual_extra">
       <origin rpy="0 0 0" xyz="0 0 -1.5"/>
       <geometry>
         <mesh filename="../meshes/torso_v0/torso_lift_extra.obj"/>
       </geometry>
-      <material name="Grey2"/>
     </collision>
-    <collision name="torso_lift_visual_extra">
+    <collision group="non_gripper" name="torso_lift_visual_extra">
       <origin rpy="3.1415 0 0" xyz="0 0 -1.6"/>
       <geometry>
         <mesh filename="../meshes/torso_v0/torso_lift_extra.obj"/>
       </geometry>
-      <material name="Grey2"/>
     </collision>
-
   </link>
   <gazebo reference="torso_lift_link">
     <sensor:contact name="torso_lift_contact_sensor">
@@ -884,7 +878,7 @@
       </geometry>
       <material name="Red"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <box size=".001 .001 .001"/>
@@ -930,7 +924,7 @@
       </geometry>
       <material name="Blue"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0 " xyz="0 0 0.0"/>
       <geometry>
         <mesh filename="../meshes/head_v0/head_pan_L.obj"/>
@@ -970,7 +964,7 @@
       </geometry>
       <material name="Green"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0.0 0.0 0.0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/head_v0/head_tilt_L.obj"/>
@@ -1003,7 +997,7 @@
       </geometry>
       <material name="Blue"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <box size="0.01 0.01 0.01"/>
@@ -1034,7 +1028,7 @@
       </geometry>
       <material name="Blue"/>
     </visual>
-    <collision name="sensor_mount_sensor_collision">
+    <collision group="non_gripper" name="sensor_mount_sensor_collision">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <box size="0.01 0.01 0.01"/>
@@ -1060,7 +1054,7 @@
       </geometry>
       <material name="Blue"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <box size="0.01 0.01 0.01"/>
@@ -1086,7 +1080,7 @@
       </geometry>
       <material name="Blue"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <box size="0.01 0.01 0.01"/>
@@ -1143,7 +1137,7 @@
       </geometry>
       <material name="Blue"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="-0.01 0 0.025"/>
       <geometry>
         <box size="0.02 0.12 0.05"/>
@@ -1169,7 +1163,7 @@
       </geometry>
       <material name="Blue"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <box size="0.001 0.001 0.001"/>
@@ -1200,7 +1194,7 @@
         <box size="0.01 0.01 0.01"/>
       </geometry>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <box size="0.01 0.01 0.01"/>
@@ -1262,7 +1256,7 @@
         <box size="0.01 0.01 0.01"/>
       </geometry>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <box size="0.01 0.01 0.01"/>
@@ -1334,7 +1328,7 @@
       </geometry>
       <material name="Blue"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <box size="0.001 0.001 0.001"/>
@@ -1365,7 +1359,7 @@
         <box size="0.01 0.01 0.01"/>
       </geometry>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <box size="0.01 0.01 0.01"/>
@@ -1427,7 +1421,7 @@
         <box size="0.01 0.01 0.01"/>
       </geometry>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <box size="0.01 0.01 0.01"/>
@@ -1505,7 +1499,7 @@
       </geometry>
       <material name="Red"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/tilting_laser_v0/tilting_hokuyo_L.obj"/>
@@ -1531,7 +1525,7 @@
       </geometry>
       <material name="Red"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <box size=".001 .001 .001"/>
@@ -1597,7 +1591,7 @@
       </geometry>
       <material name="Blue"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0.0 0 0.0"/>
       <geometry>
         <mesh filename="../meshes/shoulder_v0/shoulder_pan.obj"/>
@@ -1630,7 +1624,7 @@
       </geometry>
       <material name="Grey"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/shoulder_v0/shoulder_lift.obj"/>
@@ -1664,7 +1658,7 @@
       </geometry>
       <!--material name="RollLinks"/-->
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/shoulder_v0/upper_arm_roll_L.obj"/>
@@ -1749,7 +1743,7 @@
       </geometry>
       <material name="Green"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/upper_arm_v0/upper_arm.obj"/>
@@ -1798,7 +1792,7 @@
       <!--material name="RollLinks"/-->
     </visual>
     <!-- TODO: collision tag should be optional -->
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/upper_arm_v0/forearm_roll_L.obj"/>
@@ -1843,7 +1837,7 @@
       </geometry>
       <material name="Grey"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/upper_arm_v0/elbow_flex.obj"/>
@@ -1895,7 +1889,7 @@
       </geometry>
       <material name="Grey"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/forearm_v0/forearm.obj"/>
@@ -1927,7 +1921,7 @@
       </geometry>
       <material name="Grey"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/forearm_v0/wrist_flex.obj"/>
@@ -1961,7 +1955,7 @@
       </geometry>
       <!--material name="RollLinks"/-->
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/forearm_v0/wrist_roll_L.obj"/>
@@ -2053,7 +2047,7 @@
       </geometry>
       <material name="Red"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/gripper_v0/gripper_palm.obj"/>
@@ -2085,7 +2079,7 @@
         <box size="0.001 0.001 0.001"/>
       </geometry>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <box size="0.001 0.001 0.001"/>
@@ -2119,7 +2113,7 @@
       </geometry>
       <material name="Grey"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/gripper_v0/l_finger.obj"/>
@@ -2149,7 +2143,7 @@
       </geometry>
       <material name="Grey"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="3.14159265359 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/gripper_v0/l_finger.obj"/>
@@ -2188,7 +2182,7 @@
         </geometry>
         <material name="Green" />
       </visual>-->
-    <!--collision>
+    <!--collision group="non_gripper">
       <origin rpy="0 0 0.0541224233" xyz="0.04574712395 0 0"/>
       <geometry>
         <box size="0.0914942479 0.005 0.005"/>
@@ -2209,7 +2203,7 @@
         </geometry>
         <material name="Green" />
       </visual>-->
-    <!--collision>
+    <!--collision group="non_gripper">
       <origin rpy="0 0 -0.0541224233" xyz="0.04574712395 0 0"/>
       <geometry>
         <box size="0.0914942479 0.005 0.005"/>
@@ -2525,7 +2519,7 @@
       </geometry>
       <material name="Blue"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0.0 0 0.0"/>
       <geometry>
         <mesh filename="../meshes/shoulder_v0/shoulder_pan.obj"/>
@@ -2558,7 +2552,7 @@
       </geometry>
       <material name="Grey"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/shoulder_v0/shoulder_lift.obj"/>
@@ -2592,7 +2586,7 @@
       </geometry>
       <!--material name="RollLinks"/-->
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/shoulder_v0/upper_arm_roll_L.obj"/>
@@ -2677,7 +2671,7 @@
       </geometry>
       <material name="Green"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/upper_arm_v0/upper_arm.obj"/>
@@ -2726,7 +2720,7 @@
       <!--material name="RollLinks"/-->
     </visual>
     <!-- TODO: collision tag should be optional -->
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/upper_arm_v0/forearm_roll_L.obj"/>
@@ -2771,7 +2765,7 @@
       </geometry>
       <material name="Grey"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/upper_arm_v0/elbow_flex.obj"/>
@@ -2823,7 +2817,7 @@
       </geometry>
       <material name="Grey"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/forearm_v0/forearm.obj"/>
@@ -2855,7 +2849,7 @@
       </geometry>
       <material name="Grey"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/forearm_v0/wrist_flex.obj"/>
@@ -2889,7 +2883,7 @@
       </geometry>
       <!--material name="RollLinks"/-->
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/forearm_v0/wrist_roll_L.obj"/>
@@ -2982,7 +2976,7 @@
       </geometry>
       <material name="Red"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/gripper_v0/gripper_palm.obj"/>
@@ -3014,7 +3008,7 @@
         <box size="0.001 0.001 0.001"/>
       </geometry>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <box size="0.001 0.001 0.001"/>
@@ -3048,7 +3042,7 @@
       </geometry>
       <material name="Grey"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/gripper_v0/l_finger.obj"/>
@@ -3078,7 +3072,7 @@
       </geometry>
       <material name="Grey"/>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="3.14159265359 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/gripper_v0/l_finger.obj"/>
@@ -3117,7 +3111,7 @@
         </geometry>
         <material name="Green" />
       </visual>-->
-    <!--collision>
+    <!--collision group="non_gripper">
       <origin rpy="0 0 0.0541224233" xyz="0.04574712395 0 0"/>
       <geometry>
         <box size="0.0914942479 0.005 0.005"/>
@@ -3138,7 +3132,7 @@
         </geometry>
         <material name="Green" />
       </visual>-->
-    <!--collision>
+    <!--collision group="non_gripper">
       <origin rpy="0 0 -0.0541224233" xyz="0.04574712395 0 0"/>
       <geometry>
         <box size="0.0914942479 0.005 0.005"/>
@@ -3446,7 +3440,7 @@
         <box size="0.01 0.01 0.01"/>
       </geometry>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <box size="0.01 0.01 0.01"/>
@@ -3508,7 +3502,7 @@
         <box size="0.01 0.01 0.01"/>
       </geometry>
     </visual>
-    <collision>
+    <collision group="non_gripper">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <box size="0.01 0.01 0.01"/>
