@@ -32,7 +32,8 @@ def parallel_processing(process, inputs, parallel):
     print(f'went through {num_cases} run_dirs (parallel={parallel}) in {round(time.time() - start_time, 3)} sec')
 
 
-def get_config_from_argparse(default_config_name='kitchen_full_feg.yaml', default_config_path=None):
+def get_config_file_from_argparse(default_config_name='kitchen_full_feg.yaml', default_config_path=None,
+                                  default_config_dir=DATA_CONFIG_PATH):
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--config_name', type=str, default=default_config_name,
                         help='name of config file inside pybullet_planning/data_generator/configs/ directory.')
@@ -43,13 +44,20 @@ def get_config_from_argparse(default_config_name='kitchen_full_feg.yaml', defaul
     if args.config_path is not None:
         config_file = args.config_path
     else:
-        config_file = join(DATA_CONFIG_PATH, args.config_name)
+        config_file = join(default_config_dir, args.config_name)
+    return config_file
+
+
+def get_config_from_argparse(default_config_name='kitchen_full_feg.yaml', default_config_path=None,
+                             default_config_dir=DATA_CONFIG_PATH):
+    config_file = get_config_file_from_argparse(default_config_name, default_config_path,
+                                                default_config_dir)
     return get_config(config_file)
 
 
 def get_config(config_file):
     """ all relative paths in config file has pybullet_planning as the root dir """
-    config = parse_yaml(join(DATA_CONFIG_PATH, config_file))
+    config = parse_yaml(config_file)
     if isinstance(config.seed, str) and config.seed.lower() == 'none':
         config.seed = None
     config.data.out_dir = join(PBP_PATH, config.data.out_dir)

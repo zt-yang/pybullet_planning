@@ -92,7 +92,7 @@ class Object(Index):
             if name is None and self.mobility_id is not None and not self.mobility_id.isdigit():
                 name = self.mobility_id
             self.instance_name = get_instance_name(path)
-        elif is_box_entity(body):
+        elif body in get_bodies() and is_box_entity(body):
             self.is_box = True
             self.instance_name = None
             self.mobility_id = 'box'
