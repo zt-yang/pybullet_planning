@@ -514,8 +514,10 @@ def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=
             z = height / 2
         elif isinstance(floor, tuple):
             z = stable_z(body, floor[0], floor[1])
-        elif isinstance(floor, int) or (hasattr(floor, 'body') and isinstance(floor.body, int)):
+        elif isinstance(floor, int):
             z = stable_z(body, floor)
+        elif hasattr(floor, 'body') and isinstance(floor.body, int):
+            z = stable_z(body, floor.body)
         else:
             z = 0
     pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))

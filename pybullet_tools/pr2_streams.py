@@ -124,14 +124,14 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
     robot = problem.robot
     world = problem.world
     obstacles = [o for o in problem.fixed if o not in problem.floors] if collisions else []
-    grippers = [problem.get_gripper(arm=arm, visual=False) for arm in robot.arms]
+    grippers = {arm: problem.get_gripper(arm=arm, visual=False) for arm in robot.arms}
     heading = f'   pr2_streams.get_ir_sampler | '
 
     def gen_fn(arm, obj, pose, grasp):
 
         gripper = grippers[arm]
         pose.assign()
-        if isinstance(obj, tuple): ## may be a (body, joint) or a body with a marker
+        if isinstance(obj, tuple):  ## may be a (body, joint) or a body with a marker
             obj = obj[0]
         if 'pstn' in str(pose): ## isinstance(pose, Position): ## path problem
             pose_value = linkpose_from_position(pose)

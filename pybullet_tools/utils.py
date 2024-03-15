@@ -596,7 +596,7 @@ class HideOutput(object):
             return
         sys.stdout.close()
         sys.stdout = self._origstdout
-        sys.stdout.flush()
+        # sys.stdout.flush()
         os.dup2(self._oldstdout_fno, self.fd)
         os.close(self._oldstdout_fno) # Added
 
@@ -3021,7 +3021,7 @@ def get_collision_data(body, link=BASE_LINK):
         data = p.getCollisionShapeData(body, link, physicsClientId=CLIENT)
         return [CollisionShapeData(*tup) for tup in data]
     except:
-        print(f'pybullet.get_collision_data({body}, {link}) | pybullet.error: Error receiving collision shape info')
+        print(f'utils.get_collision_data({body}) | Error receiving collision info from pybullet. Just run again :)')
         sys.exit()
     return []
 
