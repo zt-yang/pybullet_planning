@@ -8,6 +8,9 @@ from os.path import join, isdir, abspath, dirname, isfile
 sys.path.append(abspath(join(dirname(__file__), '..')))
 
 
+from pybullet_tools.bullet_utils import get_segmask
+
+
 def hex_to_rgba(color):
     """
     Turn a string hex color to a (4,) RGBA color.

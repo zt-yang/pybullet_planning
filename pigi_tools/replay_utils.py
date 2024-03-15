@@ -283,6 +283,7 @@ def run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, bo
             make_composed_image_multiple_episodes(episodes, join(world.img_dir, 'composed.jpg'),
                                                   verbose=verbose, crop=crop)
 
+        """ animation of how objects move """
         if save_gif:
             episodes = results
             h, w, _ = episodes[0].shape
@@ -293,11 +294,13 @@ def run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, bo
         # if SAVE_COMPOSED_JPG or SAVE_GIF:
         #     world.camera = world.cameras[0]
 
+        """ images at zoom-in camera poses defined in `{data_dir}/planning_config.json` at key "camera_zoomins" """
         if save_jpg:
             for sud in range(len(world.camera_kwargs)):
                 viz_dir = join(run_dir_ori, f'zoomin_{sud}'.replace('_0', ''))
                 world.add_camera(viz_dir, img_dir=viz_dir, **zoomin_kwargs, **world.camera_kwargs[sud])
                 world.visualize_image(index='final', rgb=True)
+                print('\n... saved jpg in', viz_dir)
             # world.visualize_image(index='final', rgb=True, **world.camera_kwargs)
 
     if evaluate_quality:

@@ -480,6 +480,9 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
     while i < len(actions):
         action = actions[i]
         name = action.__class__.__name__
+        if i == 31:
+            print('sss')
+        print(f"{i}/{len(actions)}\t{action}")
 
         if 'GripperAction' in name and check_collisions:
             next_action = actions[i+1]
@@ -519,6 +522,8 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
                     color_index += 1
 
                     body_name = world.body_to_name[body]
+                    if body_name not in obj_keys:
+                        print('ssssss')
                     for b, l in obj_keys[body_name]:
                         set_color(b, color, link=l)
                     recording = body_name
@@ -590,6 +595,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
 
         if recording:
             if not record_img:
+                i += 1
                 continue
             if save_composed_jpg:
                 imgs = world.camera.get_image(segment=True, segment_links=True)
