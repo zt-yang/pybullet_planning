@@ -70,10 +70,14 @@ def get_config(config_file):
     return config
 
 
-def get_data_processing_parser(task_name=None, parallel=False, use_viewer=False):
+def get_data_processing_parser(task_name=None, given_path=None, parallel=False, use_viewer=False):
+    if given_path is not None:
+        parallel = False
     parser = argparse.ArgumentParser()
     parser.add_argument('-t', type=str, default=task_name)
-    parser.add_argument('-p', action='store_true', default=parallel)
+    parser.add_argument('--path', type=str, default=given_path)
+    parser.add_argument('--parallel', action='store_true', default=parallel)
+
     parser.add_argument('-v', '--viewer', action='store_true', default=use_viewer,
                         help='When enabled, enables the PyBullet viewer.')
     return parser

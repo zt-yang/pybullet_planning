@@ -5,6 +5,11 @@
 <!-- =================================================================================== -->
 <robot name="feg" xmlns:xacro="http://www.ros.org/wiki/xacro">
   <link name="panda_hand">
+      <inertial>
+          <mass value="1.2" />
+          <origin xyz="0 0 0" />
+      	  <inertia  ixx="1.0" ixy="0.0"  ixz="0.0"  iyy="1.0"  iyz="0.0"  izz="1.0" />
+      </inertial>
     <visual>
       <geometry>
         <mesh filename="package://franka_description/meshes/visual/hand.dae"/>
@@ -17,6 +22,13 @@
     </collision>
   </link>
   <link name="panda_leftfinger">
+      <inertial>
+          <mass value="0.1" />
+          <origin xyz="0 0 0" />
+      <inertia ixx="1.0" ixy="0.0" ixz="0.0"
+               iyy="1.0" iyz="0.0"
+               izz="1.0" />
+      </inertial>
     <visual>
       <geometry>
         <mesh filename="package://franka_description/meshes/visual/finger.dae"/>
@@ -29,6 +41,13 @@
     </collision>
   </link>
   <link name="panda_rightfinger">
+      <inertial>
+          <mass value="0.1" />
+          <origin xyz="0 0 0" />
+      <inertia ixx="1.0" ixy="0.0" ixz="0.0"
+               iyy="1.0" iyz="0.0"
+               izz="1.0" />
+      </inertial>
     <visual>
       <origin rpy="0 0 3.14159265359" xyz="0 0 0"/>
       <geometry>
