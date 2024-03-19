@@ -608,7 +608,7 @@ def get_test_skeleton():
 
 def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visualize=True,
               fc=None, domain_modifier=None, skeleton=None, subgoals=None, soft_subgoals=False,
-              max_time=INF, downward_time=10, evaluation_time=10,
+              max_time=INF, downward_time=10, evaluation_time=10, stream_planning_timeout=30,
               max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=0, **kwargs):
 
     from pybullet_tools.logging import myprint as print
@@ -642,6 +642,7 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visual
     planner_kwargs_default = dict(planner='ff-astar1', unit_costs=False, success_cost=INF, verbose=True,
                                   debug=False, unique_optimistic=True, forbid=True, bind=True)
     planner_kwargs = dict(max_planner_time=downward_time, max_time=max_time, evaluation_time=evaluation_time,
+                          stream_planning_timeout=stream_planning_timeout,
                           initial_complexity=5, visualize=visualize, fc=fc, domain_modifier=domain_modifier,
                           # unit_efforts=True, effort_weight=None,
                           max_solutions=max_solutions, search_sample_ratio=0, **kwargs)

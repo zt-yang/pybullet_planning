@@ -38,17 +38,18 @@ def adjust_camera_pose(camera_pose):
 def get_camera_poses(viz_dir):
     config = json.load(open(join(viz_dir, 'planning_config.json')))
     camera_zoomins = [] if 'camera_zoomins' not in config else config['camera_zoomins']
+    camera_names = ['zoomin_'+c['name'] for c in camera_zoomins]
     camera_poses = []
     camera_kwargs = []
-    camera_names = []
 
     if "obs_camera_pose" in config:
         camera_pose = adjust_camera_pose(config["obs_camera_pose"])
         camera_poses = [camera_pose]
+        camera_names = 'obs_camera_pose'
         camera_kwargs = [dict()]
         add_to_planning_config(viz_dir, {'img_camera_pose': camera_pose})
 
-    elif "camera_poses" in config:
+    elif "camera_poses" in config and len(camera_poses) > 0:
         for name, camera_pose in config["camera_poses"].items():
             camera_names.append(name)
             if isinstance(camera_pose, list):
@@ -61,17 +62,18 @@ def get_camera_poses(viz_dir):
                 camera_zoomins.append(camera_pose)
 
     else:
-
+        ## put one camera in the center (in y axis) and a few in an array, all facing the world
         cx, cy, lx, ly = get_world_center(viz_dir)
         camera_kwargs = [
             {'camera_point': (cx + 5, cy, 2.5), 'target_point': (0, cy, 1)},
         ]
-        for y in [cy - 3 * ly / 8, cy - ly / 8, cy + ly / 8, cy + 3 * ly / 8]:  ## [cy-ly/3, cy, cy+ly/3]:
+        positions = [cy - 3 * ly / 8, cy - ly / 8, cy + ly / 8, cy + 3 * ly / 8]  ## [cy-ly/3, cy, cy+ly/3]:
+        for y in positions:
             camera_kwargs.append(
                 # {'camera_point': (cx+1, y, 2.2), 'target_point': (0, y, 0.5)}
                 {'camera_point': (cx + 1.8, y, 2.8), 'target_point': (0, y, 0.5)}
             )
-
+        camera_names.extend(['center'] + [f'array_{i}' for i in range(len(positions))])
         camera_poses = [unit_pose()] * len(camera_kwargs)
         add_to_planning_config(viz_dir, {'camera_kwargs': camera_kwargs})
 
@@ -187,7 +189,7 @@ def render_images(test_dir, viz_dir, camera_poses, camera_kwargs, camera_zoomins
     # fix_planning_config(viz_dir)
 
     if not segment:
-        os.makedirs(join(viz_dir, 'images'))
+        os.makedirs(join(viz_dir, 'images'), exist_ok=True)
 
     for i in range(len(camera_poses)):
         if done is not None and done[i]:

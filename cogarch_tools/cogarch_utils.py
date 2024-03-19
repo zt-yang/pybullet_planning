@@ -184,6 +184,7 @@ def get_pddlstream_kwargs(args, skeleton, subgoals, initializer):
         log_failures=args.log_failures,  ## to summarize failed streams
         evaluation_time=args.evaluation_time,
         downward_time=args.downward_time,
+        stream_planning_timeout=args.stream_planning_timeout,
         max_plans=args.max_plans,
     )
     return solver_kwargs

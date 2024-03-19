@@ -1427,8 +1427,8 @@ def sample_full_kitchen(world, verbose=True, pause=True, reachability_check=True
 
 def make_sure_obstacles(world, case, movables, counters, objects, food=None):
     assert case in [
-        2, ## to_sink
-        3, ## to_braiser
+        2, ## sink
+        3, ## braiser
         992, ## to_sink (no obstacle)
         993, ## to_braiser (no obstacle)
         21, ## sink_to_storage

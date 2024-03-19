@@ -1026,6 +1026,8 @@ class World(WorldBase):
             from pybullet_tools.general_streams import sample_joint_position_list_gen
             funk = sample_joint_position_list_gen()
             pstns = funk((body, joint), Position((body, joint)))
+            if len(pstns) == 0:
+                return
             pstn = random.choice(pstns)[0].value
         open_joint(body, joint, extent=extent, pstn=pstn, **kwargs)
         self._change_joint_state(body, joint)
