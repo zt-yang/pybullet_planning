@@ -18,7 +18,7 @@ from world_builder.world_generator import save_to_outputs_folder
 
 from cogarch_tools.processes.pddlstream_agent import PDDLStreamAgent
 from cogarch_tools.processes.teleop_agent import TeleOpAgent
-from cogarch_tools.cogarch_utils import get_parser, init_gui, get_pddlstream_kwargs, clear_planning_dir, \
+from cogarch_tools.cogarch_utils import get_parser, init_pybullet_client, get_pddlstream_kwargs, clear_planning_dir, \
     get_pddlstream_problem, PROBLEM_CONFIG_PATH, reorg_output_dirs
 
 from leap_tools.hierarchical_agent import HierarchicalAgent
@@ -74,7 +74,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
 
         """ sample problem """
     else:
-        init_gui(args, width=1440, height=1120)
+        init_pybullet_client(args, width=1440, height=1120)
         state, exogenous, goals, problem_dict = get_pddlstream_problem(args, **kwargs)
         pddlstream_problem = problem_dict['pddlstream_problem']
         subgoals = problem_dict['subgoals']

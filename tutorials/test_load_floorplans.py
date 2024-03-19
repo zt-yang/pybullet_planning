@@ -7,7 +7,7 @@ sys.path.extend([join(RD), join(RD, 'pddlstream'), join(RD, 'pybullet_planning')
 from pybullet_tools.utils import PI, wait_if_gui, set_camera_pose
 
 from problem_sets.problem_utils import create_world
-from cogarch_tools.cogarch_utils import get_parser, init_gui
+from cogarch_tools.cogarch_utils import get_parser, init_pybullet_client
 
 from world_builder.loaders import load_floor_plan, load_kitchen_floor_plan
 from world_builder.robot_builders import build_robot_from_args
@@ -27,7 +27,7 @@ def test_load_floating_gripper_in_kitchen(random_instance=True):
     """ a fixed kitchen layout with random instance of objects (e.g. microwave, trashcan) """
     args = get_parser(config='config_dev.yaml', seed=None)
 
-    init_gui(args, width=1440, height=1120)
+    init_pybullet_client(args, width=1440, height=1120)
     world = create_world(args)
     robot = build_robot_from_args(world, robot_name='feg', initial_q=[1.5, 7, 0.7, 0, -PI / 2, 0])
 

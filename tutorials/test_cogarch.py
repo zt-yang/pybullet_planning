@@ -18,7 +18,7 @@ problem = ['test_kitchen_chicken_soup', 'test_kitchen_braiser', None][0]
 
 def test_domain():
     run_agent(
-        agent_class=HierarchicalAgent, problem=problem,
+        agent_class=HierarchicalAgent, config='config_dev.yaml', problem=problem,
         # observation_model='exposed'
     )
 
@@ -30,5 +30,5 @@ def test_pigi_data():
 
 
 if __name__ == '__main__':
-    # test_domain()
-    test_pigi_data()
+    test_domain()
+    # test_pigi_data()

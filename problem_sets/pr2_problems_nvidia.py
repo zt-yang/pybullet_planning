@@ -613,6 +613,8 @@ def test_pr2_cabinets(args):
 
 def test_nvidia_kitchen_domain(args, world_loader_fn, initial_xy=(1.5, 6), **kwargs):
     set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
+    if 'robot_builder_args' not in kwargs:
+        kwargs['robot_builder_args'] = args.robot_builder_args
     kwargs['robot_builder_args'].update({
         'custom_limits': ((1, 3, 0), (5, 10, 3)),
         'initial_xy': initial_xy,
@@ -863,15 +865,13 @@ def test_kitchen_chicken_soup(args, **kwargs):
         dishwasher_space = world.name_to_body('upper_shelf')
         dishwasher_joint = world.name_to_body('dishwasher_door')
 
-        # world.open_joint(drawer_joint)
-        # world.open_joint(dishwasher_joint)
-
         joint = fridge_door  ## fridge_door | cabinet_doors[0] | cabinet_doors[1]
-        goals = ('test_joint_open', joint)
+        world.open_joint(joint, extent=0.5)
+        # goals = ('test_joint_open', joint)
         # goals = ('test_joint_closed', joint)
         # goals = ('test_handle_grasps', joint)
         # goals = [("OpenedJoint", joint)]
-        # goals = [("ClosedJoint", joint)]
+        goals = [("ClosedJoint", joint)]
 
         # goals = ('test_handle_grasps', drawer)
         # goals = [("OpenedJoint", drawer)]

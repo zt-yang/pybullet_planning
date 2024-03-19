@@ -131,11 +131,6 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     ## seed determines asset instances and object poses initiated for the problem
     args = parser.parse_args()
 
-    ## replace the default values with values provided, when running in IDE
-    for k, v in kwargs.items():
-        if v is not None:
-            args.__dict__[k] = v
-
     ## initialize random seed
     seed = args.seed
     if seed is None:
@@ -146,9 +141,14 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     set_numpy_seed(seed)
     args.seed = seed
 
+    ## replace the default values with values provided, when running in IDE
+    for k, v in kwargs.items():
+        if v is not None:
+            args.__dict__[k] = v
+
     ## other args, especially those related to problem and planner may be added directly in config files
     args.__dict__['robot_builder_args'] = conf.robot.__dict__
-    for attr in ['problem', 'planner', 'agent', 'robot']:
+    for attr in ['problem', 'planner', 'agent', 'robot', 'data']:
         if attr not in conf.__dict__:
             continue
         for k, v in conf.__dict__[attr].__dict__.items():
@@ -189,7 +189,7 @@ def get_pddlstream_kwargs(args, skeleton, subgoals, initializer):
     return solver_kwargs
 
 
-def init_gui(args, width=1980, height=1238):
+def init_pybullet_client(args, width=1980, height=1238):
     connect(use_gui=args.viewer, shadows=False, width=width, height=height)
 
     if args.camera:

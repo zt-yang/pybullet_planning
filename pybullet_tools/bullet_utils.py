@@ -728,6 +728,8 @@ class ObjAttachment(Attachment):
 def add_attachment_in_world(state=None, obj=None, parent=-1, parent_link=None, attach_distance=0.1,
                             OBJ=True, verbose=False):
 
+    from world_builder.robots import RobotAPI
+
     ## can attach without contact
     new_attachments = add_attachment(state=state, obj=obj, parent=parent, parent_link=parent_link,
                                      attach_distance=attach_distance, OBJ=OBJ, verbose=verbose)
@@ -737,9 +739,11 @@ def add_attachment_in_world(state=None, obj=None, parent=-1, parent_link=None, a
     if hasattr(world, 'BODY_TO_OBJECT'):
         for body, attachment in new_attachments.items():
             obj = world.BODY_TO_OBJECT[body]
-            if hasattr(obj, 'supporting_surface') and obj.supporting_surface is not None:
-                obj.supporting_surface = None
-
+            if hasattr(obj, 'supporting_surface'):
+                if isinstance(parent, RobotAPI) and obj.supporting_surface is not None:
+                    obj.remove_supporting_surface()
+                else:
+                    obj.change_supporting_surface(parent)
     # for k in new_attachments:
     #     if k in state.world.ATTACHMENTS:
     #         state.world.ATTACHMENTS.pop(k)

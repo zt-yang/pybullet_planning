@@ -36,7 +36,7 @@ from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_
 from world_builder.entities import Region, Environment, Robot, Surface, ArticulatedObjectPart, Door, Drawer, \
     Knob, Camera, Object, StaticCamera
 from world_builder.world_utils import GRASPABLES, get_objs_in_camera_images, make_camera_collage, \
-    get_camera_image, sort_body_indices
+    get_camera_image, sort_body_indices, add_joint_status_facts
 from world_builder.samplers import get_learned_yaw
 
 DEFAULT_CONSTANTS = ['@movable', '@bottle', '@edible', '@medicine']  ## , '@world'
@@ -1319,15 +1319,7 @@ class World(WorldBase):
                      ('Position', body, position), ('AtPosition', body, position),
                      # ('IsOpenedPosition' if is_joint_open(body) else 'IsClosedPosition', body, position),
                      ]
-            if not is_joint_open(body, threshold=1):
-                init += [('IsClosedPosition', body, position)]
-            else:
-                print(f'get_world_fluents | joint {body} is fully open')
-
-            if not is_joint_open(body, threshold=1, is_closed=True):
-                init += [('IsOpenedPosition', body, position)]
-            else:
-                print(f'get_world_fluents | joint {body} is fully closed')
+            init += add_joint_status_facts(body, position)
 
             if body in knobs:
                 controlled = BODY_TO_OBJECT[body].controlled

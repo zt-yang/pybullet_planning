@@ -21,7 +21,7 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sam
     set_camera_pose, TAN, RGBA, sample_aabb, get_min_limit, get_max_limit, set_color, WHITE, get_links, \
     get_link_name, get_link_pose, euler_from_quat, get_collision_data, get_joint_name, get_joint_position, \
     set_renderer, link_from_name, parent_joint_from_link, set_random_seed, set_numpy_seed
-from pybullet_tools.bullet_utils import set_camera_target_body, get_fine_rainbow_colors, get_segmask
+from pybullet_tools.bullet_utils import is_joint_open, get_fine_rainbow_colors, get_segmask
 from pybullet_tools.logging import dump_json
 from world_builder.asset_constants import DONT_LOAD
 from world_builder.paths import ASSET_PATH
@@ -909,7 +909,7 @@ def get_objs_in_camera_images(camera_images, world=None, show=False, save=False,
 
 
 def check_goal_achieved(facts, goal, world):
-    if goal[0] in ['on', 'in']:
+    if goal[0] in ['on', 'in'] and len(goal) == 3:
         body, supporter = goal[1], goal[2]
         atrelpose = [f[-1] for f in facts if f[0].lower() in ['atrelpose'] and f[1] == body and f[-1] == supporter]
         if len(atrelpose) > 0:
@@ -944,6 +944,29 @@ def sort_body_indices(lst):
         found_links.sort()
         sorted_lst.extend([(body, None, l) for l in found_links])
     return sorted_lst
+
+
+def add_joint_status_facts(body, position):
+    init = []
+    title = f'get_world_fluents | joint {body} is'
+
+    if is_joint_open(body, threshold=1, is_closed=True):
+        init += [('IsClosedPosition', body, position)]
+        print(title, 'fully closed')
+
+    elif not is_joint_open(body, threshold=0.25):
+        init += [('IsClosedPosition', body, position)]
+        print(title, 'slightly open')
+
+    elif is_joint_open(body, threshold=1):
+        init += [('IsOpenedPosition', body, position)]
+        print(title, 'fully open')
+
+    else:
+        init += [('IsOpenedPosition', body, position)]
+        print(title, 'partially open')
+
+    return init
 
 
 if __name__ == "__main__":

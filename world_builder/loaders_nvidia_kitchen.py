@@ -15,9 +15,9 @@ part_names = {
     'indigo_drawer_top_joint': 'top drawer',
     'indigo_tmp': 'counter top on the right',
     'hitman_tmp': 'counter top on the left',
-    'braiserlid': 'braiser lid',
-    'braiserbody': 'braiser body',
-    'braiser_bottom': 'braiser bottom',
+    'braiserlid': 'pot lid',
+    'braiserbody': 'pot body',
+    'braiser_bottom': 'pot bottom',
     'front_right_stove': 'stove',
     'knob_joint_1': 'stove knob'
 }

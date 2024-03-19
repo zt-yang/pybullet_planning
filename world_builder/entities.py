@@ -145,6 +145,8 @@ class Object(Index):
         return False
 
     def support_obj(self, obj):
+        from pybullet_tools.logging import myprint as print
+        print(f'ADDED {self} supporting_surface ({obj})')
         obj.supporting_surface = self
         if obj not in self.supported_objects:
             self.supported_objects.append(obj)
@@ -225,10 +227,16 @@ class Object(Index):
         self.attach_obj(obj)
         return obj
 
-    def change_supporting_surface(self, obj):
+    def remove_supporting_surface(self):
+        from pybullet_tools.logging import myprint as print
         if self.supporting_surface is not None:
+            print(f'REMOVED {self} supporting_surface ({self.supporting_surface})')
             if self in self.supporting_surface.supported_objects:
                 self.supporting_surface.supported_objects.remove(self)
+            self.supporting_surface = None
+
+    def change_supporting_surface(self, obj):
+        self.remove_supporting_surface()
         obj.support_obj(self)
 
     def change_pose_interactive(self):
