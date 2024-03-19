@@ -124,7 +124,7 @@ def sample_full_kitchen_goal_rearrange_to_storage(world, movables, counters):
     """ open some doors """
     for door in container.doors:
         if (case == 1 and random.random() < 0.3) or \
-                (case in [21, 31] and random.random() < 0.3) or \
+                (case in [21, 31] and random.random() < 0.5) or \
                 (case in [11, 321] and random.random() < 0.5):
             world.open_joint(door[0], door[1], random_gen=True)
         skeleton.extend([(k, arm, door) for k in pull_actions])
@@ -142,7 +142,6 @@ def sample_full_kitchen_goal_rearrange_to_storage(world, movables, counters):
     # skeleton.append(('declare_store_in_space', '@edible'))
 
     # set_camera_target_body(foods[0])
-    # goals += [('Holding', arm, food) for food in foods[1:]]
     # goals += [('In', food, container_space) for food in foods[1:]]
     # goals += [('GraspedHandle', container.doors[0])]  ## right arm, (9, 1)
     # goals += [('OpenedJoint', container.doors[1])]  ## right arm, (9, 3)
@@ -152,6 +151,10 @@ def sample_full_kitchen_goal_rearrange_to_storage(world, movables, counters):
     # goals += [('On', food, counter) for food in foods]
     goals += [('In', food, container_space) for food in foods[:1]]
     # goals = [('StoredInSpace', f'@{movable_type}', container_space)]
+
+    # ## debugging
+    # goals = ('test_pose_inside_gen', (foods[0], container_space))
+    goals = [('Holding', arm, food) for food in foods[:1]]
 
     if case in [21, 31]:  ##
         """ rearrange from braiser / sink to cabinet / fridge """

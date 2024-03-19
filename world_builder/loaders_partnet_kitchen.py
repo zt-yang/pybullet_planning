@@ -1477,8 +1477,8 @@ def make_sure_obstacles(world, case, movables, counters, objects, food=None):
             all_to_move = random.sample(something, 2)
         elif case in [21]:
             all_to_move = []
-            all_to_move += random.sample(world.cat_to_objects('edible'), 2 if random.random() < 0.5 else 1)
-            all_to_move += random.sample(world.cat_to_objects('bottle'), 2 if random.random() < 0.5 else 1)
+            all_to_move += random.sample(world.cat_to_objects('edible'), 2 if random.random() < 0.2 else 1)
+            all_to_move += random.sample(world.cat_to_objects('bottle'), 2 if random.random() < 0.2 else 1)
 
         """ move objects to the clustered region """
         for something in all_to_move:

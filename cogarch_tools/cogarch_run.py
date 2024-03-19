@@ -6,7 +6,7 @@ from os import listdir
 import copy
 import shutil
 
-from pybullet_tools.utils import disconnect, reset_simulation, VideoSaver, wait_unlocked, timeout
+from pybullet_tools.utils import disconnect, reset_simulation, VideoSaver, wait_unlocked, timeout, set_renderer
 from pybullet_tools.bullet_utils import get_datetime, initialize_logs
 
 from lisdf_tools.lisdf_utils import pddlstream_from_dir
@@ -106,6 +106,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
 
     """ before planning """
     if args.preview_scene and args.viewer:
+        set_renderer(True)
         wait_unlocked()
 
     """ solving the problem """
