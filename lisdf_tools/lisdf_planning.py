@@ -10,7 +10,7 @@ from pddlstream.language.constants import Equal, AND
 from pybullet_tools.pr2_streams import HandleGrasp, Position  ##, MarkerGrasp
 from pybullet_tools.pr2_primitives import Pose, Conf, APPROACH_DISTANCE, Grasp, \
     TOP_HOLDING_LEFT_ARM
-from pybullet_tools.pr2_utils import get_arm_joints, get_group_joints, create_gripper
+from pybullet_tools.pr2_utils import get_arm_joints, get_group_joints
 from pybullet_tools.utils import quat_from_euler, remove_body, get_unit_vector, unit_quat, \
     multiply, get_bodies
 from pybullet_tools.bullet_utils import xyzyaw_to_pose

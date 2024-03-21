@@ -1,8 +1,10 @@
+from pybullet_tools.utils import set_camera_pose
+
 from world_builder.loaders_nvidia_kitchen import *
-from world_builder.robot_builders import build_table_domain_robot, build_robot_from_args
+from robot_builder.robot_builders import build_robot_from_args
 
 from problem_sets.problem_utils import create_world, pddlstream_from_state_goal, save_to_kitchen_worlds, \
-    test_template, pull_actions, pick_place_actions, pick_place_rel_actions, pull_with_link_actions
+    test_template, pull_actions, pick_place_actions, pull_with_link_actions
 
 
 #######################################################

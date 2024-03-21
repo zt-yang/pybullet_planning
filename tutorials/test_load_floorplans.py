@@ -10,9 +10,10 @@ from problem_sets.problem_utils import create_world
 from cogarch_tools.cogarch_utils import get_parser, init_pybullet_client
 
 from world_builder.loaders import load_floor_plan, load_kitchen_floor_plan
-from world_builder.robot_builders import build_robot_from_args
 
-from examples.test_utils import get_test_world
+from robot_builder.robot_builders import build_robot_from_args
+
+from tutorials.test_utils import get_test_world
 
 
 def test_load_spot_in_office():

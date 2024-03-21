@@ -40,7 +40,7 @@ BASE_VELOCITIES = np.array([1., 1., 1, rad(180), rad(180), rad(180)]) / 1.
 BASE_RESOLUTIONS = np.array([0.05, 0.05, 0.05, rad(10), rad(10), rad(10)])
 
 ARM_NAME = 'hand'
-TOOL_LINK = 'panda_hand'
+FEG_TOOL_LINK = 'panda_hand'
 CACHE = {}
 
 
@@ -123,7 +123,7 @@ def test_ik(robot, info, tool_link, tool_pose):
 
 def sample_ik_tests(robot):
     joints = get_movable_joints(robot)
-    tool_link = link_from_name(robot, TOOL_LINK)
+    tool_link = link_from_name(robot, FEG_TOOL_LINK)
 
     info = PANDA_INFO
     check_ik_solver(info)
@@ -189,12 +189,12 @@ def get_cloned_gripper_positions(robot, gripper):
 
 
 def get_cloned_hand_pose(robot, gripper):
-    link = link_from_name(robot, TOOL_LINK)
+    link = link_from_name(robot, FEG_TOOL_LINK)
     return get_link_pose(gripper, link)
 
 
 def get_hand_pose(robot):
-    link = link_from_name(robot, TOOL_LINK)
+    link = link_from_name(robot, FEG_TOOL_LINK)
     return get_link_pose(robot, link)
 
 
@@ -250,7 +250,7 @@ def se3_ik(robot, target_pose, max_iterations=200, max_time=5, verbose=False, mo
         if verbose: print(f'{title} found in cache')
         return CACHE[nice(target_pose)]
     start_time = time.time()
-    link = link_from_name(robot, TOOL_LINK)
+    link = link_from_name(robot, FEG_TOOL_LINK)
     target_point, target_quat = target_pose
 
     sub_joints = get_se3_joints(robot)

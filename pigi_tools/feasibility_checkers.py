@@ -1,17 +1,16 @@
 import random
 
-from os.path import join, isdir, abspath, isfile, abspath, dirname, basename
+from os.path import join, abspath, basename
 import copy
 import numpy as np
 import time
 import json
 import sys
 
-from pybullet_tools.utils import WorldSaver, get_aabb_center, remove_body, wait_unlocked
-from pybullet_tools.bullet_utils import check_joint_state, open_joint
+from pybullet_tools.utils import WorldSaver
+from pybullet_tools.bullet_utils import open_joint
 from pybullet_tools.general_streams import Position
 from world_builder.world_utils import get_potential_placements
-from world_builder.robot_builders import create_gripper_robot
 from pigi_tools.data_utils import get_plan_skeleton, get_indices, get_action_elems, \
     get_successful_plan, modify_plan_with_body_map, load_planning_config, get_old_actions, \
     get_joint_name_chars, modify_skeleton_with_body_map
@@ -527,7 +526,7 @@ class PVT(FeasibilityChecker):
         super().__init__(run_dir, body_map)
         from test_piginet import get_model, DAFAULT_PT_NAME, TASK_PT_NAMES, \
             PT_NEWER, get_args, TASK_PT_STAR
-        from fastamp_utils import get_facts_goals_visuals, get_plans
+        from fastamp_utils import get_facts_goals_visuals
 
         """ get data """
         self.run_dir = run_dir

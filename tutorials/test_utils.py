@@ -1,28 +1,19 @@
 from __future__ import print_function
 import os
-import json
 import csv
 from collections import defaultdict
 import argparse
-from os.path import join, abspath, basename, isdir, isfile
-from os import listdir
-import shutil
+from os.path import isfile
 
-from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, load_pybullet, load_model, \
-    sample_aabb, AABB, set_pose, get_aabb, get_aabb_center, quat_from_euler, Euler, HideOutput, get_aabb_extent, \
-    set_camera_pose, wait_unlocked, disconnect, wait_if_gui, create_box, wait_for_duration, \
-    SEPARATOR, get_aabb, get_pose, approximate_as_prism, draw_aabb, multiply, unit_quat, remove_body, invert, \
-    Pose, get_link_pose, get_joint_limits, WHITE, RGBA, set_all_color, RED, GREEN, set_renderer, clone_body, \
-    add_text, joint_from_name, set_caching, Point, set_random_seed, set_numpy_seed, reset_simulation, \
-    get_joint_name, get_link_name, dump_joint, set_joint_position, ConfSaver, pairwise_link_collision
+from pybullet_tools.utils import connect, draw_pose, unit_pose, set_caching
 from pybullet_tools.bullet_utils import nice
 from pybullet_tools.pr2_problems import create_floor
 
-from world_builder.robot_builders import build_skill_domain_robot
+from robot_builder.robot_builders import build_skill_domain_robot
 
-from tutorials.config import EXP_PATH, modify_file_by_project
+from tutorials.config import modify_file_by_project
 
-from pddlstream.algorithms.meta import solve, create_parser
+from pddlstream.algorithms.meta import create_parser
 
 
 def init_experiment(exp_dir):

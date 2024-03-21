@@ -1,6 +1,10 @@
 from pybullet_tools.utils import LockRenderer, HideOutput, load_model, link_from_name, \
     get_aabb, get_aabb_center, draw_aabb, joint_from_name, PI
+from pybullet_tools.bullet_utils import load_robot_urdf
 from pybullet_tools.pr2_primitives import Conf
+
+from robot_builder.robot_utils import get_robot_group_joints
+
 import time
 import math
 
@@ -17,14 +21,7 @@ SPOT_CARRY_ARM_CONF = (0, -PI, 0, PI, 0, 0, 0)
 
 
 def load_spot():
-    with LockRenderer():
-        with HideOutput():
-            spot = load_model(SPOT_URDF, fixed_base=False)
-    return spot
-
-
-def get_group_joints(robot, group):
-    return [joint_from_name(robot, name) for name in SPOT_JOINT_GROUPS[group]]
+    return load_robot_urdf(SPOT_URDF)
 
 
 def solve_leg_conf(body, torso_lift_value, verbose=True):
@@ -52,7 +49,7 @@ def solve_leg_conf(body, torso_lift_value, verbose=True):
     aA, aBB = solutions[0]
     aB = - math.pi/2 - aA + aBB
     joint_values = [aA, aB] * 4
-    joint_names = get_group_joints(body, 'leg')
+    joint_names = get_robot_group_joints(body, 'leg', SPOT_JOINT_GROUPS)
     joints = [joint_from_name(body, name) for name in joint_names]
     conf = Conf(body, joints, joint_values)
     return conf

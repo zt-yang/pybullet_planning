@@ -1,10 +1,8 @@
 from __future__ import print_function
 
-import copy
 import random
 from itertools import product
 from os.path import isfile, dirname, abspath, join, isdir
-from os import mkdir
 import sys
 
 import numpy as np
@@ -16,26 +14,23 @@ import os
 import json
 from pybullet_tools.logging import dump_json
 
-from pybullet_tools.pr2_utils import draw_viewcone, get_viewcone, get_group_conf, set_group_conf, get_other_arm, \
-    get_carry_conf, set_arm_conf, open_arm, close_arm, arm_conf, REST_LEFT_ARM, get_group_joints
+from pybullet_tools.pr2_utils import get_group_conf, get_other_arm, \
+    get_carry_conf, set_arm_conf, open_arm, close_arm, arm_conf, REST_LEFT_ARM
 
-from pybullet_tools.utils import unit_pose, get_collision_data, get_links, LockRenderer, pairwise_collision, get_link_name, \
+from pybullet_tools.utils import unit_pose, get_collision_data, get_links, pairwise_collision, get_link_name, \
     is_movable, get_movable_joints, draw_pose, pose_from_pose2d, set_velocity, set_joint_states, get_bodies, \
     flatten, INF, inf_generator, get_time_step, get_all_links, get_visual_data, pose2d_from_pose, multiply, invert, \
-    get_sample_fn, pairwise_collisions, sample_placement, is_placement, aabb_contains_point, point_from_pose, \
-    aabb2d_from_aabb, is_center_stable, aabb_contains_aabb, get_model_info, get_name, get_pose, dump_link, \
-    dump_joint, dump_body, PoseSaver, get_aabb, add_text, GREEN, AABB, remove_body, HideOutput, \
-    stable_z, Pose, Point, create_box, load_model, get_joints, set_joint_position, BROWN, Euler, PI, \
-    set_camera_pose, TAN, RGBA, sample_aabb, get_min_limit, get_max_limit, get_joint_position, get_joint_name, \
-    euler_from_quat, get_client, JOINT_TYPES, get_joint_type, get_link_pose, get_closest_points, \
+    get_sample_fn, pairwise_collisions, sample_placement, aabb_contains_point, point_from_pose, \
+    aabb2d_from_aabb, is_center_stable, aabb_contains_aabb, get_pose, get_aabb, GREEN, AABB, remove_body, stable_z, \
+    get_joints, set_joint_position, Euler, PI, LockRenderer, HideOutput, load_model, \
+    set_camera_pose, sample_aabb, get_min_limit, get_max_limit, get_joint_position, get_joint_name, \
+    get_client, JOINT_TYPES, get_joint_type, get_link_pose, get_closest_points, \
     body_collision, is_placed_on_aabb, joint_from_name, body_from_end_effector, flatten_links, get_aabb_volume, \
     get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, Point, get_camera_matrix, \
-    YELLOW, add_line, draw_point, RED, BROWN, BLACK, BLUE, GREY, remove_handles, apply_affine, vertices_from_rigid, \
-    aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, unit_quat, set_renderer, link_from_name, \
-    parent_joint_from_link, draw_aabb, wait_for_user, remove_all_debug, set_point, has_gui, get_rigid_clusters, \
-    link_pairs_collision, draw_collision_info, wait_unlocked, apply_alpha, set_color, \
-    dimensions_from_camera_matrix, get_field_of_view, set_joint_positions, get_image, sample_placement_on_aabb, \
-    timeout, unit_point, get_joint_limits, ConfSaver, BASE_LINK as ROOT_LINK
+    YELLOW, add_line, draw_point, RED, remove_handles, apply_affine, vertices_from_rigid, \
+    aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, set_renderer, draw_aabb, set_point, has_gui, get_rigid_clusters, \
+    link_pairs_collision, wait_unlocked, apply_alpha, set_color, \
+    dimensions_from_camera_matrix, get_field_of_view, get_image, timeout, unit_point, get_joint_limits, ConfSaver, BASE_LINK as ROOT_LINK
 
 
 OBJ = '?obj'
@@ -56,19 +51,12 @@ EYE_FRAME = 'wide_stereo_gazebo_r_stereo_camera_frame'
 CAMERA_MATRIX = get_camera_matrix(width=640, height=480, fx=525., fy=525.) # 319.5, 239.5 | 772.55, 772.5S
 
 
-def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
-    other_arm = get_other_arm(arm)
-    if not DUAL_ARM:
-        initial_conf = get_carry_conf(arm, grasp_type)
-        set_arm_conf(pr2, arm, initial_conf)
-        open_arm(pr2, arm)
-        set_arm_conf(pr2, other_arm, arm_conf(other_arm, REST_LEFT_ARM))
-        close_arm(pr2, other_arm)
-    else:
-        for a in [arm, other_arm]:
-            initial_conf = get_carry_conf(a, grasp_type)
-            set_arm_conf(pr2, a, initial_conf)
-            open_arm(pr2, a)
+def load_robot_urdf(urdf_path):
+    with LockRenderer():
+        with HideOutput():
+            robot = load_model(urdf_path, fixed_base=False)
+    return robot
+
 
 def add_body(body, pose=unit_pose()):
     set_pose(body, pose)
@@ -728,7 +716,7 @@ class ObjAttachment(Attachment):
 def add_attachment_in_world(state=None, obj=None, parent=-1, parent_link=None, attach_distance=0.1,
                             OBJ=True, verbose=False):
 
-    from world_builder.robots import RobotAPI
+    from robots.robots import RobotAPI
 
     ## can attach without contact
     new_attachments = add_attachment(state=state, obj=obj, parent=parent, parent_link=parent_link,
@@ -1033,7 +1021,7 @@ def summarize_facts(facts, world=None, name='Initial facts', print_fn=None):
 
 
 def print_plan(plan, world=None, print_fn=None):
-    from pddlstream.language.constants import Equal, AND, PDDLProblem, is_plan
+    from pddlstream.language.constants import is_plan
     if print_fn is None:
         from pybullet_tools.logging import myprint as print_fn
 

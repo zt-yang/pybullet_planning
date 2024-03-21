@@ -1,43 +1,19 @@
-import random
-
-import copy
 import numpy as np
 import math
-import time
-from pprint import pprint
-import os
 import string
 
 from world_builder.world_utils import LIGHT_GREY, read_xml, load_asset, FLOOR_HEIGHT, WALL_HEIGHT, \
-    find_point_for_single_push, ASSET_PATH, FURNITURE_WHITE, FURNITURE_GREY, FURNITURE_YELLOW, HEX_to_RGB, \
-    get_instances, adjust_for_reachability
+    find_point_for_single_push, ASSET_PATH
 from world_builder.world import World, State
-from world_builder.entities import Object, Region, Environment, Robot, Camera, Floor, Stove, Supporter,\
+from world_builder.entities import Object, Environment, Floor, Supporter,\
     Surface, Movable, Space, Steerable
-from world_builder.robots import PR2Robot, FEGripper
-from world_builder.robot_builders import create_pr2_robot
-from world_builder.world_utils import get_partnet_doors, get_partnet_spaces, get_partnet_links_by_type
 
-import sys
-from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, HideOutput, load_model, TURTLEBOT_URDF, \
-    set_all_color, dump_body, draw_base_limits, multiply, Pose, Euler, PI, draw_pose, unit_pose, create_box, TAN, Point, \
-    GREEN, create_cylinder, INF, BLACK, WHITE, RGBA, GREY, YELLOW, BLUE, BROWN, stable_z, set_point, set_camera_pose, \
-    set_all_static, get_model_info, load_pybullet, remove_body, get_aabb, set_pose, wait_if_gui, get_joint_names, \
-    get_min_limit, get_max_limit, set_joint_position, set_joint_position, get_joints, get_joint_info, get_moving_links, \
-    get_pose, get_joint_position, enable_gravity, enable_real_time, get_links, set_color, dump_link, draw_link_name, \
-    get_link_pose, get_aabb, get_link_name, sample_aabb, aabb_contains_aabb, aabb2d_from_aabb, sample_placement, \
-    aabb_overlap, get_links, get_collision_data, get_visual_data, link_from_name, body_collision, get_closest_points, \
-    load_pybullet, FLOOR_URDF, get_aabb_center, AABB, INF, clip, aabb_union, get_aabb_center, Pose, Euler, \
-    get_box_geometry, wait_unlocked, euler_from_quat, RED, \
-    get_aabb_extent, multiply, GREY, create_shape_array, create_body, STATIC_MASS, set_renderer, quat_from_euler, \
-    get_joint_name, wait_for_user, draw_aabb, get_bodies, euler_from_quat
-from pybullet_tools.bullet_utils import place_body, add_body, Pose2d, nice, OBJ_YAWS, \
-    sample_obj_on_body_link_surface, sample_obj_in_body_link_space, set_camera_target_body, \
-    open_joint, close_joint, set_camera_target_robot, summarize_joints, \
-    set_pr2_ready, BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, draw_base_limits, \
-    collided_around, collided, aabb_larger, equal, in_list
-from pybullet_tools.pr2_streams import Position
-from pybullet_tools.pr2_primitives import get_base_custom_limits
+from robot_builder.robot_builders import create_pr2_robot
+
+from pybullet_tools.utils import get_camera_matrix, PI, create_box, TAN, Point, \
+    BLACK, RGBA, YELLOW, set_all_static, set_color, get_aabb, get_link_name, get_links, link_from_name, AABB, INF, clip, aabb_union, get_aabb_center, Pose, Euler, \
+    get_box_geometry, get_aabb_extent, multiply, GREY, create_shape_array, create_body, STATIC_MASS, set_renderer, quat_from_euler
+from pybullet_tools.bullet_utils import set_camera_target_body
 
 OBJ = '?obj'
 
@@ -592,7 +568,7 @@ def load_pot_lid(world):
 
 
 def load_basin_faucet(world):
-    from .actions import ChangeLinkColorEvent, CreateCylinderEvent, RemoveBodyEvent
+    from .actions import ChangeLinkColorEvent, CreateCylinderEvent
     cold_blue = RGBA(0.537254902, 0.811764706, 0.941176471, 1.)
 
     name_to_body = world.name_to_body

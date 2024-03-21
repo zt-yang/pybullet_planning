@@ -1,13 +1,11 @@
 from pybullet_tools.pr2_primitives import get_group_joints, Conf
-from pybullet_tools.pr2_streams import get_marker_grasp_gen, Position, \
-    sample_points_along_line, get_bconf_in_region_gen, get_parent_new_pose, get_bqs_given_p2
-from pybullet_tools.bullet_utils import get_datetime
+from pybullet_tools.pr2_streams import sample_points_along_line, get_bconf_in_region_gen, get_parent_new_pose, get_bqs_given_p2
 
 from world_builder.builders import *
 from world_builder.loaders import *
-from world_builder.robot_builders import build_fridge_domain_robot
 from world_builder.world_utils import load_asset, FLOOR_HEIGHT, visualize_point
 
+from robot_builder.robot_builders import build_fridge_domain_robot
 import random
 
 from problem_sets.problem_utils import create_world, pddlstream_from_state_goal, save_to_kitchen_worlds
@@ -26,7 +24,7 @@ def test_bucket_lift(args, domain='pr2_eggs.pddl', w=.5, h=.9, mass=1):
     bucket = world.add_object(Object(load_asset('Bucket', floor=floor), category='bucket'))
     find_points_for_dual_grasp(bucket, world)
 
-    robot = create_pr2_robot(world, base_q=(0, 2, -PI / 2), DUAL_ARM=True)
+    robot = create_pr2_robot(world, base_q=(0, 2, -PI / 2), dual_arm=True)
     world.remove_object(floor)
 
     set_all_static()
@@ -544,7 +542,7 @@ def test_pick_ir_ik(args, w=.15, TEST=True, **kwargs):
     world = create_world(args)
     exp_name = 'reachability_pick'
 
-    robot = create_pr2_robot(world, custom_limits=args.base_limits, base_q=(2, 5, 0), USE_TORSO=True)
+    robot = create_pr2_robot(world, custom_limits=args.base_limits, base_q=(2, 5, 0), use_torso=True)
     set_camera_pose((5, 3, 1), (0, 3, 1))
 
     x = 2

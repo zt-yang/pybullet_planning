@@ -3,7 +3,7 @@ from itertools import product
 from os.path import abspath
 
 from .pr2_utils import set_arm_conf, REST_LEFT_ARM, open_arm, \
-    close_arm, get_carry_conf, arm_conf, get_other_arm, set_group_conf, PR2_URDF, DRAKE_PR2_URDF, create_gripper
+    close_arm, get_carry_conf, arm_conf, get_other_arm, set_group_conf, PR2_URDF, DRAKE_PR2_URDF, create_pr2_gripper
 from .utils import create_box, set_base_values, set_point, set_pose, get_pose, \
     get_bodies, z_rotation, load_model, load_pybullet, HideOutput, create_body, \
     get_box_geometry, get_cylinder_geometry, create_shape_array, unit_pose, Pose, \
@@ -42,7 +42,7 @@ class Problem(object):
         # set_configuration(gripper, [0]*4)
         # dump_body(gripper)
         if self.gripper is None:
-            self.gripper = create_gripper(self.robot, arm=arm, visual=visual)
+            self.gripper = create_pr2_gripper(self.robot, arm=arm, visual=visual)
         return self.gripper
     def remove_gripper(self):
         if self.gripper is not None:

@@ -11,13 +11,12 @@ from .pr2_never_collisions import NEVER_COLLISIONS
 from .utils import multiply, get_link_pose, set_joint_position, set_joint_positions, get_joint_positions, get_min_limit, get_max_limit, quat_from_euler, read_pickle, set_pose, \
     get_pose, euler_from_quat, link_from_name, point_from_pose, invert, Pose, \
     unit_pose, joints_from_names, PoseSaver, get_aabb, get_joint_limits, ConfSaver, get_bodies, create_mesh, remove_body, \
-    unit_from_theta, violates_limit, apply_affine, vertices_from_rigid, aabb_from_points, draw_aabb, \
-    violates_limits, add_line, get_body_name, get_num_joints, approximate_as_cylinder, \
+    unit_from_theta, violates_limit, violates_limits, add_line, get_body_name, get_num_joints, approximate_as_cylinder, \
     approximate_as_prism, unit_quat, unit_point, angle_between, quat_from_pose, compute_jacobian, \
     movable_from_joints, quat_from_axis_angle, LockRenderer, Euler, get_links, get_link_name, \
-    get_extend_fn, get_moving_links, link_pairs_collision, get_link_subtree, \
-    clone_body, get_all_links, pairwise_collision, tform_point, get_camera_matrix, ray_from_pixel, pixel_from_ray, dimensions_from_camera_matrix, \
-    wrap_angle, TRANSPARENT, PI, OOBB, pixel_from_point, set_all_color, wait_if_gui
+    link_pairs_collision, get_all_links, pairwise_collision, tform_point, get_camera_matrix, ray_from_pixel, \
+    dimensions_from_camera_matrix, \
+    wrap_angle, PI, OOBB, pixel_from_point
 
 # TODO: restrict number of pr2 rotations to prevent from wrapping too many times
 
@@ -761,49 +760,17 @@ def get_base_extend_fn(robot):
     # TODO: plan base movements while checking edge feasibility with camera
     raise NotImplementedError()
 
-#####################################
 
-
-def close_until_collision(robot, gripper_joints, bodies=[], open_conf=None, closed_conf=None, num_steps=25, **kwargs):
-    if not gripper_joints:
-        return None
-    if open_conf is None:
-        open_conf = [get_max_limit(robot, joint) for joint in gripper_joints]
-    if closed_conf is None:
-        closed_conf = [get_min_limit(robot, joint) for joint in gripper_joints]
-    resolutions = np.abs(np.array(open_conf) - np.array(closed_conf)) / num_steps
-    extend_fn = get_extend_fn(robot, gripper_joints, resolutions=resolutions)
-    close_path = [open_conf] + list(extend_fn(open_conf, closed_conf))
-    collision_links = frozenset(get_moving_links(robot, gripper_joints))
-
-    for i, conf in enumerate(close_path):
-        set_joint_positions(robot, gripper_joints, conf)
-        if any(pairwise_collision((robot, collision_links), body, **kwargs) for body in bodies):
-            if i == 0:
-                return close_path[i-1][0]  ## None
-            return close_path[i-1][0]
-    return close_path[-1][0]
-
-
-def compute_grasp_width(robot, arm, body, grasp_pose, **kwargs):
-    tool_link = get_gripper_link(robot, arm)
-    tool_pose = get_link_pose(robot, tool_link)
-    body_pose = multiply(tool_pose, grasp_pose)
-    set_pose(body, body_pose)
-    gripper_joints = get_gripper_joints(robot, arm)
-    return close_until_collision(robot, gripper_joints, bodies=[body], **kwargs)
-
-
-def create_gripper(robot, arm, visual=True, color=None, link_name=None):
+def create_pr2_gripper(robot, arm, link_name=None, **kwargs):
+    from robot_builder.robot_utils import create_robot_gripper
     if link_name is None:
         link_name = PR2_GRIPPER_ROOTS[arm]
     # gripper = load_pybullet(os.path.join(get_data_path(), 'pr2_gripper.urdf'))
     # gripper = load_pybullet(os.path.join(get_models_path(), 'pr2_description/pr2_l_gripper.urdf'), fixed_base=False)
     # pybullet.error: Error receiving visual shape info for the DRAKE_PR2
-    links = get_link_subtree(robot, link_from_name(robot, link_name))
-    gripper = clone_body(robot, links=links, visual=False, collision=True)  # TODO: joint limits
-    if not visual:
-        set_all_color(gripper, TRANSPARENT)
-    if color is not None:
-        set_all_color(gripper, color)
-    return gripper
+    return create_robot_gripper(robot, link_name, **kwargs)
+
+
+def compute_grasp_width(robot, arm, body, grasp_pose, **kwargs):
+    from robot_builder.robot_utils import compute_robot_grasp_width
+    return compute_robot_grasp_width(robot, arm, body, grasp_pose, PR2_TOOL_FRAMES, PR2_GROUPS, **kwargs)

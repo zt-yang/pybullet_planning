@@ -1,5 +1,4 @@
 import os
-import shutil
 import sys
 from os import listdir
 from os.path import join, abspath, dirname, isdir, isfile
@@ -12,30 +11,21 @@ import copy
 
 import warnings
 warnings.filterwarnings('ignore')
-import pybullet as p
 
-from pybullet_tools.pr2_problems import create_floor
-from pybullet_tools.pr2_utils import set_group_conf, get_group_joints, get_viewcone_base
-from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove_body, get_links, \
-    clone_body, get_joint_limits, ConfSaver, load_pybullet, connect, wait_if_gui, HideOutput, invert, \
-    disconnect, set_pose, set_joint_position, joint_from_name, quat_from_euler, draw_pose, unit_pose, \
-    set_camera_pose, set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
-    set_joint_positions, get_links, get_joints, get_joint_name, get_body_name, link_from_name, \
-    parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK, read, get_client, \
-    reset_simulation, get_movable_joints, JOINT_TYPES, get_joint_type, is_movable, wait_unlocked
-from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link, \
+from pybullet_tools.pr2_utils import get_group_joints
+from pybullet_tools.utils import get_bodies, remove_body, load_pybullet, connect, wait_if_gui, HideOutput, set_pose, set_joint_position, joint_from_name, quat_from_euler, draw_pose, unit_pose, \
+    set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
+    get_links, get_joints, get_joint_name, set_color, reset_simulation, get_movable_joints, is_movable
+from pybullet_tools.bullet_utils import nice, sort_body_parts, clone_body_link, \
     toggle_joint, get_door_links, set_camera_target_body, colorize_world, colorize_link, find_closest_match, \
     is_box_entity, summarize_facts
 from pybullet_tools.pr2_streams import get_handle_link
 
-from pddlstream.language.constants import AND, PDDLProblem
+from robot_builder.robot_builders import create_pr2_robot, create_gripper_robot
 
-from world_builder.entities import Space, StaticCamera
-from world_builder.robot_builders import create_pr2_robot, create_gripper_robot
-from world_builder.world_utils import get_instance_name, get_camera_zoom_in, get_lisdf_name, get_mobility_id, \
+from world_builder.world_utils import get_instance_name, get_lisdf_name, get_mobility_id, \
     get_mobility_category, get_mobility_identifier
 from world_builder.world import WorldBase
-from world_builder.paths import PBP_PATH
 
 from lisdf_tools.lisdf_planning import pddl_to_init_goal
 from lisdf_tools.lisdf_utils import find_id, LINK_COLORS, ASSET_PATH, LINK_STR, PART_INSTANCE_NAME, \

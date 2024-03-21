@@ -20,7 +20,7 @@ from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_
 from pybullet_tools.bullet_utils import set_camera_target_body, \
     nice, BASE_LIMITS, initialize_collision_logs, collided
 from pybullet_tools.pr2_problems import create_pr2
-from pybullet_tools.pr2_utils import create_gripper, set_group_conf
+from pybullet_tools.pr2_utils import create_pr2_gripper, set_group_conf
 from pybullet_tools.utils import get_client, \
     Pose, get_bodies, pairwise_collision, get_pose, point_from_pose, set_renderer, get_joint_name, \
     remove_body, LockRenderer, WorldSaver, wait_if_gui, SEPARATOR, safe_remove, ensure_dir, \

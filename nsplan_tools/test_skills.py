@@ -2,12 +2,10 @@
 
 from __future__ import print_function
 import os
-import sys
 import random
 import json
 import shutil
 import time
-import copy
 
 import numpy as np
 from os.path import join, abspath, dirname, isdir, isfile
@@ -15,31 +13,27 @@ from os import listdir
 from config import ASSET_PATH
 
 from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, load_pybullet, load_model, \
-    sample_aabb, AABB, set_pose, get_aabb, get_aabb_center, quat_from_euler, Euler, HideOutput, get_aabb_extent, \
-    set_camera_pose, wait_unlocked, disconnect, wait_if_gui, create_box, wait_for_duration, \
-    SEPARATOR, get_aabb, get_pose, approximate_as_prism, draw_aabb, multiply, unit_quat, remove_body, invert, \
-    Pose, get_link_pose, get_joint_limits, WHITE, RGBA, set_all_color, RED, GREEN, set_renderer, clone_body, \
-    add_text, joint_from_name, set_caching, Point, set_random_seed, set_numpy_seed, reset_simulation, \
+    sample_aabb, AABB, set_pose, quat_from_euler, HideOutput, get_aabb_extent, \
+    set_camera_pose, wait_unlocked, disconnect, wait_if_gui, create_box, get_aabb, get_pose, draw_aabb, multiply, unit_quat, remove_body, \
+    Pose, get_link_pose, get_joint_limits, WHITE, RGBA, set_all_color, RED, GREEN, set_renderer, add_text, joint_from_name, set_caching, Point, set_random_seed, set_numpy_seed, reset_simulation, \
     get_joint_name, get_link_name, dump_joint, set_joint_position, ConfSaver, pairwise_link_collision
-from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, set_camera_target_body, \
-    draw_bounding_lines, fit_dimensions, draw_fitted_box, get_hand_grasps, sample_random_pose, \
-    open_joint, get_grasp_db_file, draw_points, take_selected_seg_images, dump_json
+from pybullet_tools.bullet_utils import nice, set_camera_target_body, \
+    draw_fitted_box, get_hand_grasps, sample_random_pose, \
+    open_joint, get_grasp_db_file, take_selected_seg_images, dump_json
 from pybullet_tools.pr2_problems import create_floor
-from pybullet_tools.pr2_agent import get_stream_info, post_process, move_cost_fn, \
-    visualize_grasps_by_quat, visualize_grasps
+from pybullet_tools.pr2_agent import visualize_grasps
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, Position, \
-    get_stable_gen, get_stable_list_gen, get_handle_grasp_gen, sample_joint_position_gen
-from pybullet_tools.flying_gripper_utils import se3_from_pose, \
-    pose_from_se3, se3_ik, set_cloned_se3_conf, create_fe_gripper, set_se3_conf
+    get_stable_list_gen, get_handle_grasp_gen, sample_joint_position_gen
+from pybullet_tools.flying_gripper_utils import se3_ik, create_fe_gripper, set_se3_conf
 
 from world_builder.world import State
 from world_builder.loaders import create_house_floor, create_table, create_movable
 from world_builder.loaders_partnet_kitchen import sample_kitchen_sink, sample_full_kitchen
-from world_builder.robot_builders import create_gripper_robot, create_pr2_robot
 from world_builder.world_utils import load_asset, get_instance_name, get_partnet_doors, get_partnet_spaces
 from world_builder.world_utils import get_instances as get_instances_helper
-from world_builder.asset_constants import MODEL_HEIGHTS, OBJ_SCALES, MODEL_SCALES
-from world_builder.robot_builders import build_skill_domain_robot
+from world_builder.asset_constants import MODEL_HEIGHTS, MODEL_SCALES
+
+from robot_builder.robot_builders import build_skill_domain_robot
 
 import math
 
@@ -801,7 +795,6 @@ def test_torso():
 
 def test_handle_grasps_counter(robot='pr2'):
     from world_builder.loaders import load_floor_plan
-    from world_builder.world import World
 
     connect(use_gui=True, shadows=False, width=1980, height=1238)
     draw_pose(unit_pose(), length=2.)
@@ -1156,7 +1149,7 @@ def get_placement_z(robot='pr2'):
 
 def test_tracik(robot, verbose=False):
     from pybullet_tools.tracik import IKSolver
-    from pybullet_tools.spot_utils import compute_link_lengths, solve_leg_conf
+    from robot_builder.spot_utils import solve_leg_conf
     world = get_test_world(robot=robot, width=1200, height=1200,
                            semantic_world=True, draw_origin=True,
                            custom_limits=((-3, -3), (3, 3)))

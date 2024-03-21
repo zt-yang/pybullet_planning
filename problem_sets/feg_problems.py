@@ -1,35 +1,17 @@
-import random
-
-from pybullet_tools.utils import apply_alpha, get_camera_matrix, LockRenderer, HideOutput, load_model, TURTLEBOT_URDF, \
-    set_all_color, dump_body, draw_base_limits, multiply, Euler, PI, draw_pose, unit_pose, create_box, TAN, Point, \
-    GREEN, create_cylinder, INF, BLACK, WHITE, RGBA, GREY, YELLOW, BLUE, BROWN, RED, stable_z, set_point, set_camera_pose, \
-    set_all_static, get_model_info, load_pybullet, remove_body, get_aabb, set_pose, wait_if_gui, get_joint_names, \
-    get_min_limit, get_max_limit, set_joint_position, set_joint_position, get_joints, get_joint_info, get_moving_links, \
-    get_pose, get_joint_position, enable_gravity, enable_real_time, get_links, set_color, dump_link, draw_link_name, \
-    get_link_pose, get_aabb, get_link_name, sample_aabb, aabb_contains_aabb, aabb2d_from_aabb, sample_placement, \
-    aabb_overlap, get_links, get_collision_data, get_visual_data, link_from_name, body_collision, get_closest_points, \
-    load_pybullet, FLOOR_URDF, pairwise_collision, is_movable, get_bodies, get_aabb_center, draw_aabb, VideoSaver, \
-    set_renderer, quat_from_euler
-from pybullet_tools.pr2_utils import get_group_conf
-from pybullet_tools.bullet_utils import nice, open_joint
-
 from pybullet_tools.general_streams import Position
 
 from world_builder.builders import *
 from world_builder.loaders import *
-from world_builder.robot_builders import *
-from world_builder.world import World, State
+from world_builder.world import State
 from world_builder.paths import KITCHEN_WORLD
 
-from pybullet_tools.pr2_primitives import get_group_joints, Conf, Pose
-
+from robot_builder.robot_builders import *
 import math
 
-from os.path import join, abspath, dirname
+from os.path import join
 import sys
 
-from problem_sets.problem_utils import create_world, pddlstream_from_state_goal, save_to_kitchen_worlds, \
-    test_template
+from problem_sets.problem_utils import create_world, pddlstream_from_state_goal, test_template
 
 
 def change_world_state(world, test_case):

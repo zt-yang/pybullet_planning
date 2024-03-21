@@ -1,10 +1,13 @@
-import json
-from os.path import join
-
 import numpy as np
-import math
+
+from pybullet_tools.bullet_utils import BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, \
+    draw_base_limits as draw_base_limits_bb, BASE_LIMITS, CAMERA_FRAME, CAMERA_MATRIX, EYE_FRAME
+from pybullet_tools.utils import LockRenderer, HideOutput, PI
+
 from world_builder.entities import Camera
-from world_builder.robots import PR2Robot, FEGripper, SpotRobot
+
+from robot_builder.robots import PR2Robot, FEGripper, SpotRobot
+from robot_builder.robot_utils import create_mobile_robot, BASE_GROUP
 
 
 def get_robot_builder(builder_name):
@@ -19,16 +22,13 @@ def get_robot_builder(builder_name):
 
 from pybullet_tools.pr2_problems import create_pr2
 from pybullet_tools.pr2_primitives import get_base_custom_limits
-from pybullet_tools.pr2_utils import draw_viewcone, get_viewcone, get_group_conf, set_group_conf, get_other_arm, \
+from pybullet_tools.pr2_utils import set_group_conf, get_other_arm, \
     get_carry_conf, set_arm_conf, open_arm, close_arm, arm_conf, REST_LEFT_ARM
-from pybullet_tools.bullet_utils import set_pr2_ready, BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, \
-    draw_base_limits as draw_base_limits_bb, BASE_LIMITS, CAMERA_FRAME, CAMERA_MATRIX, EYE_FRAME, collided
-from pybullet_tools.utils import LockRenderer, HideOutput, PI
 
 
-def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
+def set_pr2_ready(pr2, arm='left', grasp_type='top', dual_arm=False):
     other_arm = get_other_arm(arm)
-    if not DUAL_ARM:
+    if not dual_arm:
         initial_conf = get_carry_conf(arm, grasp_type)
         set_arm_conf(pr2, arm, initial_conf)
         open_arm(pr2, arm)
@@ -41,14 +41,13 @@ def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
             open_arm(pr2, a)
 
 
-def create_pr2_robot(world, base_q=(0, 0, 0), DUAL_ARM=False, USE_TORSO=True,
+def create_pr2_robot(world, base_q=(0, 0, 0), dual_arm=False, use_torso=True,
                      custom_limits=BASE_LIMITS, resolutions=BASE_RESOLUTIONS,
-                     draw_base_limits=False, max_velocities=BASE_VELOCITIES,
-                     robot=None):
+                     draw_base_limits=False, max_velocities=BASE_VELOCITIES, robot=None):
 
     if robot is None:
         robot = create_pr2()
-        set_pr2_ready(robot, DUAL_ARM=DUAL_ARM)
+        set_pr2_ready(robot, dual_arm=dual_arm)
         if len(base_q) == 3:
             set_group_conf(robot, 'base', base_q)
         elif len(base_q) == 4:
@@ -64,7 +63,7 @@ def create_pr2_robot(world, base_q=(0, 0, 0), DUAL_ARM=False, USE_TORSO=True,
         draw_base_limits_bb(custom_limits)
 
     robot = PR2Robot(robot, base_link=BASE_LINK, joints=BASE_JOINTS,
-                     DUAL_ARM=DUAL_ARM, USE_TORSO=USE_TORSO,
+                     dual_arm=dual_arm, use_torso=use_torso,
                      custom_limits=get_base_custom_limits(robot, custom_limits),
                      resolutions=resolutions, weights=weights)
     world.add_robot(robot, max_velocities=max_velocities)
@@ -83,51 +82,11 @@ def create_pr2_robot(world, base_q=(0, 0, 0), DUAL_ARM=False, USE_TORSO=True,
 
 #######################################################
 
-from pybullet_tools.spot_utils import load_spot
+from robot_builder.spot_utils import load_spot, SPOT_JOINT_GROUPS
 
 
-def set_pr2_ready(pr2, arm='left', grasp_type='top', DUAL_ARM=False):
-    other_arm = get_other_arm(arm)
-    if not DUAL_ARM:
-        initial_conf = get_carry_conf(arm, grasp_type)
-        set_arm_conf(pr2, arm, initial_conf)
-        open_arm(pr2, arm)
-        set_arm_conf(pr2, other_arm, arm_conf(other_arm, REST_LEFT_ARM))
-        close_arm(pr2, other_arm)
-    else:
-        for a in [arm, other_arm]:
-            initial_conf = get_carry_conf(a, grasp_type)
-            set_arm_conf(pr2, a, initial_conf)
-            open_arm(pr2, a)
-
-
-def create_spot_robot(world, base_q=(0, 0, 0), custom_limits=BASE_LIMITS, resolutions=BASE_RESOLUTIONS,
-                     draw_base_limits=False, max_velocities=BASE_VELOCITIES, robot=None):
-
-    if robot is None:
-        robot = load_spot()
-        set_group_conf(robot, 'base', base_q)
-
-    if isinstance(custom_limits, dict):
-        custom_limits = np.asarray(list(custom_limits.values())).T.tolist()
-
-    if draw_base_limits:
-        draw_base_limits_bb(custom_limits)
-
-    robot = SpotRobot(robot, custom_limits=get_base_custom_limits(robot, custom_limits),
-                     resolutions=resolutions)
-    world.add_robot(robot, max_velocities=max_velocities)
-
-    # print('initial base conf', get_group_conf(robot, 'base'))
-    # set_camera_target_robot(robot, FRONT=True)
-
-    # camera = Camera(robot, camera_frame=CAMERA_FRAME, camera_matrix=CAMERA_MATRIX, max_depth=2.5, draw_frame=EYE_FRAME)
-    # robot.cameras.append(camera)
-
-    ## don't show depth and segmentation data yet
-    # if args.camera: robot.cameras[-1].get_image(segment=args.segment)
-
-    return robot
+def create_spot_robot(world, **kwargs):
+    return create_mobile_robot(world, load_spot, SpotRobot, BASE_GROUP, SPOT_JOINT_GROUPS, **kwargs)
 
 
 #######################################################
@@ -185,7 +144,7 @@ def build_table_domain_robot(world, robot_name, **kwargs):
     if 'custom_limits' not in kwargs:
         kwargs['custom_limits'] = ((-4, -4, 0), (4, 4, 2))
         if robot_name == 'pr2':
-            kwargs['USE_TORSO'] = True
+            kwargs['use_torso'] = True
     return build_robot_from_args(world, robot_name, **kwargs)
 
 
@@ -207,7 +166,8 @@ def build_oven_domain_robot(world, robot_name, **kwargs):
     return build_robot_from_args(world, robot_name, **kwargs)
 
 
-def build_robot_from_args(world, robot_name, **kwargs):
+def build_robot_from_args(world, robot_name, create_robot_fn=None, **kwargs):
+    """ call upon different robot classes """
     spawn_range = None
     if 'spawn_range' in kwargs:
         spawn_range = kwargs['spawn_range']
@@ -223,13 +183,18 @@ def build_robot_from_args(world, robot_name, **kwargs):
     else:
         if 'base_q' not in kwargs and 'initial_xy' in kwargs:
             x, y = kwargs['initial_xy']
-            del kwargs['initial_xy']
             kwargs['base_q'] = (x, y, PI)
 
-        if robot_name == 'spot':
+        del kwargs['initial_xy']
+
+        if create_robot_fn is not None:
+            robot = create_robot_fn(world, **kwargs)
+        elif robot_name == 'spot':
             robot = create_spot_robot(world, **kwargs)
-        else:
+        elif robot_name == 'pr2':
             robot = create_pr2_robot(world, **kwargs)
+        else:
+            assert False, 'Unknown robot'
 
     if spawn_range is not None:
         robot.set_spawn_range(spawn_range)

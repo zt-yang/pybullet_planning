@@ -3,31 +3,34 @@ import time
 import copy
 import random
 from os.path import basename
-from .entities import Robot
+from world_builder.entities import Robot
 
 from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color, TRANSPARENT, \
-    link_from_name, get_link_subtree, get_joints, is_movable, multiply, invert, LockRenderer, \
-    set_joint_positions, set_pose, GREEN, dump_body, get_pose, remove_body, PoseSaver, \
+    link_from_name, multiply, invert, LockRenderer, RED, draw_aabb, get_aabb, \
+    set_joint_positions, set_pose, GREEN, get_pose, remove_body, PoseSaver, \
     ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles, \
-    interpolate_poses, Pose, Euler, quat_from_euler, set_renderer, get_bodies, get_all_links, PI, \
-    WorldSaver, is_darwin, wait_for_user, YELLOW, euler_from_quat, wait_for_duration, \
-    wait_unlocked, wait_if_gui, set_renderer, get_relative_pose
+    interpolate_poses, Pose, Euler, quat_from_euler, get_bodies, get_all_links, PI, \
+    is_darwin, wait_for_user, YELLOW, euler_from_quat, wait_unlocked, set_renderer
 
 from pybullet_tools.bullet_utils import equal, nice, set_camera_target_body, Attachment, \
-    BASE_LIMITS, get_rotation_matrix, collided, query_yes_no, get_cloned_gripper_joints
+    get_rotation_matrix, collided, query_yes_no, get_cloned_gripper_joints
 from pybullet_tools.pr2_primitives import APPROACH_DISTANCE, Conf, Grasp, get_base_custom_limits
-from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, close_until_collision, TOP_HOLDING_LEFT_ARM, \
-    SIDE_HOLDING_LEFT_ARM, create_gripper
+from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, TOP_HOLDING_LEFT_ARM
 from pybullet_tools.general_streams import get_handle_link, get_grasp_list_gen, get_contain_list_gen, \
     get_cfree_approach_pose_test, get_stable_list_gen, play_trajectory
 
 from world_builder.world_utils import load_asset
+
+from robot_builder.robot_utils import get_robot_group_joints, close_until_collision, create_robot_gripper, \
+    compute_robot_grasp_width, BASE_GROUP, BASE_TORSO_GROUP
 
 
 class RobotAPI(Robot):
 
     arms = []
     tool_from_hand = unit_pose()
+    joint_groups = dict()
+    tool_frames = dict()
 
     def __init__(self, body, **kwargs):
         super(RobotAPI, self).__init__(body, **kwargs)
@@ -43,9 +46,6 @@ class RobotAPI(Robot):
         raise NotImplementedError('should implement this for RobotAPI!')
 
     def get_gripper_joints(self, gripper_grasp):
-        raise NotImplementedError('should implement this for RobotAPI!')
-
-    def compute_grasp_width(self, arm, body_pose, grasp_pose, body=None, verbose=False, **kwargs):
         raise NotImplementedError('should implement this for RobotAPI!')
 
     def visualize_grasp(self, body_pose, grasp, arm='left', color=GREEN, **kwargs):
@@ -177,27 +177,43 @@ class RobotAPI(Robot):
         return self.make_attachment(grasp, tool_link, **kwargs)
         # return Attachment(self.body, tool_link, grasp.value, grasp.body)
 
+    ################################################################################
+
+    def get_group_joints(self, group):
+        return get_robot_group_joints(self.body, group, self.joint_groups)
+
+    def compute_grasp_width(self, arm, body_pose, grasp_pose, body=None, verbose=False, **kwargs):
+        return compute_robot_grasp_width(self.body, arm, body, grasp_pose,
+                                         self.tool_frames, self.joint_groups, **kwargs)
+
 
 class MobileRobot(RobotAPI):
 
     arms = None
-    tool_link = None
+    grasp_types = ['top', 'side']
 
-    def __init__(self, body, USE_TORSO=True, **kwargs):
+    def __init__(self, body, use_torso=True, **kwargs):
         super(MobileRobot, self).__init__(body, **kwargs)
-        self.USE_TORSO = USE_TORSO
+        self.use_torso = use_torso
 
-    def get_arm_joints(self, arm):
+    def get_tool_link(self, arm):
         raise NotImplementedError('should implement this for MobileRobot!')
 
-    def get_group_joints(self, group):
+    def get_arm_joints(self, arm):
         raise NotImplementedError('should implement this for MobileRobot!')
 
     def get_tool_from_root(self, arm):
         raise NotImplementedError('should implement this for MobileRobot!')
 
+    ## -----------------------------------------------------------------------------
+
     def get_all_arms(self):
         return self.arms
+
+    def get_attachment_link(self, arm):
+        return link_from_name(self.body, self.get_tool_link(arm))
+
+    ## -----------------------------------------------------------------------------
 
     def get_init(self, init_facts=[], conf_saver=None):
         robot = self.body
@@ -208,7 +224,7 @@ class MobileRobot(RobotAPI):
             return [conf_saver.conf[conf_saver.joints.index(n)] for n in joints]
 
         def get_base_conf():
-            base_joints = self.get_group_joints('base')
+            base_joints = self.get_group_joints(BASE_GROUP)
             initial_bq = Conf(robot, base_joints, get_conf(base_joints))
             for fact in init_facts:
                 if fact[0] == 'bconf' and equal(fact[1].values, initial_bq.values):
@@ -216,7 +232,7 @@ class MobileRobot(RobotAPI):
             return initial_bq
 
         def get_base_torso_conf():
-            base_joints = self.get_group_joints('base-torso')
+            base_joints = self.get_group_joints(BASE_TORSO_GROUP)
             initial_bq = Conf(robot, base_joints, get_conf(base_joints))
             for fact in init_facts:
                 if fact[0] == 'btconf' and equal(fact[1].values, initial_bq.values):
@@ -231,7 +247,7 @@ class MobileRobot(RobotAPI):
                     return fact[2]
             return conf
 
-        initial_bq = get_base_torso_conf() if self.USE_TORSO else get_base_conf()
+        initial_bq = get_base_torso_conf() if self.use_torso else get_base_conf()
         init = [('BConf', initial_bq), ('AtBConf', initial_bq)]
 
         for arm in self.get_all_arms():
@@ -251,11 +267,21 @@ class MobileRobot(RobotAPI):
         from pybullet_tools.pr2_agent import get_stream_info
         return get_stream_info() ## partial=partial, defer=defer
 
+    ###############################################################################
+
     def create_gripper(self, arm=None, **kwargs):
         # if arm in self.grippers:
         #     print('gripper already exists!')
-        self.grippers[arm] = create_gripper(self.body, arm=arm, link_name=self.tool_link, **kwargs)
+        self.grippers[arm] = create_robot_gripper(self.body, self.get_tool_link(arm), **kwargs)
         return self.grippers[arm]
+
+    def close_cloned_gripper(self, gripper_cloned):
+        joints = get_cloned_gripper_joints(gripper_cloned)
+        set_joint_positions(gripper_cloned, joints, [0, 0])
+
+    def open_cloned_gripper(self, gripper_cloned):
+        joints = get_cloned_gripper_joints(gripper_cloned)
+        set_joint_positions(gripper_cloned, joints, [0, -math.pi/2])
 
     def set_gripper_pose(self, body_pose, grasp, gripper=None, arm='left', body=None, verbose=False, **kwargs):
         if gripper is None:
@@ -292,55 +318,7 @@ class MobileRobot(RobotAPI):
         # TODO: update the cache
         remove_body(gripper_handle)
 
-
-from pybullet_tools.spot_utils import SPOT_TOOL_LINK, SPOT_CARRY_ARM_CONF
-
-
-class SpotRobot(MobileRobot):
-
-    arms = ['hand']
-    grasp_types = ['top', 'side']  ##
-    joint_groups = ['hand', 'base-torso']
-    tool_link = SPOT_TOOL_LINK
-    cloned_finger_link = 1  ## for detecting if a grasp is pointing upwards
-
-    def __init__(self, body, base_link='base', **kwargs):
-        from pybullet_tools.spot_utils import SPOT_JOINT_GROUPS
-        joints = SPOT_JOINT_GROUPS['base-torso']
-        super(SpotRobot, self).__init__(body, base_link=base_link, joints=joints, **kwargs)
-
-    def get_tool_link(self, **kwargs):
-        return self.SPOT_TOOL_LINK
-
-    def get_arm_joints(self, arm):
-        return self.get_group_joints('arm')
-
-    def get_gripper_joints(self, arm):
-        return self.get_group_joints('gripper')
-
-    def get_group_joints(self, group):
-        from pybullet_tools.spot_utils import get_group_joints
-        return get_group_joints(self.body, group)
-
-    # def get_stream_map(self, problem, collisions, custom_limits, teleport,
-    #                    domain_pddl=None, **kwargs):
-    #     from pybullet_tools.pr2_agent import get_stream_map
-    #     stream_map = get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
-    #     # stream_map = {k: v for k, v in stream_map.items() if k in {
-    #     #     'sample-pose', 'sample-grasp', 'sample-grasp', 'sample-grasp'
-    #     # }}
-    #     return stream_map
-
-    def close_cloned_gripper(self, gripper_cloned):
-        joints = get_cloned_gripper_joints(gripper_cloned)
-        set_joint_positions(gripper_cloned, joints, [0, 0])
-
-    def open_cloned_gripper(self, gripper_cloned):
-        joints = get_cloned_gripper_joints(gripper_cloned)
-        set_joint_positions(gripper_cloned, joints, [0, -math.pi/2])
-
-    def get_carry_conf(self, arm, g_type, g):
-        return SPOT_CARRY_ARM_CONF
+    ###############################################################################
 
     def get_approach_vector(self, arm, grasp_type, scale=1):
         return tuple(scale * APPROACH_DISTANCE * 1.3 * get_unit_vector([0, 0, -1]))
@@ -352,8 +330,42 @@ class SpotRobot(MobileRobot):
     def get_approach_pose(self, approach_vector, g):
         return multiply(g, (approach_vector, unit_quat()))
 
-    def get_attachment_link(self, arm):
-        return link_from_name(self.body, self.tool_link)
+
+###############################################################################
+
+
+from robot_builder.spot_utils import SPOT_TOOL_LINK, SPOT_CARRY_ARM_CONF, SPOT_JOINT_GROUPS
+
+
+class SpotRobot(MobileRobot):
+
+    arms = ['hand']
+    joint_groups = SPOT_JOINT_GROUPS
+    joint_group_names = ['hand', BASE_TORSO_GROUP]
+    tool_link = SPOT_TOOL_LINK
+    cloned_finger_link = 1  ## for detecting if a grasp is pointing upwards
+
+    def __init__(self, body, base_link=BASE_GROUP, **kwargs):
+        joints = self.joint_groups[BASE_TORSO_GROUP]
+        super(SpotRobot, self).__init__(body, base_link=base_link, joints=joints, **kwargs)
+
+    def get_arm_joints(self, arm):
+        return self.get_group_joints('arm')
+
+    def get_gripper_joints(self, arm):
+        return self.get_group_joints('gripper')
+
+    # def get_stream_map(self, problem, collisions, custom_limits, teleport,
+    #                    domain_pddl=None, **kwargs):
+    #     from pybullet_tools.pr2_agent import get_stream_map
+    #     stream_map = get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
+    #     # stream_map = {k: v for k, v in stream_map.items() if k in {
+    #     #     'sample-pose', 'sample-grasp', 'sample-grasp', 'sample-grasp'
+    #     # }}
+    #     return stream_map
+
+    def get_carry_conf(self, arm, g_type, g):
+        return SPOT_CARRY_ARM_CONF
 
     def get_tool_from_root(self, a):
         return Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
@@ -362,14 +374,14 @@ class SpotRobot(MobileRobot):
 class PR2Robot(MobileRobot):
 
     arms = ['left']
-    grasp_types = ['top', 'side']
-    joint_groups = ['left', 'right', 'base', 'base-torso']
+    joint_groups = PR2_GROUPS
+    joint_group_names = ['left', 'right', BASE_GROUP, BASE_TORSO_GROUP]
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
     cloned_finger_link = 7  ## for detecting if a grasp is pointing upwards
 
-    def __init__(self, body, DUAL_ARM=False, **kwargs):
+    def __init__(self, body, dual_arm=False, **kwargs):
         super(PR2Robot, self).__init__(body, **kwargs)
-        self.DUAL_ARM = DUAL_ARM
+        self.dual_arm = dual_arm
         self.grasp_aconfs = {}
         ## get away with the problem of Fluent stream outputs cannot be in action effects: ataconf
 
@@ -448,18 +460,18 @@ class PR2Robot(MobileRobot):
 
     def get_joints_from_group(self, joint_group):
         from pybullet_tools.pr2_utils import get_arm_joints, get_group_joints
-        if joint_group == 'base':
+        if joint_group == BASE_GROUP:
             joints = self.joints
-        elif joint_group == 'base-torso':
+        elif joint_group == BASE_TORSO_GROUP:
             joints = get_group_joints(self.body, joint_group)
         else: ## if joint_group == 'left':
             joints = get_arm_joints(self.body, joint_group)
         return joints
 
-    def get_positions(self, joint_group='base', roundto=None):
+    def get_positions(self, joint_group=BASE_GROUP, roundto=None):
         joints = self.get_joints_from_group(joint_group)
         positions = self.get_joint_positions(joints)
-        if roundto == None:
+        if roundto is None:
             return positions
         return tuple([round(n, roundto) for n in positions])
 
@@ -486,7 +498,7 @@ class PR2Robot(MobileRobot):
 
     @property
     def base_group(self):
-        return 'base-torso' if self.USE_TORSO else 'base'
+        return BASE_TORSO_GROUP if self.use_torso else BASE_GROUP
 
     def get_base_joints(self):
         from pybullet_tools.pr2_utils import get_group_joints
@@ -498,7 +510,7 @@ class PR2Robot(MobileRobot):
             x = random.uniform(x1, x2)
             y = random.uniform(y1, y2)
             yaw = random.uniform(0, math.pi)
-            if self.USE_TORSO:
+            if self.use_torso:
                 z1 = max(z1, 0)
                 z2 = min(z2, 0.35)
                 z = random.uniform(z1, z2)
@@ -507,9 +519,8 @@ class PR2Robot(MobileRobot):
 
         self.set_positions(sample_robot_conf(), self.get_base_joints())
 
-    def get_tool_link(self, a):
-        from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES
-        return PR2_TOOL_FRAMES[a]
+    def get_tool_link(self, arm):
+        return PR2_TOOL_FRAMES[arm]
 
     def get_base_conf(self):
         from pybullet_tools.pr2_utils import get_group_joints
@@ -744,7 +755,8 @@ class FEGripper(RobotAPI):
 
     arms = ['hand']
     grasp_types = ['hand']
-    joint_groups = ['hand']
+    joint_group_names = ['hand']
+    joint_groups = {'hand': [0, 1]}
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
     finger_link = 8  ## for detecting if a grasp is pointing upwards
     cloned_finger_link = 7
@@ -823,7 +835,7 @@ class FEGripper(RobotAPI):
 
     def visualize_grasp(self, body_pose, grasp, arm='hand', color=GREEN, width=1,
                         body=None, verbose=False, new_gripper=False, mod_target=None):
-        from pybullet_tools.flying_gripper_utils import se3_ik, set_cloned_se3_conf, get_cloned_se3_conf
+        from pybullet_tools.flying_gripper_utils import se3_ik, set_cloned_se3_conf
 
         title = 'robots.visualize_grasp |'
 
@@ -888,14 +900,18 @@ class FEGripper(RobotAPI):
         # return Attachment(self.body, tool_link, grasp.value, grasp.body)
 
     def get_attachment_link(self, arm):
-        from pybullet_tools.flying_gripper_utils import TOOL_LINK
-        return link_from_name(self.body, TOOL_LINK)
+        from pybullet_tools.flying_gripper_utils import FEG_TOOL_LINK
+        return link_from_name(self.body, FEG_TOOL_LINK)
+
+    def get_tool_link(self, arm):
+        from pybullet_tools.flying_gripper_utils import FEG_TOOL_LINK
+        return FEG_TOOL_LINK
 
     def get_carry_conf(self, arm, grasp_type, g):
         return g
 
     def get_approach_vector(self, arm, grasp_type, scale=1):
-        return APPROACH_DISTANCE/3 *get_unit_vector([0, 0, -1]) * scale
+        return APPROACH_DISTANCE/3 * get_unit_vector([0, 0, -1]) * scale
 
     def get_approach_pose(self, approach_vector, g):
         return multiply(g, (approach_vector, unit_quat()))
@@ -905,7 +921,6 @@ class FEGripper(RobotAPI):
         return SE3_GROUP + FINGERS_GROUP
 
     def get_lisdf_string(self):
-        from pybullet_tools.flying_gripper_utils import FE_GRIPPER_URDF
         return """
     <include name="{name}">
       <uri>../../pybullet_planning/models/franka_description/robots/hand_se3.urdf</uri>
@@ -960,7 +975,6 @@ class FEGripper(RobotAPI):
         return init_q
 
     def check_reachability(self, body, state, fluents=[], obstacles=None, verbose=False, debug=False):
-        from pybullet_tools.flying_gripper_utils import get_cloned_se3_conf, plan_se3_motion
 
         return True
 

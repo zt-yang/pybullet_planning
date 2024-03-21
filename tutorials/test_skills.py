@@ -8,32 +8,32 @@ import time
 import numpy as np
 from os.path import join, abspath, dirname, isdir, isfile
 from os import listdir
-from config import ASSET_PATH
 
 from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, load_pybullet, load_model, \
-    sample_aabb, AABB, set_pose, quat_from_euler, HideOutput, get_aabb_extent, \
-    set_camera_pose, wait_unlocked, disconnect, wait_if_gui, create_box, get_aabb, get_pose, draw_aabb, multiply, unit_quat, remove_body, \
-    Pose, get_link_pose, get_joint_limits, WHITE, RGBA, set_all_color, RED, GREEN, set_renderer, add_text, joint_from_name, \
-    Point, set_random_seed, set_numpy_seed, reset_simulation, \
+    sample_aabb, AABB, set_pose, quat_from_euler, HideOutput, get_aabb_extent, unit_quat, remove_body, \
+    set_camera_pose, wait_unlocked, disconnect, wait_if_gui, create_box, get_aabb, get_pose, draw_aabb, multiply, \
+    Pose, get_link_pose, get_joint_limits, WHITE, RGBA, set_all_color, RED, GREEN, set_renderer, add_text, \
+    Point, set_random_seed, set_numpy_seed, reset_simulation, joint_from_name, \
     get_joint_name, get_link_name, dump_joint, set_joint_position, ConfSaver, pairwise_link_collision
 from pybullet_tools.bullet_utils import nice, set_camera_target_body, \
     draw_fitted_box, get_hand_grasps, sample_random_pose, \
     open_joint, get_grasp_db_file, take_selected_seg_images, dump_json
-
-from pybullet_tools.pr2_agent import visualize_grasps
+from pybullet_tools.flying_gripper_utils import se3_ik, create_fe_gripper, set_se3_conf
+from pybullet_tools.pr2_tests import visualize_grasps
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, Position, \
     get_stable_list_gen, get_handle_grasp_gen, sample_joint_position_gen
-from pybullet_tools.flying_gripper_utils import se3_ik, create_fe_gripper, set_se3_conf
 
 from world_builder.world import State
-from world_builder.loaders import create_house_floor, create_table, \
-    create_movable
+from world_builder.loaders import create_house_floor, create_table, create_movable
 from world_builder.loaders_partnet_kitchen import sample_kitchen_sink, sample_full_kitchen
 from world_builder.world_utils import load_asset, get_instance_name, get_partnet_doors, get_partnet_spaces
 from world_builder.world_utils import get_instances as get_instances_helper
 from world_builder.asset_constants import MODEL_HEIGHTS, MODEL_SCALES
 
-from examples.test_utils import get_test_world
+from robot_builder.robot_builders import build_skill_domain_robot
+
+from tutorials.test_utils import get_test_world
+from tutorials.config import ASSET_PATH
 
 import math
 
@@ -184,8 +184,8 @@ def get_gap(category: str) -> float:
     return gap
 
 
-def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=False):
-    world = get_test_world(robot)
+def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=False, **kwargs):
+    world = get_test_world(robot, **kwargs)
     draw_pose(unit_pose(), length=10)
     robot = world.robot
     problem = State(world, grasp_types=robot.grasp_types)  ## , 'side' , 'top'
@@ -799,7 +799,7 @@ def test_placement_counter():
 
 
 def test_pick_place_counter(robot):
-    from world_builder.loaders import load_random_mini_kitchen_counter
+    from world_builder.loaders_partnet_kitchen import load_random_mini_kitchen_counter
     world = get_test_world(robot, semantic_world=True)
     load_random_mini_kitchen_counter(world)
 
@@ -1009,7 +1009,7 @@ def get_placement_z(robot='pr2'):
 
 def test_tracik(robot, verbose=False):
     from pybullet_tools.tracik import IKSolver
-    from pybullet_tools.spot_utils import solve_leg_conf
+    from robot_builder.spot_utils import solve_leg_conf
     world = get_test_world(robot=robot, width=1200, height=1200,
                            semantic_world=True, draw_origin=True,
                            custom_limits=((-3, -3), (3, 3)))
@@ -1095,8 +1095,8 @@ if __name__ == '__main__':
     # get_partnet_aabbs()
     # get_placement_z()
 
-    """ --- robot (FEGripper) related  --- """
-    robot = 'pr2'  ## 'spot' | 'feg' | 'pr2'
+    """ --- robot related  --- """
+    robot = 'rummy'  ## 'spot' | 'feg' | 'pr2'
     # test_gripper_joints()
     # test_gripper_range()
     # test_torso()

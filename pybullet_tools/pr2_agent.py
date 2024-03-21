@@ -27,7 +27,7 @@ from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_
     get_cfree_approach_rel_pose_test
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, set_camera_target_body, \
     nice, BASE_LIMITS, initialize_collision_logs, collided, clean_preimage, summarize_bconfs, summarize_poses
-from pybullet_tools.pr2_utils import create_gripper, set_group_conf
+from pybullet_tools.pr2_utils import create_pr2_gripper, set_group_conf
 from pybullet_tools.utils import get_client, get_joint_limits, \
     Pose, get_bodies, pairwise_collision, get_pose, point_from_pose, set_renderer, get_joint_name, \
     remove_body, LockRenderer, WorldSaver, wait_if_gui, SEPARATOR, safe_remove, ensure_dir, \
@@ -456,7 +456,7 @@ class Problem(object):
         # set_configuration(gripper, [0]*4)
         # dump_body(gripper)
         if self.gripper is None:
-            self.gripper = create_gripper(self.robot, arm=arm, visual=visual)
+            self.gripper = create_pr2_gripper(self.robot, arm=arm, visual=visual)
         return self.gripper
 
     def remove_gripper(self):

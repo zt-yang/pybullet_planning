@@ -177,7 +177,7 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
                     continue
 
                 ## added by YANG for adding torso value
-                if robot.USE_TORSO:
+                if robot.use_torso:
                     base_joints = robot.get_base_joints()
                     z = gripper_pose[0][-1]
                     z = random.uniform(z - 0.7, z - 0.3)
@@ -871,7 +871,7 @@ def bconf_to_pose(bq):
 def pose_to_bconf(rpose, robot):
     (x, y, z), quant = rpose
     yaw = euler_from_quat(quant)[-1]
-    if robot.USE_TORSO:
+    if robot.use_torso:
         return Conf(robot, get_group_joints(robot, 'base-torso'), (x, y, z, yaw))
     return Conf(robot, get_group_joints(robot, 'base'), (x, y, yaw))
 
@@ -1808,7 +1808,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
         print(title + reason)
 
     ## solve IK for all 13 joints
-    if robot.USE_TORSO and has_tracik():
+    if robot.use_torso and has_tracik():
         from pybullet_tools.tracik import IKSolver
         tool_from_root = robot.get_tool_from_root(a)
         tool_pose = robot.get_grasp_pose(pose_value, g.value, a, body=g.body)
@@ -1967,7 +1967,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
 #         default_conf = arm_conf(a, g.carry)
 #
 #         ## solve IK for all 13 joints
-#         if robot.USE_TORSO and has_tracik():
+#         if robot.use_torso and has_tracik():
 #             from pybullet_tools.tracik import IKSolver
 #             tool_from_root = robot.get_tool_from_root(a)
 #             tool_pose = robot.get_grasp_pose(pose_value, g.value, a, body=g.body)
@@ -2207,7 +2207,7 @@ def get_ik_gen(problem, max_attempts=100, collisions=True, learned=True, telepor
         default_conf = arm_conf(a, g.carry)
 
         ## solve IK for all 13 joints
-        if robot.USE_TORSO and has_tracik():
+        if robot.use_torso and has_tracik():
             from pybullet_tools.tracik import IKSolver
             tool_from_root = robot.get_tool_from_root(a)
             tool_pose = robot.get_grasp_pose(pose_value, g.value, a, body=g.body)

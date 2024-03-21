@@ -1,28 +1,22 @@
 import math
 import random
-import json
 from os.path import join, abspath, basename
-import sys
 import os
 
 import pybullet as p
-from world_builder.world import World, State
-from world_builder.entities import Object, Region, Environment, Robot, Camera, Floor, Stove,\
-    Surface, Movable, Supporter, Steerable, Door
-from world_builder.loaders import load_rooms, load_cart, load_cart_regions, load_blocked_kitchen, \
-    load_blocked_sink, load_blocked_stove, load_floor_plan, load_experiment_objects, load_pot_lid, load_basin_faucet, \
-    load_kitchen_mechanism, load_cabinet_test_scene
+from world_builder.world import World
+from world_builder.entities import Object, Surface, Movable, Supporter
+from world_builder.loaders import load_floor_plan, load_experiment_objects, load_cabinet_test_scene
 from world_builder.loaders_partnet_kitchen import load_random_mini_kitchen_counter, \
     load_another_table, load_another_fridge_food, random_set_doors, ensure_robot_cfree, load_kitchen_mini_scene, \
     sample_full_kitchen
-from world_builder.world_generator import EXP_PATH
-from world_builder.robot_builders import get_robot_builder, create_gripper_robot, create_pr2_robot
 from world_builder.world_utils import get_domain_constants
 
-from pybullet_tools.utils import Pose, Euler, PI, create_box, TAN, Point, set_camera_pose, link_from_name, \
-    connect, enable_preview, draw_pose, unit_pose, set_all_static, wait_if_gui, reset_simulation, get_aabb
-from pybullet_tools.bullet_utils import set_camera_target_body, set_camera_target_robot, draw_collision_shapes, \
-    open_joint, get_datetime
+from robot_builder.robot_builders import get_robot_builder, create_gripper_robot, create_pr2_robot
+
+from pybullet_tools.utils import Pose, PI, create_box, TAN, Point, set_camera_pose, link_from_name, \
+    connect, enable_preview, draw_pose, unit_pose, set_all_static, get_aabb
+from pybullet_tools.bullet_utils import set_camera_target_body, open_joint, get_datetime
 
 
 def set_time_seed():

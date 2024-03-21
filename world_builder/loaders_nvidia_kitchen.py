@@ -121,7 +121,7 @@ def load_full_kitchen(world, load_cabbage=True, **kwargs):
     if world.robot is None:
         custom_limits = ((0, 4), (4, 13))
         robot = create_pr2_robot(world, base_q=(1.79, 6, PI / 2 + PI / 2),
-                                 custom_limits=custom_limits, USE_TORSO=True)
+                                 custom_limits=custom_limits, use_torso=True)
 
     floor = load_kitchen_floor_plan(world, plan_name='kitchen_v2.svg', **kwargs)
     world.remove_object(floor)
