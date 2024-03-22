@@ -144,9 +144,9 @@ class Object(Index):
                 return True
         return False
 
-    def support_obj(self, obj):
+    def support_obj(self, obj, verbose=False):
         from pybullet_tools.logging import myprint as print
-        print(f'ADDED {self} supporting_surface ({obj})')
+        if verbose: print(f'ADDED {self} supporting_surface ({obj})')
         obj.supporting_surface = self
         if obj not in self.supported_objects:
             self.supported_objects.append(obj)
@@ -227,10 +227,11 @@ class Object(Index):
         self.attach_obj(obj)
         return obj
 
-    def remove_supporting_surface(self):
+    def remove_supporting_surface(self, verbose=False):
         from pybullet_tools.logging import myprint as print
         if self.supporting_surface is not None:
-            print(f'REMOVED {self} supporting_surface ({self.supporting_surface})')
+            if verbose:
+                print(f'REMOVED {self} supporting_surface ({self.supporting_surface})')
             if self in self.supporting_surface.supported_objects:
                 self.supporting_surface.supported_objects.remove(self)
             self.supporting_surface = None

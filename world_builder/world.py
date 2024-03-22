@@ -786,13 +786,19 @@ class World(WorldBase):
         self.planning_config['body_to_name'] = self.get_indices()
 
         print('\nremove_bodies_from_planning | exceptions =', exceptions)
+        is_test_goal = False
         if isinstance(goals, tuple):
             goals = [goals]
+            is_test_goal = True
 
         ## find all relevant objects mentioned in the goal literals
         bodies = []
         for literal in goals:
-            for item in literal:
+            if is_test_goal:
+                items = literal[1]
+            else:
+                items = literal[1:]
+            for item in items:
                 if not isinstance(item, str) and str(item) not in bodies:
                     if isinstance(item, Object):
                         item = item.pybullet_name
@@ -1026,6 +1032,8 @@ class World(WorldBase):
             from pybullet_tools.general_streams import sample_joint_position_list_gen
             funk = sample_joint_position_list_gen()
             pstns = funk((body, joint), Position((body, joint)))
+            if len(pstns) == 0:
+                return
             pstn = random.choice(pstns)[0].value
         open_joint(body, joint, extent=extent, pstn=pstn, **kwargs)
         self._change_joint_state(body, joint)

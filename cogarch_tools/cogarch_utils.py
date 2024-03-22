@@ -47,6 +47,8 @@ def parse_config(path):
 def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwargs):
     """ default values are given at yaml, custom values are provided by commandline flags, overwritten by kwargs """
 
+    from pybullet_tools.logging import myprint as print
+
     conf = parse_config(join(config_root, config))
 
     np.set_printoptions(precision=3, threshold=3, suppress=True)  #, edgeitems=1) #, linewidth=1000)
@@ -184,6 +186,7 @@ def get_pddlstream_kwargs(args, skeleton, subgoals, initializer):
         log_failures=args.log_failures,  ## to summarize failed streams
         evaluation_time=args.evaluation_time,
         downward_time=args.downward_time,
+        stream_planning_timeout=args.stream_planning_timeout,
         max_plans=args.max_plans,
     )
     return solver_kwargs

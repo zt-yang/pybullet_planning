@@ -70,17 +70,88 @@ def get_config(config_file):
     return config
 
 
-def get_data_processing_parser(task_name=None, given_path=None, parallel=False, use_viewer=False):
+def get_data_processing_parser(task_name=None, given_path=None, parallel=False, viewer=False):
     if given_path is not None:
         parallel = False
     parser = argparse.ArgumentParser()
-    parser.add_argument('-t', type=str, default=task_name)
+    parser.add_argument('-t', '--task', type=str, default=task_name)
     parser.add_argument('--path', type=str, default=given_path)
     parser.add_argument('--parallel', action='store_true', default=parallel)
 
-    parser.add_argument('-v', '--viewer', action='store_true', default=use_viewer,
+    parser.add_argument('-v', '--viewer', action='store_true', default=viewer,
                         help='When enabled, enables the PyBullet viewer.')
     return parser
+
+
+def parse_image_rendering_args(task_name='test_feg_kitchen_full',
+                               given_path=None, parallel=False, viewer=True,
+                               generate_seg=False, n_px=224, redo=False, modified_time=None,
+                               new_key='default_key', accepted_keys=[]):
+    parser = get_data_processing_parser(task_name=task_name, given_path=given_path, parallel=parallel,
+                                        viewer=viewer)
+    parser.add_argument('--seg', action='store_true', default=generate_seg)
+    parser.add_argument('--redo', action='store_true', default=redo)
+    parser.add_argument('--modified_time', type=int, default=modified_time)
+    parser.add_argument('--crop_px', type=int, default=n_px)
+    parser.add_argument('--new_key', type=str, default=new_key)
+    parser.add_argument('--accepted_keys', type=list, default=accepted_keys)
+    args = parser.parse_args()
+    args.larger_world = 'mm_' in args.task or 'tt_' in args.task
+    return args
+
+
+##################################################################
+
+
+def process_all_tasks(process, task_name=None, dataset_root=None, parallel=False, cases=None, path=None,
+                      dir=None, case_filter=None, return_dirs=False, input_args=None):
+    from cogarch_tools.cogarch_utils import clear_planning_dir
+    clear_planning_dir()
+
+    if path is not None:
+        cases = [path]
+    elif dir is not None:
+        cases = [join(dir, c) for c in listdir(dir)]
+        cases = [c for c in cases if isdir(c) and not isfile(join(c, 'gym_replay.gif'))]
+        # cases = cases[:1]
+    elif cases is not None and len(cases) > 0:
+        cases = [join(dataset_root, task_name, case) for case in cases]
+    else:
+        cases = get_run_dirs(task_name, dataset_root)
+
+    if len(cases) > 1:
+        cases = sorted(cases, key=lambda x: eval(x.split('/')[-1]))
+
+    if case_filter is not None:
+        cases = [c for c in cases if case_filter(c)]
+
+    if return_dirs:
+        return cases
+
+    if input_args is not None:
+        cases = [(case, input_args) for case in cases]
+
+    parallel_processing(process, cases, parallel)
+
+
+def get_run_dirs(task_names, dataset_root):
+    if isinstance(task_names, str):
+        task_names = [task_names]
+    all_subdirs = []
+    for task_name in task_names:
+        dataset_dir = join(dataset_root, task_name)
+        # organize_dataset(task_name)
+        if not isdir(dataset_dir):
+            print('get_run_dirs | no directory', dataset_dir)
+            continue
+        subdirs = listdir(dataset_dir)
+        subdirs.sort()
+        subdirs = [join(dataset_dir, s) for s in subdirs if isdir(join(dataset_dir, s))]
+        all_subdirs += subdirs
+    return all_subdirs
+
+
+#########################################################
 
 
 def clear_constraint_networks(viz_dir):

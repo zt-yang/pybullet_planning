@@ -16,7 +16,7 @@ from pybullet_tools.pr2_primitives import get_group_joints, get_base_custom_limi
     get_ik_ir_gen, move_cost_fn, Attach, Detach, Clean, Cook, \
     get_gripper_joints, GripperCommand, Simultaneous, create_trajectory
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, get_handle_grasp_list_gen, \
-    get_handle_grasp_gen, get_compute_pose_kin, sample_joint_position_closed_gen
+    get_handle_grasp_gen, get_compute_pose_kin, sample_joint_position_closed_gen, get_contain_gen
 from pybullet_tools.bullet_utils import set_camera_target_body, \
     nice, BASE_LIMITS, initialize_collision_logs, collided
 from pybullet_tools.pr2_problems import create_pr2
@@ -44,6 +44,8 @@ def process_debug_goals(state, goals, init):
             goals = test_grasp_ik(state, init, args)
         elif test == 'test_pose_gen':
             goals, ff = test_pose_gen(state, init, args)
+        elif test == 'test_pose_inside_gen':
+            goals, ff = test_pose_inside_gen(state, init, args)
         elif test == 'test_relpose_inside_gen':
             goals, ff = test_relpose_inside_gen(state, init, args)
         elif test == 'test_joint_open':
@@ -321,6 +323,18 @@ def test_pose_gen(problem, init, args):
     print(f'test_pose_gen({o}, {s}) | {p}')
     pose.assign()
     return [('AtPose', o, p)], [('Pose', o, p), ('Supported', o, p, s)]
+
+
+def test_pose_inside_gen(problem, init, args):
+    o, s = args
+    pose = [i for i in init if i[0].lower() == "AtPose".lower() and i[1] == o][0][-1]
+    if isinstance(o, Object):
+        o = o.body
+    funk = get_contain_gen(problem)(o, s)
+    p = next(funk)[0]
+    print(f'test_pose_inside_gen({o}, {s}) | {p}')
+    pose.assign()
+    return [('AtPose', o, p)], [('Pose', o, p), ('Contained', o, p, s)]
 
 
 def test_relpose_inside_gen(problem, init, args):

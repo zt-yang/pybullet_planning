@@ -318,9 +318,6 @@ def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visu
     return gen
 
 
-
-
-
 def adjust_sampled_pose(world, body, surface, body_pose):
     ## hack to reduce planning time
     (x, y, z), quat = body_pose
@@ -748,8 +745,8 @@ def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
         if robot.name.startswith('pr2'):
             arm = 'left'
 
-        grasps = get_hand_grasps(world, body, link=handle_link, HANDLE_FILTER=True,
-                                 visualize=visualize, RETAIN_ALL=False, LENGTH_VARIANTS=True, verbose=verbose)
+        grasps = get_hand_grasps(world, body, link=handle_link, handle_filter=True,
+                                 visualize=visualize, retain_all=False, length_variants=True, verbose=verbose)
 
         if verbose: print(f'\n{title} grasps =', [nice(g) for g in grasps])
 

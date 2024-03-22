@@ -58,6 +58,7 @@ def load_robot_urdf(urdf_path):
     return robot
 
 
+
 def add_body(body, pose=unit_pose()):
     set_pose(body, pose)
     return body
@@ -1309,10 +1310,9 @@ def check_grasp_link(world, body, link):
     return using_grasp_link, link
 
 
-def get_hand_grasps(world, body, link=None, grasp_length=0.1,
-                    HANDLE_FILTER=False, LENGTH_VARIANTS=False,
-                    visualize=False, RETAIN_ALL=False, verbose=True,
-                    collisions=False, debug_del=False):
+def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
+                    handle_filter=False, length_variants=False, use_all_grasps=True,
+                    retain_all=False, verbose=True, collisions=False, debug_del=False):
     body_name = (body, link) if link is not None else body
     title = f'bullet_utils.get_hand_grasps({body_name}) | '
     dist = grasp_length
@@ -1342,7 +1342,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
     if instance_name is not None:
         grasp_db_file = get_grasp_db_file(robot)
         found, db, db_file = find_grasp_in_db(grasp_db_file, instance_name, verbose=verbose,
-                                              LENGTH_VARIANTS=LENGTH_VARIANTS, scale=scale)
+                                              length_variants=length_variants, scale=scale)
         if found is not None:
             if visualize:
                 bodies = []
@@ -1379,7 +1379,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
         grasp = multiply(Pose(point=f), Pose(euler=r))
 
         result, aabb, gripper = check_cfree_gripper(grasp, world, body_pose, obstacles, verbose=verbose, body=body,
-                                                    visualize=visualize, RETAIN_ALL=RETAIN_ALL, collisions=collisions)
+                                                    visualize=visualize, RETAIN_ALL=retain_all, collisions=collisions)
         if result:  ##  and check_new(aabbs, aabb):
             grasps += [grasp]
             # aabbs += [aabb]
@@ -1391,7 +1391,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
             #     return grasps
 
             ## slide along the longest dimension
-            if LENGTH_VARIANTS and on_longest:
+            if length_variants and on_longest:
                 dl_max = max_value / 3
                 dl_candidates = [random.uniform(-dl_max, dl_max) for k in range(3)]
                 dl_candidates = [dl_max, -dl_max]
@@ -1399,7 +1399,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
                     grasp_dl = robot.mod_grasp_along_handle(grasp, dl)
                     result, aabb, gripper_dl = check_cfree_gripper(grasp, world, body_pose, obstacles, body=body,
                                                                    verbose=verbose, collisions=collisions,
-                                                                   visualize=visualize, RETAIN_ALL=RETAIN_ALL)
+                                                                   visualize=visualize, RETAIN_ALL=retain_all)
                     if result:  ## and check_new(aabbs, aabb):
                         grasps += [grasp_dl]
                         # aabbs += [aabb]
@@ -1440,7 +1440,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
 
         ## only attempt the bigger surfaces
         on_longest = sum([filter[i]*p[i] for i in range(3)]) != 0
-        if HANDLE_FILTER and not on_longest:
+        if handle_filter and not on_longest:
             continue
 
         ## reduce num of grasps
@@ -1476,7 +1476,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1,
     ## lastly store the newly sampled grasps
     if instance_name is not None:
         add_grasp_in_db(db, db_file, instance_name, grasps, name=world.get_name(body_name),
-                        LENGTH_VARIANTS=LENGTH_VARIANTS, scale=scale)
+                        LENGTH_VARIANTS=length_variants, scale=scale)
     remove_handles(handles)
     # if len(grasps) > num_samples:
     #     random.shuffle(grasps)
@@ -1676,7 +1676,7 @@ def get_gripper_direction(pose, epsilon=0.01):
     return None
 
 
-def find_grasp_in_db(db_file, instance_name, LENGTH_VARIANTS=False, scale=None, verbose=True):
+def find_grasp_in_db(db_file, instance_name, length_variants=False, scale=None, use_all_grasps=False, verbose=True):
     """ find saved json files, prioritize databases/ subdir """
     db = json.load(open(db_file, 'r')) if isfile(db_file) else {}
 
@@ -1690,15 +1690,19 @@ def find_grasp_in_db(db_file, instance_name, LENGTH_VARIANTS=False, scale=None, 
             found = [(tuple(e[0]), tuple(e[1])) for e in data]
         if verbose:
             print(f'    bullet_utils.find_grasp_in_db returned {len(found)}'
-                f' grasps for {instance_name} | scale = {scale}')
+                  f' grasps for {instance_name} | scale = {scale}')
         return found
 
     found = None
     if instance_name in db:
         all_data = db[instance_name]
+        grasp_key = 'grasps_all' if (use_all_grasps and 'grasps_all' in all_data) else 'grasps'
+        if length_variants:
+            grasp_key = 'grasps_l'
+
         ## the newest format has attr including 'name', 'grasps', 'grasps_length_variants'
         if '::' not in instance_name or ('scale' in all_data and scale == all_data['scale']):
-            data = all_data['grasps'] if not LENGTH_VARIANTS else all_data['grasps_l']
+            data = all_data[grasp_key]
             if len(data) > 0:
                 found = rewrite_grasps(data)
                 ## scale the grasps for object grasps but not handle grasps

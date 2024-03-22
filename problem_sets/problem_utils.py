@@ -19,8 +19,8 @@ def create_world(args):
     return World(time_step=args.time_step, segment=args.segment, use_rel_pose=args.use_rel_pose)
 
 
-def pddlstream_from_state_goal(state, goals, args=None, custom_limits=None,
-                               domain_name=None, stream_name=None, cfree=False, teleport=False, **kwargs):
+def pddlstream_from_state_goal(state, goals, args=None, custom_limits=None, domain_name=None, stream_name=None,
+                               cfree=False, teleport=False, use_all_grasps=False, **kwargs):
     from pybullet_tools.pr2_agent import pddlstream_from_state_goal as pddlstream_helper
     domain_name = args.domain_pddl if args is not None else domain_name
     domain_pddl = join(PDDL_PATH, 'domains', domain_name)
@@ -30,13 +30,16 @@ def pddlstream_from_state_goal(state, goals, args=None, custom_limits=None,
         pddl_dir = join(PBP_PATH, 'pddl')
         domain_pddl = join(pddl_dir, domain_name)
         stream_pddl = join(pddl_dir, stream_name)
-    cfree = args.cfree if args is not None else cfree
-    teleport = args.teleport if args is not None else teleport
+    if args is not None:
+        cfree = args.cfree
+        teleport = args.teleport
+        if hasattr(args, 'use_all_grasps'):
+            use_all_grasps = args.use_all_grasps
+            print(f'\n\npddlstream_from_state_goal | using all grasps? {use_all_grasps} \n\n')
     if custom_limits is None:
         custom_limits = state.robot.custom_limits
-    return pddlstream_helper(state, goals, custom_limits=custom_limits,
-                             domain_pddl=domain_pddl, stream_pddl=stream_pddl,
-                             collisions=not cfree, teleport=teleport, **kwargs)
+    return pddlstream_helper(state, goals, custom_limits=custom_limits, domain_pddl=domain_pddl, stream_pddl=stream_pddl,
+                             collisions=not cfree, teleport=teleport, use_all_grasps=use_all_grasps, **kwargs)
 
 
 def save_to_kitchen_worlds(state, pddlstream_problem, EXIT=False, **kwargs):

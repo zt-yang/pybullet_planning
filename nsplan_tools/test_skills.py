@@ -821,7 +821,7 @@ def test_handle_grasps_counter(robot='pr2'):
         set_camera_target_body(body, link=link, dx=0.5, dy=0.5, dz=0.5)
         draw_fitted_box(body, link=link, draw_centroid=True)
         grasps = get_hand_grasps(world, body, link=link, visualize=False,
-                                 RETAIN_ALL=True, HANDLE_FILTER=True, LENGTH_VARIANTS=True)
+                                 retain_all=True, handle_filter=True, length_variants=True)
         set_camera_target_body(body, link=link, dx=0.5, dy=0.5, dz=0.5)
 
     wait_if_gui('Finish?')
@@ -882,7 +882,7 @@ def test_placement_counter():
             draw_fitted_box(body, draw_centroid=False)
             set_camera_target_body(body, dx=0.5, dy=0, dz=0)
             set_camera_target_body(body, dx=0.5, dy=0, dz=0)
-            grasps = get_hand_grasps(world, body, visualize=True, RETAIN_ALL=True)
+            grasps = get_hand_grasps(world, body, visualize=True, retain_all=True)
 
         # if rg in spaces:
         #     body = r.place_new_obj('MeatTurkeyLeg').body

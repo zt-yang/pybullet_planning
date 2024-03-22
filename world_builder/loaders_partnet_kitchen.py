@@ -1427,8 +1427,8 @@ def sample_full_kitchen(world, verbose=True, pause=True, reachability_check=True
 
 def make_sure_obstacles(world, case, movables, counters, objects, food=None):
     assert case in [
-        2, ## to_sink
-        3, ## to_braiser
+        2, ## sink
+        3, ## braiser
         992, ## to_sink (no obstacle)
         993, ## to_braiser (no obstacle)
         21, ## sink_to_storage
@@ -1477,8 +1477,8 @@ def make_sure_obstacles(world, case, movables, counters, objects, food=None):
             all_to_move = random.sample(something, 2)
         elif case in [21]:
             all_to_move = []
-            all_to_move += random.sample(world.cat_to_objects('edible'), 2 if random.random() < 0.5 else 1)
-            all_to_move += random.sample(world.cat_to_objects('bottle'), 2 if random.random() < 0.5 else 1)
+            all_to_move += random.sample(world.cat_to_objects('edible'), 2 if random.random() < 0.2 else 1)
+            all_to_move += random.sample(world.cat_to_objects('bottle'), 2 if random.random() < 0.2 else 1)
 
         """ move objects to the clustered region """
         for something in all_to_move:
