@@ -2946,7 +2946,6 @@ def clone_body(body, links=None, collision=True, visual=True, client=None):
         dynamics_info = get_dynamics_info(body, link)
         masses.append(dynamics_info.mass)
 
-        print(link, get_link_name(body, link))
         collision_shapes.append(clone_collision_shape(body, link, client) if collision else NULL_ID)
         visual_shapes.append(clone_visual_shape(body, link, client) if visual else NULL_ID)
 
@@ -3014,10 +3013,8 @@ def get_mesh_data(obj, link=BASE_LINK, shape_index=0, visual=True):
     return Mesh(*p.getMeshData(obj, linkIndex=link, flags=flags, physicsClientId=CLIENT))
 
 def get_collision_data(body, link=BASE_LINK):
-    # TODO: try catch
-    # TODO: cache
-    # print('    get_collision_data', body, link)
-    # return [CollisionShapeData(*tup) for tup in p.getCollisionShapeData(body, link, physicsClientId=CLIENT)]
+    ## will fail if mesh file is .dae
+    ## https://products.aspose.app/3d/conversion/dae-to-obj
     try:
         data = p.getCollisionShapeData(body, link, physicsClientId=CLIENT)
         return [CollisionShapeData(*tup) for tup in data]

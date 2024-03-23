@@ -28,6 +28,8 @@ from pybullet_tools.bullet_utils import collided, set_camera_target_body, nice
 from pybullet_tools.ikfast.utils import IKFastInfo
 from pybullet_tools.ikfast.ikfast import * # For legacy purposes
 
+from robot_builder.robot_utils import get_joints_by_names
+
 FE_GRIPPER_URDF = "models/franka_description/robots/hand_se3.urdf"
 FE_POINTER_URDF = "models/franka_description/robots/pointer_se3.urdf"
 #FRANKA_URDF = "models/franka_description/robots/panda_arm.urdf"
@@ -147,12 +149,12 @@ BASE_LINK = 'world_link' ## 'panda_hand' ##
 
 
 def get_gripper_positions(robot):
-    joints = get_joints_by_group(robot, PANDA_FINGERS_GROUP)
+    joints = get_joints_by_names(robot, PANDA_FINGERS_GROUP)
     return get_joint_positions(robot, joints)
 
 
 def set_gripper_positions(robot, w=0.0):
-    joints = get_joints_by_group(robot, PANDA_FINGERS_GROUP)
+    joints = get_joints_by_names(robot, PANDA_FINGERS_GROUP)
     set_joint_positions(robot, joints, [w/2, w/2])
 
 
@@ -162,29 +164,29 @@ def open_gripper(robot):
 
 def open_cloned_gripper(robot, gripper, w=0.12): ## 0.08 is the limit
     """ because link and joint names aren't cloned """
-    joints = get_joints_by_group(robot, PANDA_FINGERS_GROUP)
+    joints = get_joints_by_names(robot, PANDA_FINGERS_GROUP)
     w = min(w, 0.12)
     set_joint_positions(gripper, joints, [w / 2, w / 2])
 
 
 def close_cloned_gripper(robot, gripper):
     """ because link and joint names aren't cloned """
-    joints = get_joints_by_group(robot, PANDA_FINGERS_GROUP)
+    joints = get_joints_by_names(robot, PANDA_FINGERS_GROUP)
     set_joint_positions(gripper, joints, [0, 0])
 
 
 def set_cloned_se3_conf(robot, gripper, conf):
-    joints = get_joints_by_group(robot, SE3_GROUP)
+    joints = get_joints_by_names(robot, SE3_GROUP)
     return set_joint_positions(gripper, joints, conf)
 
 
 def get_cloned_se3_conf(robot, gripper):
-    joints = get_joints_by_group(robot, SE3_GROUP)
+    joints = get_joints_by_names(robot, SE3_GROUP)
     return get_joint_positions(gripper, joints)
 
 
 def get_cloned_gripper_positions(robot, gripper):
-    joints = get_joints_by_group(robot, PANDA_FINGERS_GROUP)
+    joints = get_joints_by_names(robot, PANDA_FINGERS_GROUP)
     return get_joint_positions(gripper, joints)
 
 
@@ -204,12 +206,8 @@ def set_se3_conf(robot, se3):
     # set_pose(robot, pose)
 
 
-def get_joints_by_group(robot, group):
-    return [joint_from_name(robot, j) for j in group]
-
-
 def get_se3_joints(robot):
-    return get_joints_by_group(robot, SE3_GROUP)
+    return get_joints_by_names(robot, SE3_GROUP)
 
 
 def get_se3_conf(robot):

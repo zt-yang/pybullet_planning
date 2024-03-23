@@ -793,8 +793,8 @@ class FEGripper(RobotAPI):
             self.grippers.pop(arm)
 
     def get_gripper_joints(self, gripper_grasp=None):
-        from pybullet_tools.flying_gripper_utils import get_joints_by_group, PANDA_FINGERS_GROUP
-        return get_joints_by_group(self.body, PANDA_FINGERS_GROUP)
+        from pybullet_tools.flying_gripper_utils import get_joints_by_names, PANDA_FINGERS_GROUP
+        return get_joints_by_names(self.body, PANDA_FINGERS_GROUP)
 
     def open_cloned_gripper(self, gripper, width=1):
         from pybullet_tools.flying_gripper_utils import open_cloned_gripper

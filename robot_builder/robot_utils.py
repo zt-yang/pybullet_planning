@@ -21,12 +21,12 @@ BASE_JOINTS = ['x', 'y', 'theta']
 
 ROBOTIQ_JOINTS = [
     # Works for 85 and 140
-    'finger_joint',  # _left_inner_finger_joint
-    'left_inner_finger_joint',
-    'left_inner_knuckle_joint',  # Interior joint (useless)
-    'right_outer_knuckle_joint',
-    'right_inner_finger_joint',
-    'right_inner_knuckle_joint',  # Interior joint (useless)
+    'finger_joint',  # [0, 0.8757]
+    'left_inner_finger_joint', ## mimics - 'left_arm_finger_joint'
+    'left_inner_knuckle_joint', ## mimics 'left_arm_finger_joint'
+    'right_outer_knuckle_joint', ## mimics 'left_arm_finger_joint'
+    'right_inner_finger_joint', ## mimics - 'left_arm_finger_joint'
+    'right_inner_knuckle_joint', ## mimics 'left_arm_finger_joint'
 ]
 
 #####################################
@@ -40,6 +40,10 @@ def create_robot_gripper(robot, link_name, visual=True, color=None):
     if color is not None:
         set_all_color(gripper, color)
     return gripper
+
+
+def get_joints_by_names(robot, group):
+    return [joint_from_name(robot, j) for j in group]
 
 
 def get_robot_group_joints(body, group, joint_groups):
