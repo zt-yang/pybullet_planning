@@ -195,7 +195,7 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=F
 
         tpt = math.pi / 4 if cat in ['Knife'] else None ## , 'EyeGlasses', 'Plate'
         funk = get_grasp_list_gen(problem, collisions=True, visualize=True,
-                                  RETAIN_ALL=True, top_grasp_tolerance=tpt, verbose=True)
+                                  retain_all=True, top_grasp_tolerance=tpt, verbose=True)
 
         def test_grasp(body):
             set_renderer(True)
@@ -203,8 +203,8 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=F
             outputs = funk(body)
             if isinstance(outputs, list):
                 print(f'grasps on body {body}:', outputs)
-            visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=not test_attachment or True,
-                             TEST_ATTACHMENT=test_attachment)
+            visualize_grasps(problem, outputs, body_pose, retain_all=not test_attachment or True,
+                             test_attachment=test_attachment)
             set_renderer(True)
             set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
 
@@ -377,7 +377,7 @@ def test_handle_grasps(robot, category, skip_grasps=False):
 
                 set_renderer(True)
                 set_camera_target_body(body, dx=2, dy=1, dz=1)
-                visualize_grasps(problem, outputs, body_pose, RETAIN_ALL=True)
+                visualize_grasps(problem, outputs, body_pose, retain_all=True)
                 set_camera_target_body(body, dx=2, dy=1, dz=1)
 
         wait_if_gui('Next?')
@@ -762,7 +762,7 @@ def test_placement_counter():
     world.summarize_all_objects()
     state = State(world, grasp_types=robot.grasp_types)
     funk = get_grasp_list_gen(state, collisions=True, num_samples=3,
-                              visualize=False, RETAIN_ALL=False)
+                              visualize=False, retain_all=False)
 
     surfaces = world.cat_to_bodies('surface')
     spaces = world.cat_to_bodies('space')
@@ -786,11 +786,11 @@ def test_placement_counter():
         #     draw_fitted_box(body, draw_centroid=False)
         #     set_camera_target_body(body, dx=0.1, dy=0, dz=0.5)
         #     set_camera_target_body(body, dx=0.1, dy=0, dz=0.5)
-        #     # grasps = get_hand_grasps(world, body, visualize=False, RETAIN_ALL=False)
+        #     # grasps = get_hand_grasps(world, body, visualize=False, retain_all=False)
         #
         #     outputs = funk(body)
         #     print(f'grasps on body {body}:', outputs)
-        #     visualize_grasps(state, outputs, get_pose(body), RETAIN_ALL=True, collisions=True)
+        #     visualize_grasps(state, outputs, get_pose(body), retain_all=True, collisions=True)
 
         set_renderer(True)
         print(f'test_placement_counter | placed {body} on {r}')

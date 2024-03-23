@@ -1379,7 +1379,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
         grasp = multiply(Pose(point=f), Pose(euler=r))
 
         result, aabb, gripper = check_cfree_gripper(grasp, world, body_pose, obstacles, verbose=verbose, body=body,
-                                                    visualize=visualize, RETAIN_ALL=retain_all, collisions=collisions)
+                                                    visualize=visualize, retain_all=retain_all, collisions=collisions)
         if result:  ##  and check_new(aabbs, aabb):
             grasps += [grasp]
             # aabbs += [aabb]
@@ -1399,7 +1399,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
                     grasp_dl = robot.mod_grasp_along_handle(grasp, dl)
                     result, aabb, gripper_dl = check_cfree_gripper(grasp, world, body_pose, obstacles, body=body,
                                                                    verbose=verbose, collisions=collisions,
-                                                                   visualize=visualize, RETAIN_ALL=retain_all)
+                                                                   visualize=visualize, retain_all=retain_all)
                     if result:  ## and check_new(aabbs, aabb):
                         grasps += [grasp_dl]
                         # aabbs += [aabb]
@@ -1485,7 +1485,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
 
 
 def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, color=GREEN, body=None,
-                        min_num_pts=40, RETAIN_ALL=False, verbose=False, collisions=False):
+                        min_num_pts=40, retain_all=False, verbose=False, collisions=False):
     robot = world.robot
 
     ################# for debugging ################
@@ -1533,13 +1533,13 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
     ## combining all criteria
     result = not firstly and secondly and not upwards
 
-    if not result or not RETAIN_ALL:
+    if not result or not retain_all:
         # remove_body(gripper_grasp)  ## TODO
         gripper_grasp = None
         # # weiyu: also remove the gripper from the robot
         # robot.remove_grippers()
 
-    elif RETAIN_ALL:
+    elif retain_all:
         robot.open_cloned_gripper(gripper_grasp)
 
     return result, aabb, gripper_grasp

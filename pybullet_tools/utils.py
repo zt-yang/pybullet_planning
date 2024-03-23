@@ -2946,6 +2946,7 @@ def clone_body(body, links=None, collision=True, visual=True, client=None):
         dynamics_info = get_dynamics_info(body, link)
         masses.append(dynamics_info.mass)
 
+        print(link, get_link_name(body, link))
         collision_shapes.append(clone_collision_shape(body, link, client) if collision else NULL_ID)
         visual_shapes.append(clone_visual_shape(body, link, client) if visual else NULL_ID)
 

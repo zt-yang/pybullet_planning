@@ -142,17 +142,17 @@ def sample_ik_tests(robot):
 
 
 SE3_GROUP = ['x', 'y', 'z', 'roll', 'pitch', 'yaw']
-FINGERS_GROUP = ['panda_finger_joint1', 'panda_finger_joint2']
+PANDA_FINGERS_GROUP = ['panda_finger_joint1', 'panda_finger_joint2']
 BASE_LINK = 'world_link' ## 'panda_hand' ##
 
 
 def get_gripper_positions(robot):
-    joints = get_joints_by_group(robot, FINGERS_GROUP)
+    joints = get_joints_by_group(robot, PANDA_FINGERS_GROUP)
     return get_joint_positions(robot, joints)
 
 
 def set_gripper_positions(robot, w=0.0):
-    joints = get_joints_by_group(robot, FINGERS_GROUP)
+    joints = get_joints_by_group(robot, PANDA_FINGERS_GROUP)
     set_joint_positions(robot, joints, [w/2, w/2])
 
 
@@ -162,14 +162,14 @@ def open_gripper(robot):
 
 def open_cloned_gripper(robot, gripper, w=0.12): ## 0.08 is the limit
     """ because link and joint names aren't cloned """
-    joints = get_joints_by_group(robot, FINGERS_GROUP)
+    joints = get_joints_by_group(robot, PANDA_FINGERS_GROUP)
     w = min(w, 0.12)
     set_joint_positions(gripper, joints, [w / 2, w / 2])
 
 
 def close_cloned_gripper(robot, gripper):
     """ because link and joint names aren't cloned """
-    joints = get_joints_by_group(robot, FINGERS_GROUP)
+    joints = get_joints_by_group(robot, PANDA_FINGERS_GROUP)
     set_joint_positions(gripper, joints, [0, 0])
 
 
@@ -184,7 +184,7 @@ def get_cloned_se3_conf(robot, gripper):
 
 
 def get_cloned_gripper_positions(robot, gripper):
-    joints = get_joints_by_group(robot, FINGERS_GROUP)
+    joints = get_joints_by_group(robot, PANDA_FINGERS_GROUP)
     return get_joint_positions(gripper, joints)
 
 

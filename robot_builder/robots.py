@@ -15,7 +15,7 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
 from pybullet_tools.bullet_utils import equal, nice, set_camera_target_body, Attachment, \
     get_rotation_matrix, collided, query_yes_no, get_cloned_gripper_joints
 from pybullet_tools.pr2_primitives import APPROACH_DISTANCE, Conf, Grasp, get_base_custom_limits
-from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, TOP_HOLDING_LEFT_ARM
+from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, TOP_HOLDING_LEFT_ARM, PR2_GRIPPER_ROOTS
 from pybullet_tools.general_streams import get_handle_link, get_grasp_list_gen, get_contain_list_gen, \
     get_cfree_approach_pose_test, get_stable_list_gen, play_trajectory
 
@@ -199,6 +199,9 @@ class MobileRobot(RobotAPI):
     def get_tool_link(self, arm):
         raise NotImplementedError('should implement this for MobileRobot!')
 
+    def get_gripper_root(self, arm):
+        raise NotImplementedError('should implement this for MobileRobot!')
+
     def get_arm_joints(self, arm):
         raise NotImplementedError('should implement this for MobileRobot!')
 
@@ -272,7 +275,7 @@ class MobileRobot(RobotAPI):
     def create_gripper(self, arm=None, **kwargs):
         # if arm in self.grippers:
         #     print('gripper already exists!')
-        self.grippers[arm] = create_robot_gripper(self.body, self.get_tool_link(arm), **kwargs)
+        self.grippers[arm] = create_robot_gripper(self.body, self.get_gripper_root(arm), **kwargs)
         return self.grippers[arm]
 
     def close_cloned_gripper(self, gripper_cloned):
@@ -522,6 +525,9 @@ class PR2Robot(MobileRobot):
     def get_tool_link(self, arm):
         return PR2_TOOL_FRAMES[arm]
 
+    def get_gripper_root(self, arm):
+        return PR2_GRIPPER_ROOTS[arm]
+
     def get_base_conf(self):
         from pybullet_tools.pr2_utils import get_group_joints
         base_joints = get_group_joints(self.body, self.base_group)
@@ -751,6 +757,9 @@ class PR2Robot(MobileRobot):
         return grasp_conf
 
 
+from pybullet_tools.flying_gripper_utils import FEG_TOOL_LINK
+
+
 class FEGripper(RobotAPI):
 
     arms = ['hand']
@@ -784,8 +793,8 @@ class FEGripper(RobotAPI):
             self.grippers.pop(arm)
 
     def get_gripper_joints(self, gripper_grasp=None):
-        from pybullet_tools.flying_gripper_utils import get_joints_by_group, FINGERS_GROUP
-        return get_joints_by_group(self.body, FINGERS_GROUP)
+        from pybullet_tools.flying_gripper_utils import get_joints_by_group, PANDA_FINGERS_GROUP
+        return get_joints_by_group(self.body, PANDA_FINGERS_GROUP)
 
     def open_cloned_gripper(self, gripper, width=1):
         from pybullet_tools.flying_gripper_utils import open_cloned_gripper
@@ -904,7 +913,9 @@ class FEGripper(RobotAPI):
         return link_from_name(self.body, FEG_TOOL_LINK)
 
     def get_tool_link(self, arm):
-        from pybullet_tools.flying_gripper_utils import FEG_TOOL_LINK
+        return FEG_TOOL_LINK
+
+    def get_gripper_root(self, arm):
         return FEG_TOOL_LINK
 
     def get_carry_conf(self, arm, grasp_type, g):
@@ -917,8 +928,8 @@ class FEGripper(RobotAPI):
         return multiply(g, (approach_vector, unit_quat()))
 
     def get_all_joints(self):
-        from pybullet_tools.flying_gripper_utils import SE3_GROUP, FINGERS_GROUP
-        return SE3_GROUP + FINGERS_GROUP
+        from pybullet_tools.flying_gripper_utils import SE3_GROUP, PANDA_FINGERS_GROUP
+        return SE3_GROUP + PANDA_FINGERS_GROUP
 
     def get_lisdf_string(self):
         return """
@@ -988,7 +999,7 @@ class FEGripper(RobotAPI):
         world = state.world
         init_q = self.get_initial_q()
         funk = get_grasp_list_gen(state, collisions=True, visualize=False,
-                                  RETAIN_ALL=False, top_grasp_tolerance=math.pi / 4)
+                                  retain_all=False, top_grasp_tolerance=math.pi / 4)
 
         result = False
         body_pose = get_pose(body)

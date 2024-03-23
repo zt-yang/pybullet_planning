@@ -152,7 +152,7 @@ def test_grasps(state, name='cabbage', visualize=True):
         body = name
     robot = state.robot
 
-    funk = get_grasp_list_gen(state, verbose=True, visualize=True, RETAIN_ALL=False, top_grasp_tolerance=None)  ## PI/4
+    funk = get_grasp_list_gen(state, verbose=True, visualize=True, retain_all=False, top_grasp_tolerance=None)  ## PI/4
     outputs = funk(body)
 
     if 'left' in robot.joint_groups:
@@ -183,15 +183,15 @@ def test_grasps(state, name='cabbage', visualize=True):
     return goals
 
 
-def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=True, collisions=False, pause_each=False,
-                     TEST_ATTACHMENT=False):
+def visualize_grasps(state, outputs, body_pose, retain_all=True, collisions=False, pause_each=False,
+                     test_attachment=False):
     robot = state.robot
     colors = [BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED]
     color_names = ['BROWN', 'BLUE', 'WHITE', 'TAN', 'GREY', 'YELLOW', 'GREEN', 'BLACK', 'RED']
 
     def visualize_grasp(grasp, index=0):
         w = grasp.grasp_width
-        if RETAIN_ALL:
+        if retain_all:
             idx = index % len(colors)
             print(' grasp.value', nice(grasp.value), 'color', color_names[idx])
             gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, body=grasp.body,
@@ -204,7 +204,7 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=True, collisions=Fals
             gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, body=grasp.body, color=GREEN, width=w)
             gripper_approach = robot.visualize_grasp(body_pose, grasp.approach, color=BROWN)
 
-            if TEST_ATTACHMENT:
+            if test_attachment:
                 set_renderer(True)
                 set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.5)
                 attachment = grasp.get_attachment(robot, robot.arms[0], visualize=True)
@@ -235,7 +235,7 @@ def visualize_grasps(state, outputs, body_pose, RETAIN_ALL=True, collisions=Fals
     if i > 0:
         set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.5)
 
-    # if RETAIN_ALL:
+    # if retain_all:
     #     wait_if_gui()
 
 
