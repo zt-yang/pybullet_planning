@@ -5,7 +5,6 @@ from collections import defaultdict
 import argparse
 from os.path import isfile
 
-from __future__ import print_function
 import os
 import random
 import json
@@ -19,12 +18,13 @@ from os import listdir
 
 from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, load_pybullet, load_model, \
     sample_aabb, AABB, set_pose, quat_from_euler, HideOutput, get_aabb_extent, unit_quat, remove_body, \
-    set_camera_pose, wait_unlocked, disconnect, wait_if_gui, create_box, get_aabb
-from world_builder.world_utils import get_instances as get_instances_helper
-
+    set_camera_pose, wait_unlocked, disconnect, wait_if_gui, add_text, get_aabb
 from pybullet_tools.utils import connect, draw_pose, unit_pose, set_caching
 from pybullet_tools.bullet_utils import nice
 from pybullet_tools.pr2_problems import create_floor
+
+from world_builder.world_utils import get_instances as get_instances_helper
+from world_builder.asset_constants import MODEL_HEIGHTS, MODEL_SCALES
 
 from robot_builder.robot_builders import build_skill_domain_robot
 
@@ -152,6 +152,49 @@ def pose_from_2d(body, xy, random_yaw=False):
     if random_yaw:
         yaw = random.uniform(-math.pi, math.pi)
     return ((xy[0], xy[1], z), quat_from_euler((0, 0, yaw)))
+
+
+def get_y_gap(category: str) -> float:
+    """ gaps to lay assets in a line along y-axis"""
+    gap = 2
+    if category == 'KitchenCounter':
+        gap = 3
+    if category == 'MiniFridge':
+        gap = 2
+    if category in ['Food', 'Stapler', 'BraiserBody']:
+        gap = 0.5
+    return gap
+
+
+def get_model_path(category, id):
+    models_path = join(ASSET_PATH, 'models')
+    category = [c for c in listdir(models_path) if c.lower() == category.lower()][0]
+    if not id.isdigit():
+        id = [i for i in listdir(join(models_path, category)) if i.lower() == id.lower()][0]
+    path = join(models_path, category, id)
+    return path
+
+
+def load_model_instance(category, id, scale=1, location = (0, 0)):
+    from world_builder.world_utils import get_model_scale
+
+    path = get_model_path(category, id)
+    if category in MODEL_HEIGHTS:
+        height = MODEL_HEIGHTS[category]['height']
+        scale = get_model_scale(path, h=height)
+    elif category in MODEL_SCALES:
+        scale = MODEL_SCALES[category][id]
+
+    body, file = load_body(path, scale, location)
+    return file, body, scale
+
+
+def draw_text_label(body, text, offset=(0, -0.05, .5)):
+    lower, upper = get_aabb(body)
+    position = ((lower[0] + upper[0]) / 2, (lower[1] + upper[1]) / 2, upper[2])
+    position = [position[i] + offset[i] for i in range(len(position))]
+    add_text(text, position=position, color=(1, 0, 0), lifetime=0)
+
 
 
 ###########################################################################

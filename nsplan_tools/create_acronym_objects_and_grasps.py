@@ -131,7 +131,7 @@ def main():
 
             grasp_obj_name = "{}#{}".format(obj_cls.lower(), obj_num_str)
             add_grasp_in_db(grasps_db, grasps_db_file, obj_id, grasp_poses, name=grasp_obj_name,
-                            LENGTH_VARIANTS=False, scale=1)
+                            length_variants=False, scale=1)
 
         kitchen_world_obj_num += 1
 

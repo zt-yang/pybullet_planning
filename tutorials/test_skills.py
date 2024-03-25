@@ -33,7 +33,8 @@ from world_builder.asset_constants import MODEL_HEIGHTS, MODEL_SCALES
 
 from robot_builder.robot_builders import build_skill_domain_robot
 
-from tutorials.test_utils import get_test_world, load_body
+from tutorials.test_utils import get_test_world, load_body, get_instances, draw_text_label, \
+    load_model_instance, get_model_path, get_y_gap
 from tutorials.config import ASSET_PATH
 
 
@@ -101,48 +102,6 @@ def test_spatial_algebra(body, robot):
     set_pose(gripper, W_X_G)
     set_camera_target_body(gripper, dx=0.5, dy=0, dz=0.5)
     wait_if_gui()
-
-
-def get_gap(category: str) -> float:
-    """ gaps to lay assets in a line along y-axis"""
-    gap = 2
-    if category == 'KitchenCounter':
-        gap = 3
-    if category == 'MiniFridge':
-        gap = 2
-    if category in ['Food', 'Stapler', 'BraiserBody']:
-        gap = 0.5
-    return gap
-
-
-def get_model_path(category, id):
-    models_path = join(ASSET_PATH, 'models')
-    category = [c for c in listdir(models_path) if c.lower() == category.lower()][0]
-    if not id.isdigit():
-        id = [i for i in listdir(join(models_path, category)) if i.lower() == id.lower()][0]
-    path = join(models_path, category, id)
-    return path
-
-
-def load_model_instance(category, id, scale=1, location = (0, 0)):
-    from world_builder.world_utils import get_model_scale
-
-    path = get_model_path(category, id)
-    if category in MODEL_HEIGHTS:
-        height = MODEL_HEIGHTS[category]['height']
-        scale = get_model_scale(path, h=height)
-    elif category in MODEL_SCALES:
-        scale = MODEL_SCALES[category][id]
-
-    body, file = load_body(path, scale, location)
-    return file, body, scale
-
-
-def draw_text_label(body, text, offset=(0, -0.05, .5)):
-    lower, upper = get_aabb(body)
-    position = ((lower[0] + upper[0]) / 2, (lower[1] + upper[1]) / 2, upper[2])
-    position = [position[i] + offset[i] for i in range(len(position))]
-    add_text(text, position=position, color=(1, 0, 0), lifetime=0)
 
 
 def test_handle_grasps(robot, category, skip_grasps=False):
@@ -249,7 +208,7 @@ def test_placement_in(robot, category, movable_category='Food', movable_instance
     instances = get_instances(category)
     n = len(instances)
     i = 0
-    locations = [(0, get_gap(category) * n) for n in range(1, n + 1)]
+    locations = [(0, get_y_gap(category) * n) for n in range(1, n + 1)]
     set_camera_pose((4, 3, 2), (0, 3, 0.5))
     for id in instances:
         (x, y) = locations[i]
@@ -363,7 +322,7 @@ def test_placement_on(robot, category, surface_name=None, seg_links=False, gen_z
     instances = get_instances(category)
     n = len(instances)
     i = 0
-    locations = [(0, get_gap(category) * n) for n in range(2, n + 2)]
+    locations = [(0, get_y_gap(category) * n) for n in range(2, n + 2)]
     set_camera_pose((4, 3, 2), (0, 3, 0.5))
     for id in instances:
         (x, y) = locations[i]
@@ -692,46 +651,6 @@ def test_sink_configuration(robot, pause=False):
 def test_kitchen_configuration(robot):
     world = get_test_world(robot=robot, semantic_world=True, initial_xy=(1.5, 4))
     sample_full_kitchen(world)
-
-
-def add_scale_to_grasp_file(robot, category):
-    from pybullet_tools.logging import dump_json
-    from pprint import pprint
-
-    ## find all instance, scale, and instance names
-    instances = get_instances(category)
-    instance_names = {}
-    for id, scale in instances.items():
-        path = get_model_path(category, id)
-        name = get_instance_name(join(path, 'mobility.urdf'))
-        instance_names[name] = (id, scale)
-
-    ## find the grasp file of the robot and add scale
-    db_file = get_grasp_db_file(robot)
-    db = json.load(open(db_file, 'r'))
-    updates = {}
-    for key, data in db.items():
-        for name in instance_names:
-            if key.startswith(name):
-                id, data['scale'] = instance_names[name]
-                if data['name'] == 'None':
-                    data['name'] = f"{category}/{id}"
-                updates[key] = data
-    pprint(updates)
-    db.update(updates)
-    if isfile(db_file): os.remove(db_file)
-    dump_json(db, db_file, sort_dicts=False)
-
-
-def add_time_to_grasp_file():
-    from pybullet_tools.logging import dump_json
-    for robot in ['pr2', 'feg']:
-        db_file = get_grasp_db_file(robot)
-        db = json.load(open(db_file, 'r'))
-        for key, data in db.items():
-            data["datetime"] = "22" + data["datetime"]
-            db[key] = data
-        dump_json(db, db_file, sort_dicts=False)
 
 
 def test_reachability(robot):

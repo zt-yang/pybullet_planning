@@ -6,7 +6,7 @@ from os.path import basename
 from world_builder.entities import Robot
 
 from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color, TRANSPARENT, \
-    link_from_name, multiply, invert, LockRenderer, RED, draw_aabb, get_aabb, \
+    link_from_name, multiply, invert, LockRenderer, unit_point, draw_aabb, get_aabb, \
     set_joint_positions, set_pose, GREEN, get_pose, remove_body, PoseSaver, \
     ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles, \
     interpolate_poses, Pose, Euler, quat_from_euler, get_bodies, get_all_links, PI, \
@@ -45,13 +45,13 @@ class RobotAPI(Robot):
     def get_stream_map(self, problem, collisions, custom_limits, teleport, **kwargs):
         raise NotImplementedError('should implement this for RobotAPI!')
 
+    def get_tool_link(self, arm):
+        raise NotImplementedError('should implement this for RobotAPI!')
+
     def get_gripper_joints(self, gripper_grasp):
         raise NotImplementedError('should implement this for RobotAPI!')
 
     def visualize_grasp(self, body_pose, grasp, arm='left', color=GREEN, **kwargs):
-        raise NotImplementedError('should implement this for RobotAPI!')
-
-    def get_attachment_link(self, arm):
         raise NotImplementedError('should implement this for RobotAPI!')
 
     def get_carry_conf(self, arm, grasp_type, g):
@@ -66,7 +66,7 @@ class RobotAPI(Robot):
     def create_gripper(self, arm='hand', visual=True, color=None):
         raise NotImplementedError('should implement this for RobotAPI!')
 
-    def open_cloned_gripper(self, gripper_cloned, arm):
+    def open_cloned_gripper(self, gripper_cloned, arm, width=1):
         raise NotImplementedError('should implement this for RobotAPI!')
 
     def close_cloned_gripper(self, gripper_cloned, arm):
@@ -112,7 +112,7 @@ class RobotAPI(Robot):
                 filtered_grasps.append(grasp)
         return filtered_grasps
 
-    def make_attachment(self, grasp, tool_link, visualize=False):
+    def make_attachment(self, grasp, tool_link, visualize=False, rotation_matrix=None):
         o = grasp.body
         if isinstance(o, tuple) and len(o) == 2:
             body, joint = o
@@ -122,7 +122,7 @@ class RobotAPI(Robot):
         arm = self.arms[0]
         tool_from_root = self.get_tool_from_root(arm)
         child_pose = get_pose(o)
-        grasp_pose = self.get_grasp_pose(child_pose, grasp.value, body=o)
+        grasp_pose = self.get_grasp_pose(child_pose, grasp.value, body=o, rotation_matrix=rotation_matrix)
         gripper_pose = multiply(grasp_pose, invert(tool_from_root))
         grasp_pose = multiply(invert(gripper_pose), child_pose)
         attachment = Attachment(self, tool_link, grasp_pose, grasp.body)
@@ -140,13 +140,13 @@ class RobotAPI(Robot):
                        rotation_matrix=None):
         ## those primitive shapes
         if body is not None and isinstance(body, int) and len(get_all_links(body)) == 1:
-            tool_from_root = multiply(((0, 0.025, 0.025), unit_quat()), self.tool_from_hand,
-                                      self.get_tool_from_root(arm))
+            tool_from_root = multiply(((0, 0.025, 0.025), unit_quat()), self.tool_from_hand)  ## self.get_tool_from_root(arm)
         ## those urdf files made from one .obj file
         else:
-            body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose,
-                                           rotation_matrix=rotation_matrix)
-            tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
+            body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
+            if rotation_matrix is None:
+                rotation_matrix = (math.pi / 2, -math.pi / 2, -math.pi)
+            tool_from_root = ((0, 0, -0.05), quat_from_euler(rotation_matrix))
         return multiply(body_pose, grasp, tool_from_root)
 
     ###############################################################################
@@ -154,7 +154,7 @@ class RobotAPI(Robot):
     def get_custom_limits(self):
         return self.custom_limits
 
-    def get_body_pose(self, body_pose, body=None, rotation_matrix=None, verbose=False):
+    def get_body_pose(self, body_pose, body=None, verbose=False):
         title = f'    robot.get_body_pose({nice(body_pose)}, body={body})'
 
         ## if body_pose is handle link pose and body is (body, joint)
@@ -175,10 +175,7 @@ class RobotAPI(Robot):
                 body_pose = get_pose(b)
                 if verbose: print(f'{title} | actually given body, body_pose = get_pose(b) = {nice(body_pose)}')
 
-        if rotation_matrix is not None:
-            r = rotation_matrix
-        else:
-            r = get_rotation_matrix(body) if body is not None else self.tool_from_hand
+        r = get_rotation_matrix(body) if body is not None else self.tool_from_hand
         new_body_pose = multiply(body_pose, r)
         return new_body_pose
 
@@ -189,6 +186,9 @@ class RobotAPI(Robot):
         tool_link = self.get_attachment_link(arm)
         return self.make_attachment(grasp, tool_link, **kwargs)
         # return Attachment(self.body, tool_link, grasp.value, grasp.body)
+
+    def get_attachment_link(self, arm):
+        return link_from_name(self.body, self.get_tool_link(arm))
 
     ################################################################################
 
@@ -209,9 +209,6 @@ class MobileRobot(RobotAPI):
         super(MobileRobot, self).__init__(body, **kwargs)
         self.use_torso = use_torso
 
-    def get_tool_link(self, arm):
-        raise NotImplementedError('should implement this for MobileRobot!')
-
     def get_gripper_root(self, arm):
         raise NotImplementedError('should implement this for MobileRobot!')
 
@@ -221,13 +218,8 @@ class MobileRobot(RobotAPI):
     def get_tool_from_root(self, arm):
         raise NotImplementedError('should implement this for MobileRobot!')
 
-    ## -----------------------------------------------------------------------------
-
     def get_all_arms(self):
         return self.arms
-
-    def get_attachment_link(self, arm):
-        return link_from_name(self.body, self.get_tool_link(arm))
 
     ## -----------------------------------------------------------------------------
 
@@ -297,18 +289,19 @@ class MobileRobot(RobotAPI):
             return arms[0]
         return None
 
-    def set_gripper_pose(self, body_pose, grasp, gripper=None, arm='left', body=None, verbose=False, **kwargs):
+    def set_gripper_pose(self, body_pose, grasp, gripper=None, arm='left', **kwargs):
         if gripper is None:
             gripper = self.get_gripper(arm, **kwargs)
-        self.open_cloned_gripper(gripper, arm)
-        grasp_pose = self.get_grasp_pose(body_pose, grasp, arm, body=body, verbose=verbose)
+        grasp_pose = self.get_grasp_pose(body_pose, grasp, arm, **kwargs)
         set_pose(gripper, grasp_pose)
         return gripper
 
     def visualize_grasp(self, body_pose, grasp, arm='left', color=GREEN, cache=False,
-                        body=None, verbose=False, new_gripper=False, **kwargs):
+                        new_gripper=False, width=None, **kwargs):
         gripper = self.load_gripper(arm, color=color, new_gripper=new_gripper)
-        self.set_gripper_pose(body_pose, grasp, gripper=gripper, arm=arm, body=body, verbose=verbose)
+        self.set_gripper_pose(body_pose, grasp, gripper=gripper, arm=arm, **kwargs)
+        if width is not None:
+            self.open_cloned_gripper(gripper, arm, width)
         return gripper
 
     def mod_grasp_along_handle(self, grasp, dl):
@@ -372,9 +365,9 @@ class SpotRobot(MobileRobot):
         joints = get_cloned_gripper_joints(gripper_cloned)
         set_joint_positions(gripper_cloned, joints, [0, 0])
 
-    def open_cloned_gripper(self, gripper_cloned, arm):
+    def open_cloned_gripper(self, gripper_cloned, arm, width=-math.pi/2):
         joints = get_cloned_gripper_joints(gripper_cloned)
-        set_joint_positions(gripper_cloned, joints, [0, -math.pi/2])
+        set_joint_positions(gripper_cloned, joints, [0, width])
 
     # def get_stream_map(self, problem, collisions, custom_limits, teleport,
     #                    domain_pddl=None, **kwargs):
@@ -444,12 +437,9 @@ class PR2Robot(MobileRobot):
         joints = get_cloned_gripper_joints(gripper_cloned)
         set_joint_positions(gripper_cloned, joints, [0] * 4)
 
-    def open_cloned_gripper(self, gripper_cloned, arm):
+    def open_cloned_gripper(self, gripper_cloned, arm, width=0.548):
         joints = get_cloned_gripper_joints(gripper_cloned)
-        set_joint_positions(gripper_cloned, joints, [0.548] * 4)
-
-    def get_attachment_link(self, arm):
-        return link_from_name(self.body, PR2_TOOL_FRAMES.get(arm, arm))
+        set_joint_positions(gripper_cloned, joints, [width] * 4)
 
     def get_carry_conf(self, arm, grasp_type, g):
         return TOP_HOLDING_LEFT_ARM
@@ -925,10 +915,6 @@ class FEGripper(RobotAPI):
         tool_link = link_from_name(self.body, 'panda_hand')
         return self.make_attachment(grasp, tool_link, **kwargs)
         # return Attachment(self.body, tool_link, grasp.value, grasp.body)
-
-    def get_attachment_link(self, arm):
-        from pybullet_tools.flying_gripper_utils import FEG_TOOL_LINK
-        return link_from_name(self.body, FEG_TOOL_LINK)
 
     def get_tool_link(self, arm):
         return FEG_TOOL_LINK

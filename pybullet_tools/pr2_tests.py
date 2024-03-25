@@ -17,7 +17,7 @@ from pybullet_tools.pr2_primitives import get_group_joints, get_base_custom_limi
     get_gripper_joints, GripperCommand, Simultaneous, create_trajectory
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, get_handle_grasp_list_gen, \
     get_handle_grasp_gen, get_compute_pose_kin, sample_joint_position_closed_gen, get_contain_gen
-from pybullet_tools.bullet_utils import set_camera_target_body, \
+from pybullet_tools.bullet_utils import set_camera_target_body, colors, color_names, \
     nice, BASE_LIMITS, initialize_collision_logs, collided
 from pybullet_tools.pr2_problems import create_pr2
 from pybullet_tools.pr2_utils import create_pr2_gripper, set_group_conf
@@ -184,18 +184,18 @@ def test_grasps(state, name='cabbage', visualize=True):
 
 
 def visualize_grasps(state, outputs, body_pose, retain_all=True, collisions=False, pause_each=False,
-                     test_attachment=False):
+                     test_attachment=False, color=None, **kwargs):
     robot = state.robot
-    colors = [BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED]
-    color_names = ['BROWN', 'BLUE', 'WHITE', 'TAN', 'GREY', 'YELLOW', 'GREEN', 'BLACK', 'RED']
 
-    def visualize_grasp(grasp, index=0):
+    def visualize_grasp(grasp, gripper_color=color, index=0):
         w = grasp.grasp_width
         if retain_all:
-            idx = index % len(colors)
-            print(' grasp.value', nice(grasp.value), 'color', color_names[idx])
+            if gripper_color is None:
+                idx = index % len(colors)
+                print(' grasp.value', nice(grasp.value), 'color', color_names[idx])
+                gripper_color = colors[idx]
             gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, body=grasp.body,
-                                                  color=colors[idx], width=w, new_gripper=True)
+                                                  color=gripper_color, width=w, new_gripper=True, **kwargs)
             if collisions and collided(gripper_grasp, state.obstacles, verbose=True):
                 remove_body(gripper_grasp)
                 return None

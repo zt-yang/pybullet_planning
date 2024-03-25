@@ -29,8 +29,10 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, pairw
     get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, Point, get_camera_matrix, \
     YELLOW, add_line, draw_point, RED, remove_handles, apply_affine, vertices_from_rigid, \
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, set_renderer, draw_aabb, set_point, has_gui, get_rigid_clusters, \
-    link_pairs_collision, wait_unlocked, apply_alpha, set_color, \
-    dimensions_from_camera_matrix, get_field_of_view, get_image, timeout, unit_point, get_joint_limits, ConfSaver, BASE_LINK as ROOT_LINK
+    link_pairs_collision, wait_unlocked, apply_alpha, set_color, BASE_LINK as ROOT_LINK, \
+    dimensions_from_camera_matrix, get_field_of_view, get_image, timeout, unit_point, get_joint_limits, ConfSaver, \
+    BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED
+
 
 
 OBJ = '?obj'
@@ -49,6 +51,9 @@ BASE_LIMITS = ((-1, 3), (6, 13))
 CAMERA_FRAME = 'high_def_optical_frame'
 EYE_FRAME = 'wide_stereo_gazebo_r_stereo_camera_frame'
 CAMERA_MATRIX = get_camera_matrix(width=640, height=480, fx=525., fy=525.) # 319.5, 239.5 | 772.55, 772.5S
+
+colors = [GREEN, BROWN, BLUE, WHITE, TAN, GREY, YELLOW, BLACK, RED]
+color_names = ['GREEN', 'BROWN', 'BLUE', 'WHITE', 'TAN', 'GREY', 'YELLOW', 'BLACK', 'RED']
 
 
 def load_robot_urdf(urdf_path):
@@ -1331,7 +1336,8 @@ def enumerate_rotational_matrices(return_list=False):
 
 def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
                     handle_filter=False, length_variants=False, use_all_grasps=True,
-                    retain_all=False, verbose=True, collisions=False, debug_del=False, rotation_matrix=None):
+                    retain_all=False, verbose=True, collisions=False, debug_del=False,
+                    rotation_matrix=None):
     body_name = (body, link) if link is not None else body
     title = f'bullet_utils.get_hand_grasps({body_name}) | '
     dist = grasp_length
@@ -1471,6 +1477,8 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
         # else:
         for r in rots[ang]:
             grasps.extend(check_grasp(f, r))
+            if rotation_matrix is not None:
+                return grasps
 
         # ## just to look at the orientation
         # if debug_del:
@@ -1488,7 +1496,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
     ## lastly store the newly sampled grasps
     if instance_name is not None:
         add_grasp_in_db(db, db_file, instance_name, grasps, name=world.get_name(body_name),
-                        LENGTH_VARIANTS=length_variants, scale=scale)
+                        length_variants=length_variants, scale=scale)
     remove_handles(handles)
     # if len(grasps) > num_samples:
     #     random.shuffle(grasps)
@@ -1496,8 +1504,8 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
     return grasps  ##[:1]
 
 
-def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, body=None,
-                        min_num_pts=40, retain_all=False, verbose=False, collisions=False, **kwargs):
+def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, visualize=False, body=None,
+                        min_num_pts=40, retain_all=False, collisions=False, rotation_matrix=None, **kwargs):
     robot = world.robot
 
     ################# for debugging ################
@@ -1507,7 +1515,11 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, b
     #         visualize = True
     ################################################
 
-    gripper_grasp = robot.visualize_grasp(object_pose, grasp, verbose=verbose, **kwargs)
+    gripper_grasp = robot.visualize_grasp(object_pose, grasp, verbose=verbose,
+                                          rotation_matrix=rotation_matrix, **kwargs)
+    if rotation_matrix is not None:
+        remove_body(gripper_grasp)
+        return True, None, gripper_grasp
     if gripper_grasp is None:
         return False, None, None
 
@@ -1731,10 +1743,10 @@ def find_grasp_in_db(db_file, instance_name, length_variants=False, scale=None,
 
 
 def add_grasp_in_db(db, db_file, instance_name, grasps, name=None,
-                    LENGTH_VARIANTS=False, scale=None):
+                    length_variants=False, scale=None):
     if instance_name is None: return
 
-    key = 'grasps' if not LENGTH_VARIANTS else 'grasps_l'
+    key = 'grasps' if not length_variants else 'grasps_l'
     add_grasps = []
     for g in grasps:
         add_grasps.append(list(nice(g, 4)))
