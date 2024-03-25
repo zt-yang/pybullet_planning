@@ -5,13 +5,30 @@ from collections import defaultdict
 import argparse
 from os.path import isfile
 
+from __future__ import print_function
+import os
+import random
+import json
+import shutil
+import time
+import math
+
+import numpy as np
+from os.path import join, abspath, dirname, isdir, isfile
+from os import listdir
+
+from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, load_pybullet, load_model, \
+    sample_aabb, AABB, set_pose, quat_from_euler, HideOutput, get_aabb_extent, unit_quat, remove_body, \
+    set_camera_pose, wait_unlocked, disconnect, wait_if_gui, create_box, get_aabb
+from world_builder.world_utils import get_instances as get_instances_helper
+
 from pybullet_tools.utils import connect, draw_pose, unit_pose, set_caching
 from pybullet_tools.bullet_utils import nice
 from pybullet_tools.pr2_problems import create_floor
 
 from robot_builder.robot_builders import build_skill_domain_robot
 
-from tutorials.config import modify_file_by_project
+from tutorials.config import modify_file_by_project, ASSET_PATH
 
 from pddlstream.algorithms.meta import create_parser
 
@@ -68,6 +85,78 @@ def get_args(exp_name=None):
 ###########################################################################
 
 
+def get_data(categories):
+    from world_builder.paths import PARTNET_PATH
+
+    for category in categories:
+        models = get_instances_helper(category)
+
+        target_model_path = join(ASSET_PATH, 'models', category)
+        if not isdir(target_model_path):
+            os.mkdir(target_model_path)
+
+        if isdir(PARTNET_PATH):
+            for idx in models:
+                old_path = join(PARTNET_PATH, idx)
+                new_path = join(target_model_path, idx)
+                if isdir(old_path) and not isdir(new_path):
+                    shutil.copytree(old_path, new_path)
+                    print(f'copying {old_path} to {new_path}')
+
+
+def load_body(path, scale, pose_2d=(0, 0), random_yaw=False):
+    file = join(path, 'mobility.urdf')
+    # if 'MiniFridge' in file:
+    #     file = file[file.index('../')+2:]
+    #     file = '/home/yang/Documents/cognitive-architectures/bullet' + file
+    print('loading', file)
+    with HideOutput(True):
+        body = load_model(file, scale=scale)
+        if isinstance(body, tuple): body = body[0]
+    pose = pose_from_2d(body, pose_2d, random_yaw=random_yaw)
+    # pose = (pose[0], unit_quat())
+    set_pose(body, pose)
+    return body, file
+
+
+def get_instances(category, **kwargs):
+    instances = get_instances_helper(category, **kwargs)
+    if len(instances) == 0:
+        cat_dir = join(ASSET_PATH, 'models', category)
+        if not isdir(cat_dir):
+            os.mkdir(cat_dir)
+            get_data(categories=[category])
+        instances = get_instances_helper(category, **kwargs)
+    return instances
+
+
+def get_z_on_floor(body):
+    return get_aabb_extent(get_aabb(body))[-1]/2
+
+
+def get_floor_aabb(custom_limits):
+    x_min, x_max = custom_limits[0]
+    y_min, y_max = custom_limits[1]
+    return AABB(lower=(x_min, y_min), upper=(x_max, y_max))
+
+
+def sample_pose_on_floor(body, custom_limits):
+    x, y = sample_aabb(get_floor_aabb(custom_limits))
+    z = get_z_on_floor(body)
+    return ((x, y, z), quat_from_euler((0, 0, math.pi)))
+
+
+def pose_from_2d(body, xy, random_yaw=False):
+    z = get_z_on_floor(body)
+    yaw = math.pi ## facing +x axis
+    if random_yaw:
+        yaw = random.uniform(-math.pi, math.pi)
+    return ((xy[0], xy[1], z), quat_from_euler((0, 0, yaw)))
+
+
+###########################################################################
+
+
 def save_csv(csv_file, data):
     csv_file = modify_file_by_project(csv_file)
     col_names = list(data.keys())
@@ -109,3 +198,4 @@ def read_csv(csv_file, summarize=True):
         print(tabulate(stats, headers="firstrow"))
 
     return data
+

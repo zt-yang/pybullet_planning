@@ -1310,9 +1310,28 @@ def check_grasp_link(world, body, link):
     return using_grasp_link, link
 
 
+def enumerate_rotational_matrices(return_list=False):
+    P = math.pi
+    rots = {
+        (1, 0, 0): [(P / 2, 0, -P / 2), (P / 2, P, -P / 2), (P / 2, -P / 2, -P / 2), (P / 2, P / 2, -P / 2)],
+        (-1, 0, 0): [(P / 2, 0, P / 2), (P / 2, P, P / 2), (P / 2, -P / 2, P / 2), (P / 2, P / 2, P / 2),
+                     (-P, -P / 2, 0), (-P, -P / 2, -P)],
+        (0, 1, 0): [(0, P / 2, -P / 2), (0, -P / 2, P / 2), (P / 2, P, 0), (P / 2, 0, 0)],
+        (0, -1, 0): [(0, P / 2, P / 2), (0, -P / 2, -P / 2), (-P / 2, P, 0), (-P / 2, 0, 0)],
+        (0, 0, 1): [(P, 0, P / 2), (P, 0, -P / 2), (P, 0, 0), (P, 0, P)],
+        (0, 0, -1): [(0, 0, -P / 2), (0, 0, P / 2), (0, 0, 0), (0, 0, P)],
+    }
+    if return_list:
+        lst = []
+        for v in rots.values():
+            lst += v
+        return lst
+    return rots
+
+
 def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
                     handle_filter=False, length_variants=False, use_all_grasps=True,
-                    retain_all=False, verbose=True, collisions=False, debug_del=False):
+                    retain_all=False, verbose=True, collisions=False, debug_del=False, rotation_matrix=None):
     body_name = (body, link) if link is not None else body
     title = f'bullet_utils.get_hand_grasps({body_name}) | '
     dist = grasp_length
@@ -1341,8 +1360,8 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
     instance_name = world.get_instance_name(body_name)
     if instance_name is not None:
         grasp_db_file = get_grasp_db_file(robot)
-        found, db, db_file = find_grasp_in_db(grasp_db_file, instance_name, verbose=verbose,
-                                              length_variants=length_variants, scale=scale)
+        found, db, db_file = find_grasp_in_db(grasp_db_file, instance_name, verbose=verbose, scale=scale,
+                                              length_variants=length_variants, use_all_grasps=use_all_grasps)
         if found is not None:
             if visualize:
                 bodies = []
@@ -1379,7 +1398,8 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
         grasp = multiply(Pose(point=f), Pose(euler=r))
 
         result, aabb, gripper = check_cfree_gripper(grasp, world, body_pose, obstacles, verbose=verbose, body=body,
-                                                    visualize=visualize, retain_all=retain_all, collisions=collisions)
+                                                    visualize=visualize, retain_all=retain_all, collisions=collisions,
+                                                    rotation_matrix=rotation_matrix)
         if result:  ##  and check_new(aabbs, aabb):
             grasps += [grasp]
             # aabbs += [aabb]
@@ -1422,15 +1442,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
     max_value = max(dimensions)
     filter = [int(x != max_value) for x in dimensions]
 
-    P = math.pi
-    rots = {
-        (1, 0, 0): [(P/2, 0, -P/2), (P/2, P, -P/2), (P/2, -P/2, -P/2), (P/2, P/2, -P/2)],
-        (-1, 0, 0): [(P/2, 0, P/2), (P/2, P, P/2), (P/2, -P/2, P/2), (P/2, P/2, P/2), (-P, -P/2, 0), (-P, -P/2, -P)],
-        (0, 1, 0): [(0, P/2, -P/2), (0, -P/2, P/2), (P/2, P, 0), (P/2, 0, 0)],
-        (0, -1, 0): [(0, P/2, P/2), (0, -P/2, -P/2), (-P/2, P, 0), (-P/2, 0, 0)],
-        (0, 0, 1): [(P, 0, P/2), (P, 0, -P/2), (P, 0, 0), (P, 0, P)],
-        (0, 0, -1): [(0, 0, -P/2), (0, 0, P/2), (0, 0, 0), (0, 0, P)],
-    }
+    rots = enumerate_rotational_matrices()
     # set_renderer(visualize)
     grasps = []
     # aabbs = []
@@ -1484,8 +1496,8 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
     return grasps  ##[:1]
 
 
-def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, color=GREEN, body=None,
-                        min_num_pts=40, retain_all=False, verbose=False, collisions=False):
+def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, body=None,
+                        min_num_pts=40, retain_all=False, verbose=False, collisions=False, **kwargs):
     robot = world.robot
 
     ################# for debugging ################
@@ -1495,7 +1507,7 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
     #         visualize = True
     ################################################
 
-    gripper_grasp = robot.visualize_grasp(object_pose, grasp, color=color, verbose=verbose)
+    gripper_grasp = robot.visualize_grasp(object_pose, grasp, verbose=verbose, **kwargs)
     if gripper_grasp is None:
         return False, None, None
 
@@ -1543,11 +1555,6 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, visualize=False, c
         robot.open_cloned_gripper(gripper_grasp)
 
     return result, aabb, gripper_grasp
-
-
-def get_cloned_gripper_joints(gripper_cloned):
-    return [joint for joint in get_joints(gripper_cloned) if is_movable(gripper_cloned, joint)]
-
 
 ########################################################################
 
@@ -1676,7 +1683,8 @@ def get_gripper_direction(pose, epsilon=0.01):
     return None
 
 
-def find_grasp_in_db(db_file, instance_name, length_variants=False, scale=None, use_all_grasps=False, verbose=True):
+def find_grasp_in_db(db_file, instance_name, length_variants=False, scale=None,
+                     use_all_grasps=False, verbose=True):
     """ find saved json files, prioritize databases/ subdir """
     db = json.load(open(db_file, 'r')) if isfile(db_file) else {}
 

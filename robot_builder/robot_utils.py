@@ -4,7 +4,7 @@ import copy
 from pybullet_tools.utils import joint_from_name, get_link_subtree, link_from_name, clone_body, \
     set_all_color, TRANSPARENT, get_max_limit, get_min_limit, get_extend_fn, get_moving_links, \
     set_joint_positions, pairwise_collision, get_link_pose, multiply, set_pose, \
-    RED, set_color, get_link_name
+    RED, set_color, get_link_name, get_joints, is_movable
 
 from pybullet_tools.bullet_utils import BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, \
     draw_base_limits as draw_base_limits_bb, BASE_LIMITS, CAMERA_FRAME, CAMERA_MATRIX, EYE_FRAME
@@ -62,6 +62,10 @@ def get_robot_gripper_link(robot, arm, tool_frames):
 
 def get_robot_gripper_joints(robot, arm, joint_groups):
     return get_robot_group_joints(robot, gripper_group_from_arm(arm), joint_groups)
+
+
+def get_cloned_gripper_joints(gripper_cloned):
+    return [joint for joint in get_joints(gripper_cloned) if is_movable(gripper_cloned, joint)]
 
 
 def gripper_group_from_arm(arm):

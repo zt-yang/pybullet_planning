@@ -4,6 +4,7 @@ import random
 import json
 import shutil
 import time
+import math
 
 import numpy as np
 from os.path import join, abspath, dirname, isdir, isfile
@@ -32,10 +33,9 @@ from world_builder.asset_constants import MODEL_HEIGHTS, MODEL_SCALES
 
 from robot_builder.robot_builders import build_skill_domain_robot
 
-from tutorials.test_utils import get_test_world
+from tutorials.test_utils import get_test_world, load_body
 from tutorials.config import ASSET_PATH
 
-import math
 
 DEFAULT_TEST = 'kitchen' ## 'blocks_pick'
 
@@ -47,25 +47,6 @@ set_numpy_seed(seed)
 print('Seed:', seed)
 
 # ####################################
-
-
-def get_data(categories):
-    from world_builder.paths import PARTNET_PATH
-
-    for category in categories:
-        models = get_instances_helper(category)
-
-        target_model_path = join(ASSET_PATH, 'models', category)
-        if not isdir(target_model_path):
-            os.mkdir(target_model_path)
-
-        if isdir(PARTNET_PATH):
-            for idx in models:
-                old_path = join(PARTNET_PATH, idx)
-                new_path = join(target_model_path, idx)
-                if isdir(old_path) and not isdir(new_path):
-                    shutil.copytree(old_path, new_path)
-                    print(f'copying {old_path} to {new_path}')
 
 
 def test_texture(category, id):
@@ -84,56 +65,6 @@ def test_texture(category, id):
     # tree = gfg.ElementTree(content)
     # with open(path.replace('mobility', 'mobility_2'), "wb") as files:
     #     tree.write(files)
-
-
-def load_body(path, scale, pose_2d=(0, 0), random_yaw=False):
-    file = join(path, 'mobility.urdf')
-    # if 'MiniFridge' in file:
-    #     file = file[file.index('../')+2:]
-    #     file = '/home/yang/Documents/cognitive-architectures/bullet' + file
-    print('loading', file)
-    with HideOutput(True):
-        body = load_model(file, scale=scale)
-        if isinstance(body, tuple): body = body[0]
-    pose = pose_from_2d(body, pose_2d, random_yaw=random_yaw)
-    # pose = (pose[0], unit_quat())
-    set_pose(body, pose)
-    return body, file
-
-
-def get_instances(category, **kwargs):
-    instances = get_instances_helper(category, **kwargs)
-    if len(instances) == 0:
-        cat_dir = join(ASSET_PATH, 'models', category)
-        if not isdir(cat_dir):
-            os.mkdir(cat_dir)
-            get_data(categories=[category])
-        instances = get_instances_helper(category, **kwargs)
-    return instances
-
-
-def get_z_on_floor(body):
-    return get_aabb_extent(get_aabb(body))[-1]/2
-
-
-def get_floor_aabb(custom_limits):
-    x_min, x_max = custom_limits[0]
-    y_min, y_max = custom_limits[1]
-    return AABB(lower=(x_min, y_min), upper=(x_max, y_max))
-
-
-def sample_pose_on_floor(body, custom_limits):
-    x, y = sample_aabb(get_floor_aabb(custom_limits))
-    z = get_z_on_floor(body)
-    return ((x, y, z), quat_from_euler((0, 0, math.pi)))
-
-
-def pose_from_2d(body, xy, random_yaw=False):
-    z = get_z_on_floor(body)
-    yaw = math.pi ## facing +x axis
-    if random_yaw:
-        yaw = random.uniform(-math.pi, math.pi)
-    return ((xy[0], xy[1], z), quat_from_euler((0, 0, yaw)))
 
 # ####################################
 
@@ -182,103 +113,6 @@ def get_gap(category: str) -> float:
     if category in ['Food', 'Stapler', 'BraiserBody']:
         gap = 0.5
     return gap
-
-
-def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=False, **kwargs):
-    world = get_test_world(robot, **kwargs)
-    draw_pose(unit_pose(), length=10)
-    robot = world.robot
-    problem = State(world, grasp_types=robot.grasp_types)  ## , 'side' , 'top'
-
-    i = -1
-    for cat in categories:
-
-        tpt = math.pi / 4 if cat in ['Knife'] else None ## , 'EyeGlasses', 'Plate'
-        funk = get_grasp_list_gen(problem, collisions=True, visualize=True,
-                                  retain_all=True, top_grasp_tolerance=tpt, verbose=True)
-
-        def test_grasp(body):
-            set_renderer(True)
-            body_pose = get_pose(body)  ## multiply(get_pose(body), Pose(euler=Euler(math.pi/2, 0, -math.pi/2)))
-            outputs = funk(body)
-            if isinstance(outputs, list):
-                print(f'grasps on body {body}:', outputs)
-            visualize_grasps(problem, outputs, body_pose, retain_all=not test_attachment or True,
-                             test_attachment=test_attachment)
-            set_renderer(True)
-            set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
-
-        if cat == 'box':
-            body = create_box(0.05, 0.05, 0.05, mass=0.2, color=GREEN)
-            set_pose(body, ((1, 1, 0.9), unit_pose()[1]))
-            test_grasp(body)
-            continue
-
-        i += 1
-        instances = get_instances(cat)
-        print('instances', instances)
-        n = len(instances)
-        locations = [(i, get_gap(cat) * n) for n in range(1, n+1)]
-        j = -1
-        for id, scale in instances.items():
-            j += 1
-            if isinstance(id, tuple):
-                cat, id = id
-            path, body, _ = load_model_instance(cat, id, scale=scale, location=locations[j])
-            instance_name = get_instance_name(abspath(path))
-            obj_name = f'{cat.lower()}#{id}'
-            world.add_body(body, obj_name, instance_name)
-            set_camera_target_body(body)
-            text = id.replace('veggie', '').replace('meat', '')
-            draw_text_label(body, text, offset=(0, -0.2, 0.1))
-
-            if cat == 'BraiserBody':
-                print('get_aabb_extent', nice(get_aabb_extent(get_aabb(body))))
-                set_camera_target_body(body, dx=0.05, dy=0, dz=0.5)
-                # draw_points(body, size=0.05)
-                # set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
-                # pose = get_pose(body)
-                # _, body, _ = load_model_instance('BraiserLid', id, scale=scale, location=locations[j])
-                # set_pose(body, pose)
-
-            # draw_aabb(get_aabb(body))
-
-            """ --- fixing texture issues ---"""
-            # world.add_joints_by_keyword(obj_name)
-            # world.open_all_doors()
-
-            """ test others """
-            # test_robot_rotation(body, world.robot)
-            # test_spatial_algebra(body, world.robot)
-            # draw_fitted_box(body, draw_centroid=True)
-            # grasps = get_hand_grasps(world, body)
-
-            """ test grasps """
-            if skip_grasps:
-                print('length', round(get_aabb_extent(get_aabb(body))[1], 3))
-                print('height', round(get_aabb_extent(get_aabb(body))[2], 3))
-                print('point', round(get_pose(body)[0][2], 3))
-                wait_if_gui()
-            else:
-                test_grasp(body)
-                wait_unlocked()
-
-        if len(categories) > 1:
-            wait_if_gui(f'------------- Next object category? finished ({i+1}/{len(categories)})')
-
-        if cat == 'MiniFridge':
-            set_camera_pose((3, 7, 2), (0, 7, 1))
-        elif cat == 'Food':
-            set_camera_pose((3, 3, 2), (0, 3, 1))
-        elif cat == 'Stapler':
-            set_camera_pose((3, 1.5, 2), (0, 1.5, 1))
-
-    remove_body(robot)
-
-    # set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
-    set_renderer(True)
-    wait_if_gui('Finish?')
-    disconnect()
 
 
 def get_model_path(category, id):
@@ -1102,12 +936,6 @@ if __name__ == '__main__':
     # test_torso()
     # test_reachability(robot)
     # test_tracik(robot)
-
-    """ --- grasps related --- """
-    # test_grasps(robot, ['Salter'], skip_grasps=False, test_attachment=False)  ## 'Salter'
-    test_grasps(robot, ['VeggieCabbage'], skip_grasps=False, test_attachment=False)
-    # add_scale_to_grasp_file(robot, category='MiniFridge')
-    # add_time_to_grasp_file()
 
     """ --- grasps and placement for articulated storage units --- 
         IN: 'MiniFridge', 'MiniFridgeDoorless', 'CabinetTop'
