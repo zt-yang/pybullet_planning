@@ -1315,6 +1315,10 @@ def check_grasp_link(world, body, link):
     return using_grasp_link, link
 
 
+def numerate_translation_matrices():
+    return [(1, 0, 0), (0, 1, 0), (0, 0, 1)]
+
+
 def enumerate_rotational_matrices(return_list=False):
     P = math.pi
     rots = {

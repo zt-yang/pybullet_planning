@@ -40,99 +40,102 @@ def test_grasp(problem, body, funk, test_attachment=False, test_rotation_offset=
     set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
 
 
-def test_grasps(robot='feg', categories=[], skip_grasps=False,
-                test_attachment=False, test_rotation_matrix=False, **kwargs):
+def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=False,
+                test_rotation_matrix=False, test_translation_matrix=False, **kwargs):
 
-    from pybullet_tools.bullet_utils import enumerate_rotational_matrices as emu
+    from pybullet_tools.bullet_utils import enumerate_rotational_matrices as emu, numerate_translation_matrices
 
     world = get_test_world(robot, **kwargs)
     draw_pose(unit_pose(), length=10)
     robot = world.robot
     problem = State(world, grasp_types=robot.grasp_types)
     rotation_matrices = [None] if not test_rotation_matrix else emu(return_list=True)
+    translation_matrices = [None] if not test_translation_matrix else numerate_translation_matrices()
 
-    for k, r in enumerate(rotation_matrices):
-        ## found it
-        if r is not None:
-            if test_rotation_matrix and k < 22: continue
-            r = (0, 0, -1.57)
-            problem.robot.tool_from_hand = Pose(euler=r)
+    for k1, r in enumerate(rotation_matrices):
+        for k2, r in enumerate(translation_matrices):
+            ## found it
+            if r is not None:
+                if test_rotation_matrix and k1 < 22: continue
+                r = (0, 0, -1.57)
+                problem.robot.tool_from_hand = Pose(euler=r)
 
-        idx = k % len(colors)
-        color = colors[idx]
-        color_name = color_names[idx]
-        for i, cat in enumerate(categories):
+            k = k1 * len(translation_matrices) + k2
+            idx = k1 % len(colors)
+            color = colors[idx]
+            color_name = color_names[idx]
+            for i, cat in enumerate(categories):
 
-            tpt = math.pi / 4 if cat in ['Knife'] else None  ## , 'EyeGlasses', 'Plate'
-            funk = get_grasp_list_gen(problem, collisions=True, verbose=True, visualize=True, retain_all=True,
-                                      top_grasp_tolerance=tpt, test_rotation_matrix=test_rotation_matrix)
+                tpt = math.pi / 4 if cat in ['Knife'] else None  ## , 'EyeGlasses', 'Plate'
+                funk = get_grasp_list_gen(problem, collisions=True, verbose=True, visualize=True, retain_all=True,
+                                          top_grasp_tolerance=tpt, test_rotation_matrix=test_rotation_matrix)
 
-            if cat == 'box':
-                body = create_box(0.05, 0.05, 0.05, mass=0.2, color=GREEN)
-                set_pose(body, ((1, 1, 0.9), unit_pose()[1]))
-                test_grasp(problem, body, funk, test_attachment)
-                continue
+                if cat == 'box':
+                    body = create_box(0.05, 0.05, 0.05, mass=0.2, color=GREEN)
+                    set_pose(body, ((1, 1, 0.9), unit_pose()[1]))
+                    test_grasp(problem, body, funk, test_attachment)
+                    continue
 
-            instances = get_instances(cat)
-            print('instances', instances)
-            n = len(instances)
-            locations = [(i, get_y_gap(cat) * n) for n in range(1, n+1)]
-            j = -1
-            for id, scale in instances.items():
-                j += 1
-                if isinstance(id, tuple):
-                    cat, id = id
-                path, body, _ = load_model_instance(cat, id, scale=scale, location=locations[j])
-                instance_name = get_instance_name(abspath(path))
-                obj_name = f'{cat.lower()}#{id}'
-                world.add_body(body, obj_name, instance_name)
-                set_camera_target_body(body)
-                text = id.replace('veggie', '').replace('meat', '')
-                draw_text_label(body, text, offset=(0, -0.2, 0.1))
+                instances = get_instances(cat)
+                print('instances', instances)
+                n = len(instances)
+                locations = [(i, get_y_gap(cat) * n) for n in range(1, n+1)]
+                j = -1
+                for id, scale in instances.items():
+                    j += 1
+                    if isinstance(id, tuple):
+                        cat, id = id
+                    path, body, _ = load_model_instance(cat, id, scale=scale, location=locations[j])
+                    instance_name = get_instance_name(abspath(path))
+                    obj_name = f'{cat.lower()}#{id}'
+                    world.add_body(body, obj_name, instance_name)
+                    set_camera_target_body(body)
+                    text = id.replace('veggie', '').replace('meat', '')
+                    draw_text_label(body, text, offset=(0, -0.2, 0.1))
 
-                if cat == 'BraiserBody':
-                    print('get_aabb_extent', nice(get_aabb_extent(get_aabb(body))))
-                    set_camera_target_body(body, dx=0.05, dy=0, dz=0.5)
-                    # draw_points(body, size=0.05)
-                    # set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
-                    # pose = get_pose(body)
-                    # _, body, _ = load_model_instance('BraiserLid', id, scale=scale, location=locations[j])
-                    # set_pose(body, pose)
+                    if cat == 'BraiserBody':
+                        print('get_aabb_extent', nice(get_aabb_extent(get_aabb(body))))
+                        set_camera_target_body(body, dx=0.05, dy=0, dz=0.5)
+                        # draw_points(body, size=0.05)
+                        # set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
+                        # pose = get_pose(body)
+                        # _, body, _ = load_model_instance('BraiserLid', id, scale=scale, location=locations[j])
+                        # set_pose(body, pose)
 
-                # draw_aabb(get_aabb(body))
+                    # draw_aabb(get_aabb(body))
 
-                """ --- fixing texture issues ---"""
-                # world.add_joints_by_keyword(obj_name)
-                # world.open_all_doors()
+                    """ --- fixing texture issues ---"""
+                    # world.add_joints_by_keyword(obj_name)
+                    # world.open_all_doors()
 
-                """ test others """
-                # test_robot_rotation(body, world.robot)
-                # test_spatial_algebra(body, world.robot)
-                # draw_fitted_box(body, draw_centroid=True)
-                # grasps = get_hand_grasps(world, body)
+                    """ test others """
+                    # test_robot_rotation(body, world.robot)
+                    # test_spatial_algebra(body, world.robot)
+                    # draw_fitted_box(body, draw_centroid=True)
+                    # grasps = get_hand_grasps(world, body)
 
-                """ test grasps """
-                if skip_grasps:
-                    print('length', round(get_aabb_extent(get_aabb(body))[1], 3))
-                    print('height', round(get_aabb_extent(get_aabb(body))[2], 3))
-                    print('point', round(get_pose(body)[0][2], 3))
-                    wait_if_gui()
-                else:
-                    if test_rotation_matrix:
-                        print(f'\n\n{k}/{len(rotation_matrices)} rotation matrix', nice(r), color_name, '\n\n')
+                    """ test grasps """
+                    if skip_grasps:
+                        print('length', round(get_aabb_extent(get_aabb(body))[1], 3))
+                        print('height', round(get_aabb_extent(get_aabb(body))[2], 3))
+                        print('point', round(get_pose(body)[0][2], 3))
+                        wait_if_gui()
+                    else:
+                        if test_rotation_matrix:
+                            print(f'\n\n{k}/{len(rotation_matrices)} rotation matrix', nice(r), color_name, '\n\n')
 
-                    test_grasp(problem, body, funk, test_attachment, test_rotation_matrix, color=color)
-                    wait_unlocked()
+                        test_grasp(problem, body, funk, test_attachment, test_rotation_matrix, color=color)
+                        wait_unlocked()
 
-            if len(categories) > 1:
-                wait_if_gui(f'------------- Next object category? finished ({i+1}/{len(categories)})')
+                if len(categories) > 1:
+                    wait_if_gui(f'------------- Next object category? finished ({i+1}/{len(categories)})')
 
-            if cat == 'MiniFridge':
-                set_camera_pose((3, 7, 2), (0, 7, 1))
-            elif cat == 'Food':
-                set_camera_pose((3, 3, 2), (0, 3, 1))
-            elif cat == 'Stapler':
-                set_camera_pose((3, 1.5, 2), (0, 1.5, 1))
+                if cat == 'MiniFridge':
+                    set_camera_pose((3, 7, 2), (0, 7, 1))
+                elif cat == 'Food':
+                    set_camera_pose((3, 3, 2), (0, 3, 1))
+                elif cat == 'Stapler':
+                    set_camera_pose((3, 1.5, 2), (0, 1.5, 1))
 
     remove_body(robot)
 
