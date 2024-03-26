@@ -74,6 +74,9 @@ class RobotAPI(Robot):
 
     ## ------------------------------------------------------------------
 
+    def get_custom_limits(self):
+        return self.custom_limits
+
     def get_gripper(self, arm=None, **kwargs):
         if arm is None:
             arm = self.arms[0]
@@ -112,7 +115,7 @@ class RobotAPI(Robot):
                 filtered_grasps.append(grasp)
         return filtered_grasps
 
-    def make_attachment(self, grasp, tool_link, visualize=False, rotation_matrix=None):
+    def make_attachment(self, grasp, tool_link, visualize=False):
         o = grasp.body
         if isinstance(o, tuple) and len(o) == 2:
             body, joint = o
@@ -122,7 +125,7 @@ class RobotAPI(Robot):
         arm = self.arms[0]
         tool_from_root = self.get_tool_from_root(arm)
         child_pose = get_pose(o)
-        grasp_pose = self.get_grasp_pose(child_pose, grasp.value, body=o, rotation_matrix=rotation_matrix)
+        grasp_pose = self.get_grasp_pose(child_pose, grasp.value, body=o)
         gripper_pose = multiply(grasp_pose, invert(tool_from_root))
         grasp_pose = multiply(invert(gripper_pose), child_pose)
         attachment = Attachment(self, tool_link, grasp_pose, grasp.body)
@@ -136,23 +139,17 @@ class RobotAPI(Robot):
                 wait_for_user('robots.make_attachment | correct attachment?')
         return attachment
 
-    def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False,
-                       rotation_matrix=None):
+    ###############################################################################
+
+    def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
         ## those primitive shapes
         if body is not None and isinstance(body, int) and len(get_all_links(body)) == 1:
             tool_from_root = multiply(((0, 0.025, 0.025), unit_quat()), self.tool_from_hand)  ## self.get_tool_from_root(arm)
         ## those urdf files made from one .obj file
         else:
             body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
-            if rotation_matrix is None:
-                rotation_matrix = (math.pi / 2, -math.pi / 2, -math.pi)
-            tool_from_root = ((0, 0, -0.05), quat_from_euler(rotation_matrix))
+            tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
         return multiply(body_pose, grasp, tool_from_root)
-
-    ###############################################################################
-
-    def get_custom_limits(self):
-        return self.custom_limits
 
     def get_body_pose(self, body_pose, body=None, verbose=False):
         title = f'    robot.get_body_pose({nice(body_pose)}, body={body})'

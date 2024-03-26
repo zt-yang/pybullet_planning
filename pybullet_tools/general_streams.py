@@ -621,19 +621,20 @@ def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=
 
 
 def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | PI/4 | INF
-                  randomize=True, verbose=True, debug=False, rotation_matrix=None, **kwargs):
+                  randomize=True, verbose=True, debug=False, test_rotation_matrix=False, **kwargs):
     robot = problem.robot
     world = problem.world
     grasp_type = 'hand'
     arm = robot.arms[0]
 
     def fn(body):
-        grasps_O = get_hand_grasps(world, body, verbose=verbose, rotation_matrix=rotation_matrix, **kwargs)
+        grasps_O = get_hand_grasps(world, body, verbose=verbose,
+                                   test_rotation_matrix=test_rotation_matrix, **kwargs)
         grasps = robot.make_grasps(grasp_type, arm, body, grasps_O, collisions=collisions)
         # debug weiyu: assume that we don't need contact
         # grasps = robot.make_grasps(grasp_type, arm, body, grasps_O, collisions=False)
 
-        if top_grasp_tolerance is not None and rotation_matrix is None \
+        if top_grasp_tolerance is not None and not test_rotation_matrix \
                 and world.get_category(body) not in ['braiserbody']:
             ori = len(grasps)
             grasps = [grasp for grasp in grasps if is_top_grasp(

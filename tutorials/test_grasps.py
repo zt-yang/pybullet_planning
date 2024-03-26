@@ -41,7 +41,7 @@ def test_grasp(problem, body, funk, test_attachment=False, test_rotation_offset=
 
 
 def test_grasps(robot='feg', categories=[], skip_grasps=False,
-                test_attachment=False, test_rotation_offset=False, **kwargs):
+                test_attachment=False, test_rotation_matrix=False, **kwargs):
 
     from pybullet_tools.bullet_utils import enumerate_rotational_matrices as emu
 
@@ -49,11 +49,14 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False,
     draw_pose(unit_pose(), length=10)
     robot = world.robot
     problem = State(world, grasp_types=robot.grasp_types)
-    rotation_matrices = [None] if not test_rotation_offset else emu(return_list=True)
+    rotation_matrices = [None] if not test_rotation_matrix else emu(return_list=True)
 
     for k, r in enumerate(rotation_matrices):
         ## found it
-        if test_rotation_offset and k < 22: continue
+        if r is not None:
+            if test_rotation_matrix and k < 22: continue
+            r = (0, 0, -1.57)
+            problem.robot.tool_from_hand = Pose(euler=r)
 
         idx = k % len(colors)
         color = colors[idx]
@@ -62,7 +65,7 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False,
 
             tpt = math.pi / 4 if cat in ['Knife'] else None  ## , 'EyeGlasses', 'Plate'
             funk = get_grasp_list_gen(problem, collisions=True, verbose=True, visualize=True, retain_all=True,
-                                      top_grasp_tolerance=tpt, rotation_matrix=r)
+                                      top_grasp_tolerance=tpt, test_rotation_matrix=test_rotation_matrix)
 
             if cat == 'box':
                 body = create_box(0.05, 0.05, 0.05, mass=0.2, color=GREEN)
@@ -115,11 +118,10 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False,
                     print('point', round(get_pose(body)[0][2], 3))
                     wait_if_gui()
                 else:
-                    if test_rotation_offset:
+                    if test_rotation_matrix:
                         print(f'\n\n{k}/{len(rotation_matrices)} rotation matrix', nice(r), color_name, '\n\n')
 
-                    test_grasp(problem, body, funk, test_attachment,
-                               test_rotation_offset, rotation_matrix=r, color=color)
+                    test_grasp(problem, body, funk, test_attachment, test_rotation_matrix, color=color)
                     wait_unlocked()
 
             if len(categories) > 1:

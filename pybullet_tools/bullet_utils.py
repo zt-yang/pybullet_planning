@@ -1337,7 +1337,7 @@ def enumerate_rotational_matrices(return_list=False):
 def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
                     handle_filter=False, length_variants=False, use_all_grasps=True,
                     retain_all=False, verbose=True, collisions=False, debug_del=False,
-                    rotation_matrix=None):
+                    test_rotation_matrix=False):
     body_name = (body, link) if link is not None else body
     title = f'bullet_utils.get_hand_grasps({body_name}) | '
     dist = grasp_length
@@ -1405,7 +1405,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
 
         result, aabb, gripper = check_cfree_gripper(grasp, world, body_pose, obstacles, verbose=verbose, body=body,
                                                     visualize=visualize, retain_all=retain_all, collisions=collisions,
-                                                    rotation_matrix=rotation_matrix)
+                                                    test_rotation_matrix=test_rotation_matrix)
         if result:  ##  and check_new(aabbs, aabb):
             grasps += [grasp]
             # aabbs += [aabb]
@@ -1477,7 +1477,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
         # else:
         for r in rots[ang]:
             grasps.extend(check_grasp(f, r))
-            if rotation_matrix is not None:
+            if test_rotation_matrix:
                 return grasps
 
         # ## just to look at the orientation
@@ -1505,7 +1505,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
 
 
 def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, visualize=False, body=None,
-                        min_num_pts=40, retain_all=False, collisions=False, rotation_matrix=None, **kwargs):
+                        min_num_pts=40, retain_all=False, collisions=False, test_rotation_matrix=False, **kwargs):
     robot = world.robot
 
     ################# for debugging ################
@@ -1515,11 +1515,12 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
     #         visualize = True
     ################################################
 
-    gripper_grasp = robot.visualize_grasp(object_pose, grasp, verbose=verbose,
-                                          rotation_matrix=rotation_matrix, **kwargs)
-    if rotation_matrix is not None:
+    gripper_grasp = robot.visualize_grasp(object_pose, grasp, verbose=verbose, **kwargs)
+    if test_rotation_matrix:
         remove_body(gripper_grasp)
         return True, None, gripper_grasp
+    else:
+        wait_unlocked()
     if gripper_grasp is None:
         return False, None, None
 
