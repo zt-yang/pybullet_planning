@@ -28,20 +28,21 @@ from tutorials.test_utils import get_test_world, get_instances, draw_text_label,
 from tutorials.config import ASSET_PATH
 
 
-def test_grasp(problem, body, funk, test_attachment=False, test_rotation_offset=False, **kwargs):
+def test_grasp(problem, body, funk, test_attachment=False, test_offset=False, **kwargs):
     set_renderer(True)
     body_pose = get_pose(body)  ## multiply(get_pose(body), Pose(euler=Euler(math.pi/2, 0, -math.pi/2)))
     outputs = funk(body)
-    if isinstance(outputs, list) and not test_rotation_offset:
-        print(f'grasps on body {body}:', outputs)
+    if isinstance(outputs, list) and not test_offset:
+        print(f'grasps on body {body} ({len(outputs)}):', outputs)
+
     visualize_grasps(problem, outputs, body_pose, retain_all=not test_attachment or True,
                      test_attachment=test_attachment, **kwargs)
     set_renderer(True)
     set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
 
 
-def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=False,
-                test_rotation_matrix=False, test_translation_matrix=False, **kwargs):
+def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=False, verbose=False,
+                test_rotation_matrix=False, test_translation_matrix=False, skip_grasp_index=None, **kwargs):
 
     from pybullet_tools.bullet_utils import enumerate_rotational_matrices as emu, numerate_translation_matrices
 
@@ -50,25 +51,28 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=F
     robot = world.robot
     problem = State(world, grasp_types=robot.grasp_types)
     rotation_matrices = [None] if not test_rotation_matrix else emu(return_list=True)
-    translation_matrices = [None] if not test_translation_matrix else numerate_translation_matrices()
+    translation_matrices = [(0, 0, 0)] if not test_translation_matrix else numerate_translation_matrices()
+    test_offset = test_rotation_matrix or test_translation_matrix
+    color = GREEN
 
     for k1, r in enumerate(rotation_matrices):
-        for k2, r in enumerate(translation_matrices):
-            ## found it
-            if r is not None:
-                if test_rotation_matrix and k1 < 22: continue
-                r = (0, 0, -1.57)
-                problem.robot.tool_from_hand = Pose(euler=r)
+        for k2, t in enumerate(translation_matrices):
+            if test_offset:
+                ## found it
+                # if r is not None:
+                #     if test_rotation_matrix and k1 < 22: continue
+                problem.robot.tool_from_hand = Pose(point=t, euler=r)
+                k = k1 * len(translation_matrices) + k2
+                idx = k % len(colors)
+                color = colors[idx]
+                color_name = color_names[idx]
 
-            k = k1 * len(translation_matrices) + k2
-            idx = k1 % len(colors)
-            color = colors[idx]
-            color_name = color_names[idx]
             for i, cat in enumerate(categories):
 
                 tpt = math.pi / 4 if cat in ['Knife'] else None  ## , 'EyeGlasses', 'Plate'
-                funk = get_grasp_list_gen(problem, collisions=True, verbose=True, visualize=True, retain_all=True,
-                                          top_grasp_tolerance=tpt, test_rotation_matrix=test_rotation_matrix)
+                funk = get_grasp_list_gen(problem, collisions=True, verbose=verbose, visualize=True, retain_all=True,
+                                          top_grasp_tolerance=tpt, test_offset=test_offset,
+                                          skip_grasp_index=skip_grasp_index)
 
                 if cat == 'box':
                     body = create_box(0.05, 0.05, 0.05, mass=0.2, color=GREEN)
@@ -121,21 +125,29 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=F
                         print('point', round(get_pose(body)[0][2], 3))
                         wait_if_gui()
                     else:
+                        if test_offset:
+                            print(f'\n\n{k1*k2}/{len(rotation_matrices)*len(translation_matrices)}',
+                                  f'\t{k1}/{len(rotation_matrices)} r = {nice(r)}',
+                                  f'\t{k2}/{len(translation_matrices)} t = {nice(t)}\t', color_name, '\n\n')
+
+                        test_grasp(problem, body, funk, test_attachment, test_offset, color=color)
                         if test_rotation_matrix:
-                            print(f'\n\n{k}/{len(rotation_matrices)} rotation matrix', nice(r), color_name, '\n\n')
+                            wait_unlocked()
 
-                        test_grasp(problem, body, funk, test_attachment, test_rotation_matrix, color=color)
-                        wait_unlocked()
+                ## focus on objects
+                if not test_offset:
+                    if len(categories) > 1:
+                        wait_if_gui(f'------------- Next object category? finished ({i+1}/{len(categories)})')
 
-                if len(categories) > 1:
-                    wait_if_gui(f'------------- Next object category? finished ({i+1}/{len(categories)})')
+                    if cat == 'MiniFridge':
+                        set_camera_pose((3, 7, 2), (0, 7, 1))
+                    elif cat == 'Food':
+                        set_camera_pose((3, 3, 2), (0, 3, 1))
+                    elif cat == 'Stapler':
+                        set_camera_pose((3, 1.5, 2), (0, 1.5, 1))
 
-                if cat == 'MiniFridge':
-                    set_camera_pose((3, 7, 2), (0, 7, 1))
-                elif cat == 'Food':
-                    set_camera_pose((3, 3, 2), (0, 3, 1))
-                elif cat == 'Stapler':
-                    set_camera_pose((3, 1.5, 2), (0, 1.5, 1))
+        if test_translation_matrix:
+            wait_unlocked()
 
     remove_body(robot)
 

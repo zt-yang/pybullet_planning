@@ -184,7 +184,7 @@ def test_grasps(state, name='cabbage', visualize=True):
 
 
 def visualize_grasps(state, outputs, body_pose, retain_all=True, collisions=False, pause_each=False,
-                     test_attachment=False, color=None, **kwargs):
+                     test_attachment=False, color=None, verbose=False, **kwargs):
     robot = state.robot
 
     def visualize_grasp(grasp, gripper_color=color, index=0):
@@ -194,6 +194,11 @@ def visualize_grasps(state, outputs, body_pose, retain_all=True, collisions=Fals
                 idx = index % len(colors)
                 print(' grasp.value', nice(grasp.value), 'color', color_names[idx])
                 gripper_color = colors[idx]
+
+            if verbose:
+                print(f'\npr2_tests.visualize_grasps | '
+                      f'\trobot.visualize_grasp({nice(body_pose)}, ({nice(grasp.value)}):'
+                      f'\t{nice(robot.tool_from_hand)}\t', kwargs)
             gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, body=grasp.body,
                                                   color=gripper_color, width=w, new_gripper=True, **kwargs)
             if collisions and collided(gripper_grasp, state.obstacles, verbose=True):

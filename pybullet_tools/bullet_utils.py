@@ -261,6 +261,9 @@ def nice_tuple(tup, round_to=3):
 
 
 def nice(tuple_of_tuples, round_to=3, one_tuple=True, keep_quat=False):
+    if tuple_of_tuples is None:
+        return tuple_of_tuples
+
     ## float, int
     if isinstance(tuple_of_tuples, float) or isinstance(tuple_of_tuples, int):
         return nice_float(tuple_of_tuples, round_to)
@@ -1315,8 +1318,8 @@ def check_grasp_link(world, body, link):
     return using_grasp_link, link
 
 
-def numerate_translation_matrices():
-    return [(1, 0, 0), (0, 1, 0), (0, 0, 1)]
+def numerate_translation_matrices(x=0.02):
+    return [(0, 0, 0), (x, 0, 0), (0, x, 0), (0, 0, x)]
 
 
 def enumerate_rotational_matrices(return_list=False):
@@ -1341,7 +1344,7 @@ def enumerate_rotational_matrices(return_list=False):
 def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
                     handle_filter=False, length_variants=False, use_all_grasps=True,
                     retain_all=False, verbose=True, collisions=False, debug_del=False,
-                    test_rotation_matrix=False):
+                    test_offset=False, skip_grasp_index=None):
     body_name = (body, link) if link is not None else body
     title = f'bullet_utils.get_hand_grasps({body_name}) | '
     dist = grasp_length
@@ -1409,7 +1412,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
 
         result, aabb, gripper = check_cfree_gripper(grasp, world, body_pose, obstacles, verbose=verbose, body=body,
                                                     visualize=visualize, retain_all=retain_all, collisions=collisions,
-                                                    test_rotation_matrix=test_rotation_matrix)
+                                                    test_offset=test_offset)
         if result:  ##  and check_new(aabbs, aabb):
             grasps += [grasp]
             # aabbs += [aabb]
@@ -1456,6 +1459,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
     # set_renderer(visualize)
     grasps = []
     # aabbs = []
+    index = 0
     for f in faces:
         p = np.array(f)
         p = p / np.linalg.norm(p)
@@ -1480,8 +1484,14 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
         #
         # else:
         for r in rots[ang]:
+
+            ## for debugging different grasps
+            index += 1
+            if skip_grasp_index is not None and index <= skip_grasp_index:
+                continue
+
             grasps.extend(check_grasp(f, r))
-            if test_rotation_matrix:
+            if test_offset:
                 return grasps
 
         # ## just to look at the orientation
@@ -1509,7 +1519,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
 
 
 def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, visualize=False, body=None,
-                        min_num_pts=40, retain_all=False, collisions=False, test_rotation_matrix=False, **kwargs):
+                        min_num_pts=40, retain_all=False, collisions=False, test_offset=False, **kwargs):
     robot = world.robot
 
     ################# for debugging ################
@@ -1519,12 +1529,16 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
     #         visualize = True
     ################################################
 
-    gripper_grasp = robot.visualize_grasp(object_pose, grasp, verbose=verbose, **kwargs)
-    if test_rotation_matrix:
+    if verbose:
+        print(f'\nbullet.check_cfree_gripper | '
+              f'\trobot.visualize_grasp({nice(object_pose)}, ({nice(grasp)}):'
+              f'\t{nice(robot.tool_from_hand)}\t', kwargs)
+    gripper_grasp = robot.visualize_grasp(object_pose, grasp, verbose=verbose, body=body,
+                                          new_gripper=test_offset, **kwargs)
+    if test_offset:
         remove_body(gripper_grasp)
         return True, None, gripper_grasp
-    else:
-        wait_unlocked()
+
     if gripper_grasp is None:
         return False, None, None
 

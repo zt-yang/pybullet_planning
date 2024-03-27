@@ -609,7 +609,7 @@ def sample_joint_position_gen(num_samples=14, closed=False, visualize=False):
 """
 
 
-def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=PI/4): # None | PI/4 | INF
+def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=PI/4):  # None | PI/4 | INF
     if top_grasp_tolerance is None:
         return True
     if not isinstance(grasp, tuple):
@@ -617,24 +617,23 @@ def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=
     grasp_pose = robot.get_grasp_pose(pose, grasp, arm, body=body)
     grasp_orientation = (Point(), quat_from_pose(grasp_pose))
     grasp_direction = tform_point(grasp_orientation, Point(x=+1))
-    return angle_between(grasp_direction, Point(z=-1)) <= top_grasp_tolerance # TODO: direction parameter
+    return angle_between(grasp_direction, Point(z=-1)) <= top_grasp_tolerance  # TODO: direction parameter
 
 
-def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None, # None | PI/4 | INF
-                  randomize=True, verbose=True, debug=False, test_rotation_matrix=False, **kwargs):
+def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None,  # None | PI/4 | INF
+                  randomize=True, verbose=True, debug=False, test_offset=False, **kwargs):
     robot = problem.robot
     world = problem.world
     grasp_type = 'hand'
     arm = robot.arms[0]
 
     def fn(body):
-        grasps_O = get_hand_grasps(world, body, verbose=verbose,
-                                   test_rotation_matrix=test_rotation_matrix, **kwargs)
+        grasps_O = get_hand_grasps(world, body, verbose=verbose, test_offset=test_offset, **kwargs)
         grasps = robot.make_grasps(grasp_type, arm, body, grasps_O, collisions=collisions)
         # debug weiyu: assume that we don't need contact
         # grasps = robot.make_grasps(grasp_type, arm, body, grasps_O, collisions=False)
 
-        if top_grasp_tolerance is not None and not test_rotation_matrix \
+        if top_grasp_tolerance is not None and not test_offset \
                 and world.get_category(body) not in ['braiserbody']:
             ori = len(grasps)
             grasps = [grasp for grasp in grasps if is_top_grasp(

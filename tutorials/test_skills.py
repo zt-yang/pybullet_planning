@@ -582,7 +582,6 @@ def test_placement_counter():
         #     # grasps = get_hand_grasps(world, body, visualize=False, retain_all=False)
         #
         #     outputs = funk(body)
-        #     print(f'grasps on body {body}:', outputs)
         #     visualize_grasps(state, outputs, get_pose(body), retain_all=True, collisions=True)
 
         set_renderer(True)
