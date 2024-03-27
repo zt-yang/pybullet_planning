@@ -1275,6 +1275,7 @@ def draw_face_points(aabb, body_pose, dist=0.08):
     w, l, h = get_aabb_extent(aabb)
     faces = [(w/2+dist, 0, 0), (0, l/2+dist, 0), (0, 0, h/2+dist)]
     faces += [minus(0, f) for f in faces]
+    faces = [(w/2+dist, 0, 0)]
     faces = [add(f, c) for f in faces]
     faces = apply_affine(body_pose, faces)
     handles = []
@@ -1345,7 +1346,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
                     handle_filter=False, length_variants=False, use_all_grasps=True,
                     retain_all=False, verbose=True, collisions=False, debug_del=False,
                     test_offset=False, skip_grasp_index=None):
-    body_name = (body, link) if link is not None else body
+    body_name = (body, None, link) if link is not None else body
     title = f'bullet_utils.get_hand_grasps({body_name}) | '
     dist = grasp_length
     robot = world.robot
@@ -1360,15 +1361,13 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
 
     aabb, handles = draw_fitted_box(body, link=link, verbose=verbose, draw_box=False, draw_centroid=False)
 
+    ## TODO: fix this hack
     if link is None:  ## grasp the whole body
         r = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
         # r = get_rotation_matrix(body)
         body_pose = multiply(body_pose, invert(r))
     else:  ## grasp handle links
         body_pose = multiply(body_pose, invert(robot.tool_from_hand))
-
-    # weiyu debug
-    # visualize = True
 
     instance_name = world.get_instance_name(body_name)
     if instance_name is not None:
@@ -1379,7 +1378,8 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
             if visualize:
                 bodies = []
                 for g in found:
-                    bodies.append(robot.visualize_grasp(body_pose, g, verbose=verbose))
+                    bb = body if link is None else None
+                    bodies.append(robot.visualize_grasp(body_pose, g, body=bb, verbose=verbose))
                 # set_renderer(True)
                 set_camera_target_body(body)
                 # wait_unlocked()
@@ -1410,7 +1410,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
         grasps = []
         grasp = multiply(Pose(point=f), Pose(euler=r))
 
-        result, aabb, gripper = check_cfree_gripper(grasp, world, body_pose, obstacles, verbose=verbose, body=body,
+        result, aabb, gripper = check_cfree_gripper(grasp, world, body_pose, obstacles, verbose=False, body=body,
                                                     visualize=visualize, retain_all=retain_all, collisions=collisions,
                                                     test_offset=test_offset)
         if result:  ##  and check_new(aabbs, aabb):
@@ -1453,7 +1453,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
 
     ## for finding the longest dimension
     max_value = max(dimensions)
-    filter = [int(x != max_value) for x in dimensions]
+    filter = [int(x == max_value) for x in dimensions]
 
     rots = enumerate_rotational_matrices()
     # set_renderer(visualize)
@@ -1465,24 +1465,15 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
         p = p / np.linalg.norm(p)
 
         ## only attempt the bigger surfaces
-        on_longest = sum([filter[i]*p[i] for i in range(3)]) != 0
-        if handle_filter and not on_longest:
-            continue
+        on_longest = sum([filter[i]*p[i] for i in range(3)]) == 0
+        # if handle_filter and not on_longest:
+        #     continue
 
         ## reduce num of grasps
         # these = []  ## debug
 
         ang = tuple(p)
         f = add(f, c)
-        # r = rots[ang][0] ## random.choice(rots[tuple(p)]) ##
-
-        # if parallel:
-        #     from multiprocessing import Pool, cpu_count
-        #     with Pool(processes=int(cpu_count()*0.7)) as pool:
-        #         for result in pool.imap_unordered(check_grasp, rots[ang]):
-        #             grasps.extend(result)
-        #
-        # else:
         for r in rots[ang]:
 
             ## for debugging different grasps
@@ -1509,7 +1500,8 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
 
     ## lastly store the newly sampled grasps
     if instance_name is not None:
-        add_grasp_in_db(db, db_file, instance_name, grasps, name=world.get_name(body_name),
+        name = world.get_name(body_name, use_default_link_name=True)
+        add_grasp_in_db(db, db_file, instance_name, grasps, name=name,
                         length_variants=length_variants, scale=scale)
     remove_handles(handles)
     # if len(grasps) > num_samples:

@@ -194,7 +194,7 @@ def build_robot_from_args(world, robot_name, create_robot_fn=None, **kwargs):
         elif robot_name == 'pr2':
             robot = create_pr2_robot(world, **kwargs)
         else:
-            assert False, 'Unknown robot'
+            return None
 
     if spawn_range is not None:
         robot.set_spawn_range(spawn_range)

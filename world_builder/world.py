@@ -384,8 +384,8 @@ class World(WorldBase):
 
     def get_name(self, body, use_default_link_name=False):
         name = self.get_attr(body, 'name')
-        if use_default_link_name and name == body and len(body) == 2:
-            name = get_link_name(body[0], body[1])
+        if use_default_link_name and name == body and len(body) == 3:
+            name = get_link_name(body[0], body[-1])
         return name
 
     def get_category(self, body):
@@ -480,7 +480,7 @@ class World(WorldBase):
             n = self.get_instance_name(body)
             part_name = get_link_name(body, obj.handle_link)
             n = PART_INSTANCE_NAME.format(body_instance_name=n, part_name=part_name)
-            self.instance_names[(body, obj.handle_link)] = n
+            self.instance_names[(body, None, obj.handle_link)] = n
 
         ## object parts: surface, space
         elif link is not None:
