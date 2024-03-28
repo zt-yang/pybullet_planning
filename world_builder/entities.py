@@ -17,6 +17,8 @@ from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_bo
 from world_builder.world_utils import get_mobility_id, get_mobility_category, get_mobility_identifier, \
     get_instance_name, get_lisdf_name, load_asset
 
+from robot_builder.robot_utils import BASE_GROUP
+
 import numpy as np
 
 LINK_STR = '::'  ## same as in pybullet_planning/lisdf_tools/lisdf_loader
@@ -358,8 +360,8 @@ class Object(Index):
 
     def set_pose(self, conf):
         links = [get_link_name(self.body, l) for l in get_links(self.body)]
-        if 'base' in links:
-            set_group_conf(self.body, 'base', conf)
+        if 'base' in links:  ## is robot
+            set_group_conf(self.body, BASE_GROUP, conf)
         else:
             set_pose(self.body, conf)
         if self.supporting_surface is not None:
@@ -740,8 +742,10 @@ class Robot(Object):
         if joints is None:
             joints = self.joints
         return get_custom_limits(self.body, joints, self.custom_limits)
+
     def get_aabb(self, *args, **kwargs):
         return get_subtree_aabb(self.body, self.base_link) # Computes the robot's axis-aligned bounding box (AABB)
+
     def within_limits(self, positions=None):
         if positions is None:
             positions = self.get_positions()

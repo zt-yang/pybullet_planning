@@ -1,5 +1,8 @@
+from pybullet_tools.utils import enable_preview
+
 from cogarch_tools.processes.motion_agent import *
 from world_builder.actions import *
+from robot_builder.robot_utils import BASE_JOINTS, get_joints_by_names, BASE_GROUP
 
 
 class TeleOpAgent(MotionAgent):
@@ -10,14 +13,26 @@ class TeleOpAgent(MotionAgent):
         self.plan = None
         self.command_options = self.initiate_commands()
 
+        self.robot.joints = get_joints_by_names(self.robot, BASE_JOINTS)
+        self.robot.base_group = BASE_GROUP
+
     def initiate_commands(self):
+
+        ## enable debug panel
+        enable_preview()
+        p.configureDebugVisualizer(p.COV_ENABLE_MOUSE_PICKING, True)
 
         ## robot initial state
         x, y, yaw = get_pose2d(self.robot)
-        torso_lift = self.robot.get_joint_position('torso_lift_joint')
-        head_pan = self.robot.get_joint_position('head_pan_joint')
-        head_tilt = self.robot.get_joint_position('head_tilt_joint')
-        self.last_command = [x, y, yaw, torso_lift, head_pan, head_tilt, 0, 0, 0, 0]
+        torso_lift = self.robot.get_joint_position(self.robot.torso_lift_joint)
+        head_pan = self.robot.get_joint_position(self.robot.head_pan_joint)
+        head_tilt = self.robot.get_joint_position(self.robot.head_tilt_joint)
+        self.last_command = [
+            x, y, yaw, 0, 0, torso_lift,
+            head_pan, head_tilt,
+            0, 0, 0, 0, 0, 0,
+            0, 0, 0
+        ]
 
         commands = []
 
@@ -78,7 +93,11 @@ class TeleOpAgent(MotionAgent):
 
                 ## move joints
                 elif i in [5, 6, 7]:
-                    joint_name = {5: 'torso_lift_joint', 6: 'head_pan_joint', 7: 'head_tilt_joint'}[i]
+                    joint_name = {
+                        5: self.robot.torso_lift_joint,
+                        6: self.robot.head_pan_joint,
+                        7: self.robot.head_tilt_joint
+                    }[i]
                     with PoseSaver(self.robot):
                         # old_conf = self.robot.get_joint_positions()
                         self.robot.set_joint_position(joint_name, command_option)
@@ -104,7 +123,7 @@ class TeleOpAgent(MotionAgent):
                         return OpenJointAction(affected)
 
                     elif i in [10, 11, 12, 13]:
-                        gripper = {10:'left', 11:'right', 12:'left', 13:'right'}[i]
+                        gripper = {10: 'left', 11: 'right', 12: 'left', 13: 'right'}[i]
                         closest = check_in_view(self.robot, objects=objects)
                         print(f'closest {category} include {closest}')
                         if len(closest) > 0:
@@ -135,6 +154,9 @@ class TeleOpAgent(MotionAgent):
                             return ChopAction(closest[0])
 
                     return InteractAction()
+
+    def init_experiment(self, args, **kwargs):
+        args.monitoring = True
 
 
 def check_collision(robot, objects):

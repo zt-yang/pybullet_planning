@@ -42,13 +42,13 @@ def create_robot_gripper(robot, link_name, visual=True, color=None):
     return gripper
 
 
-def get_joints_by_names(robot, group):
-    return [joint_from_name(robot, j) for j in group]
+def get_joints_by_names(robot, names):
+    return [joint_from_name(robot, name) for name in names]
 
 
-def get_robot_group_joints(body, group, joint_groups):
+def get_robot_group_joints(robot, group, joint_groups):
     assert group in joint_groups
-    return [joint_from_name(body, name) for name in joint_groups[group]]
+    return get_joints_by_names(robot, joint_groups[group])
 
 
 def set_robot_group_conf(robot, group, joint_groups, positions):
@@ -146,7 +146,7 @@ def create_mobile_robot(world, load_robot_urdf_fn, robot_class, base_group, join
         custom_limits_dict = copy.deepcopy(custom_limits)
         custom_limits = np.asarray(list(custom_limits.values())).T.tolist()
     else:
-        torso_joint_name = 'z' if base_group == BASE_GROUP else joint_groups[BASE_TORSO_GROUP][-1]
+        torso_joint_name = 'z' if base_group == BASE_GROUP else joint_groups[BASE_TORSO_GROUP][-2]
         custom_limits_dict = get_robot_base_custom_limits_dict(robot, custom_limits, torso_joint_name=torso_joint_name)
 
     if draw_base_limits:

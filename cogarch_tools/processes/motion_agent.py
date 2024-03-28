@@ -168,3 +168,9 @@ class MotionAgent(Agent):
         if action is None:
             self.path = None
         return action
+
+    def set_pddlstream_problem(self, problem_dict, state):
+        pass
+
+    def init_experiment(self, args, **kwargs):
+        pass

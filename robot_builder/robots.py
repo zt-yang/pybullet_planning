@@ -209,18 +209,6 @@ class RobotAPI(Robot):
 
     ################################################################################
 
-    @property
-    def base_group(self):
-        return BASE_TORSO_GROUP if self.use_torso else BASE_GROUP
-
-    def get_base_joints(self):
-        return self.get_group_joints(self.base_group)
-
-    def get_base_conf(self):
-        base_joints = self.get_base_joints()
-        q = get_joint_positions(self.body, base_joints)
-        return Conf(self.body, base_joints, q)
-
     def get_group_joints(self, group):
         assert group in self.joint_groups
         return get_robot_group_joints(self.body, group, self.joint_groups)
@@ -250,8 +238,8 @@ class MobileRobot(RobotAPI):
     grasp_types = ['top', 'side']
 
     def __init__(self, body, use_torso=True, move_base=True, **kwargs):
-        base_group = BASE_TORSO_GROUP if use_torso else BASE_GROUP
-        joints = self.joint_groups[base_group]
+        self.base_group = BASE_TORSO_GROUP if use_torso else BASE_GROUP
+        joints = self.joint_groups[self.base_group]
         super(MobileRobot, self).__init__(body, joints=joints, **kwargs)
         self.use_torso = use_torso
         self.move_base = move_base
@@ -263,6 +251,17 @@ class MobileRobot(RobotAPI):
         raise NotImplementedError('should implement this for MobileRobot!')
 
     ## -----------------------------------------------------------------------------
+
+    def get_base_joints(self):
+        return self.get_group_joints(self.base_group)
+
+    def get_base_conf(self):
+        base_joints = self.get_base_joints()
+        q = get_joint_positions(self.body, base_joints)
+        return Conf(self.body, base_joints, q)
+
+    def set_pose(self, conf):
+        self.set_group_positions(self.base_group, conf)
 
     def get_all_arms(self):
         return self.arms
@@ -432,6 +431,10 @@ class PR2Robot(MobileRobot):
     joint_group_names = ['left', 'right', BASE_GROUP, BASE_TORSO_GROUP]
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
     cloned_finger_link = 7  ## for detecting if a grasp is pointing upwards
+
+    torso_lift_joint = 'torso_lift_joint'
+    head_pan_joint = 'head_pan_joint'
+    head_tilt_joint = 'head_tilt_joint'
 
     def __init__(self, body, dual_arm=False, **kwargs):
         super(PR2Robot, self).__init__(body, **kwargs)

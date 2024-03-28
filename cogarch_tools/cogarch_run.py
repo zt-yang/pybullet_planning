@@ -98,7 +98,6 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
 
     # note = kwargs['world_builder_args'].get('note', None) if 'world_builder_args' in kwargs else None
     agent.init_experiment(args, domain_modifier=domain_modifier, object_reducer=object_reducer, comparing=comparing)
-    mp4_path = join(agent.exp_dir, f"{agent.timestamped_name}.mp4")
 
     ## for visualizing observation
     if hasattr(args, 'save_initial_observation') and args.save_initial_observation:
@@ -111,13 +110,13 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
         wait_unlocked()
 
     """ solving the problem """
-    output_dir = agent.exp_dir
     if not args.scene_only:
         agents = [agent]
         processes = exogenous + agents
-        evolve_kwargs = dict(processes=processes, ONCE=not args.monitoring, verbose=False)
+        evolve_kwargs = dict(processes=processes, once=not args.monitoring, verbose=False)
 
         if args.record_mp4:
+            mp4_path = join(agent.exp_dir, f"{agent.timestamped_name}.mp4")
             with VideoSaver(mp4_path):
                 evolve_processes(state, **evolve_kwargs)
             myprint(f'\n\nsaved mp4 to {mp4_path}\n\n')
@@ -133,6 +132,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
                 disconnect()
                 return
 
+    output_dir = agent.exp_dir
     if record_problem and not isinstance(goals, tuple):
         state.restore()  ## go back to initial state
         state.world.save_test_case(output_dir, goal=goals, init=init, domain=domain, stream=stream,

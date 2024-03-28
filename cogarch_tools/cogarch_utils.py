@@ -11,7 +11,7 @@ from os import listdir
 from os.path import join, abspath, dirname, isdir, isfile
 
 from pybullet_tools.utils import connect, draw_pose, enable_preview, unit_pose, set_random_seed, set_camera_pose, \
-    set_numpy_seed
+    set_numpy_seed, add_parameter, add_button
 
 from problem_sets import problem_fn_from_name
 
@@ -200,10 +200,6 @@ def init_pybullet_client(args, width=1980, height=1238):
     if not args.segment:
         p.configureDebugVisualizer(p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW, False)
         p.configureDebugVisualizer(p.COV_ENABLE_DEPTH_BUFFER_PREVIEW, False)
-
-    # p.configureDebugVisualizer(p.COV_ENABLE_MOUSE_PICKING, True)
-    # parameter = add_parameter(name='facts')
-    # button = add_button(name='TBD')
 
     draw_pose(unit_pose(), length=1.)
 

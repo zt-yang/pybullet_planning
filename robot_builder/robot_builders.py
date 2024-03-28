@@ -140,11 +140,12 @@ def build_skill_domain_robot(world, robot_name, **kwargs):
 
 def build_table_domain_robot(world, robot_name, **kwargs):
     """ testing basic pick and place """
-    kwargs['initial_xy'] = (0, 0)
+    if 'base_q' not in kwargs:
+        kwargs['initial_xy'] = (0, 0)
     if 'custom_limits' not in kwargs:
         kwargs['custom_limits'] = ((-4, -4, 0), (4, 4, 2))
-        if robot_name == 'pr2':
-            kwargs['use_torso'] = True
+    if robot_name == 'pr2':
+        kwargs['use_torso'] = True
     return build_robot_from_args(world, robot_name, **kwargs)
 
 
@@ -189,7 +190,8 @@ def build_robot_from_args(world, robot_name, create_robot_fn=None, **kwargs):
         elif isinstance(kwargs['base_q'], str):
             kwargs['base_q'] = eval(kwargs['base_q'])
 
-        del kwargs['initial_xy']
+        if 'initial_xy' in kwargs:
+            del kwargs['initial_xy']
 
         if create_robot_fn is not None:
             robot = create_robot_fn(world, **kwargs)

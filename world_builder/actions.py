@@ -43,11 +43,12 @@ class RobotAction(object):
 class TeleportAction(Action):
     def __init__(self, conf):
         self.conf = conf
+        print('TeleportAction', nice(conf))
 
     def transition(self, state):
         joints = state.robot.get_joints()  ## all joints, not just x,y,yqw
         if len(self.conf) == len(joints):
-            state.robot.set_positions(self.conf, joints = joints)
+            state.robot.set_positions(self.conf, joints=joints)
         else:
             state.robot.set_pose(self.conf)
         set_camera_target_robot(state.robot)

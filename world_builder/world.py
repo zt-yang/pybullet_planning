@@ -2013,14 +2013,14 @@ class Process(object):
         self.state = state ## YANG< HPN
         return state # TODO: return or just update?
 
-    def evolve(self, state, ONCE=False, verbose=False, step=None):
+    def evolve(self, state, once=False, verbose=False, step=None):
         start_time = time.time()
 
-        new_state = self.wrapped_transition(state, ONCE=ONCE, verbose=verbose, step=step)
+        new_state = self.wrapped_transition(state, once=once, verbose=verbose, step=step)
         if verbose: print(f'  evolve \ finished wrapped_transition in {round(time.time() - start_time, 4)} sec')
 
         ## --------- added by YANG to stop simulation if action is None ---------
-        if ONCE and new_state is None:
+        if once and new_state is None:
             return None
             # new_state = state
         ## ----------------------------------------------------------------------
@@ -2033,7 +2033,7 @@ class Process(object):
         self.runtimes.append(elapsed_time(start_time))
         return new_state
 
-    def wrapped_transition(self, state, ONCE=False, verbose=False):
+    def wrapped_transition(self, state, once=False, verbose=False):
         raise NotImplementedError()
 
 #######################################################
@@ -2068,7 +2068,7 @@ class Agent(Process): # Decision
         self.observations = []
         self.actions = []
 
-    def wrapped_transition(self, state, ONCE=False, verbose=False, **kwargs):
+    def wrapped_transition(self, state, once=False, verbose=False, **kwargs):
         # TODO: move this to another class
         start_time = time.time()
         observe_visual = len(self.actions) == 0 or 'GripperAction' in str(self.actions[-1])
@@ -2092,7 +2092,7 @@ class Agent(Process): # Decision
         if verbose: print(f'   wrapped_transition \ applied action in {round(time.time() - start_time, 4)} sec')
 
         ## --------- added by YANG to stop simulation if action is None ---------
-        if ONCE and action is None: result = None
+        if once and action is None: result = None
         ## ----------------------------------------------------------------------
         return result
 
@@ -2103,7 +2103,7 @@ class Agent(Process): # Decision
 #######################################################
 
 
-def evolve_processes(state, processes=[], max_steps=INF, ONCE=False, verbose=False):
+def evolve_processes(state, processes=[], max_steps=INF, once=False, verbose=False):
     # TODO: explicitly separate into exogenous and agent?
     world = state.world
     time_step = world.time_step
@@ -2121,10 +2121,10 @@ def evolve_processes(state, processes=[], max_steps=INF, ONCE=False, verbose=Fal
 
         # TODO: sample nearby and then extend
         for agent in processes:
-            state = agent.evolve(state, ONCE=ONCE, verbose=verbose, step=step)
+            state = agent.evolve(state, once=once, verbose=verbose, step=step)
 
             ## stop simulation if action is None
-            if ONCE and state is None:
+            if once and state is None:
                 return None
 
         # if verbose: print('state add', [f for f in state.facts if f not in facts])
