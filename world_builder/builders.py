@@ -95,21 +95,6 @@ def save_world_problem(world, goal, config, save_lisdf=True, save_problem=True):
     return out_dir
 
 
-def test_pick(world, w=.5, h=.9, mass=1):
-
-    table = world.add_box(
-        Object(create_box(w, w, h, color=(.75, .75, .75, 1)), category='supporter', name='table'),
-        Pose(point=Point(x=2, y=0, z=h / 2)))
-
-    cabbage = world.add_box(
-        Movable(create_box(.07, .07, .1, mass=mass, color=(0, 1, 0, 1)), name='cabbage'),
-        Pose(point=Point(x=2, y=0, z=h + .1 / 2)))
-
-    robot = create_pr2_robot(world, base_q=(0, 2, -PI / 2))
-
-    return []
-
-
 def test_exist_omelette(world, w=.5, h=.9, mass=1):
 
     fridge = world.add_box(

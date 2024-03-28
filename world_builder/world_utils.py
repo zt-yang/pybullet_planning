@@ -385,6 +385,8 @@ def get_file_by_category(category : str, random_instance : str | bool = False, s
         ids = [f for f in listdir(join(asset_root)) if isdir(join(asset_root, f)) and not f.startswith('_')]
         files = [join(asset_root, f) for f in listdir(join(asset_root)) if 'DS_Store' not in f and not f.startswith('_')]
 
+        if len(ids) == 0:
+            print(f'get_file_by_category({category})')
         assert len(ids) > 0
 
         ## for partnet-mobility objects, all files in the category directory are directories
@@ -622,9 +624,7 @@ def sort_instances(category, instances, get_all=False):
     keys = list(instances.keys())
     if not get_all:
         cat_dir = join(ASSET_PATH, 'models', category)
-        if not isdir(cat_dir):
-            return {}
-        elif len(listdir(cat_dir)) > 0:
+        if isdir(cat_dir) and len(listdir(cat_dir)) > 0:
             keys = [k for k in keys if isdir(join(cat_dir, k))]
     if isinstance(keys[0], tuple):
         instances = instances

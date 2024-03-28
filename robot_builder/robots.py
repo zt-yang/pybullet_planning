@@ -39,14 +39,23 @@ class RobotAPI(Robot):
         self.collision_animations = []
         self.name = self.__class__.__name__.lower()
 
+    def get_lisdf_string(self):
+        raise NotImplementedError('should implement this for RobotAPI!')
+
     def get_init(self, init_facts=[], conf_saver=None):
         raise NotImplementedError('should implement this for RobotAPI!')
 
     def get_stream_map(self, problem, collisions, custom_limits, teleport, **kwargs):
         raise NotImplementedError('should implement this for RobotAPI!')
 
+    def get_gripper_root(self, arm):
+        raise NotImplementedError('should implement this for MobileRobot!')
+
     def get_tool_link(self, arm):
         raise NotImplementedError('should implement this for RobotAPI!')
+
+    def get_tool_from_root(self, arm):
+        raise NotImplementedError('should implement this for MobileRobot!')
 
     def get_gripper_joints(self, gripper_grasp):
         raise NotImplementedError('should implement this for RobotAPI!')
@@ -55,12 +64,6 @@ class RobotAPI(Robot):
         raise NotImplementedError('should implement this for RobotAPI!')
 
     def get_carry_conf(self, arm, grasp_type, g):
-        raise NotImplementedError('should implement this for RobotAPI!')
-
-    def get_approach_vector(self, arm, grasp_type):
-        raise NotImplementedError('should implement this for RobotAPI!')
-
-    def get_approach_pose(self, approach_vector, g):
         raise NotImplementedError('should implement this for RobotAPI!')
 
     def create_gripper(self, arm='hand', visual=True, color=None):
@@ -74,8 +77,25 @@ class RobotAPI(Robot):
 
     ## ------------------------------------------------------------------
 
+    def get_approach_vector(self, arm, grasp_type, scale=1):
+        return APPROACH_DISTANCE/3 * get_unit_vector([0, 0, -1]) * scale
+
+    def get_approach_pose(self, approach_vector, g):
+        return multiply(g, (approach_vector, unit_quat()))
+
+    def get_all_joints(self):
+        return sum([v for k, v in self.joint_groups.items() if k != BASE_TORSO_GROUP], [])
+
     def get_custom_limits(self):
         return self.custom_limits
+
+    def iterate_approach_path(self, arm, gripper, pose_value, grasp, body=None):
+        tool_from_root = self.get_tool_from_root(arm)
+        grasp_pose = multiply(pose_value, invert(grasp.value))
+        approach_pose = multiply(pose_value, invert(grasp.approach))
+        for tool_pose in interpolate_poses(grasp_pose, approach_pose):
+            set_pose(gripper, multiply(tool_pose, tool_from_root))
+            yield
 
     def get_gripper(self, arm=None, **kwargs):
         if arm is None:
@@ -189,8 +209,35 @@ class RobotAPI(Robot):
 
     ################################################################################
 
+    @property
+    def base_group(self):
+        return BASE_TORSO_GROUP if self.use_torso else BASE_GROUP
+
+    def get_base_joints(self):
+        return self.get_group_joints(self.base_group)
+
+    def get_base_conf(self):
+        base_joints = self.get_base_joints()
+        q = get_joint_positions(self.body, base_joints)
+        return Conf(self.body, base_joints, q)
+
     def get_group_joints(self, group):
+        assert group in self.joint_groups
         return get_robot_group_joints(self.body, group, self.joint_groups)
+
+    def get_positions(self, joint_group=None, roundto=None):
+        if joint_group is None:
+            joint_group = self.base_group
+        joints = self.get_group_joints(joint_group)
+        positions = self.get_joint_positions(joints)
+        if roundto is None:
+            return positions
+        return tuple([round(n, roundto) for n in positions])
+
+    def set_group_positions(self, joint_group: str, positions: list):
+        joints = self.get_group_joints(joint_group)
+        assert len(joints) == len(positions)
+        self.set_joint_positions(joints, positions)
 
     def compute_grasp_width(self, arm, body_pose, grasp_pose, body=None, verbose=False, **kwargs):
         return compute_robot_grasp_width(self.body, arm, body, grasp_pose,
@@ -202,23 +249,26 @@ class MobileRobot(RobotAPI):
     arms = None
     grasp_types = ['top', 'side']
 
-    def __init__(self, body, use_torso=True, **kwargs):
-        super(MobileRobot, self).__init__(body, **kwargs)
+    def __init__(self, body, use_torso=True, move_base=True, **kwargs):
+        base_group = BASE_TORSO_GROUP if use_torso else BASE_GROUP
+        joints = self.joint_groups[base_group]
+        super(MobileRobot, self).__init__(body, joints=joints, **kwargs)
         self.use_torso = use_torso
-
-    def get_gripper_root(self, arm):
-        raise NotImplementedError('should implement this for MobileRobot!')
+        self.move_base = move_base
 
     def get_arm_joints(self, arm):
         raise NotImplementedError('should implement this for MobileRobot!')
 
-    def get_tool_from_root(self, arm):
+    def open_arm(self, arm):
         raise NotImplementedError('should implement this for MobileRobot!')
+
+    ## -----------------------------------------------------------------------------
 
     def get_all_arms(self):
         return self.arms
 
-    ## -----------------------------------------------------------------------------
+    def get_arm_conf(self, arm):
+        return Conf(self.body, self.get_arm_joints(arm))
 
     def get_init(self, init_facts=[], conf_saver=None):
         robot = self.body
@@ -262,6 +312,8 @@ class MobileRobot(RobotAPI):
             if arm in self.arms:
                 init += [('Controllable', arm)]
 
+        if self.move_base:
+            init += [('CanMove',)]
         return init
 
     def get_stream_map(self, problem, collisions, custom_limits, teleport, domain_pddl=None, **kwargs):
@@ -321,18 +373,6 @@ class MobileRobot(RobotAPI):
     def remove_gripper(self, gripper_handle):
         remove_body(gripper_handle)
 
-    ###############################################################################
-
-    def get_approach_vector(self, arm, grasp_type, scale=1):
-        return tuple(scale * APPROACH_DISTANCE * 1.3 * get_unit_vector([0, 0, -1]))
-        # if grasp_type == 'top':
-        #     return APPROACH_DISTANCE*get_unit_vector([1, 0, 0])
-        # if grasp_type == 'side':
-        #     return APPROACH_DISTANCE*get_unit_vector([2, 0, -1])
-
-    def get_approach_pose(self, approach_vector, g):
-        return multiply(g, (approach_vector, unit_quat()))
-
 
 ###############################################################################
 
@@ -382,6 +422,9 @@ class SpotRobot(MobileRobot):
         return Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
 
 
+from pybullet_tools.pr2_utils import open_arm
+
+
 class PR2Robot(MobileRobot):
 
     arms = ['left']
@@ -395,6 +438,17 @@ class PR2Robot(MobileRobot):
         self.dual_arm = dual_arm
         self.grasp_aconfs = {}
         ## get away with the problem of Fluent stream outputs cannot be in action effects: ataconf
+
+    def get_lisdf_string(self):
+        return """
+    <include name="{name}">
+      <uri>../../pybullet_planning/models/drake/pr2_description/urdf/pr2_simplified.urdf</uri>
+      {pose_xml}
+    </include>
+"""
+
+    def open_arm(self, arm):
+        open_arm(self.body, arm)
 
     def get_arm_joints(self, arm):
         from pybullet_tools.pr2_utils import get_arm_joints
@@ -452,65 +506,23 @@ class PR2Robot(MobileRobot):
         # if grasp_type == 'side':
         #     return APPROACH_DISTANCE*get_unit_vector([2, 0, -1])
 
-    def get_approach_pose(self, approach_vector, g):
-        return multiply(g, (approach_vector, unit_quat()))
-
-    def get_all_joints(self):
-        return sum(PR2_GROUPS.values(), [])
-
-    def get_lisdf_string(self):
-        return """
-    <include name="{name}">
-      <uri>../../pybullet_planning/models/drake/pr2_description/urdf/pr2_simplified.urdf</uri>
-      {pose_xml}
-    </include>
-"""
-
-    def get_joints_from_group(self, joint_group):
-        from pybullet_tools.pr2_utils import get_arm_joints, get_group_joints
-        if joint_group == BASE_GROUP:
-            joints = self.joints
-        elif joint_group == BASE_TORSO_GROUP:
-            joints = get_group_joints(self.body, joint_group)
-        else: ## if joint_group == 'left':
-            joints = get_arm_joints(self.body, joint_group)
-        return joints
-
-    def get_positions(self, joint_group=BASE_GROUP, roundto=None):
-        joints = self.get_joints_from_group(joint_group)
-        positions = self.get_joint_positions(joints)
-        if roundto is None:
-            return positions
-        return tuple([round(n, roundto) for n in positions])
-
-    def set_group_positions(self, joint_group, positions):
-        joints = self.get_joints_from_group(joint_group)
-        assert len(joints) == len(positions)
-        self.set_joint_positions(joints, positions)
+    # def get_joints_from_group(self, joint_group):
+    #     from pybullet_tools.pr2_utils import get_arm_joints, get_group_joints
+    #     if joint_group == BASE_GROUP:
+    #         joints = self.joints
+    #     elif joint_group == BASE_TORSO_GROUP:
+    #         joints = get_group_joints(self.body, joint_group)
+    #     else: ## if joint_group == 'left':
+    #         joints = get_arm_joints(self.body, joint_group)
+    #     return joints
 
     def get_tool_from_root(self, a):
         from pybullet_tools.pr2_primitives import get_tool_from_root
         return get_tool_from_root(self.body, a)
 
-    def iterate_approach_path(self, arm, gripper, pose_value, grasp, body=None):
-        tool_from_root = self.get_tool_from_root(arm)
-        grasp_pose = multiply(pose_value, invert(grasp.value))
-        approach_pose = multiply(pose_value, invert(grasp.approach))
-        for tool_pose in interpolate_poses(grasp_pose, approach_pose):
-            set_pose(gripper, multiply(tool_pose, tool_from_root))
-            yield
-
     def get_custom_limits(self):
         custom_limits = get_base_custom_limits(self.body, self.custom_limits)
         return custom_limits
-
-    @property
-    def base_group(self):
-        return BASE_TORSO_GROUP if self.use_torso else BASE_GROUP
-
-    def get_base_joints(self):
-        from pybullet_tools.pr2_utils import get_group_joints
-        return get_group_joints(self.body, self.base_group)
 
     def randomly_spawn(self):
         def sample_robot_conf():
@@ -532,15 +544,6 @@ class PR2Robot(MobileRobot):
 
     def get_gripper_root(self, arm):
         return PR2_GRIPPER_ROOTS[arm]
-
-    def get_base_conf(self):
-        from pybullet_tools.pr2_utils import get_group_joints
-        base_joints = get_group_joints(self.body, self.base_group)
-        q = get_joint_positions(self.body, base_joints)
-        return Conf(self.body, base_joints, q)
-
-    def get_arm_conf(self, arm):
-        return Conf(self.body, self.get_arm_joints(arm))
 
     def check_reachability(self, body, state, verbose=False, visualize=False, debug=False,
                            max_attempts=10, fluents=[]):
@@ -762,6 +765,9 @@ class PR2Robot(MobileRobot):
         return grasp_conf
 
 
+## -------------------------------------------------------------------------
+
+
 from pybullet_tools.flying_gripper_utils import FEG_TOOL_LINK
 
 
@@ -906,7 +912,7 @@ class FEGripper(RobotAPI):
         initial_q = get_se3_q()
         arm = ARM_NAME
         return [('SEConf', initial_q), ('AtSEConf', initial_q), ('OriginalSEConf', initial_q),
-                ('Arm', arm), ('Controllable', arm), ('HandEmpty', arm)]
+                ('Arm', arm), ('Controllable', arm), ('HandEmpty', arm), ('CanMove',)]
 
     def get_attachment(self, grasp, arm=None, **kwargs):
         tool_link = link_from_name(self.body, 'panda_hand')
@@ -921,12 +927,6 @@ class FEGripper(RobotAPI):
 
     def get_carry_conf(self, arm, grasp_type, g):
         return g
-
-    def get_approach_vector(self, arm, grasp_type, scale=1):
-        return APPROACH_DISTANCE/3 * get_unit_vector([0, 0, -1]) * scale
-
-    def get_approach_pose(self, approach_vector, g):
-        return multiply(g, (approach_vector, unit_quat()))
 
     def get_all_joints(self):
         from pybullet_tools.flying_gripper_utils import SE3_GROUP, PANDA_FINGERS_GROUP

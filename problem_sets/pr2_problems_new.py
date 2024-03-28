@@ -8,10 +8,11 @@ from problem_sets.problem_utils import test_template
 ####################################################
 
 
-def test_pick(args, **kwargs):
+def test_pick(args, robot_builder_args=dict(), **kwargs):
     def loader_fn(world, **world_builder_args):
         xy = (2, 2)
         arm = world.robot.arms[0]
+        floor = create_floor_covering_base_limits(world)
         table = create_table(world, xy=xy)
         cabbage = create_movable(world, supporter=table, xy=xy)
         set_camera_target_body(table, dx=1.5, dy=1.5, dz=1.5)
@@ -21,7 +22,11 @@ def test_pick(args, **kwargs):
         goals = [("Holding", arm, cabbage)]
 
         return goals
-    return test_template(args, robot_builder_fn=build_table_domain_robot, world_loader_fn=loader_fn, **kwargs)
+
+    if 'base_q' in robot_builder_args:
+        robot_builder_args['base_q'][:2] = [0, 0]
+    return test_template(args, robot_builder_fn=build_table_domain_robot, robot_builder_args=robot_builder_args,
+                         world_loader_fn=loader_fn, **kwargs)
     # return test_simple_table_domain(args, loader_fn, **kwargs)
 
 

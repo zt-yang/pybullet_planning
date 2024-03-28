@@ -1,4 +1,4 @@
-(define (domain pr2-tamp)
+(define (domain mobile-robot-tamp)
   (:requirements :strips :equality)
 
   (:constants

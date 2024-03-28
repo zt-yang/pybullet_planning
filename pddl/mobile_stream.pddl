@@ -1,4 +1,4 @@
-(define (stream pr2-tamp)
+(define (stream mobile-robot-tamp)
   (:stream sample-pose
     :inputs (?o ?r)
     :domain (and (Stackable ?o ?r) (StaticLink ?r))

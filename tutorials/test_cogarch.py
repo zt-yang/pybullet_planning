@@ -13,12 +13,19 @@ from cogarch_tools.processes.pddlstream_agent import PDDLStreamAgent
 from leap_tools.hierarchical_agent import HierarchicalAgent
 
 
-problem = ['test_kitchen_chicken_soup', 'test_kitchen_braiser', None][0]
+simple_problem = ['test_pick', 'test_small_sink'][0]
+kitchen_problem = ['test_kitchen_chicken_soup', 'test_kitchen_braiser', None][0]
 
 
-def test_domain():
+def test_pick_place_domain():
     run_agent(
-        agent_class=HierarchicalAgent, config='config_dev.yaml', problem=problem,
+        agent_class=HierarchicalAgent, config='config_dev.yaml', problem=simple_problem,
+    )
+
+
+def test_nvidia_kitchen_domain():
+    run_agent(
+        agent_class=HierarchicalAgent, config='config_dev.yaml', problem=kitchen_problem,
         # observation_model='exposed'
     )
 
@@ -30,5 +37,6 @@ def test_pigi_data():
 
 
 if __name__ == '__main__':
-    test_domain()
+    test_pick_place_domain()
+    # test_nvidia_kitchen_domain()
     # test_pigi_data()

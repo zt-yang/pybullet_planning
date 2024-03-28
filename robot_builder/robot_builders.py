@@ -62,7 +62,7 @@ def create_pr2_robot(world, base_q=(0, 0, 0), dual_arm=False, use_torso=True,
     if draw_base_limits:
         draw_base_limits_bb(custom_limits)
 
-    robot = PR2Robot(robot, base_link=BASE_LINK, joints=BASE_JOINTS,
+    robot = PR2Robot(robot, base_link=BASE_LINK,
                      dual_arm=dual_arm, use_torso=use_torso,
                      custom_limits=get_base_custom_limits(robot, custom_limits),
                      resolutions=resolutions, weights=weights)
@@ -184,6 +184,10 @@ def build_robot_from_args(world, robot_name, create_robot_fn=None, **kwargs):
         if 'base_q' not in kwargs and 'initial_xy' in kwargs:
             x, y = kwargs['initial_xy']
             kwargs['base_q'] = (x, y, PI)
+            if 'use_torso' in kwargs and kwargs['use_torso']:
+                kwargs['base_q'] = (x, y, 0, PI)
+        elif isinstance(kwargs['base_q'], str):
+            kwargs['base_q'] = eval(kwargs['base_q'])
 
         del kwargs['initial_xy']
 

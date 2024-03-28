@@ -27,9 +27,8 @@ def pddlstream_from_state_goal(state, goals, args=None, custom_limits=None, doma
     stream_name = args.stream_pddl if args is not None else stream_name
     stream_pddl = join(PDDL_PATH, 'streams', stream_name)
     if not isfile(domain_pddl):
-        pddl_dir = join(PBP_PATH, 'pddl')
-        domain_pddl = join(pddl_dir, domain_name)
-        stream_pddl = join(pddl_dir, stream_name)
+        domain_pddl = join(PBP_PATH, domain_name)
+        stream_pddl = join(PBP_PATH, stream_name)
     if args is not None:
         cfree = args.cfree
         teleport = args.teleport

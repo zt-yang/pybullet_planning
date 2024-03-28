@@ -12,7 +12,7 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
     quat_from_euler, wait_unlocked, euler_from_quat
 from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_box_entity, collided, \
     get_camera_image_at_pose, sample_obj_in_body_link_space, sample_obj_on_body_link_surface, nice, \
-    create_attachment, change_pose_interactive
+    create_attachment, change_pose_interactive, BASE_RESOLUTIONS
 
 from world_builder.world_utils import get_mobility_id, get_mobility_category, get_mobility_identifier, \
     get_instance_name, get_lisdf_name, load_asset
@@ -702,7 +702,7 @@ class Knob(ArticulatedObjectPart):
 class Robot(Object):
     def __init__(self, body, base_link=BASE_LINK, joints=None,
                  custom_limits={}, disabled_collisions={},
-                 resolutions=None, weights=None, cameras=[], **kwargs):
+                 resolutions=BASE_RESOLUTIONS, weights=None, cameras=[], **kwargs):
         name = get_name(body)
         super(Robot, self).__init__(body, name=name, **kwargs)
         self.base_link = self.get_link(base_link)

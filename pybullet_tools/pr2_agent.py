@@ -53,8 +53,7 @@ from world_builder.actions import get_primitive_actions, repair_skeleton
 
 
 def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
-                   pull_collisions=True, base_collisions=True, debug=False,
-                   use_all_grasps=False, rotational_matrix=None):
+                   pull_collisions=True, base_collisions=True, debug=False, use_all_grasps=False):
     """ p = problem, c = collisions, l = custom_limits, t = teleport """
     from pybullet_tools.logging import myprint as print
 
@@ -81,8 +80,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'sample-relpose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, relpose=True, verbose=debug_pose)),
 
         'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False, verbose=debug_grasp,
-                                                       top_grasp_tolerance=None, use_all_grasps=use_all_grasps,
-                                                       debug=True, rotational_matrix=rotational_matrix)),
+                                                       top_grasp_tolerance=None, use_all_grasps=use_all_grasps, debug=True)),
         'compute-pose-kin': from_fn(get_compute_pose_kin()),
         'compute-pose-rel-kin': from_fn(get_compute_pose_rel_kin()),
 

@@ -14,9 +14,6 @@ import os
 import json
 from pybullet_tools.logging import dump_json
 
-from pybullet_tools.pr2_utils import get_group_conf, get_other_arm, \
-    get_carry_conf, set_arm_conf, open_arm, close_arm, arm_conf, REST_LEFT_ARM
-
 from pybullet_tools.utils import unit_pose, get_collision_data, get_links, pairwise_collision, get_link_name, \
     is_movable, get_movable_joints, draw_pose, pose_from_pose2d, set_velocity, set_joint_states, get_bodies, \
     flatten, INF, inf_generator, get_time_step, get_all_links, get_visual_data, pose2d_from_pose, multiply, invert, \
@@ -32,7 +29,6 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, pairw
     link_pairs_collision, wait_unlocked, apply_alpha, set_color, BASE_LINK as ROOT_LINK, \
     dimensions_from_camera_matrix, get_field_of_view, get_image, timeout, unit_point, get_joint_limits, ConfSaver, \
     BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED
-
 
 
 OBJ = '?obj'
@@ -725,7 +721,7 @@ class ObjAttachment(Attachment):
 def add_attachment_in_world(state=None, obj=None, parent=-1, parent_link=None, attach_distance=0.1,
                             OBJ=True, verbose=False):
 
-    from robots.robots import RobotAPI
+    from robot_builder.robots import RobotAPI
 
     ## can attach without contact
     new_attachments = add_attachment(state=state, obj=obj, parent=parent, parent_link=parent_link,
@@ -873,7 +869,7 @@ def get_point_distance(p1, p2):
 
 def get_pose2d(robot):
     if isinstance(robot, int):
-        return get_group_conf(robot, 'base')
+        return BASE_JOINTS
     point, quat = robot.get_pose()
     x, y, _ = point
     _, _, yaw = euler_from_quat(quat)

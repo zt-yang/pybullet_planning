@@ -13,9 +13,12 @@ from pybullet_tools.utils import str_from_object, get_closest_points, INF, creat
     get_extend_fn, get_joint_positions, set_joint_positions, get_max_limit, get_pose, set_pose, set_color, \
     remove_body, create_cylinder, set_all_static, wait_for_duration, remove_handles, set_renderer, \
     LockRenderer, wait_unlocked
-from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, get_gripper_joints, close_until_collision
+from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, get_gripper_joints
 from pybullet_tools.pr2_primitives import Trajectory, Command, Conf, Trajectory, Commands
 from pybullet_tools.flying_gripper_utils import set_se3_conf, get_pull_handle_motion_gen
+
+from robot_builder.robot_utils import close_until_collision
+
 from lisdf_tools.image_utils import RAINBOW_COLORS, save_seg_mask
 
 from .world import State

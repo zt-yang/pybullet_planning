@@ -26,7 +26,10 @@ from pybullet_tools.pr2_utils import open_arm, arm_conf, get_gripper_link, get_a
     learned_pose_generator, PR2_TOOL_FRAMES, get_group_joints, get_group_conf, TOOL_POSE, MAX_GRASP_WIDTH, GRASP_LENGTH, \
     SIDE_HEIGHT_OFFSET, approximate_as_prism, set_group_conf
 from pybullet_tools.utils import wait_unlocked, WorldSaver
-from .general_streams import *
+from pybullet_tools.general_streams import *
+
+from robot_builder.robots import RobotAPI
+
 import time
 
 BASE_EXTENT = 3.5 # 2.5
@@ -140,7 +143,7 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
 
         if hasattr(world, 'refine_marker_obstacles'):
             approach_obstacles = problem.world.refine_marker_obstacles(obj, obstacles)
-            ## {obst for obst in obstacles if obst !=obj} ##{obst for obst in obstacles if not is_placement(obj, obst)}
+            ## {obst for obst in obstacles if obst != obj}  ##{obst for obst in obstacles if not is_placement(obj, obst)}
             if set(obstacles) != set(approach_obstacles):
                 print(f'approach_obstacles = {approach_obstacles}')
         else:
@@ -156,12 +159,12 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
                 if obj == b: continue
 
         # gripper_pose = multiply(pose_value, invert(grasp.value)) # w_f_g = w_f_o * (g_f_o)^-1
-        tool_from_root = get_tool_from_root(robot, arm)
+        tool_from_root = robot.get_tool_from_root(arm)
         gripper_pose = multiply(robot.get_grasp_pose(pose_value, grasp.value, arm, body=grasp.body), invert(tool_from_root))
 
         default_conf = arm_conf(arm, grasp.carry)
-        arm_joints = get_arm_joints(robot, arm)
-        base_joints = get_group_joints(robot, 'base')
+        arm_joints = robot.get_arm_joints(arm)
+        base_joints = robot.get_base_joints()
         if learned:
             base_generator = learned_pose_generator(robot, gripper_pose, arm=arm, grasp_type=grasp.grasp_type)
         else:
@@ -239,17 +242,17 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
     ignored_pairs_here.extend([[(body, obst), (obst, body)] for obst in obstacles_here if is_placement(body, obst)])
     # approach_obstacles = problem.world.refine_marker_obstacles(obj, approach_obstacles)  ## for steerables
 
-    tool_from_root = get_tool_from_root(robot, arm)
+    tool_from_root = robot.get_tool_from_root(arm)
     gripper_pose = multiply(robot.get_grasp_pose(pose_value, grasp.value, body=obj), invert(tool_from_root))
     approach_pose = multiply(robot.get_grasp_pose(pose_value, grasp.approach, body=obj), invert(tool_from_root))
 
-    arm_link = get_gripper_link(robot, arm)
-    arm_joints = get_arm_joints(robot, arm)
+    arm_link = robot.get_tool_link(arm)
+    arm_joints = robot.get_arm_joints(arm)
 
     default_conf = arm_conf(arm, grasp.carry)
     # sample_fn = get_sample_fn(robot, arm_joints)
     base_conf.assign()
-    open_arm(robot, arm)
+    robot.open_arm(arm)
     set_joint_positions(robot, arm_joints, default_conf)  # default_conf | sample_fn()
 
     if visualize:
@@ -291,7 +294,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
                              custom_limits=custom_limits)  # TODO: cache
         approach_conf = ik_solver.solve(approach_pose, seed_conf=grasp_conf)
 
-    if not has_tracik() or approach_conf is None:
+    if (not has_tracik() or approach_conf is None) and 'pr2' in robot.name.lower():
         # TODO(caelan): sub_inverse_kinematics's clone_body has large overhead
         approach_conf = pr2_inverse_kinematics(robot, arm, approach_pose, custom_limits=custom_limits,
                                                upper_limits=USE_CURRENT, nearby_conf=USE_CURRENT)
@@ -1656,8 +1659,8 @@ def get_base_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
         # TODO: did base motion planning fail?
         # TODO: add objects to obstacles
 
-        bconf = get_joint_positions(robot, robot.get_base_joints())
-        aconf = get_joint_positions(robot, get_arm_joints(robot, 'left'))
+        # bconf = get_joint_positions(robot, robot.get_base_joints())
+        # aconf = get_joint_positions(robot, get_arm_joints(robot, 'left'))
 
         # arm = robot.arms[0]
         # arm_joints = get_arm_joints(robot, arm) # TODO(caelan): should set the arms conf
@@ -1761,12 +1764,12 @@ def process_ik_context(context, verbose=False):
             raise ValueError(stream.name)
 
 
-def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
+def sample_bconf(world, robot: RobotAPI, inputs, pose_value, obstacles, heading,
                  ir_sampler=None, ik_fn=None, ir_only=False, learned=False,
                  ir_max_attempts=40, max_attempts=30, soft_failures=False, verbose=False, visualize=False):
     a, o = inputs[:2]
     g = inputs[-1]
-    open_arm(robot, a)
+    robot.open_arm(a)
     context_saver = WorldSaver(bodies=[robot, o])
     title = f'sample_bconf({o}, learned=True) | start sampling '
 
@@ -1784,7 +1787,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
         return
     # robot.remove_gripper(gripper_grasp)
 
-    arm_joints = get_arm_joints(robot, a)
+    arm_joints = robot.get_arm_joints(a)
     default_conf = arm_conf(a, g.carry)
 
     ## use domain specific bconf databases

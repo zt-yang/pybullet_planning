@@ -1,5 +1,6 @@
 from world_builder.loaders_partnet_kitchen import *
-from world_builder.robot_builders import build_robot_from_args
+
+from robot_builder.robot_builders import build_robot_from_args
 
 from problem_sets.problem_utils import test_template
 

@@ -2,7 +2,7 @@ import numpy as np
 import math
 import string
 
-from pybullet_tools.utils import get_camera_matrix, PI, create_box, TAN, Point, \
+from pybullet_tools.utils import PI, create_box, TAN, Point, \
     BLACK, RGBA, YELLOW, set_all_static, set_color, get_aabb, get_link_name, get_links, link_from_name, AABB, INF, clip, aabb_union, get_aabb_center, Pose, Euler, \
     get_box_geometry, get_aabb_extent, multiply, GREY, create_shape_array, create_body, STATIC_MASS, set_renderer, quat_from_euler
 from pybullet_tools.bullet_utils import set_camera_target_body
@@ -15,23 +15,8 @@ from world_builder.entities import Object, Environment, Floor, Supporter, Surfac
 
 from robot_builder.robot_builders import create_pr2_robot
 
-OBJ = '?obj'
-
-BASE_VELOCITIES = np.array([1., 1., math.radians(180)]) / 1.  # per second
-BASE_RESOLUTIONS = np.array([0.05, 0.05, math.radians(10)])  # from examples.pybullet.namo.stream import BASE_RESOLUTIONS
-zero_limits = 0 * np.ones(2)
-half_limits = 12 * np.ones(2)
-BASE_LIMITS = (-half_limits, +half_limits) ## (zero_limits, +half_limits) ##
-BASE_LIMITS = ((-1, 3), (6, 13))
-
-CAMERA_FRAME = 'high_def_optical_frame'
-EYE_FRAME = 'wide_stereo_gazebo_r_stereo_camera_frame'
-CAMERA_MATRIX = get_camera_matrix(width=640, height=480, fx=525., fy=525.) # 319.5, 239.5 | 772.55, 772.5
-
 GRASPABLES = ['BraiserLid', 'Egg', 'VeggieCabbage', 'MeatTurkeyLeg', 'VeggieGreenPepper', 'VeggieArtichoke',
-                        'VeggieTomato',
-                        'VeggieZucchini', 'VeggiePotato', 'VeggieCauliflower',
-                        'MeatChicken']
+              'VeggieTomato', 'VeggieZucchini', 'VeggiePotato', 'VeggieCauliflower', 'MeatChicken']
 GRASPABLES = [o.lower() for o in GRASPABLES]
 
 ######################################################

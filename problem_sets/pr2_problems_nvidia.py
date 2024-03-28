@@ -619,10 +619,10 @@ def test_nvidia_kitchen_domain(args, world_loader_fn, initial_xy=(1.5, 6), **kwa
         kwargs['robot_builder_args'] = args.robot_builder_args
     kwargs['robot_builder_args'].update({
         'custom_limits': ((1, 3, 0), (5, 10, 3)),
-        'initial_xy': initial_xy,
-        'draw_base_limits': args.draw_base_limits
+        'initial_xy': initial_xy
     })
-    return test_template(args, robot_builder_fn=build_robot_from_args, world_loader_fn=world_loader_fn, **kwargs)
+    return test_template(args, robot_builder_fn=build_robot_from_args,
+                         world_loader_fn=world_loader_fn, **kwargs)
 
 
 def test_skill_knob_faucet(args, **kwargs):

@@ -150,7 +150,7 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
 
     ## other args, especially those related to problem and planner may be added directly in config files
     args.__dict__['robot_builder_args'] = conf.robot.__dict__
-    for attr in ['problem', 'planner', 'agent', 'robot', 'data']:
+    for attr in ['problem', 'planner', 'agent', 'data']:
         if attr not in conf.__dict__:
             continue
         for k, v in conf.__dict__[attr].__dict__.items():
@@ -241,9 +241,9 @@ def get_pddlstream_problem(args, **kwargs):
     ## ------------------- old PR2 problem_sets
     if callable(args.problem):
         problem_fn = args.problem
-    elif args.problem == 'test_pick':
-        set_kitchen_camera_pose()
-        from problem_sets.pr2_problems import test_pick as problem_fn
+    # elif args.problem == 'test_pick':
+    #     set_kitchen_camera_pose()
+    #     from problem_sets.pr2_problems import test_pick as problem_fn
     elif args.problem == 'test_plated_food':
         set_kitchen_camera_pose()
         from problem_sets.pr2_problems import test_plated_food as problem_fn

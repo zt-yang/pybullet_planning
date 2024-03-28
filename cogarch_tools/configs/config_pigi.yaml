@@ -22,8 +22,8 @@ planner:
 problem:
   problem: 'test_full_kitchen'
   goal_variations: [1]
-  domain_pddl: 'pr2_domain_pigi.pddl'
-  stream_pddl: 'pr2_stream_pigi.pddl'
+  domain_pddl: 'pddl/pr2_domain_pigi.pddl'
+  stream_pddl: 'pddl/pr2_stream_pigi.pddl'
   use_skeleton_constraints: false
   use_subgoal_constraints: false
   use_rel_pose: false
