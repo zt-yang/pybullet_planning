@@ -348,7 +348,7 @@ class PDDLStreamEnv(PDDLEnv):
 
         domain_line = pddlstream_problem.domain_pddl.split('\n')[0]
         if 'pr2' in domain_line:
-            from pybullet_tools.pr2_agent import get_stream_info
+            from pybullet_tools.stream_agent import get_stream_info
             stream_info = get_stream_info()
         else:  ## if 'feg' in domain_line:
             from pybullet_tools.flying_gripper_agent import get_stream_info
@@ -1103,7 +1103,7 @@ def test_gym_problem():
 def test_loaded_plan():
     """ doesn't work because the reconstructed plan and preimage by pickle have different variable index """
     import pickle
-    from pybullet_tools.pr2_agent import print_plan
+    from pybullet_tools.stream_agent import print_plan
 
     with open(join(ROOT_DIR, 'leap','pddlstream_plan.pkl'), 'rb') as inp:
         init = pickle.load(inp)

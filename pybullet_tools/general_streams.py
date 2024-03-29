@@ -14,7 +14,7 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     get_joint_limits, unit_pose, point_from_pose, draw_point, PI, quat_from_pose, angle_between, \
     tform_point, interpolate_poses, draw_pose, RED, remove_handles, stable_z, wait_unlocked, \
     get_aabb_center, set_renderer, timeout, get_aabb_extent, wait_if_gui, wait_for_duration, \
-    get_joint_type
+    get_joint_type, PoseSaver
 from pybullet_tools.pr2_primitives import Pose, Grasp
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, is_contained, \
@@ -797,6 +797,17 @@ def get_pose_from_attachment(problem):
             return (p,)
         return None
     return fn
+
+
+def get_reachable_test(radius=1.3, **kwargs):
+    def test(a, o, p, g, q):
+        with PoseSaver(o):
+            set_pose(o, p.value)
+            c_obj = get_aabb_center(get_aabb(o))[:2]
+            c_robot = q.values[:2]
+            distance = np.linalg.norm(c_obj - np.asarray(c_robot))
+            return distance < radius
+    return test
 
 
 """ ==============================================================

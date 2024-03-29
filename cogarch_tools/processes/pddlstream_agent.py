@@ -15,7 +15,7 @@ import sys
 
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, get_datetime
 from pybullet_tools.pr2_primitives import Trajectory
-from pybullet_tools.pr2_agent import solve_pddlstream
+from pybullet_tools.stream_agent import solve_pddlstream
 from pybullet_tools.utils import SEPARATOR
 from pybullet_tools.logging import save_commands, TXT_FILE
 
@@ -55,7 +55,7 @@ class PDDLStreamAgent(MotionAgent):
                  replan_frequency=1., pddlstream_kwargs={}, **kwargs):
         super(PDDLStreamAgent, self).__init__(world, **kwargs)
         self.goals = list(goals)
-        self.replan_frequency = replan_frequency # TODO: include
+        self.replan_frequency = replan_frequency
         self.plan_step = None
         self.plan = None
         self.processes = processes  ## YANG-HPN
@@ -89,11 +89,12 @@ class PDDLStreamAgent(MotionAgent):
 
     """ planning related """
     def set_pddlstream_problem(self, problem_dict, state):
-        self.pddlstream_problem = problem_dict['pddlstream_problem']
+        pddlstream_problem = problem_dict['pddlstream_problem']
+        self.pddlstream_problem = state.robot.update_stream_pddl(pddlstream_problem)
         self.initial_state = state
 
     def init_experiment(self, args, domain_modifier=None, object_reducer=None, comparing=False):
-        """ important for using the right files in replanning """
+        """ important for using the right files in replaning """
 
         ## related to saving data
         exp_name = args.exp_name
@@ -121,7 +122,7 @@ class PDDLStreamAgent(MotionAgent):
             object_reducer = args.object_reducer
 
         if object_reducer is not None:
-            exp_name += '_' + object_reducer.replace(';', '_')  ## for ffmpeg
+            exp_name += '_' + object_reducer.replace(';', '_')
         self.object_reducer = initialize_object_reducer(object_reducer)
         return exp_name
 
@@ -129,7 +130,7 @@ class PDDLStreamAgent(MotionAgent):
         from pybullet_tools.logging import myprint as print
 
         ## hack for checking if the plan has been executed
-        if self.plan is not None and len(self.plan) == 0: ## []
+        if self.plan is not None and len(self.plan) == 0:
             print('\n\nfinished executing plan\n')
             # wait_if_gui('finish?')
             return True

@@ -7,17 +7,19 @@ from world_builder.entities import Robot
 
 from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color, TRANSPARENT, \
     link_from_name, multiply, invert, LockRenderer, unit_point, draw_aabb, get_aabb, \
-    set_joint_positions, set_pose, GREEN, get_pose, remove_body, PoseSaver, \
+    set_joint_positions, set_pose, GREEN, get_pose, remove_body, PoseSaver, get_relative_pose, \
     ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles, \
     interpolate_poses, Pose, Euler, quat_from_euler, get_bodies, get_all_links, PI, \
-    is_darwin, wait_for_user, YELLOW, euler_from_quat, wait_unlocked, set_renderer
+    is_darwin, wait_for_user, YELLOW, euler_from_quat, wait_unlocked, set_renderer, \
+    sub_inverse_kinematics
 
 from pybullet_tools.bullet_utils import equal, nice, set_camera_target_body, Attachment, \
-    get_rotation_matrix, collided, query_yes_no
+    get_rotation_matrix, collided, query_yes_no, has_tracik
 from pybullet_tools.pr2_primitives import APPROACH_DISTANCE, Conf, Grasp, get_base_custom_limits
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, TOP_HOLDING_LEFT_ARM, PR2_GRIPPER_ROOTS
 from pybullet_tools.general_streams import get_handle_link, get_grasp_list_gen, get_contain_list_gen, \
     get_cfree_approach_pose_test, get_stable_list_gen, play_trajectory
+from pybullet_tools.stream_agent import remove_stream_by_name
 
 from world_builder.world_utils import load_asset
 
@@ -38,6 +40,7 @@ class RobotAPI(Robot):
         self.possible_obstacles = {}  ## body: obstacles
         self.collision_animations = []
         self.name = self.__class__.__name__.lower()
+        self.ik_solver = None
 
     def get_lisdf_string(self):
         raise NotImplementedError('should implement this for RobotAPI!')
@@ -53,9 +56,6 @@ class RobotAPI(Robot):
 
     def get_tool_link(self, arm):
         raise NotImplementedError('should implement this for RobotAPI!')
-
-    def get_tool_from_root(self, arm):
-        raise NotImplementedError('should implement this for MobileRobot!')
 
     def get_gripper_joints(self, gripper_grasp):
         raise NotImplementedError('should implement this for RobotAPI!')
@@ -76,6 +76,13 @@ class RobotAPI(Robot):
         raise NotImplementedError('should implement this for RobotAPI!')
 
     ## ------------------------------------------------------------------
+
+    def get_tool_from_root(self, arm):
+        root_link = link_from_name(self.body, self.get_gripper_root(arm))
+        tool_link = link_from_name(self.body, self.get_tool_link(arm))
+        tool_from_root = get_relative_pose(self.body, root_link, tool_link)
+        # print('robot.tool_from_root\t', nice(tool_from_root))
+        return tool_from_root
 
     def get_approach_vector(self, arm, grasp_type, scale=1):
         return APPROACH_DISTANCE/3 * get_unit_vector([0, 0, -1]) * scale
@@ -231,6 +238,16 @@ class RobotAPI(Robot):
         return compute_robot_grasp_width(self.body, arm, body, grasp_pose,
                                          self.tool_frames, self.joint_groups, **kwargs)
 
+    def update_stream_pddl(self, pddlstream_problem):
+        pass
+
+    def remove_grippers(self):
+        for body in self.grippers.values():
+            self.remove_gripper(body)
+
+    def remove_gripper(self, gripper_handle):
+        remove_body(gripper_handle)
+
 
 class MobileRobot(RobotAPI):
 
@@ -312,15 +329,27 @@ class MobileRobot(RobotAPI):
                 init += [('Controllable', arm)]
 
         if self.move_base:
-            init += [('CanMove',)]
+            init += [('CanMoveBase',)]
         return init
 
     def get_stream_map(self, problem, collisions, custom_limits, teleport, domain_pddl=None, **kwargs):
-        from pybullet_tools.pr2_agent import get_stream_map
-        return get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
+        from pybullet_tools.stream_agent import get_stream_map
+        stream_map = get_stream_map(problem, collisions, custom_limits, teleport, **kwargs)
+        if self.move_base:
+            stream_map.pop('test-inverse-reachability')
+        return stream_map
+
+    def update_stream_pddl(self, pddlstream_problem):
+        from pddlstream.language.constants import PDDLProblem
+        if self.move_base:
+            domain_pddl, constant_map, stream_pddl, stream_map, init, goal = pddlstream_problem
+            stream_pddl = pddlstream_problem[2]
+            stream_pddl = remove_stream_by_name(stream_pddl, 'test-inverse-reachability')
+            pddlstream_problem = PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
+        return pddlstream_problem
 
     def get_stream_info(self, **kwargs):
-        from pybullet_tools.pr2_agent import get_stream_info
+        from pybullet_tools.stream_agent import get_stream_info
         return get_stream_info() ## partial=partial, defer=defer
 
     ###############################################################################
@@ -350,6 +379,8 @@ class MobileRobot(RobotAPI):
         self.set_gripper_pose(body_pose, grasp, gripper=gripper, arm=arm, **kwargs)
         if width is not None:
             self.open_cloned_gripper(gripper, arm, width)
+        else:
+            self.open_cloned_gripper(gripper, arm)
         return gripper
 
     def mod_grasp_along_handle(self, grasp, dl):
@@ -365,12 +396,52 @@ class MobileRobot(RobotAPI):
                 result = close_until_collision(self.body, gripper_joints, bodies=[body], **kwargs)
         return result
 
-    def remove_grippers(self):
-        for body in self.grippers.values():
-            self.remove_gripper(body)
+    ## -------------------------------------------------------------
 
-    def remove_gripper(self, gripper_handle):
-        remove_body(gripper_handle)
+    def run_ik_once(self, arm, gripper_pose, tool_link, arm_joint):
+        """ by default, assume IKFast is not compiled """
+        kwargs = dict(custom_limits=self.custom_limits)
+        if has_tracik():
+            from pybullet_tools.tracik import IKSolver
+            if self.ik_solver is None:
+
+                self.ik_solver = IKSolver(self.body, tool_link=tool_link, first_joint=arm_joint, **kwargs)
+            current_conf = self.get_arm_conf(arm).values
+            return self.ik_solver.solve(gripper_pose, seed_conf=current_conf)
+
+        else:
+            return sub_inverse_kinematics(self.body, arm_joint, tool_link, gripper_pose, **kwargs)
+
+    def inverse_kinematics(self, arm, gripper_pose, obstacles, attempts=10, verbose=True, visualize=False):
+        tool_link = self.get_tool_link(arm)
+        arm_joints = self.get_arm_joints(arm)
+        title = 'robots.inverse_kinematics | '
+        kwargs = dict(obstacles=obstacles, verbose=verbose, visualize=visualize, world=self.world)
+
+        result = None
+        with ConfSaver(self.body):
+            for i in range(attempts):
+                arm_conf = self.run_ik_once(arm, gripper_pose, tool_link, arm_joints[0])
+                if arm_conf is None:
+                    continue
+                self.set_joint_positions(arm_joints, arm_conf)
+                if not collided(self.body, tag='robot.TracIK', **kwargs):
+                    result = arm_conf
+                    if verbose:
+                        print(title, f'found cfree ik for arm in attempt {i}/{attempts}')
+                    break
+
+        if result is not None:
+            return arm_conf
+            # base_joints = self.get_base_joints()
+            # base_conf = self.get_base_conf()
+            # joint_state = dict(zip(base_joints + arm_joints, list(base_conf.values) + arm_conf.tolist()))
+            # return Conf(self.body, arm_joints, arm_conf, joint_state=joint_state)
+        if verbose:
+            print(title, f'didnt found cfree ik for arm after {attempts} attempts')
+        return None
+
+
 
 
 ###############################################################################
@@ -417,6 +488,7 @@ class SpotRobot(MobileRobot):
     def get_carry_conf(self, arm, g_type, g):
         return SPOT_CARRY_ARM_CONF
 
+    @property
     def get_tool_from_root(self, a):
         return Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
 
@@ -518,10 +590,6 @@ class PR2Robot(MobileRobot):
     #     else: ## if joint_group == 'left':
     #         joints = get_arm_joints(self.body, joint_group)
     #     return joints
-
-    def get_tool_from_root(self, a):
-        from pybullet_tools.pr2_primitives import get_tool_from_root
-        return get_tool_from_root(self.body, a)
 
     def get_custom_limits(self):
         custom_limits = get_base_custom_limits(self.body, self.custom_limits)
@@ -767,6 +835,10 @@ class PR2Robot(MobileRobot):
         self.grasp_aconfs[key] = grasp_conf
         return grasp_conf
 
+    # def inverse_kinematics(self, arm, gripper_pose, obstacles, attempts=10, verbose=True, visualize=False):
+    #     from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics
+    #     return pr2_inverse_kinematics(self.body, arm, gripper_pose, custom_limits=self.custom_limits)
+
 
 ## -------------------------------------------------------------------------
 
@@ -892,6 +964,7 @@ class FEGripper(RobotAPI):
     def mod_grasp_along_handle(self, grasp, dl):
         return multiply(grasp, Pose(point=(dl, 0, 0)))
 
+    @property
     def get_tool_from_root(self, arm):
         return ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
 
@@ -915,7 +988,7 @@ class FEGripper(RobotAPI):
         initial_q = get_se3_q()
         arm = ARM_NAME
         return [('SEConf', initial_q), ('AtSEConf', initial_q), ('OriginalSEConf', initial_q),
-                ('Arm', arm), ('Controllable', arm), ('HandEmpty', arm), ('CanMove',)]
+                ('Arm', arm), ('Controllable', arm), ('HandEmpty', arm), ('CanMoveBase',)]
 
     def get_attachment(self, grasp, arm=None, **kwargs):
         tool_link = link_from_name(self.body, 'panda_hand')

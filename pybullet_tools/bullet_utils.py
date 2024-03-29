@@ -1122,6 +1122,14 @@ def xyzyaw_to_pose(xyzyaw):
     return tuple((tuple(xyzyaw[:3]), quat_from_euler(Euler(0, 0, xyzyaw[-1]))))
 
 
+def get_color_by_index(i):
+    index = i % len(colors)
+    return colors[index], color_names[index]
+
+
+#######################################################
+
+
 def draw_collision_shapes(body, links=[]):
     """ not working """
     if isinstance(body, tuple):
@@ -1373,12 +1381,20 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
         if found is not None:
             if visualize:
                 bodies = []
-                for g in found:
+                if verbose:
+                    print(f'get_hand_grasps({instance_name}) | found {len(found)} grasp poses')
+                for i, g in enumerate(found):
                     bb = body if link is None else None
-                    bodies.append(robot.visualize_grasp(body_pose, g, body=bb, verbose=verbose))
+                    color, color_name = get_color_by_index(i)
+                    print(f'\t{nice(g)}\t{color_name}')
+                    bodies.append(
+                        robot.visualize_grasp(body_pose, g, body=bb, verbose=verbose,
+                                              new_gripper=retain_all, color=color)
+                    )
                 # set_renderer(True)
                 set_camera_target_body(body)
-                # wait_unlocked()
+                if retain_all:
+                    wait_unlocked()
                 for b in bodies:
                     remove_body(b)
             remove_handles(handles)
@@ -1542,6 +1558,7 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
         set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=1)  ## fork inside indigo drawer top
 
     ## criteria 1: when gripper isn't closed, it shouldn't collide
+    robot.open_cloned_gripper(gripper_grasp)
     firstly = collided(gripper_grasp, obstacles, min_num_pts=min_num_pts,
                        world=world, verbose=False, tag='firstly')
 
@@ -1557,6 +1574,7 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
             secondly = secondly or aabb_contains_aabb(get_aabb(gripper_grasp, robot.finger_link), get_aabb(body))
 
     ## criteria 3: the gripper shouldn't be pointing upwards, heuristically
+    ## set_color(gripper_grasp, RED, link=2)  ## important to find out
     finger_link = robot.cloned_finger_link
     aabb = nice(get_aabb(gripper_grasp), round_to=2)
     upwards = get_aabb_center(get_aabb(gripper_grasp, link=finger_link))[2] - get_aabb_center(aabb)[2] > 0.01

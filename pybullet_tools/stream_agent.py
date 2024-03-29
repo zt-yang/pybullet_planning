@@ -6,7 +6,6 @@ import time
 import numpy as np
 from pprint import pprint, pformat
 
-from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_pull_drawer_handle_motion_gen
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_turn_knob_handle_motion_gen
 from pybullet_tools.pr2_streams import get_stable_gen, Position, get_pose_in_space_test, \
     get_marker_grasp_gen, get_bconf_in_region_test, get_pull_door_handle_motion_gen, \
@@ -14,8 +13,9 @@ from pybullet_tools.pr2_streams import get_stable_gen, Position, get_pose_in_spa
     get_marker_pose_gen, get_pull_marker_to_pose_motion_gen, get_pull_marker_to_bconf_motion_gen,  \
     get_pull_marker_random_motion_gen, get_ik_ungrasp_gen, get_pose_in_region_test, \
     get_cfree_btraj_pose_test, get_ik_ungrasp_mark_gen, \
-    sample_joint_position_gen, get_ik_gen, get_ik_fn_old, get_ik_gen_old, get_ik_rel_gen_old, get_ik_rel_fn_old, \
-    get_pull_door_handle_with_link_motion_gen
+    sample_joint_position_gen, get_pull_door_handle_with_link_motion_gen
+from pybullet_tools.mobile_streams import get_ik_fn_old, get_ik_gen_old, get_ik_rel_gen_old, \
+    get_ik_rel_fn_old
 
 from pybullet_tools.pr2_primitives import get_group_joints, get_base_custom_limits, Pose, Conf, \
     get_ik_ir_gen, move_cost_fn, Attach, Detach, Clean, Cook, \
@@ -24,7 +24,7 @@ from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_
     get_handle_grasp_gen, get_compute_pose_kin, get_compute_pose_rel_kin, \
     get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
     get_bconf_close_to_surface, sample_joint_position_closed_gen, get_cfree_rel_pose_pose_test, \
-    get_cfree_approach_rel_pose_test
+    get_cfree_approach_rel_pose_test, get_reachable_test
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, set_camera_target_body, \
     nice, BASE_LIMITS, initialize_collision_logs, collided, clean_preimage, summarize_bconfs, summarize_poses
 from pybullet_tools.pr2_utils import create_pr2_gripper, set_group_conf
@@ -32,7 +32,7 @@ from pybullet_tools.utils import get_client, get_joint_limits, \
     Pose, get_bodies, pairwise_collision, get_pose, point_from_pose, set_renderer, get_joint_name, \
     remove_body, LockRenderer, WorldSaver, wait_if_gui, SEPARATOR, safe_remove, ensure_dir, \
     get_distance, get_max_limit, BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS, wait_unlocked
-from pybullet_tools.pr2_tests import process_debug_goals
+from pybullet_tools.stream_tests import process_debug_goals
 
 from pddlstream.utils import read, INF, TmpCWD
 from pddlstream.algorithms.focused import solve_focused
@@ -53,7 +53,8 @@ from world_builder.actions import get_primitive_actions, repair_skeleton
 
 
 def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
-                   pull_collisions=True, base_collisions=True, debug=False, use_all_grasps=False):
+                   pull_collisions=True, base_collisions=True, debug=False,
+                   use_all_grasps=False, top_grasp_tolerance=False):
     """ p = problem, c = collisions, l = custom_limits, t = teleport """
     from pybullet_tools.logging import myprint as print
 
@@ -80,7 +81,8 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'sample-relpose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, relpose=True, verbose=debug_pose)),
 
         'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False, verbose=debug_grasp,
-                                                       top_grasp_tolerance=None, use_all_grasps=use_all_grasps, debug=True)),
+                                                       top_grasp_tolerance=top_grasp_tolerance,
+                                                       use_all_grasps=use_all_grasps, debug=True)),
         'compute-pose-kin': from_fn(get_compute_pose_kin()),
         'compute-pose-rel-kin': from_fn(get_compute_pose_rel_kin()),
 
@@ -89,6 +91,8 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         #                verbose=True, visualize=False, learned=False)),
         # 'inverse-kinematics': from_fn(
         #     get_ik_fn(p, collisions=motion_collisions, teleport=t, verbose=True, visualize=False)),
+
+        'test-inverse-reachability': from_test(get_reachable_test()),
 
         'inverse-reachability': from_gen_fn(
             get_ik_gen_old(p, collisions=False, ir_only=True, learned=True, verbose=False, visualize=False, **tc)),
@@ -144,7 +148,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
 
         'sample-marker-grasp': from_list_fn(get_marker_grasp_gen(p, collisions=c)),
         'inverse-kinematics-grasp-marker': from_gen_fn(
-            get_ik_gen(p, collisions=pull_collisions, pick_up=False, learned=False, verbose=False, **tc)),
+            get_ik_gen_old(p, collisions=pull_collisions, learned=False, verbose=False, **tc)),
         'inverse-kinematics-ungrasp-marker': from_fn(
             get_ik_ungrasp_mark_gen(p, collisions=c, **tc)),
         'plan-base-pull-marker-random': from_gen_fn(
@@ -858,3 +862,8 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
 
     return plan, env, knowledge, time_log, preimage
 
+
+def remove_stream_by_name(stream_pddl, stream_name):
+    key = '(:stream '
+    lines = stream_pddl.split(key)
+    return key.join([l for l in lines if not l.startswith(f'{stream_name}\n')])

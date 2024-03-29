@@ -139,7 +139,7 @@ def test_braiser_lid(args, domain='pr2_food.pddl', stream='pr2_stream.pddl'):
     # goals = [("On", egg, bottom)]  ## fail
 
     ## ======== debug option 1 =========
-    # uncomment test_grasp_ik(state, state.get_facts()+preimage, name='eggblock') in pr2_agent.py
+    # uncomment test_grasp_ik(state, state.get_facts()+preimage, name='eggblock') in stream_agent.py
     ## ------- test IK successful
     # world.put_on_surface(egg, 'braiser_bottom')
     # world.remove_object(name_to_object('braiserlid'))

@@ -8,7 +8,7 @@ from config import EXP_PATH
 from pybullet_tools.utils import disconnect, LockRenderer, has_gui, WorldSaver, wait_if_gui, \
     SEPARATOR
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, get_datetime
-from pybullet_tools.pr2_agent import post_process
+from pybullet_tools.stream_agent import post_process
 
 from pybullet_tools.pr2_primitives import control_commands
 from pddlstream.language.constants import print_solution

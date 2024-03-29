@@ -21,6 +21,10 @@ def test_pick(args, robot_builder_args=dict(), **kwargs):
         # goals = ("test_grasps", cabbage)
         goals = [("Holding", arm, cabbage)]
 
+        ### debug
+        # if not world.robot.move_base:
+        #     goals = ("test_reachable_bconf", (arm, cabbage))
+
         return goals
 
     if 'base_q' in robot_builder_args:
@@ -28,6 +32,7 @@ def test_pick(args, robot_builder_args=dict(), **kwargs):
         if 'move_base' in robot_builder_args and not robot_builder_args['move_base']:
             robot_builder_args['base_q'][:2] = [2, 1]
             robot_builder_args['base_q'][-1:] = [PI/2]
+
     return test_template(args, robot_builder_fn=build_table_domain_robot, robot_builder_args=robot_builder_args,
                          world_loader_fn=loader_fn, **kwargs)
     # return test_simple_table_domain(args, loader_fn, **kwargs)

@@ -449,73 +449,73 @@ def iterate_approach_path(robot, arm, gripper, pose, grasp, body=None):
             set_pose(body, multiply(tool_pose, grasp.value))
         yield
 
-def get_ir_sampler(problem, custom_limits={}, max_attempts=25, collisions=True, learned=True, verbose=False):
-    robot = problem.robot
-    obstacles = problem.fixed if collisions else []
-    gripper = problem.get_gripper()
-
-    def gen_fn(arm, obj, pose, grasp):
-        pose.assign()
-        link = None
-        if isinstance(obj, tuple):  ## YANG: (body, link)
-            obj, link = obj
-        approach_obstacles = {obst for obst in obstacles if not is_placement(obj, obst)}
-                              # and not is_containment(obj, obst, link)}
-        iter = 0
-        for _ in iterate_approach_path(robot, arm, gripper, pose, grasp, body=obj):
-            if verbose:
-                for b in approach_obstacles:
-                    if pairwise_collision(gripper, b):
-                        print(f'       get_ir_sampler  |  iterate_approach_path {iter}  |  collision between {gripper} and {b}')
-                        for l in get_links(b):
-                            if pairwise_collision((gripper, None), (b, [l])):
-                                print('                colliding with', (b, l), get_link_name(b, l), get_aabb(b, l))
-                        return
-                    elif pairwise_collision(obj, b):
-                        print(f'       get_ir_sampler  |  iterate_approach_path {iter} |  collision between {obj} and {b}')
-                        return
-            else:
-                if any(pairwise_collision(gripper, b) or pairwise_collision(obj, b) for b in approach_obstacles):
-                    return
-            iter += 1
-        gripper_pose = multiply(pose.value, invert(grasp.value)) # w_f_g = w_f_o * (g_f_o)^-1
-        default_conf = arm_conf(arm, grasp.carry)
-        arm_joints = get_arm_joints(robot, arm)
-        base_joints = get_group_joints(robot, 'base')
-        # if pose_to_xyzyaw(pose.value) == (1.093, 7.088, 0.696, 2.8):
-        #     yield (Conf(robot, base_joints, (1.241, 6.672, 1.874)),)
-
-        if learned:
-            base_generator = learned_pose_generator(robot, gripper_pose, arm=arm, grasp_type=grasp.grasp_type)
-        else:
-            base_generator = uniform_pose_generator(robot, gripper_pose)
-        lower_limits, upper_limits = get_custom_limits(robot, base_joints, custom_limits)
-        while True:
-            count = 0
-            for base_conf in islice(base_generator, max_attempts):
-                count += 1
-                if not all_between(lower_limits, base_conf, upper_limits):
-                    continue
-                bq = Conf(robot, base_joints, base_conf)
-                pose.assign()
-                bq.assign()
-                set_joint_positions(robot, arm_joints, default_conf)
-                if verbose:
-                    for b in obstacles + [obj]:
-                        if pairwise_collision(robot, b):
-                            print(f'       get_ir_sampler  |  base_generator  |  collision between {robot} and {b}')
-                            continue
-                else:
-                    if any(pairwise_collision(robot, b) for b in obstacles + [obj]):
-                        continue
-                if verbose: print('IR attempts:', count)
-
-                # print('IR checked:', bq, obstacles + [obj], ' | ', arm_joints, default_conf)  ## YANG
-                yield (bq,)
-                break
-            else:
-                yield None
-    return gen_fn
+# def get_ir_sampler(problem, custom_limits={}, max_attempts=25, collisions=True, learned=True, verbose=False):
+#     robot = problem.robot
+#     obstacles = problem.fixed if collisions else []
+#     gripper = problem.get_gripper()
+#
+#     def gen_fn(arm, obj, pose, grasp):
+#         pose.assign()
+#         link = None
+#         if isinstance(obj, tuple):  ## YANG: (body, link)
+#             obj, link = obj
+#         approach_obstacles = {obst for obst in obstacles if not is_placement(obj, obst)}
+#                               # and not is_containment(obj, obst, link)}
+#         iter = 0
+#         for _ in iterate_approach_path(robot, arm, gripper, pose, grasp, body=obj):
+#             if verbose:
+#                 for b in approach_obstacles:
+#                     if pairwise_collision(gripper, b):
+#                         print(f'       get_ir_sampler  |  iterate_approach_path {iter}  |  collision between {gripper} and {b}')
+#                         for l in get_links(b):
+#                             if pairwise_collision((gripper, None), (b, [l])):
+#                                 print('                colliding with', (b, l), get_link_name(b, l), get_aabb(b, l))
+#                         return
+#                     elif pairwise_collision(obj, b):
+#                         print(f'       get_ir_sampler  |  iterate_approach_path {iter} |  collision between {obj} and {b}')
+#                         return
+#             else:
+#                 if any(pairwise_collision(gripper, b) or pairwise_collision(obj, b) for b in approach_obstacles):
+#                     return
+#             iter += 1
+#         gripper_pose = multiply(pose.value, invert(grasp.value)) # w_f_g = w_f_o * (g_f_o)^-1
+#         default_conf = arm_conf(arm, grasp.carry)
+#         arm_joints = get_arm_joints(robot, arm)
+#         base_joints = get_group_joints(robot, 'base')
+#         # if pose_to_xyzyaw(pose.value) == (1.093, 7.088, 0.696, 2.8):
+#         #     yield (Conf(robot, base_joints, (1.241, 6.672, 1.874)),)
+#
+#         if learned:
+#             base_generator = learned_pose_generator(robot, gripper_pose, arm=arm, grasp_type=grasp.grasp_type)
+#         else:
+#             base_generator = uniform_pose_generator(robot, gripper_pose)
+#         lower_limits, upper_limits = get_custom_limits(robot, base_joints, custom_limits)
+#         while True:
+#             count = 0
+#             for base_conf in islice(base_generator, max_attempts):
+#                 count += 1
+#                 if not all_between(lower_limits, base_conf, upper_limits):
+#                     continue
+#                 bq = Conf(robot, base_joints, base_conf)
+#                 pose.assign()
+#                 bq.assign()
+#                 set_joint_positions(robot, arm_joints, default_conf)
+#                 if verbose:
+#                     for b in obstacles + [obj]:
+#                         if pairwise_collision(robot, b):
+#                             print(f'       get_ir_sampler  |  base_generator  |  collision between {robot} and {b}')
+#                             continue
+#                 else:
+#                     if any(pairwise_collision(robot, b) for b in obstacles + [obj]):
+#                         continue
+#                 if verbose: print('IR attempts:', count)
+#
+#                 # print('IR checked:', bq, obstacles + [obj], ' | ', arm_joints, default_conf)  ## YANG
+#                 yield (bq,)
+#                 break
+#             else:
+#                 yield None
+#     return gen_fn
 
 ##################################################
 

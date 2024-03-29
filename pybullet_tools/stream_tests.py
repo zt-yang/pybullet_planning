@@ -17,6 +17,7 @@ from pybullet_tools.pr2_primitives import get_group_joints, get_base_custom_limi
     get_gripper_joints, GripperCommand, Simultaneous, create_trajectory
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, get_handle_grasp_list_gen, \
     get_handle_grasp_gen, get_compute_pose_kin, sample_joint_position_closed_gen, get_contain_gen
+
 from pybullet_tools.bullet_utils import set_camera_target_body, colors, color_names, \
     nice, BASE_LIMITS, initialize_collision_logs, collided
 from pybullet_tools.pr2_problems import create_pr2
@@ -54,6 +55,8 @@ def process_debug_goals(state, goals, init):
             goals, ff = test_joint_closed(init, args)
         elif test == 'test_door_pull_traj':
             goals = test_door_pull_traj(state, init, args)
+        elif test == 'test_reachable_bconf':
+            goals, ff = test_reachable_bconf(state, init, args)
         elif test == 'test_reachable_pose':
             goals = test_reachable_pose(state, init, args)
         elif test == 'test_at_reachable_pose':
@@ -272,6 +275,9 @@ def visualize_grasps_by_quat(state, outputs, body_pose, verbose=False):
             remove_body(visual)
 
 
+## ------------------------------------------------------------------
+
+
 def test_grasp_ik(state, init, name='cabbage', visualize=True):
     goals = test_grasps(state, name, visualize=False)
     body, grasp = goals[0][-2:]
@@ -401,6 +407,22 @@ def test_door_pull_traj(problem, init, o):
         print('\n\n!!!! cant find any handle grasp that works for', o)
         break
     sys.exit()
+
+
+def test_reachable_bconf(state, init, args):
+    a, o = args
+    p = [f[2] for f in init if f[0].lower() == "AtPose".lower() and f[1] == o][0]
+    bq = [f[1] for f in init if f[0].lower() == 'AtBConf'.lower()][0]
+
+    funk = get_grasp_list_gen(state, verbose=True, visualize=True, retain_all=False,
+                              top_grasp_tolerance=None)
+    outputs = funk(o)
+    for (g,) in outputs:
+        body_pose = get_pose(o)
+        print('body_pose', nice(body_pose))
+        visualize_grasps(state, [(g,)], body_pose)
+        return [('Reach', a, o, p, g, bq)], [("Grasp", o, g)]
+    return None
 
 
 def test_reachable_pose(state, init, o):

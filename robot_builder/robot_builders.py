@@ -174,6 +174,13 @@ def build_robot_from_args(world, robot_name, create_robot_fn=None, **kwargs):
         spawn_range = kwargs['spawn_range']
         del kwargs['spawn_range']
 
+    if 'z_range' in kwargs:
+        x_min, y_min = kwargs['custom_limits'][0][:2]
+        x_max, y_max = kwargs['custom_limits'][1][:2]
+        z_min, z_max = kwargs['z_range']
+        kwargs['custom_limits'] = ((x_min, y_min, z_min), (x_max, y_max, z_max))
+        del kwargs['z_range']
+
     if robot_name == 'feg':
         if 'initial_q' not in kwargs and 'initial_xy' in kwargs:
             x, y = kwargs['initial_xy']

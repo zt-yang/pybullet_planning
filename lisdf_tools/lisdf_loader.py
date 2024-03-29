@@ -350,7 +350,9 @@ class World(WorldBase):
     def get_category(self, body):
         return self.get_type(body)
 
-    def get_name(self, body):
+    def get_name(self, body, use_default_link_name=True):
+        if use_default_link_name and isinstance(body, tuple) and len(body) == 3:
+            return get_link_name(body[0], body[-1])
         if body in self.body_to_name:
             return self.body_to_name[body]
         return None

@@ -19,9 +19,11 @@ def create_world(args):
     return World(time_step=args.time_step, segment=args.segment, use_rel_pose=args.use_rel_pose)
 
 
-def pddlstream_from_state_goal(state, goals, args=None, custom_limits=None, domain_name=None, stream_name=None,
-                               cfree=False, teleport=False, use_all_grasps=False, **kwargs):
-    from pybullet_tools.pr2_agent import pddlstream_from_state_goal as pddlstream_helper
+def pddlstream_from_state_goal(state, goals, args=None, custom_limits=None,
+                               domain_name=None, stream_name=None, cfree=False, teleport=False,
+                               use_all_grasps=False, top_grasp_tolerance=None, **kwargs):
+    from pybullet_tools.stream_agent import pddlstream_from_state_goal as pddlstream_helper
+
     domain_name = args.domain_pddl if args is not None else domain_name
     domain_pddl = join(PDDL_PATH, 'domains', domain_name)
     stream_name = args.stream_pddl if args is not None else stream_name
@@ -35,10 +37,15 @@ def pddlstream_from_state_goal(state, goals, args=None, custom_limits=None, doma
         if hasattr(args, 'use_all_grasps'):
             use_all_grasps = args.use_all_grasps
             print(f'\n\npddlstream_from_state_goal | using all grasps? {use_all_grasps} \n\n')
+        if hasattr(args, 'top_grasp_tolerance'):
+            top_grasp_tolerance = args.top_grasp_tolerance
+            print(f'\n\npddlstream_from_state_goal | top_grasp_tolerance? {top_grasp_tolerance} \n\n')
     if custom_limits is None:
         custom_limits = state.robot.custom_limits
-    return pddlstream_helper(state, goals, custom_limits=custom_limits, domain_pddl=domain_pddl, stream_pddl=stream_pddl,
-                             collisions=not cfree, teleport=teleport, use_all_grasps=use_all_grasps, **kwargs)
+    return pddlstream_helper(state, goals, custom_limits=custom_limits,
+                             domain_pddl=domain_pddl, stream_pddl=stream_pddl,
+                             collisions=not cfree, teleport=teleport,
+                             use_all_grasps=use_all_grasps, top_grasp_tolerance=top_grasp_tolerance, **kwargs)
 
 
 def save_to_kitchen_worlds(state, pddlstream_problem, EXIT=False, **kwargs):

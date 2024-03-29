@@ -102,6 +102,7 @@
     (AtBConf ?q)
     (AtAConf ?a ?q)
 
+    (CanMoveBase)
     (CanMove)
     (CanPull)
     (CanUngrasp)
@@ -156,7 +157,7 @@
 
   (:action move_base
     :parameters (?q1 ?q2 ?t)
-    :precondition (and (CanMove) (BaseMotion ?q1 ?t ?q2) ; (HandEmpty ?a)
+    :precondition (and (CanMoveBase) (CanMove) (BaseMotion ?q1 ?t ?q2) ; (HandEmpty ?a)
                        (not (Identical ?q1 ?q2))
                        (AtBConf ?q1))
     :effect (and (AtBConf ?q2)

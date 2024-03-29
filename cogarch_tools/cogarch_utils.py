@@ -37,6 +37,7 @@ def parse_config(path):
     conf.problem = Namespace(**conf.problem)
     conf.planner = Namespace(**conf.planner)
     conf.robot = Namespace(**conf.robot)
+    conf.streams = Namespace(**conf.streams)
     if hasattr(conf, 'agent'):
         conf.agent = Namespace(**conf.agent)
     if isinstance(conf.seed, str) and conf.seed.lower() == 'none':
@@ -62,19 +63,21 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
                         help='When enabled, enables the PyBullet viewer.')
     parser.add_argument('--lock', action='store_true', default=conf.sim.lock,
                         help='When enabled, locks the viewer during planning.')
-    parser.add_argument('-c', '--cfree', action='store_true', default=conf.sim.cfree,
-                        help='When enabled, DISABLES collision checking.')
-    parser.add_argument('--movable', action='store_true', default=conf.sim.disable_movable_collision,
-                        help='When enabled, DISABLES movable collisions.')
-    parser.add_argument('--base', action='store_true', default=conf.sim.disable_base_collision,
-                        help='When enabled, DISABLES base collisions.')
-    parser.add_argument('--teleport', action='store_true', default=conf.sim.teleport,
-                        help='When enabled, teleports the robot between base configurations.')
     parser.add_argument('-d', '--drive', action='store_true', default=conf.sim.drive, help='')
     parser.add_argument('-t', '--time_step', type=float, default=conf.sim.time_step, help='')
     parser.add_argument('-cam', '--camera', action='store_true', default=conf.sim.camera, help='')
     parser.add_argument('-seg', '--segment', action='store_true', default=conf.sim.segment, help='')
     parser.add_argument('-mon', '--monitoring', action='store_true', default=conf.sim.monitoring, help='')
+
+    ## --------- streams related
+    parser.add_argument('-c', '--cfree', action='store_true', default=conf.streams.cfree,
+                        help='When enabled, DISABLES collision checking.')
+    parser.add_argument('--movable', action='store_true', default=conf.streams.disable_movable_collision,
+                        help='When enabled, DISABLES movable collisions.')
+    parser.add_argument('--base', action='store_true', default=conf.streams.disable_base_collision,
+                        help='When enabled, DISABLES base collisions.')
+    parser.add_argument('--teleport', action='store_true', default=conf.streams.teleport,
+                        help='When enabled, teleports the robot between base configurations.')
 
     ## -------- planning problem related
     parser.add_argument('-p', '--problem', type=str, default=conf.problem.problem,
@@ -150,7 +153,7 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
 
     ## other args, especially those related to problem and planner may be added directly in config files
     args.__dict__['robot_builder_args'] = conf.robot.__dict__
-    for attr in ['problem', 'planner', 'agent', 'data']:
+    for attr in ['problem', 'planner', 'agent', 'data', 'streams']:
         if attr not in conf.__dict__:
             continue
         for k, v in conf.__dict__[attr].__dict__.items():

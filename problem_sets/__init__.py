@@ -2,8 +2,8 @@
 def problem_fn_from_name(name):
     from inspect import getmembers, isfunction
     import problem_sets.pr2_problems as pr2_problems
-    import problem_sets.pr2_problems_new as pr2_problems_new
-    import problem_sets.pr2_problems_nvidia as problems_nvidia
+    import problem_sets.problems_block_world as pr2_problems_new
+    import problem_sets.problems_nvidia as problems_nvidia
     import problem_sets.pr2_problems_pigi as problems_pigi
     import problem_sets.feg_problems as feg_problems
     import problem_sets.problems_kitchen_mini as kitchen_mini

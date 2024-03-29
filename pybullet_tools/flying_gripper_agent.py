@@ -11,7 +11,7 @@ from pddlstream.language.stream import StreamInfo, PartialInputs
 
 from pybullet_tools.flying_gripper_utils import get_ik_fn, get_free_motion_gen, \
     get_pull_handle_motion_gen, get_reachable_test
-from pybullet_tools.pr2_agent import opt_move_cost_fn
+from pybullet_tools.stream_agent import opt_move_cost_fn
 
 
 def get_stream_map(p, c, l, t, **kwargs):

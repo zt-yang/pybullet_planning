@@ -31,9 +31,15 @@
     :outputs (?g)
     :certified (Grasp ?o ?g)
   )
+
   ;; -------------------------------------------------------------------
   ;;  grasping planning step 1
   ;; -------------------------------------------------------------------
+  (:stream test-inverse-reachability
+    :inputs (?a ?o ?p ?g ?q)
+    :domain (and (Controllable ?a) (Pose ?o ?p) (Grasp ?o ?g) (BConf ?q))
+    :certified (Reach ?a ?o ?p ?g ?q)
+  )
   (:stream inverse-reachability
     :inputs (?a ?o ?p ?g)
     :domain (and (Controllable ?a) (Pose ?o ?p) (Grasp ?o ?g))
