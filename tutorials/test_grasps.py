@@ -38,13 +38,14 @@ def test_grasp(problem, body, funk, test_attachment=False, test_offset=False, **
     if isinstance(outputs, list) and not test_offset:
         print(f'grasps on body {body} ({len(outputs)}):', outputs)
 
-    visualize_grasps(problem, outputs, body_pose, retain_all=not test_attachment or True,
+    visualize_grasps(problem, outputs, body_pose, retain_all=not test_attachment,
                      test_attachment=test_attachment, **kwargs)
     set_renderer(True)
     set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
 
 
-def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=False, verbose=False,
+def test_grasps(robot='feg', categories=[], skip_grasps=False, visualize=True, retain_all=True,
+                test_attachment=False, verbose=False,
                 test_rotation_matrix=False, test_translation_matrix=False, skip_grasp_index=None, **kwargs):
 
     from pybullet_tools.bullet_utils import enumerate_rotational_matrices as emu, numerate_translation_matrices
@@ -73,8 +74,8 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=F
             for i, cat in enumerate(categories):
 
                 tpt = math.pi / 4 if cat in ['Knife'] else None  ## , 'EyeGlasses', 'Plate'
-                funk = get_grasp_list_gen(problem, collisions=True, verbose=verbose, visualize=True, retain_all=True,
-                                          top_grasp_tolerance=tpt, test_offset=test_offset,
+                funk = get_grasp_list_gen(problem, collisions=True, visualize=visualize, retain_all=retain_all,
+                                          verbose=verbose, top_grasp_tolerance=tpt, test_offset=test_offset,
                                           skip_grasp_index=skip_grasp_index)
 
                 if cat == 'box':

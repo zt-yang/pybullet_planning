@@ -103,10 +103,12 @@ class HandleGrasp(object):
         self.carry = tuple(carry)
         if index == None: index = id(self)
         self.index = index
+
     def get_attachment(self, robot, arm, **kwargs):
-        return robot.get_attachment(self, arm, **kwargs)
+        return robot.make_attachment(self, arm, **kwargs)
         # tool_link = link_from_name(robot, PR2_TOOL_FRAMES[arm])
         # return Attachment(robot, tool_link, self.value, self.body)
+
     def __repr__(self):
         return 'hg{}={}'.format(self.index % 1000, nice(self.value))
 

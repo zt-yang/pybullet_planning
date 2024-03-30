@@ -186,6 +186,8 @@ def build_robot_from_args(world, robot_name, create_robot_fn=None, **kwargs):
             x, y = kwargs['initial_xy']
             del kwargs['initial_xy']
             kwargs['initial_q'] = [x, y, 0.7, 0, -PI / 2, 0]
+        if 'base_q' in kwargs:
+            kwargs.pop('base_q')
         robot = create_gripper_robot(world, **kwargs)
 
     else:

@@ -86,11 +86,14 @@ class Grasp(object):
         if index == None:
             index = id(self)
         self.index = index
+
     def get_attachment(self, robot, arm, **kwargs):
-        return robot.get_attachment(self, arm, **kwargs)
+        return robot.make_attachment(self, arm, **kwargs)
+
     def __repr__(self):
         return 'g{}={}'.format(self.index % 1000, nice(self.value))
         # return 'g{}'.format(id(self) % 1000)
+
 
 class Conf(object):
     def __init__(self, body, joints, values=None, init=False, index=None, joint_state=None):

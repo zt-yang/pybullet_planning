@@ -252,7 +252,7 @@ def se3_ik(robot, target_pose, max_iterations=200, max_time=5, verbose=False, mo
     target_point, target_quat = target_pose
 
     sub_joints = get_se3_joints(robot)
-    sub_robot = robot.create_gripper()  ## color=BLUE ## for debugging
+    sub_robot = robot.get_gripper()  ## color=BLUE ## for debugging
     limits = [get_joint_limits(robot, j) for j in sub_joints]
     lower_limits = [l[0] for l in limits]
     upper_limits = [l[1] for l in limits]

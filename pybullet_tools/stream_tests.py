@@ -202,6 +202,7 @@ def visualize_grasps(state, outputs, body_pose, retain_all=True, collisions=Fals
                 print(f'\npr2_tests.visualize_grasps | '
                       f'\trobot.visualize_grasp({nice(body_pose)}, ({nice(grasp.value)}):'
                       f'\t{nice(robot.tool_from_hand)}\t', kwargs)
+
             gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, body=grasp.body,
                                                   color=gripper_color, width=w, new_gripper=True, **kwargs)
             if collisions and collided(gripper_grasp, state.obstacles, verbose=True):
@@ -209,8 +210,9 @@ def visualize_grasps(state, outputs, body_pose, retain_all=True, collisions=Fals
                 return None
             # set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.5)
         else:
-            gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, body=grasp.body, color=GREEN, width=w)
-            gripper_approach = robot.visualize_grasp(body_pose, grasp.approach, color=BROWN)
+            gkwargs = dict(body=grasp.body, width=w, new_gripper=True)
+            gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, color=GREEN, **gkwargs)
+            gripper_approach = robot.visualize_grasp(body_pose, grasp.approach, color=BROWN, **gkwargs)
 
             if test_attachment:
                 set_renderer(True)
@@ -220,8 +222,6 @@ def visualize_grasps(state, outputs, body_pose, retain_all=True, collisions=Fals
             # set_camera_target_body(gripper_approach, dx=0, dy=-1, dz=0)
             remove_body(gripper_grasp)
             remove_body(gripper_approach)
-            # weiyu: debug
-            # robot.remove_grippers()
             return None
 
         return gripper_grasp
