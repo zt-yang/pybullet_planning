@@ -8,7 +8,7 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     get_min_limit, user_input, step_simulation, get_body_name, get_bodies, BASE_LINK, get_joint_position, \
     add_segments, get_max_limit, link_from_name, BodySaver, get_aabb, interpolate_poses, wait_for_user, \
     plan_direct_joint_motion, has_gui, create_attachment, wait_for_duration, get_extend_fn, set_renderer, \
-    get_custom_limits, all_between, remove_body
+    get_custom_limits, all_between, remove_body, draw_aabb
 
 from pybullet_tools.bullet_utils import check_cfree_gripper, multiply, has_tracik, visualize_bconf
 from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics
@@ -202,9 +202,10 @@ def get_ik_gen_old(problem, max_attempts=30, collisions=True, learned=True, tele
             pose_value = p.value
 
         inputs = a, o, p, g
-        return sample_bconf(world, robot, inputs, pose_value, obstacles, heading, ir_sampler=ir_sampler, ik_fn=ik_fn,
-                     verbose=verbose, visualize=visualize, soft_failures=soft_failures, learned=learned,
-                     ir_max_attempts=ir_max_attempts, max_attempts=max_attempts, ir_only=ir_only)
+        return sample_bconf(
+            world, robot, inputs, pose_value, obstacles, heading, ir_sampler=ir_sampler, ik_fn=ik_fn,
+            verbose=verbose, visualize=visualize, soft_failures=soft_failures, learned=learned,
+            ir_max_attempts=ir_max_attempts, max_attempts=max_attempts, ir_only=ir_only)
 
     return gen
 
@@ -448,9 +449,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
     if hasattr(world, 'BODY_TO_OBJECT') and body in world.BODY_TO_OBJECT and \
             world.BODY_TO_OBJECT[body].grasp_parent is not None:
         addons.append(world.BODY_TO_OBJECT[body].grasp_parent)
-    addon_obstacles = obstacles_here  ## + addons if collisions else []
 
-    # approach_obstacles = {obst for obst in obstacles_here if not is_placement(body, obst)}
     approach_obstacles = obstacles_here
     ignored_pairs_here.extend([[(body, obst), (obst, body)] for obst in obstacles_here if is_placement(body, obst)])
     # approach_obstacles = problem.world.refine_marker_obstacles(obj, approach_obstacles)  ## for steerables
@@ -468,15 +467,24 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
     robot.open_arm(arm)
     set_joint_positions(robot, arm_joints, default_conf)  # default_conf | sample_fn()
 
+    ## visualize the gripper
     if visualize:
         print('grasp_value', nice(grasp.value))
-        gripper_grasp = robot.visualize_grasp(pose_value, grasp.approach, body=obj)
-        set_camera_target_body(gripper_grasp)
-        wait_unlocked()
+        gripper_grasp = robot.visualize_grasp(pose_value, grasp.approach,
+                                              body=obj, color=RED, new_gripper=True)
+        set_renderer(True)
+        # set_camera_target_body(gripper_grasp)
+        wait_unlocked('solve_approach_ik | visualized the gripper')
+        remove_body(gripper_grasp)
 
     if base_conf.joint_state is not None:
         grasp_conf = list(map(base_conf.joint_state.get, arm_joints))
         set_joint_positions(robot, arm_joints, grasp_conf)
+
+        ## visualize the grasp conf
+        if visualize:
+            set_renderer(True)
+            wait_unlocked('solve_approach_ik | visualized the arm')
     else:
         grasp_conf = robot.inverse_kinematics(arm, gripper_pose, obstacles_here, verbose=verbose)
 

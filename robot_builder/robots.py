@@ -23,8 +23,9 @@ from pybullet_tools.stream_agent import remove_stream_by_name
 
 from world_builder.world_utils import load_asset
 
-from robot_builder.robot_utils import get_robot_group_joints, close_until_collision, create_robot_gripper, \
-    BASE_GROUP, BASE_TORSO_GROUP, get_cloned_gripper_joints, get_joints_by_names
+from robot_builder.robot_utils import get_robot_group_joints, close_until_collision, \
+    create_robot_gripper, BASE_GROUP, BASE_TORSO_GROUP, get_cloned_gripper_joints, \
+    get_joints_by_names, test_tool_from_root_transformations
 
 
 class RobotAPI(Robot):
@@ -165,20 +166,26 @@ class RobotAPI(Robot):
             return Attachment(self, tool_link, grasp.value, body, child_joint=joint, child_link=link)
 
         arm = self.arms[0]
-        tool_from_root = self.get_tool_from_root(arm)
         child_pose = get_pose(o)
-        grasp_pose = self.get_grasp_pose(child_pose, grasp.value, body=o)
-        gripper_pose = multiply(grasp_pose, invert(tool_from_root))
-        grasp_pose = multiply(invert(gripper_pose), child_pose)
-        attachment = Attachment(self, tool_link, grasp_pose, grasp.body)
+        tool_from_root = self.get_tool_from_root(arm)
+
+        def get_attachment(tool_from_root):
+            grasp_pose = self.get_grasp_pose(child_pose, grasp.value, body=o)
+            gripper_pose = multiply(grasp_pose, invert(tool_from_root))
+            grasp_pose = multiply(invert(gripper_pose), child_pose)
+            attachment = Attachment(self, tool_link, grasp_pose, grasp.body)
+            return attachment
+
+        attachment = get_attachment(tool_from_root)
         if visualize:
             with PoseSaver(attachment.child):
-                set_camera_target_body(o)
-                wait_for_user('robots.make_attachment | start attachment?')
-                attachment.assign()
                 set_renderer(True)
                 set_camera_target_body(o)
-                wait_for_user('robots.make_attachment | correct attachment?')
+                attachment.assign()
+                print('collided?\t', collided(self.body, [o], articulated=True, use_aabb=True))
+                test_tool_from_root_transformations(tool_from_root, get_attachment,
+                                                    test_rotation=True, test_translation=False)
+
         return attachment
 
     ###############################################################################
@@ -370,8 +377,6 @@ class MobileRobot(RobotAPI):
     ###############################################################################
 
     def create_gripper(self, arm=None, **kwargs):
-        # if arm in self.grippers:
-        #     print('gripper already exists!')
         self.grippers[arm] = create_robot_gripper(self.body, self.get_gripper_root(arm), **kwargs)
         return self.grippers[arm]
 

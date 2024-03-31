@@ -97,8 +97,8 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'inverse-reachability': from_gen_fn(
             get_ik_gen_old(p, collisions=False, ir_only=True, learned=True, verbose=False, visualize=False, **tc)),
         'inverse-kinematics': from_fn(
-            get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=debug,
-                          visualize=False, ACONF=False, debug=debug)),
+            get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=True,
+                          visualize=debug, ACONF=False, debug=debug)),
 
         'inverse-reachability-rel': from_gen_fn(
             get_ik_rel_gen_old(p, collisions=False, ir_only=True, learned=True, verbose=False, visualize=False, **tc)),

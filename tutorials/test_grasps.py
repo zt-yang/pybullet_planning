@@ -48,14 +48,15 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False, visualize=True, r
                 test_attachment=False, verbose=False,
                 test_rotation_matrix=False, test_translation_matrix=False, skip_grasp_index=None, **kwargs):
 
-    from pybullet_tools.bullet_utils import enumerate_rotational_matrices as emu, numerate_translation_matrices
+    from pybullet_tools.bullet_utils import enumerate_rotational_matrices as emu, enumerate_translation_matrices
 
     world = get_test_world(robot, **kwargs)
     draw_pose(unit_pose(), length=10)
     robot = world.robot
     problem = State(world, grasp_types=robot.grasp_types)
     rotation_matrices = [None] if not test_rotation_matrix else emu(return_list=True)
-    translation_matrices = [(0, 0, 0)] if not test_translation_matrix else numerate_translation_matrices()
+    translation_matrices = [problem.robot.tool_from_hand[0]] if not test_translation_matrix \
+        else enumerate_translation_matrices()
     test_offset = test_rotation_matrix or test_translation_matrix
     color = GREEN
 
@@ -64,8 +65,8 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False, visualize=True, r
             if test_offset:
                 ## found it
                 if r is not None:
-                    if test_rotation_matrix and k1 < 23: continue
-                problem.robot.tool_from_hand = Pose(point=t, euler=r)
+                    if test_rotation_matrix and k1 < 15: continue
+                    problem.robot.tool_from_hand = Pose(point=t, euler=r)
                 k = k1 * len(translation_matrices) + k2
                 idx = k % len(colors)
                 color = colors[idx]
@@ -130,13 +131,13 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False, visualize=True, r
                         wait_if_gui()
                     else:
                         if test_offset:
-                            print(f'\n\n{k1*k2}/{len(rotation_matrices)*len(translation_matrices)}',
+                            print(f'\n\n{k}/{len(rotation_matrices)*len(translation_matrices)}',
                                   f'\t{k1}/{len(rotation_matrices)} r = {nice(r)}',
                                   f'\t{k2}/{len(translation_matrices)} t = {nice(t)}\t', color_name, '\n\n')
 
                         test_grasp(problem, body, funk, test_attachment, test_offset, color=color)
-                        if test_rotation_matrix:
-                            wait_unlocked()
+                        # if test_rotation_matrix:
+                        #     wait_unlocked()
 
                 ## focus on objects
                 if not test_offset:

@@ -304,14 +304,15 @@ def get_root_links(body):
     [fixed_links] = get_rigid_clusters(body, links=[ROOT_LINK])
     return fixed_links
 
-def articulated_collisions(obj, obstacles, **kwargs): # TODO: articulated_collision?
+def articulated_collisions(obj, obstacles, verbose=False, **kwargs): # TODO: articulated_collision?
     # TODO: cache & compare aabbs
     for obstacle in obstacles:
         # dump_body(obstacle)
         # joints = get_movable_joints(obstacle)
         root_links = get_root_links(obstacle)
         if link_pairs_collision(body1=obstacle, links1=root_links, body2=obj, **kwargs):
-            # print(obj, obstacle, root_links)
+            if verbose:
+                print(f'articulated_collisions | obj = {obj}\tobstacle = {obstacle}\troot_links = {root_links}')
             # dump_body(obj)
             # dump_body(obstacle)
             # for link in root_links:
@@ -388,7 +389,7 @@ def collided(obj, obstacles=[], world=None, tag='', articulated=False, verbose=F
 
     ## first get answer
     if articulated:
-        result = articulated_collisions(obj, obstacles, use_aabb=use_aabb, **kwargs)
+        result = articulated_collisions(obj, obstacles, use_aabb=use_aabb, verbose=verbose, **kwargs)
         if verbose and result:
             print(prefix, '| articulated', obj, obstacles)
         return result
@@ -1323,7 +1324,7 @@ def check_grasp_link(world, body, link):
     return using_grasp_link, link
 
 
-def numerate_translation_matrices(x=0.02):
+def enumerate_translation_matrices(x=0.02):
     return [(0, 0, 0), (x, 0, 0), (0, x, 0), (0, 0, x)]
 
 

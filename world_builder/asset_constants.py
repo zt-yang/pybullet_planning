@@ -63,7 +63,7 @@ MODEL_SCALES = {
     },
     'Food': {
         'VeggieArtichoke': 0.014,
-        'VeggieCabbage': 0.0047,
+        'VeggieCabbage': 0.0043,  ## 0.0047 too big for rummy
         'VeggiePotato': 0.013,
         'VeggieSweetPotato': 0.013,  ## 0.015
         'VeggieTomato': 0.008,

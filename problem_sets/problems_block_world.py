@@ -9,17 +9,17 @@ from problem_sets.problem_utils import test_template
 
 
 def test_pick(args, robot_builder_args=dict(), **kwargs):
-    def loader_fn(world, **world_builder_args):
+    def loader_fn(world, w=0.25, **world_builder_args):
         xy = (2, 2)
         arm = world.robot.arms[0]
         floor = create_floor_covering_base_limits(world)
-        table = create_table(world, xy=xy)
+        table = create_table(world, xy=xy, w=w)
         cabbage = create_movable(world, supporter=table, xy=xy)
         set_camera_target_body(table, dx=1.5, dy=1.5, dz=1.5)
 
         # goals = [('AtBConf', Conf(robot, get_group_joints(robot, 'base'), (2, 7, 0)))]
         goals = ("test_grasps", cabbage)
-        # goals = [("Holding", arm, cabbage)]
+        goals = [("Holding", arm, cabbage)]
 
         # ## debug
         # if not world.robot.move_base:

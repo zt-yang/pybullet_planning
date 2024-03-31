@@ -146,12 +146,16 @@ def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=False, v
     return goals
 
 
-def test_grasps(state, name='cabbage', visualize=True):
+def test_grasps(state, name='cabbage', visualize=False, debug=False):
+    """
+    visualize = True:   to see all grasps for selecting the grasp index to plan for
+    debug = True:       show the grasp to plan for
+    """
     set_renderer(True)
     title = 'pr2_agent.test_grasps | '
     if isinstance(name, str):
         body = state.world.name_to_body(name)
-    else: ## if isinstance(name, Object):
+    else:  ## if isinstance(name, Object):
         body = name
     robot = state.robot
 
@@ -166,14 +170,16 @@ def test_grasps(state, name='cabbage', visualize=True):
                 all_grippers = visualize_grasps(state, outputs, body_pose)
         print(f'{title}grasps:', outputs)
 
-        k = 8  ## 0
-        wait_if_gui('all grasps')
-        with LockRenderer(True):
-            for jj, gripper in enumerate(all_grippers):
-                if jj == k: continue
-                remove_body(gripper)
-        wait_if_gui('chosen grasp')
-        remove_body(all_grippers[k])
+        k = 2 if 'rummy' in robot.name else 0  ## 2, 5 for top, 8 for side
+        if visualize:
+            wait_if_gui('all grasps')
+            with LockRenderer(True):
+                for jj, gripper in enumerate(all_grippers):
+                    if jj == k: continue
+                    remove_body(gripper)
+            if debug:
+                wait_if_gui('chosen grasp')
+            remove_body(all_grippers[k])
         goals = [("AtGrasp", 'left', body, outputs[k][0])]
 
     elif 'hand_gripper' in robot.joint_groups:
