@@ -487,7 +487,6 @@ class SpotRobot(MobileRobot):
     def get_carry_conf(self, arm, g_type, g):
         return SPOT_CARRY_ARM_CONF
 
-    @property
     def get_tool_from_root(self, a):
         return Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
 

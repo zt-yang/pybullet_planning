@@ -390,7 +390,7 @@ def collided(obj, obstacles=[], world=None, tag='', articulated=False, verbose=F
     if articulated:
         result = articulated_collisions(obj, obstacles, use_aabb=use_aabb, **kwargs)
         if verbose and result:
-            print('bullet_utils.collided | articulated', obj, obstacles)
+            print(prefix, '| articulated', obj, obstacles)
         return result
     # else:
     #     result = any(pairwise_collision(obj, b, use_aabb=use_aabb, **kwargs) for b in obstacles)

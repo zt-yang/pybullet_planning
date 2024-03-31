@@ -163,9 +163,18 @@ def test_grasps(state, name='cabbage', visualize=True):
             body_pose = get_pose(body)
             print('body_pose', nice(body_pose))
             with LockRenderer(True):
-                visualize_grasps(state, outputs, body_pose)
+                all_grippers = visualize_grasps(state, outputs, body_pose)
         print(f'{title}grasps:', outputs)
-        goals = [("AtGrasp", 'left', body, outputs[0][0])]
+
+        k = 8  ## 0
+        wait_if_gui('all grasps')
+        with LockRenderer(True):
+            for jj, gripper in enumerate(all_grippers):
+                if jj == k: continue
+                remove_body(gripper)
+        wait_if_gui('chosen grasp')
+        remove_body(all_grippers[k])
+        goals = [("AtGrasp", 'left', body, outputs[k][0])]
 
     elif 'hand_gripper' in robot.joint_groups:
         from pybullet_tools.bullet_utils import collided
@@ -197,7 +206,7 @@ def visualize_grasps(state, outputs, body_pose, retain_all=True, collisions=Fals
         if retain_all:
             if gripper_color is None:
                 idx = index % len(colors)
-                print(' grasp.value', nice(grasp.value), 'color', color_names[idx])
+                print(f' {index}\tgrasp.value', nice(grasp.value), 'color', color_names[idx])
                 gripper_color = colors[idx]
 
             if verbose:
@@ -239,6 +248,7 @@ def visualize_grasps(state, outputs, body_pose, retain_all=True, collisions=Fals
         output = visualize_grasp(grasp[0], index=i)
         if output is not None:
             gripper_grasp = output
+            all_grippers.append(gripper_grasp)
             i += 1
         if pause_each:
             wait_if_gui()
@@ -247,6 +257,7 @@ def visualize_grasps(state, outputs, body_pose, retain_all=True, collisions=Fals
 
     # if retain_all:
     #     wait_if_gui()
+    return all_grippers
 
 
 def visualize_grasps_by_quat(state, outputs, body_pose, verbose=False):
