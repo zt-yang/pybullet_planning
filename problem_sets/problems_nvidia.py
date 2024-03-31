@@ -606,7 +606,7 @@ def test_pr2_cabinets(args):
     pddlstream_problem = pddlstream_from_state_goal(state, goals, custom_limits=custom_limits,
                                                     domain_pddl=args.domain_pddl, stream_pddl=args.stream_pddl)
     save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_pr2_pick_1_opened',
-                           floorplan='counter.svg', world_name='test_pr2_pick_1_opened', EXIT=False)
+                           floorplan='counter.svg', world_name='test_pr2_pick_1_opened', exit=False)
     return state, exogenous, goals, pddlstream_problem
 
 

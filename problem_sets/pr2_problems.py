@@ -534,7 +534,7 @@ def test_pr2_counter_minifridge(args, SAMPLED=True, robot_builder_args=None, **k
 
     pddlstream_problem = pddlstream_from_state_goal(state, goals, args, custom_limits, **kwargs)
     save_to_kitchen_worlds(state, pddlstream_problem, exp_name=exp_name, world_name=exp_name,
-                           EXIT=False, DEPTH_IMAGES=False)
+                           exit=False, DEPTH_IMAGES=False)
     return state, [], goals, pddlstream_problem
 
 

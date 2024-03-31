@@ -356,8 +356,8 @@ def save_to_outputs_folder(output_path, data_path, data_generation=False, multip
                 shutil.rmtree(data_path)
 
 
-def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXIT=True,
-                           floorplan=None, world_name=None, root_path=None, DEPTH_IMAGES=False):
+def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', exit=True,
+                           floorplan=None, world_name=None, root_path=None, save_depth_images=False):
     exp_path = EXP_PATH
     if root_path is not None:
         exp_path = join(root_path, exp_path)
@@ -385,7 +385,7 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
     with open(join(outpath, 'planning_config.json'), 'w') as f:
         json.dump(state.get_planning_config(), f)
 
-    if DEPTH_IMAGES and state.world.camera != None:
+    if save_depth_images and state.world.camera != None:
         # reset_simulation()
         # get_depth_images(outpath, camera_pose=state.world.camera.pose,
         #                  img_dir=join(outpath, 'depth_maps'))
@@ -396,7 +396,7 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exp_name='test_cases', EXI
         # get_depth_images(outpath, camera_pose=state.world.camera.pose,
         #                  rgbd=True, robot=False, img_dir=outpath)
 
-    if EXIT:
+    if exit:
         print('exit at the end of save_to_kitchen_worlds')
         sys.exit()
 

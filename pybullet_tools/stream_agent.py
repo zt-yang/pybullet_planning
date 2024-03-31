@@ -53,7 +53,7 @@ from world_builder.actions import get_primitive_actions, repair_skeleton
 
 
 def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
-                   pull_collisions=True, base_collisions=True, debug=False,
+                   pull_collisions=True, base_collisions=True, debug=False, verbose=False,
                    use_all_grasps=False, top_grasp_tolerance=False):
     """ p = problem, c = collisions, l = custom_limits, t = teleport """
     from pybullet_tools.logging import myprint as print
@@ -97,7 +97,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'inverse-reachability': from_gen_fn(
             get_ik_gen_old(p, collisions=False, ir_only=True, learned=True, verbose=False, visualize=False, **tc)),
         'inverse-kinematics': from_fn(
-            get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=not motion_collisions,
+            get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=verbose,
                           visualize=False, ACONF=False, debug=debug)),
 
         'inverse-reachability-rel': from_gen_fn(

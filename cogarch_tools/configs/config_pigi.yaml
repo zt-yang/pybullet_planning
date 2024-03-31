@@ -43,16 +43,21 @@ robot:
   robot_name: 'pr2'
   draw_base_limits: true
 
+## planning stream related
+streams:
+  debug: true
+  cfree: false
+  teleport: false
+  disable_movable_collision: false
+  disable_base_collision: false
+  top_grasp_tolerance: 1.58
+
 ## pybullet related
 sim:
   viewer: true
   lock: true
   simulate: false
-  teleport: false
   drive: false
-  cfree: false
-  disable_movable_collision: false
-  disable_base_collision: false
   time_step: 0.05
   camera: false
   segment: false

@@ -1,5 +1,6 @@
 from os.path import join, abspath, isfile
 
+from pybullet_tools.stream_agent import pddlstream_from_state_goal
 from pybullet_tools.utils import set_all_static
 
 from world_builder.world import World, State
@@ -19,10 +20,9 @@ def create_world(args):
     return World(time_step=args.time_step, segment=args.segment, use_rel_pose=args.use_rel_pose)
 
 
-def pddlstream_from_state_goal(state, goals, args=None, custom_limits=None, debug=False,
-                               domain_name=None, stream_name=None, cfree=False, teleport=False,
-                               use_all_grasps=False, top_grasp_tolerance=None, **kwargs):
-    from pybullet_tools.stream_agent import pddlstream_from_state_goal as pddlstream_helper
+def pddlstream_from_state_goal_args(state, goals, args=None, custom_limits=None, debug=False, verbose=False,
+                                    domain_name=None, stream_name=None, cfree=False, teleport=False,
+                                    use_all_grasps=False, top_grasp_tolerance=None, **kwargs):
 
     domain_name = args.domain_pddl if args is not None else domain_name
     domain_pddl = join(PDDL_PATH, 'domains', domain_name)
@@ -33,6 +33,7 @@ def pddlstream_from_state_goal(state, goals, args=None, custom_limits=None, debu
         stream_pddl = join(PBP_PATH, stream_name)
     if args is not None:
         debug = args.debug
+        verbose = debug
         cfree = args.cfree
         teleport = args.teleport
         if hasattr(args, 'use_all_grasps'):
@@ -43,15 +44,16 @@ def pddlstream_from_state_goal(state, goals, args=None, custom_limits=None, debu
             print(f'\n\npddlstream_from_state_goal | top_grasp_tolerance? {top_grasp_tolerance} \n\n')
     if custom_limits is None:
         custom_limits = state.robot.custom_limits
-    return pddlstream_helper(state, goals, custom_limits=custom_limits, debug=debug,
-                             domain_pddl=domain_pddl, stream_pddl=stream_pddl,
-                             collisions=not cfree, teleport=teleport,
-                             use_all_grasps=use_all_grasps, top_grasp_tolerance=top_grasp_tolerance, **kwargs)
+
+    return pddlstream_from_state_goal(
+        state, goals, custom_limits=custom_limits, debug=debug, verbose=verbose,
+        domain_pddl=domain_pddl, stream_pddl=stream_pddl, collisions=not cfree, teleport=teleport,
+        use_all_grasps=use_all_grasps, top_grasp_tolerance=top_grasp_tolerance, **kwargs)
 
 
-def save_to_kitchen_worlds(state, pddlstream_problem, EXIT=False, **kwargs):
+def save_to_kitchen_worlds(state, pddlstream_problem, exit=False, **kwargs):
     from world_builder.world_generator import save_to_kitchen_worlds as save_helper
-    return save_helper(state, pddlstream_problem, EXIT=EXIT, root_path=KITCHEN_WORLD, **kwargs)
+    return save_helper(state, pddlstream_problem, exit=exit, root_path=KITCHEN_WORLD, **kwargs)
 
 
 def test_template(args, robot_builder_fn, robot_builder_args, world_loader_fn,
@@ -81,7 +83,7 @@ def test_template(args, robot_builder_fn, robot_builder_args, world_loader_fn,
     exogenous = []
 
     ## may change the goal if they are debugging goals
-    problem_dict['pddlstream_problem'] = pddlstream_from_state_goal(state, goals, args, **kwargs)
+    problem_dict['pddlstream_problem'] = pddlstream_from_state_goal_args(state, goals, args, **kwargs)
     goals = problem_dict['pddlstream_problem'].goal[1:]
     # save_to_kitchen_worlds(state, pddlstream_problem, exp_name='blocks_pick', world_name='blocks_pick')
 

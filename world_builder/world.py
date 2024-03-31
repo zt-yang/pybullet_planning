@@ -252,13 +252,14 @@ class World(WorldBase):
         self.remove_handles()
         self.remove_redundant_bodies()
 
-    def remove_redundant_bodies(self):
+    def remove_redundant_bodies(self, verbose=False):
         with HideOutput():
             for b in get_bodies():
                 if b not in self.BODY_TO_OBJECT and b not in self.ROBOT_TO_OBJECT \
                         and b not in self.non_planning_objects:
                     remove_body(b)
-                    print('world.removed redundant body', b)
+                    if verbose:
+                        print('world.removed redundant body', b)
 
     def add_not_stackable(self, body, surface):
         if body not in self.not_stackable:
