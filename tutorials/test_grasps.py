@@ -301,8 +301,8 @@ def test_handle_grasps_counter(robot='pr2', visualize=True, **kwargs):
 
     for body_joint in joints:
         obj = world.BODY_TO_OBJECT[body_joint]
-        print(body_joint, obj.name)
         link = obj.handle_link
+        print(body_joint, get_link_name(obj.body, link))
         body, joint = body_joint
         set_camera_target_body(body, link=link, dx=0.5, dy=0.5, dz=0.5)
         draw_fitted_box(body, link=link, draw_centroid=True)

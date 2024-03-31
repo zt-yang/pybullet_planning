@@ -96,15 +96,6 @@ def close_until_collision(robot, gripper_joints, bodies=[], open_conf=None, clos
     return close_path[-1][0]
 
 
-def compute_robot_grasp_width(robot, arm, body, grasp_pose, tool_frames, joint_groups, **kwargs):
-    tool_link = get_robot_gripper_link(robot, arm, tool_frames=tool_frames)
-    tool_pose = get_link_pose(robot, tool_link)
-    body_pose = multiply(tool_pose, grasp_pose)
-    set_pose(body, body_pose)
-    gripper_joints = get_robot_gripper_joints(robot, arm, joint_groups=joint_groups)
-    return close_until_collision(robot, gripper_joints, bodies=[body], **kwargs)
-
-
 #####################################
 
 

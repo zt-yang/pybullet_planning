@@ -824,9 +824,9 @@ def set_camera_target_body(body, link=None, dx=None, dy=None, dz=None, distance=
     y = (aabb.upper[1] + aabb.lower[1]) / 2
     z = (aabb.upper[2] + aabb.lower[2]) / 2
     if dx is None and dy is None and dz is None:
-        dx = get_aabb_extent(aabb)[0] * 2 * distance
-        dy = get_aabb_extent(aabb)[1] * 2 * distance
-        dz = get_aabb_extent(aabb)[2] * 2 * distance
+        dx = min(get_aabb_extent(aabb)[0] * 2 * distance, 2)
+        dy = min(get_aabb_extent(aabb)[1] * 2 * distance, 2)
+        dz = min(get_aabb_extent(aabb)[2] * 2 * distance, 2)
     camera_point = [x + dx, y + dy, z + dz]
     target_point = [x, y, z]
     set_camera_pose(camera_point=camera_point, target_point=target_point)
@@ -1355,22 +1355,19 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
     dist = grasp_length
     robot = world.robot
     scale = get_loaded_scale(body)
-
     # print("get hand grasps scale", scale)
-
     # using_grasp_link, link = check_grasp_link(world, body, link)
 
     body_pose = get_model_pose(body, link=link, verbose=verbose)
-    # print("get hand grasps, body pose", body_pose)
-
     aabb, handles = draw_fitted_box(body, link=link, verbose=verbose, draw_box=False, draw_centroid=False)
 
-    ## TODO: fix this hack
-    if link is None:  ## grasp the whole body
+    ## grasp the whole body
+    if link is None:
         r = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
-        # r = get_rotation_matrix(body)
         body_pose = multiply(body_pose, invert(r))
-    else:  ## grasp handle links
+
+    ## grasp handle links
+    else:
         body_pose = multiply(body_pose, invert(robot.tool_from_hand))
 
     instance_name = world.get_instance_name(body_name)
@@ -1392,8 +1389,8 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
                                               new_gripper=retain_all, color=color)
                     )
                 # set_renderer(True)
-                set_camera_target_body(body)
                 if retain_all:
+                    set_camera_target_body(body, dx=0.5, dy=0.5, dz=1)
                     wait_unlocked()
                 for b in bodies:
                     remove_body(b)
@@ -1422,7 +1419,8 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
         grasps = []
         grasp = multiply(Pose(point=f), Pose(euler=r))
 
-        result, aabb, gripper = check_cfree_gripper(grasp, world, body_pose, obstacles, verbose=False, body=body,
+        bb = body if link is None else None
+        result, aabb, gripper = check_cfree_gripper(grasp, world, body_pose, obstacles, verbose=False, body=bb,
                                                     visualize=visualize, retain_all=retain_all, collisions=collisions,
                                                     test_offset=test_offset)
         if result:  ##  and check_new(aabbs, aabb):
@@ -1442,7 +1440,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
                 dl_candidates = [dl_max, -dl_max]
                 for dl in dl_candidates:
                     grasp_dl = robot.mod_grasp_along_handle(grasp, dl)
-                    result, aabb, gripper_dl = check_cfree_gripper(grasp, world, body_pose, obstacles, body=body,
+                    result, aabb, gripper_dl = check_cfree_gripper(grasp, world, body_pose, obstacles, body=bb,
                                                                    verbose=verbose, collisions=collisions,
                                                                    visualize=visualize, retain_all=retain_all)
                     if result:  ## and check_new(aabbs, aabb):
@@ -1526,13 +1524,6 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
                         min_num_pts=40, retain_all=False, collisions=False, test_offset=False, **kwargs):
     robot = world.robot
 
-    ################# for debugging ################
-    # possible = [(3.1416, -0.0, 0.0), (3.1416, -0.0, 3.1416)]
-    # for p in possible:
-    #     if equal(quat_from_euler(p), grasp[1], 0.01):
-    #         visualize = True
-    ################################################
-
     if verbose:
         print(f'\nbullet.check_cfree_gripper | '
               f'\trobot.visualize_grasp({nice(object_pose)}, ({nice(grasp)}):'
@@ -1558,7 +1549,6 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
         set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=1)  ## fork inside indigo drawer top
 
     ## criteria 1: when gripper isn't closed, it shouldn't collide
-    robot.open_cloned_gripper(gripper_grasp)
     firstly = collided(gripper_grasp, obstacles, min_num_pts=min_num_pts,
                        world=world, verbose=False, tag='firstly')
 
@@ -1798,7 +1788,7 @@ def add_grasp_in_db(db, db_file, instance_name, grasps, name=None,
     db = {k: db[k] for k, v in keys}
     if isfile(db_file): os.remove(db_file)
     dump_json(db, db_file, sort_dicts=False)
-    print('\n    bullet_utils.add_grasp_in_db saved', instance_name, '\n')
+    print(f'\n    bullet_utils.add_grasp_in_db saved {len(grasps)} grasps for {instance_name}\n')
 
 
 def process_depth_pixels(pixels):

@@ -19,7 +19,7 @@ def create_world(args):
     return World(time_step=args.time_step, segment=args.segment, use_rel_pose=args.use_rel_pose)
 
 
-def pddlstream_from_state_goal(state, goals, args=None, custom_limits=None,
+def pddlstream_from_state_goal(state, goals, args=None, custom_limits=None, debug=False,
                                domain_name=None, stream_name=None, cfree=False, teleport=False,
                                use_all_grasps=False, top_grasp_tolerance=None, **kwargs):
     from pybullet_tools.stream_agent import pddlstream_from_state_goal as pddlstream_helper
@@ -32,6 +32,7 @@ def pddlstream_from_state_goal(state, goals, args=None, custom_limits=None,
         domain_pddl = join(PBP_PATH, domain_name)
         stream_pddl = join(PBP_PATH, stream_name)
     if args is not None:
+        debug = args.debug
         cfree = args.cfree
         teleport = args.teleport
         if hasattr(args, 'use_all_grasps'):
@@ -42,7 +43,7 @@ def pddlstream_from_state_goal(state, goals, args=None, custom_limits=None,
             print(f'\n\npddlstream_from_state_goal | top_grasp_tolerance? {top_grasp_tolerance} \n\n')
     if custom_limits is None:
         custom_limits = state.robot.custom_limits
-    return pddlstream_helper(state, goals, custom_limits=custom_limits,
+    return pddlstream_helper(state, goals, custom_limits=custom_limits, debug=debug,
                              domain_pddl=domain_pddl, stream_pddl=stream_pddl,
                              collisions=not cfree, teleport=teleport,
                              use_all_grasps=use_all_grasps, top_grasp_tolerance=top_grasp_tolerance, **kwargs)

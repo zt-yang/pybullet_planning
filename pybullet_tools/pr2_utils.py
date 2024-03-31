@@ -772,5 +772,11 @@ def create_pr2_gripper(robot, arm, link_name=None, **kwargs):
 
 
 def compute_grasp_width(robot, arm, body, grasp_pose, **kwargs):
-    from robot_builder.robot_utils import compute_robot_grasp_width
-    return compute_robot_grasp_width(robot, arm, body, grasp_pose, PR2_TOOL_FRAMES, PR2_GROUPS, **kwargs)
+    from robot_builder.robot_utils import close_until_collision
+    tool_link = get_gripper_link(robot, arm)
+    tool_pose = get_link_pose(robot, tool_link)
+    body_pose = multiply(tool_pose, grasp_pose)
+    set_pose(body, body_pose)
+    gripper_joints = get_gripper_joints(robot, arm)
+    return close_until_collision(robot, gripper_joints, bodies=[body], **kwargs)
+

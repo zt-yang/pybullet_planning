@@ -18,10 +18,10 @@ def test_pick(args, robot_builder_args=dict(), **kwargs):
         set_camera_target_body(table, dx=1.5, dy=1.5, dz=1.5)
 
         # goals = [('AtBConf', Conf(robot, get_group_joints(robot, 'base'), (2, 7, 0)))]
-        # goals = ("test_grasps", cabbage)
-        goals = [("Holding", arm, cabbage)]
+        goals = ("test_grasps", cabbage)
+        # goals = [("Holding", arm, cabbage)]
 
-        ### debug
+        # ## debug
         # if not world.robot.move_base:
         #     goals = ("test_reachable_bconf", (arm, cabbage))
 

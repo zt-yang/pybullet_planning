@@ -41,8 +41,11 @@ PANDA_INFO = IKFastInfo(module_name='franka_panda.ikfast_panda_arm', base_link='
 BASE_VELOCITIES = np.array([1., 1., 1, rad(180), rad(180), rad(180)]) / 1.
 BASE_RESOLUTIONS = np.array([0.05, 0.05, 0.05, rad(10), rad(10), rad(10)])
 
-ARM_NAME = 'hand'
+FEG_ARM_NAME = 'hand'
 FEG_TOOL_LINK = 'panda_hand'
+FEG_JOINT_GROUPS = {
+    'hand_gripper': [f'panda_finger_joint{k}' for k in [1, 2]]
+}
 CACHE = {}
 
 
