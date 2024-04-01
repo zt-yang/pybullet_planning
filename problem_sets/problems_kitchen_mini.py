@@ -2,7 +2,7 @@ from world_builder.loaders_partnet_kitchen import *
 
 from robot_builder.robot_builders import build_robot_from_args
 
-from problem_sets.problem_utils import test_template
+from problem_sets.problem_utils import problem_template
 
 
 def test_mini_kitchen_domain(args, world_loader_fn, **kwargs):
@@ -20,8 +20,8 @@ def test_mini_kitchen_domain(args, world_loader_fn, **kwargs):
                               'initial_q': (2, 0, 1, 0, 0, 0), 'draw_base_limits': True}
         # args.domain_pddl = 'feg_kitchen.pddl'
         # args.stream_pddl = 'feg_stream_kitchen.pddl'
-    return test_template(args, robot_builder_fn=build_robot_from_args, robot_builder_args=robot_builder_args,
-                         world_loader_fn=world_loader_fn, **kwargs)
+    return problem_template(args, robot_builder_fn=build_robot_from_args, robot_builder_args=robot_builder_args,
+                            world_loader_fn=world_loader_fn, **kwargs)
 
 
 def test_mini_kitchen(args, **kwargs):

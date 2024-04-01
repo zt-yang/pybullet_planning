@@ -515,6 +515,10 @@ class World(WorldBase):
         obj.world = self
         return obj
 
+    def load_saved_grasps(self, body):
+        obj = body if isinstance(body, Object) else self.BODY_TO_OBJECT[body]
+        return obj.grasps
+
     def get_whole_fact(self, fact, init):
         if fact[0].lower() in ['isopenposition', 'isclosedposition']:
             fact += [f[2] for f in init if f[0].lower() == 'atposition' and f[1] == fact[1]]
@@ -1201,7 +1205,7 @@ class World(WorldBase):
         if all_joints is None:
             all_links, all_joints = self.get_typed_objects()[-2:]
         if verbose:
-            print(f'\ninit_link_joint_relations')
+            print(f'\ninit_link_joint_relations ... started')
         all_link_poses = {(body, _, link): get_link_pose(body, link) for (body, _, link) in all_links}
         for (body, joint) in all_joints:
             position = get_joint_position(body, joint)
@@ -1216,6 +1220,8 @@ class World(WorldBase):
                 if verbose:
                     print(f'\t\tlink = {get_link_name(body_link[0], body_link[-1])}|{body_link}')
             set_joint_position(body, joint, position)
+        if verbose:
+            print(f'\ninit_link_joint_relations ... finished\n\n')
         self.inited_link_joint_relations = True
 
     def get_indices(self):

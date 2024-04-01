@@ -11,7 +11,7 @@ import math
 from os.path import join
 import sys
 
-from problem_sets.problem_utils import create_world, pddlstream_from_state_goal, test_template
+from problem_sets.problem_utils import create_world, pddlstream_from_state_goal, problem_template
 
 
 def change_world_state(world, test_case):
@@ -28,9 +28,9 @@ def test_kitchen_domain(args, world_loader_fn, **kwargs):
         'robot_name': 'feg',
         'draw_base_limits': True,
     }
-    return test_template(args, robot_builder_fn=build_oven_domain_robot,
-                         robot_builder_args=robot_builder_args,
-                         world_loader_fn=world_loader_fn, **kwargs)
+    return problem_template(args, robot_builder_fn=build_oven_domain_robot,
+                            robot_builder_args=robot_builder_args,
+                            world_loader_fn=world_loader_fn, **kwargs)
 
 
 ####################################################
@@ -506,5 +506,5 @@ def test_feg_tray(args, **kwargs):
         return goals
 
     kwargs['robot_builder_args']['initial_xy'] = (4, 3)
-    return test_template(args, robot_builder_fn=build_fridge_domain_robot,
-                         world_loader_fn=loader_fn, **kwargs)
+    return problem_template(args, robot_builder_fn=build_fridge_domain_robot,
+                            world_loader_fn=loader_fn, **kwargs)

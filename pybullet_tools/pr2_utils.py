@@ -436,7 +436,6 @@ def get_top_presses(body, tool_pose=TOOL_POSE, body_pose=unit_pose(), top_offset
         yield multiply(tool_pose, translate_z, rotate_z,
                        reflect_z, translate_center, body_pose)
 
-# from pybullet_tools.flying_gripper_utils import get_hand_grasps
 GET_GRASPS = {
     'top': get_top_grasps,
     'side': get_side_grasps,

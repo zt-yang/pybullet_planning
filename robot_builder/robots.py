@@ -14,7 +14,7 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
     sub_inverse_kinematics
 
 from pybullet_tools.bullet_utils import equal, nice, set_camera_target_body, Attachment, \
-    get_rotation_matrix, collided, query_yes_no, has_tracik
+    collided, query_yes_no, has_tracik, is_mesh_entity, get_rotation_matrix
 from pybullet_tools.pr2_primitives import APPROACH_DISTANCE, Conf, Grasp, get_base_custom_limits
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, TOP_HOLDING_LEFT_ARM, PR2_GRIPPER_ROOTS
 from pybullet_tools.general_streams import get_handle_link, get_grasp_list_gen, get_contain_list_gen, \
@@ -221,7 +221,8 @@ class RobotAPI(Robot):
                 body_pose = get_pose(b)
                 if verbose: print(f'{title} | actually given body, body_pose = get_pose(b) = {nice(body_pose)}')
 
-        r = get_rotation_matrix(body) if body is not None else self.tool_from_hand
+        r = get_rotation_matrix(body) if body is not None and not is_mesh_entity(body) \
+            else self.tool_from_hand
         new_body_pose = multiply(body_pose, r)
         return new_body_pose
 

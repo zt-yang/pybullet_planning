@@ -56,8 +56,8 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exit=False, **kwargs):
     return save_helper(state, pddlstream_problem, exit=exit, root_path=KITCHEN_WORLD, **kwargs)
 
 
-def test_template(args, robot_builder_fn, robot_builder_args, world_loader_fn,
-                  observation_model=None, world_builder_args={}, **kwargs):
+def problem_template(args, robot_builder_fn, robot_builder_args, world_loader_fn,
+                     observation_model=None, world_builder_args={}, **kwargs):
     """ the most general form of a test """
     world = create_world(args)
     robot = robot_builder_fn(world, **robot_builder_args)

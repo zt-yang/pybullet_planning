@@ -5,11 +5,10 @@ from pybullet_tools.utils import joint_from_name, get_link_subtree, link_from_na
     set_all_color, TRANSPARENT, get_max_limit, get_min_limit, get_extend_fn, get_moving_links, \
     set_joint_positions, pairwise_collision, get_link_pose, multiply, set_pose, euler_from_quat, \
     RED, set_color, get_link_name, get_joints, is_movable, wait_for_user, quat_from_euler
-
 from pybullet_tools.bullet_utils import BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, \
-    draw_base_limits as draw_base_limits_bb, BASE_LIMITS, enumerate_rotational_matrices, \
-    enumerate_translation_matrices, nice
-
+    draw_base_limits as draw_base_limits_bb, BASE_LIMITS, nice
+from pybullet_tools.grasp_utils import enumerate_rotational_matrices, \
+    enumerate_translation_matrices
 
 BASE_GROUP = 'base'
 TORSO_GROUP = 'torso'

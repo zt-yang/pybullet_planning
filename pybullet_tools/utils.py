@@ -1147,8 +1147,8 @@ def connect(use_gui=True, shadows=True, color=None, width=None, height=None, mp4
 
     # TODO: p.bullet_client()
     assert 0 <= sim_id
-    #sim_id2 = p.connect(p.SHARED_MEMORY)
-    #print(sim_id, sim_id2)
+    # sim_id2 = p.connect(p.SHARED_MEMORY)
+    # print(sim_id, sim_id2)
     CLIENTS[sim_id] = True if use_gui else None
     if use_gui:
         # p.COV_ENABLE_PLANAR_REFLECTION

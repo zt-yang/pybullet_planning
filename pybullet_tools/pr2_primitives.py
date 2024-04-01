@@ -359,6 +359,7 @@ class Cook(Command):
 
 ##################################################
 
+
 def get_grasp_gen(problem, collisions=False, randomize=True):
     world = problem.world
     for grasp_type in problem.grasp_types:
@@ -381,7 +382,7 @@ def get_grasp_gen(problem, collisions=False, randomize=True):
             grasps.extend(Grasp('side', body, g, multiply((approach_vector, unit_quat()), g), SIDE_HOLDING_LEFT_ARM)
                           for g in get_side_grasps(body, grasp_length=GRASP_LENGTH))
         if 'hand' in problem.grasp_types:
-            from .bullet_utils import get_hand_grasps
+            from pybullet_tools.grasp_utils import get_hand_grasps
             approach_vector = APPROACH_DISTANCE*get_unit_vector([0, 0, -1])
             grasps.extend(Grasp('hand', body, g, multiply(g, (approach_vector, unit_quat())), g)
                           for g in get_hand_grasps(world, body))

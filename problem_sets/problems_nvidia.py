@@ -4,7 +4,7 @@ from world_builder.loaders_nvidia_kitchen import *
 from robot_builder.robot_builders import build_robot_from_args
 
 from problem_sets.problem_utils import create_world, pddlstream_from_state_goal, save_to_kitchen_worlds, \
-    test_template, pull_actions, pick_place_actions, pull_with_link_actions
+    problem_template, pull_actions, pick_place_actions, pull_with_link_actions
 
 
 #######################################################
@@ -621,8 +621,8 @@ def test_nvidia_kitchen_domain(args, world_loader_fn, initial_xy=(1.5, 6), **kwa
         'custom_limits': ((1, 3, 0), (5, 10, 3)),
         'initial_xy': initial_xy
     })
-    return test_template(args, robot_builder_fn=build_robot_from_args,
-                         world_loader_fn=world_loader_fn, **kwargs)
+    return problem_template(args, robot_builder_fn=build_robot_from_args,
+                            world_loader_fn=world_loader_fn, **kwargs)
 
 
 def test_skill_knob_faucet(args, **kwargs):

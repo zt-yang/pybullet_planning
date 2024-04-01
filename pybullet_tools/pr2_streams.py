@@ -14,8 +14,9 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     RED, remove_body, aabb2d_from_aabb, aabb_overlap, aabb_contains_point, get_aabb_center, get_link_name, \
     get_links, check_initial_end, get_collision_fn, BLUE, WHITE, TAN, GREY, YELLOW, aabb_contains_aabb
 
-from pybullet_tools.bullet_utils import check_cfree_gripper, multiply, has_tracik, set_camera_target_body, \
+from pybullet_tools.bullet_utils import multiply, has_tracik, set_camera_target_body, \
     visualize_bconf
+from pybullet_tools.grasp_utils import check_cfree_gripper
 from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics
 from pybullet_tools.ikfast.utils import USE_CURRENT
 from pybullet_tools.pr2_primitives import Grasp, iterate_approach_path, \

@@ -78,7 +78,7 @@ class Link(Index):
 
 class Object(Index):
     def __init__(self, body, joint=None, link=None, category=None, name=None,
-                 collision=True, verbose=False):
+                 collision=True, grasps=None, verbose=False):
 
         if isinstance(body, Object):
             body = body.body
@@ -131,6 +131,10 @@ class Object(Index):
         self.supported_objects = []
         self.events = []
         self.categories = [category] ## for added categories like movable
+        self.grasps = grasps
+
+    def add_grasps(self, grasps):
+        self.grasps = grasps
 
     ## =============== put other object on top of object =============
     ##

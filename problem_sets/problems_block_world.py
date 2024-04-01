@@ -2,7 +2,7 @@ from world_builder.loaders import *
 
 from robot_builder.robot_builders import build_table_domain_robot
 
-from problem_sets.problem_utils import test_template
+from problem_sets.problem_utils import problem_template
 
 
 ####################################################
@@ -33,8 +33,8 @@ def test_pick(args, robot_builder_args=dict(), **kwargs):
             robot_builder_args['base_q'][:2] = [2, 1]
             robot_builder_args['base_q'][-1:] = [PI/2]
 
-    return test_template(args, robot_builder_fn=build_table_domain_robot, robot_builder_args=robot_builder_args,
-                         world_loader_fn=loader_fn, **kwargs)
+    return problem_template(args, robot_builder_fn=build_table_domain_robot, robot_builder_args=robot_builder_args,
+                            world_loader_fn=loader_fn, **kwargs)
     # return test_simple_table_domain(args, loader_fn, **kwargs)
 
 
@@ -50,7 +50,7 @@ def test_small_sink(args, **kwargs):
         goals = [('Holding', 'left', turkey)]
         goals = [('On', cabbage, sink)]
         return goals
-    return test_template(args, robot_builder_fn=build_table_domain_robot, world_loader_fn=loader_fn, **kwargs)
+    return problem_template(args, robot_builder_fn=build_table_domain_robot, world_loader_fn=loader_fn, **kwargs)
 
 
 def test_plated_food(args, **kwargs):
@@ -72,7 +72,7 @@ def test_plated_food(args, **kwargs):
         # goals = [("On", plate, table)]
 
         return goals
-    return test_template(args, robot_builder_fn=build_table_domain_robot, world_loader_fn=loader_fn, **kwargs)
+    return problem_template(args, robot_builder_fn=build_table_domain_robot, world_loader_fn=loader_fn, **kwargs)
 
 
 ####################################################
@@ -83,8 +83,8 @@ def test_five_tables_domain(args, world_loader_fn, **kwargs):
         robot_builder_args = {'robot_name': 'feg'}
     else:
         robot_builder_args = {'robot_name': 'pr2'}
-    return test_template(args, robot_builder_fn=build_table_domain_robot, robot_builder_args=robot_builder_args,
-                         world_loader_fn=world_loader_fn, **kwargs)
+    return problem_template(args, robot_builder_fn=build_table_domain_robot, robot_builder_args=robot_builder_args,
+                            world_loader_fn=world_loader_fn, **kwargs)
 
 
 def test_five_tables(args, **kwargs):

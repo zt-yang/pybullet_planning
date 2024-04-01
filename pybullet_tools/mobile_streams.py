@@ -10,7 +10,7 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     plan_direct_joint_motion, has_gui, create_attachment, wait_for_duration, get_extend_fn, set_renderer, \
     get_custom_limits, all_between, remove_body, draw_aabb
 
-from pybullet_tools.bullet_utils import check_cfree_gripper, multiply, has_tracik, visualize_bconf
+from pybullet_tools.bullet_utils import multiply, has_tracik, visualize_bconf
 from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics
 from pybullet_tools.ikfast.utils import USE_CURRENT
 from pybullet_tools.pr2_primitives import Conf, Commands, create_trajectory, State

@@ -146,7 +146,7 @@ def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=False, v
     return goals
 
 
-def test_grasps(state, name='cabbage', visualize=False, debug=False):
+def test_grasps(state, name='cabbage', visualize=True, debug=True):
     """
     visualize = True:   to see all grasps for selecting the grasp index to plan for
     debug = True:       show the grasp to plan for
@@ -216,7 +216,7 @@ def visualize_grasps(state, outputs, body_pose, retain_all=True, collisions=Fals
                 gripper_color = colors[idx]
 
             if verbose:
-                print(f'\npr2_tests.visualize_grasps | '
+                print(f'\nstream_tests.visualize_grasps | '
                       f'\trobot.visualize_grasp({nice(body_pose)}, ({nice(grasp.value)}):'
                       f'\t{nice(robot.tool_from_hand)}\t', kwargs)
 

@@ -18,8 +18,10 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
 from pybullet_tools.pr2_primitives import Pose, Grasp
 
 from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, is_contained, \
-    visualize_point, collided, ObjAttachment, set_camera_target_body, \
-    sample_obj_on_body_link_surface, query_yes_no, get_hand_grasps
+    visualize_point, collided, ObjAttachment, set_camera_target_body, is_box_entity, \
+    sample_obj_on_body_link_surface, query_yes_no
+from pybullet_tools.grasp_utils import get_hand_grasps, sample_from_pickled_grasps
+
 
 class LinkPose(Pose):
     num = count()
@@ -630,11 +632,19 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None,  # None | 
     arm = robot.arms[0]
 
     def fn(body):
-        grasps_O = get_hand_grasps(world, body, verbose=verbose, test_offset=test_offset, **kwargs)
+        ## ----- get grasp transformations
+        loaded = world.load_saved_grasps(body)
+        if loaded is None:
+            grasps_O = get_hand_grasps(world, body, verbose=verbose, test_offset=test_offset, **kwargs)
+        else:
+            grasps_O = sample_from_pickled_grasps(loaded)
+
+        ## ----- get grasp objects
         grasps = robot.make_grasps(grasp_type, arm, body, grasps_O, collisions=collisions)
         # debug weiyu: assume that we don't need contact
         # grasps = robot.make_grasps(grasp_type, arm, body, grasps_O, collisions=False)
 
+        ## ------ filter grasps
         if top_grasp_tolerance is not None and not test_offset \
                 and world.get_category(body) not in ['braiserbody']:
             ori = len(grasps)
@@ -667,7 +677,7 @@ def get_grasp_list_gen(problem, collisions=True, num_samples=10, **kwargs):
 
     def gen(body):
         ## use the original grasp generator for box
-        if len(get_all_links(body)) == 1:
+        if is_box_entity(body):  ## len(get_all_links(body)) == 1:
             return funk2(body)
         g = funk(body)
         grasps = []

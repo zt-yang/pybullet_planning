@@ -2,7 +2,7 @@ from world_builder.loaders_partnet_kitchen import *
 
 from robot_builder.robot_builders import build_robot_from_args
 
-from problem_sets.problem_utils import test_template, pull_actions, pick_place_actions
+from problem_sets.problem_utils import problem_template, pull_actions, pick_place_actions
 
 
 def test_full_kitchen_domain(args, world_loader_fn, x_max=3, **kwargs):
@@ -11,7 +11,7 @@ def test_full_kitchen_domain(args, world_loader_fn, x_max=3, **kwargs):
         'initial_xy': (2, 4),
         'draw_base_limits': True
     })
-    return test_template(args, robot_builder_fn=build_robot_from_args, world_loader_fn=world_loader_fn, **kwargs)
+    return problem_template(args, robot_builder_fn=build_robot_from_args, world_loader_fn=world_loader_fn, **kwargs)
 
 
 def test_full_kitchen(args, **kwargs):

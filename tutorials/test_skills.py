@@ -17,8 +17,8 @@ from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, 
     Point, set_random_seed, set_numpy_seed, reset_simulation, joint_from_name, \
     get_joint_name, get_link_name, dump_joint, set_joint_position, ConfSaver, pairwise_link_collision
 from pybullet_tools.bullet_utils import nice, set_camera_target_body, \
-    draw_fitted_box, get_hand_grasps, sample_random_pose, \
-    open_joint, get_grasp_db_file, take_selected_seg_images, dump_json
+    draw_fitted_box, sample_random_pose, open_joint, take_selected_seg_images, dump_json
+from pybullet_tools.grasp_utils import get_hand_grasps, get_grasp_db_file
 from pybullet_tools.flying_gripper_utils import se3_ik, create_fe_gripper, set_se3_conf
 from pybullet_tools.stream_tests import visualize_grasps
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, Position, \
