@@ -12,7 +12,7 @@ from pybullet_tools.utils import str_from_object, get_closest_points, INF, creat
     get_aabb, get_joint_position, get_joint_name, get_link_pose, link_from_name, PI, Pose, Euler, \
     get_extend_fn, get_joint_positions, set_joint_positions, get_max_limit, get_pose, set_pose, set_color, \
     remove_body, create_cylinder, set_all_static, wait_for_duration, remove_handles, set_renderer, \
-    LockRenderer, wait_unlocked
+    LockRenderer, wait_unlocked, ConfSaver
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, get_gripper_joints
 from pybullet_tools.pr2_primitives import Trajectory, Command, Conf, Trajectory, Commands
 from pybullet_tools.flying_gripper_utils import set_se3_conf, get_pull_handle_motion_gen
@@ -149,30 +149,39 @@ class GripperAction(Action):
         self.extent = extent  ## 1 means fully open, 0 means fully closed
         self.teleport = teleport
 
-    def transition(self, state):
+    def get_gripper_path(self, state):
         robot = state.robot
+        joints = robot.get_gripper_joints(self.arm)
+
+        start_conf = get_joint_positions(robot, joints)
 
         ## get width from extent
         if self.extent is not None:
             gripper_joint = robot.get_gripper_joints(self.arm)[0]
             self.position = get_max_limit(robot, gripper_joint)
-        else: ## if self.position == None:
+        else:  ## if self.position == None:
             bodies = [b for b in state.objects if isinstance(b, int) and b != robot.body]
-            self.position = robot.close_until_collision(robot.get_gripper_joints(self.arm), bodies=bodies)
+            with ConfSaver(robot.body):
+                self.position = robot.close_until_collision(self.arm, robot.get_gripper_joints(self.arm), bodies=bodies)
             print(f"   [GripperAction] !!!! gripper {self.arm} is closed to {round(self.position, 3)} until collision")
             # self.position = 0.5  ## cabbage, artichoke
             # self.position = 0.4  ## tomato
             # self.position = 0.2  ## zucchini
             # self.position = 0.14  ## bottle
 
-        joints = robot.get_gripper_joints(self.arm)
-        start_conf = get_joint_positions(robot, joints)
         end_conf = robot.get_gripper_end_conf(self.arm, self.position)
         if self.teleport:
             path = [start_conf, end_conf]
         else:
             extend_fn = get_extend_fn(robot, joints)
             path = [start_conf] + list(extend_fn(start_conf, end_conf))
+        return path
+
+    def transition(self, state):
+        robot = state.robot
+        joints = robot.get_gripper_joints(self.arm)
+
+        path = self.get_gripper_path(state)
         for positions in path:
             set_joint_positions(robot, joints, positions)
 

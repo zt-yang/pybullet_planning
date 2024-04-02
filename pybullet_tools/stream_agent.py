@@ -232,6 +232,7 @@ def get_stream_info(unique=False, defer_fn=defer_unique):
 
 CustomValue = namedtuple('CustomValue', ['stream', 'values'])
 
+
 def opt_move_cost_fn(t):
     # q1, q2 = t.values
     # distance = get_distance(extract_point2d(q1), extract_point2d(q2))
@@ -267,83 +268,6 @@ def opt_ik_grasp_fn(a, o, p, g):
 
 
 #######################################################
-
-def post_process(problem, plan, teleport=False, use_commands=False, verbose=False):
-    if plan is None:
-        return None
-    commands = []
-    for i, action in enumerate(plan):
-        if use_commands:
-            new_commands = get_primitive_commands(action, problem.robot, teleport)
-        else:
-            new_commands = get_primitive_actions(action, problem.world, teleport)
-        commands += new_commands
-        if verbose:
-            print(i, action)
-    return commands
-
-
-def get_close_command(robot, arm, grasp, teleport=False):
-    return GripperCommand(robot, arm, grasp.grasp_width, teleport=teleport)
-
-
-def get_open_command(robot, arm, teleport=False):
-    gripper_joint = get_gripper_joints(robot, arm)[0]
-    position = get_max_limit(robot, gripper_joint)
-    return GripperCommand(robot, arm, position, teleport=teleport)
-
-
-def get_primitive_commands(action, robot, teleport=False):
-    name, args = action
-    if name in ['move_base']:
-        c = args[-1]
-        new_commands = c.commands
-    elif name == 'pick':
-        a, b, p, g, _, c = args[:6]
-        [t] = c.commands
-        close_gripper = get_close_command(robot, a, g, teleport=teleport)
-        attach = Attach(robot, a, g, b)
-        new_commands = [t, close_gripper, attach, t.reverse()]
-    elif name == 'place':
-        a, b, p, g, _, c = args[:6]
-        [t] = c.commands
-        open_gripper = get_open_command(robot, a, teleport=teleport)
-        detach = Detach(robot, a, b)
-        new_commands = [t, detach, open_gripper, t.reverse()]
-    elif name == 'grasp_handle':
-        a, o, p, g, q, aq1, aq2, c = args
-        close_gripper = get_close_command(robot, a, g, teleport=teleport)
-        new_commands = list(c.commands) + [close_gripper]
-    elif name == 'ungrasp_handle':
-        a, o, p, g, q, aq1, aq2, c = args
-        open_gripper = get_open_command(robot, a, teleport=teleport)
-        new_commands = list(c.reverse().commands) + [open_gripper]
-    elif name == 'pull_door_handle':
-        a, o, p1, p2, g, q1, q2, bt, aq1, aq2, at = args
-        dt = create_trajectory(robot=p1.body, joints=[p1.joint],
-                               path=np.linspace([p1.value], [p2.value], num=len(bt.commands[0].path), endpoint=True))
-        new_commands = [Simultaneous(commands=[bt, at, dt])]
-    elif name == 'clean':  # TODO: add text or change color?
-        body, sink = args
-        new_commands = [Clean(body)]
-    elif name == 'cook':
-        body, stove = args
-        new_commands = [Cook(body)]
-    elif name == 'press_clean':
-        body, sink, arm, button, bq, c = args
-        [t] = c.commands
-        new_commands = [t, Clean(body), t.reverse()]
-    elif name == 'press_cook':
-        body, sink, arm, button, bq, c = args
-        [t] = c.commands
-        new_commands = [t, Cook(body), t.reverse()]
-    else:
-        raise ValueError(name)
-
-    return new_commands
-
-#######################################################
-
 
 def move_cost_fn(c):
     [t] = c.commands
@@ -849,7 +773,7 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
         from lisdf_tools.lisdf_planning import Problem as LISDFProblem
         state.assign()
         lisdf_problem = LISDFProblem(world)
-        commands = post_process(lisdf_problem, plan, use_commands=False)
+        commands = post_process(lisdf_problem, plan)
 
         state.assign()
         wait_if_gui('Begin?')
@@ -867,3 +791,16 @@ def remove_stream_by_name(stream_pddl, stream_name):
     key = '(:stream '
     lines = stream_pddl.split(key)
     return key.join([l for l in lines if not l.startswith(f'{stream_name}\n')])
+
+
+def post_process(problem, plan, teleport=False, verbose=False):
+    if plan is None:
+        return None
+    commands = []
+    print('\nstream_agent.post_process ...')
+    for i, action in enumerate(plan):
+        new_commands = get_primitive_actions(action, problem.world, teleport)
+        commands += new_commands
+        if verbose:
+            print(i, action)
+    return commands

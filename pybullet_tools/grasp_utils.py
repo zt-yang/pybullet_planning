@@ -512,7 +512,7 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
 ## --------------------------------------------------
 
 
-def sample_from_pickled_grasps(grasps, pose=None, offset=None, k=5, debug=False):
+def sample_from_pickled_grasps(grasps, pose=None, offset=None, k=15, debug=False):
     grasps = random.choices(grasps, k=k)
 
     ## for debugging grasp poses

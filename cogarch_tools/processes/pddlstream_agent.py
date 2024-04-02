@@ -253,6 +253,7 @@ class PDDLStreamAgent(MotionAgent):
         self.commands.append(action)
 
     def save_commands(self, commands_path):
+        self.robot.ik_solver = None
         save_commands(self.commands, commands_path)
 
     def save_time_log(self, csv_name, solved=True):

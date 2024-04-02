@@ -25,7 +25,6 @@ from leap_tools.hierarchical_agent import HierarchicalAgent
 
 
 SAVE_COLLISIONS = False
-EXPERIMENT_DIR = abspath(join(dirname(__file__), '..', '..', 'experiments'))
 
 
 #######################################################
@@ -35,7 +34,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
               create_robot_fn=None, problem=None, domain=None, stream=None,
               exp_dir=None, exp_subdir=None, exp_name='default', reset=False,
               record_problem=True, save_testcase=False, record_plans=False, data_generation=False, use_rel_pose=False,
-              domain_modifier=None, object_reducer=None, comparing=False, **kwargs):
+              domain_modifier=None, object_reducer=None, comparing=False, load_initial_state=False, **kwargs):
     """
     problem:    name of the problem builder function to solve
     exp_dir:    sub-directory in `bullet/experiments` to save the planning data
@@ -87,6 +86,8 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
     if args.save_testcase:
         disconnect()
         return
+    if load_initial_state:
+        return state
 
     """ load planning agent """
     solver_kwargs = get_pddlstream_kwargs(args, skeleton, subgoals, [copy.deepcopy(state), goals, init])
@@ -176,3 +177,5 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
         reset_simulation()
     else:
         disconnect()
+
+    return agent.commands

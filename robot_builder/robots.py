@@ -2,8 +2,7 @@ import math
 import time
 import copy
 import random
-from os.path import basename
-from world_builder.entities import Robot
+from os.path import basename, abspath, join
 
 from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color, TRANSPARENT, \
     link_from_name, multiply, invert, LockRenderer, unit_point, draw_aabb, get_aabb, \
@@ -21,6 +20,7 @@ from pybullet_tools.general_streams import get_handle_link, get_grasp_list_gen, 
     get_cfree_approach_pose_test, get_stable_list_gen, play_trajectory
 from pybullet_tools.stream_agent import remove_stream_by_name
 
+from world_builder.entities import Robot
 from world_builder.world_utils import load_asset
 
 from robot_builder.robot_utils import get_robot_group_joints, close_until_collision, \
@@ -34,7 +34,7 @@ class RobotAPI(Robot):
     tool_from_hand = unit_pose()
     joint_groups = dict()
 
-    def __init__(self, body, **kwargs):
+    def __init__(self, body, move_base=True, **kwargs):
         super(RobotAPI, self).__init__(body, **kwargs)
         self.grippers = {}
         self.possible_obstacles = {}  ## body: obstacles
@@ -42,9 +42,7 @@ class RobotAPI(Robot):
         self.name = self.__class__.__name__.lower()
         self.ik_solver = None
         self.debug_handles = []
-
-    def get_lisdf_string(self):
-        raise NotImplementedError('should implement this for RobotAPI!')
+        self.move_base = move_base
 
     def get_init(self, init_facts=[], conf_saver=None):
         raise NotImplementedError('should implement this for RobotAPI!')
@@ -264,10 +262,10 @@ class RobotAPI(Robot):
                 assignment = self.make_attachment(grasp, arm)
                 assignment.assign()
                 gripper_joints = self.get_gripper_joints(arm)
-                result = self.close_until_collision(gripper_joints, bodies=[body], **kwargs)
+                result = self.close_until_collision(arm, gripper_joints, bodies=[body], **kwargs)
         return result
 
-    def close_until_collision(self, gripper_joints, bodies, **kwargs):
+    def close_until_collision(self, arm, gripper_joints, bodies, **kwargs):
         return close_until_collision(self.body, gripper_joints, bodies=bodies, **kwargs)
 
     def update_stream_pddl(self, pddlstream_problem):
@@ -280,18 +278,25 @@ class RobotAPI(Robot):
     def remove_gripper(self, gripper_handle):
         remove_body(gripper_handle)
 
+    def get_lisdf_string(self):
+        return """
+    <include name="{{name}}">
+      <uri>../../pybullet_planning/{path}</uri>
+      {{pose_xml}}
+    </include>
+""".format(path=self.path)
+
 
 class MobileRobot(RobotAPI):
 
     arms = None
     grasp_types = ['top', 'side']
 
-    def __init__(self, body, use_torso=True, move_base=True, **kwargs):
+    def __init__(self, body, use_torso=True, **kwargs):
         self.base_group = BASE_TORSO_GROUP if use_torso else BASE_GROUP
         joints = self.joint_groups[self.base_group]
         super(MobileRobot, self).__init__(body, joints=joints, **kwargs)
         self.use_torso = use_torso
-        self.move_base = move_base
 
     def get_arm_joints(self, arm):
         raise NotImplementedError('should implement this for MobileRobot!')
@@ -466,6 +471,7 @@ from robot_builder.spot_utils import SPOT_TOOL_LINK, SPOT_CARRY_ARM_CONF, SPOT_J
 
 class SpotRobot(MobileRobot):
 
+    path = 'models/spot_description/model.urdf'
     arms = ['hand']
     joint_groups = SPOT_JOINT_GROUPS
     joint_group_names = ['hand', BASE_TORSO_GROUP]
@@ -511,6 +517,7 @@ from pybullet_tools.pr2_utils import open_arm
 
 class PR2Robot(MobileRobot):
 
+    path = 'models/drake/pr2_description/urdf/pr2_simplified.urdf'
     arms = ['left']
     joint_groups = PR2_GROUPS
     joint_group_names = ['left', 'right', BASE_GROUP, BASE_TORSO_GROUP]
@@ -526,14 +533,6 @@ class PR2Robot(MobileRobot):
         self.dual_arm = dual_arm
         self.grasp_aconfs = {}
         ## get away with the problem of Fluent stream outputs cannot be in action effects: ataconf
-
-    def get_lisdf_string(self):
-        return """
-    <include name="{name}">
-      <uri>../../pybullet_planning/models/drake/pr2_description/urdf/pr2_simplified.urdf</uri>
-      {pose_xml}
-    </include>
-"""
 
     def open_arm(self, arm):
         open_arm(self.body, arm)
@@ -862,6 +861,7 @@ from pybullet_tools.flying_gripper_utils import FEG_TOOL_LINK, FEG_JOINT_GROUPS,
 
 class FEGripper(RobotAPI):
 
+    path = 'models/franka_description/robots/hand_se3.urdf'
     arms = ['hand']
     grasp_types = ['hand']
     joint_group_names = ['hand']
@@ -1011,14 +1011,6 @@ class FEGripper(RobotAPI):
 
     def get_all_joints(self):
         return SE3_GROUP + PANDA_FINGERS_GROUP
-
-    def get_lisdf_string(self):
-        return """
-    <include name="{name}">
-      <uri>../../pybullet_planning/models/franka_description/robots/hand_se3.urdf</uri>
-      {pose_xml}
-    </include>
-"""
 
     def get_positions(self, joint_group='hand', roundto=None):
         return tuple([round(n, roundto) for n in get_se3_conf(self)])
