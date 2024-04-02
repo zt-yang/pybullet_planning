@@ -54,6 +54,8 @@ streams:
 
 ## pybullet related
 sim:
+  window_width: 1980
+  window_height: 1238
   viewer: true
   lock: true
   simulate: false

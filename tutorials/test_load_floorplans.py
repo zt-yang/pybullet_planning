@@ -28,7 +28,7 @@ def test_load_floating_gripper_in_kitchen(random_instance=True):
     """ a fixed kitchen layout with random instance of objects (e.g. microwave, trashcan) """
     args = get_parser(config='config_dev.yaml', seed=None)
 
-    init_pybullet_client(args, width=1440, height=1120)
+    init_pybullet_client(args)
     world = create_world(args)
     robot = build_robot_from_args(world, robot_name='feg', initial_q=[1.5, 7, 0.7, 0, -PI / 2, 0])
 

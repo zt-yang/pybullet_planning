@@ -65,6 +65,8 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
                         help='When enabled, locks the viewer during planning.')
     parser.add_argument('-d', '--drive', action='store_true', default=conf.sim.drive, help='')
     parser.add_argument('-t', '--time_step', type=float, default=conf.sim.time_step, help='')
+    parser.add_argument('--window_width', type=int, default=conf.sim.window_width, help='')
+    parser.add_argument('--window_height', type=int, default=conf.sim.window_height, help='')
     parser.add_argument('-cam', '--camera', action='store_true', default=conf.sim.camera, help='')
     parser.add_argument('-seg', '--segment', action='store_true', default=conf.sim.segment, help='')
     parser.add_argument('-mon', '--monitoring', action='store_true', default=conf.sim.monitoring, help='')
@@ -195,8 +197,8 @@ def get_pddlstream_kwargs(args, skeleton, subgoals, initializer):
     return solver_kwargs
 
 
-def init_pybullet_client(args, width=1980, height=1238):
-    connect(use_gui=args.viewer, shadows=False, width=width, height=height)
+def init_pybullet_client(args):
+    connect(use_gui=args.viewer, shadows=False, width=args.window_width, height=args.window_height)
 
     if args.camera:
         enable_preview()

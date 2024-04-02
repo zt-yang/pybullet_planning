@@ -75,7 +75,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
 
         """ sample problem """
     else:
-        init_pybullet_client(args, width=1440, height=1120)
+        init_pybullet_client(args)
         state, exogenous, goals, problem_dict = get_pddlstream_problem(args, **kwargs)
         pddlstream_problem = problem_dict['pddlstream_problem']
         subgoals = problem_dict['subgoals']

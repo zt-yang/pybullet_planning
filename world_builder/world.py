@@ -68,6 +68,7 @@ class WorldBase(object):
         self.camera = None
         self.img_dir = None
         self.cameras = []
+        self.using_pickled_scene = False
 
         ## for observation models
         self.observation_cameras = None
@@ -1520,7 +1521,8 @@ class World(WorldBase):
         if self.note is not None:
             world_name += f"_{self.note}"
 
-        self.save_lisdf(output_dir, world_name=world_name, **kwargs)
+        if not self.using_pickled_scene:
+            self.save_lisdf(output_dir, world_name=world_name, **kwargs)
         self.save_problem_pddl(goal, output_dir, world_name=world_name, init=init)
         self.save_planning_config(output_dir, domain=domain, stream=stream,
                                   pddlstream_kwargs=pddlstream_kwargs)

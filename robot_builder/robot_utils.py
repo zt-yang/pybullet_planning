@@ -8,7 +8,7 @@ from pybullet_tools.utils import joint_from_name, get_link_subtree, link_from_na
 from pybullet_tools.bullet_utils import BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, \
     draw_base_limits as draw_base_limits_bb, BASE_LIMITS, nice
 from pybullet_tools.grasp_utils import enumerate_rotational_matrices, \
-    enumerate_translation_matrices
+    enumerate_translation_matrices, test_transformations_template
 
 BASE_GROUP = 'base'
 TORSO_GROUP = 'torso'
@@ -86,20 +86,14 @@ def test_tool_from_root_transformations(tool_from_root, get_attachment_fn, test_
         rotations = enumerate_rotational_matrices(return_list=True)
     if test_translation:
         translations = enumerate_translation_matrices(x=0.2)
-    total = len(rotations) * len(translations)
-    print(f'\nrobot_utils.test_tool_from_root_transformations ({total})')
 
-    for k1, r in enumerate(rotations):
-        for k2, t in enumerate(translations):
-            k = k1 * len(translations) + k2
-            wait_for_user('\t\t next attachment?')
-            tool_from_root = (t, quat_from_euler(r))
-            print(f'\n[{k}/{total}]',
-                  f'\t{k1}/{len(rotations)} r = {nice(r)}',
-                  f'\t{k2}/{len(translations)} t = {nice(t)}')
-            attachment = get_attachment_fn(tool_from_root)
-            attachment.assign()
-    wait_for_user('finished testing attachment')
+    def funk(t, r):
+        tool_from_root = (t, quat_from_euler(r))
+        attachment = get_attachment_fn(tool_from_root)
+        attachment.assign()
+
+    title = 'robot_utils.test_tool_from_root_transformations'
+    test_transformations_template(rotations, translations, funk, title)
 
 
 def close_until_collision(robot, gripper_joints, bodies=[], open_conf=None, closed_conf=None, num_steps=25, **kwargs):

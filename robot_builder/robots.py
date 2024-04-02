@@ -41,6 +41,7 @@ class RobotAPI(Robot):
         self.collision_animations = []
         self.name = self.__class__.__name__.lower()
         self.ik_solver = None
+        self.debug_handles = []
 
     def get_lisdf_string(self):
         raise NotImplementedError('should implement this for RobotAPI!')
@@ -57,7 +58,7 @@ class RobotAPI(Robot):
     def get_tool_link(self, arm):
         raise NotImplementedError('should implement this for RobotAPI!')
 
-    def get_gripper_joints(self, gripper_grasp):
+    def get_gripper_joints(self, arm):
         raise NotImplementedError('should implement this for RobotAPI!')
 
     def visualize_grasp(self, body_pose, grasp, arm='left', color=GREEN, **kwargs):
@@ -84,6 +85,12 @@ class RobotAPI(Robot):
         if arm is None:
             arm = self.get_arm_from_gripper(gripper_cloned)
         self._close_cloned_gripper(gripper_cloned, arm)
+
+    def get_gripper_end_conf(self, arm, width):
+        if arm is None:
+            arm = self.arms[0]
+        gripper_joints = self.get_gripper_joints(arm)
+        return [width] * len(gripper_joints)
 
     ## ------------------------------------------------------------------
 
@@ -221,8 +228,7 @@ class RobotAPI(Robot):
                 body_pose = get_pose(b)
                 if verbose: print(f'{title} | actually given body, body_pose = get_pose(b) = {nice(body_pose)}')
 
-        r = get_rotation_matrix(body) if body is not None and not is_mesh_entity(body) \
-            else self.tool_from_hand
+        r = get_rotation_matrix(body) if body is not None else self.tool_from_hand
         new_body_pose = multiply(body_pose, r)
         return new_body_pose
 
@@ -258,8 +264,11 @@ class RobotAPI(Robot):
                 assignment = self.make_attachment(grasp, arm)
                 assignment.assign()
                 gripper_joints = self.get_gripper_joints(arm)
-                result = close_until_collision(self.body, gripper_joints, bodies=[body], **kwargs)
+                result = self.close_until_collision(gripper_joints, bodies=[body], **kwargs)
         return result
+
+    def close_until_collision(self, gripper_joints, bodies, **kwargs):
+        return close_until_collision(self.body, gripper_joints, bodies=bodies, **kwargs)
 
     def update_stream_pddl(self, pddlstream_problem):
         pass
@@ -381,10 +390,10 @@ class MobileRobot(RobotAPI):
         self.grippers[arm] = create_robot_gripper(self.body, self.get_gripper_root(arm), **kwargs)
         return self.grippers[arm]
 
-    def set_gripper_pose(self, body_pose, grasp, gripper=None, arm='left', **kwargs):
+    def set_gripper_pose(self, body_pose, grasp, body=None, gripper=None, arm='left', **kwargs):
         if gripper is None:
             gripper = self.get_gripper(arm, **kwargs)
-        grasp_pose = self.get_grasp_pose(body_pose, grasp, arm, **kwargs)
+        grasp_pose = self.get_grasp_pose(body_pose, grasp, arm, body=body, **kwargs)
         set_pose(gripper, grasp_pose)
         return gripper
 
@@ -880,7 +889,7 @@ class FEGripper(RobotAPI):
         if arm in self.grippers:
             self.grippers.pop(arm)
 
-    def get_gripper_joints(self, gripper_grasp=None):
+    def get_gripper_joints(self, arm=None):
         return get_joints_by_names(self.body, PANDA_FINGERS_GROUP)
 
     def _open_cloned_gripper(self, gripper, arm, width=1):

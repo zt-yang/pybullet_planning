@@ -8,7 +8,7 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     get_min_limit, user_input, step_simulation, get_body_name, get_bodies, BASE_LINK, get_joint_position, \
     add_segments, get_max_limit, link_from_name, BodySaver, get_aabb, interpolate_poses, wait_for_user, \
     plan_direct_joint_motion, has_gui, create_attachment, wait_for_duration, get_extend_fn, set_renderer, \
-    get_custom_limits, all_between, remove_body, draw_aabb
+    get_custom_limits, all_between, remove_body, draw_aabb, GREEN
 
 from pybullet_tools.bullet_utils import multiply, has_tracik, visualize_bconf
 from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics
@@ -470,11 +470,14 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
     ## visualize the gripper
     if visualize:
         print('grasp_value', nice(grasp.value))
-        gripper_grasp = robot.visualize_grasp(pose_value, grasp.approach,
-                                              body=obj, color=RED, new_gripper=True)
         set_renderer(True)
-        # set_camera_target_body(gripper_grasp)
-        wait_unlocked('solve_approach_ik | visualized the gripper')
+        gripper_approach = robot.visualize_grasp(pose_value, grasp.approach,
+                                                 body=obj, color=RED, new_gripper=True)
+        gripper_grasp = robot.visualize_grasp(pose_value, grasp.value,
+                                              body=obj, color=GREEN, new_gripper=True)
+        set_camera_target_body(gripper_grasp)
+        wait_unlocked('solve_approach_ik | visualized the gripper at grasp and approach poses')
+        remove_body(gripper_approach)
         remove_body(gripper_grasp)
 
     if base_conf.joint_state is not None:

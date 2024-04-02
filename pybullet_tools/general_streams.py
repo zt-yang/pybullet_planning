@@ -625,19 +625,22 @@ def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=
 
 
 def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None,  # None | PI/4 | INF
-                  randomize=True, verbose=True, debug=False, test_offset=False, **kwargs):
+                  randomize=True, verbose=True, debug=False,
+                  test_offset=False, loaded_offset=None, **kwargs):
     robot = problem.robot
     world = problem.world
     grasp_type = 'hand'
     arm = robot.arms[0]
 
-    def fn(body):
+    def fn(body, randomize_here=randomize):
         ## ----- get grasp transformations
         loaded = world.load_saved_grasps(body)
         if loaded is None:
             grasps_O = get_hand_grasps(world, body, verbose=verbose, test_offset=test_offset, **kwargs)
         else:
-            grasps_O = sample_from_pickled_grasps(loaded)
+            grasps_O, handles = sample_from_pickled_grasps(loaded, pose=get_pose(body), offset=loaded_offset)
+            robot.debug_handles += handles
+            randomize_here = False
 
         ## ----- get grasp objects
         grasps = robot.make_grasps(grasp_type, arm, body, grasps_O, collisions=collisions)
@@ -653,7 +656,7 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None,  # None | 
             if verbose:
                 print(f'   get_grasp_gen(top_grasp_tolerance={top_grasp_tolerance})',
                       f' selected {len(grasps)} out of {ori} grasps')
-        if randomize:
+        if randomize_here:
             random.shuffle(grasps)
         # print(f'get_grasp_gen({body}, {world.get_name(body)}) = {len(grasps)} grasps')
         # return [(g,) for g in grasps]

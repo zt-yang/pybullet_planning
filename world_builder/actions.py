@@ -153,12 +153,12 @@ class GripperAction(Action):
         robot = state.robot
 
         ## get width from extent
-        if self.extent != None:
+        if self.extent is not None:
             gripper_joint = robot.get_gripper_joints(self.arm)[0]
             self.position = get_max_limit(robot, gripper_joint)
         else: ## if self.position == None:
             bodies = [b for b in state.objects if isinstance(b, int) and b != robot.body]
-            self.position = close_until_collision(robot.body, robot.get_gripper_joints(self.arm), bodies=bodies)
+            self.position = robot.close_until_collision(robot.get_gripper_joints(self.arm), bodies=bodies)
             print(f"   [GripperAction] !!!! gripper {self.arm} is closed to {round(self.position, 3)} until collision")
             # self.position = 0.5  ## cabbage, artichoke
             # self.position = 0.4  ## tomato
@@ -167,7 +167,7 @@ class GripperAction(Action):
 
         joints = robot.get_gripper_joints(self.arm)
         start_conf = get_joint_positions(robot, joints)
-        end_conf = [self.position] * len(joints)
+        end_conf = robot.get_gripper_end_conf(self.arm, self.position)
         if self.teleport:
             path = [start_conf, end_conf]
         else:

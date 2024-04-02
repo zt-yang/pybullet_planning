@@ -17,12 +17,14 @@ from pybullet_tools.pr2_primitives import get_group_joints, get_base_custom_limi
     get_gripper_joints, GripperCommand, Simultaneous, create_trajectory
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, get_handle_grasp_list_gen, \
     get_handle_grasp_gen, get_compute_pose_kin, sample_joint_position_closed_gen, get_contain_gen
+from pybullet_tools.grasp_utils import enumerate_rotational_matrices, \
+    enumerate_translation_matrices, test_transformations_template
 
 from pybullet_tools.bullet_utils import set_camera_target_body, colors, color_names, \
     nice, BASE_LIMITS, initialize_collision_logs, collided
 from pybullet_tools.pr2_problems import create_pr2
 from pybullet_tools.pr2_utils import create_pr2_gripper, set_group_conf
-from pybullet_tools.utils import get_client, \
+from pybullet_tools.utils import get_client, quat_from_euler, remove_handles, \
     Pose, get_bodies, pairwise_collision, get_pose, point_from_pose, set_renderer, get_joint_name, \
     remove_body, LockRenderer, WorldSaver, wait_if_gui, SEPARATOR, safe_remove, ensure_dir, \
     get_distance, get_max_limit, BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS, wait_unlocked
@@ -41,6 +43,8 @@ def process_debug_goals(state, goals, init):
             goals = test_handle_grasps(state, args)
         elif test == 'test_grasps':
             goals = test_grasps(state, args)
+        elif test == 'test_loaded_grasp_offset':
+            goals = test_loaded_grasp_offset(state, args)
         elif test == 'test_grasp_ik':
             goals = test_grasp_ik(state, init, args)
         elif test == 'test_pose_gen':
@@ -68,7 +72,7 @@ def process_debug_goals(state, goals, init):
             # test_marker_pull_bconfs(state, init)
             # test_pulling_handle_ik(state)
             # test_drawer_open(state, goals)
-            print('\n\n\npr2_agent.pddlstream_from_state_goal | didnt implement', goals)
+            print('\n\n\nstream_tests.pddlstream_from_state_goal | didnt implement', goals)
             sys.exit()
         init += ff
 
@@ -146,20 +150,40 @@ def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=False, v
     return goals
 
 
-def test_grasps(state, name='cabbage', visualize=True, debug=True):
+def test_loaded_grasp_offset(state, args):
+    rotations = enumerate_rotational_matrices(return_list=True)
+    rotations = [(0, 0, -1.571), (0, 0, 1.571), (0, 0, 0), (0, 0, 3.142)]  ## , skip_until=22
+
+    # translations = [(0, 0, 0)]
+    translations = enumerate_translation_matrices(x=0.03, negations=True)
+
+    def funk(t, r):
+        offset = (t, quat_from_euler(r))
+        remove_handles(state.world.robot.debug_handles)
+        test_grasps(state, args, visualize=True, debug=False,
+                    loaded_offset=offset, randomize=False)
+
+    title = 'stream_tests.test_loaded_grasp_offset'
+    test_transformations_template(rotations, translations, funk, title, skip_until=5)
+
+
+def test_grasps(state, name='cabbage', visualize=False, debug=False,
+                loaded_offset=None, randomize=True):
     """
     visualize = True:   to see all grasps for selecting the grasp index to plan for
     debug = True:       show the grasp to plan for
     """
     set_renderer(True)
-    title = 'pr2_agent.test_grasps | '
+    title = 'stream_tests.test_grasps | '
     if isinstance(name, str):
         body = state.world.name_to_body(name)
     else:  ## if isinstance(name, Object):
         body = name
     robot = state.robot
 
-    funk = get_grasp_list_gen(state, verbose=True, visualize=False, retain_all=False, top_grasp_tolerance=None)  ## PI/4
+    funk = get_grasp_list_gen(state, verbose=True, visualize=False, retain_all=False,
+                              loaded_offset=loaded_offset, randomize=randomize,
+                              top_grasp_tolerance=None)  ## PI/4
     outputs = funk(body)
 
     if 'left_gripper' in robot.joint_groups:
@@ -418,7 +442,7 @@ def test_door_pull_traj(problem, init, o):
         funk3 = get_pull_door_handle_motion_gen(problem, visualize=False, verbose=False)
         for i in range(len(grasps)):
             (g,) = grasps[i]
-            print(f'\n!!!! pr2_agent.test_door_pull_traj | grasp {i}: {nice(g.value)}')
+            print(f'\n!!!! stream_tests.test_door_pull_traj | grasp {i}: {nice(g.value)}')
             result = funk3('hand', o, pst1, pst2, g, q1)
             if result is not None:
                 [q2, cmd] = result

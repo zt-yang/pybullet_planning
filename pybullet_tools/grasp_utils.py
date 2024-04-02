@@ -11,8 +11,8 @@ import json
 
 from pybullet_tools.logging import dump_json
 from pybullet_tools.utils import unit_pose, get_collision_data, get_links, multiply, invert, \
-    aabb_contains_aabb, get_pose, get_aabb, GREEN, AABB, remove_body, stable_z, \
-    pose_from_tform, set_joint_position, Euler, PI, LockRenderer, HideOutput, load_model, \
+    aabb_contains_aabb, get_pose, get_aabb, GREEN, AABB, remove_body, draw_pose, \
+    pose_from_tform, wait_for_user, Euler, PI, LockRenderer, HideOutput, load_model, \
     get_client, JOINT_TYPES, get_joint_type, get_link_pose, get_closest_points, \
     get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, \
     YELLOW, add_line, draw_point, RED, remove_handles, apply_affine, vertices_from_rigid, \
@@ -20,7 +20,8 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, multi
     link_pairs_collision, wait_unlocked, apply_alpha, set_color, BASE_LINK as ROOT_LINK, \
     BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED
 from pybullet_tools.bullet_utils import nice, collided, equal, minus, add, get_color_by_index, \
-    set_camera_target_body, get_datetime, is_box_entity, draw_fitted_box, get_model_pose
+    set_camera_target_body, get_datetime, is_box_entity, draw_fitted_box, get_model_pose, \
+    draw_colored_pose, colors
 
 
 def draw_bounding_lines(pose, dimensions):
@@ -244,8 +245,11 @@ def check_grasp_link(world, body, link):
     return using_grasp_link, link
 
 
-def enumerate_translation_matrices(x=0.02):
-    return [(0, 0, 0), (x, 0, 0), (0, x, 0), (0, 0, x)]
+def enumerate_translation_matrices(x=0.02, negations=False):
+    translations = [(x, 0, 0), (0, x, 0), (0, 0, x)]
+    if negations:
+        translations += [(-x, 0, 0), (0, -x, 0), (0, 0, -x)]
+    return translations + [(0, 0, 0)]
 
 
 def enumerate_rotational_matrices(return_list=False):
@@ -508,7 +512,39 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
 ## --------------------------------------------------
 
 
-def sample_from_pickled_grasps(grasps, k=5):
+def sample_from_pickled_grasps(grasps, pose=None, offset=None, k=5, debug=False):
     grasps = random.choices(grasps, k=k)
-    grasps = [pose_from_tform(g) for g in grasps]
-    return grasps
+
+    ## for debugging grasp poses
+    handles = []
+    if pose is not None and debug:
+        for i, grasp in enumerate(grasps):
+            g = multiply(pose, pose_from_tform(grasp))
+            handles += draw_colored_pose(g, length=5e-2, color=colors[i])
+
+    ## the tool_link in the saved grasps are different from that here
+    if offset is None:
+        offset = Pose(point=(-0.01, 0, -0.03), euler=Euler(0, 0, -math.pi/2))
+
+    grasps = [multiply(pose_from_tform(g), offset) for g in grasps]
+    return grasps, handles
+
+
+## --------------------------------------------------
+
+
+def test_transformations_template(rotations, translations, funk, title, skip_until=None):
+    total = len(rotations) * len(translations)
+    print(f'\n{title} ({total})')
+
+    for k1, r in enumerate(rotations):
+        for k2, t in enumerate(translations):
+            k = k1 * len(translations) + k2
+            if skip_until is not None and k < skip_until:
+                continue
+            wait_for_user('\t\t next?')
+            print(f'\n[{k}/{total}]',
+                  f'\t{k1}/{len(rotations)} r = {nice(r)}',
+                  f'\t{k2}/{len(translations)} t = {nice(t)}')
+            funk(t, r)
+    wait_for_user('finished')

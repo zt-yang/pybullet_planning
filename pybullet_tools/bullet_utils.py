@@ -28,7 +28,7 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, pairw
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, set_renderer, draw_aabb, set_point, has_gui, get_rigid_clusters, \
     link_pairs_collision, wait_unlocked, apply_alpha, set_color, BASE_LINK as ROOT_LINK, \
     dimensions_from_camera_matrix, get_field_of_view, get_image, timeout, unit_point, get_joint_limits, ConfSaver, \
-    BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED
+    BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, tform_point
 
 
 OBJ = '?obj'
@@ -456,6 +456,21 @@ def collided(obj, obstacles=[], world=None, tag='', articulated=False, verbose=F
                 return line.replace("'", "")
     return result
 
+
+def draw_colored_pose(pose, length=0.1, color=None, **kwargs):
+    if color is None:
+        handles = draw_pose(pose, length=length, **kwargs)
+    else:
+        origin_world = tform_point(pose, np.zeros(3))
+        handles = []
+        for k in range(3):
+            axis = np.zeros(3)
+            axis[k] = 1
+            axis_world = tform_point(pose, length*axis)
+            handles.append(add_line(origin_world, axis_world, color=color, **kwargs))
+    return handles
+
+
 #######################################################
 
 
@@ -465,6 +480,8 @@ ROTATIONAL_MATRICES = {}
 def get_rotation_matrix(body, verbose=True):
     import untangle
     r = unit_pose()
+    if is_mesh_entity(body):
+        return r
     collision_data = get_collision_data(body, 0)
     # if set(get_all_links(body)) == {0, -1}:
     if len(collision_data) > 0:
