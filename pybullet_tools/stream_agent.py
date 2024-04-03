@@ -568,7 +568,7 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visual
     diverse = diverse or collect_dataset
 
     planner_kwargs_default = dict(planner='ff-astar1', unit_costs=False, success_cost=INF, verbose=True,
-                                  debug=False, unique_optimistic=True, forbid=True, bind=True)
+                                  unique_optimistic=True, forbid=True, bind=True)
     planner_kwargs = dict(max_planner_time=downward_time, max_time=max_time, evaluation_time=evaluation_time,
                           stream_planning_timeout=stream_planning_timeout,
                           initial_complexity=5, visualize=visualize, fc=fc, domain_modifier=domain_modifier,

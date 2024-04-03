@@ -5942,3 +5942,14 @@ def process_urdf(urdf_path, urdf_dir=TEMP_URDF_DIR, inertial=True, decompose=Tru
         print('Old URDF: {} | New URDF: {}'.format(urdf_path, new_urdf_path))
 
     return new_urdf_path
+
+
+## ------------------------------------------------
+
+
+def project_vector(vec1, vec2): # vec1 onto vec2
+    return np.dot(vec1, vec2) / get_length(vec2) * get_unit_vector(vec2)
+
+
+def orthogonal_vector(vec1, vec2):
+    return vec1 - project_vector(vec1, vec2)
