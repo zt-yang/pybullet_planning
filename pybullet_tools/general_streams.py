@@ -634,7 +634,7 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None,  # None | 
 
     def fn(body, randomize_here=randomize):
         ## ----- get grasp transformations
-        loaded = world.load_saved_grasps(body)
+        loaded = world.load_saved_grasps(body) if hasattr(world, 'load_saved_grasps') else None
         if loaded is None:
             grasps_O = get_hand_grasps(world, body, verbose=verbose, test_offset=test_offset, **kwargs)
         else:

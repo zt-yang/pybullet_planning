@@ -45,11 +45,11 @@ def test_grasp(problem, body, funk, test_attachment=False, test_offset=False, **
     set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
 
 
-def test_grasps(robot='feg', categories=[], skip_grasps=False, visualize=True, retain_all=True,
-                test_attachment=False, verbose=False,
+def test_grasps(robot='feg', categories=[], given_instances=None, skip_grasps=False,
+                visualize=True, retain_all=True, verbose=False, test_attachment=False,
                 test_rotation_matrix=False, test_translation_matrix=False, skip_grasp_index=None, **kwargs):
 
-    from pybullet_tools.bullet_utils import enumerate_rotational_matrices as emu, enumerate_translation_matrices
+    from pybullet_tools.grasp_utils import enumerate_rotational_matrices as emu, enumerate_translation_matrices
 
     world = get_test_world(robot, **kwargs)
     draw_pose(unit_pose(), length=10)
@@ -87,6 +87,8 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False, visualize=True, r
                     continue
 
                 instances = get_instances(cat)
+                if given_instances is not None:
+                    instances = {k: v for k, v in instances.items() if k in instances}
                 print('instances', instances)
                 n = len(instances)
                 locations = [(i, get_y_gap(cat) * n) for n in range(1, n+1)]
@@ -325,10 +327,11 @@ if __name__ == '__main__':
         Kitchen Cooking: 'KitchenFork', 
         Packing:    'Stapler', 'Camera', 'EyeGlasses', 'Knife', 'Tray',
     ------------------------------------------------------------------------ """
-    robot = 'pr2'
+    robot = 'feg'  ## 'pr2'
 
     """ --- grasps related --- """
-    # test_grasps(robot, ['Salter'], skip_grasps=False, test_attachment=False)  ## 'Salter'
+    kwargs = dict(skip_grasps=False, test_attachment=False)
+    test_grasps(robot, ['Bottle'], given_instances=['3616'], **kwargs)  ## 'Salter'
     # test_grasps(robot, ['VeggieCabbage'], skip_grasps=False, test_attachment=False)
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
@@ -337,4 +340,4 @@ if __name__ == '__main__':
         IN: 'MiniFridge', 'MiniFridgeDoorless', 'CabinetTop'
     """
     # test_handle_grasps(robot, category='CabinetTop', skip_grasps=True)
-    test_handle_grasps_counter(robot)
+    # test_handle_grasps_counter(robot)

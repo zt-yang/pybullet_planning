@@ -372,8 +372,8 @@ if __name__ == '__main__':
     """ --- placement for articulated storage units --- 
         IN: 'MiniFridge', 'MiniFridgeDoorless', 'CabinetTop'
     """
-    test_placement_in(robot, category='MiniFridge', seg_links=False,
-                      movable_category='BraiserLid', learned_sampling=True)
+    # test_placement_in(robot, category='MiniFridge', seg_links=False,
+    #                   movable_category='BraiserLid', learned_sampling=True)
 
     """ --- placement related for supporting surfaces --- 
         ON: 'KitchenCounter', 

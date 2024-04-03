@@ -177,6 +177,7 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
 
 def get_pddlstream_kwargs(args, skeleton, subgoals, initializer):
     fc = None if not args.use_heuristic_fc else get_feasibility_checker(initializer, mode='heuristic')
+    pddlstream_debug = args.pddlstream_debug if hasattr(args, 'pddlstream_debug') else False
     soft_subgoals = args.soft_subgoals if hasattr(args, 'soft_subgoals') else False
     solver_kwargs = dict(
         skeleton=skeleton,
@@ -193,7 +194,7 @@ def get_pddlstream_kwargs(args, skeleton, subgoals, initializer):
         downward_time=args.downward_time,
         stream_planning_timeout=args.stream_planning_timeout,
         max_plans=args.max_plans,
-        debug=args.pddlstream_debug
+        debug=pddlstream_debug
     )
     return solver_kwargs
 
