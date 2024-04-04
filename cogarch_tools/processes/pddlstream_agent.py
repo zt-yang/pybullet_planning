@@ -150,6 +150,7 @@ class PDDLStreamAgent(MotionAgent):
                 return None
             self.replan(observation)
 
+        print('\n\npddlstream_agent.policy | start self.process_plan')
         return self.process_plan(observation)
 
     def process_plan(self, observation):
@@ -334,7 +335,7 @@ def print_action(action):
             new_args = []
             for ele in args:
                 if isinstance(ele, Trajectory):
-                    new_args.append(f'{ele}-{ele.path[0]}')
+                    new_args.append(f'{ele}-{ele.path[0]}-{ele.path[-1]}')
                 else:
                     new_args.append(ele)
             return Action(name, new_args)

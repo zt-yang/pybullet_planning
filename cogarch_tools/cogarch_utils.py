@@ -135,6 +135,10 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     parser.add_argument('--log_failures', action='store_true', default=conf.planner.log_failures,
                         help='When enabled, log failed streams for analysis.')
 
+    ## -------- real robot related
+    parser.add_argument('--execute', action='store_true', default=False,
+                        help='Ignore this, just for plumbing purposes')
+
     ## seed determines asset instances and object poses initiated for the problem
     args = parser.parse_args()
 
@@ -155,7 +159,7 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
 
     ## other args, especially those related to problem and planner may be added directly in config files
     args.__dict__['robot_builder_args'] = conf.robot.__dict__
-    for attr in ['problem', 'planner', 'agent', 'data', 'streams']:
+    for attr in ['problem', 'planner', 'agent', 'data', 'streams', 'sim']:
         if attr not in conf.__dict__:
             continue
         for k, v in conf.__dict__[attr].__dict__.items():

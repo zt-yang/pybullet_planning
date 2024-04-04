@@ -59,7 +59,7 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True, 
         tool_from_root = robot.get_tool_from_root(arm)
         gripper_pose = multiply(robot.get_grasp_pose(pose_value, grasp.value, arm, body=grasp.body), invert(tool_from_root))
 
-        default_conf = arm_conf(arm, grasp.carry)
+        default_conf = grasp.carry
         arm_joints = robot.get_arm_joints(arm)
         base_joints = robot.get_base_joints()
         if learned:
@@ -104,7 +104,7 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True, 
 
 
 def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
-                  ACONF=False, verbose=True, visualize=False, debug=False):
+                  ACONF=False, verbose=True, visualize=False, resolution=DEFAULT_RESOLUTION):
     robot = problem.robot
     world = problem.world
     obstacles = problem.fixed if collisions else []
@@ -134,8 +134,8 @@ def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
 
         return solve_approach_ik(
             arm, obj, pose_value, grasp, base_conf,
-            world, robot, custom_limits, obstacles_here, ignored_pairs_here,
-            title, ACONF=ACONF, teleport=teleport, verbose=verbose, visualize=visualize
+            world, robot, custom_limits, obstacles_here, ignored_pairs_here, resolution,
+            title=title, ACONF=ACONF, teleport=teleport, verbose=verbose, visualize=visualize
         )
     return fn
 
@@ -290,12 +290,13 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
     if collided(gripper_grasp, obstacles, articulated=True, world=world):  # w is not None
         # wait_unlocked()
         # robot.remove_gripper(gripper_grasp)
-        if verbose: print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
+        if verbose:
+            print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
         return
     # robot.remove_gripper(gripper_grasp)
 
     arm_joints = robot.get_arm_joints(a)
-    default_conf = arm_conf(a, g.carry)
+    default_conf = g.carry
 
     ## use domain specific bconf databases
     if learned and world.learned_bconf_list_gen is not None:
@@ -435,8 +436,8 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
 
 
 def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
-                      world, robot, custom_limits, obstacles_here, ignored_pairs_here,
-                      title, ACONF=False, teleport=False, verbose=True, visualize=False):
+                      world, robot, custom_limits, obstacles_here, ignored_pairs_here, resolution,
+                      title='solve_approach_ik', ACONF=False, teleport=False, verbose=True, visualize=False):
     attachments = {}
 
     if isinstance(obj, tuple):  ## may be a (body, joint) or a body with a marker
@@ -461,7 +462,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
     arm_link = robot.get_tool_link(arm)
     arm_joints = robot.get_arm_joints(arm)
 
-    default_conf = arm_conf(arm, grasp.carry)
+    default_conf = grasp.carry
     # sample_fn = get_sample_fn(robot, arm_joints)
     base_conf.assign()
     robot.open_arm(arm)
@@ -552,7 +553,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
     if teleport:
         path = [default_conf, approach_conf, grasp_conf]
     else:
-        resolutions = DEFAULT_RESOLUTION * np.ones(len(arm_joints))
+        resolutions = resolution * np.ones(len(arm_joints))
         if is_top_grasp(robot, arm, body, grasp) or True:
             grasp_path = plan_direct_joint_motion(robot, arm_joints, grasp_conf, attachments=attachments.values(),
                                                   obstacles=approach_obstacles, self_collisions=SELF_COLLISIONS,
@@ -654,7 +655,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
 #         # co_kwargs['verbose'] = False
 #
 #         arm_joints = get_arm_joints(robot, a)
-#         default_conf = arm_conf(a, g.carry)
+#         default_conf = grasp.carry
 #
 #         ## solve IK for all 13 joints
 #         if robot.use_torso and has_tracik():

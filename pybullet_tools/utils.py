@@ -4029,6 +4029,7 @@ def plan_waypoints_joint_motion(body, joints, waypoints, start_conf=None, obstac
             return None
     return interpolate_joint_waypoints(body, joints, waypoints, resolutions=resolutions, collision_fn=collision_fn)
 
+
 def plan_direct_joint_motion(body, joints, end_conf, **kwargs):
     return plan_waypoints_joint_motion(body, joints, [end_conf], **kwargs)
 
@@ -5953,3 +5954,39 @@ def project_vector(vec1, vec2): # vec1 onto vec2
 
 def orthogonal_vector(vec1, vec2):
     return vec1 - project_vector(vec1, vec2)
+
+
+def oobb_from_aabb(aabb):
+    extent = get_aabb_extent(aabb)
+    new_aabb = AABB(-extent/2., +extent/2.)
+    return OOBB(new_aabb, Pose(point=get_aabb_center(aabb)))
+
+recenter_aabb = oobb_from_aabb
+
+def recenter_oobb(oobb):
+    aabb, pose = oobb
+    new_aabb, new_pose = recenter_aabb(aabb)
+    return OOBB(new_aabb, multiply(pose, new_pose))
+
+
+def aabb_difference(aabb1, aabb2):
+    # TODO: penetration
+    lower1, upper1 = aabb1
+    lower2, upper2 = aabb2
+    difference1 = get_difference(upper1, lower2)
+    difference1 = np.maximum(np.zeros(len(difference1)), difference1)
+    difference2 = get_difference(lower1, upper2)
+    difference2 = np.minimum(difference2, np.zeros(len(difference2)))
+    return difference1 + difference2
+
+
+def aabb_distance(aabb1, aabb2, **kwargs):
+    return get_length(aabb_difference(aabb1, aabb2), **kwargs)
+
+
+def get_max_accelerations(robot, joints, max_velocities=None, duration_to_max=1.):
+    if duration_to_max == 0:
+        return INF * np.ones(len(joints))
+    if max_velocities is None:
+        max_velocities = get_max_velocities(robot, joints)
+    return np.array(max_velocities) / duration_to_max

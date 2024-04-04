@@ -1,6 +1,8 @@
+import math
 from os.path import join, abspath, isfile
 
 from pybullet_tools.stream_agent import pddlstream_from_state_goal
+from pybullet_tools.pr2_streams import DEFAULT_RESOLUTION
 from pybullet_tools.utils import set_all_static
 
 from world_builder.world import World, State
@@ -22,16 +24,11 @@ def create_world(args):
 
 def pddlstream_from_state_goal_args(state, goals, args=None, custom_limits=None, debug=False, verbose=False,
                                     domain_name=None, stream_name=None, cfree=False, teleport=False,
-                                    use_all_grasps=False, top_grasp_tolerance=None, **kwargs):
-
-    domain_name = args.domain_pddl if args is not None else domain_name
-    domain_pddl = join(PDDL_PATH, 'domains', domain_name)
-    stream_name = args.stream_pddl if args is not None else stream_name
-    stream_pddl = join(PDDL_PATH, 'streams', stream_name)
-    if not isfile(domain_pddl):
-        domain_pddl = join(PBP_PATH, domain_name)
-        stream_pddl = join(PBP_PATH, stream_name)
+                                    use_all_grasps=False, top_grasp_tolerance=None, resolution=DEFAULT_RESOLUTION,
+                                    **kwargs):
     if args is not None:
+        domain_name = args.domain_pddl
+        stream_name = args.stream_pddl
         debug = args.debug
         verbose = debug
         cfree = args.cfree
@@ -42,13 +39,22 @@ def pddlstream_from_state_goal_args(state, goals, args=None, custom_limits=None,
         if hasattr(args, 'top_grasp_tolerance'):
             top_grasp_tolerance = args.top_grasp_tolerance
             print(f'\n\npddlstream_from_state_goal | top_grasp_tolerance? {top_grasp_tolerance} \n\n')
+        if hasattr(args, 'resolution_angular'):
+            resolution = math.radians(args.resolution_angular)
+
+    domain_pddl = join(PDDL_PATH, 'domains', domain_name)
+    stream_pddl = join(PDDL_PATH, 'streams', stream_name)
+    if not isfile(domain_pddl):
+        domain_pddl = join(PBP_PATH, domain_name)
+        stream_pddl = join(PBP_PATH, stream_name)
+
     if custom_limits is None:
         custom_limits = state.robot.custom_limits
 
     return pddlstream_from_state_goal(
         state, goals, custom_limits=custom_limits, debug=debug, verbose=verbose,
         domain_pddl=domain_pddl, stream_pddl=stream_pddl, collisions=not cfree, teleport=teleport,
-        use_all_grasps=use_all_grasps, top_grasp_tolerance=top_grasp_tolerance, **kwargs)
+        use_all_grasps=use_all_grasps, top_grasp_tolerance=top_grasp_tolerance, resolution=resolution, **kwargs)
 
 
 def save_to_kitchen_worlds(state, pddlstream_problem, exit=False, **kwargs):

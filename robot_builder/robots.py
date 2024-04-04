@@ -580,7 +580,9 @@ class PR2Robot(MobileRobot):
         set_joint_positions(gripper_cloned, joints, [width] * 4)
 
     def get_carry_conf(self, arm, grasp_type, g):
-        return TOP_HOLDING_LEFT_ARM
+        from pybullet_tools.pr2_utils import arm_conf
+        return arm_conf(arm, TOP_HOLDING_LEFT_ARM)
+        # return TOP_HOLDING_LEFT_ARM
         # if grasp_type == 'top':
         #     return TOP_HOLDING_LEFT_ARM
         # if grasp_type == 'side':

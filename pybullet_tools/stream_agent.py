@@ -28,6 +28,7 @@ from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_
 from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, set_camera_target_body, \
     nice, BASE_LIMITS, initialize_collision_logs, collided, clean_preimage, summarize_bconfs, summarize_poses
 from pybullet_tools.pr2_utils import create_pr2_gripper, set_group_conf
+from pybullet_tools.pr2_streams import DEFAULT_RESOLUTION
 from pybullet_tools.utils import get_client, get_joint_limits, \
     Pose, get_bodies, pairwise_collision, get_pose, point_from_pose, set_renderer, get_joint_name, \
     remove_body, LockRenderer, WorldSaver, wait_if_gui, SEPARATOR, safe_remove, ensure_dir, \
@@ -54,7 +55,7 @@ from world_builder.actions import get_primitive_actions, repair_skeleton
 
 def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
                    pull_collisions=True, base_collisions=True, debug=False, verbose=False,
-                   use_all_grasps=False, top_grasp_tolerance=False):
+                   use_all_grasps=False, top_grasp_tolerance=False, resolution=DEFAULT_RESOLUTION):
     """ p = problem, c = collisions, l = custom_limits, t = teleport """
     from pybullet_tools.logging import myprint as print
 
@@ -98,7 +99,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
             get_ik_gen_old(p, collisions=False, ir_only=True, learned=True, verbose=False, visualize=False, **tc)),
         'inverse-kinematics': from_fn(
             get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=True,
-                          visualize=debug, ACONF=False, debug=debug)),
+                          visualize=debug, ACONF=False, resolution=resolution)),
 
         'inverse-reachability-rel': from_gen_fn(
             get_ik_rel_gen_old(p, collisions=False, ir_only=True, learned=True, verbose=False, visualize=False, **tc)),
