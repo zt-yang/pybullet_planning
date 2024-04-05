@@ -96,7 +96,8 @@ def test_tool_from_root_transformations(tool_from_root, get_attachment_fn, test_
     test_transformations_template(rotations, translations, funk, title)
 
 
-def close_until_collision(robot, gripper_joints, bodies=[], open_conf=None, closed_conf=None, num_steps=25, **kwargs):
+def close_until_collision(robot, gripper_joints, bodies=[], open_conf=None, closed_conf=None,
+                          num_steps=25, **kwargs):
     if not gripper_joints:
         return None
     if open_conf is None:

@@ -14,6 +14,7 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
 
 from pybullet_tools.bullet_utils import equal, nice, set_camera_target_body, Attachment, \
     collided, query_yes_no, has_tracik, is_mesh_entity, get_rotation_matrix
+from pybullet_tools.pr2_streams import SELF_COLLISIONS
 from pybullet_tools.pr2_primitives import APPROACH_DISTANCE, Conf, Grasp, get_base_custom_limits
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, TOP_HOLDING_LEFT_ARM, PR2_GRIPPER_ROOTS
 from pybullet_tools.general_streams import get_handle_link, get_grasp_list_gen, get_contain_list_gen, \
@@ -34,15 +35,19 @@ class RobotAPI(Robot):
     tool_from_hand = unit_pose()
     joint_groups = dict()
 
-    def __init__(self, body, move_base=True, **kwargs):
+    def __init__(self, body, move_base=True, max_distance=0.0,
+                 self_collisions=SELF_COLLISIONS, **kwargs):
         super(RobotAPI, self).__init__(body, **kwargs)
+        self.name = self.__class__.__name__.lower()
+        self.move_base = move_base
+        self.max_distance = max_distance
+        self.self_collisions = self_collisions
+
         self.grippers = {}
         self.possible_obstacles = {}  ## body: obstacles
         self.collision_animations = []
-        self.name = self.__class__.__name__.lower()
         self.ik_solver = None
         self.debug_handles = []
-        self.move_base = move_base
 
     def get_init(self, init_facts=[], conf_saver=None):
         raise NotImplementedError('should implement this for RobotAPI!')
@@ -262,7 +267,8 @@ class RobotAPI(Robot):
                 assignment = self.make_attachment(grasp, arm)
                 assignment.assign()
                 gripper_joints = self.get_gripper_joints(arm)
-                result = self.close_until_collision(arm, gripper_joints, bodies=[body], **kwargs)
+                result = self.close_until_collision(arm, gripper_joints, bodies=[body],
+                                                    max_distance=0.0, **kwargs)
         return result
 
     def close_until_collision(self, arm, gripper_joints, bodies, **kwargs):

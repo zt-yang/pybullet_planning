@@ -28,7 +28,10 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, pairw
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, set_renderer, draw_aabb, set_point, has_gui, get_rigid_clusters, \
     link_pairs_collision, wait_unlocked, apply_alpha, set_color, BASE_LINK as ROOT_LINK, \
     dimensions_from_camera_matrix, get_field_of_view, get_image, timeout, unit_point, get_joint_limits, ConfSaver, \
-    BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, tform_point
+    BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, tform_point, create_shape, STATIC_MASS, \
+    get_box_geometry, create_body, get_link_parent, NULL_ID, get_joint_info, get_dynamics_info, \
+    clone_collision_shape, clone_visual_shape, get_local_link_pose, get_joint_positions, \
+    collision_shape_from_data, visual_shape_from_data, is_unknown_file, create_collision_shape
 
 
 OBJ = '?obj'
@@ -1596,11 +1599,6 @@ def get_datetime(seconds=False, year=True):
 #     remove_all_debug()
 
 
-from pybullet_tools.utils import get_link_parent, NULL_ID, get_joint_info, get_dynamics_info, \
-    clone_collision_shape, clone_visual_shape, get_local_link_pose, get_joint_positions, \
-    collision_shape_from_data, visual_shape_from_data, is_unknown_file
-
-
 def clone_visual_collision_shapes(body, link, client=None):
     client = get_client(client)
     visual_data = get_visual_data(body, link)
@@ -1756,6 +1754,14 @@ def has_tracik():
     except ImportError:
         return False
     return True
+
+
+def create_collision_box(w, l, h, mass=STATIC_MASS, pose=unit_pose()):
+    geometry = get_box_geometry(w, l, h)
+    collision_id = create_collision_shape(geometry, pose=pose)
+    visual_id = NULL_ID
+    return create_body(collision_id, visual_id, mass=mass)
+
 
 #############################################
 

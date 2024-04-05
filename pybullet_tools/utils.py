@@ -2613,7 +2613,7 @@ def create_visual_shape(geometry, pose=unit_pose(), color=RED, specular=None):
 
 def create_shape(geometry, pose=unit_pose(), collision=True, **kwargs):
     collision_id = create_collision_shape(geometry, pose=pose) if collision else NULL_ID
-    visual_id = create_visual_shape(geometry, pose=pose, **kwargs) # if collision else NULL_ID
+    visual_id = create_visual_shape(geometry, pose=pose, **kwargs)  # if collision else NULL_ID
     return collision_id, visual_id
 
 def plural(word):
@@ -3975,7 +3975,7 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
                         # if 'bottle' in obs_name:
                         #     print(f'checking collision between {obs_name} and bottle')
             if (not use_aabb or aabb_overlap(get_moving_aabb(body1), get_obstacle_aabb(body2))) \
-                    and pairwise_collision(body1, body2, **kwargs):
+                    and pairwise_collision(body1, body2, max_distance=max_distance, **kwargs):
                 #print(get_body_name(body1), get_body_name(body2))
                 if verbose:
                     from pybullet_tools.bullet_utils import nice  ## YANG

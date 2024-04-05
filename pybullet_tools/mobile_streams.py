@@ -8,13 +8,13 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     get_min_limit, user_input, step_simulation, get_body_name, get_bodies, BASE_LINK, get_joint_position, \
     add_segments, get_max_limit, link_from_name, BodySaver, get_aabb, interpolate_poses, wait_for_user, \
     plan_direct_joint_motion, has_gui, create_attachment, wait_for_duration, get_extend_fn, set_renderer, \
-    get_custom_limits, all_between, remove_body, draw_aabb, GREEN
+    get_custom_limits, all_between, remove_body, draw_aabb, GREEN, MAX_DISTANCE
 
 from pybullet_tools.bullet_utils import multiply, has_tracik, visualize_bconf
 from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics
 from pybullet_tools.ikfast.utils import USE_CURRENT
 from pybullet_tools.pr2_primitives import Conf, Commands, create_trajectory, State
-from pybullet_tools.pr2_streams import SELF_COLLISIONS, DEFAULT_RESOLUTION
+from pybullet_tools.pr2_streams import DEFAULT_RESOLUTION
 from pybullet_tools.pr2_utils import open_arm, arm_conf, learned_pose_generator
 from pybullet_tools.utils import WorldSaver
 from pybullet_tools.general_streams import *
@@ -436,8 +436,9 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
 
 
 def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
-                      world, robot, custom_limits, obstacles_here, ignored_pairs_here, resolution,
-                      title='solve_approach_ik', ACONF=False, teleport=False, verbose=True, visualize=False):
+                      world, robot, custom_limits, obstacles_here, ignored_pairs_here,
+                      resolution=DEFAULT_RESOLUTION, max_distance=MAX_DISTANCE, title='solve_approach_ik',
+                      ACONF=False, teleport=False, verbose=True, visualize=False):
     attachments = {}
 
     if isinstance(obj, tuple):  ## may be a (body, joint) or a body with a marker
@@ -469,6 +470,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
     set_joint_positions(robot, arm_joints, default_conf)  # default_conf | sample_fn()
 
     ## visualize the gripper
+    gripper_grasp = None
     if visualize:
         print('grasp_value', nice(grasp.value))
         set_renderer(True)
@@ -512,6 +514,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
     #     print(f'{title}Grasp IK success | {nice(grasp_conf)} = pr2_inverse_kinematics({robot} at {nice(base_conf.values)}, '
     #           f'{arm}, {nice(gripper_pose[0])}) | pose = {pose}, grasp = {grasp}')
 
+    approach_conf = None
     if has_tracik():
         from pybullet_tools.tracik import IKSolver
         tool_link = robot.get_tool_link(arm)
@@ -550,15 +553,17 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
     set_joint_positions(robot, arm_joints, approach_conf)
     # approach_conf = get_joint_positions(robot, arm_joints)
 
+    motion_planning_kwargs = dict(attachments=attachments.values(), self_collisions=robot.self_collisions,
+                                  use_aabb=True, cache=True, ignored_pairs=ignored_pairs_here,
+                                  custom_limits=custom_limits, max_distance=robot.max_distance)
+
     if teleport:
         path = [default_conf, approach_conf, grasp_conf]
     else:
         resolutions = resolution * np.ones(len(arm_joints))
         if is_top_grasp(robot, arm, body, grasp) or True:
-            grasp_path = plan_direct_joint_motion(robot, arm_joints, grasp_conf, attachments=attachments.values(),
-                                                  obstacles=approach_obstacles, self_collisions=SELF_COLLISIONS,
-                                                  use_aabb=True, cache=True, ignored_pairs=ignored_pairs_here,
-                                                  custom_limits=custom_limits, resolutions=resolutions / 2.)
+            grasp_path = plan_direct_joint_motion(robot, arm_joints, grasp_conf, obstacles=approach_obstacles,
+                                                  resolutions=resolutions / 2., **motion_planning_kwargs)
             if grasp_path is None:
                 if verbose: print(f'{title}Grasp path failure')
                 if visualize:
@@ -568,12 +573,10 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
         else:
             grasp_path = []
             dest_conf = grasp_conf
+
         set_joint_positions(robot, arm_joints, default_conf)
-        approach_path = plan_joint_motion(robot, arm_joints, dest_conf, attachments=attachments.values(),
-                                          obstacles=obstacles_here, self_collisions=SELF_COLLISIONS,
-                                          custom_limits=custom_limits, resolutions=resolutions,
-                                          use_aabb=True, cache=True, ignored_pairs=ignored_pairs_here,
-                                          restarts=2, iterations=25, smooth=0)  # smooth=25
+        approach_path = plan_joint_motion(robot, arm_joints, dest_conf, obstacles=obstacles_here, resolutions=resolutions,
+                                          restarts=2, iterations=25, smooth=0, **motion_planning_kwargs)  # smooth=25
         if approach_path is None:
             if verbose: print(f'{title}\tApproach path failure')
             if visualize:
