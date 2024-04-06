@@ -34,7 +34,8 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
               create_robot_fn=None, problem=None, domain=None, stream=None, viewer=True,
               exp_dir=None, exp_subdir=None, exp_name='default', reset=False,
               record_problem=True, save_testcase=False, record_plans=False, data_generation=False, use_rel_pose=False,
-              domain_modifier=None, object_reducer=None, comparing=False, load_initial_state=False, **kwargs):
+              domain_modifier=None, object_reducer=None, comparing=False, load_initial_state=False,
+              window_width=1440, window_height=1120, **kwargs):
     """
     problem:    name of the problem builder function to solve
     exp_dir:    sub-directory in `bullet/experiments` to save the planning data
@@ -79,6 +80,9 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
         pddlstream_problem = problem_dict['pddlstream_problem']
         subgoals = problem_dict['subgoals']
         skeleton = problem_dict['skeleton']
+
+    state.world.add_to_planning_config('config', config)
+    state.world.add_to_planning_config('config_root', config_root)
 
     init = pddlstream_problem.init
 
@@ -178,4 +182,4 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
     else:
         disconnect()
 
-    return agent.commands
+    return agent.commands, output_dir

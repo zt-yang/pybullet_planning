@@ -21,14 +21,15 @@ from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, g
     get_joints, multiply, invert, is_movable, remove_handles, set_renderer, HideOutput, wait_unlocked, \
     get_movable_joints, apply_alpha, get_all_links, set_color, set_all_color, dump_body, clear_texture, \
     get_link_name, get_aabb, draw_aabb, GREY, GREEN, quat_from_euler, wait_for_user, get_camera_matrix, \
-    Euler, PI, get_center_extent, create_box, RED, unit_quat, set_joint_position, get_joint_limits
+    Euler, PI, get_center_extent, create_box, RED, unit_quat, set_joint_position, get_joint_limits, \
+    get_camera_pose
 from pybullet_tools.pr2_streams import Position, get_handle_grasp_gen, pr2_grasp
 from pybullet_tools.general_streams import pose_from_attachment, LinkPose, RelPose
 from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
     is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
     set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR, CAMERA_MATRIX, visualize_camera_image, equal, \
     draw_pose2d_path, draw_pose3d_path, sort_body_parts, get_root_links, colorize_world, colorize_link, \
-    draw_fitted_box, find_closest_match, multiply_quat, is_joint_open
+    draw_fitted_box, find_closest_match, multiply_quat, is_joint_open, get_merged_aabb, tupify
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
     Attach, Detach, Clean, Cook, control_commands, link_from_name, \
     get_gripper_joints, GripperCommand, apply_commands, State, Command
@@ -416,6 +417,14 @@ class World(WorldBase):
     def get_events(self, body):
         return self.get_attr(body, 'events')
 
+    def get_world_aabb(self):
+        aabbs = []
+        for body in self.BODY_TO_OBJECT:
+            aabbs.append(get_aabb(body))
+        return get_merged_aabb(aabbs)
+
+    ## ---------------------------------------------------------
+
     def add_box(self, object, pose=None):
         obj = self.add_object(object, pose=pose)
         obj.is_box = True
@@ -786,10 +795,12 @@ class World(WorldBase):
         self.init_link_joint_relations()
 
         ## for logging and replaying before objects are removed
-        self.planning_config['supporting_surfaces'] = self.summarize_supporting_surfaces()
-        self.planning_config['supported_movables'] = self.summarize_supported_movables()
-        self.planning_config['attachments'] = self.summarize_attachments()
-        self.planning_config['body_to_name'] = self.get_indices()
+        self.planning_config.update({
+            'supporting_surfaces': self.summarize_supporting_surfaces(),
+            'supported_movables': self.summarize_supported_movables(),
+            'attachments': self.summarize_attachments(),
+            'body_to_name': self.get_indices()
+        })
 
         print('\nremove_bodies_from_planning | exceptions =', exceptions)
         is_test_goal = False
@@ -1521,7 +1532,10 @@ class World(WorldBase):
         if self.note is not None:
             world_name += f"_{self.note}"
 
-        if not self.using_pickled_scene:
+        if self.using_pickled_scene:
+            problem_name = basename(self.using_pickled_scene).replace('.pkl', '')
+            self.add_to_planning_config('problem_name', problem_name)
+        else:
             self.save_lisdf(output_dir, world_name=world_name, **kwargs)
         self.save_problem_pddl(goal, output_dir, world_name=world_name, init=init)
         self.save_planning_config(output_dir, domain=domain, stream=stream,
@@ -1563,14 +1577,15 @@ class World(WorldBase):
             'host': os.uname()[1]
         }
         config.update(self.planning_config)
-        if self.camera is not None:
-            t, r = self.camera.pose
-            if isinstance(t, np.ndarray):
-                if isinstance(t[0], np.ndarray):
-                    t = tuple(t[0]), t[1]
-                t = tuple(t)
-            config['obs_camera_pose'] = (t, r)
+
+        ## add camera pose
+        pose = self.camera.pose if self.camera is not None else get_camera_pose()
+        config['obs_camera_pose'] = tupify(pose)
+
         return config
+
+    def add_to_planning_config(self, key, value):
+        self.planning_config[key] = value
 
     def get_type(self, body):
         obj = self.BODY_TO_OBJECT[body] if body in self.BODY_TO_OBJECT else self.REMOVED_BODY_TO_OBJECT[body]

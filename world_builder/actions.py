@@ -83,7 +83,7 @@ class MoveArmAction(Action):
         self.conf = conf
 
     def transition(self, state):
-        set_joint_positions(state.robot, self.conf.joints, self.conf.values)
+        set_joint_positions(self.conf.body, self.conf.joints, self.conf.values)
         return state.new_state()
 
 
@@ -493,8 +493,6 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
     while i < len(actions):
         action = actions[i]
         name = action.__class__.__name__
-        if i == 31:
-            print('sss')
         print(f"{i}/{len(actions)}\t{action}")
 
         if 'GripperAction' in name and check_collisions:

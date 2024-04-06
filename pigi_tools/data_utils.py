@@ -13,7 +13,7 @@ from pybullet_tools.utils import is_placement, link_from_name, get_joint_name, \
     get_aabb_center, get_aabb_extent, get_pose, get_aabb
 from pybullet_tools.pr2_primitives import Pose
 from pybullet_tools.general_streams import Position
-from pybullet_tools.bullet_utils import nice, is_box_entity
+from pybullet_tools.bullet_utils import nice, is_box_entity, get_merged_aabb
 
 from pigi_tools.text_utils import ACTION_ABV, ACTION_NAMES
 
@@ -661,19 +661,6 @@ def get_partnet_aabb(category, idx):
         return None
     dlower, dupper = PARTNET_SHAPES[category][idx]
     return np.asarray(dlower), np.asarray(dupper)
-
-
-def get_merged_aabb(aabbs):
-    x_min, y_min, z_min = np.inf, np.inf, np.inf
-    x_max, y_max, z_max = -np.inf, -np.inf, -np.inf
-    for aabb in aabbs:
-        x_min = min(x_min, aabb.lower[0])
-        y_min = min(y_min, aabb.lower[1])
-        z_min = min(z_min, aabb.lower[2])
-        x_max = max(x_max, aabb.upper[0])
-        y_max = max(y_max, aabb.upper[1])
-        z_max = max(z_max, aabb.upper[2])
-    return AABB(lower=[x_min, y_min, z_min], upper=[x_max, y_max, z_max])
 
 
 def get_worlds_aabb(run_dirs):

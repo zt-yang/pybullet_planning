@@ -158,11 +158,15 @@ def write(filename, string):
 
 def read_pickle(filename):
     # Can sometimes read pickle3 from python2 by calling twice
+    data = None
+    start_time = time.time()
     with open(filename, 'rb') as f:
         try:
-            return pickle.load(f)
+            data = pickle.load(f)
         except UnicodeDecodeError as e:
-            return pickle.load(f, encoding='latin1')
+            data = pickle.load(f, encoding='latin1')
+    print(f'Loaded: {os.path.abspath(filename)} ({time.time() - start_time:.3f} sec)')
+    return data
 
 def write_pickle(filename, data):  # NOTE - cannot pickle lambda or nested functions
     with open(filename, 'wb') as f:
@@ -4058,7 +4062,7 @@ def plan_joint_motion(body, joints, end_conf, obstacles=[], attachments=[],
 
     assert len(joints) == len(end_conf)
     if (weights is None) and (resolutions is not None):
-        with np.errstate(divide='ignore'): ## YANG
+        with np.errstate(divide='ignore'):
             weights = np.reciprocal(resolutions)
     sample_fn = get_sample_fn(body, joints, custom_limits=custom_limits)
     distance_fn = get_distance_fn(body, joints, weights=weights)

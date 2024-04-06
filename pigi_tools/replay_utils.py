@@ -10,16 +10,17 @@ from os.path import join, abspath, dirname, isdir, isfile, basename
 import numpy as np
 import sys
 
-from pybullet_tools.bullet_utils import query_yes_no, ObjAttachment, has_srl_stream, has_getch
+from pybullet_tools.bullet_utils import query_yes_no, ObjAttachment, has_srl_stream, has_getch, \
+    adjust_camera_pose
 from pybullet_tools.utils import reset_simulation, VideoSaver, wait_unlocked, get_aabb_center, load_yaml, \
-    set_camera_pose
+    set_camera_pose, get_aabb_extent, set_camera_pose2, invert
 
 from lisdf_tools.lisdf_loader import load_lisdf_pybullet
 from lisdf_tools.lisdf_planning import Problem
 from lisdf_tools.image_utils import make_composed_image_multiple_episodes, images_to_gif
 
 from world_builder.actions import apply_actions
-from data_generator.run_utils import copy_dir_for_process
+from data_generator.run_utils import copy_dir_for_process, process_all_tasks
 
 from pigi_tools.data_utils import get_plan, get_body_map, get_multiple_solutions, add_to_planning_config, \
     load_planning_config, get_world_aabb, check_unrealistic_placement_z, get_goals
@@ -160,16 +161,49 @@ def load_replay_conf(conf_path):
     return c
 
 
-def set_replay_camera_pose(camera_kwargs):
-    if 'camera_point' in camera_kwargs:
-        set_camera_pose(camera_kwargs['camera_point'], camera_kwargs['target_point'])
-    elif 'camera_point_begin' in camera_kwargs:
-        set_camera_pose(camera_kwargs['camera_point_begin'], camera_kwargs['target_point_begin'])
+def run_replay(config_yaml_file, load_data_fn):
+    c = load_replay_conf(config_yaml_file)
+
+    def process(run_dir_ori):
+        return run_one(run_dir_ori, load_data_fn=load_data_fn, **c)
+
+    def _case_filter(run_dir_ori):
+        case_kwargs = dict(given_path=c['given_path'], cases=c['cases'], check_collisions=c['check_collisions'],
+                           save_jpg=c['save_jpg'], save_gif=c['save_gif'],
+                           skip_if_processed_recently=c['skip_if_processed_recently'], check_time=c['check_time'])
+        return case_filter(run_dir_ori, **case_kwargs)
+
+    process_all_tasks(process, c['task_name'], parallel=c['parallel'], cases=c['cases'],
+                      path=c['given_path'], dir=c['given_dir'], case_filter=_case_filter)
+
+
+def set_replay_camera_pose(world, run_dir, camera_kwargs, camera_point, target_point):
+    if camera_kwargs is not None:
+        if 'camera_point' in camera_kwargs:
+            set_camera_pose(camera_kwargs['camera_point'], camera_kwargs['target_point'])
+        elif 'camera_point_begin' in camera_kwargs:
+            set_camera_pose(camera_kwargs['camera_point_begin'], camera_kwargs['target_point_begin'])
+    else:
+        set_camera_pose(camera_point, target_point)
+        return
+
+        planning_config = load_planning_config(run_dir)
+        if False and 'obs_camera_pose' in planning_config:
+            ### not working
+            camera_pose = planning_config['obs_camera_pose']
+            # camera_pose = adjust_camera_pose(camera_pose)
+            set_camera_pose2(camera_pose)
+        else:
+            aabb = world.get_world_aabb()
+            center = get_aabb_center(aabb)
+            extent = get_aabb_extent(aabb)
+            camera_point = center + extent / 2
+            set_camera_pose(camera_point, center)
 
 
 def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path=None, given_dir=None, cases=None,
             parallel=False, skip_if_processed_recently=False, check_time=None, preview_scene=False, step_by_step=False,
-            use_gym=False, auto_play=True, verbose=False, width=1280, height=800, fx=600,
+            use_gym=False, auto_play=True, verbose=False, width=1280, height=800, fx=600, time_step=0.02,
             camera_point=(8.5, 2.5, 3), target_point=(0, 2.5, 0), camera_kwargs=None, camera_movement=None,
             light_conf=None, check_collisions=False, cfree_range=0.1, visualize_collisions=False,
             evaluate_quality=False, save_jpg=False, save_composed_jpg=False, save_gif=False,
@@ -178,7 +212,7 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
     world, problem, exp_dir, run_dir, commands, plan, body_map = load_data_fn(
         run_dir_ori, use_gui=not use_gym, width=width, height=height, verbose=verbose
     )
-    set_replay_camera_pose(camera_kwargs)
+    set_replay_camera_pose(world, run_dir, camera_kwargs, camera_point, target_point)
     if preview_scene:
         wait_unlocked()
 
@@ -200,13 +234,13 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
                              save_mp4=save_mp4, mp4_side_view=mp4_side_view, mp4_top_view=mp4_top_view)
 
     elif save_mp4:
-        save_mp4_in_pybullet(run_dir, problem, commands, plan)
+        save_mp4_in_pybullet(run_dir, problem, commands, plan, time_step=time_step)
 
     else:
         run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, body_map, task_name=task_name,
                             step_by_step=step_by_step, auto_play=auto_play, check_collisions=check_collisions,
                             cfree_range=cfree_range, visualize_collisions=visualize_collisions,
-                            evaluate_quality=evaluate_quality, zoomin_kwargs=zoomin_kwargs,
+                            evaluate_quality=evaluate_quality, zoomin_kwargs=zoomin_kwargs, time_step=time_step,
                             save_jpg=save_jpg, save_composed_jpg=save_composed_jpg, save_gif=save_gif, verbose=verbose)
 
     reset_simulation()
@@ -238,15 +272,15 @@ def save_initial_scene_in_pybullet(run_dir_ori, world, zoomin_kwargs, save_compo
         world.make_transparent(world.robot.body, transparency=0)
 
 
-def save_mp4_in_pybullet(run_dir, problem, commands, plan):
+def save_mp4_in_pybullet(run_dir, problem, commands, plan, time_step=0.025):
     video_path = join(run_dir, 'replay.mp4')
     with VideoSaver(video_path):
-        apply_actions(problem, commands, time_step=0.025, verbose=False, plan=plan)
+        apply_actions(problem, commands, time_step=time_step, verbose=False, plan=plan)
     print('saved to', abspath(video_path))
 
 
 def run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, body_map, task_name=None,
-                        step_by_step=False, auto_play=True, check_collisions=False, cfree_range=0.1,
+                        step_by_step=False, auto_play=True, check_collisions=False, cfree_range=0.1, time_step=0.02,
                         visualize_collisions=False, evaluate_quality=False, zoomin_kwargs=None,
                         save_jpg=False, save_composed_jpg=False, save_gif=False, verbose=False):
     run_name = basename(run_dir)
@@ -256,7 +290,7 @@ def run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, bo
     if not auto_play:
         answer = query_yes_no(f"start replay {run_name}?", default='yes')
     if answer:
-        time_step = 2e-5 if save_jpg else 0.02
+        time_step = 2e-5 if save_jpg else time_step
         time_step = None if step_by_step else time_step
         results = apply_actions(problem, commands, time_step=time_step, verbose=verbose, plan=plan,
                                 body_map=body_map, save_composed_jpg=save_composed_jpg, save_gif=save_gif,

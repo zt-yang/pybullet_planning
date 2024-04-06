@@ -198,7 +198,9 @@ def copy_dir_for_process(viz_dir, tag=None, verbose=True, print_fn=None):
         shutil.copytree(viz_dir, test_dir)
 
     ## fix tht robot path in assets/models/ to pybullet_planning/models/
-    fix_robot_path(join(test_dir, 'scene.lisdf'))
+    lisdf_path = join(test_dir, 'scene.lisdf')
+    if isfile(lisdf_path):
+        fix_robot_path(lisdf_path)
 
     if not verbose:
         print_fn(viz_dir)

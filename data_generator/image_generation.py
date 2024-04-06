@@ -8,9 +8,9 @@ from os import listdir
 from os.path import join, isdir, isfile, dirname, getmtime
 import time
 
-from pybullet_tools.utils import quat_from_euler, reset_simulation, remove_body, get_joint_name, get_link_name, euler_from_quat, \
-    set_color, apply_alpha, WHITE, unit_pose
-from pybullet_tools.bullet_utils import get_segmask, get_door_links, adjust_segmask, \
+from pybullet_tools.utils import quat_from_euler, reset_simulation, remove_body, get_joint_name, get_link_name, \
+    euler_from_quat, set_color, apply_alpha, WHITE, unit_pose
+from pybullet_tools.bullet_utils import get_segmask, get_door_links, adjust_segmask, adjust_camera_pose, \
     get_obj_keys_for_segmentation
 
 from lisdf_tools.lisdf_loader import load_lisdf_pybullet, get_depth_images, make_furniture_transparent, get_camera_kwargs
@@ -20,19 +20,6 @@ from lisdf_tools.image_utils import crop_image, save_seg_image_given_obj_keys
 from pigi_tools.data_utils import get_indices, get_init_tuples, \
     get_body_map, get_world_center, add_to_planning_config
 from data_generator.run_utils import copy_dir_for_process, get_data_processing_parser
-
-
-def adjust_camera_pose(camera_pose):
-    if len(camera_pose) == 6:
-        point = camera_pose[:3]
-        euler = camera_pose[3:]
-        camera_pose = (point, quat_from_euler(euler))
-    (x, y, z), quat = camera_pose
-    (r, p, w) = euler_from_quat(quat)
-    if x < 6.5:
-        x = np.random.normal(7, 0.2)
-        # redo = True
-    return [(x, y, z + 1), quat_from_euler((r - 0.3, p, w))]
 
 
 def get_camera_poses(viz_dir):

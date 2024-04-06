@@ -25,6 +25,7 @@ step_by_step: false
 use_gym: false
 auto_play: true
 verbose: false
+time_step: 0.025
 
 ## ---- visual
 width: 1440

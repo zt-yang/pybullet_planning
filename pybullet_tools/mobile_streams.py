@@ -126,7 +126,7 @@ def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
             attachment = grasp.get_attachment(robot, arm, visualize=False)
             attachments = {attachment.child: attachment}  ## {}  ## TODO: problem with having (body, joint) tuple
 
-        if 'pstn' in str(pose): ## isinstance(pose, Position):
+        if 'pstn' in str(pose):  ## isinstance(pose, Position):
             pose_value = linkpose_from_position(pose)
         else:
             pose_value = pose.value

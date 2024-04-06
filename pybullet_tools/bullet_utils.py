@@ -85,6 +85,19 @@ def load_texture(path):
     return pybullet.loadTexture(path)
 
 
+def get_merged_aabb(aabbs):
+    x_min, y_min, z_min = np.inf, np.inf, np.inf
+    x_max, y_max, z_max = -np.inf, -np.inf, -np.inf
+    for aabb in aabbs:
+        x_min = min(x_min, aabb.lower[0])
+        y_min = min(y_min, aabb.lower[1])
+        z_min = min(z_min, aabb.lower[2])
+        x_max = max(x_max, aabb.upper[0])
+        y_max = max(y_max, aabb.upper[1])
+        z_max = max(z_max, aabb.upper[2])
+    return AABB(lower=[x_min, y_min, z_min], upper=[x_max, y_max, z_max])
+
+
 #######################################################
 
 def set_zero_state(body, zero_pose=True, zero_conf=True):
@@ -301,11 +314,27 @@ def nice(tuple_of_tuples, round_to=3, one_tuple=True, keep_quat=False):
     ## point, euler, conf
     return nice_tuple(tuple_of_tuples, round_to)
 
+
+def tupify_arr(arr):
+    if isinstance(arr, np.ndarray) or isinstance(arr, list):
+        arr = tuple(arr)
+    return arr
+
+
+def tupify(arr_of_arrs):
+    if isinstance(arr_of_arrs, tuple):
+        result = tuple([tupify_arr(arr) for arr in arr_of_arrs])
+    else:
+        result = tupify_arr(arr_of_arrs)
+    return result
+
+
 #######################################################
 
 def get_root_links(body):
     [fixed_links] = get_rigid_clusters(body, links=[ROOT_LINK])
     return fixed_links
+
 
 def articulated_collisions(obj, obstacles, verbose=False, **kwargs): # TODO: articulated_collision?
     # TODO: cache & compare aabbs
@@ -958,6 +987,20 @@ def remove_attachment(state, obj=None, verbose=False):
 
 
 #######################################################
+
+
+def adjust_camera_pose(camera_pose):
+    """ used for set_camera_pose2() """
+    if len(camera_pose) == 6:
+        point = camera_pose[:3]
+        euler = camera_pose[3:]
+        camera_pose = (point, quat_from_euler(euler))
+    (x, y, z), quat = camera_pose
+    (r, p, w) = euler_from_quat(quat)
+    if x < 6.5:
+        x = np.random.normal(7, 0.2)
+        # redo = True
+    return [(x, y, z + 1), quat_from_euler((r - 0.3, p, w))]
 
 
 def get_camera_point_target():
