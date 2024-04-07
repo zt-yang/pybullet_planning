@@ -794,6 +794,12 @@ def remove_stream_by_name(stream_pddl, stream_name):
     return key.join([l for l in lines if not l.startswith(f'{stream_name}\n')])
 
 
+def remove_predicate_by_name(domain_pddl, predicate_name):
+    for key in [f"(not ({predicate_name}))", f"({predicate_name})"]:
+        domain_pddl = domain_pddl.replace(key, '')
+    return domain_pddl
+
+
 def post_process(problem, plan, teleport=False, verbose=False):
     if plan is None:
         return None

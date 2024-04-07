@@ -62,7 +62,6 @@ def load_robot_urdf(urdf_path):
     return robot
 
 
-
 def add_body(body, pose=unit_pose()):
     set_pose(body, pose)
     return body
@@ -421,7 +420,9 @@ def collided(obj, obstacles=[], world=None, tag='', articulated=False, verbose=F
 
     ## first get answer
     if articulated:
-        result = articulated_collisions(obj, obstacles, use_aabb=use_aabb, verbose=verbose, **kwargs)
+        body = obj if isinstance(obj, int) else obj.body
+        obstacles_here = [o for o in obstacles if (o, body) not in ignored_pairs]
+        result = articulated_collisions(obj, obstacles_here, use_aabb=use_aabb, verbose=verbose, **kwargs)
         if verbose and result:
             print(prefix, '| articulated', obj, obstacles)
         return result
@@ -2046,5 +2047,6 @@ def has_getch():
         import getch
     except ImportError:
         print('Please install has_getch in order to use `step_by_step`: ```pip install getch```\n')
+        sys.exit()
         return False
     return True

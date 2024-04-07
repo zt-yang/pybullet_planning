@@ -90,7 +90,7 @@ class PDDLStreamAgent(MotionAgent):
     """ planning related """
     def set_pddlstream_problem(self, problem_dict, state):
         pddlstream_problem = problem_dict['pddlstream_problem']
-        self.pddlstream_problem = state.robot.update_stream_pddl(pddlstream_problem)
+        self.pddlstream_problem = state.robot.modify_pddl(pddlstream_problem)
         self.initial_state = state
 
     def init_experiment(self, args, domain_modifier=None, object_reducer=None, comparing=False):

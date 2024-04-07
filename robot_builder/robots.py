@@ -19,7 +19,7 @@ from pybullet_tools.pr2_primitives import APPROACH_DISTANCE, Conf, Grasp, get_ba
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, TOP_HOLDING_LEFT_ARM, PR2_GRIPPER_ROOTS
 from pybullet_tools.general_streams import get_handle_link, get_grasp_list_gen, get_contain_list_gen, \
     get_cfree_approach_pose_test, get_stable_list_gen, play_trajectory
-from pybullet_tools.stream_agent import remove_stream_by_name
+from pybullet_tools.stream_agent import remove_stream_by_name, remove_predicate_by_name
 
 from world_builder.entities import Robot
 from world_builder.world_utils import load_asset
@@ -274,7 +274,7 @@ class RobotAPI(Robot):
     def close_until_collision(self, arm, gripper_joints, bodies, **kwargs):
         return close_until_collision(self.body, gripper_joints, bodies=bodies, **kwargs)
 
-    def update_stream_pddl(self, pddlstream_problem):
+    def modify_pddl(self, pddlstream_problem):
         pass
 
     def remove_grippers(self):
@@ -364,7 +364,9 @@ class MobileRobot(RobotAPI):
         initial_bq = get_base_torso_conf() if self.use_torso else get_base_conf()
         init = [('BConf', initial_bq), ('AtBConf', initial_bq)]
 
-        for arm in self.get_all_arms():
+        arms = list(self.get_all_arms())
+        random.shuffle(arms)
+        for arm in arms:
             conf = get_arm_conf(arm)
             init += [('Arm', arm), ('AConf', arm, conf), ('AtAConf', arm, conf),
                      ('DefaultAConf', arm, conf), ('HandEmpty', arm)]
@@ -382,14 +384,14 @@ class MobileRobot(RobotAPI):
             stream_map.pop('test-inverse-reachability')
         return stream_map
 
-    def update_stream_pddl(self, pddlstream_problem):
+    def modify_pddl(self, pddlstream_problem):
         from pddlstream.language.constants import PDDLProblem
+        domain_pddl, constant_map, stream_pddl, stream_map, init, goal = pddlstream_problem
         if self.move_base:
-            domain_pddl, constant_map, stream_pddl, stream_map, init, goal = pddlstream_problem
-            stream_pddl = pddlstream_problem[2]
             stream_pddl = remove_stream_by_name(stream_pddl, 'test-inverse-reachability')
-            pddlstream_problem = PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
-        return pddlstream_problem
+        else:
+            domain_pddl = remove_predicate_by_name(domain_pddl, 'CanMove')
+        return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
 
     def get_stream_info(self, **kwargs):
         from pybullet_tools.stream_agent import get_stream_info

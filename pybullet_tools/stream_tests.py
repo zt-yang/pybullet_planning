@@ -367,14 +367,17 @@ def test_pulling_handle_ik(problem):
         break
 
 
-def test_pose_gen(problem, init, args):
+def test_pose_gen(problem, init, args, visualize=False):
     o, s = args
     pose = [i for i in init if i[0].lower() == "AtPose".lower() and i[1] == o][0][-1]
     if isinstance(o, Object):
         o = o.body
-    funk = get_stable_gen(problem)(o, s)
+    funk = get_stable_gen(problem, visualize=visualize)(o, s)
     p = next(funk)[0]
     print(f'test_pose_gen({o}, {s}) | {p}')
+    if visualize:
+        p.assign()
+        wait_unlocked()
     pose.assign()
     return [('AtPose', o, p)], [('Pose', o, p), ('Supported', o, p, s)]
 
