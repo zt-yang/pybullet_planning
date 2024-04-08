@@ -16,8 +16,8 @@ from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, 
     Pose, get_link_pose, get_joint_limits, WHITE, RGBA, set_all_color, RED, GREEN, set_renderer, add_text, \
     Point, set_random_seed, set_numpy_seed, reset_simulation, joint_from_name, \
     get_joint_name, get_link_name, dump_joint, set_joint_position, ConfSaver, pairwise_link_collision
-from pybullet_tools.bullet_utils import nice, set_camera_target_body, \
-    colors, color_names, draw_fitted_box
+from pybullet_tools.bullet_utils import nice, colors, color_names, draw_fitted_box
+from pybullet_tools.camera_utils import set_camera_target_body
 from pybullet_tools.grasp_utils import get_grasp_db_file, get_hand_grasps
 from pybullet_tools.stream_tests import visualize_grasps
 from pybullet_tools.general_streams import get_grasp_list_gen, Position, \
@@ -25,9 +25,9 @@ from pybullet_tools.general_streams import get_grasp_list_gen, Position, \
 
 from world_builder.world import State
 from world_builder.loaders import load_kitchen_floor_plan
-from world_builder.world_utils import load_asset, get_instance_name, get_partnet_doors
+from world_builder.world_utils import load_asset, get_instance_name, get_partnet_doors, draw_body_label
 
-from tutorials.test_utils import get_test_world, get_instances, draw_text_label, \
+from tutorials.test_utils import get_test_world, get_instances, \
     load_model_instance, get_model_path, get_y_gap
 from tutorials.config import ASSET_PATH
 
@@ -103,7 +103,7 @@ def test_grasps(robot='feg', categories=[], given_instances=None, skip_grasps=Fa
                     world.add_body(body, obj_name, instance_name)
                     set_camera_target_body(body)
                     text = id.replace('veggie', '').replace('meat', '')
-                    draw_text_label(body, text, offset=(0, -0.2, 0.1))
+                    draw_body_label(body, text, offset=(0, -0.2, 0.1))
 
                     if cat == 'BraiserBody':
                         print('get_aabb_extent', nice(get_aabb_extent(get_aabb(body))))
@@ -166,7 +166,7 @@ def test_grasps(robot='feg', categories=[], given_instances=None, skip_grasps=Fa
 
 
 def add_scale_to_grasp_file(robot, category):
-    from pybullet_tools.logging import dump_json
+    from pybullet_tools.logging_utils import dump_json
     from pprint import pprint
 
     ## find all instance, scale, and instance names
@@ -195,7 +195,7 @@ def add_scale_to_grasp_file(robot, category):
 
 
 def add_time_to_grasp_file():
-    from pybullet_tools.logging import dump_json
+    from pybullet_tools.logging_utils import dump_json
     for robot in ['pr2', 'feg']:
         db_file = get_grasp_db_file(robot)
         db = json.load(open(db_file, 'r'))
@@ -242,7 +242,7 @@ def test_handle_grasps(robot, category, skip_grasps=False):
             continue
         create_marker(xy)
 
-        draw_text_label(body, id)
+        draw_body_label(body, id)
 
         ## color links corresponding to semantic labels
         body_joints = get_partnet_doors(path, body)

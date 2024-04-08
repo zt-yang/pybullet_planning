@@ -9,7 +9,7 @@ import pybullet as p
 import os
 import json
 
-from pybullet_tools.logging import dump_json
+from pybullet_tools.logging_utils import dump_json
 from pybullet_tools.utils import unit_pose, get_collision_data, get_links, multiply, invert, \
     aabb_contains_aabb, get_pose, get_aabb, GREEN, AABB, remove_body, draw_pose, \
     pose_from_tform, wait_for_user, Euler, PI, LockRenderer, HideOutput, load_model, \
@@ -20,8 +20,9 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, multi
     link_pairs_collision, wait_unlocked, apply_alpha, set_color, BASE_LINK as ROOT_LINK, \
     BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED
 from pybullet_tools.bullet_utils import nice, collided, equal, minus, add, get_color_by_index, \
-    set_camera_target_body, get_datetime, is_box_entity, draw_fitted_box, get_model_pose, \
-    draw_colored_pose, colors
+    get_datetime, is_box_entity, draw_fitted_box, get_model_pose, colors
+from pybullet_tools.camera_utils import set_camera_target_body
+from pybullet_tools.pose_utils import draw_colored_pose
 
 
 def draw_bounding_lines(pose, dimensions):

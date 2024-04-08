@@ -10,8 +10,9 @@ from os.path import join, abspath, dirname, isdir, isfile, basename
 import numpy as np
 import sys
 
-from pybullet_tools.bullet_utils import query_yes_no, ObjAttachment, has_srl_stream, has_getch, \
-    adjust_camera_pose
+from pybullet_tools.bullet_utils import query_yes_no, has_srl_stream
+from pybullet_tools.camera_utils import adjust_camera_pose
+from pybullet_tools.pose_utils import ObjAttachment, has_getch
 from pybullet_tools.utils import reset_simulation, VideoSaver, wait_unlocked, get_aabb_center, load_yaml, \
     set_camera_pose, get_aabb_extent, set_camera_pose2, invert
 

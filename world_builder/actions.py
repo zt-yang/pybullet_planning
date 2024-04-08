@@ -3,9 +3,12 @@ import pybullet as p
 import copy
 from pprint import pprint
 
-from pybullet_tools.bullet_utils import clip_delta, multiply2d, is_above, nice, open_joint, set_camera_target_robot, \
-    toggle_joint, remove_attachment, draw_pose2d_path, query_right_left, add_attachment_in_world, add_attachment, \
-    draw_pose3d_path, get_obj_keys_for_segmentation, get_segmask, collided, equal
+from pybullet_tools.bullet_utils import clip_delta, multiply2d, nice, open_joint, \
+    toggle_joint, query_right_left, collided, equal
+from pybullet_tools.pose_utils import is_above, remove_attachment, draw_pose2d_path, add_attachment_in_world, \
+    add_attachment, draw_pose3d_path
+from pybullet_tools.camera_utils import get_obj_keys_for_segmentation, get_segmask
+from pybullet_tools.camera_utils import set_camera_target_robot
 from pybullet_tools.pr2_streams import Position, get_pull_door_handle_motion_gen, \
     LINK_POSE_TO_JOINT_POSITION
 from pybullet_tools.utils import str_from_object, get_closest_points, INF, create_attachment, wait_if_gui, \
@@ -235,7 +238,7 @@ class DetachObjectAction(RevisedAction):
         if hasattr(self, 'supporter') and self.supporter is not None:
             obj = body
             parent = self.supporter
-            parent_link = None
+            parent_link = -1
             if isinstance(self.supporter, tuple):
                 parent_link = self.supporter[-1]
             if hasattr(state.world, 'BODY_TO_OBJECT'):

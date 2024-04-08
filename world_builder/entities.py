@@ -10,12 +10,13 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
     get_min_limit, get_max_limit, get_link_parent, LockRenderer, HideOutput, pairwise_collisions, get_bodies, \
     remove_debug, child_link_from_joint, unit_point, tform_point, buffer_aabb, get_aabb_center, get_aabb_extent, \
     quat_from_euler, wait_unlocked, euler_from_quat
-from pybullet_tools.bullet_utils import BASE_LINK, set_camera_target_body, is_box_entity, collided, \
-    get_camera_image_at_pose, sample_obj_in_body_link_space, sample_obj_on_body_link_surface, nice, \
-    create_attachment, change_pose_interactive, BASE_RESOLUTIONS
+from pybullet_tools.bullet_utils import BASE_LINK, is_box_entity, collided, nice, BASE_RESOLUTIONS
+from pybullet_tools.pose_utils import sample_obj_in_body_link_space, sample_obj_on_body_link_surface, \
+    create_attachment, change_pose_interactive
+from pybullet_tools.camera_utils import get_camera_image_at_pose, set_camera_target_body
 
 from world_builder.world_utils import get_mobility_id, get_mobility_category, get_mobility_identifier, \
-    get_instance_name, get_lisdf_name, load_asset
+    get_instance_name, get_lisdf_name, load_asset, draw_body_label
 
 from robot_builder.robot_utils import BASE_GROUP
 
@@ -151,7 +152,7 @@ class Object(Index):
         return False
 
     def support_obj(self, obj, verbose=False):
-        from pybullet_tools.logging import myprint as print
+        from pybullet_tools.logging_utils import myprint as print
         if verbose: print(f'ADDED {self} supporting_surface ({obj})')
         obj.supporting_surface = self
         if obj not in self.supported_objects:
@@ -234,7 +235,7 @@ class Object(Index):
         return obj
 
     def remove_supporting_surface(self, verbose=False):
-        from pybullet_tools.logging import myprint as print
+        from pybullet_tools.logging_utils import myprint as print
         if self.supporting_surface is not None:
             if verbose:
                 print(f'REMOVED {self} supporting_surface ({self.supporting_surface})')
@@ -467,7 +468,7 @@ class Object(Index):
         self.erase()
         if self.name is not None and self.category != 'door':
             # TODO: attach to the highest link (for the robot)
-            self.handles.append(add_body_label(self.body, name=self.name, text=text, **kwargs))
+            self.handles.append(draw_body_label(self.body, name=self.name+text, **kwargs))
         #self.handles.extend(draw_pose(Pose(), parent=self.body, **kwargs))
         if not isinstance(self, Robot):
             self.draw_joints()
@@ -725,6 +726,7 @@ class Robot(Object):
     #@property
     #def joints(self):
     #    return self.active_joints
+
     def get_pose(self):
         return self.get_link_pose(self.base_link)
     # def get_positions(self, joint_group='base', roundto=None):
@@ -736,12 +738,15 @@ class Robot(Object):
     #     if roundto == None:
     #         return positions
     #     return tuple([round(n, roundto) for n in positions])
+
     def set_base_positions(self, xytheta):
         set_group_conf(self.body, 'base', xytheta)
+
     def set_positions(self, positions, joints=None):
         if joints == None:
             joints = self.joints
         self.set_joint_positions(joints, positions)
+
     def get_limits(self, joints=None):
         if joints is None:
             joints = self.joints
@@ -841,6 +846,7 @@ class Camera(object):
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, self.name)
 
+
 class StaticCamera(object):
     def __init__(self, pose, camera_matrix, max_depth=2., name=None, draw_frame=None,
                  camera_point=None, target_point=None):
@@ -916,14 +922,3 @@ class StaticCamera(object):
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, self.name)
 
-
-#######################################################
-
-def add_body_label(body, name, text='', offset=[0,0,0], **kwargs):
-    with PoseSaver(body):
-        if get_color(body) == GREEN:
-            set_pose(body, unit_pose())
-        lower, upper = get_aabb(body)
-    position = ((lower[0] + upper[0]) / 2, (lower[1] + upper[1]) / 2, upper[2])
-    position = [position[i]+offset[i] for i in range(len(position))]
-    return add_text(name+text, position=position, parent=body, **kwargs)  # removeUserDebugItem

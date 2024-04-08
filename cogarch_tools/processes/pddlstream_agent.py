@@ -13,11 +13,12 @@ from collections import defaultdict
 from os.path import join
 import sys
 
-from pybullet_tools.bullet_utils import summarize_facts, print_goal, get_datetime
+from pybullet_tools.logging_utils import summarize_facts, print_goal
+from pybullet_tools.bullet_utils import get_datetime
 from pybullet_tools.pr2_primitives import Trajectory
 from pybullet_tools.stream_agent import solve_pddlstream
 from pybullet_tools.utils import SEPARATOR
-from pybullet_tools.logging import save_commands, TXT_FILE
+from pybullet_tools.logging_utils import save_commands, TXT_FILE
 
 from world_builder.actions import get_primitive_actions
 from world_builder.world_utils import get_camera_image
@@ -127,7 +128,7 @@ class PDDLStreamAgent(MotionAgent):
         return exp_name
 
     def goal_achieved(self, observation):
-        from pybullet_tools.logging import myprint as print
+        from pybullet_tools.logging_utils import myprint as print
 
         ## hack for checking if the plan has been executed
         if self.plan is not None and len(self.plan) == 0:
@@ -162,7 +163,7 @@ class PDDLStreamAgent(MotionAgent):
             10 = {MoveBaseAction} MoveBaseAction{conf: q744=(1.474, 7.326, 0.808, 9.192)}
             11 = {Action: 2} Action(name='pick', args=('left', 4, p1=(0.75, 7.3, 1.24, 0.0, -0.0, 0.0), g104=(-0.0, 0.027, -0.137, 0.0, -0.0, -3.142), q728=(1.474, 7.326, 0.808, 2.909), c544=t(7, 129)))
         """
-        from pybullet_tools.logging import myprint as print
+        from pybullet_tools.logging_utils import myprint as print
 
         if self.plan:
             self.world.remove_redundant_bodies()

@@ -48,7 +48,7 @@ def parse_config(path):
 def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwargs):
     """ default values are given at yaml, custom values are provided by commandline flags, overwritten by kwargs """
 
-    from pybullet_tools.logging import myprint as print
+    from pybullet_tools.logging_utils import myprint as print
 
     conf = parse_config(join(config_root, config))
 

@@ -198,7 +198,7 @@ def test_grasps(robot='feg', categories=[], skip_grasps=False, test_attachment=F
             world.add_body(body, obj_name, instance_name)
             set_camera_target_body(body)
             text = id.replace('veggie', '').replace('meat', '')
-            draw_text_label(body, text, offset=(0, -0.2, 0.1))
+            draw_body_label(body, text, offset=(0, -0.2, 0.1))
 
             if cat == 'BraiserBody':
                 print('get_aabb_extent', nice(get_aabb_extent(get_aabb(body))))
@@ -294,7 +294,7 @@ def test_grasps_new(robot='feg', categories=[], skip_grasps=False, test_attachme
             world.add_body(body, obj_name, instance_name)
             set_camera_target_body(body)
             text = id.replace('veggie', '').replace('meat', '')
-            draw_text_label(body, text, offset=(0, -0.2, 0.1))
+            draw_body_label(body, text, offset=(0, -0.2, 0.1))
 
             if cat == 'BraiserBody':
                 print('get_aabb_extent', nice(get_aabb_extent(get_aabb(body))))
@@ -408,13 +408,6 @@ def load_model_instance(category, id, scale=1, location = (0, 0)):
     return file, body, scale
 
 
-def draw_text_label(body, text, offset=(0, -0.05, .5)):
-    lower, upper = get_aabb(body)
-    position = ((lower[0] + upper[0]) / 2, (lower[1] + upper[1]) / 2, upper[2])
-    position = [position[i] + offset[i] for i in range(len(position))]
-    add_text(text, position=position, color=(1, 0, 0), lifetime=0)
-
-
 def test_handle_grasps(robot, category, skip_grasps=False):
     from pybullet_tools.pr2_streams import get_handle_pose
 
@@ -449,7 +442,7 @@ def test_handle_grasps(robot, category, skip_grasps=False):
             continue
         create_marker(xy)
 
-        draw_text_label(body, id)
+        draw_body_label(body, id)
 
         ## color links corresponding to semantic labels
         body_joints = get_partnet_doors(path, body)
@@ -1002,7 +995,7 @@ def test_kitchen_configuration(robot):
 
 
 def add_scale_to_grasp_file(robot, category):
-    from pybullet_tools.logging import dump_json
+    from pybullet_tools.logging_utils import dump_json
     from pprint import pprint
 
     ## find all instance, scale, and instance names
@@ -1031,7 +1024,7 @@ def add_scale_to_grasp_file(robot, category):
 
 
 def add_time_to_grasp_file():
-    from pybullet_tools.logging import dump_json
+    from pybullet_tools.logging_utils import dump_json
     for robot in ['pr2', 'feg']:
         db_file = get_grasp_db_file(robot)
         db = json.load(open(db_file, 'r'))

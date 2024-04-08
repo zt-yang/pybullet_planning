@@ -1,5 +1,5 @@
 from pybullet_tools.utils import enable_preview
-
+from pybullet_tools.camera_utils import get_pose2d
 from cogarch_tools.processes.motion_agent import *
 from world_builder.actions import *
 from robot_builder.robot_utils import BASE_JOINTS, get_joints_by_names, BASE_GROUP

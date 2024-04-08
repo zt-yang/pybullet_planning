@@ -25,11 +25,15 @@ from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, g
     get_camera_pose
 from pybullet_tools.pr2_streams import Position, get_handle_grasp_gen, pr2_grasp
 from pybullet_tools.general_streams import pose_from_attachment, LinkPose, RelPose
-from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, get_pose2d, summarize_joints, get_point_distance, \
-    is_placement, is_contained, add_body, close_joint, toggle_joint, ObjAttachment, check_joint_state, \
-    set_camera_target_body, xyzyaw_to_pose, nice, LINK_STR, CAMERA_MATRIX, visualize_camera_image, equal, \
-    draw_pose2d_path, draw_pose3d_path, sort_body_parts, get_root_links, colorize_world, colorize_link, \
+from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, summarize_joints, get_point_distance, \
+    add_body, close_joint, toggle_joint, check_joint_state, \
+    nice, LINK_STR, CAMERA_MATRIX, equal, sort_body_parts, get_root_links, colorize_world, colorize_link, \
     draw_fitted_box, find_closest_match, multiply_quat, is_joint_open, get_merged_aabb, tupify
+from pybullet_tools.pose_utils import ObjAttachment, draw_pose2d_path, draw_pose3d_path, xyzyaw_to_pose, \
+    is_placement, is_contained
+from pybullet_tools.camera_utils import get_pose2d, get_camera_image_at_pose, visualize_camera_image, \
+    set_camera_target_body, set_camera_target_body
+
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
     Attach, Detach, Clean, Cook, control_commands, link_from_name, \
     get_gripper_joints, GripperCommand, apply_commands, State, Command
@@ -615,7 +619,7 @@ class World(WorldBase):
         return surface
 
     def summarize_supporting_surfaces(self):
-        from pybullet_tools.logging import myprint as print
+        from pybullet_tools.logging_utils import myprint as print
         return_dict = {}
         print('\n================ summarize_supporting_surfaces ================')
         print(f"\tsurface\t{self.cat_to_objects('surface')}")
@@ -628,7 +632,7 @@ class World(WorldBase):
         return return_dict
 
     def summarize_supported_movables(self):
-        from pybullet_tools.logging import myprint as print
+        from pybullet_tools.logging_utils import myprint as print
         return_dict = {}
         print('\n================ summarize_supported_movables ================')
         print(f"\tmovable\t{self.cat_to_objects('movable')}")
@@ -653,7 +657,7 @@ class World(WorldBase):
 
     def summarize_all_objects(self, print_fn=None):
         if print_fn is None:
-            from pybullet_tools.logging import myprint as print_fn
+            from pybullet_tools.logging_utils import myprint as print_fn
 
         BODY_TO_OBJECT = self.BODY_TO_OBJECT
         ROBOT_TO_OBJECT = self.ROBOT_TO_OBJECT
@@ -1372,6 +1376,7 @@ class World(WorldBase):
                     init.append(('StaticLink', body_link))
         else:
             init.extend([('StaticLink', body_link) for body_link in all_links])
+        init.extend([('StaticLink', body) for body in surfaces if body not in all_links])
 
         ## ---- object poses / grasps ------------------
         for body in graspables:

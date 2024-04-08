@@ -4,8 +4,9 @@ import math
 import pybullet as p
 from world_builder.world import Agent
 from world_builder.actions import MoveAction, TeleportAction, TurnAction, DriveAction, MoveInSE3Action
-from pybullet_tools.bullet_utils import draw_pose2d, get_pose2d, clip_delta, multiply2d, invert2d, MIN_DISTANCE, \
-    nice, get_point_distance
+from pybullet_tools.bullet_utils import clip_delta, multiply2d, invert2d, nice, get_point_distance
+from pybullet_tools.camera_utils import get_pose2d
+from pybullet_tools.pose_utils import draw_pose2d, MIN_DISTANCE
 from pybullet_tools.utils import get_sample_fn, get_difference_fn, aabb_overlap, set_pose, BodySaver, \
     pairwise_collisions, get_aabb, plan_joint_motion, randomize, waypoints_from_path, plan_nonholonomic_motion, \
     get_nonholonomic_distance_fn, get_distance_fn, PoseSaver, get_extend_fn, get_nonholonomic_extend_fn, \

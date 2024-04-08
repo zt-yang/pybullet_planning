@@ -43,7 +43,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
     comparing:  put solutions inside exp_dir/exp_name instead of inside exp_dir
     """
 
-    from pybullet_tools.logging import myprint
+    from pybullet_tools.logging_utils import myprint
 
     initialize_logs()  ## everything would be loaded to txt log file
 

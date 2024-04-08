@@ -9,7 +9,7 @@ from pybullet_tools.utils import disconnect, LockRenderer, has_gui, WorldSaver, 
     SEPARATOR, get_aabb, wait_for_duration
 from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice
 from pybullet_tools.stream_agent import get_stream_info, post_process, move_cost_fn
-from pybullet_tools.logging import TXT_FILE
+from pybullet_tools.logging_utils import TXT_FILE
 
 from pybullet_tools.pr2_primitives import control_commands
 

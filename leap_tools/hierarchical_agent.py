@@ -102,7 +102,7 @@ class HierarchicalAgent(PDDLStreamAgent):
         return goals, facts
 
     def refine_plan(self, action, observation, **kwargs):
-        from pybullet_tools.logging import myprint
+        from pybullet_tools.logging_utils import myprint
         from pddlstream.algorithms.algorithm import reset_globals
 
         self.refinement_count += 1

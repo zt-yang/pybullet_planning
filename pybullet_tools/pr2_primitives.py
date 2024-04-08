@@ -10,12 +10,12 @@ import numpy as np
 
 from .ikfast.pr2.ik import is_ik_compiled, pr2_inverse_kinematics
 from .ikfast.utils import USE_CURRENT, USE_ALL
-from .pr2_problems import get_fixed_bodies
-from .pr2_utils import TOP_HOLDING_LEFT_ARM, SIDE_HOLDING_LEFT_ARM, GET_GRASPS, get_gripper_joints, \
+from pybullet_tools.pr2_problems import get_fixed_bodies
+from pybullet_tools.pr2_utils import TOP_HOLDING_LEFT_ARM, SIDE_HOLDING_LEFT_ARM, GET_GRASPS, get_gripper_joints, \
     get_carry_conf, get_top_grasps, get_side_grasps, open_arm, arm_conf, get_gripper_link, get_arm_joints, \
     learned_pose_generator, PR2_TOOL_FRAMES, get_x_presses, PR2_GROUPS, joints_from_names, \
     is_drake_pr2, get_group_joints, get_group_conf, compute_grasp_width, PR2_GRIPPER_ROOTS
-from .utils import invert, multiply, get_name, set_pose, get_link_pose, is_placement, \
+from pybullet_tools.utils import invert, multiply, get_name, set_pose, get_link_pose, is_placement, \
     pairwise_collision, set_joint_positions, get_joint_positions, sample_placement, get_pose, waypoints_from_path, \
     unit_quat, plan_base_motion, plan_joint_motion, base_values_from_pose, pose_from_base_values, \
     uniform_pose_generator, sub_inverse_kinematics, add_fixed_constraint, remove_debug, remove_fixed_constraint, \
@@ -27,7 +27,10 @@ from .utils import invert, multiply, get_name, set_pose, get_link_pose, is_place
     set_base_values, euler_from_quat, INF, elapsed_time, get_moving_links, flatten_links, get_relative_pose, \
     wait_unlocked, child_link_from_joint, get_rigid_clusters, link_pairs_collision
 
-from .bullet_utils import nice, set_camera_target_robot, set_camera_target_body, Attachment, create_attachment
+from pybullet_tools.bullet_utils import nice
+from pybullet_tools.camera_utils import set_camera_target_robot, set_camera_target_body
+from pybullet_tools.pose_utils import Attachment, create_attachment
+
 
 BASE_EXTENT = 3.5 # 2.5
 BASE_LIMITS = (-BASE_EXTENT*np.ones(2), BASE_EXTENT*np.ones(2))

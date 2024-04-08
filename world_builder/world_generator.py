@@ -11,8 +11,9 @@ from os import listdir
 from pybullet_tools.utils import get_bodies, euler_from_quat, get_collision_data, get_joint_name, \
     get_joint_position, get_camera, joint_from_name, get_color, reset_simulation, \
     link_from_name
-from pybullet_tools.bullet_utils import get_readable_list, LINK_STR, nice, is_box_entity, \
-    is_placement, random
+from pybullet_tools.bullet_utils import LINK_STR, nice, is_box_entity, random
+from pybullet_tools.pose_utils import is_placement
+from pybullet_tools.logging_utils import get_readable_list
 from pybullet_tools.general_streams import Position
 from pybullet_tools.pr2_primitives import Pose
 
@@ -478,7 +479,7 @@ def generate_problem_pddl(world, facts, goals, world_name='lisdf', domain_name='
         with open(out_path, 'w') as f:
             f.writelines(problem_pddl)
     else:
-        from pybullet_tools.logging import myprint as print
+        from pybullet_tools.logging_utils import myprint as print
         print(f'----------------{problem_pddl}')
 
     all_pred_names = {}  # pred: arity

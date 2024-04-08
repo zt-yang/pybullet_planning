@@ -12,7 +12,7 @@ from pprint import pprint
 
 import os
 import json
-from pybullet_tools.logging import dump_json
+from pybullet_tools.logging_utils import dump_json
 
 from pybullet_tools.utils import unit_pose, get_collision_data, get_links, pairwise_collision, get_link_name, \
     is_movable, get_movable_joints, draw_pose, pose_from_pose2d, set_velocity, set_joint_states, get_bodies, \
@@ -120,39 +120,6 @@ def write_yaml():
     raise NotImplementedError()
 
 
-def draw_pose2d(pose2d, z=0., **kwargs):
-    return draw_pose(pose_from_pose2d(pose2d, z=z), **kwargs)
-
-
-def draw_pose2d_path(path, z=0., **kwargs):
-    # TODO: unify with open-world-tamp, namo, etc.
-    # return list(flatten(draw_point(np.append(pose2d[:2], [z]), **kwargs) for pose2d in path))
-    return list(flatten(draw_pose2d(pose2d, z=z, **kwargs) for pose2d in path))
-
-
-def draw_pose3d_path(path, **kwargs):
-    ## flying gripper
-    if len(path[0]) == 6:
-        from .flying_gripper_utils import pose_from_se3
-        return list(flatten(draw_pose(pose_from_se3(q), **kwargs) for q in path))
-
-    ## pr2
-    elif len(path[0]) == 4:
-        return list(flatten(draw_pose(pose_from_xyzyaw(q), **kwargs) for q in path))
-
-    ## object
-    elif len(path[0]) == 2:
-        return list(flatten(draw_pose(q, **kwargs) for q in path))
-
-    else:
-        assert "What's this path" + path
-
-
-def pose_from_xyzyaw(q):
-    x, y, z, yaw = q
-    return Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
-
-
 def get_indices(sequence):
     return range(len(sequence))
 
@@ -215,44 +182,6 @@ def invert2d(pose2d):
 
 def project_z(point, z=2e-3):
     return np.append(point[:2], [z])
-
-
-#######################################################
-
-MIN_DISTANCE = 1e-2
-
-
-def sample_conf(robot, obstacles=[], min_distance=MIN_DISTANCE):
-    sample_fn = get_sample_fn(robot, robot.joints, custom_limits=robot.custom_limits)
-    while True:
-        conf = sample_fn()
-        robot.set_positions(conf)
-        if not pairwise_collisions(robot, obstacles, max_distance=min_distance):
-            return conf
-
-
-def sample_safe_placement(obj, region, obstacles=[], min_distance=MIN_DISTANCE):
-    obstacles = set(obstacles) - {obj, region}
-    while True:
-        pose = sample_placement(obj, region)
-        if pose is None:
-            break
-        if not pairwise_collisions(obj, obstacles, max_distance=min_distance):
-            set_pose(obj, pose)
-            return pose
-
-
-def check_placement(obj, region):
-    return is_center_stable(obj, region, above_epsilon=INF, below_epsilon=INF)  # is_center_stable | is_placement
-
-
-def is_on(obj_aabb, region_aabb):
-    return aabb_contains_aabb(aabb2d_from_aabb(obj_aabb), aabb2d_from_aabb(region_aabb))
-
-
-def is_above(robot, aabb):
-    # return is_center_stable(robot, self.button)
-    return aabb_contains_point(point_from_pose(robot.get_pose())[:2], aabb2d_from_aabb(aabb))
 
 
 #######################################################
@@ -384,7 +313,7 @@ COLLISION_FILE = join(dirname(__file__), '..', '..', 'collisions.json')
 
 
 def initialize_logs():
-    from pybullet_tools.logging import TXT_FILE
+    from pybullet_tools.logging_utils import TXT_FILE
     if isfile(TXT_FILE): os.remove(TXT_FILE)
 
 
@@ -488,20 +417,6 @@ def collided(obj, obstacles=[], world=None, tag='', articulated=False, verbose=F
             if not log_collisions:
                 return line.replace("'", "")
     return result
-
-
-def draw_colored_pose(pose, length=0.1, color=None, **kwargs):
-    if color is None:
-        handles = draw_pose(pose, length=length, **kwargs)
-    else:
-        origin_world = tform_point(pose, np.zeros(3))
-        handles = []
-        for k in range(3):
-            axis = np.zeros(3)
-            axis[k] = 1
-            axis_world = tform_point(pose, length*axis)
-            handles.append(add_line(origin_world, axis_world, color=color, **kwargs))
-    return handles
 
 
 #######################################################
@@ -645,440 +560,18 @@ def is_box_entity(body, link=-1):
 def is_mesh_entity(body, link=-1):
     return is_type_of_entity(body, link=link, geom_type=p.GEOM_MESH)
 
-
-## ----------------------------------------------------------------
-
-
-OBJ_YAWS = {
-    'Microwave': PI, 'Toaster': PI / 2
-}
-
-
-def sample_pose(obj, aabb, obj_aabb=None, yaws=OBJ_YAWS):
-    ## sample a pose in aabb that can fit an object in
-    if obj_aabb is not None:
-        ori = aabb
-        lower, upper = obj_aabb
-        diff = [(upper[i] - lower[i]) / 2 for i in range(3)]
-
-        # ## if the surface is large enough, give more space
-        # dx1, dy1 = get_aabb_extent(aabb2d_from_aabb(aabb))
-        # dx2, dy2 = get_aabb_extent(aabb2d_from_aabb(obj_aabb))
-        # if dx1 > 2*dx2 and dy1 > 2*dy2:
-        #     diff = [(upper[i] - lower[i]) / 2 * 3 for i in range(3)]
-
-        lower = [aabb[0][i] + diff[i] for i in range(3)]
-        upper = [aabb[1][i] - diff[i] for i in range(3)]
-        aabb = AABB(lower=lower, upper=upper)
-        # print('bullet_utils.sample_pose\tadjusted aabb for obj', nice(ori), '->', nice(aabb))
-
-    ## adjust z to be lower
-    height = get_aabb_extent(aabb)[2]
-    if (obj_aabb is not None and height > 5 * get_aabb_extent(obj_aabb)[2]) or height > 1:
-        x, y, _ = aabb.upper
-        z = aabb.lower[2] + height / 3
-        xl, yl, zl = aabb.lower
-        aabb = AABB(lower=[xl, yl, zl+height / 4], upper=[x, y, z])
-        # print('bullet_utils.sample_pose\t!adjusted z to be lower')
-
-    x, y, z = sample_aabb(aabb)
-
-    ## use pre-defined yaws for appliances like microwave
-    if obj in yaws:
-        yaw = yaws[obj]
-    else:
-        yaw = np.random.uniform(0, PI)
-
-    return x, y, z, yaw
-
-
-def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_trial=3, verbose=False):
-    aabb = get_aabb(body, link)
-    # x, y, z, yaw = sample_pose(obj, aabb)
-    # maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), scale=scales[obj], maybe=True)
-    # sample_placement(maybe, body, bottom_link=link)
-
-    x, y, z, yaw = sample_pose(obj, aabb)
-    maybe = obj
-    trial = 0
-
-    ## if surface smaller than object, just put in center
-    if get_aabb_volume(aabb2d_from_aabb(get_aabb(maybe))) > get_aabb_volume(aabb2d_from_aabb(aabb)):
-        x, y, z, yaw = sample_pose(obj, aabb, get_aabb(maybe))
-        x, y = get_aabb_center(aabb2d_from_aabb(aabb))
-        pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
-        set_pose(maybe, pose)
-
-    else:
-        while not aabb_contains_aabb(aabb2d_from_aabb(get_aabb(maybe)), aabb2d_from_aabb(aabb)):
-            x, y, z, yaw = sample_pose(obj, aabb, get_aabb(maybe))
-            pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
-            set_pose(maybe, pose)
-            # print(f'sampling surface for {body}-{link}', nice(aabb2d_from_aabb(aabb)))
-            trial += 1
-            if trial > max_trial:
-                if max_trial > 1 and verbose:
-                    print(f'sample_obj_on_body_link_surface\t sample {obj} on {body}-{link} | exceed max trial {max_trial}')
-                break
-
-    if PLACEMENT_ONLY:
-        z = stable_z(obj, body, link)
-        return x, y, z, yaw
-
-    # print(nice(aabb2d_from_aabb(aabb)))
-    # print(nice(aabb2d_from_aabb(get_aabb(maybe))))
-    return maybe
-
-
-def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
-                                  draw=False, verbose=False, visualize=False, max_trial=3):
-    if visualize:
-        set_renderer(True)
-    draw &= has_gui()
-    if verbose:
-        print(f'sample_obj_in_body_link_space(obj={obj}, body={body}, link={link})')
-        # wait_for_user()
-
-    aabb = get_aabb(body, link)
-    # draw_aabb(aabb)
-
-    x, y, z, yaw = sample_pose(obj, aabb, obj_aabb=get_aabb(obj))
-    maybe = obj
-    handles = draw_fitted_box(maybe)[-1] if draw else []
-
-    def sample_one(maybe, handles):
-        x, y, z, yaw = sample_pose(obj, aabb, get_aabb(maybe))
-        z += 0.01
-        pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
-        set_pose(maybe, pose)
-
-        remove_handles(handles)
-        handles = draw_fitted_box(maybe)[-1] if draw else []
-        return maybe, (x, y, z, yaw), handles
-
-    def sample_maybe(body, maybe, pose, handles):
-        (x, y, z, yaw) = pose
-
-        remaining_trials = 10
-        while not aabb_contains_aabb(get_aabb(maybe), aabb) or body_collision(body, maybe, link1=link):
-            remaining_trials -= 1
-            if remaining_trials < 0:
-                break
-            maybe, (x, y, z, yaw), handles = sample_one(maybe, handles)
-            if verbose:
-                draw_points(body, link)
-                print('\n ---- remaining_trials =', remaining_trials)
-                print(f'sampling space for {body}-{link} {nice(aabb)} : {obj} {nice(get_aabb(maybe))}', )
-                print(f'   collision between {body}-{link} and {maybe}: {body_collision(body, maybe, link1=link)}')
-                print(f'   aabb of {body}-{link} contains that of {maybe}: {aabb_contains_aabb(get_aabb(maybe), aabb)}')
-                print()
-                # set_camera_target_body(maybe, dx=1.5, dy=0, dz=0.7)
-
-        return maybe, (x, y, z, yaw), handles
-
-    def adjust_z(body, maybe, pose, handles):
-        (x, y, z, yaw) = pose
-        just_added = False
-        ## lower the object until collision
-        for interval in [0.1, 0.05, 0.01]:
-            while aabb_contains_aabb(get_aabb(maybe), aabb) and not body_collision(body, maybe, link1=link):
-                z -= interval
-                just_added = False
-                pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
-                set_pose(maybe, pose)
-                remove_handles(handles)
-                handles = draw_fitted_box(maybe)[-1] if draw else []
-                if verbose:
-                    print(f'trying pose for {obj}: z - interval = {nice(z + interval)} - {interval}) = {nice(z)}')
-            if just_added:
-                return None
-            reason = f'b.c. collision = {body_collision(body, maybe, link1=link)}, containment = {aabb_contains_aabb(get_aabb(maybe), aabb)}'
-            z += interval
-            just_added = True
-            pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
-            set_pose(maybe, pose)
-            remove_handles(handles)
-            handles = draw_fitted_box(maybe)[-1] if draw else []
-            if verbose:
-                print(f'reset pose for {obj}: z + interval = {nice(z - interval)} + {interval}) = {nice(z)} | {reason}')
-        z -= interval
-
-        if verbose:
-            print(f'finalize pose for {obj}: z - interval = {nice(z + interval)} - {interval}) = {nice(z)}')
-            print(f'   collision between {body}-{link} and {maybe}: {body_collision(body, maybe, link1=link)}')
-            print(f'   aabb of {body}-{link} contains that of {maybe}: {aabb_contains_aabb(get_aabb(maybe), aabb)}')
-
-        return maybe, (x, y, z, yaw), handles
-
-    pose = (x, y, z, yaw)
-    maybe, pose, handles = sample_maybe(body, maybe, pose, handles)
-    result = adjust_z(body, maybe, pose, handles)
-    with timeout(duration=1, desc=f"({obj}, {body}, {link})"):
-        while result is None:
-            maybe, pose, handles = sample_one(maybe, handles)
-            maybe, pose, handles = sample_maybe(body, maybe, pose, handles)
-            result = adjust_z(body, maybe, pose, handles)
-    if result is None:
-        return None
-    maybe, (x, y, z, yaw), handles = result
-
-    remove_handles(handles)
-    #set_renderer(True)
-    if PLACEMENT_ONLY: return x, y, z, yaw
-    # print(nice(aabb2d_from_aabb(aabb)))
-    # print(nice(aabb2d_from_aabb(get_aabb(maybe))))
-    return maybe
-
-
-#################################################################
-
-
-class Attachment(object):
-    def __init__(self, parent, parent_link, grasp_pose, child,
-                 child_joint=None, child_link=None):
-        self.parent = parent  # TODO: support no parent
-        self.parent_link = parent_link
-        self.grasp_pose = grasp_pose
-        self.child = child
-        self.child_joint = child_joint
-        self.child_link = child_link
-
-    @property
-    def bodies(self):
-        return flatten_links(self.child) | flatten_links(self.parent, get_link_subtree(
-            self.parent, self.parent_link))
-
-    def assign(self, verbose=False):
-        from .pr2_streams import LINK_POSE_TO_JOINT_POSITION as LP2JP
-
-        if verbose:
-            print('\nbullet.Attachment.assign() | LINK_POSE_TO_JOINT_POSITION')
-            pprint(LP2JP)
-
-        # robot_base_pose = self.parent.get_positions(roundto=3)
-        # robot_arm_pose = self.parent.get_positions(joint_group='left', roundto=3)  ## only left arm for now
-        parent_link_pose = get_link_pose(self.parent, self.parent_link)
-        child_pose = body_from_end_effector(parent_link_pose, self.grasp_pose)
-        if self.child_link is None:
-            set_pose(self.child, child_pose)
-        elif self.child in LP2JP:  ## pull drawer handle
-            if self.child in LP2JP and self.child_joint in LP2JP[self.child]:
-                ls = LP2JP[self.child][self.child_joint]
-                for group in self.parent.joint_groups: ## ['base', 'left', 'hand']:
-                    key = self.parent.get_positions(joint_group=group, roundto=3)
-                    result = in_list(key, ls)
-                    if result is not None:
-                        position = ls[result]
-                        set_joint_position(self.child, self.child_joint, position)
-                        # print(f'bullet.utils | Attachment | robot {key} @ {key} -> position @ {position}')
-                    # elif len(key) == 4:
-                    #     print('key', key)
-                    #     print(ls)
-        return child_pose
-
-    def apply_mapping(self, mapping):
-        self.parent = mapping.get(self.parent, self.parent)
-        self.child = mapping.get(self.child, self.child)
-
-    def __repr__(self):
-        name = self.__class__.__name__
-        if self.child_link is None:
-            return '{}({},{})'.format(name, self.parent, self.child)
-        else:
-            return '{}({},{}-{})'.format(name, self.parent, self.child, self.child_link)
-
-
-class ObjAttachment(Attachment):
-
-    # def __init__(self, parent, parent_link, child, rel_pose=None):
-    #     super(ObjAttachment, self).__init__(parent, parent_link, None, child)
-    #     if rel_pose == None:
-    #         p_parent = get_link_pose(parent, parent_link)
-    #         p_child= get_pose(child)
-    #         rel_pose = (p_child[0][i] - p_parent[0][i] for i in range(len(p_child[0])))
-    #     self.rel_pose = rel_pose
-    # def assign(self):
-    #     p_parent = get_link_pose(self.parent, self.parent_link)
-    #     _, r_child = get_pose(self.child)
-    #     p_child = (p_parent[0][i] + self.rel_pose[i] for i in range(len(self.rel_pose)))
-    #     set_pose(self.child, (p_child, r_child))
-
-    def assign(self):
-        parent_link_pose = get_link_pose(self.parent, self.parent_link)
-        child_pose = body_from_end_effector(parent_link_pose, self.grasp_pose)
-        set_pose(self.child, child_pose)
-
-
-def add_attachment_in_world(state=None, obj=None, parent=-1, parent_link=None, attach_distance=0.1,
-                            OBJ=True, verbose=False):
-
-    from robot_builder.robots import RobotAPI
-
-    ## can attach without contact
-    new_attachments = add_attachment(state=state, obj=obj, parent=parent, parent_link=parent_link,
-                                     attach_distance=attach_distance, OBJ=OBJ, verbose=verbose)
-
-    ## update object info
-    world = state.world
-    if hasattr(world, 'BODY_TO_OBJECT'):
-        for body, attachment in new_attachments.items():
-            obj = world.BODY_TO_OBJECT[body]
-            if hasattr(obj, 'supporting_surface'):
-                if isinstance(parent, RobotAPI) and obj.supporting_surface is not None:
-                    obj.remove_supporting_surface()
-                else:
-                    obj.change_supporting_surface(parent)
-    # for k in new_attachments:
-    #     if k in state.world.ATTACHMENTS:
-    #         state.world.ATTACHMENTS.pop(k)
-
-    return new_attachments
-
-
-def add_attachment(state=None, obj=None, parent=-1, parent_link=None, attach_distance=0.1, OBJ=True, verbose=False):
-    """ can attach without contact """
-    new_attachments = {}
-
-    if parent == -1:  ## use robot as parent
-        parent = state.robot
-        link1 = None
-        parent_link = state.robot.base_link
-        OBJ = False
-    else:
-        link1 = parent_link
-
-    joint = None
-    if isinstance(obj, tuple):
-        from pybullet_tools.general_streams import get_handle_link
-        link1 = get_handle_link(obj)
-        obj, joint = obj
-
-    # collision_infos = get_closest_points(parent, obj, link1=link1, max_distance=INF)
-    # min_distance = min([INF] + [info.contactDistance for info in collision_infos])
-    # if True or attach_distance is None or (min_distance < attach_distance):  ## (obj not in new_attachments) and
-    if True:
-        if joint is not None:
-            attachment = create_attachment(parent, parent_link, obj, child_link=link1, child_joint=joint, OBJ=OBJ)
-        else:
-            attachment = create_attachment(parent, parent_link, obj, OBJ=OBJ)
-        new_attachments[obj] = attachment  ## may overwrite older attachment
-        if verbose:
-            print(f'\nbullet_utils.add_attachment | {new_attachments[obj]}\n')
-    return new_attachments
-
-
-def create_attachment(parent, parent_link, child, child_link=None, child_joint=None, OBJ=False):
-    parent_link_pose = get_link_pose(parent, parent_link)
-    child_pose = get_pose(child)
-    grasp_pose = multiply(invert(parent_link_pose), child_pose)
-    if OBJ:  ## attachment between objects
-        return ObjAttachment(parent, parent_link, grasp_pose, child)
-    return Attachment(parent, parent_link, grasp_pose, child,
-                      child_link=child_link, child_joint=child_joint)
-
-
-def remove_attachment(state, obj=None, verbose=False):
-    if isinstance(obj, tuple): obj = obj[0]
-    new_attachments = dict(state.attachments)
-    if obj in new_attachments:
-        if verbose:
-            print(f'\nbullet_utils.remove_attachment | {new_attachments[obj]}\n')
-        new_attachments.pop(obj)
-    return new_attachments
-
-
-#######################################################
-
-
-def adjust_camera_pose(camera_pose):
-    """ used for set_camera_pose2() """
-    if len(camera_pose) == 6:
-        point = camera_pose[:3]
-        euler = camera_pose[3:]
-        camera_pose = (point, quat_from_euler(euler))
-    (x, y, z), quat = camera_pose
-    (r, p, w) = euler_from_quat(quat)
-    if x < 6.5:
-        x = np.random.normal(7, 0.2)
-        # redo = True
-    return [(x, y, z + 1), quat_from_euler((r - 0.3, p, w))]
-
-
-def get_camera_point_target():
-    cam = p.getDebugVisualizerCamera()
-    camForward = cam[5]
-    dist, camTarget = cam[-2:]
-    camPos = np.array(camTarget) - dist * np.array(camForward)
-    return camPos, camTarget
-
-
-def get_camera_image_at_pose(camera_point, target_point, camera_matrix, far=5.0, **kwargs):
-    # far is the maximum depth value
-    width, height = map(int, dimensions_from_camera_matrix(camera_matrix))
-    _, vertical_fov = get_field_of_view(camera_matrix)
-    return get_image(camera_point, target_point, width=width, height=height,
-                     vertical_fov=vertical_fov, far=far, **kwargs)
-
-
-def set_camera_target_body(body, link=None, dx=None, dy=None, dz=None, distance=1):
-    # if isinstance(body, tuple):
-    #     link = BODY_TO_OBJECT[body].handle_link
-    #     body = body[0]
-    aabb = get_aabb(body, link)
-    x = (aabb.upper[0] + aabb.lower[0]) / 2
-    y = (aabb.upper[1] + aabb.lower[1]) / 2
-    z = (aabb.upper[2] + aabb.lower[2]) / 2
-    if dx is None and dy is None and dz is None:
-        dx = min(get_aabb_extent(aabb)[0] * 2 * distance, 2)
-        dy = min(get_aabb_extent(aabb)[1] * 2 * distance, 2)
-        dz = min(get_aabb_extent(aabb)[2] * 2 * distance, 2)
-    camera_point = [x + dx, y + dy, z + dz]
-    target_point = [x, y, z]
-    set_camera_pose(camera_point=camera_point, target_point=target_point)
-    return camera_point, target_point
-
-
-def set_default_camera_pose():
-    ## the whole kitchen & living room area
-    # set_camera_pose(camera_point=[9, 8, 9], target_point=[6, 8, 0])
-
-    ## just the kitchen
-    set_camera_pose(camera_point=[4, 7, 4], target_point=[3, 7, 2])
-
-
-def set_camera_target_robot(robot, distance=5, FRONT=False):
-    x, y, yaw = get_pose2d(robot)
-    target_point = (x, y, 2)
-    yaw -= math.pi / 2
-    pitch = - math.pi / 3
-    if FRONT:
-        yaw += math.pi
-        pitch = -math.pi / 4  ## 0
-        target_point = (x, y, 1)
-    CLIENT = get_client()
-    p.resetDebugVisualizerCamera(distance, math.degrees(yaw), math.degrees(pitch),
-                                 target_point, physicsClientId=CLIENT)
-
-
 #######################################################
 
 # def summarize_links(body):
 #     joints = get_joints(body)
 #     for joint in joints:
 #         check_joint_state(body, joint)
+
+
 def get_point_distance(p1, p2):
     if isinstance(p1, tuple): p1 = np.asarray(p1)
     if isinstance(p2, tuple): p2 = np.asarray(p2)
     return np.linalg.norm(p1 - p2)
-
-
-def get_pose2d(robot):
-    if isinstance(robot, int):
-        return BASE_JOINTS
-    point, quat = robot.get_pose()
-    x, y, _ = point
-    _, _, yaw = euler_from_quat(quat)
-    return x, y, yaw
 
 
 def summarize_joints(body):
@@ -1190,117 +683,6 @@ def close_joint(body, joint):
 
 #######################################################
 
-def get_readable_list(lst, world=None, NAME_ONLY=False, TO_LISDF=False):
-    to_print = [lst[0]]
-    for word in lst[1:]:
-        if world is not None:
-            name = world.get_name(word)
-            last_is_tuple = (len(to_print) != 0) and isinstance(to_print[-1], tuple)
-            if name is not None and not last_is_tuple: ## ['=', ('PickCost',), 'pr2|1']
-                if TO_LISDF:
-                    name = world.get_lisdf_name(word)
-                elif not NAME_ONLY:
-                    name = world.get_debug_name(word)
-                to_print.append(name)
-            else:
-                to_print.append(word)
-        else:
-            to_print.append(word)
-    return to_print
-
-
-def summarize_facts(facts, world=None, name='Initial facts', print_fn=None):
-    if print_fn is None:
-        from pybullet_tools.logging import myprint as print_fn
-    print_fn('----------------')
-    print_fn(f'{name} ({len(facts)})')
-    predicates = {}
-    for fact in facts:
-        pred = fact[0].lower()
-        if pred not in predicates:
-            predicates[pred] = []
-        predicates[pred].append(fact)
-    predicates = {k: v for k, v in sorted(predicates.items())}
-    # predicates = {k: v for k, v in sorted(predicates.items(), key=lambda item: len(item[1][0]))}
-    for pred in predicates:
-        to_print_line = [get_readable_list(fa, world) for fa in predicates[pred]]
-        to_print_line = sorted([str(l).lower() for l in to_print_line])
-        to_print = ', '.join(to_print_line)
-        print_fn(f'  {pred} [{len(to_print_line)}] : {to_print}')
-    print_fn('----------------')
-
-
-def print_plan(plan, world=None, print_fn=None):
-    from pddlstream.language.constants import is_plan
-    if print_fn is None:
-        from pybullet_tools.logging import myprint as print_fn
-
-    if not is_plan(plan):
-        return
-    step = 1
-    print_fn('Plan:')
-    for action in plan:
-        name, args = action
-        if name.startswith('_'):
-            print_fn(f' ) {name}')
-            continue
-        args2 = [str(a) for a in get_readable_list(args, world)]
-        print_fn('{:2}) {} {}'.format(step, name, ' '.join(args2)))
-        step += 1
-    print_fn()
-
-
-def print_goal(goal, world=None, print_fn=None):
-    if print_fn is None:
-        from pybullet_tools.logging import myprint as print_fn
-
-    print_fn(f'Goal ({len(goal) - 1}): ({goal[0]}')
-    for each in get_readable_list(goal[1:], world):
-        print_fn(f'   {tuple(each)},')
-    print_fn(')')
-
-
-def summarize_poses(preimage):
-    atposes = [f[-1] for f in preimage if f[0].lower() == 'atpose']
-    poses = [f[-1] for f in preimage if f[0].lower() == 'pose' if f[-1] not in atposes]
-
-    print('\n' + '=' * 25 + ' poses that can be cached to loaders_{domain}.py ' + '=' * 25)
-    for pose in poses:
-        print(nice(pose.value, keep_quat=True))
-    print('-'*50+'\n')
-
-
-def summarize_bconfs(preimage, plan):
-    bconfs = [f[1] for f in preimage if f[0].lower() == 'bconf' and f[1].joint_state is not None]
-    bconfs_ordered = []
-    for action in plan:
-        for arg in action.args:
-            if arg in bconfs and arg not in bconfs_ordered:
-                bconfs_ordered.append(arg)
-
-    print('\n' + '=' * 25 + ' bconfs that can be cached to loaders_{domain}.py ' + '=' * 25)
-    for bconf in bconfs_ordered:
-        joint_state = {k: nice(v) for k, v in bconf.joint_state.items()}
-        print(f"({nice(bconf.values)}, {joint_state}), ")
-    print('-'*50+'\n')
-
-
-#######################################################
-
-def is_placement(body, surface, link=None, **kwargs):
-    if isinstance(surface, tuple):
-        surface, _, link = surface
-    return is_placed_on_aabb(body, get_aabb(surface, link), **kwargs)
-
-
-def is_contained(body, space):
-    if isinstance(space, tuple):
-        return aabb_contains_aabb(get_aabb(body), get_aabb(space[0], link=space[-1]))
-    return aabb_contains_aabb(get_aabb(body), get_aabb(space))
-
-
-#######################################################
-
 def save_pickle(pddlstream_problem, plan, preimage):
     ## ------------------- save the plan for debugging ----------------------
     # doesn't work because the reconstructed plan and preimage by pickle have different variable index
@@ -1315,16 +697,6 @@ def save_pickle(pddlstream_problem, plan, preimage):
         pickle.dump(plan, outp, pickle.HIGHEST_PROTOCOL)
         pickle.dump(preimage, outp, pickle.HIGHEST_PROTOCOL)
     # ------------------- save the plan for debugging ----------------------
-
-
-def pose_to_xyzyaw(pose):
-    xyzyaw = list(nice_tuple(pose[0]))
-    xyzyaw.append(nice_float(euler_from_quat(pose[1])[2]))
-    return tuple(xyzyaw)
-
-
-def xyzyaw_to_pose(xyzyaw):
-    return tuple((tuple(xyzyaw[:3]), quat_from_euler(Euler(0, 0, xyzyaw[-1]))))
 
 
 def get_color_by_index(i):
@@ -1384,175 +756,6 @@ def equal(tup_a, tup_b, epsilon=0.001):
 #         return equal(tup1[0], tup2[0]) and equal(tup1[1], tup2[1])
 #     return all([abs(tup1[i] - tup2[i]) < epsilon for i in range(len(tup1))])
 
-
-def process_depth_pixels(pixels):
-    """ scale float values 2-5 to int values 225-0 """
-    n = (5 - pixels) / (5 - 2) * 225
-    return n.astype('uint8')
-
-
-def visualize_camera_image(image, index=0, img_dir='.', rgb=False, rgbd=False):
-    import matplotlib.pyplot as plt
-
-    if not isdir(img_dir):
-        os.makedirs(img_dir, exist_ok=True)
-
-    if rgbd:
-        from PIL import Image
-
-        depth_pixels = process_depth_pixels(image.depthPixels)
-
-        for key, pixels in [('depth', depth_pixels),
-                            ('rgb', image.rgbPixels[:,:,:3])]:
-            sub_dir = join(img_dir, f"{key}s")
-            if not isdir(sub_dir):
-                os.makedirs(sub_dir, exist_ok=True)
-            im = Image.fromarray(pixels)  ##
-            im.save(join(sub_dir, f"{key}_{index}.png"))
-
-    elif rgb:
-        name = join(img_dir, f"rgb_image_{index}.png")
-        plt.imshow(image.rgbPixels)
-        plt.axis('off')
-        plt.tight_layout()
-        plt.savefig(name, bbox_inches='tight', dpi=100)
-        plt.close()
-
-    else:
-        import seaborn as sns
-        sns.set()
-        name = join(img_dir, f"depth_map_{index}.png")
-        ax = sns.heatmap(image.depthPixels, annot=False, fmt="d", vmin=2, vmax=5)
-        plt.title(f"Depth Image ({index})", fontsize=12)
-        plt.savefig(name, bbox_inches='tight', dpi=100)
-        plt.close()
-
-    # plt.show()
-
-
-def get_obj_keys_for_segmentation(indices, unique=None):
-    """ indices: {'(15, 1)': 'minifridge::joint_0', '0': 'pr20', '15': 'minifridge'}
-        unique: {(23, 3): [(243, 0), ...], (23, 7): [...], ...}
-        return obj_keys: {'minifridge::joint_0': [(15, 1), (15, 2)], 'pr20': [(0, 0)], 'minifridge': [(15, 0), (15, 1)]}
-    """
-    obj_keys = {}
-    for k, v in indices.items():
-        keys = []
-        if isinstance(k, str):
-            k = eval(k)
-        if isinstance(k, int):  ##  and (k, 0) in unique
-            if unique is not None:
-                keys = [u for u in unique if u[0] == k]
-                if len(keys) == 0:
-                    keys = [(k, 0)]
-            else:
-                if k in get_bodies():
-                    keys = [(k, l) for l in get_links(k)]
-        elif isinstance(k, tuple) and len(k) == 3:
-            keys = [(k[0], k[2])]
-        elif isinstance(k, tuple) and len(k) == 2:
-            if k[0] in get_bodies():
-                keys = [(k[0], l) for l in get_door_links(k[0], k[1])]
-        obj_keys[v] = keys
-    return obj_keys
-
-
-def get_segmask(seg, use_np=True):
-    if use_np:
-        # Mask to ignore pixels with value -1
-        mask = seg != -1
-
-        # Extract obUid and linkIndex using vectorized operations
-        obUid = seg[mask] & ((1 << 24) - 1)
-        linkIndex = (seg[mask] >> 24) - 1
-
-        # Get coordinates
-        coordinates = np.argwhere(mask)
-
-        # Create a structured array with the necessary information
-        structured_array = np.zeros(coordinates.shape[0],
-                                    dtype=[('obUid', 'i4'), ('linkIndex', 'i4'), ('coordinates', 'i4', 2)])
-        structured_array['obUid'] = obUid
-        structured_array['linkIndex'] = linkIndex
-        structured_array['coordinates'] = coordinates
-
-        # Group by obUid and linkIndex
-        unique = {}
-        for uid_link in np.unique(structured_array[['obUid', 'linkIndex']], axis=0):
-            mask = (structured_array['obUid'] == uid_link[0]) & (structured_array['linkIndex'] == uid_link[1])
-            unique[tuple(uid_link)] = structured_array['coordinates'][mask].tolist()
-
-    else:
-        unique = {}
-        for row in range(seg.shape[0]):
-            for col in range(seg.shape[1]):
-                pixel = seg[row, col]
-                if pixel == -1: continue
-                obUid = pixel & ((1 << 24) - 1)
-                linkIndex = (pixel >> 24) - 1
-                if (obUid, linkIndex) not in unique:
-                    unique[(obUid, linkIndex)] = []
-                    # print("obUid=", obUid, "linkIndex=", linkIndex)
-                unique[(obUid, linkIndex)].append((row, col))
-    return unique
-
-
-def adjust_segmask(unique, world):
-    """ looks ugly if we just remove some links, so create a doorless lisdf """
-    # links_to_show = {}
-    # for b, l in world.colored_links:
-    #     if b not in links_to_show:
-    #         links_to_show[b] = get_links(b)
-    #     if l in links_to_show[b]:
-    #         links_to_show[b].remove(l)
-    # for b, ll in links_to_show.items():
-    #     if len(ll) == len(get_links(b)):
-    #         continue
-    #     for l in links_to_show[b]:
-    #         clone_body_link(b, l, visual=True, collision=True)
-    #     remove_body(b)
-
-    imgs = world.camera.get_image(segment=True, segment_links=True)
-    seg = imgs.segmentationMaskBuffer
-    movable_unique = get_segmask(seg)
-    for k, v in movable_unique.items():
-        if k not in unique:
-            unique[k] = v
-            # print(k, 'new', len(v))
-        else:
-            ## slow
-            # new_v = [p for p in v if p not in unique[k]]
-            # unique[k] += new_v
-            old_count = len(unique[k])
-            unique[k] += v
-            unique[k] = list(set(unique[k]))
-            # print(k, 'added', len(unique[k]) - old_count)
-    return unique
-
-
-def take_selected_seg_images(world, img_dir, body, indices, width=1280, height=960, **kwargs):
-    from lisdf_tools.image_utils import save_seg_image_given_obj_keys
-
-    ## take images from in front
-    camera_point, target_point = set_camera_target_body(body, **kwargs)
-    camera_kwargs = {'camera_point': camera_point, 'target_point': target_point}
-    common = dict(img_dir=img_dir, width=width, height=height, fx=800)
-    world.add_camera(**common, **camera_kwargs)
-
-    ## take seg images
-    imgs = world.camera.get_image(segment=True, segment_links=True)
-    rgb = imgs.rgbPixels[:, :, :3]
-    seg = imgs.segmentationMaskBuffer
-    # seg = imgs.segmentationMaskBuffer[:, :, 0].astype('int32')
-    unique = get_segmask(seg)
-    obj_keys = get_obj_keys_for_segmentation(indices, unique)
-
-    for k, v in indices.items():
-        keys = obj_keys[v]
-        mobility_id = world.get_mobility_id(body)
-        file_name = join(img_dir, f"{mobility_id}_{v}.png")
-
-        save_seg_image_given_obj_keys(rgb, keys, unique, file_name, crop=False)
 
 
 def get_joint_range(body, joint):
@@ -1919,24 +1122,6 @@ def query_right_left():
         #         return 0
 
 
-def sample_random_pose(aabb):
-    ## sample point
-    x = np.random.uniform(aabb[0][0], aabb[1][0])
-    y = np.random.uniform(aabb[0][1], aabb[1][1])
-    z = np.random.uniform(aabb[0][2], aabb[1][2])
-
-    ## sample rotation
-    case = np.random.randint(0, 4)
-    roll, pitch, yaw = 0, 0, 0
-    if case == 0:
-        roll = np.random.uniform(0, 2 * np.pi)
-    elif case == 1:
-        pitch = np.random.uniform(0, 2 * np.pi)
-    elif case == 2:
-        yaw = np.random.uniform(0, 2 * np.pi)
-    return Pose(Point(x, y, z), Euler(roll, pitch, yaw))
-
-
 def print_action_plan(action_plan, stream_plan, world=None):
     from pddlstream.language.object import Object, UniqueOptValue
     placements = {str(s.output_objects[0]): world.get_debug_name(s.input_objects[1].value)
@@ -1948,8 +1133,6 @@ def print_action_plan(action_plan, stream_plan, world=None):
             continue
         elems = []
         for elem in action.args:
-            if elem.value == 'left':
-                continue
             if isinstance(elem.value, int) or \
                     (isinstance(elem.value, tuple) and not isinstance(elem.value, UniqueOptValue)):
                 elem = world.get_debug_name(elem.value)
@@ -1979,55 +1162,8 @@ def multiply_quat(quat1, quat2):
     return multiply((unit_point(), quat1), (unit_point(), quat2))[1]
 
 
-######################################################################################
-
-
-def change_pose_interactive(obj):
-    from pynput import keyboard
-
-    exit_note = "(Press esc in terminal to exit)"
-
-    pose = obj.get_pose()
-    xyz, quat = pose
-    euler = euler_from_quat(quat)
-    pose = np.asarray([xyz, euler])
-    adjustments = {
-        # 'w': ((0, 0, 0.01), (0, 0, 0)),
-        's': ((0, 0, -0.01), (0, 0, 0)),
-        keyboard.Key.up: ((0, 0, 0.01), (0, 0, 0)),
-        keyboard.Key.down: ((0, 0, -0.01), (0, 0, 0)),
-        'a': ((0, -0.01, 0), (0, 0, 0)),
-        'd': ((0, 0.01, 0), (0, 0, 0)),
-        keyboard.Key.left: ((0, -0.01, 0), (0, 0, 0)),
-        keyboard.Key.right: ((0, 0.01, 0), (0, 0, 0)),
-        'f': ((0.01, 0, 0), (0, 0, 0)),
-        'r': ((-0.01, 0, 0), (0, 0, 0)),
-        'q': ((0, 0, 0), (0, 0, -0.1)),
-        'e': ((0, 0, 0), (0, 0, 0.1)),
-    }
-    adjustments = {k: np.asarray(v) for k, v in adjustments.items()}
-
-    def on_press(key, pose=pose):
-        try:
-            pressed = key.char.lower()
-            print(f'alphanumeric key {key.char} pressed {exit_note}')
-        except AttributeError:
-            pressed = key
-            print(f'special key {key} pressed {exit_note}')
-
-        if pressed in adjustments:
-            pose += adjustments[pressed]
-            pose = (nice(pose[0]), quat_from_euler(pose[1]))
-            print(f'\tnew pose of {obj.shorter_name}\t{pose}')
-            set_pose(obj.body, pose)
-
-    def on_release(key):
-        if key == keyboard.Key.esc:
-            return False
-
-    print('-' * 10 + f' Enter WASDRF for poses and QE for yaw {exit_note}' + '-' * 10)
-    with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
-        listener.join()
+def is_tuple(elems):
+    return isinstance(elems, list) or isinstance(elems, tuple) or isinstance(elems, np.ndarray)
 
 
 ########################################################################
@@ -2038,15 +1174,5 @@ def has_srl_stream():
         import srl_stream
     except ImportError:
         print('Unfortunately, you cant use the library unless you are part of NVIDIA Seattle Robotics lab')
-        return False
-    return True
-
-
-def has_getch():
-    try:
-        import getch
-    except ImportError:
-        print('Please install has_getch in order to use `step_by_step`: ```pip install getch```\n')
-        sys.exit()
         return False
     return True

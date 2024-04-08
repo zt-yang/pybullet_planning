@@ -51,7 +51,7 @@ class FeasibilityChecker(object):
         raise NotImplementedError('should implement this for FeasibilityChecker')
 
     def check(self, inputs):
-        from pybullet_tools.logging import myprint as print
+        from pybullet_tools.logging_utils import myprint as print
         if not isinstance(inputs[0], list):
             inputs = [inputs]
 
@@ -291,7 +291,7 @@ class Heuristic(FeasibilityChecker):
 
     def _check(self, plan):
         """ each checker returns either False or the next relaxed state """
-        from pybullet_tools.logging import myprint as print
+        from pybullet_tools.logging_utils import myprint as print
 
         def print_plan(plan):
             print('plan\t', shorter_plan(plan))
@@ -405,7 +405,7 @@ class Heuristic(FeasibilityChecker):
         return passed
 
     def _update_pre_action(self, action_name, body, result, plan_so_far):
-        from pybullet_tools.logging import myprint as print
+        from pybullet_tools.logging_utils import myprint as print
         key = shorter((action_name, body))
         if result:
             if key not in self.pre_actions_and:
@@ -444,7 +444,7 @@ class Heuristic(FeasibilityChecker):
 
     def _check_pick(self, args, plan_so_far):
         """ whether body is reachable by the robot """
-        from pybullet_tools.logging import myprint as print
+        from pybullet_tools.logging_utils import myprint as print
         body = args[1].value
         fluents = [f for f in self._fluents if not (f[0] == 'AtPose' and f[1] == body)]
         result = self._robot.check_reachability(body, self._state, fluents=fluents, **self._reachability_kwargs)
@@ -463,7 +463,7 @@ class Heuristic(FeasibilityChecker):
 
     def _check_place(self, args, plan_so_far):
         """ whether the surface is reachable by PR2 arm """
-        from pybullet_tools.logging import myprint as print
+        from pybullet_tools.logging_utils import myprint as print
         movable = args[1].value
         fluents = [f for f in self._fluents if not (f[0] == 'AtPose' and f[1] == movable)]
         if movable not in self.potential_placements:

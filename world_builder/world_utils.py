@@ -18,11 +18,12 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sam
     aabb2d_from_aabb, is_center_stable, aabb_contains_aabb, get_model_info, get_name, get_pose, dump_link, \
     CameraImage, dump_joint, dump_body, PoseSaver, get_aabb, add_text, GREEN, AABB, remove_body, HideOutput, \
     stable_z, Pose, Point, create_box, load_model, get_joints, set_joint_position, BROWN, Euler, PI, \
-    set_camera_pose, TAN, RGBA, sample_aabb, get_min_limit, get_max_limit, set_color, WHITE, get_links, \
+    set_camera_pose, TAN, RGBA, get_color, get_min_limit, get_max_limit, set_color, WHITE, get_links, \
     get_link_name, get_link_pose, euler_from_quat, get_collision_data, get_joint_name, get_joint_position, \
     set_renderer, link_from_name, parent_joint_from_link, set_random_seed, set_numpy_seed
-from pybullet_tools.bullet_utils import is_joint_open, get_fine_rainbow_colors, get_segmask
-from pybullet_tools.logging import dump_json
+from pybullet_tools.bullet_utils import is_joint_open, get_fine_rainbow_colors
+from pybullet_tools.camera_utils import get_segmask
+from pybullet_tools.logging_utils import dump_json
 from world_builder.asset_constants import DONT_LOAD
 from world_builder.paths import ASSET_PATH
 
@@ -51,7 +52,7 @@ SCENE_CONFIG_PATH = abspath(join(dirname(__file__), '..', 'data_generator', 'con
 
 
 def parse_yaml(path, verbose=True):
-    from pybullet_tools.logging import myprint as print
+    from pybullet_tools.logging_utils import myprint as print
     import yaml
     import pprint
     from pathlib import Path
@@ -967,6 +968,16 @@ def add_joint_status_facts(body, position):
         print(title, 'partially open')
 
     return init
+
+
+def draw_body_label(body, text, offset=(0, -0.05, 0.05), **kwargs):
+    with PoseSaver(body):
+        if get_color(body) == GREEN:
+            set_pose(body, unit_pose())
+        lower, upper = get_aabb(body)
+    position = ((lower[0] + upper[0]) / 2, (lower[1] + upper[1]) / 2, upper[2])
+    position = [position[i]+offset[i] for i in range(len(position))]
+    return add_text(text, position=position, **kwargs)  # , lifetime=0 , parent=body
 
 
 if __name__ == "__main__":

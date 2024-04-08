@@ -12,8 +12,10 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
     is_darwin, wait_for_user, YELLOW, euler_from_quat, wait_unlocked, set_renderer, \
     sub_inverse_kinematics
 
-from pybullet_tools.bullet_utils import equal, nice, set_camera_target_body, Attachment, \
+from pybullet_tools.bullet_utils import equal, nice, is_tuple, \
     collided, query_yes_no, has_tracik, is_mesh_entity, get_rotation_matrix
+from pybullet_tools.camera_utils import set_camera_target_body
+from pybullet_tools.pose_utils import Attachment
 from pybullet_tools.pr2_streams import SELF_COLLISIONS
 from pybullet_tools.pr2_primitives import APPROACH_DISTANCE, Conf, Grasp, get_base_custom_limits
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, TOP_HOLDING_LEFT_ARM, PR2_GRIPPER_ROOTS
@@ -220,8 +222,8 @@ class RobotAPI(Robot):
 
         ## if body or body_joint is given in the place of body_pose
         b = body_pose
-        if not (isinstance(b, tuple) and isinstance(b[0], tuple) and len(b[0]) == 3 and len(b[1]) == 4):
-            if isinstance(b, tuple):
+        if not (is_tuple(b) and is_tuple(b[0]) and len(b[0]) == 3 and len(b[1]) == 4):
+            if is_tuple(b):
                 handle_link = get_handle_link(b)
                 new_body_pose = get_link_pose(b[0], handle_link)
                 if verbose: print(f'{title} | actually given (body, joint), multiply(get_link_pose(body, '
@@ -439,12 +441,15 @@ class MobileRobot(RobotAPI):
         else:
             return sub_inverse_kinematics(self.body, arm_joint, tool_link, gripper_pose, **kwargs)
 
-    def inverse_kinematics(self, arm, gripper_pose, obstacles, attempts=10, verbose=True, visualize=False):
+    def inverse_kinematics(self, arm, gripper_pose, obstacles, attempts=40,
+                           verbose=True, visualize=True, debug=False):
         tool_link = self.get_tool_link(arm)
         arm_joints = self.get_arm_joints(arm)
         title = 'robots.inverse_kinematics | '
         kwargs = dict(obstacles=obstacles, verbose=verbose, visualize=visualize, world=self.world)
 
+        if debug:
+            set_renderer(True)
         result = None
         with ConfSaver(self.body):
             for i in range(attempts):
@@ -452,12 +457,16 @@ class MobileRobot(RobotAPI):
                 if arm_conf is None:
                     continue
                 self.set_joint_positions(arm_joints, arm_conf)
+                if debug:
+                    time.sleep(0.5)
                 if not collided(self.body, tag='robot.TracIK', **kwargs):
                     result = arm_conf
                     if verbose:
                         print(title, f'found cfree ik for arm in attempt {i}/{attempts}')
                     break
 
+        if debug:
+            set_renderer(False)
         if result is not None:
             return arm_conf
             # base_joints = self.get_base_joints()
@@ -465,7 +474,7 @@ class MobileRobot(RobotAPI):
             # joint_state = dict(zip(base_joints + arm_joints, list(base_conf.values) + arm_conf.tolist()))
             # return Conf(self.body, arm_joints, arm_conf, joint_state=joint_state)
         if verbose:
-            print(title, f'didnt found cfree ik for arm after {attempts} attempts')
+            print(title, f'didnt find cfree ik for arm after {attempts} attempts')
         return None
 
 

@@ -23,7 +23,8 @@ from pybullet_tools.utils import create_box, set_base_values, set_point, set_pos
 from pybullet_tools.pr2_primitives import Conf, Grasp, Trajectory, Commands, State
 from pybullet_tools.general_streams import Position, get_grasp_list_gen, get_handle_link, \
     process_motion_fluents
-from pybullet_tools.bullet_utils import collided, set_camera_target_body, nice
+from pybullet_tools.bullet_utils import collided, nice
+from pybullet_tools.camera_utils import set_camera_target_body
 
 from pybullet_tools.ikfast.utils import IKFastInfo
 from pybullet_tools.ikfast.ikfast import * # For legacy purposes

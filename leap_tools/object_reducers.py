@@ -47,7 +47,7 @@ def reduce_facts_given_goals(facts, objects=[], goals=[]):
 
 
 def reduce_facts_given_objects(facts, objects=[], goals=[]):
-    from pybullet_tools.logging import myprint
+    from pybullet_tools.logging_utils import myprint
     myprint(f'\nfilter_init_by_objects | objects = {objects}')
 
     ## identify goal related objects

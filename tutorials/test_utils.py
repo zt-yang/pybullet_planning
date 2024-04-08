@@ -34,7 +34,7 @@ from pddlstream.algorithms.meta import create_parser
 
 
 def init_experiment(exp_dir):
-    from pybullet_tools.logging import TXT_FILE
+    from pybullet_tools.logging_utils import TXT_FILE
     if isfile(TXT_FILE):
         os.remove(TXT_FILE)
 
@@ -187,14 +187,6 @@ def load_model_instance(category, id, scale=1, location = (0, 0)):
 
     body, file = load_body(path, scale, location)
     return file, body, scale
-
-
-def draw_text_label(body, text, offset=(0, -0.05, .5)):
-    lower, upper = get_aabb(body)
-    position = ((lower[0] + upper[0]) / 2, (lower[1] + upper[1]) / 2, upper[2])
-    position = [position[i] + offset[i] for i in range(len(position))]
-    add_text(text, position=position, color=(1, 0, 0), lifetime=0)
-
 
 
 ###########################################################################

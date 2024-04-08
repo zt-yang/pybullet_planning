@@ -17,9 +17,11 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     get_joint_type, PoseSaver
 from pybullet_tools.pr2_primitives import Pose, Grasp
 
-from pybullet_tools.bullet_utils import sample_obj_in_body_link_space, nice, is_contained, \
-    visualize_point, collided, ObjAttachment, set_camera_target_body, is_box_entity, \
-    sample_obj_on_body_link_surface, query_yes_no
+from pybullet_tools.bullet_utils import nice, visualize_point, collided, is_box_entity, \
+    query_yes_no
+from pybullet_tools.pose_utils import sample_obj_in_body_link_space, is_contained, \
+    ObjAttachment, sample_obj_on_body_link_surface
+from pybullet_tools.camera_utils import set_camera_target_body
 from pybullet_tools.grasp_utils import get_hand_grasps, sample_from_pickled_grasps
 
 
@@ -613,11 +615,13 @@ def sample_joint_position_gen(num_samples=14, closed=False, visualize=False):
 """
 
 
-def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=PI/4):  # None | PI/4 | INF
+def is_top_grasp(robot, arm, body, grasp, pose=None, top_grasp_tolerance=PI/4):  # None | PI/4 | INF
     if top_grasp_tolerance is None:
         return True
     if not isinstance(grasp, tuple):
         grasp = grasp.value
+    if pose is None:
+        pose = get_pose(body)
     grasp_pose = robot.get_grasp_pose(pose, grasp, arm, body=body)
     grasp_orientation = (Point(), quat_from_pose(grasp_pose))
     grasp_direction = tform_point(grasp_orientation, Point(x=+1))
@@ -625,7 +629,7 @@ def is_top_grasp(robot, arm, body, grasp, pose=unit_pose(), top_grasp_tolerance=
 
 
 def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None,  # None | PI/4 | INF
-                  randomize=True, verbose=True, debug=False,
+                  randomize=True, verbose=True, num_samples=20, debug=False,
                   test_offset=False, loaded_offset=None, **kwargs):
     robot = problem.robot
     world = problem.world
@@ -638,7 +642,8 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None,  # None | 
         if loaded is None:
             grasps_O = get_hand_grasps(world, body, verbose=verbose, test_offset=test_offset, **kwargs)
         else:
-            grasps_O, handles = sample_from_pickled_grasps(loaded, pose=get_pose(body), offset=loaded_offset)
+            grasps_O, handles = sample_from_pickled_grasps(loaded, pose=get_pose(body),
+                                                           offset=loaded_offset, k=num_samples)
             robot.debug_handles += handles
             randomize_here = False
 
@@ -675,7 +680,7 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None,  # None | 
 
 def get_grasp_list_gen(problem, collisions=True, num_samples=10, **kwargs):
     from pybullet_tools.pr2_primitives import get_grasp_gen as get_box_grasp_gen
-    funk = get_grasp_gen(problem, collisions, **kwargs)
+    funk = get_grasp_gen(problem, collisions, num_samples=num_samples, **kwargs)
     funk2 = get_box_grasp_gen(problem, collisions)
 
     def gen(body):
@@ -814,14 +819,17 @@ def get_pose_from_attachment(problem):
     return fn
 
 
-def get_reachable_test(radius=1.3, **kwargs):
+def get_reachable_test(radius=1.3, verbose=False):
     def test(a, o, p, g, q):
         with PoseSaver(o):
             set_pose(o, p.value)
             c_obj = get_aabb_center(get_aabb(o))[:2]
             c_robot = q.values[:2]
             distance = np.linalg.norm(c_obj - np.asarray(c_robot))
-            return distance < radius
+            result = distance < radius
+            if verbose:
+                print(f'general_streams.get_reachable_test({o}, {p}, {q}) -> {result}')
+            return result
     return test
 
 

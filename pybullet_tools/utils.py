@@ -3612,7 +3612,8 @@ def body_collision(body1, body2, **kwargs):
     results = get_closest_points(body1, body2, **kwargs)
 
     ## YANG: debugging
-    from pybullet_tools.bullet_utils import nice, set_camera_target_body
+    # from pybullet_tools.bullet_utils import nice
+    # from pybullet_tools.camera_utils import set_camera_target_body
     # handles = []
     # for collision_info in results:
     #     handles.extend(draw_collision_info(collision_info, color=YELLOW))
@@ -3918,7 +3919,7 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
     # TODO: sort bodies by bounding box size
 
     def collision_fn(q, verbose=False):
-        from pybullet_tools.bullet_utils import set_camera_target_body
+        # from pybullet_tools.camera_utils import set_camera_target_body
         ## set_camera_target_body(body, dx=0.2, dy=-0.2, dz=0.2)
         if limits_fn(q):
             if verbose:

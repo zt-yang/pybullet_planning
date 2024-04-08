@@ -22,9 +22,10 @@ from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_
 from robot_builder.robot_builders import build_skill_domain_robot
 
 from world_builder.world import State
-from world_builder.world_utils import load_asset, get_instance_name, get_partnet_doors, get_partnet_spaces
+from world_builder.world_utils import load_asset, get_instance_name, get_partnet_doors, get_partnet_spaces, \
+    draw_body_label
 
-from tutorials.test_utils import get_test_world, load_body, get_instances, draw_text_label, \
+from tutorials.test_utils import get_test_world, load_body, get_instances, \
     load_model_instance, get_model_path, get_y_gap
 
 

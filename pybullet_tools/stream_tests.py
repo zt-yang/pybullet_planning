@@ -16,15 +16,17 @@ from pybullet_tools.pr2_primitives import get_group_joints, get_base_custom_limi
     get_ik_ir_gen, move_cost_fn, Attach, Detach, Clean, Cook, \
     get_gripper_joints, GripperCommand, Simultaneous, create_trajectory
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, get_handle_grasp_list_gen, \
-    get_handle_grasp_gen, get_compute_pose_kin, sample_joint_position_closed_gen, get_contain_gen
+    get_handle_grasp_gen, get_compute_pose_kin, sample_joint_position_closed_gen, get_contain_gen, \
+    get_stable_list_gen
 from pybullet_tools.grasp_utils import enumerate_rotational_matrices, \
     enumerate_translation_matrices, test_transformations_template
 
-from pybullet_tools.bullet_utils import set_camera_target_body, colors, color_names, \
+from pybullet_tools.bullet_utils import colors, color_names, \
     nice, BASE_LIMITS, initialize_collision_logs, collided
+from pybullet_tools.camera_utils import set_camera_target_body
 from pybullet_tools.pr2_problems import create_pr2
 from pybullet_tools.pr2_utils import create_pr2_gripper, set_group_conf
-from pybullet_tools.utils import get_client, quat_from_euler, remove_handles, \
+from pybullet_tools.utils import get_client, quat_from_euler, remove_handles, PI, \
     Pose, get_bodies, pairwise_collision, get_pose, point_from_pose, set_renderer, get_joint_name, \
     remove_body, LockRenderer, WorldSaver, wait_if_gui, SEPARATOR, safe_remove, ensure_dir, \
     get_distance, get_max_limit, BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS, wait_unlocked
@@ -167,7 +169,7 @@ def test_loaded_grasp_offset(state, args):
     test_transformations_template(rotations, translations, funk, title, skip_until=5)
 
 
-def test_grasps(state, name='cabbage', visualize=False, debug=False,
+def test_grasps(state, name='cabbage', visualize=True, debug=True,
                 loaded_offset=None, randomize=True):
     """
     visualize = True:   to see all grasps for selecting the grasp index to plan for
@@ -183,7 +185,7 @@ def test_grasps(state, name='cabbage', visualize=False, debug=False,
 
     funk = get_grasp_list_gen(state, verbose=True, visualize=False, retain_all=False,
                               loaded_offset=loaded_offset, randomize=randomize,
-                              top_grasp_tolerance=None)  ## PI/4
+                              top_grasp_tolerance=PI/1.7)  ## PI/4 | None
     outputs = funk(body)
 
     if 'left_gripper' in robot.joint_groups:
@@ -367,18 +369,22 @@ def test_pulling_handle_ik(problem):
         break
 
 
-def test_pose_gen(problem, init, args, visualize=False):
+def test_pose_gen(problem, init, args, num_samples=30, visualize=True, debug=True):
     o, s = args
     pose = [i for i in init if i[0].lower() == "AtPose".lower() and i[1] == o][0][-1]
     if isinstance(o, Object):
         o = o.body
-    funk = get_stable_gen(problem, visualize=visualize)(o, s)
-    p = next(funk)[0]
-    print(f'test_pose_gen({o}, {s}) | {p}')
-    if visualize:
+    results = get_stable_list_gen(problem, num_samples=num_samples, visualize=visualize)(o, s)
+    for (p, ) in results:
+        if not debug:
+            break
+        p.assign()
+        time.sleep(0.5)
+    if visualize and not debug:
         p.assign()
         wait_unlocked()
     pose.assign()
+    print(f'test_pose_gen({o}, {s}) | {p}')
     return [('AtPose', o, p)], [('Pose', o, p), ('Supported', o, p, s)]
 
 

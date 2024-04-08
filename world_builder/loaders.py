@@ -5,7 +5,7 @@ import string
 from pybullet_tools.utils import PI, create_box, TAN, Point, \
     BLACK, RGBA, YELLOW, set_all_static, set_color, get_aabb, get_link_name, get_links, link_from_name, AABB, INF, clip, aabb_union, get_aabb_center, Pose, Euler, \
     get_box_geometry, get_aabb_extent, multiply, GREY, create_shape_array, create_body, STATIC_MASS, set_renderer, quat_from_euler
-from pybullet_tools.bullet_utils import set_camera_target_body
+from pybullet_tools.camera_utils import set_camera_target_body
 
 from world_builder.world_utils import LIGHT_GREY, read_xml, load_asset, FLOOR_HEIGHT, WALL_HEIGHT, \
     find_point_for_single_push, ASSET_PATH

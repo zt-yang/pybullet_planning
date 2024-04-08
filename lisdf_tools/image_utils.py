@@ -8,7 +8,7 @@ from os.path import join, isdir, abspath, dirname, isfile
 sys.path.append(abspath(join(dirname(__file__), '..')))
 
 
-from pybullet_tools.bullet_utils import get_segmask
+from pybullet_tools.camera_utils import get_segmask
 
 
 def hex_to_rgba(color):

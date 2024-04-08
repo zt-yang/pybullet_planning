@@ -181,7 +181,7 @@ def copy_dir_for_process(viz_dir, tag=None, verbose=True, print_fn=None):
     if not verbose:
         print_fn = print
     elif print_fn is None:
-        from pybullet_tools.logging import myprint as print_fn
+        from pybullet_tools.logging_utils import myprint as print_fn
 
     clear_constraint_networks(viz_dir)
 

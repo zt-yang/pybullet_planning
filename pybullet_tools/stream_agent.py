@@ -24,9 +24,10 @@ from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_
     get_handle_grasp_gen, get_compute_pose_kin, get_compute_pose_rel_kin, \
     get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
     get_bconf_close_to_surface, sample_joint_position_closed_gen, get_cfree_rel_pose_pose_test, \
-    get_cfree_approach_rel_pose_test, get_reachable_test
-from pybullet_tools.bullet_utils import summarize_facts, print_plan, print_goal, set_camera_target_body, \
-    nice, BASE_LIMITS, initialize_collision_logs, collided, clean_preimage, summarize_bconfs, summarize_poses
+    get_cfree_approach_rel_pose_test, get_reachable_test, get_stable_list_gen
+from pybullet_tools.camera_utils import set_camera_target_body
+from pybullet_tools.bullet_utils import BASE_LIMITS, initialize_collision_logs, clean_preimage
+from pybullet_tools.logging_utils import summarize_facts, print_plan, print_goal, summarize_bconfs, summarize_poses
 from pybullet_tools.pr2_utils import create_pr2_gripper, set_group_conf
 from pybullet_tools.pr2_streams import DEFAULT_RESOLUTION
 from pybullet_tools.utils import get_client, get_joint_limits, \
@@ -55,9 +56,10 @@ from world_builder.actions import get_primitive_actions, repair_skeleton
 
 def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
                    pull_collisions=True, base_collisions=True, debug=False, verbose=False,
-                   use_all_grasps=False, top_grasp_tolerance=False, resolution=DEFAULT_RESOLUTION):
+                   use_all_grasps=False, top_grasp_tolerance=False,
+                   resolution=DEFAULT_RESOLUTION, num_grasps=20):
     """ p = problem, c = collisions, l = custom_limits, t = teleport """
-    from pybullet_tools.logging import myprint as print
+    from pybullet_tools.logging_utils import myprint as print
 
     movable_collisions &= c
     motion_collisions &= c
@@ -76,14 +78,14 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
     debug_grasp = False
 
     stream_map = {
-        'sample-pose': from_gen_fn(get_stable_gen(p, collisions=c, verbose=debug_pose)),
-        'sample-relpose': from_gen_fn(get_stable_gen(p, collisions=c, relpose=True, verbose=debug_pose)),
+        'sample-pose': from_gen_fn(get_stable_list_gen(p, collisions=c, num_samples=30, verbose=debug_pose)),
+        'sample-relpose': from_gen_fn(get_stable_list_gen(p, collisions=c, num_samples=30, relpose=True, verbose=debug_pose)),
         'sample-pose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, verbose=debug_pose)),
         'sample-relpose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, relpose=True, verbose=debug_pose)),
 
         'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False, verbose=debug_grasp,
-                                                       top_grasp_tolerance=top_grasp_tolerance,
-                                                       use_all_grasps=use_all_grasps, debug=True)),
+                                                       top_grasp_tolerance=top_grasp_tolerance, debug=True,
+                                                       use_all_grasps=use_all_grasps, num_samples=num_grasps)),
         'compute-pose-kin': from_fn(get_compute_pose_kin()),
         'compute-pose-rel-kin': from_fn(get_compute_pose_rel_kin()),
 
@@ -437,10 +439,10 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
                                init_facts=[], ## avoid duplicates
                                facts=[],  ## completely overwrite
                                objects=None,  ## only some objects included in planning
-                               collisions=True, teleport=False, PRINT=True, print_fn=None,
+                               collisions=True, teleport=False, verbose=True, print_fn=None,
                                **kwargs):
     if print_fn is None:
-        from pybullet_tools.logging import myprint as print_fn
+        from pybullet_tools.logging_utils import myprint as print_fn
 
     robot = state.robot
     world = state.world
@@ -462,8 +464,7 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     goal = process_debug_goals(state, goals, init)
     init = fix_init_given_goals(goal[1:], init)
 
-    if PRINT:
-        summarize_facts(init, world, name='Facts extracted from observation', print_fn=print_fn)
+    summarize_facts(init, world, name='Facts extracted from observation', print_fn=print_fn)
 
     ## make all pred lower case
     new_init = []
@@ -479,16 +480,15 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
         init = init + init_added
 
     stream_map = robot.get_stream_map(problem, collisions, custom_limits, teleport,
-                                      domain_pddl=domain_pddl, **kwargs)
+                                      domain_pddl=domain_pddl, verbose=verbose, **kwargs)
     domain_pddl = read(domain_pddl)
     stream_pddl = read(stream_pddl)
     constant_map = {k: k for k in state.world.constants}
 
     goal = [g for g in goal if not (g[0] == 'not' and g[1][0] == '=')]
 
-    if PRINT:
-        print_goal(goal, world=world, print_fn=print_fn)
-        world.summarize_body_indices(print_fn=print_fn)
+    print_goal(goal, world=world, print_fn=print_fn)
+    world.summarize_body_indices(print_fn=print_fn)
     return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
 
 
@@ -540,7 +540,7 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visual
               max_time=INF, downward_time=10, evaluation_time=10, stream_planning_timeout=30,
               max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=0, **kwargs):
 
-    from pybullet_tools.logging import myprint as print
+    from pybullet_tools.logging_utils import myprint as print
 
     # skeleton = get_test_skeleton()
     # subgoals = get_test_subgoals(pddlstream_problem.init)
@@ -686,7 +686,7 @@ def get_debug_checker(world):
 def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=False,
                      collect_dataset=False, domain_modifier=None,
                      profile=True, lock=False, max_time=5*50, preview=False, **kwargs):
-    from pybullet_tools.logging import myprint as print
+    from pybullet_tools.logging_utils import myprint as print
 
     start_time = time.time()
 

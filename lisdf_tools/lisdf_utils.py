@@ -20,7 +20,8 @@ from pybullet_tools.utils import remove_handles, remove_body, get_bodies, remove
     parent_joint_from_link, set_color, dump_body, RED, YELLOW, GREEN, BLUE, GREY, BLACK, read, get_client, \
     reset_simulation, get_movable_joints, JOINT_TYPES, get_joint_type, is_movable, wait_unlocked
 from pybullet_tools.bullet_utils import nice, sort_body_parts, equal, clone_body_link, \
-    toggle_joint, get_door_links, set_camera_target_body
+    toggle_joint, get_door_links
+from pybullet_tools.camera_utils import set_camera_target_body
 
 from pddlstream.language.constants import AND, PDDLProblem
 

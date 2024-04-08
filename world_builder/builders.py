@@ -16,7 +16,8 @@ from robot_builder.robot_builders import get_robot_builder, create_gripper_robot
 
 from pybullet_tools.utils import Pose, PI, create_box, TAN, Point, set_camera_pose, link_from_name, \
     connect, enable_preview, draw_pose, unit_pose, set_all_static, get_aabb
-from pybullet_tools.bullet_utils import set_camera_target_body, open_joint, get_datetime
+from pybullet_tools.bullet_utils import open_joint, get_datetime
+from pybullet_tools.camera_utils import set_camera_target_body
 
 
 def set_time_seed():

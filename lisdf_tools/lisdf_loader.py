@@ -17,8 +17,9 @@ from pybullet_tools.utils import get_bodies, remove_body, load_pybullet, connect
     set_camera_pose2, get_pose, get_joint_position, get_link_pose, get_link_name, \
     get_links, get_joints, get_joint_name, set_color, reset_simulation, get_movable_joints, is_movable
 from pybullet_tools.bullet_utils import nice, sort_body_parts, clone_body_link, \
-    toggle_joint, get_door_links, set_camera_target_body, colorize_world, colorize_link, find_closest_match, \
-    is_box_entity, summarize_facts
+    toggle_joint, get_door_links, colorize_world, colorize_link, find_closest_match, is_box_entity
+from pybullet_tools.camera_utils import set_camera_target_body
+from pybullet_tools.logging_utils import summarize_facts
 from pybullet_tools.pr2_streams import get_handle_link
 
 from robot_builder.robot_builders import create_pr2_robot, create_gripper_robot
@@ -252,7 +253,7 @@ class World(WorldBase):
     def summarize_all_objects(self, init=None, print_fn=None):
         """ call this after pddl_to_init_goal() where world.update_objects() happens """
         if print_fn is None:
-            from pybullet_tools.logging import myprint as print_fn
+            from pybullet_tools.logging_utils import myprint as print_fn
 
         self.check_world_obstacles()
         ob = [n for n in self.fixed if n not in self.floors]

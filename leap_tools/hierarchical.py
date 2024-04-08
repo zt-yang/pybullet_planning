@@ -785,7 +785,7 @@ class PDDLStreamEnv(PDDLEnv):
     #     literal =
 
     def compute_preimgae(self, extended_plan, verbose=True):
-        from pybullet_tools.logging import myprint as print
+        from pybullet_tools.logging_utils import myprint as print
 
         conditional_tests = []
         all_preimages = []
@@ -921,7 +921,7 @@ class PDDLStreamEnv(PDDLEnv):
         return list(self.pre_images.values())[len(self.pre_images)-1-num]
 
     def get_preimage_after(self, op):
-        from pybullet_tools.logging import myprint as print
+        from pybullet_tools.logging_utils import myprint as print
 
         ## the op can be an axiom, thus skip
         if op not in self.actions_after: return None

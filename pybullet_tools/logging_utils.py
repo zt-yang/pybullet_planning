@@ -6,6 +6,7 @@ from datetime import datetime
 import csv
 import pprint
 
+
 TXT_FILE = abspath('txt_file.txt')
 
 
@@ -145,3 +146,105 @@ def save_commands(commands, commands_path):
         import pickle
         with open(commands_path, 'wb') as file:
             pickle.dump(commands, file)
+
+
+#######################################################
+
+
+def get_readable_list(lst, world=None, NAME_ONLY=False, TO_LISDF=False):
+    to_print = [lst[0]]
+    for word in lst[1:]:
+        if world is not None:
+            name = world.get_name(word)
+            last_is_tuple = (len(to_print) != 0) and isinstance(to_print[-1], tuple)
+            if name is not None and not last_is_tuple: ## ['=', ('PickCost',), 'pr2|1']
+                if TO_LISDF:
+                    name = world.get_lisdf_name(word)
+                elif not NAME_ONLY:
+                    name = world.get_debug_name(word)
+                to_print.append(name)
+            else:
+                to_print.append(word)
+        else:
+            to_print.append(word)
+    return to_print
+
+
+def summarize_facts(facts, world=None, name='Initial facts', print_fn=None):
+    if print_fn is None:
+        print_fn = myprint
+    print_fn('----------------')
+    print_fn(f'{name} ({len(facts)})')
+    predicates = {}
+    for fact in facts:
+        pred = fact[0].lower()
+        if pred not in predicates:
+            predicates[pred] = []
+        predicates[pred].append(fact)
+    predicates = {k: v for k, v in sorted(predicates.items())}
+    # predicates = {k: v for k, v in sorted(predicates.items(), key=lambda item: len(item[1][0]))}
+    for pred in predicates:
+        to_print_line = [get_readable_list(fa, world) for fa in predicates[pred]]
+        to_print_line = sorted([str(l).lower() for l in to_print_line])
+        to_print = ', '.join(to_print_line)
+        print_fn(f'  {pred} [{len(to_print_line)}] : {to_print}')
+    print_fn('----------------')
+
+
+def print_plan(plan, world=None, print_fn=None):
+    from pddlstream.language.constants import is_plan
+    if print_fn is None:
+        print_fn = myprint
+
+    if not is_plan(plan):
+        return
+    step = 1
+    print_fn('Plan:')
+    for action in plan:
+        name, args = action
+        if name.startswith('_'):
+            print_fn(f' ) {name}')
+            continue
+        args2 = [str(a) for a in get_readable_list(args, world)]
+        print_fn('{:2}) {} {}'.format(step, name, ' '.join(args2)))
+        step += 1
+    print_fn()
+
+
+def print_goal(goal, world=None, print_fn=None):
+    if print_fn is None:
+        print_fn = myprint
+
+    print_fn(f'Goal ({len(goal) - 1}): ({goal[0]}')
+    for each in get_readable_list(goal[1:], world):
+        print_fn(f'   {tuple(each)},')
+    print_fn(')')
+
+
+def summarize_poses(preimage):
+    from pybullet_tools.bullet_utils import nice
+    atposes = [f[-1] for f in preimage if f[0].lower() == 'atpose']
+    poses = [f[-1] for f in preimage if f[0].lower() == 'pose' if f[-1] not in atposes]
+
+    print('\n' + '=' * 25 + ' poses that can be cached to loaders_{domain}.py ' + '=' * 25)
+    for pose in poses:
+        print(nice(pose.value, keep_quat=True))
+    print('-'*50+'\n')
+
+
+def summarize_bconfs(preimage, plan):
+    from pybullet_tools.bullet_utils import nice
+    bconfs = [f[1] for f in preimage if f[0].lower() == 'bconf' and f[1].joint_state is not None]
+    bconfs_ordered = []
+    for action in plan:
+        for arg in action.args:
+            if arg in bconfs and arg not in bconfs_ordered:
+                bconfs_ordered.append(arg)
+
+    print('\n' + '=' * 25 + ' bconfs that can be cached to loaders_{domain}.py ' + '=' * 25)
+    for bconf in bconfs_ordered:
+        joint_state = {k: nice(v) for k, v in bconf.joint_state.items()}
+        print(f"({nice(bconf.values)}, {joint_state}), ")
+    print('-'*50+'\n')
+
+## -----------------------------------------------------------

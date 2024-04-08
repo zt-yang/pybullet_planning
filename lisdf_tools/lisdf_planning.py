@@ -13,7 +13,7 @@ from pybullet_tools.pr2_primitives import Pose, Conf, APPROACH_DISTANCE, Grasp, 
 from pybullet_tools.pr2_utils import get_arm_joints, get_group_joints
 from pybullet_tools.utils import quat_from_euler, remove_body, get_unit_vector, unit_quat, \
     multiply, get_bodies
-from pybullet_tools.bullet_utils import xyzyaw_to_pose
+from pybullet_tools.pose_utils import xyzyaw_to_pose
 from pybullet_tools.flying_gripper_utils import get_se3_joints
 
 

@@ -25,10 +25,11 @@ from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_
     get_stable_list_gen, get_handle_grasp_gen, sample_joint_position_gen
 
 from world_builder.world import State
+from world_builder.world_utils import draw_body_label
 from world_builder.loaders import create_house_floor, create_table, create_movable
 from world_builder.asset_constants import MODEL_HEIGHTS, MODEL_SCALES
 
-from tutorials.test_utils import get_test_world, load_body, get_instances, draw_text_label, \
+from tutorials.test_utils import get_test_world, load_body, get_instances, \
     load_model_instance, get_model_path, get_y_gap
 from tutorials.config import ASSET_PATH
 
