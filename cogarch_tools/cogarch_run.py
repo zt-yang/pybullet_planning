@@ -106,7 +106,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
     agent.init_experiment(args, domain_modifier=domain_modifier, object_reducer=object_reducer, comparing=comparing)
 
     ## for visualizing observation
-    if hasattr(args, 'save_initial_observation') and args.save_initial_observation:
+    if (hasattr(args, 'save_initial_observation') and args.save_initial_observation) or hasattr(agent, 'llamp_api'):
         state.world.initiate_observation_cameras()
         state.save_default_observation(output_path=join(agent.llamp_api.obs_dir, 'observation_0.png'))
 

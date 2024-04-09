@@ -433,7 +433,6 @@ class MobileRobot(RobotAPI):
         if has_tracik():
             from pybullet_tools.tracik import IKSolver
             if self.ik_solvers[arm] is None:
-                # print(f'\n\nrobots.initializing IKSolver({arm}, tool_link={tool_link}, first_joint={arm_joint})\n\n')
                 self.ik_solvers[arm] = IKSolver(self.body, tool_link=tool_link, first_joint=arm_joint, **kwargs)
             current_conf = self.get_arm_conf(arm).values
             return self.ik_solvers[arm].solve(gripper_pose, seed_conf=current_conf)

@@ -227,7 +227,7 @@ class World(WorldBase):
         self.OBJECTS_BY_CATEGORY = defaultdict(list)
         self.REMOVED_BODY_TO_OBJECT = {}
         self.REMOVED_OBJECTS_BY_CATEGORY = defaultdict(list)
-        self.ATTACHMENTS = {}
+        self.ATTACHMENTS = {}  ## {child_obj: create_attachment(parent_obj, link_name, child_obj)}
 
         self.sub_categories = {}
         self.sup_categories = {}
@@ -1594,7 +1594,8 @@ class World(WorldBase):
 
     def get_type(self, body):
         obj = self.BODY_TO_OBJECT[body] if body in self.BODY_TO_OBJECT else self.REMOVED_BODY_TO_OBJECT[body]
-        return [obj.category]
+        return obj.categories
+        # return [obj.category]
 
     def find_surfaces_for_placement(self, obj, surfaces, verbose=False):
         from pybullet_tools.pr2_streams import get_stable_gen

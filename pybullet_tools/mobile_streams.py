@@ -577,7 +577,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
 
         set_joint_positions(robot, arm_joints, default_conf)
         approach_path = plan_joint_motion(robot, arm_joints, dest_conf, obstacles=obstacles_here, resolutions=resolutions,
-                                          restarts=2, iterations=25, smooth=0, **motion_planning_kwargs)  # smooth=25
+                                          restarts=2, iterations=25, smooth=50, **motion_planning_kwargs)  # smooth=25
         if approach_path is None:
             if verbose: print(f'{title}\tApproach path failure')
             if visualize:

@@ -255,7 +255,7 @@ class PDDLStreamAgent(MotionAgent):
         self.commands.append(action)
 
     def save_commands(self, commands_path):
-        self.robot.ik_solvers = None
+        self.robot.ik_solvers = {arm: None for arm in self.robot.arms}
         self.world.learned_pose_list_gen = None
         self.world.learned_bconf_list_gen = None
         save_commands(self.commands, commands_path)
