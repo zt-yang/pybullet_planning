@@ -14,13 +14,13 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     get_joint_limits, unit_pose, point_from_pose, draw_point, PI, quat_from_pose, angle_between, \
     tform_point, interpolate_poses, draw_pose, RED, remove_handles, stable_z, wait_unlocked, \
     get_aabb_center, set_renderer, timeout, get_aabb_extent, wait_if_gui, wait_for_duration, \
-    get_joint_type, PoseSaver
+    get_joint_type, PoseSaver, draw_aabb
 from pybullet_tools.pr2_primitives import Pose, Grasp
 
 from pybullet_tools.bullet_utils import nice, visualize_point, collided, is_box_entity, \
     query_yes_no
 from pybullet_tools.pose_utils import sample_obj_in_body_link_space, is_contained, \
-    ObjAttachment, sample_obj_on_body_link_surface
+    ObjAttachment, sample_obj_on_body_link_surface, has_much_larger_aabb
 from pybullet_tools.camera_utils import set_camera_target_body
 from pybullet_tools.grasp_utils import get_hand_grasps, sample_from_pickled_grasps
 
@@ -266,7 +266,8 @@ def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visu
         #     attachments = process_motion_fluents(fluents, robot)
 
         title = f"  get_stable_gen({body}, {surface}) |"
-        p0 = Pose(body, get_pose(body), surface)
+        original_pose = get_pose(body)
+        p0 = Pose(body, original_pose, surface)
 
         if surface is None:
             surfaces = problem.surfaces
@@ -299,8 +300,11 @@ def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visu
             surface = random.choice(surfaces)  # TODO: weight by area
             if isinstance(surface, tuple):  ## (body, link)
                 body_pose = sample_placement(body, surface[0], bottom_link=surface[-1], **kwargs)
-            else:
+            elif has_much_larger_aabb(surface, body):
                 body_pose = smarter_sample_placement(body, surface, world, **kwargs)
+            else:
+                body_pose = sample_placement(body, surface, percent=0, **kwargs)  ## ok if one dimension is smaller
+                body_pose = (body_pose[0], original_pose[1])
             if body_pose is None:
                 break
 
@@ -642,7 +646,7 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None,  # None | 
         if loaded is None:
             grasps_O = get_hand_grasps(world, body, verbose=verbose, test_offset=test_offset, **kwargs)
         else:
-            grasps_O, handles = sample_from_pickled_grasps(loaded, pose=get_pose(body),
+            grasps_O, handles = sample_from_pickled_grasps(loaded, pose=get_pose(body), debug=debug,
                                                            offset=loaded_offset, k=num_samples)
             robot.debug_handles += handles
             randomize_here = False

@@ -154,7 +154,7 @@ def load_cooking_mechanism(world):
     # dishwasher_door = world.add_joints_by_keyword('dishwasher', 'dishwasher_door')[0]
 
 
-def reduce_objects_for_open_kitchen(world):
+def get_objects_for_open_kitchen(world):
     object_names = ['chicken-leg', 'fridge', 'fridge_door', 'fork',
                     'braiserbody', 'braiserlid', 'braiser_bottom',
                     'indigo_drawer_top', 'indigo_drawer_top_joint', 'indigo_tmp',
@@ -200,7 +200,7 @@ def load_open_problem_kitchen(world, reduce_objects=False, open_doors_for=[]):
 
     objects = None
     if reduce_objects:
-        objects = reduce_objects_for_open_kitchen(world)
+        objects = get_objects_for_open_kitchen(world)
     return objects, movables, movable_to_doors
 
 

@@ -152,31 +152,39 @@ def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=False, v
     return goals
 
 
-def test_loaded_grasp_offset(state, args):
-    rotations = enumerate_rotational_matrices(return_list=True)
+def test_loaded_grasp_offset(state, args, test_translations=False, test_rotations=False,
+                             show_debug_triads=True):
     rotations = [(0, 0, -1.571), (0, 0, 1.571), (0, 0, 0), (0, 0, 3.142)]  ## , skip_until=22
+    rotations = [(0, 0, 0)]  ## tested on bananas
+    translations = [(0, 0, 0)]
+    translations = [(-0.01, 0, -0.03), (0, -0.01, -0.03)]  ## (0, 0, -0.03),
+    skip_until = None  ## None
 
-    # translations = [(0, 0, 0)]
-    translations = enumerate_translation_matrices(x=0.03, negations=True)
+    if test_translations:
+        translations = enumerate_translation_matrices(x=0.03, negations=True)
+    if test_rotations:
+        rotations = enumerate_rotational_matrices(return_list=True)
 
     def funk(t, r):
         offset = (t, quat_from_euler(r))
         remove_handles(state.world.robot.debug_handles)
-        test_grasps(state, args, visualize=True, debug=False,
-                    loaded_offset=offset, randomize=False)
+        test_grasps(state, args, visualize=True, debug=False, randomize=False,
+                    loaded_offset=offset, debug_triads=show_debug_triads)
 
     title = 'stream_tests.test_loaded_grasp_offset'
-    test_transformations_template(rotations, translations, funk, title, skip_until=5)
+    return test_transformations_template(rotations, translations, funk, title, skip_until=skip_until)
 
 
-def test_grasps(state, name='cabbage', visualize=True, debug=True,
-                loaded_offset=None, randomize=True):
+def test_grasps(state, name='cabbage', visualize=True, debug=True, debug_triads=False,
+                loaded_offset=None, randomize=True, top_grasp_tolerance=None):
     """
     visualize = True:   to see all grasps for selecting the grasp index to plan for
     debug = True:       show the grasp to plan for
     """
     set_renderer(True)
     title = 'stream_tests.test_grasps | '
+    if isinstance(name, tuple):
+        name, top_grasp_tolerance = name
     if isinstance(name, str):
         body = state.world.name_to_body(name)
     else:  ## if isinstance(name, Object):
@@ -184,8 +192,9 @@ def test_grasps(state, name='cabbage', visualize=True, debug=True,
     robot = state.robot
 
     funk = get_grasp_list_gen(state, verbose=True, visualize=False, retain_all=False,
-                              loaded_offset=loaded_offset, randomize=randomize,
-                              top_grasp_tolerance=PI/1.7)  ## PI/4 | None
+                              randomize=randomize,
+                              loaded_offset=loaded_offset, debug=debug_triads,
+                              top_grasp_tolerance=top_grasp_tolerance)  ## PI/4 | None
     outputs = funk(body)
 
     if 'left_gripper' in robot.joint_groups:
@@ -369,12 +378,20 @@ def test_pulling_handle_ik(problem):
         break
 
 
-def test_pose_gen(problem, init, args, num_samples=30, visualize=True, debug=True):
-    o, s = args
+def test_pose_gen(state, init, args, num_samples=30, visualize=False, debug=False):
+    if len(args) == 2:
+        o, s = args
+        just_pick = False
+    elif len(args) == 3:
+        a, o, s = args
+        just_pick = True
+    else:
+        assert False, 'test_pose_gen | Invalid number of arguments'
+
     pose = [i for i in init if i[0].lower() == "AtPose".lower() and i[1] == o][0][-1]
     if isinstance(o, Object):
         o = o.body
-    results = get_stable_list_gen(problem, num_samples=num_samples, visualize=visualize)(o, s)
+    results = get_stable_list_gen(state, num_samples=num_samples, visualize=visualize)(o, s)
     for (p, ) in results:
         if not debug:
             break
@@ -383,8 +400,13 @@ def test_pose_gen(problem, init, args, num_samples=30, visualize=True, debug=Tru
     if visualize and not debug:
         p.assign()
         wait_unlocked()
-    pose.assign()
+
     print(f'test_pose_gen({o}, {s}) | {p}')
+    # if just_pick:
+    #     p.assign()
+    #     return [('Holding', a, o)], []  ## failed, can't just change initial state here
+    # else:
+    pose.assign()
     return [('AtPose', o, p)], [('Pose', o, p), ('Supported', o, p, s)]
 
 

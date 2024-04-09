@@ -519,13 +519,15 @@ def sample_from_pickled_grasps(grasps, pose=None, offset=None, k=15, debug=False
     ## for debugging grasp poses
     handles = []
     if pose is not None and debug:
+        grasps = grasps[:len(colors)]
         for i, grasp in enumerate(grasps):
             g = multiply(pose, pose_from_tform(grasp))
-            handles += draw_colored_pose(g, length=5e-2, color=colors[i])
+            handles += draw_colored_pose(g, length=0.1, color=colors[i])
 
     ## the tool_link in the saved grasps are different from that here
     if offset is None:
         offset = Pose(point=(-0.01, 0, -0.03), euler=Euler(0, 0, -math.pi/2))
+        offset = Pose(point=(0, -0.01, -0.03), euler=Euler(0, 0, 0))
 
     grasps = [multiply(pose_from_tform(g), offset) for g in grasps]
     return grasps, handles
@@ -538,6 +540,7 @@ def test_transformations_template(rotations, translations, funk, title, skip_unt
     total = len(rotations) * len(translations)
     print(f'\n{title} ({total})')
 
+    results = None
     for k1, r in enumerate(rotations):
         for k2, t in enumerate(translations):
             k = k1 * len(translations) + k2
@@ -547,5 +550,6 @@ def test_transformations_template(rotations, translations, funk, title, skip_unt
             print(f'\n[{k}/{total}]',
                   f'\t{k1}/{len(rotations)} r = {nice(r)}',
                   f'\t{k2}/{len(translations)} t = {nice(t)}')
-            funk(t, r)
+            results = funk(t, r)
     wait_for_user('finished')
+    return results

@@ -31,7 +31,7 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, pairw
     BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, tform_point, create_shape, STATIC_MASS, \
     get_box_geometry, create_body, get_link_parent, NULL_ID, get_joint_info, get_dynamics_info, \
     clone_collision_shape, clone_visual_shape, get_local_link_pose, get_joint_positions, \
-    collision_shape_from_data, visual_shape_from_data, is_unknown_file, create_collision_shape
+    sample_placement_on_aabb, visual_shape_from_data, is_unknown_file, create_collision_shape
 from pybullet_tools.bullet_utils import draw_fitted_box, draw_points, nice, nice_tuple, nice_float, \
     in_list
 
@@ -231,6 +231,14 @@ def sample_safe_placement(obj, region, obstacles=[], min_distance=MIN_DISTANCE):
         if not pairwise_collisions(obj, obstacles, max_distance=min_distance):
             set_pose(obj, pose)
             return pose
+
+
+def has_much_larger_aabb(body_larger, body_smaller):
+    extent_larger = get_aabb_extent(get_aabb(body_larger))[:2]
+    extent_smaller = get_aabb_extent(get_aabb(body_smaller))[:2]
+    area_larger = extent_larger[0] * extent_larger[1]
+    area_smaller = extent_smaller[0] * extent_smaller[1]
+    return area_larger > area_smaller * 4
 
 
 def check_placement(obj, region):
@@ -544,7 +552,9 @@ def change_pose_interactive(obj):
 
         if pressed in adjustments:
             pose += adjustments[pressed]
-            pose = nice(pose[0], quat_from_euler(pose[1]), keep_quat=True)
+            point = tuple(pose[0])
+            euler = tuple(pose[1])
+            pose = nice((point, quat_from_euler(euler)), keep_quat=True)
             print(f'\tnew pose of {obj.shorter_name}\t{pose}')
             set_pose(obj.body, pose)
 

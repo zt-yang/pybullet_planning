@@ -212,8 +212,7 @@ def nice(tuple_of_tuples, round_to=3, one_tuple=True, keep_quat=False):
         return []
 
     ## position, pose
-    elif isinstance(tuple_of_tuples[0], tuple) or isinstance(tuple_of_tuples[0], list) \
-            or isinstance(tuple_of_tuples[0], np.ndarray):
+    elif is_tuple(tuple_of_tuples[0]):
 
         ## pose = (point, quat) -> (point, euler)
         if len(tuple_of_tuples[0]) == 3 and len(tuple_of_tuples[1]) == 4:
@@ -224,8 +223,8 @@ def nice(tuple_of_tuples, round_to=3, one_tuple=True, keep_quat=False):
                 second_tuple = euler_from_quat(second_tuple)
             if one_tuple:
                 one_list = list(tuple_of_tuples[0]) + list(second_tuple)
-                return nice(tuple(one_list) , round_to)
-            return nice( (tuple_of_tuples[0], second_tuple), round_to)
+                return nice(tuple(one_list), round_to)
+            return nice(tuple_of_tuples[0], round_to), nice(second_tuple, round_to)
             ## pose = (point, quat) -> (x, y, z, yaw)
             # return pose_to_xyzyaw(tuple_of_tuples)
 

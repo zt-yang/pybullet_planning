@@ -81,6 +81,7 @@ class Pose(object):
 
 class Grasp(object):
     def __init__(self, grasp_type, body, value, approach, carry, index=None):
+        """ don't use grasp.carry because it should be arm independent """
         self.grasp_type = grasp_type
         self.body = body
         self.value = tuple(value) # gripper_from_object

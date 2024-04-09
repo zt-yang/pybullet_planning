@@ -48,7 +48,7 @@ class RobotAPI(Robot):
         self.grippers = {}
         self.possible_obstacles = {}  ## body: obstacles
         self.collision_animations = []
-        self.ik_solver = None
+        self.ik_solvers = {arm: None for arm in self.arms}
         self.debug_handles = []
 
     def get_init(self, init_facts=[], conf_saver=None):
@@ -432,11 +432,11 @@ class MobileRobot(RobotAPI):
         kwargs = dict(custom_limits=self.custom_limits)
         if has_tracik():
             from pybullet_tools.tracik import IKSolver
-            if self.ik_solver is None:
-
-                self.ik_solver = IKSolver(self.body, tool_link=tool_link, first_joint=arm_joint, **kwargs)
+            if self.ik_solvers[arm] is None:
+                # print(f'\n\nrobots.initializing IKSolver({arm}, tool_link={tool_link}, first_joint={arm_joint})\n\n')
+                self.ik_solvers[arm] = IKSolver(self.body, tool_link=tool_link, first_joint=arm_joint, **kwargs)
             current_conf = self.get_arm_conf(arm).values
-            return self.ik_solver.solve(gripper_pose, seed_conf=current_conf)
+            return self.ik_solvers[arm].solve(gripper_pose, seed_conf=current_conf)
 
         else:
             return sub_inverse_kinematics(self.body, arm_joint, tool_link, gripper_pose, **kwargs)

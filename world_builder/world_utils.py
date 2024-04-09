@@ -736,9 +736,9 @@ def smarter_sample_placement(body, surface, world, **kwargs):
         surface = world.BODY_TO_OBJECT[surface]
         xa, ya, za = surface.aabb().lower
         xb, yb, zb = surface.aabb().upper
-        obtacles = surface.supported_objects
+        obstacles = surface.supported_objects
         regions = [(ya, yb)]
-        for o in obtacles:
+        for o in obstacles:
             y1 = o.get_aabb().lower[1]
             y2 = o.get_aabb().upper[1]
             new_regions = []

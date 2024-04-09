@@ -59,7 +59,7 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True, 
         tool_from_root = robot.get_tool_from_root(arm)
         gripper_pose = multiply(robot.get_grasp_pose(pose_value, grasp.value, arm, body=grasp.body), invert(tool_from_root))
 
-        default_conf = grasp.carry
+        default_conf = robot.get_carry_conf(arm, grasp.grasp_type, grasp.value)
         arm_joints = robot.get_arm_joints(arm)
         base_joints = robot.get_base_joints()
         if learned:
@@ -296,7 +296,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
     # robot.remove_gripper(gripper_grasp)
 
     arm_joints = robot.get_arm_joints(a)
-    default_conf = g.carry
+    default_conf = robot.get_carry_conf(a, g.grasp_type, g.value)
 
     ## use domain specific bconf databases
     if learned and world.learned_bconf_list_gen is not None:
@@ -463,7 +463,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
     arm_link = robot.get_tool_link(arm)
     arm_joints = robot.get_arm_joints(arm)
 
-    default_conf = grasp.carry
+    default_conf = robot.get_carry_conf(arm, grasp.grasp_type, grasp.value)
     # sample_fn = get_sample_fn(robot, arm_joints)
     base_conf.assign()
     robot.open_arm(arm)
@@ -483,16 +483,17 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
         remove_body(gripper_approach)
         remove_body(gripper_grasp)
 
+    ## cached from whole-body IK
     if base_conf.joint_state is not None:
         grasp_conf = list(map(base_conf.joint_state.get, arm_joints))
-        set_joint_positions(robot, arm_joints, grasp_conf)
+    else:
+        grasp_conf = robot.inverse_kinematics(arm, gripper_pose, obstacles_here, verbose=verbose)
 
-        ## visualize the grasp conf
+    if grasp_conf is not None:
+        set_joint_positions(robot, arm_joints, grasp_conf)
         if visualize:
             set_renderer(True)
             wait_unlocked('solve_approach_ik | visualized the arm')
-    else:
-        grasp_conf = robot.inverse_kinematics(arm, gripper_pose, obstacles_here, verbose=verbose)
 
     if (grasp_conf is None) or collided(robot, obstacles_here, articulated=True, world=world, tag=title,
                                         verbose=verbose, ignored_pairs=ignored_pairs_here,
@@ -502,7 +503,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
             if grasp_conf is not None:
                 grasp_conf = nice(grasp_conf)
             print(
-                f'{title}Grasp IK failure | {grasp_conf} <- robot.inverse_kinematics({robot}, {nice(base_conf.values)},'
+                f'{title}Grasp IK failure | {grasp_conf} <- robot.inverse_kinematics({robot}, {nice(base_conf.values)}, '
                 f'{arm}, {nice(gripper_pose[0])}) | pose {pose_value}, grasp {grasp}')
         # if grasp_conf is not None:
         #    print(grasp_conf)
@@ -658,7 +659,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
 #         # co_kwargs['verbose'] = False
 #
 #         arm_joints = get_arm_joints(robot, a)
-#         default_conf = grasp.carry
+#         default_conf = robot.get_carry_conf(arm, grasp.grasp_type, grasp.value)
 #
 #         ## solve IK for all 13 joints
 #         if robot.use_torso and has_tracik():

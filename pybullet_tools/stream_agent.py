@@ -84,7 +84,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'sample-relpose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, relpose=True, verbose=debug_pose)),
 
         'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False, verbose=debug_grasp,
-                                                       top_grasp_tolerance=top_grasp_tolerance, debug=True,
+                                                       top_grasp_tolerance=top_grasp_tolerance, debug=False,
                                                        use_all_grasps=use_all_grasps, num_samples=num_grasps)),
         'compute-pose-kin': from_fn(get_compute_pose_kin()),
         'compute-pose-rel-kin': from_fn(get_compute_pose_rel_kin()),
