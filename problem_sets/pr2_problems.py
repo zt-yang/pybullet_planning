@@ -409,48 +409,6 @@ def test_fridge_pose(args, w=.5, h=.9, wb=.07, hb=.1):
 #######################################################
 
 
-def test_kitchen_fridge(args, domain='pr2_food.pddl', stream='pr2_stream.pddl'):
-    world = create_world(args)
-    world.set_skip_joints()
-
-    floor = load_kitchen_floor_plan(world, plan_name='kitchen_v2.svg')
-    # cabbage = load_experiment_objects(world)
-    # floor = load_floor_plan(world, plan_name='fridge_v2.svg')
-    egg = load_experiment_objects(world, CABBAGE_ONLY=True, name='eggblock', color=TAN)
-    world.remove_object(floor)
-    robot = create_pr2_robot(world, base_q=(1.79, 6, PI / 2 + PI / 2))
-
-    name_to_body = world.name_to_body
-
-    ## -- open the door, requires kitchen_v2 floorplan
-    # door = 'fridge_door'
-    # door = name_to_body(door)
-    door = world.add_joints_by_keyword('fridge', 'fridge_door')[0]
-    goals = ('test_handle_grasps', door)
-    goals = [("HandleGrasped", 'left', door)]
-    # goals = [("OpenedJoint", door)]
-    # goals = [("GraspedHandle", door)]
-    #
-    # ## -- just pick get the block
-    # world.open_joint_by_name('fridge_door')
-    # world.put_on_surface(egg, 'shelf_bottom')
-    # goals = [("Holding", "left", egg)]
-    #
-    # ## -- fix
-    # world.close_joint_by_name('fridge_door')
-    # goals = [('AtBConf', Conf(robot, get_group_joints(robot, 'base'), (2, 1, -PI)))]
-    # goals = ('test_grasps', egg)
-    # goals = [("Holding", "left", egg)]
-
-    set_all_static()
-    state = State(world)
-    exogenous = []
-
-    pddlstream_problem = pddlstream_from_state_goal(state, goals, custom_limits=args.base_limits,
-                                                    domain_pddl=args.domain_pddl, stream_pddl=args.stream_pddl) ##, stream_pddl='pr2_stream_wconf.pddl'
-    return state, exogenous, goals, pddlstream_problem
-
-
 def test_pr2_counter_minifridge(args, SAMPLED=True, robot_builder_args=None, **kwargs):
     world = create_world(args)
     # custom_limits = ((0, 0, 0.1), (6, 6, 1.5))

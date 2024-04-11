@@ -47,7 +47,8 @@ def test_grasp(problem, body, funk, test_attachment=False, test_offset=False, **
 
 def test_grasps(robot='feg', categories=[], given_instances=None, skip_grasps=False,
                 visualize=True, retain_all=True, verbose=False, test_attachment=False,
-                test_rotation_matrix=False, test_translation_matrix=False, skip_grasp_index=None, **kwargs):
+                test_rotation_matrix=False, test_translation_matrix=False, skip_grasp_index=None,
+                top_grasp_tolerance=None, **kwargs):
 
     from pybullet_tools.grasp_utils import enumerate_rotational_matrices as emu, enumerate_translation_matrices
 
@@ -75,7 +76,11 @@ def test_grasps(robot='feg', categories=[], given_instances=None, skip_grasps=Fa
 
             for i, cat in enumerate(categories):
 
-                tpt = math.pi / 4 if cat in ['Knife'] else None  ## , 'EyeGlasses', 'Plate'
+                if top_grasp_tolerance is None:
+                    tpt = math.pi / 4 if cat in ['Knife'] else None  ## , 'EyeGlasses', 'Plate'
+                else:
+                    tpt = top_grasp_tolerance
+
                 funk = get_grasp_list_gen(problem, collisions=True, visualize=visualize, retain_all=retain_all,
                                           verbose=verbose, top_grasp_tolerance=tpt, test_offset=test_offset,
                                           skip_grasp_index=skip_grasp_index)

@@ -10,7 +10,7 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
     ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles, \
     interpolate_poses, Pose, Euler, quat_from_euler, get_bodies, get_all_links, PI, \
     is_darwin, wait_for_user, YELLOW, euler_from_quat, wait_unlocked, set_renderer, \
-    sub_inverse_kinematics
+    sub_inverse_kinematics, Point
 
 from pybullet_tools.bullet_utils import equal, nice, is_tuple, \
     collided, query_yes_no, has_tracik, is_mesh_entity, get_rotation_matrix
@@ -35,6 +35,7 @@ class RobotAPI(Robot):
 
     arms = []
     tool_from_hand = unit_pose()
+    grasp_direction = Point(x=+1)  ## used by is_top_grasp
     joint_groups = dict()
 
     def __init__(self, body, move_base=True, max_distance=0.0,
@@ -149,7 +150,7 @@ class RobotAPI(Robot):
         return gripper
 
     def make_grasps(self, g_type, arm, body, grasps_O, collisions=True):
-        from pybullet_tools.general_streams import is_top_grasp
+        from pybullet_tools.grasp_utils import is_top_grasp
         app = self.get_approach_vector(arm, g_type)
         grasps_R = []
         for g in grasps_O:
@@ -412,8 +413,11 @@ class MobileRobot(RobotAPI):
         set_pose(gripper, grasp_pose)
         return gripper
 
-    def visualize_grasp(self, body_pose, grasp, arm='left', color=GREEN, cache=False,
+    def visualize_grasp(self, body_pose, grasp, arm=None, color=GREEN, cache=False,
                         new_gripper=False, width=None, **kwargs):
+        if arm is None:
+            arm = 'left'
+            # arm = random.choice(self.arms)
         gripper = self.load_gripper(arm, color=color, new_gripper=new_gripper)
         self.set_gripper_pose(body_pose, grasp, gripper=gripper, arm=arm, **kwargs)
         if width is not None:

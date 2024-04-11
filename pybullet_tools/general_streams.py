@@ -22,7 +22,7 @@ from pybullet_tools.bullet_utils import nice, visualize_point, collided, is_box_
 from pybullet_tools.pose_utils import sample_obj_in_body_link_space, is_contained, \
     ObjAttachment, sample_obj_on_body_link_surface, has_much_larger_aabb
 from pybullet_tools.camera_utils import set_camera_target_body
-from pybullet_tools.grasp_utils import get_hand_grasps, sample_from_pickled_grasps
+from pybullet_tools.grasp_utils import get_hand_grasps, sample_from_pickled_grasps, is_top_grasp
 
 
 class LinkPose(Pose):
@@ -617,19 +617,6 @@ def sample_joint_position_gen(num_samples=14, closed=False, visualize=False):
 
     ==============================================================
 """
-
-
-def is_top_grasp(robot, arm, body, grasp, pose=None, top_grasp_tolerance=PI/4):  # None | PI/4 | INF
-    if top_grasp_tolerance is None:
-        return True
-    if not isinstance(grasp, tuple):
-        grasp = grasp.value
-    if pose is None:
-        pose = get_pose(body)
-    grasp_pose = robot.get_grasp_pose(pose, grasp, arm, body=body)
-    grasp_orientation = (Point(), quat_from_pose(grasp_pose))
-    grasp_direction = tform_point(grasp_orientation, Point(x=+1))
-    return angle_between(grasp_direction, Point(z=-1)) <= top_grasp_tolerance  # TODO: direction parameter
 
 
 def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None,  # None | PI/4 | INF

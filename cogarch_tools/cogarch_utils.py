@@ -32,6 +32,12 @@ def parse_config(path):
     from argparse import Namespace
     conf = yaml.safe_load(Path(path).read_text())
     conf = Namespace(**conf)
+    return conf
+
+
+def parse_config_for_agent(path):
+    from argparse import Namespace
+    conf = parse_config(path)
     conf.sim = Namespace(**conf.sim)
     conf.data = Namespace(**conf.data)
     conf.problem = Namespace(**conf.problem)
@@ -40,6 +46,8 @@ def parse_config(path):
     conf.streams = Namespace(**conf.streams)
     if hasattr(conf, 'agent'):
         conf.agent = Namespace(**conf.agent)
+    if hasattr(conf, 'rummy_pipeline'):
+        conf.rummy_pipeline = Namespace(**conf.rummy_pipeline)
     if isinstance(conf.seed, str) and conf.seed.lower() == 'none':
         conf.seed = None
     return conf
@@ -50,7 +58,7 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
 
     from pybullet_tools.logging_utils import myprint as print
 
-    conf = parse_config(join(config_root, config))
+    conf = parse_config_for_agent(join(config_root, config))
 
     np.set_printoptions(precision=3, threshold=3, suppress=True)  #, edgeitems=1) #, linewidth=1000)
     parser = argparse.ArgumentParser()

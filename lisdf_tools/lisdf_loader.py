@@ -44,11 +44,13 @@ class World(WorldBase):
         self.mobility_identifiers = {}
         self.name_to_body = {}
         self.ATTACHMENTS = {}
+
         self.robot = None
         self.movable = None
         self.fixed = []
         self.floors = None
         self.body_types = {}
+        self.ignored_pairs = []
 
         ## for visualization
         self.colored_links = []
@@ -226,6 +228,10 @@ class World(WorldBase):
         self.movable = movable
         self.floors = floors
         self.ignored_pairs = ignored_pairs
+
+    def add_ignored_pair(self, pair):
+        a, b = pair
+        self.ignored_pairs.extend([(a, b), (b, a)])
 
     def summarize_all_types(self, init=None, return_string=True):
         if init is None: return ''

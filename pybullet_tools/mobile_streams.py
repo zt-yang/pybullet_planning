@@ -504,7 +504,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
                 grasp_conf = nice(grasp_conf)
             print(
                 f'{title}Grasp IK failure | {grasp_conf} <- robot.inverse_kinematics({robot}, {nice(base_conf.values)}, '
-                f'{arm}, {nice(gripper_pose[0])}) | pose {pose_value}, grasp {grasp}')
+                f'{arm}, {nice(gripper_pose[0])}) | pose {nice(pose_value)}, grasp {nice(grasp.value)}')
         # if grasp_conf is not None:
         #    print(grasp_conf)
         #    #wait_if_gui()

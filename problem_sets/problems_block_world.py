@@ -9,11 +9,14 @@ from problem_sets.problem_utils import problem_template
 
 
 def test_pick(args, robot_builder_args=dict(), **kwargs):
-    def loader_fn(world, w=0.25, **world_builder_args):
-        xy = (2, 2)
+    def loader_fn(world, **world_builder_args):
+        xy = world_builder_args['xy'] if 'xy' in world_builder_args else (2, 2)
+        w = world_builder_args['w'] if 'w' in world_builder_args else 0.25
+        h = world_builder_args['h'] if 'h' in world_builder_args else 0.9
+
         arm = world.robot.arms[0]
         floor = create_floor_covering_base_limits(world)
-        table = create_table(world, xy=xy, w=w)
+        table = create_table(world, xy=xy, w=w, h=h)
         cabbage = create_movable(world, supporter=table, xy=xy)
         set_camera_target_body(table, dx=1.5, dy=1.5, dz=1.5)
 

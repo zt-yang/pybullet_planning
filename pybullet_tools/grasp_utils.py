@@ -18,7 +18,7 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, multi
     YELLOW, add_line, draw_point, RED, remove_handles, apply_affine, vertices_from_rigid, \
     aabb_from_points, get_aabb_extent, get_aabb_center, get_aabb_edges, has_gui, get_rigid_clusters, \
     link_pairs_collision, wait_unlocked, apply_alpha, set_color, BASE_LINK as ROOT_LINK, \
-    BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED
+    BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, quat_from_pose, Point, tform_point, angle_between
 from pybullet_tools.bullet_utils import nice, collided, equal, minus, add, get_color_by_index, \
     get_datetime, is_box_entity, draw_fitted_box, get_model_pose, colors
 from pybullet_tools.camera_utils import set_camera_target_body
@@ -508,6 +508,19 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
         robot.open_cloned_gripper(gripper_grasp)
 
     return result, aabb, gripper_grasp
+
+
+def is_top_grasp(robot, arm, body, grasp, pose=None, top_grasp_tolerance=PI/4):  # None | PI/4 | INF
+    if top_grasp_tolerance is None:
+        return True
+    if not isinstance(grasp, tuple):
+        grasp = grasp.value
+    if pose is None:
+        pose = get_pose(body)
+    grasp_pose = robot.get_grasp_pose(pose, grasp, arm, body=body)
+    grasp_orientation = (Point(), quat_from_pose(grasp_pose))
+    grasp_direction = tform_point(grasp_orientation, robot.grasp_direction)
+    return angle_between(grasp_direction, Point(z=-1)) <= top_grasp_tolerance
 
 
 ## --------------------------------------------------

@@ -21,7 +21,7 @@ BASE_JOINTS = ['x', 'y', 'theta']
 
 ROBOTIQ_JOINTS = [
     # Works for 85 and 140
-    'finger_joint',  # [0, 0.8757]
+    'finger_joint',  # [0, 0.8]
     'left_inner_knuckle_joint', ## mimics + / -
     'left_inner_finger_joint', ## mimics - / +
     'right_outer_knuckle_joint', ## mimics + / -
