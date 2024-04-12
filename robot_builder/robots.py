@@ -265,6 +265,9 @@ class RobotAPI(Robot):
         self.set_joint_positions(joints, positions)
 
     def compute_grasp_width(self, arm, grasp, body=None, **kwargs):
+        if isinstance(body, tuple):
+            return 0.02
+
         with PoseSaver(body):
             with ConfSaver(self.body):
                 assignment = self.make_attachment(grasp, arm)

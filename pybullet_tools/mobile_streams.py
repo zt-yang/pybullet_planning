@@ -185,7 +185,8 @@ def get_ik_gen_old(problem, max_attempts=30, collisions=True, learned=True, tele
     ## not using this if tracik compiled
     ir_sampler = get_ir_sampler(problem, collisions=collisions, learned=learned,
                                 max_attempts=ir_max_attempts, verbose=verbose, **kwargs)
-    ik_fn = get_ik_fn_old(problem, collisions=collisions, teleport=teleport, verbose=False, ACONF=ACONF, **kwargs)
+    ik_fn = get_ik_fn_old(problem, collisions=collisions, teleport=teleport, verbose=False, ACONF=ACONF,
+                          visualize=visualize, **kwargs)
     robot = problem.robot
     world = problem.world
     obstacles = problem.fixed if collisions else []

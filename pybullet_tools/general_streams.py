@@ -723,7 +723,7 @@ def get_handle_width(body_joint):
 
 
 def get_handle_grasp_list_gen(problem, collisions=True, num_samples=10, **kwargs):
-    funk = get_handle_grasp_gen(problem, collisions, **kwargs)
+    funk = get_handle_grasp_gen(problem, collisions, max_samples=num_samples, **kwargs)
 
     def gen(body):
         g = funk(body)
@@ -739,7 +739,7 @@ def get_handle_grasp_list_gen(problem, collisions=True, num_samples=10, **kwargs
 
 
 def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
-                         randomize=False, visualize=False, verbose=False):
+                         randomize=False, visualize=False, retain_all=False, verbose=False):
     collisions = True
     obstacles = problem.fixed if collisions else []
     world = problem.world
@@ -758,7 +758,7 @@ def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
             arm = 'left'
 
         grasps = get_hand_grasps(world, body, link=handle_link, handle_filter=True,
-                                 visualize=visualize, retain_all=False, length_variants=True, verbose=verbose)
+                                 visualize=visualize, retain_all=retain_all, length_variants=True, verbose=verbose)
 
         if verbose: print(f'\n{title} grasps =', [nice(g) for g in grasps])
 
@@ -766,14 +766,14 @@ def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
         grasps = [HandleGrasp('side', body_joint, g, robot.get_approach_pose(app, g),
                               robot.get_carry_conf(arm, g_type, g)) for g in grasps]
         for grasp in grasps:
-            if robot.name.startswith('feg'):
+            if robot.name.startswith('pr2'):
+                grasp.grasp_width = get_handle_width(body_joint)
+            else:  ## if robot.name.startswith('feg'):
                 body_pose = get_link_pose(body, handle_link)
                 if verbose: print(f'{title} get_link_pose({body}, {handle_link})'
                                   f' = {nice(body_pose)} | grasp = {nice(grasp.value)}')
-                grasp.grasp_width = robot.compute_grasp_width(arm, body_pose, grasp, body=body_joint,
+                grasp.grasp_width = robot.compute_grasp_width(arm, grasp, body=body_joint,
                                                               verbose=verbose) if collisions else 0.0
-            elif robot.name.startswith('pr2'):
-                grasp.grasp_width = get_handle_width(body_joint)
 
         if randomize:
             random.shuffle(grasps)

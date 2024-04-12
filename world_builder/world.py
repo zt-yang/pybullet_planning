@@ -817,6 +817,8 @@ class World(WorldBase):
         for literal in goals:
             if is_test_goal:
                 items = literal[1]
+                if items in self.BODY_TO_OBJECT:
+                    items = [items]
             else:
                 items = literal[1:]
             for item in items:

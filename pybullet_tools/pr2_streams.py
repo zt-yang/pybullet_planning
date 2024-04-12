@@ -575,8 +575,8 @@ def pose_to_bconf(rpose, robot):
     (x, y, z), quant = rpose
     yaw = euler_from_quat(quant)[-1]
     if robot.use_torso:
-        return Conf(robot, get_group_joints(robot, 'base-torso'), (x, y, z, yaw))
-    return Conf(robot, get_group_joints(robot, 'base'), (x, y, yaw))
+        return Conf(robot, robot.get_group_joints('base-torso'), (x, y, z, yaw))
+    return Conf(robot, robot.get_group_joints('base'), (x, y, yaw))
 
 
 def add_pose(p1, p2):
@@ -605,7 +605,7 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
     bq1.assign()
     aq1.assign()
 
-    arm_joints = get_arm_joints(robot, a)
+    arm_joints = robot.get_arm_joints(a)
     resolutions = resolution * np.ones(len(arm_joints))
     other_obstacles = [mm for mm in obstacles if mm != o[0]]
 
@@ -614,7 +614,7 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
     # old_pose = get_link_pose(joint_object.body, joint_object.handle_link)
     handle_link = get_handle_link(o)
     old_pose = get_link_pose(o[0], handle_link)
-    tool_from_root = get_tool_from_root(robot, a)
+    tool_from_root = robot.get_tool_from_root(a)
     if visualize:
         # set_renderer(enable=True)
         gripper_before = robot.visualize_grasp(old_pose, g.value)

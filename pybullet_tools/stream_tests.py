@@ -131,7 +131,7 @@ def test_marker_pull_grasps(state, marker, visualize=False):
     return grasps
 
 
-def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=False, verbose=False):
+def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=True, retain_all=True, verbose=False):
     if isinstance(name, str):
         body_joint = state.world.name_to_body(name)
     elif isinstance(name, tuple):
@@ -141,7 +141,7 @@ def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=False, v
         raise NotImplementedError(name)
 
     name_to_object = state.world.name_to_object
-    funk = get_handle_grasp_list_gen(state, num_samples=24, visualize=visualize, verbose=verbose)
+    funk = get_handle_grasp_list_gen(state, num_samples=24, visualize=visualize, retain_all=retain_all, verbose=verbose)
     outputs = funk(body_joint)
     if visualize:
         body_pose = name_to_object(name).get_handle_pose()
@@ -314,19 +314,20 @@ def visualize_grasps_by_quat(state, outputs, body_pose, verbose=False):
 
     j = 0
     set_renderer(True)
+    visuals = []
     for k, v in all_grasps.items():
         print(f'{len(v)} grasps of quat {k}')
-        visuals = []
-        color = colors[j%len(colors)]
+        color = colors[j % len(colors)]
         for grasp in v:
             gripper = robot.visualize_grasp(body_pose, grasp.value, color=color, verbose=verbose,
-                                            width=grasp.grasp_width, body=grasp.body)
+                                            width=grasp.grasp_width, body=grasp.body, new_gripper=True)
             visuals.append(gripper)
         j += 1
-        wait_if_gui()
-        # set_camera_target_body(gripper, dx=0, dy=0, dz=1)
-        for visual in visuals:
-            remove_body(visual)
+
+    wait_if_gui()
+    # set_camera_target_body(gripper, dx=0, dy=0, dz=1)
+    for visual in visuals:
+        remove_body(visual)
 
 
 ## ------------------------------------------------------------------

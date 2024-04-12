@@ -912,7 +912,6 @@ def test_kitchen_chicken_soup(args, **kwargs):
         dishwasher_joint = world.name_to_body('dishwasher_door')
 
         joint = fridge_door  ## fridge_door | cabinet_doors[0] | cabinet_doors[1]
-        world.open_joint(joint, extent=0.5)
         # goals = ('test_joint_open', joint)
         # goals = ('test_joint_closed', joint)
         # goals = ('test_handle_grasps', joint)
@@ -939,6 +938,12 @@ def test_kitchen_chicken_soup(args, **kwargs):
         # objects += [dishwasher_space]  ## dishwasher_joint,
         # objects += [dishwasher_joint, dishwasher_space]
         # objects += cabinet_doors
+
+        #########################################################################
+
+        if goals[0][0] == "ClosedJoint":
+            joint = goals[0][1]
+            world.open_joint(joint, extent=0.5)
 
         #########################################################################
 

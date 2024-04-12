@@ -449,7 +449,8 @@ class World(WorldBase):
 
 
 def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False,
-                        width=1980, height=1238, transparent=True, larger_world=False, **kwargs):
+                        width=1980, height=1238, transparent=True, larger_world=False,
+                        custom_robot_loader={}, robot_builder_args={}, **kwargs):
 
     ## sometimes another lisdf name is given
     if lisdf_path.endswith('.lisdf'):
@@ -503,7 +504,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
             category = model.links[0].name
 
         if verbose:
-            print(f'..... loading {model.name} from {abspath(uri)}') ## , end="\r"
+            print(f'..... loading {model.name} of category {category} from {abspath(uri)}') ## , end="\r"
         if not isdir(join(ASSET_PATH, 'scenes')):
             os.mkdir(join(ASSET_PATH, 'scenes'))
         with HideOutput():
@@ -524,6 +525,10 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
                 create_pr2_robot(world, base_q=pose, custom_limits=custom_limits, robot=body)
             elif category == 'feg':
                 create_gripper_robot(world, custom_limits=custom_limits, robot=body)
+
+        elif category in custom_robot_loader:
+            custom_robot_loader[category](world, custom_limits=custom_limits, robot=body, **robot_builder_args)
+
         else:
             pose = (tuple(model.pose.pos), quat_from_euler(model.pose.rpy))
             set_pose(body, pose)
@@ -557,6 +562,8 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
 
             for k, v in body_to_name.items():
                 if v not in world.name_to_body:
+                    if verbose:
+                        print(f'load_lisdf_pybullet.planning_config | {k} : {v} not in world.name_to_body')
                     world.add_body(eval(k), v)
                     ## e.g. k=(15, 1), v=minifridge::joint_0
 

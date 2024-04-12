@@ -435,13 +435,13 @@ def adapt_attach_action(a, problem, plan, verbose=True):
     pstn2 = Position(body, get_value(act[4]))
     bq1 = get_value(act[6])  ## continuous[act[6].split('=')[0]]
     bq1 = Conf(robot.body, robot.get_base_joints(), bq1)
-    if 'pr2' in robot.name:
+    if 'feg' in robot.name:
+        funk = get_pull_handle_motion_gen(problem, collisions=False, verbose=verbose)
+        aq1 = None
+    else:
         aq1 = get_value(act[9])  ## continuous[act[9].split('=')[0]]
         aq1 = Conf(robot.body, robot.get_arm_joints(a.arm), aq1)
         funk = get_pull_door_handle_motion_gen(problem, collisions=False, verbose=verbose)
-    else:
-        funk = get_pull_handle_motion_gen(problem, collisions=False, verbose=verbose)
-        aq1 = None
 
     # set_renderer(False)
     with LockRenderer(True):

@@ -68,21 +68,22 @@ def check_if_exist_rerun(run_dir, world, commands, plan):
 ##########################################################################################
 
 
-def load_pigi_data(run_dir, use_gui=True, width=1440, height=1120, verbose=False):
-    """ for replaying """
-
-    exp_dir = copy_dir_for_process(run_dir, tag='replaying', verbose=verbose)
-    plan = get_plan(run_dir, skip_multiple_plans=True)
-    commands = pickle.load(open(join(exp_dir, 'commands.pkl'), "rb"))
-    world = load_lisdf_pybullet(exp_dir, use_gui=use_gui, width=width, height=height, verbose=False)
-
+def load_basic_plan_commands(world, exp_dir, run_dir, verbose=False):
     problem = Problem(world)
     if verbose:
         world.summarize_all_objects()
     body_map = get_body_map(run_dir, world, larger=False)
     load_attachments(run_dir, world, body_map=body_map)
-
+    plan = get_plan(run_dir, skip_multiple_plans=True)
+    commands = pickle.load(open(join(exp_dir, 'commands.pkl'), "rb"))
     return world, problem, exp_dir, run_dir, commands, plan, body_map
+
+
+def load_pigi_data(run_dir, use_gui=True, width=1440, height=1120, verbose=False):
+    """ for replaying """
+    exp_dir = copy_dir_for_process(run_dir, tag='replaying', verbose=verbose)
+    world = load_lisdf_pybullet(exp_dir, use_gui=use_gui, width=width, height=height, verbose=False)
+    return load_basic_plan_commands(world, exp_dir, run_dir, verbose=verbose)
 
 
 def load_pigi_data_complex(run_dir_ori, use_gui=True, width=1440, height=1120, verbose=False):
@@ -162,7 +163,7 @@ def load_replay_conf(conf_path):
     return c
 
 
-def run_replay(config_yaml_file, load_data_fn):
+def run_replay(config_yaml_file, load_data_fn=load_pigi_data):
     c = load_replay_conf(config_yaml_file)
 
     def process(run_dir_ori):
@@ -213,7 +214,8 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
     world, problem, exp_dir, run_dir, commands, plan, body_map = load_data_fn(
         run_dir_ori, use_gui=not use_gym, width=width, height=height, verbose=verbose
     )
-    set_replay_camera_pose(world, run_dir, camera_kwargs, camera_point, target_point)
+    if world.lisdf is None:
+        set_replay_camera_pose(world, run_dir, camera_kwargs, camera_point, target_point)
     if preview_scene:
         wait_unlocked()
 
