@@ -465,7 +465,8 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
 
     ## tmp path for putting sdf files, e.g. floor
     tmp_path = join(lisdf_dir, 'tmp')
-    if not isdir(tmp_path): os.mkdir(tmp_path)
+    if not isdir(tmp_path):
+        os.mkdir(tmp_path)
 
     ## get custom base limits for robots
     config_path = join(lisdf_dir, 'planning_config.json')

@@ -32,7 +32,7 @@ SAVE_COLLISIONS = False
 
 def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH,
               create_robot_fn=None, problem=None, open_goal=None, domain=None, stream=None, viewer=True,
-              exp_dir=None, exp_subdir=None, exp_name='default', reset=False,
+              exp_dir=None, exp_subdir=None, exp_name='default', reset=False, draw_base_limits=None,
               record_problem=True, save_testcase=False, record_plans=False, data_generation=False, use_rel_pose=False,
               domain_modifier=None, object_reducer=None, comparing=False, load_initial_state=False,
               window_width=1440, window_height=1120, **kwargs):
@@ -49,11 +49,10 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
 
     if exp_subdir is None and isinstance(problem, str):
         exp_subdir = problem
-    args = get_parser(config=config, config_root=config_root, viewer=viewer,
-                      problem=problem, open_goal=open_goal,
-                      exp_dir=exp_dir, exp_subdir=exp_subdir, exp_name=exp_name,
-                      domain=domain, stream=stream, use_rel_pose=use_rel_pose,
-                      record_problem=record_problem, save_testcase=save_testcase)
+    args = get_parser(config=config, config_root=config_root, viewer=viewer, problem=problem, open_goal=open_goal,
+                      window_width=window_width, window_height=window_height, draw_base_limits=draw_base_limits,
+                      exp_dir=exp_dir, exp_subdir=exp_subdir, exp_name=exp_name, domain=domain, stream=stream,
+                      use_rel_pose=use_rel_pose, record_problem=record_problem, save_testcase=save_testcase)
     if 'robot_builder_args' not in kwargs:
         kwargs['robot_builder_args'] = args.robot_builder_args
     kwargs['robot_builder_args']['create_robot_fn'] = create_robot_fn

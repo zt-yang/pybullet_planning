@@ -633,7 +633,7 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None,  # None | 
         if loaded is None:
             grasps_O = get_hand_grasps(world, body, verbose=verbose, test_offset=test_offset, **kwargs)
         else:
-            grasps_O, handles = sample_from_pickled_grasps(loaded, pose=get_pose(body), debug=debug,
+            grasps_O, handles = sample_from_pickled_grasps(loaded, world, body, pose=get_pose(body), debug=debug,
                                                            offset=loaded_offset, k=num_samples)
             robot.debug_handles += handles
             randomize_here = False

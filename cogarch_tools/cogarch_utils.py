@@ -175,9 +175,10 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
                 args.__dict__[k] = v
 
     ## other conflict adjustments
+    if hasattr(args.robot_builder_args, 'draw_base_limits') and args.robot_builder_args['draw_base_limits'] and args.record_mp4:
+        args.robot_builder_args['draw_base_limits'] = False
     if hasattr(args, 'draw_base_limits'):
-        if args.draw_base_limits and args.record_mp4:
-            args.draw_base_limits = False
+        args.robot_builder_args['draw_base_limits'] = args.draw_base_limits
 
     ## other processing
     args.exp_dir = abspath(join(PBP_PATH, args.exp_dir))

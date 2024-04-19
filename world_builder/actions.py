@@ -164,8 +164,9 @@ class GripperAction(Action):
             self.position = get_max_limit(robot, gripper_joint)
         else:  ## if self.position == None:
             bodies = [b for b in state.objects if isinstance(b, int) and b != robot.body]
+            joints = robot.get_gripper_joints(self.arm)
             with ConfSaver(robot.body):
-                self.position = robot.close_until_collision(self.arm, robot.get_gripper_joints(self.arm), bodies=bodies)
+                self.position = robot.close_until_collision(self.arm, joints, bodies=bodies)
             print(f"   [GripperAction] !!!! gripper {self.arm} is closed to {round(self.position, 3)} until collision")
             # self.position = 0.5  ## cabbage, artichoke
             # self.position = 0.4  ## tomato

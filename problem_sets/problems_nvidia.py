@@ -895,6 +895,9 @@ def test_kitchen_braiser(args, **kwargs):
 
 
 def test_kitchen_chicken_soup(args, **kwargs):
+    """
+    Note: The grasp poses of the fork need to be hand-specified
+    """
     def loader_fn(world, **world_builder_args):
         goal_object = ['chicken-leg', 'cabbage', 'fork', 'salt-shaker'][0]
         open_doors_for = []  ## goal_object
@@ -916,11 +919,15 @@ def test_kitchen_chicken_soup(args, **kwargs):
         # goals = ('test_joint_closed', joint)
         # goals = ('test_handle_grasps', joint)
         # goals = [("OpenedJoint", joint)]
-        goals = [("ClosedJoint", joint)]
+        # goals = [("ClosedJoint", joint)]
 
-        # goals = ('test_handle_grasps', drawer)
-        # goals = [("OpenedJoint", drawer)]
-        # goals = [("OpenedJoint", drawer), ("Holding", arm, movable)]
+        joint = drawer_joint
+        movable = movables['fork']
+        goals = ('test_handle_grasps', joint)
+        goals = [("OpenedJoint", joint)]
+        # goals = ('test_grasps', movable); world.open_joint(joint, extent=1)
+        # goals = [("Holding", arm, movable)]; world.open_joint(joint, extent=1)
+        goals = [("OpenedJoint", joint), ("Holding", arm, movable)]
 
         movable = movables[goal_object]
         # goals = ('test_grasps', movable)

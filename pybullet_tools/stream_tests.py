@@ -44,7 +44,7 @@ def process_debug_goals(state, goals, init):
         if test == 'test_handle_grasps':
             goals = test_handle_grasps(state, args)
         elif test == 'test_grasps':
-            goals = test_grasps(state, args)
+            goals = test_object_grasps(state, args)
         elif test == 'test_loaded_grasp_offset':
             goals = test_loaded_grasp_offset(state, args)
         elif test == 'test_grasp_ik':
@@ -168,15 +168,15 @@ def test_loaded_grasp_offset(state, args, test_translations=False, test_rotation
     def funk(t, r):
         offset = (t, quat_from_euler(r))
         remove_handles(state.world.robot.debug_handles)
-        test_grasps(state, args, visualize=True, debug=False, randomize=False,
-                    loaded_offset=offset, debug_triads=show_debug_triads)
+        test_object_grasps(state, args, visualize=True, debug=False, randomize=False,
+                           loaded_offset=offset, debug_triads=show_debug_triads)
 
     title = 'stream_tests.test_loaded_grasp_offset'
     return test_transformations_template(rotations, translations, funk, title, skip_until=skip_until)
 
 
-def test_grasps(state, name='cabbage', visualize=True, debug=True, debug_triads=False,
-                loaded_offset=None, randomize=True, top_grasp_tolerance=None):
+def test_object_grasps(state, name='cabbage', visualize=True, debug=True, debug_triads=False,
+                       loaded_offset=None, randomize=True, top_grasp_tolerance=None):
     """
     visualize = True:   to see all grasps for selecting the grasp index to plan for
     debug = True:       show the grasp to plan for
@@ -191,7 +191,7 @@ def test_grasps(state, name='cabbage', visualize=True, debug=True, debug_triads=
         body = name
     robot = state.robot
 
-    funk = get_grasp_list_gen(state, verbose=True, visualize=False, retain_all=False,
+    funk = get_grasp_list_gen(state, verbose=True, visualize=True, retain_all=True,
                               randomize=randomize,
                               loaded_offset=loaded_offset, debug=debug_triads,
                               top_grasp_tolerance=top_grasp_tolerance)  ## PI/4 | None

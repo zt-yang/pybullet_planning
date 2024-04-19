@@ -431,17 +431,17 @@ def get_arm_ik_fn(problem, custom_limits={}, resolution=DEFAULT_RESOLUTION,
         # gripper_pose = multiply(pose_value, invert(grasp.value)) # w_f_g = w_f_o * (g_f_o)^-1
         # approach_pose = multiply(pose_value, invert(grasp.approach))
 
-        tool_from_root = get_tool_from_root(robot, arm)
+        tool_from_root = robot.get_tool_from_root(arm)
         gripper_pose = multiply(robot.get_grasp_pose(pose_value, grasp.value, body=obj), invert(tool_from_root))
         approach_pose = multiply(robot.get_grasp_pose(pose_value, grasp.approach, body=obj), invert(tool_from_root))
 
-        arm_link = get_gripper_link(robot, arm)
-        arm_joints = get_arm_joints(robot, arm)
+        # arm_link = get_gripper_link(robot, arm)
+        arm_joints = robot.get_arm_joints(arm)
 
-        default_conf = arm_conf(arm, grasp.carry)
+        default_conf = robot.get_carry_conf(arm, grasp.grasp_type, grasp.value)
         pose.assign()
         base_conf.assign()
-        open_arm(robot, arm)
+        robot.open_arm(arm)
         grasp_conf = grasp_conf.values
         set_joint_positions(robot, arm_joints, grasp_conf) # default_conf | sample_fn()
         # grasp_conf = pr2_inverse_kinematics(robot, arm, gripper_pose, custom_limits=custom_limits) #, upper_limits=USE_CURRENT)
@@ -463,7 +463,8 @@ def get_arm_ik_fn(problem, custom_limits={}, resolution=DEFAULT_RESOLUTION,
                       f'{arm}, {nice(gripper_pose[0])}) | pose = {pose}, grasp = {grasp}')
 
         #approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits) ##, max_iterations=500
-        approach_conf = solve_nearby_ik(robot, arm, approach_pose, custom_limits=custom_limits)
+        # approach_conf = solve_nearby_ik(robot, arm, approach_pose, custom_limits=custom_limits)
+        approach_conf = robot.inverse_kinematics(arm, gripper_pose, obstacles, verbose=verbose)
         if (approach_conf is None) or collided(robot, obstacles, articulated=True, tag=title, world=world): ##
             if verbose:
                 if approach_conf != None:

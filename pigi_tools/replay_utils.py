@@ -214,7 +214,7 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
     world, problem, exp_dir, run_dir, commands, plan, body_map = load_data_fn(
         run_dir_ori, use_gui=not use_gym, width=width, height=height, verbose=verbose
     )
-    if world.lisdf is None:
+    if hasattr(world, 'lisdf') is None or True:
         set_replay_camera_pose(world, run_dir, camera_kwargs, camera_point, target_point)
     if preview_scene:
         wait_unlocked()

@@ -138,7 +138,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         #     get_ik_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l, learned=False,
         #                pick_up=False, given_grasp_conf=True, verbose=True, visualize=False)),
         'inverse-kinematics-grasp-handle': from_gen_fn(
-            get_ik_gen_old(p, collisions=pull_collisions, learned=False, verbose=False, ACONF=True, visualize=debug, **tc)),
+            get_ik_gen_old(p, collisions=pull_collisions, learned=False, verbose=True, ACONF=True, visualize=debug, **tc)),
 
         'inverse-kinematics-ungrasp-handle': from_gen_fn(
             get_ik_ungrasp_gen(p, collisions=pull_collisions, verbose=False, **tc)),

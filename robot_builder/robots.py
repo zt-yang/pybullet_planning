@@ -213,6 +213,9 @@ class RobotAPI(Robot):
             tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
         return multiply(body_pose, grasp, tool_from_root)
 
+    def get_tool_from_hand(self, body):
+        return self.tool_from_hand
+
     def get_body_pose(self, body_pose, body=None, verbose=False):
         title = f'    robot.get_body_pose({nice(body_pose)}, body={body})'
 
@@ -234,7 +237,8 @@ class RobotAPI(Robot):
                 body_pose = get_pose(b)
                 if verbose: print(f'{title} | actually given body, body_pose = get_pose(b) = {nice(body_pose)}')
 
-        r = get_rotation_matrix(body) if body is not None else self.tool_from_hand
+        tool_from_hand = self.get_tool_from_hand(body)
+        r = get_rotation_matrix(body) if body is not None else tool_from_hand
         new_body_pose = multiply(body_pose, r)
         return new_body_pose
 
@@ -447,7 +451,7 @@ class MobileRobot(RobotAPI):
         else:
             return sub_inverse_kinematics(self.body, arm_joint, tool_link, gripper_pose, **kwargs)
 
-    def inverse_kinematics(self, arm, gripper_pose, obstacles, attempts=40,
+    def inverse_kinematics(self, arm, gripper_pose, obstacles,
                            verbose=True, visualize=True, debug=False):
         tool_link = self.get_tool_link(arm)
         arm_joints = self.get_arm_joints(arm)
@@ -458,18 +462,15 @@ class MobileRobot(RobotAPI):
             set_renderer(True)
         result = None
         with ConfSaver(self.body):
-            for i in range(attempts):
-                arm_conf = self.run_ik_once(arm, gripper_pose, tool_link, arm_joints[0])
-                if arm_conf is None:
-                    continue
+            arm_conf = self.run_ik_once(arm, gripper_pose, tool_link, arm_joints[0])
+            if arm_conf is not None:
                 self.set_joint_positions(arm_joints, arm_conf)
                 if debug:
                     time.sleep(0.5)
                 if not collided(self.body, tag='robot.TracIK', **kwargs):
                     result = arm_conf
                     if verbose:
-                        print(title, f'found cfree ik for arm in attempt {i}/{attempts}')
-                    break
+                        print(title, f'found cfree ik for arm')
 
         if debug:
             set_renderer(False)
@@ -480,10 +481,8 @@ class MobileRobot(RobotAPI):
             # joint_state = dict(zip(base_joints + arm_joints, list(base_conf.values) + arm_conf.tolist()))
             # return Conf(self.body, arm_joints, arm_conf, joint_state=joint_state)
         if verbose:
-            print(title, f'didnt find cfree ik for arm after {attempts} attempts')
+            print(title, f'didnt find cfree ik for arm')
         return None
-
-
 
 
 ###############################################################################

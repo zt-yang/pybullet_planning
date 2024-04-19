@@ -11,7 +11,7 @@ import json
 
 from pybullet_tools.logging_utils import dump_json
 from pybullet_tools.utils import unit_pose, get_collision_data, get_links, multiply, invert, \
-    aabb_contains_aabb, get_pose, get_aabb, GREEN, AABB, remove_body, draw_pose, \
+    aabb_contains_aabb, get_pose, get_aabb, GREEN, AABB, remove_body, set_renderer, draw_aabb, \
     pose_from_tform, wait_for_user, Euler, PI, LockRenderer, HideOutput, load_model, \
     get_client, JOINT_TYPES, get_joint_type, get_link_pose, get_closest_points, \
     get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, \
@@ -294,7 +294,8 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
 
     ## grasp handle links
     else:
-        body_pose = multiply(body_pose, invert(robot.tool_from_hand))
+        tool_from_hand = robot.get_tool_from_hand(body_name)
+        body_pose = multiply(body_pose, invert(tool_from_hand))
 
     instance_name = world.get_instance_name(body_name)
     if instance_name is not None:
@@ -323,9 +324,10 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
             remove_handles(handles)
             return found
 
-    obstacles = world.fixed
-    if body not in obstacles:
-        obstacles += [body]
+    # obstacles = world.fixed
+    # if body not in obstacles:
+    #     obstacles += [body]
+    obstacles = [body]
 
     ## only one in each direction
     def check_new(aabbs, aabb):
@@ -453,7 +455,7 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
     if verbose:
         print(f'\nbullet.check_cfree_gripper | '
               f'\trobot.visualize_grasp({nice(object_pose)}, ({nice(grasp)}):'
-              f'\t{nice(robot.tool_from_hand)}\t', kwargs)
+              f'\t{nice(robot.tool_from_hand)}\tkwargs = {kwargs}')
     gripper_grasp = robot.visualize_grasp(object_pose, grasp, verbose=verbose, body=body,
                                           new_gripper=test_offset, **kwargs)
     if test_offset:
@@ -482,7 +484,8 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
     secondly = False
     if not firstly or not collisions:
         robot.close_cloned_gripper(gripper_grasp)
-        secondly = collided(gripper_grasp, obstacles, min_num_pts=0, world=world, verbose=False, tag='secondly')
+        secondly = collided(gripper_grasp, obstacles, min_num_pts=0, world=world, articulated=True,
+                            verbose=False, tag='secondly')
 
         ## boxes don't contain vertices for collision checking
         if body is not None and isinstance(body, int) and len(get_collision_data(body)) > 0 \
@@ -526,24 +529,41 @@ def is_top_grasp(robot, arm, body, grasp, pose=None, top_grasp_tolerance=PI/4): 
 ## --------------------------------------------------
 
 
-def sample_from_pickled_grasps(grasps, pose=None, offset=None, k=15, debug=False):
-    grasps = random.choices(grasps, k=k)
+def sample_from_pickled_grasps(grasps, world, body, pose=None, offset=None, k=15, debug=False,
+                               verbose=False, visualize=False, retain_all=False):
+    obstacles = [body]
+    all_handles = []
+    all_grasps = []
+    filtered_grasps = []
+    while len(all_grasps) < k:
+        some_grasps = random.choices(grasps, k=k)
 
-    ## for debugging grasp poses
-    handles = []
-    if pose is not None and debug:
-        grasps = grasps[:len(colors)]
-        for i, grasp in enumerate(grasps):
-            g = multiply(pose, pose_from_tform(grasp))
-            handles += draw_colored_pose(g, length=0.1, color=colors[i])
+        ## for debugging grasp poses
+        if pose is not None and debug:
+            some_grasps = some_grasps[:len(colors)]
+            for i, grasp in enumerate(some_grasps):
+                g = multiply(pose, pose_from_tform(grasp))
+                all_handles += draw_colored_pose(g, length=0.1, color=colors[i])
 
-    ## the tool_link in the saved grasps are different from that here
-    if offset is None:
-        offset = Pose(point=(-0.01, 0, -0.03), euler=Euler(0, 0, -math.pi/2))
-        offset = Pose(point=(0, -0.01, -0.03), euler=Euler(0, 0, 0))
+        ## the tool_link in the saved grasps are different from that here
+        if offset is None:
+            offset = Pose(point=(-0.01, 0, -0.03), euler=Euler(0, 0, -math.pi/2))
+            offset = Pose(point=(0, -0.01, -0.03), euler=Euler(0, 0, 0))
 
-    grasps = [multiply(pose_from_tform(g), offset) for g in grasps]
-    return grasps, handles
+        some_grasps = [multiply(pose_from_tform(g), offset) for g in some_grasps]
+        if pose is not None and debug:
+            break
+
+        ## filter grasps to check if closing gripper contacts the object
+        for grasp in some_grasps:
+            result, aabb, gripper = check_cfree_gripper(
+                grasp, world, pose, obstacles, verbose=verbose, body=body,
+                visualize=visualize, retain_all=retain_all,
+                collisions=True, test_offset=False)
+            if result:
+                filtered_grasps.append(grasp)
+        k = k - len(filtered_grasps)
+    return filtered_grasps, all_handles
 
 
 ## --------------------------------------------------
