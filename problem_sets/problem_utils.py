@@ -47,6 +47,8 @@ def pddlstream_from_state_goal_args(state, goals, args=None, custom_limits=None,
     if not isfile(domain_pddl):
         domain_pddl = join(PBP_PATH, domain_name)
         stream_pddl = join(PBP_PATH, stream_name)
+    args.domain_pddl = domain_pddl
+    args.stream_pddl = stream_pddl
 
     if custom_limits is None:
         custom_limits = state.robot.custom_limits

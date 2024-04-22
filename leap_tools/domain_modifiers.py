@@ -40,13 +40,15 @@ class PostponePredicate(DomainModifier):
         from pddlgym.parser import PDDLDomainParser
 
         print()
-        if isinstance(domain, Domain):
+        if isinstance(domain, tuple):
+            domain, externals = domain
             domain = modify_pddlstream_domain(domain, self.predicates)
+            externals = modify_pddlstream_stream(externals, self.predicates)
+            return domain, externals
 
-        if isinstance(domain, PDDLDomainParser):
+        elif isinstance(domain, PDDLDomainParser):
             domain = modify_pddlgym_domain(domain, self.predicates)
-        print()
-        return domain
+            return domain
 
 
 def modify_operator_name(name, removed, orders):
@@ -107,14 +109,24 @@ def modify_pddlgym_domain(domain, predicates):
     return domain
 
 
+remove_operators = {
+    'basemotion': ['move_base']
+}
+
+
 def modify_pddlstream_domain(domain, predicates):
     """ add to path/source root: pddlstream.downward.src.translate """
     import pddl
+
+    to_remove_operator_names = []
+    for pred in predicates:
+        if pred in remove_operators:
+            to_remove_operator_names.extend(remove_operators[pred])
+
+    to_remove_operators = []
     for op in domain.actions:
         removed = []
         new_name = op.name
-        if op.name.startswith('move'):
-            continue
 
         ## remove from preconditions
         parts = []
@@ -141,7 +153,25 @@ def modify_pddlstream_domain(domain, predicates):
             new_name = modify_operator_name(op.name, rr, predicates)
             op.effects = effects
 
+        if op.name in to_remove_operator_names:
+            to_remove_operators.append(op)
         if op.name != new_name:
+            ## remove the whole action
             print('   modify_pddlstream_domain | ', op.name, removed)
             op.name = new_name
+
+    for op in to_remove_operators:
+        domain.actions.remove(op)
+
     return domain
+
+
+def modify_pddlstream_stream(externals, predicates):
+    to_remove = []
+    for external in externals:
+        found = [t[0] for t in external.certified if t[0] in predicates]
+        if len(found) > 0:
+            to_remove.append(external.name)
+            print('   remove_pddlstream_stream | ', external.name, found)
+    print()
+    return [e for e in externals if e.name not in to_remove]

@@ -104,7 +104,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
                           visualize=debug, ACONF=False, resolution=resolution)),
 
         'inverse-reachability-rel': from_gen_fn(
-            get_ik_rel_gen_old(p, collisions=False, ir_only=True, learned=True, verbose=False, visualize=False, **tc)),
+            get_ik_rel_gen_old(p, collisions=True, ir_only=True, learned=True, verbose=False, visualize=False, **tc)),
         'inverse-kinematics-rel': from_fn(
             get_ik_rel_fn_old(p, collisions=motion_collisions, teleport=t, verbose=False, visualize=False, ACONF=False)),
 
@@ -138,7 +138,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         #     get_ik_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l, learned=False,
         #                pick_up=False, given_grasp_conf=True, verbose=True, visualize=False)),
         'inverse-kinematics-grasp-handle': from_gen_fn(
-            get_ik_gen_old(p, collisions=pull_collisions, learned=False, verbose=True, ACONF=True, visualize=debug, **tc)),
+            get_ik_gen_old(p, collisions=pull_collisions, learned=False, verbose=debug, ACONF=True, visualize=debug, **tc)),
 
         'inverse-kinematics-ungrasp-handle': from_gen_fn(
             get_ik_ungrasp_gen(p, collisions=pull_collisions, verbose=False, **tc)),
@@ -568,6 +568,7 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visual
         max_solutions = 6 if max_solutions == 0 else max_solutions
     diverse = diverse or collect_dataset
 
+    ## the other kwargs are provided in cogarch_utils.get_pddlstream_kwargs()
     planner_kwargs_default = dict(planner='ff-astar1', unit_costs=False, success_cost=INF, verbose=True,
                                   unique_optimistic=True, forbid=True, bind=True)
     planner_kwargs = dict(max_planner_time=downward_time, max_time=max_time, evaluation_time=evaluation_time,
@@ -753,9 +754,9 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
 
         if is_plan_abstract(plan):
             from leap_tools.hierarchical import check_preimage
-            env = check_preimage(pddlstream_problem, plan, preimage, domain_pddl,
-                                 init=pddlstream_problem.init, objects=objects,
-                                 domain_modifier=domain_modifier)
+            env, plan = check_preimage(pddlstream_problem, plan, preimage, domain_pddl,
+                                       init=pddlstream_problem.init, objects=objects,
+                                       domain_modifier=domain_modifier)
         else:
             env = None  ## preimage
         plan_str = [str(a) for a in plan]

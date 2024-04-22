@@ -10,7 +10,7 @@ sys.path.extend([join(RD), join(RD, 'pddlstream'), join(RD, 'pybullet_planning')
 
 from cogarch_tools.cogarch_run import run_agent
 from cogarch_tools.processes.pddlstream_agent import PDDLStreamAgent
-from leap_tools.hierarchical_agent import HierarchicalAgent
+from leap_tools.hierarchical_agent import HierarchicalAgent, hpn_kwargs
 
 
 simple_problem = ['test_pick', 'test_small_sink'][0]
@@ -20,6 +20,7 @@ kitchen_problem = ['test_kitchen_chicken_soup', 'test_kitchen_braiser', None][0]
 def test_pick_place_domain():
     run_agent(
         agent_class=HierarchicalAgent, config='config_dev.yaml', problem=simple_problem,
+        **hpn_kwargs
     )
 
 

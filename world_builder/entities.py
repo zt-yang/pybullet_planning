@@ -777,7 +777,7 @@ class Robot(Object):
 
 class Camera(object):
     def __init__(self, body, camera_frame, camera_matrix, max_depth=2., name=None, draw_frame=None, **kwargs):
-        self.body = body
+        self.body = body if isinstance(body, int) else body.body
         self.camera_link = link_from_name(self.body, camera_frame) # optical_frame
         self.camera_matrix = camera_matrix
         self.max_depth = max_depth

@@ -62,7 +62,7 @@ class Attachment(object):
 
         # robot_base_pose = self.parent.get_positions(roundto=3)
         # robot_arm_pose = self.parent.get_positions(joint_group='left', roundto=3)  ## only left arm for now
-        parent_link_pose = get_link_pose(self.parent, self.parent_link)
+        parent_link_pose = get_link_pose(self.parent.body, self.parent_link)
         child_pose = body_from_end_effector(parent_link_pose, self.grasp_pose)
         if self.child_link is None:
             set_pose(self.child, child_pose)

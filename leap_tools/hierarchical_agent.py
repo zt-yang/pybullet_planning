@@ -1,4 +1,15 @@
+import sys
+from os.path import join, abspath, dirname, isdir, isfile
+from os import listdir, pardir
+RD = abspath(join(dirname(__file__), pardir, pardir))
+sys.path.append(join(RD, pardir, 'cognitive-architectures', 'pddlgym'))
+
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 from cogarch_tools.processes.pddlstream_agent import *
+hpn_kwargs = dict(domain_modifier='atbconf,canmove', exp_name='hpn')
+hpn_kwargs = dict(domain_modifier='atbconf,canmove,basemotion', exp_name='hpn')
 
 
 class HierarchicalAgent(PDDLStreamAgent):
@@ -108,26 +119,26 @@ class HierarchicalAgent(PDDLStreamAgent):
         self.refinement_count += 1
         myprint(f'\n## {self.refinement_count}th refinement problem')
 
+        ## update goal and init
+        self.remove_unpickleble_attributes()
         goals, facts = self.get_refinement_goal_init(action)
+        facts = self.object_reducer(facts, goals=goals)
+        self.recover_unpickleble_attributes()
 
-        facts = self.object_reducer(facts, goals)
-
-        # self.last_goals = goals  ## used to find new goals
-        if self.domain_modifier is not None:
-            domain_pddl = self.domain_pddl
-            predicates = action.name.split('--no-')[1:]
-            if len(predicates) == 1 or True:  ## TODO: better way to schedule the postponing
-                domain_modifier = None
-            else:
-                domain_modifier = initialize_domain_modifier(predicates[:-1])
-        else:
-            domain_pddl = self.domains_for_action[action]
+        ## only two-level
+        domain_pddl = self.domain_pddl
+        predicates = action.name.split('--no-')[1:]
+        if len(predicates) == 1 or True:  ## TODO: better way to schedule the postponing
             domain_modifier = None
+        else:
+            domain_modifier = initialize_domain_modifier(predicates[:-1])
 
+        ## update the PDDLStream problem using domain pddl
         pddlstream_problem = pddlstream_from_state_goal(
             observation.state, goals, custom_limits=self.custom_limits,
-            domain_pddl=domain_pddl, stream_pddl=self.stream_pddl, facts=facts, PRINT=True
+            domain_pddl=domain_pddl, stream_pddl=self.stream_pddl, facts=facts, verbose=True
         )
+        pddlstream_problem = self.robot.modify_pddl(pddlstream_problem)
 
         sub_problem = pddlstream_problem
         sub_state = observation.state

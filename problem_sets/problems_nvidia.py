@@ -1,3 +1,5 @@
+import random
+
 from pybullet_tools.utils import set_camera_pose
 
 from world_builder.loaders_nvidia_kitchen import *
@@ -662,7 +664,7 @@ def test_nvidia_kitchen_domain(args, world_loader_fn, initial_xy=(1.5, 6), **kwa
     if 'robot_builder_args' not in kwargs:
         kwargs['robot_builder_args'] = args.robot_builder_args
     kwargs['robot_builder_args'].update({
-        'custom_limits': ((1, 3, 0), (5, 10, 3)),
+        'custom_limits': ((1.25, 3, 0), (5, 10, 3)),
         'initial_xy': initial_xy
     })
     return problem_template(args, robot_builder_fn=build_robot_from_args,
@@ -904,7 +906,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
         objects, movables, movable_to_doors = load_open_problem_kitchen(world, open_doors_for=open_doors_for)
 
         """ goals """
-        arm = 'left'
+        arm = random.choice(world.robot.arms)
         objects = []
         fridge_door = world.name_to_body('fridge_door')
         counter = world.name_to_body('indigo_tmp')
@@ -923,17 +925,85 @@ def test_kitchen_chicken_soup(args, **kwargs):
 
         joint = drawer_joint
         movable = movables['fork']
-        goals = ('test_handle_grasps', joint)
-        goals = [("OpenedJoint", joint)]
+        goals = ('test_handle_grasps', joint)  ## fail for some reason
+        # goals = [("OpenedJoint", joint)]
         # goals = ('test_grasps', movable); world.open_joint(joint, extent=1)
         # goals = [("Holding", arm, movable)]; world.open_joint(joint, extent=1)
-        goals = [("OpenedJoint", joint), ("Holding", arm, movable)]
+        # goals = [("OpenedJoint", joint), ("Holding", arm, movable)]
 
         movable = movables[goal_object]
         # goals = ('test_grasps', movable)
         # goals = [("Holding", arm, movable)]
         # goals = [("On", movable, counter)]
         # goals = ('test_relpose_inside_gen', (movable, drawer_link))
+        # goals = [("In", movable, drawer_link)]
+
+        #########################################################################
+
+        # objects += [movable]  ## Holding
+        # objects += [drawer_joint]  ## OpenedJoint
+        # objects += [drawer_link]  ## In (place)
+        # objects += [drawer_joint, drawer_link]  ## In (place_rel)
+        # objects += [dishwasher_space]  ## dishwasher_joint,
+        # objects += [dishwasher_joint, dishwasher_space]
+        # objects += cabinet_doors
+
+        #########################################################################
+
+        if goals[0][0] == "ClosedJoint":
+            joint = goals[0][1]
+            world.open_joint(joint, extent=0.5)
+
+        #########################################################################
+
+        subgoals = None
+        skeleton = []
+        # skeleton += [(k, arm, drawer) for k in pull_actions]
+        # skeleton += [(k, arm, goal_object) for k in pick_place_actions[:1]]
+        # skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
+        # skeleton += [(k, arm, movable) for k in pick_place_rel_actions[:1]]
+        # skeleton += [(k, arm, movable) for k in ['pick', 'place_to_supporter']]
+        # skeleton += [(k, arm, movable) for k in ['pick_from_supporter', 'place']]
+        # skeleton += [(k, arm, movable) for k in pick_place_rel_actions]
+
+        #########################################################################
+
+        ## --- for recording door open demo
+        # world.open_joint_by_name('chewie_door_left_joint')
+
+        world.remove_bodies_from_planning(goals, exceptions=objects)
+
+        return {'goals': goals, 'skeleton': skeleton, 'subgoals': subgoals}
+
+    return test_nvidia_kitchen_domain(args, loader_fn, initial_xy=(2, 5), **kwargs)
+
+
+def test_kitchen_plan_constraints(args, **kwargs):
+    """
+    Note: The grasp poses of the fork need to be hand-specified
+    """
+    def loader_fn(world, **world_builder_args):
+        goal_object = ['chicken-leg', 'cabbage', 'fork', 'salt-shaker'][2]
+        open_doors_for = []  ## goal_object
+        objects, movables, movable_to_doors = load_open_problem_kitchen(world, open_doors_for=open_doors_for)
+
+        """ goals """
+        robot = world.robot
+        arm = 'left'
+        objects = []
+        fridge_door = world.name_to_body('fridge_door')
+        counter = world.name_to_body('indigo_tmp')
+        drawer_joint = world.name_to_body('indigo_drawer_top_joint')
+        drawer_link = world.name_to_body('indigo_drawer_top')
+        cabinet_doors = [world.name_to_body(name) for name in ['chewie_door_left_joint', 'chewie_door_right_joint']]
+
+        joint = drawer_joint
+        goals = [("OpenedJoint", joint)]
+
+        movable = movables[goal_object]
+        # goals = ('test_grasps', movable)
+        # goals = [("Holding", arm, movable)]
+        # goals = [("On", movable, counter)]
         # goals = [("In", movable, drawer_link)]
 
         #########################################################################
@@ -964,9 +1034,18 @@ def test_kitchen_chicken_soup(args, **kwargs):
         skeleton = []
         if args.use_skeleton_constraints:
 
+            if goals == [("OpenedJoint", drawer_joint)]:
+                skeleton += [(k, 'left', drawer_joint) for k in pull_with_link_actions]
+
             if goals == [("On", movables['fork'], counter)]:
-                skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
-                skeleton += [(k, arm, movable) for k in ['pick_from_supporter', 'place']]
+                if robot.dual_arm:
+                    skeleton += [(k, 'left', drawer_joint) for k in pull_with_link_actions]
+                    skeleton += [('pick_from_supporter', 'left', movable)]
+                    skeleton += [(k, 'right', drawer_joint) for k in pull_with_link_actions]
+                    skeleton += [('place', 'left', movable)]
+                else:
+                    skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
+                    skeleton += [(k, arm, movable) for k in ['pick_from_supporter', 'place']]
 
             if goals in [('test_grasps', movables['salt-shaker']), ('test_grasps', movables['pepper-shaker']),
                          [('Holding', arm, movables['salt-shaker'])], [('Holding', arm, movables['pepper-shaker'])]]:
@@ -981,20 +1060,12 @@ def test_kitchen_chicken_soup(args, **kwargs):
                 skeleton += [(pick_place_actions[0], arm, body)]
                 set_camera_target_body(body, dx=1, dy=0, dz=1.75)
 
-        # skeleton += [(k, arm, drawer) for k in pull_actions]
-        # skeleton += [(k, arm, goal_object) for k in pick_place_actions[:1]]
-        # skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
-        # skeleton += [(k, arm, movable) for k in pick_place_rel_actions[:1]]
-        # skeleton += [(k, arm, movable) for k in ['pick', 'place_to_supporter']]
-        # skeleton += [(k, arm, movable) for k in ['pick_from_supporter', 'place']]
-        # skeleton += [(k, arm, movable) for k in pick_place_rel_actions]
-
         #########################################################################
 
         ## --- for recording door open demo
         # world.open_joint_by_name('chewie_door_left_joint')
 
-        world.remove_bodies_from_planning(goals, exceptions=objects)
+        world.remove_bodies_from_planning(goals, exceptions=objects, skeleton=skeleton, subgoals=subgoals)
 
         return {'goals': goals, 'skeleton': skeleton, 'subgoals': subgoals}
 

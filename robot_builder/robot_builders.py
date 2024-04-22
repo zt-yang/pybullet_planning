@@ -43,11 +43,11 @@ def set_pr2_ready(pr2, arm='left', grasp_type='top', dual_arm=False):
 
 def create_pr2_robot(world, base_q=(0, 0, 0), dual_arm=False, use_torso=True,
                      custom_limits=BASE_LIMITS, resolutions=BASE_RESOLUTIONS,
-                     draw_base_limits=False, max_velocities=BASE_VELOCITIES, robot=None):
+                     draw_base_limits=False, max_velocities=BASE_VELOCITIES, robot=None, **kwargs):
 
     if robot is None:
         robot = create_pr2()
-        set_pr2_ready(robot, dual_arm=dual_arm)
+        set_pr2_ready(robot, arm=PR2Robot.arms[0], dual_arm=dual_arm)
         if len(base_q) == 3:
             set_group_conf(robot, 'base', base_q)
         elif len(base_q) == 4:
@@ -65,7 +65,7 @@ def create_pr2_robot(world, base_q=(0, 0, 0), dual_arm=False, use_torso=True,
     robot = PR2Robot(robot, base_link=BASE_LINK,
                      dual_arm=dual_arm, use_torso=use_torso,
                      custom_limits=get_base_custom_limits(robot, custom_limits),
-                     resolutions=resolutions, weights=weights)
+                     resolutions=resolutions, weights=weights, **kwargs)
     world.add_robot(robot, max_velocities=max_velocities)
 
     # print('initial base conf', get_group_conf(robot, 'base'))

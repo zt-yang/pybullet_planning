@@ -170,7 +170,7 @@ def get_ik_rel_fn_old(problem, custom_limits={}, collisions=True, teleport=False
         return solve_approach_ik(
             arm, obj, pose_value, grasp, base_conf,
             world, robot, custom_limits, obstacles_here, ignored_pairs_here,
-            title, ACONF=ACONF, teleport=teleport, verbose=verbose, visualize=visualize
+            title=title, ACONF=ACONF, teleport=teleport, verbose=verbose, visualize=visualize
         )
     return fn
 
@@ -279,7 +279,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
     g = inputs[-1]
     robot.open_arm(a)
     context_saver = WorldSaver(bodies=[robot, o])
-    title = f'sample_bconf({o}, learned=True) | start sampling '
+    title = f'\t\tsample_bconf({o}, learned=True) | start sampling '
 
     # set_renderer(enable=False)
     if visualize:
@@ -327,7 +327,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
         gripper_pose = multiply(tool_pose, invert(tool_from_root))
 
         tool_link = robot.get_tool_link(a)
-        ik_solver = IKSolver(robot, tool_link=tool_link, first_joint=None,
+        ik_solver = IKSolver(robot.body, tool_link=tool_link, first_joint=None,
                              custom_limits=robot.custom_limits)  ## using all 13 joints
 
         attempts = 0
@@ -354,7 +354,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
             bq = Conf(robot, base_joints, bconf, joint_state=joint_state)
             bq.assign()
 
-            set_joint_positions(robot, arm_joints, default_conf)
+            set_joint_positions(robot.body, arm_joints, default_conf)
             if collided(robot, obstacles, articulated=True, tag='ik_default_conf',
                         verbose=verbose, world=world):
                 # wait_unlocked()
@@ -453,7 +453,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
             world.BODY_TO_OBJECT[body].grasp_parent is not None:
         addons.append(world.BODY_TO_OBJECT[body].grasp_parent)
 
-    approach_obstacles = obstacles_here
+    approach_obstacles = copy.deepcopy(obstacles_here)
     ignored_pairs_here.extend([[(body, obst), (obst, body)] for obst in obstacles_here if is_placement(body, obst)])
     # approach_obstacles = problem.world.refine_marker_obstacles(obj, approach_obstacles)  ## for steerables
 
@@ -473,6 +473,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
     ## visualize the gripper
     gripper_grasp = None
     if visualize:
+        ## the approach pose of handle grasps should be very short
         print('grasp_value', nice(grasp.value))
         set_renderer(True)
         gripper_approach = robot.visualize_grasp(pose_value, grasp.approach,
@@ -520,7 +521,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
     if has_tracik():
         from pybullet_tools.tracik import IKSolver
         tool_link = robot.get_tool_link(arm)
-        ik_solver = IKSolver(robot, tool_link=tool_link, first_joint=arm_joints[0],
+        ik_solver = IKSolver(robot.body, tool_link=tool_link, first_joint=arm_joints[0],
                              custom_limits=custom_limits)  # TODO: cache
         approach_conf = ik_solver.solve(approach_pose, seed_conf=grasp_conf)
 
@@ -564,7 +565,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
     else:
         resolutions = resolution * np.ones(len(arm_joints))
         if is_top_grasp(robot, arm, body, grasp) or True:
-            grasp_path = plan_direct_joint_motion(robot, arm_joints, grasp_conf, obstacles=approach_obstacles,
+            grasp_path = plan_direct_joint_motion(robot.body, arm_joints, grasp_conf, obstacles=approach_obstacles,
                                                   resolutions=resolutions / 2., **motion_planning_kwargs)
             if grasp_path is None:
                 if verbose: print(f'{title}Grasp path failure')

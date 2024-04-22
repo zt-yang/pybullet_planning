@@ -26,7 +26,7 @@ from pybullet_tools.bullet_utils import colors, color_names, \
 from pybullet_tools.camera_utils import set_camera_target_body
 from pybullet_tools.pr2_problems import create_pr2
 from pybullet_tools.pr2_utils import create_pr2_gripper, set_group_conf
-from pybullet_tools.utils import get_client, quat_from_euler, remove_handles, PI, \
+from pybullet_tools.utils import get_client, quat_from_euler, remove_handles, PI, wait_for_user, \
     Pose, get_bodies, pairwise_collision, get_pose, point_from_pose, set_renderer, get_joint_name, \
     remove_body, LockRenderer, WorldSaver, wait_if_gui, SEPARATOR, safe_remove, ensure_dir, \
     get_distance, get_max_limit, BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS, wait_unlocked
@@ -131,7 +131,8 @@ def test_marker_pull_grasps(state, marker, visualize=False):
     return grasps
 
 
-def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=True, retain_all=True, verbose=False):
+def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=False, retain_all=False, verbose=False):
+    """ visualize both grasp pose and approach pose """
     if isinstance(name, str):
         body_joint = state.world.name_to_body(name)
     elif isinstance(name, tuple):
@@ -141,7 +142,7 @@ def test_handle_grasps(state, name='hitman_drawer_top_joint', visualize=True, re
         raise NotImplementedError(name)
 
     name_to_object = state.world.name_to_object
-    funk = get_handle_grasp_list_gen(state, num_samples=24, visualize=visualize, retain_all=retain_all, verbose=verbose)
+    funk = get_handle_grasp_list_gen(state, num_samples=24, visualize=False, retain_all=retain_all, verbose=verbose)
     outputs = funk(body_joint)
     if visualize:
         body_pose = name_to_object(name).get_handle_pose()
@@ -319,12 +320,13 @@ def visualize_grasps_by_quat(state, outputs, body_pose, verbose=False):
         print(f'{len(v)} grasps of quat {k}')
         color = colors[j % len(colors)]
         for grasp in v:
-            gripper = robot.visualize_grasp(body_pose, grasp.value, color=color, verbose=verbose,
-                                            width=grasp.grasp_width, body=grasp.body, new_gripper=True)
-            visuals.append(gripper)
+            kwargs = dict(body=grasp.body, verbose=verbose, width=grasp.grasp_width, new_gripper=True)
+            gripper = robot.visualize_grasp(body_pose, grasp.value, color=color, **kwargs)
+            gripper_app = robot.visualize_grasp(body_pose, grasp.approach, color=GREY, **kwargs)
+            visuals.extend([gripper, gripper_app])
         j += 1
 
-    wait_if_gui()
+    wait_for_user('visualize_grasps_by_quat')
     # set_camera_target_body(gripper, dx=0, dy=0, dz=1)
     for visual in visuals:
         remove_body(visual)
@@ -450,7 +452,7 @@ def test_joint_open(init, o):
 
 def test_joint_closed(init, o):
     pstn1 = [i for i in init if i[0].lower() == "AtPosition".lower() and i[1] == o][0][-1]
-    funk = sample_joint_position_gen(closed=True)
+    funk = sample_joint_position_gen(to_close=True)
     funk = sample_joint_position_closed_gen()
     goal = []
     new_facts = []

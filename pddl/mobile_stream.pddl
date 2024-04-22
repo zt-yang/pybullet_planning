@@ -59,14 +59,14 @@
   (:stream inverse-kinematics
     :inputs (?a ?o ?p ?g ?q)
     :domain (Reach ?a ?o ?p ?g ?q)
-    :fluents (AtPose AtPosition)
+    :fluents (AtPose AtRelPose AtPosition)
     :outputs (?t)
     :certified (and (Kin ?a ?o ?p ?g ?q ?t))  ;; (ATraj ?t)
   )
   (:stream inverse-kinematics-rel
     :inputs (?a ?o1 ?rp1 ?o2 ?p2 ?g ?q)
     :domain (ReachRel ?a ?o1 ?rp1 ?o2 ?p2 ?g ?q)
-    :fluents (AtPose AtPosition)
+    :fluents (AtPose AtRelPose AtPosition)
     :outputs (?t)
     :certified (and (KinRel ?a ?o1 ?rp1 ?o2 ?p2 ?g ?q ?t))
   )
@@ -91,7 +91,7 @@
   (:stream plan-base-motion
     :inputs (?q1 ?q2)
     :domain (and (BConf ?q1) (BConf ?q2))
-    :fluents (AtPose AtGrasp AtPosition AtAConf)
+    :fluents (AtPose AtRelPose AtGrasp AtPosition AtAConf)
     :outputs (?t)
     :certified (and (BTraj ?t) (BaseMotion ?q1 ?t ?q2))
   )

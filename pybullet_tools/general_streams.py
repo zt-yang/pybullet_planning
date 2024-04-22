@@ -533,7 +533,7 @@ def visualize_sampled_pstns(x_min, x_max, x_points):
     plt.show()
 
 
-def sample_joint_position_gen(num_samples=14, closed=False, visualize=False):
+def sample_joint_position_gen(num_samples=14, to_close=False, visualize=False, verbose=False):
     """ generate open positions if closed=False and closed positions if closed=True (deprecated) """
     def fn(o, pstn1):
 
@@ -551,13 +551,14 @@ def sample_joint_position_gen(num_samples=14, closed=False, visualize=False):
         a_third = (upper - lower) / 3
 
         if pstn1.is_prismatic():
-            if closed:
+            if to_close:
                 pstns.extend([np.random.uniform(lower, upper - a_half) for k in range(num_samples)])
             else:
-                pstns.extend([np.random.uniform(lower + 2 * a_third, upper) for k in range(num_samples)])
+                # pstns.extend([np.random.uniform(lower + 2 * a_third, upper) for k in range(num_samples)])
+                pstns.extend([np.random.uniform(upper, upper) for k in range(num_samples)])
 
         else:
-            if closed:
+            if to_close:
                 if lower < 0 and upper == 0:
                     pstns.append(upper)
                     pstns.extend([np.random.uniform(upper - a_third, upper) for k in range(num_samples)])
@@ -601,7 +602,9 @@ def sample_joint_position_gen(num_samples=14, closed=False, visualize=False):
         if visualize:
             visualize_sampled_pstns(x_min, x_max, pstns)
 
-        print(f'\tsample_joint_position_gen({o}, {pstn1.value}, closed={closed}) choosing from {pstns}')
+        if verbose:
+            print(f'\tsample_joint_position_gen({o}, {pstn1.value}, closed={to_close}) choosing from {pstns}, '
+                  f'joint limits = [{round(x_min, 3)}, {round(x_max, 3)}]')
         random.shuffle(pstns)
         positions = [(Position(o, p), ) for p in pstns]
 
@@ -762,7 +765,7 @@ def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
 
         if verbose: print(f'\n{title} grasps =', [nice(g) for g in grasps])
 
-        app = robot.get_approach_vector(arm, g_type, scale=2)
+        app = robot.get_approach_vector(arm, g_type, scale=0.5)
         grasps = [HandleGrasp('side', body_joint, g, robot.get_approach_pose(app, g),
                               robot.get_carry_conf(arm, g_type, g)) for g in grasps]
         for grasp in grasps:
@@ -981,14 +984,20 @@ def get_cfree_traj_pose_test(problem, collisions=True, verbose=False, visualize=
 
 
 def process_motion_fluents(fluents, robot, verbose=False):
+
+    ## sort the fluents so that AtRelPose is assigned after AtPose
+    sorted_fluents = [f for f in fluents if f[0].lower() == 'atpose']
+    sorted_fluents += [f for f in fluents if f[0].lower() == 'atrelpose']
+    sorted_fluents += [f for f in fluents if f not in sorted_fluents]
     if verbose:
-        print('\t'+'\n\t'.join([str(b) for b in fluents]))
+        print('\t'+'\n\t'.join([str(b) for b in sorted_fluents]))
+
     attachments = []
-    for atom in fluents:
+    for atom in sorted_fluents:
         predicate, args = atom[0].lower(), atom[1:]
         if predicate in ['atpose', 'atrelpose']:
-            o, p = args
-            if o not in ['@world']:
+            o, p = args[:2]
+            if o not in ['@world'] and not isinstance(o, tuple):
                 p.assign()
         elif predicate in ['atgrasp', 'atgrasphalf']:
             a, o, g = args

@@ -67,7 +67,6 @@ class PDDLStreamAgent(MotionAgent):
         self.envs = []  ## for preimage computation
         self.env_execution = None  ## for saving states during execution
         self.preimages_after_op = {}  ## to be updated by each abstract planning call
-        self.domains_for_action = {}
         self.time_log = []  ## for recording time
 
         self.exp_dir = None  ## path to store runs
@@ -252,9 +251,17 @@ class PDDLStreamAgent(MotionAgent):
         print('-'*50, '\n')
 
     def remove_unpickleble_attributes(self):
+        self.cached_attributes = {
+            'learned_pose_list_gen': self.world.learned_pose_list_gen,
+            'learned_bconf_list_gen': self.world.learned_bconf_list_gen
+        }
         self.robot.ik_solvers = {arm: None for arm in self.robot.arms}
         self.world.learned_pose_list_gen = None
         self.world.learned_bconf_list_gen = None
+
+    def recover_unpickleble_attributes(self):
+        self.world.learned_pose_list_gen = self.cached_attributes['learned_pose_list_gen']
+        self.world.learned_bconf_list_gen = self.cached_attributes['learned_bconf_list_gen']
 
     def record_command(self, action):
         self.commands.append(action)

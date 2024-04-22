@@ -378,10 +378,9 @@ class MobileRobot(RobotAPI):
         random.shuffle(arms)
         for arm in arms:
             conf = get_arm_conf(arm)
-            init += [('Arm', arm), ('AConf', arm, conf), ('AtAConf', arm, conf),
-                     ('DefaultAConf', arm, conf), ('HandEmpty', arm)]
+            init += [('AConf', arm, conf), ('AtAConf', arm, conf), ('DefaultAConf', arm, conf)]
             if arm in self.arms:
-                init += [('Controllable', arm)]
+                init += [('Arm', arm), ('HandEmpty', arm), ('Controllable', arm)]
 
         if self.move_base:
             init += [('CanMoveBase',)]
@@ -540,7 +539,7 @@ from pybullet_tools.pr2_utils import open_arm
 class PR2Robot(MobileRobot):
 
     path = 'models/drake/pr2_description/urdf/pr2_simplified.urdf'
-    arms = ['left']
+    arms = ['left']  ## 'left', 'right'
     joint_groups = PR2_GROUPS
     joint_group_names = ['left', 'right', BASE_GROUP, BASE_TORSO_GROUP]
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
@@ -553,6 +552,8 @@ class PR2Robot(MobileRobot):
     def __init__(self, body, dual_arm=False, **kwargs):
         super(PR2Robot, self).__init__(body, **kwargs)
         self.dual_arm = dual_arm
+        if dual_arm:
+            self.arms = self.get_all_arms()
         self.grasp_aconfs = {}
         ## get away with the problem of Fluent stream outputs cannot be in action effects: ataconf
 
@@ -610,8 +611,8 @@ class PR2Robot(MobileRobot):
         # if grasp_type == 'side':
         #     return SIDE_HOLDING_LEFT_ARM
 
-    def get_approach_vector(self, arm, grasp_type, scale=1):
-        return tuple(scale * APPROACH_DISTANCE * 1.3 * get_unit_vector([0, 0, -1]))
+    # def get_approach_vector(self, arm, grasp_type, scale=1):
+    #     return tuple(scale * APPROACH_DISTANCE * 1.3 * get_unit_vector([0, 0, -1]))
         # if grasp_type == 'top':
         #     return APPROACH_DISTANCE*get_unit_vector([1, 0, 0])
         # if grasp_type == 'side':

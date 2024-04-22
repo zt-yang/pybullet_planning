@@ -263,7 +263,7 @@ def get_root_links(body):
     return fixed_links
 
 
-def articulated_collisions(obj, obstacles, verbose=False, **kwargs): # TODO: articulated_collision?
+def articulated_collisions(obj, obstacles, verbose=False, world=None, **kwargs): # TODO: articulated_collision?
     # TODO: cache & compare aabbs
     for obstacle in obstacles:
         # dump_body(obstacle)
@@ -271,7 +271,11 @@ def articulated_collisions(obj, obstacles, verbose=False, **kwargs): # TODO: art
         root_links = get_root_links(obstacle)
         if link_pairs_collision(body1=obstacle, links1=root_links, body2=obj, **kwargs):
             if verbose:
-                print(f'articulated_collisions | obj = {obj}\tobstacle = {obstacle}\troot_links = {root_links}')
+                to_print = f'\t\tarticulated_collisions | obj = {obj}\tobstacle = {obstacle}'
+                if world is not None:
+                    name = world.get_name_from_body(obstacle)
+                    to_print += f' ({name})'
+                print(to_print)
             # dump_body(obj)
             # dump_body(obstacle)
             # for link in root_links:
@@ -343,16 +347,19 @@ def collided(obj, obstacles=[], world=None, tag='', articulated=False, verbose=F
              visualize=False, min_num_pts=3, use_aabb=True, ignored_pairs=[],
              log_collisions=False, **kwargs):
 
-    prefix = '\t\tbullet_utils.collided '
+    obj_print = world.get_name(obj) if world is not None else obj
+    prefix = f'\t\tbullet_utils.collided({obj_print}) '
     if len(tag) > 0: prefix += f'( {tag} )'
+    verbose = True
 
     ## first get answer
     if articulated:
         body = obj if isinstance(obj, int) else obj.body
         obstacles_here = [o for o in obstacles if (o, body) not in ignored_pairs]
-        result = articulated_collisions(obj, obstacles_here, use_aabb=use_aabb, verbose=verbose, **kwargs)
+        result = articulated_collisions(obj, obstacles_here, use_aabb=use_aabb, verbose=verbose,
+                                        world=world, **kwargs)
         if verbose and result:
-            print(prefix, '| articulated', obj, obstacles)
+            print(prefix, '| articulated, obstacles =', obstacles)
         return result
     # else:
     #     result = any(pairwise_collision(obj, b, use_aabb=use_aabb, **kwargs) for b in obstacles)
@@ -369,12 +376,12 @@ def collided(obj, obstacles=[], world=None, tag='', articulated=False, verbose=F
                 import traceback
                 print('bullet_utils.collided | world is None')
                 print(traceback.format_exc())
-            obj_print = world.get_name(obj) if world is not None else obj
+
             b_print = world.get_name(b) if world is not None else b
             if verbose:
                 # if b_print == 'floor1':
                 #     print(obstacles)
-                to_print += f'{prefix} {obj_print} collides with {b_print}'
+                to_print += f'{prefix} collides with {b_print}'
             result = True
             bodies.append(b)
             if log_collisions:

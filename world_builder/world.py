@@ -704,8 +704,11 @@ class World(WorldBase):
         # bodies += static_bodies
         print_not = print_not_2 = False
         for body in bodies:
+            line = ''
+
             if body in ROBOT_TO_OBJECT:
                 object = ROBOT_TO_OBJECT[body]
+                line += f'{object.body}|'
             elif body in REMOVED_BODY_TO_OBJECT:
                 object = REMOVED_BODY_TO_OBJECT[body]
             else:
@@ -720,7 +723,7 @@ class World(WorldBase):
             #         typ_str = f"{self.sup_categories[typ].capitalize()} -> {typ_str}"
             #         typ = self.sup_categories[typ]
 
-            line = f'{body}\t  |  {typ_str}: {object.name}'
+            line += f'{body}\t  |  {typ_str}: {object.name}'
 
             ## partnet mobility objects
             if hasattr(object, 'mobility_identifier'):
@@ -793,7 +796,7 @@ class World(WorldBase):
         bodies = [b for b in bodies if b in self.BODY_TO_OBJECT]
         return bodies
 
-    def remove_bodies_from_planning(self, goals=[], exceptions=[]):
+    def remove_bodies_from_planning(self, goals=[], exceptions=[], skeleton=[], subgoals=[]):
 
         ## important for keeping related links and joints for planning
         self.init_link_joint_relations()
@@ -812,9 +815,14 @@ class World(WorldBase):
             goals = [goals]
             is_test_goal = True
 
+        ## consider the objects provided in skeleton and subgoals
+        all_tuples = goals + skeleton
+        if subgoals is not None:
+            all_tuples += subgoals
+
         ## find all relevant objects mentioned in the goal literals
         bodies = []
-        for literal in goals:
+        for literal in all_tuples:
             if is_test_goal:
                 items = literal[1]
                 if items in self.BODY_TO_OBJECT:

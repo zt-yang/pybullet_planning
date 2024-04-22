@@ -731,7 +731,7 @@ class Profiler(Saver):
 
 class PoseSaver(Saver):
     def __init__(self, body, pose=None):
-        self.body = body
+        self.body = body.body if not isinstance(body, int) else body
         if pose is None:
             pose = get_pose(self.body)
         self.pose = pose
@@ -749,7 +749,7 @@ class PoseSaver(Saver):
 
 class ConfSaver(Saver):
     def __init__(self, body, joints=None, positions=None):
-        self.body = body
+        self.body = body if isinstance(body, int) else body.body
         if joints is None:
             joints = get_movable_joints(self.body)
         self.joints = joints
@@ -1833,6 +1833,8 @@ def get_bodies():
 BodyInfo = namedtuple('BodyInfo', ['base_name', 'body_name'])
 
 def get_body_info(body):
+    if not isinstance(body, int):
+        body = body.body
     # TODO: p.syncBodyInfo
     return BodyInfo(*p.getBodyInfo(body, physicsClientId=CLIENT))
 
@@ -1871,6 +1873,8 @@ def remove_body(body):
 def get_pose(body):
     # return p.getBasePositionAndOrientation(body, physicsClientId=CLIENT)
     # #return np.concatenate([point, quat])
+    if not isinstance(body, int):
+        body = body.body
     with HideOutput(True):
         k = 0
         with timeout(duration=1):
@@ -2011,8 +2015,8 @@ JOINT_TYPES = {
 }
 
 def get_num_joints(body):
-    if isinstance(body, tuple):
-        print('utils.get_num_joints()')
+    if not isinstance(body, int):
+        body = body.body
     return p.getNumJoints(body, physicsClientId=CLIENT)
 
 def get_joints(body):
@@ -2030,6 +2034,8 @@ JointInfo = namedtuple('JointInfo', ['jointIndex', 'jointName', 'jointType',
                                      'parentFramePos', 'parentFrameOrn', 'parentIndex'])
 
 def get_joint_info(body, joint):
+    if not isinstance(body, int):
+        body = body.body
     return JointInfo(*p.getJointInfo(body, joint, physicsClientId=CLIENT))
 
 def get_joint_name(body, joint):
@@ -2060,6 +2066,8 @@ JointState = namedtuple('JointState', ['jointPosition', 'jointVelocity',
                                        'jointReactionForces', 'appliedJointMotorTorque'])
 
 def get_joint_state(body, joint):
+    if not isinstance(body, int):
+        body = body.body
     return JointState(*p.getJointState(body, joint, physicsClientId=CLIENT))
 
 def get_joint_position(body, joint):
@@ -2092,6 +2100,8 @@ def set_joint_state(body, joint, position, velocity):
     p.resetJointState(body, joint, targetValue=position, targetVelocity=velocity, physicsClientId=CLIENT)
 
 def set_joint_position(body, joint, value):
+    if not isinstance(body, int):
+        body = body.body
     # TODO: remove targetVelocity=0
     p.resetJointState(body, joint, targetValue=value, targetVelocity=0, physicsClientId=CLIENT)
 
@@ -2856,6 +2866,8 @@ def get_visual_data(body, link=BASE_LINK):
     # visual_data = [VisualShapeData(*tup) for tup in p.getVisualShapeData(body, physicsClientId=CLIENT)]
     # list(filter(lambda d: d.linkIndex == link, visual_data))
     k = 0
+    if not isinstance(body, int):
+        print('not isinstance(body, int)')
     while True:
         try:
             visual_data = [VisualShapeData(*tup) for tup in p.getVisualShapeData(body, physicsClientId=CLIENT)]
@@ -3027,6 +3039,8 @@ def get_mesh_data(obj, link=BASE_LINK, shape_index=0, visual=True):
 def get_collision_data(body, link=BASE_LINK):
     ## will fail if mesh file is .dae
     ## https://products.aspose.app/3d/conversion/dae-to-obj
+    if not isinstance(body, int):
+        body = body.body
     try:
         data = p.getCollisionShapeData(body, link, physicsClientId=CLIENT)
         return [CollisionShapeData(*tup) for tup in data]
@@ -3929,7 +3943,7 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
         set_joint_positions(body, joints, q)
         for attachment in attachments:
             attachment.assign()
-        #wait_for_duration(1e-2)
+        # wait_for_duration(1e-2)
         get_moving_aabb = cached_fn(get_buffered_aabb, cache=True, max_distance=max_distance/2., **kwargs)
 
         for link1, link2 in check_link_pairs:
@@ -3937,7 +3951,7 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
             # TODO: self-collisions between body and attached_bodies (except for the link adjacent to the robot)
             if (not use_aabb or aabb_overlap(get_moving_aabb(body), get_moving_aabb(body))) and \
                     pairwise_link_collision(body, link1, body, link2): #, **kwargs):
-                #print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
+                # print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
                 if verbose: print(body, link1, body, link2)
                 return True
 
@@ -3965,20 +3979,21 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
 
             ## debug colliding with sink
             debug = False
-            world = moving_bodies[0].body.world
-            if hasattr(world, 'BODY_TO_OBJECT'):
-                if body2 in world.BODY_TO_OBJECT:
-                    if isinstance(body1.body, int):
-                        mov_name = world.BODY_TO_OBJECT[body1.body].name
-                    else:
-                        mov_name = body1.body.name
-                    obs_name = world.BODY_TO_OBJECT[body2].name
-                    if 'bottle' in mov_name and ('bottle' in obs_name or ##'sink#1' in obs_name or
-                                                 'sink_counter_front' in obs_name or 'faucet' in obs_name):
-                        debug = True
-                        # set_renderer(True)
-                        # if 'bottle' in obs_name:
-                        #     print(f'checking collision between {obs_name} and bottle')
+            if hasattr(moving_bodies[0].body, 'world'):
+                world = moving_bodies[0].body.world
+                if hasattr(world, 'BODY_TO_OBJECT'):
+                    if body2 in world.BODY_TO_OBJECT:
+                        if isinstance(body1.body, int):
+                            mov_name = world.BODY_TO_OBJECT[body1.body].name
+                        else:
+                            mov_name = body1.body.name
+                        obs_name = world.BODY_TO_OBJECT[body2].name
+                        if 'bottle' in mov_name and ('bottle' in obs_name or ##'sink#1' in obs_name or
+                                                     'sink_counter_front' in obs_name or 'faucet' in obs_name):
+                            debug = True
+                            # set_renderer(True)
+                            # if 'bottle' in obs_name:
+                            #     print(f'checking collision between {obs_name} and bottle')
             if (not use_aabb or aabb_overlap(get_moving_aabb(body1), get_obstacle_aabb(body2))) \
                     and pairwise_collision(body1, body2, max_distance=max_distance, **kwargs):
                 #print(get_body_name(body1), get_body_name(body2))

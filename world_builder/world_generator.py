@@ -210,7 +210,7 @@ def to_lisdf(world, output_dir, world_name=None, verbose=True, **kwargs):
                 print('world_generator | len(get_collision_data(body)) == 0')
             dim = get_collision_data(body)[0].dimensions
             wlh = " ".join([str(round(o, 3)) for o in dim])
-            color = get_color(obj)[:3]
+            color = get_color(obj.body)[:3]
             rgb = " ".join([str(round(o, 3)) for o in color])
             models_sdf += MODEL_BOX_STR.format(
                 name=obj.name, is_static=is_static,

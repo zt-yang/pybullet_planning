@@ -14,7 +14,7 @@ def initialize_object_reducer(name):
     if name == 'heuristic-movables':
         return reduce_by_objects_heuristic_movables
 
-    def return_as_is(facts, objects, goals):
+    def return_as_is(facts, objects=[], goals=[]):
         return facts
     return return_as_is
 

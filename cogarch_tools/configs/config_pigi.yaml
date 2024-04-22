@@ -42,6 +42,8 @@ data:
 robot:
   robot_name: 'pr2'
   draw_base_limits: true
+  dual_arm: false
+  self_collisions: true
 
 ## planning stream related
 streams:

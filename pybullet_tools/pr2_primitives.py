@@ -101,7 +101,7 @@ class Grasp(object):
 
 class Conf(object):
     def __init__(self, body, joints, values=None, init=False, index=None, joint_state=None):
-        self.body = body
+        self.body = body if isinstance(body, int) else body.body
         self.joints = joints
         if values is None:
             values = get_joint_positions(self.body, self.joints)
