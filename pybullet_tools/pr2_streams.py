@@ -506,9 +506,9 @@ def get_arm_ik_fn(problem, custom_limits={}, resolution=DEFAULT_RESOLUTION,
                 if verbose: print(f'{title}Approach path failure')
                 return None
             path = approach_path + grasp_path
-        mt = create_trajectory(robot, arm_joints, path)
+        mt = create_trajectory(robot.body, arm_joints, path)
         attachments = {attachment.child: attachment} ## TODO: problem with having (body, joint) tuple
-        cmd = Commands(State(attachments=attachments), savers=[BodySaver(robot)], commands=[mt])
+        cmd = Commands(State(attachments=attachments), savers=[BodySaver(robot.body)], commands=[mt])
         return (mt.path[-1], cmd)
     return fn
 
@@ -693,8 +693,8 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
     # bpath.append(bpath[-1]) ## replicate the last one because somehow it's missing
     bt = Trajectory(bpath)
     at = Trajectory(apath)  ## create_trajectory(robot, get_arm_joints(robot, a), apath)
-    base_cmd = Commands(State(), savers=[BodySaver(robot)], commands=[bt])
-    arm_cmd = Commands(State(), savers=[BodySaver(robot)], commands=[at])  # TODO: Simultaneous
+    base_cmd = Commands(State(), savers=[BodySaver(robot.body)], commands=[bt])
+    arm_cmd = Commands(State(), savers=[BodySaver(robot.body)], commands=[at])  # TODO: Simultaneous
     bq2 = bt.path[-1]
     aq2 = at.path[-1]
     if aq2.values == aq1.values:
@@ -851,7 +851,7 @@ def get_turn_knob_handle_motion_gen(
         LINK_POSE_TO_JOINT_POSITION[body][joint] = mapping
 
         at = Trajectory(apath) ## create_trajectory(robot, get_arm_joints(robot, a), apath)
-        arm_cmd =  Commands(State(), savers=[BodySaver(robot)], commands=[at])
+        arm_cmd =  Commands(State(), savers=[BodySaver(robot.body)], commands=[at])
         aq2 = at.path[-1]
         if aq2.values == aq1.values:
             aq2 = aq1
@@ -1147,7 +1147,7 @@ def get_pull_marker_random_motion_gen(problem, custom_limits={}, collisions=True
                     collided = True
             if not collided:
                 bt = Trajectory(bpath)
-                cmd = Commands(State(), savers=[BodySaver(robot)], commands=[bt])
+                cmd = Commands(State(), savers=[BodySaver(robot.body)], commands=[bt])
                 yield (p2, bpath[-1], p4, cmd)
     return fn
 
@@ -1186,7 +1186,7 @@ def get_pull_marker_to_pose_motion_gen(problem, custom_limits={}, collisions=Tru
                 collided = True
         if not collided:
             bt = Trajectory(bpath)
-            cmd = Commands(State(), savers=[BodySaver(robot)], commands=[bt])
+            cmd = Commands(State(), savers=[BodySaver(robot.body)], commands=[bt])
             return (bpath[-1], p4, cmd)
         return None
 
@@ -1228,7 +1228,7 @@ def get_pull_marker_to_bconf_motion_gen(problem, custom_limits={}, collisions=Tr
                 collided = True
         if not collided:
             bt = Trajectory(bpath)
-            cmd = Commands(State(), savers=[BodySaver(robot)], commands=[bt])
+            cmd = Commands(State(), savers=[BodySaver(robot.body)], commands=[bt])
             return (p2, p4, cmd)
         return None
 
@@ -1375,7 +1375,7 @@ def get_base_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
         while num_trials > 0:
             param = params[-num_trials]
             raw_path = plan_joint_motion(robot, bq2.joints, bq2.values, attachments=attachments,
-                                         obstacles=obstacles_here, self_collisions=SELF_COLLISIONS,
+                                         obstacles=obstacles_here, self_collisions=robot.self_collisions,
                                          custom_limits=custom_limits, resolutions=None, # TODO: base resolutions
                                          use_aabb=True, cache=True,
                                          restarts=param[0], iterations=param[1], smooth=50) # smooth=50
@@ -1396,7 +1396,7 @@ def get_base_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
             return None
         path = [Conf(robot, bq2.joints, q) for q in raw_path]
         bt = Trajectory(path)
-        cmd = Commands(State(), savers=[BodySaver(robot)], commands=[bt])
+        cmd = Commands(State(), savers=[BodySaver(robot.body)], commands=[bt])
         return (cmd,)
     return fn
 

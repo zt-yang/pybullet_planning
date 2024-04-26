@@ -1633,6 +1633,19 @@ class World(WorldBase):
         possible = sorted(possible, key=get_area, reverse=True)
         return possible
 
+    def remove_unpickleble_attributes(self):
+        self.cached_attributes = {
+            'learned_pose_list_gen': self.learned_pose_list_gen,
+            'learned_bconf_list_gen': self.learned_bconf_list_gen
+        }
+        self.learned_pose_list_gen = None
+        self.learned_bconf_list_gen = None
+        self.robot.ik_solvers = {arm: None for arm in self.robot.arms}
+
+    def recover_unpickleble_attributes(self):
+        self.learned_pose_list_gen = self.cached_attributes['learned_pose_list_gen']
+        self.learned_bconf_list_gen = self.cached_attributes['learned_bconf_list_gen']
+
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, self.robot)
 

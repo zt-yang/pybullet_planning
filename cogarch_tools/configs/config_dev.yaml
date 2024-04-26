@@ -4,7 +4,8 @@ verbose: true
 
 ## configuration for PDDLStream
 planner:
-  visualization: true
+  visualization: false
+  pddlstream_debug: false
   scene_only: false
   use_heuristic_fc: false
   dataset_mode: true
@@ -15,7 +16,6 @@ planner:
   max_plans: 1
   max_solutions: 1
   log_failures: false
-  pddlstream_debug: true
 
 ## specify the TAMP problem with preconfigured scene layout & robot
 problem:
@@ -43,6 +43,7 @@ robot:
   draw_base_limits: true
   dual_arm: false
   self_collisions: false
+  separate_base_planning: true
 
 ## planning stream related
 streams:

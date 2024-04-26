@@ -4,10 +4,9 @@ from os import listdir, pardir
 RD = abspath(join(dirname(__file__), pardir, pardir))
 sys.path.append(join(RD, pardir, 'cognitive-architectures', 'pddlgym'))
 
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-
 from cogarch_tools.processes.pddlstream_agent import *
+from pybullet_tools.stream_agent import log_goal_plan_init
+
 hpn_kwargs = dict(domain_modifier='atbconf,canmove', exp_name='hpn')
 hpn_kwargs = dict(domain_modifier='atbconf,canmove,basemotion', exp_name='hpn')
 
@@ -49,7 +48,12 @@ class HierarchicalAgent(PDDLStreamAgent):
         # facts = observation.get_facts(self.env.init_preimage)
         op = self.env_execution.to_literal(action)
         preimage = self.preimages_after_op[op]
-        goals = [self.env_execution.from_literal(n) for n in preimage]
+
+        ## TODO: hack for refining the incomplete move_base action
+        if action.name == 'move_base':
+            goals = [['AtBConf', action.args[1]]]
+        else:
+            goals = [self.env_execution.from_literal(n) for n in preimage]
 
         goals_not = [g for g in goals if g[0] == 'not']
         goals = [g for g in goals if g[0] != 'not']
@@ -110,11 +114,20 @@ class HierarchicalAgent(PDDLStreamAgent):
 
         add_relevant_facts_given_goals(facts, goals_check, removed)
 
+        ## some basic fact is missing due to previuos steps
+        accepted_additions = ['canmove', 'canungrasp', '=']
+        missing_preconditions, _ = self.check_action_preconditions(action, facts, goals[1:], verbose=True)
+        facts += [f for f in missing_preconditions if f[0] in accepted_additions or \
+                  (len(f) == 2 and isinstance(f[1], tuple) and f[1][0] in accepted_additions)]
+
         return goals, facts
 
     def refine_plan(self, action, observation, **kwargs):
         from pybullet_tools.logging_utils import myprint
         from pddlstream.algorithms.algorithm import reset_globals
+
+        action_name = get_original_action_name(action.name)
+        original_action = Action(action_name, action.args)
 
         self.refinement_count += 1
         myprint(f'\n## {self.refinement_count}th refinement problem')
@@ -125,37 +138,51 @@ class HierarchicalAgent(PDDLStreamAgent):
         facts = self.object_reducer(facts, goals=goals)
         self.recover_unpickleble_attributes()
 
-        ## only two-level
-        domain_pddl = self.domain_pddl
-        predicates = action.name.split('--no-')[1:]
-        if len(predicates) == 1 or True:  ## TODO: better way to schedule the postponing
-            domain_modifier = None
+        ## skip planning if the subgoal has been achieved
+        missing_preconditions, preimage = self.check_action_preconditions(action, facts, goals)
+        if len(missing_preconditions) == 0:
+            plan = [original_action]
+            env = None
+            time_log = {'planning': 0, 'preimage': 0}
+            time_log.update(log_goal_plan_init(goals[1:], plan, preimage))
+            print('skip replaning')
+
         else:
-            domain_modifier = initialize_domain_modifier(predicates[:-1])
 
-        ## update the PDDLStream problem using domain pddl
-        pddlstream_problem = pddlstream_from_state_goal(
-            observation.state, goals, custom_limits=self.custom_limits,
-            domain_pddl=domain_pddl, stream_pddl=self.stream_pddl, facts=facts, verbose=True
-        )
-        pddlstream_problem = self.robot.modify_pddl(pddlstream_problem)
+            ## only two-level
+            domain_pddl = self.domain_pddl
+            predicates = action.name.split('--no-')[1:]
+            if len(predicates) == 1 or True:  ## TODO: better way to schedule the postponing
+                domain_modifier = None
+            else:
+                domain_modifier = initialize_domain_modifier(predicates[:-1])
 
-        sub_problem = pddlstream_problem
-        sub_state = observation.state
-        # sub_problem = get_smaller_world(pddlstream_problem, observation.state.world)
+            ## update the PDDLStream problem using domain pddl
+            pddlstream_problem = pddlstream_from_state_goal(
+                observation.state, goals, custom_limits=self.custom_limits,
+                domain_pddl=domain_pddl, stream_pddl=self.stream_pddl, facts=facts, verbose=True
+            )
+            pddlstream_problem = self.robot.modify_pddl(pddlstream_problem)
 
-        ## get new plan, by default it's using the original domain file
-        reset_globals()
-        plan, env, knowledge, time_log, preimage = self.solve_pddlstream(
-            sub_problem, sub_state, domain_pddl=domain_pddl,
-            domain_modifier=domain_modifier,
-            **self.pddlstream_kwargs, **kwargs)  ## observation.objects
-        observation.state.remove_gripper()
+            args = [a for a in action.args if type(a).__name__ in ['int', 'tuple', 'str'] and '?' not in str(a)]
+            self.pddlstream_kwargs['skeleton'] = [[action_name] + args]
 
-        ## save the failures
-        failures_file = join(VISUALIZATIONS_PATH, 'log.json')
-        if isdir(VISUALIZATIONS_PATH) and isfile(failures_file):
-            shutil.move(failures_file, join(VISUALIZATIONS_PATH, f'log_{self.refinement_count}.json'))
+            sub_problem = pddlstream_problem
+            sub_state = observation.state
+            # sub_problem = get_smaller_world(pddlstream_problem, observation.state.world)
+
+            ## get new plan, by default it's using the original domain file
+            reset_globals()
+            plan, env, knowledge, time_log, preimage = self.solve_pddlstream(
+                sub_problem, sub_state, domain_pddl=domain_pddl,
+                domain_modifier=domain_modifier,
+                **self.pddlstream_kwargs, **kwargs)  ## observation.objects
+            observation.state.remove_gripper()
+
+            ## save the failures
+            failures_file = join(VISUALIZATIONS_PATH, 'log.json')
+            if isdir(VISUALIZATIONS_PATH) and isfile(failures_file):
+                shutil.move(failures_file, join(VISUALIZATIONS_PATH, f'log_{self.refinement_count}.json'))
 
         print('------------------------ \nRefined plan:', plan)
         if plan is not None:
@@ -192,6 +219,58 @@ class HierarchicalAgent(PDDLStreamAgent):
             # else:
             #     self.failed_count -= 1
             # self.refine_plan(action, observation)
+
+    def check_action_preconditions(self, action, facts, goals, verbose=False):
+        env = self.env_execution
+
+        action_name = get_original_action_name(action.name)
+        action = Action(action_name, action.args)
+
+        print('\n'+'-'*50+'\ncheck_action_preconditions', action)
+        action_literal = env.to_literal(action)
+        info = env.identify_missing_facts(action_literal)
+        if verbose:
+            env.print_log(info)
+
+        preconditions, effects = env.ground_operator_preconds_effects(action_literal)
+        del_effects = [env.from_literal(a) for a in preconditions if a.predicate.name != 'identical']
+        add_effects = [env.from_literal(a) for a in effects]
+        print('\tpreconditions\t', del_effects)
+        print('\teffects\t', add_effects)
+
+        add_effects_2 = [env.from_literal(a) for a in info['add_effects']]
+        del_effects_2 = [env.from_literal(a) for a in info['del_effects'] + info['need_preconditions']]
+
+        add_effects += [a for a in add_effects_2 if a not in add_effects]
+        for a in del_effects_2:
+            if a[0] == 'not':
+                a = a[1]
+            if a[0] != 'identical':
+                del_effects.append(a)
+
+        variables = {}
+        for fact in facts:
+            for arg in fact[1:]:
+                if arg not in variables:
+                    variables[arg] = []
+                variables[arg].append(fact)
+
+        missing_preconditions = []
+        for precond in del_effects:
+            if precond not in facts:
+                print(f'\t! precondition not met\t {precond}')
+                missing_preconditions.append(precond)
+
+        for goal in goals:
+            goal_mod = tuple([goal[0].lower()] + list(goal[1:]))
+            if goal_mod not in add_effects:
+                print(f'\t! goal not met\t {goal}')
+            for arg in goal[1:]:
+                if arg not in variables:
+                    print(f'\t! variable {arg} in goal is not the same in init')
+
+        print('-'*50)
+        return missing_preconditions, del_effects
 
     def process_hierarchical_env(self, env, plan, domain_pddl):
 
@@ -331,3 +410,9 @@ def add_relevant_facts_given_goals(facts, goals, removed):
     #     add_facts += [f for f in removed if f[0] == 'kin' and f[3] == pose]
     #     print(f'\n{goal_at_grasp}\t->\tadded facts\n\t'+'\n\t'.join([str(f) for f in add_facts]))
     #     facts += add_facts
+
+
+def get_original_action_name(action_name):
+    if '--' in action_name:
+        action_name = action_name.split('--')[0]
+    return action_name

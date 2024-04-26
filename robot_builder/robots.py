@@ -21,7 +21,8 @@ from pybullet_tools.pr2_primitives import APPROACH_DISTANCE, Conf, Grasp, get_ba
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, TOP_HOLDING_LEFT_ARM, PR2_GRIPPER_ROOTS
 from pybullet_tools.general_streams import get_handle_link, get_grasp_list_gen, get_contain_list_gen, \
     get_cfree_approach_pose_test, get_stable_list_gen, play_trajectory
-from pybullet_tools.stream_agent import remove_stream_by_name, remove_predicate_by_name
+from pybullet_tools.stream_agent import remove_stream_by_name, remove_predicate_by_name, \
+    remove_all_streams_except_name
 
 from world_builder.entities import Robot
 from world_builder.world_utils import load_asset
@@ -38,13 +39,14 @@ class RobotAPI(Robot):
     grasp_direction = Point(x=+1)  ## used by is_top_grasp
     joint_groups = dict()
 
-    def __init__(self, body, move_base=True, max_distance=0.0,
+    def __init__(self, body, move_base=True, max_distance=0.0, separate_base_planning=False,
                  self_collisions=SELF_COLLISIONS, **kwargs):
         super(RobotAPI, self).__init__(body, **kwargs)
         self.name = self.__class__.__name__.lower()
         self.move_base = move_base
         self.max_distance = max_distance
         self.self_collisions = self_collisions
+        self.separate_base_planning = separate_base_planning
 
         self.grippers = {}
         self.possible_obstacles = {}  ## body: obstacles
@@ -396,9 +398,22 @@ class MobileRobot(RobotAPI):
     def modify_pddl(self, pddlstream_problem):
         from pddlstream.language.constants import PDDLProblem
         domain_pddl, constant_map, stream_pddl, stream_map, init, goal = pddlstream_problem
+        title = 'robots.modify_pddl |\t'
+
+        ## hack to help reduce the base planning problem
+        if self.separate_base_planning:
+            if len(goal) == 2 and goal[1][0] == 'AtBConf':
+                print(f'{title}remove_all_streams_except_name(plan-base-motion)')
+                stream_pddl = remove_all_streams_except_name(stream_pddl, 'plan-base-motion')
+            else:
+                print(f'{title}remove_stream_by_name(plan-base-motion)')
+                stream_pddl = remove_stream_by_name(stream_pddl, 'plan-base-motion')
+
         if self.move_base:
+            print(f'{title}remove_stream_by_name(test-inverse-reachability)')
             stream_pddl = remove_stream_by_name(stream_pddl, 'test-inverse-reachability')
         else:
+            print(f'{title}remove_predicate_by_name(CanMove)')
             domain_pddl = remove_predicate_by_name(domain_pddl, 'CanMove')
         return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
 

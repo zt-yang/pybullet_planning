@@ -754,22 +754,19 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
 
         if is_plan_abstract(plan):
             from leap_tools.hierarchical import check_preimage
+            state.world.remove_unpickleble_attributes()
             env, plan = check_preimage(pddlstream_problem, plan, preimage, domain_pddl,
                                        init=pddlstream_problem.init, objects=objects,
                                        domain_modifier=domain_modifier)
+            state.world.recover_unpickleble_attributes()
         else:
             env = None  ## preimage
-        plan_str = [str(a) for a in plan]
     else:
         env = None
-        plan_str = 'FAILED'
         preimage = []
 
-    time_log['preimage'] = round(time.time() - start_time, 4)
-    time_log['goal'] = [f'{g[0]}({g[1:]})' for g in pddlstream_problem.goal[1:]]
-    time_log['plan'] = plan_str
-    time_log['plan_len'] = len(plan) if plan is not None else 0
-    time_log['init'] = [[str(a) for a in f] for f in preimage]
+    time_log['preimage'] = round(time.time() - start_time, 4) if time.time() - start_time > 0.1 else 0
+    time_log.update(log_goal_plan_init(pddlstream_problem.goal[1:], plan, preimage))
 
     if preview:
         from lisdf_tools.lisdf_planning import Problem as LISDFProblem
@@ -787,6 +784,22 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
     reset_globals()  ## reset PDDLStream solutions
 
     return plan, env, knowledge, time_log, preimage
+
+
+def log_goal_plan_init(goal, plan, preimage):
+    return {
+        'goal': [f'{g[0]}({g[1:]})' for g in goal],
+        'plan': [str(a) for a in plan] if plan is not None else 'FAILED',
+        'plan_len': len(plan) if plan is not None else 0,
+        'init': [[str(a) for a in f] for f in preimage]
+    }
+
+
+def remove_all_streams_except_name(stream_pddl, stream_name):
+    key = '(:stream '
+    lines = stream_pddl.split(key)
+    text = key.join([lines[0]]+[l for l in lines if l.startswith(f'{stream_name}\n')])
+    return text + '\n)'
 
 
 def remove_stream_by_name(stream_pddl, stream_name):

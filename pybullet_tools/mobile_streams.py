@@ -8,7 +8,7 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     get_min_limit, user_input, step_simulation, get_body_name, get_bodies, BASE_LINK, get_joint_position, \
     add_segments, get_max_limit, link_from_name, BodySaver, get_aabb, interpolate_poses, wait_for_user, \
     plan_direct_joint_motion, has_gui, create_attachment, wait_for_duration, get_extend_fn, set_renderer, \
-    get_custom_limits, all_between, remove_body, draw_aabb, GREEN, MAX_DISTANCE
+    get_custom_limits, all_between, remove_body, draw_aabb, GREEN, MAX_DISTANCE, get_collision_fn
 
 from pybullet_tools.bullet_utils import multiply, has_tracik, visualize_bconf
 from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics
@@ -84,7 +84,7 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True, 
                     x, y, yaw = base_conf
                     base_conf = (x, y, z, yaw)
 
-                bq = Conf(robot, base_joints, base_conf)
+                bq = Conf(robot.body, base_joints, base_conf)
                 pose.assign()
                 bq.assign()
                 set_joint_positions(robot, arm_joints, default_conf)
@@ -278,8 +278,11 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
     a, o = inputs[:2]
     g = inputs[-1]
     robot.open_arm(a)
+    base_joints = robot.get_base_joints()
+
     context_saver = WorldSaver(bodies=[robot, o])
     title = f'\t\tsample_bconf({o}, learned=True) | start sampling '
+    col_kwargs = dict(articulated=True, verbose=verbose, world=world, min_num_pts=0)
 
     # set_renderer(enable=False)
     if visualize:
@@ -326,6 +329,9 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
         tool_pose = robot.get_grasp_pose(pose_value, g.value, a, body=g.body)
         gripper_pose = multiply(tool_pose, invert(tool_from_root))
 
+        collision_fn = get_collision_fn(robot, base_joints, obstacles, [], robot.self_collisions,
+                                        custom_limits=robot.custom_limits, use_aabb=True)
+
         tool_link = robot.get_tool_link(a)
         ik_solver = IKSolver(robot.body, tool_link=tool_link, first_joint=None,
                              custom_limits=robot.custom_limits)  ## using all 13 joints
@@ -349,20 +355,23 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
 
             joint_state = dict(zip(ik_solver.joints, conf))
 
-            base_joints = robot.get_base_joints()
             bconf = list(map(joint_state.get, base_joints))
-            bq = Conf(robot, base_joints, bconf, joint_state=joint_state)
+            bq = Conf(robot.body, base_joints, bconf, joint_state=joint_state)
             bq.assign()
 
             set_joint_positions(robot.body, arm_joints, default_conf)
-            if collided(robot, obstacles, articulated=True, tag='ik_default_conf',
-                        verbose=verbose, world=world):
+            if collided(robot, obstacles, tag='ik_default_conf', **col_kwargs):
                 # wait_unlocked()
+                continue
+            if collision_fn(bconf, verbose=True):  ## TODO: figure out why sometimes the answers are different
+                print('sample_bconf | collision_ik_default_conf')
                 continue
 
             ik_solver.set_conf(conf)
-            if collided(robot, obstacles, articulated=True, tag='ik_final_conf',
-                        visualize=visualize, verbose=verbose, world=world):
+            if collided(robot, obstacles, tag='ik_final_conf', visualize=visualize, **col_kwargs):
+                continue
+            if collision_fn(bconf, verbose=True):
+                print('sample_bconf | collision_ik_final_conf')
                 continue
 
             if visualize:
@@ -587,8 +596,8 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
             return None
         path = approach_path + grasp_path
 
-    mt = create_trajectory(robot, arm_joints, path)
-    cmd = Commands(State(attachments=attachments), savers=[BodySaver(robot)], commands=[mt])
+    mt = create_trajectory(robot.body, arm_joints, path)
+    cmd = Commands(State(attachments=attachments), savers=[BodySaver(robot.body)], commands=[mt])
 
     set_joint_positions(robot, arm_joints, default_conf)  # default_conf | sample_fn()
 

@@ -356,7 +356,7 @@ def collided(obj, obstacles=[], world=None, tag='', articulated=False, verbose=F
     if articulated:
         body = obj if isinstance(obj, int) else obj.body
         obstacles_here = [o for o in obstacles if (o, body) not in ignored_pairs]
-        result = articulated_collisions(obj, obstacles_here, use_aabb=use_aabb, verbose=verbose,
+        result = articulated_collisions(body, obstacles_here, use_aabb=use_aabb, verbose=verbose,
                                         world=world, **kwargs)
         if verbose and result:
             print(prefix, '| articulated, obstacles =', obstacles)

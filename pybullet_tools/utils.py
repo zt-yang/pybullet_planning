@@ -1901,6 +1901,8 @@ def set_pose(body, pose):
     if len(pose) != 2:
         print('utils.set_pose()')
     (point, quat) = pose
+    if not isinstance(body, int):
+        body = body.body
     p.resetBasePositionAndOrientation(body, point, quat, physicsClientId=CLIENT)
 
 def set_point(body, point):
@@ -2321,6 +2323,8 @@ LinkState = namedtuple('LinkState', ['linkWorldPosition', 'linkWorldOrientation'
 def get_link_state(body, link, kinematics=True, velocity=True):
     # TODO: the defaults are set to False?
     # https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/pybullet.c
+    if not isinstance(body, int):
+        body = body.body
     return LinkState(*p.getLinkState(body, link,
                                      #computeForwardKinematics=kinematics,
                                      #computeLinkVelocity=velocity,
@@ -3260,6 +3264,8 @@ def get_aabb(body, link=None, **kwargs):
     # Contact points with distance exceeding this threshold are not processed by the LCP solver.
     # AABBs are extended by this number. Defaults to 0.02 in Bullet 2.x
     #p.setPhysicsEngineParameter(contactBreakingThreshold=0.0, physicsClientId=CLIENT)
+    if not isinstance(body, int):
+        body = body.body
     # Computes the AABB of the collision geometry
     if link is None:
         return aabb_union(get_aabbs(body, **kwargs))
@@ -3587,6 +3593,8 @@ def get_closest_points(body1, body2, link1=None, link2=None, max_distance=MAX_DI
     # if ((link1 is not None) and not get_collision_data(body1, link1)) or \
     #         ((link2 is not None) and not get_collision_data(body2, link2)):
     #     return []
+    if not isinstance(body1, int):
+        body1 = body1.body
     if (link1 is None) and (link2 is None):
         results = p.getClosestPoints(bodyA=body1, bodyB=body2, distance=max_distance, physicsClientId=CLIENT)
     elif link2 is None:
@@ -3598,7 +3606,7 @@ def get_closest_points(body1, body2, link1=None, link2=None, max_distance=MAX_DI
     else:
         results = p.getClosestPoints(bodyA=body1, bodyB=body2, linkIndexA=link1, linkIndexB=link2,
                                      distance=max_distance, physicsClientId=CLIENT)
-    if results == None:  ## after reinstalling pybullet, problem_sets occur
+    if results is None:  ## after reinstalling pybullet, problem_sets occur
         return []
     return [CollisionInfo(*info) for info in results]
 
@@ -4060,13 +4068,13 @@ def check_initial_end(start_conf, end_conf, collision_fn, verbose=False):
         print(f'utils.Warning: initial configuration {nice(start_conf)} is in collision')
         # set_renderer(True)
         # wait_unlocked()
-        # collision_fn(start_conf, verbose=True)
+        collision_fn(start_conf, verbose=True)
         return False
     if collision_fn(end_conf, verbose=verbose):
         print(f'utils.Warning: end configuration {nice(end_conf)} is in collision')
         # set_renderer(True)
         # wait_unlocked()
-        # collision_fn(end_conf, verbose=True)
+        collision_fn(end_conf, verbose=True)
         return False
     return True
 

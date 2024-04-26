@@ -190,8 +190,9 @@ class PDDLStreamAgent(MotionAgent):
 
             name, args = action
             self.step_count += 1
+            incomplete_action = isinstance(args[-1], str)
 
-            if self.env_execution is not None and name in self.env_execution.domain.operators:
+            if self.env_execution is not None and name in self.env_execution.domain.operators and not incomplete_action:
                 facts_old = self.state
                 self.state = self.env_execution.step(action) + self.static_facts
                 self.state = list(set(self.state))
@@ -203,7 +204,8 @@ class PDDLStreamAgent(MotionAgent):
 
                 # summarize_facts(self.state, self.world, name='Facts computed during execution')
 
-            if '--no-' in name:
+            ## may be an abstract action or move_base action that hasn't been solved
+            if '--no-' in name or incomplete_action:
                 self.refine_plan(action, observation)
             else:
                 commands = get_primitive_actions(action, self.world, teleport=SAVE_TIME)
@@ -220,6 +222,8 @@ class PDDLStreamAgent(MotionAgent):
         self.plan, env, knowledge, time_log, preimage = self.solve_pddlstream(
             self.pddlstream_problem, observation.state, domain_pddl=self.domain_pddl,
             domain_modifier=self.domain_modifier, **self.pddlstream_kwargs, **kwargs)  ## observation.objects
+        self.pddlstream_kwargs.update({'skeleton': None, 'subgoals': None})
+
         self.record_time(time_log)
         self.initial_state.remove_gripper()  ## after the first planning
 
@@ -251,17 +255,10 @@ class PDDLStreamAgent(MotionAgent):
         print('-'*50, '\n')
 
     def remove_unpickleble_attributes(self):
-        self.cached_attributes = {
-            'learned_pose_list_gen': self.world.learned_pose_list_gen,
-            'learned_bconf_list_gen': self.world.learned_bconf_list_gen
-        }
-        self.robot.ik_solvers = {arm: None for arm in self.robot.arms}
-        self.world.learned_pose_list_gen = None
-        self.world.learned_bconf_list_gen = None
+        self.world.remove_unpickleble_attributes()
 
     def recover_unpickleble_attributes(self):
-        self.world.learned_pose_list_gen = self.cached_attributes['learned_pose_list_gen']
-        self.world.learned_bconf_list_gen = self.cached_attributes['learned_bconf_list_gen']
+        self.world.recover_unpickleble_attributes()
 
     def record_command(self, action):
         self.commands.append(action)
@@ -272,10 +269,14 @@ class PDDLStreamAgent(MotionAgent):
 
     def save_time_log(self, csv_name, solved=True):
         """ compare the planning time and plan length across runs """
+        from pybullet_tools.logging_utils import myprint as print
+        from tabulate import tabulate
+
         for i in range(len(self.time_log)):
             if 'planning' not in self.time_log[i]:
                 print('save_time_log', i, self.time_log[i])
-        print(self.time_log[0]['planning'])  # --monitoring
+        print('pddlstream_agent.save_time_log\n\ttotal planning time:',
+              self.time_log[0]['planning'])  # --monitoring
         durations = {i: self.time_log[i]['planning'] for i in range(len(self.time_log))}
         durations2 = {i: self.time_log[i]['preimage'] for i in range(len(self.time_log))}
         total_planning = sum(list(durations.values()))
@@ -300,6 +301,8 @@ class PDDLStreamAgent(MotionAgent):
             row['preimage'] = total_preimage
             row['plan_len'] = self.plan_len
             writer.writerow(row)
+
+        print(tabulate([list(row.values())], headers=fieldnames, tablefmt='orgtbl'))
 
         return total_planning
 
