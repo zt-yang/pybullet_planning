@@ -36,6 +36,11 @@ from pybullet_tools.utils import get_client, get_joint_limits, \
     get_distance, get_max_limit, BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS, wait_unlocked
 from pybullet_tools.stream_tests import process_debug_goals
 
+from world_builder.entities import Object
+from world_builder.actions import get_primitive_actions, repair_skeleton, apply_actions
+
+from lisdf_tools.lisdf_planning import Problem as LISDFProblem
+
 from pddlstream.utils import read, INF, TmpCWD
 from pddlstream.algorithms.focused import solve_focused
 from pddlstream.algorithms.algorithm import parse_problem, reset_globals
@@ -49,9 +54,6 @@ from pddlstream.language.object import SharedOptValue
 from pddlstream.language.external import defer_unique
 from pddlstream.language.conversion import params_from_objects
 from collections import namedtuple
-
-from world_builder.entities import Object
-from world_builder.actions import get_primitive_actions, repair_skeleton
 
 
 def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
@@ -769,14 +771,12 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
     time_log.update(log_goal_plan_init(pddlstream_problem.goal[1:], plan, preimage))
 
     if preview:
-        from lisdf_tools.lisdf_planning import Problem as LISDFProblem
         state.assign()
         lisdf_problem = LISDFProblem(world)
         commands = post_process(lisdf_problem, plan)
 
         state.assign()
         wait_if_gui('Begin?')
-        from world_builder.actions import apply_actions
         apply_actions(lisdf_problem, commands, time_step=5e-2)
         wait_if_gui('Finish?')
         state.assign()

@@ -20,7 +20,7 @@ planner:
 ## specify the TAMP problem with preconfigured scene layout & robot
 problem:
   problem: 'test_kitchen_chicken_soup'
-  goal: None
+  goal: null
   domain_pddl: 'pddl/mobile_domain.pddl'
   stream_pddl: 'pddl/mobile_stream.pddl'
   use_skeleton_constraints: false
@@ -35,13 +35,13 @@ data:
   exp_subdir: 'test'
   exp_name: 'original'
   record_problem: true
-  record_mp4: false
+  record_mp4: true
   save_testcase: true
 
 robot:
   robot_name: 'pr2'
-  draw_base_limits: true
-  dual_arm: false
+  draw_base_limits: false
+  dual_arm: true
   self_collisions: false
   separate_base_planning: true
 

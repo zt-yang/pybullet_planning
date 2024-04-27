@@ -105,7 +105,7 @@ class HierarchicalAgent(PDDLStreamAgent):
                     goals.remove(f)
 
         ## hack to make sure the init is the minimal required to solve the sub problem
-        goals_check = copy.deepcopy(goals)
+        goals_check = copy.deepcopy([g for g in goals if g[0] == 'on'])
         goal_on = [g for g in goals if g[0] == 'on']
         if len(goal_on) > 0:
             goal_on = goal_on[0]
@@ -115,10 +115,11 @@ class HierarchicalAgent(PDDLStreamAgent):
         add_relevant_facts_given_goals(facts, goals_check, removed)
 
         ## some basic fact is missing due to previuos steps
-        accepted_additions = ['canmove', 'canungrasp', '=']
-        missing_preconditions, _ = self.check_action_preconditions(action, facts, goals[1:], verbose=True)
+        accepted_additions = ['canmove', 'canungrasp', 'canpick', 'not', '=']
+        missing_preconditions, ignored_goals, _ = self.check_action_preconditions(action, facts, goals[1:], verbose=True)
         facts += [f for f in missing_preconditions if f[0] in accepted_additions or \
                   (len(f) == 2 and isinstance(f[1], tuple) and f[1][0] in accepted_additions)]
+        goals = [g for g in goals if g not in ignored_goals]
 
         return goals, facts
 
@@ -139,7 +140,7 @@ class HierarchicalAgent(PDDLStreamAgent):
         self.recover_unpickleble_attributes()
 
         ## skip planning if the subgoal has been achieved
-        missing_preconditions, preimage = self.check_action_preconditions(action, facts, goals)
+        missing_preconditions, _, preimage = self.check_action_preconditions(action, facts, goals)
         if len(missing_preconditions) == 0:
             plan = [original_action]
             env = None
@@ -261,16 +262,20 @@ class HierarchicalAgent(PDDLStreamAgent):
                 print(f'\t! precondition not met\t {precond}')
                 missing_preconditions.append(precond)
 
+        ignored_goals = []
         for goal in goals:
             goal_mod = tuple([goal[0].lower()] + list(goal[1:]))
-            if goal_mod not in add_effects:
+            if goal[0] == 'not':
+                ignored_goals.append(goal)
+                print(f'\t! goal ignored\t {goal}')
+            elif goal_mod not in add_effects:
                 print(f'\t! goal not met\t {goal}')
-            for arg in goal[1:]:
-                if arg not in variables:
-                    print(f'\t! variable {arg} in goal is not the same in init')
+                for arg in goal[1:]:
+                    if arg not in variables:
+                        print(f'\t! variable {arg} in goal is not the same in init')
 
         print('-'*50)
-        return missing_preconditions, del_effects
+        return missing_preconditions, ignored_goals, del_effects
 
     def process_hierarchical_env(self, env, plan, domain_pddl):
 

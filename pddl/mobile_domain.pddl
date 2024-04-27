@@ -106,6 +106,7 @@
     (CanMove)
     (CanPull)
     (CanUngrasp)
+    (CanPick)
 
     (Cleaned ?o)
     (Cooked ?o)
@@ -209,7 +210,7 @@
   ;; pick from drawer or movable object
   (:action pick_from_supporter
     :parameters (?a ?o1 ?rp1 ?o2 ?p2 ?g ?q ?t)
-    :precondition (and (KinRel ?a ?o1 ?rp1 ?o2 ?p2 ?g ?q ?t) (Graspable ?o1) (MovableLink ?o2)
+    :precondition (and (KinRel ?a ?o1 ?rp1 ?o2 ?p2 ?g ?q ?t) (Graspable ?o1) (MovableLink ?o2) (CanPick)
                        (AtRelPose ?o1 ?rp1 ?o2) (AtPose ?o2 ?p2) (HandEmpty ?a) (AtBConf ?q)
                        (not (UnsafeApproachRel ?o1 ?rp1 ?o2 ?p2 ?g))
                        )
@@ -236,7 +237,7 @@
 
   (:action pick
     :parameters (?a ?o ?p ?g ?q ?t)
-    :precondition (and (Kin ?a ?o ?p ?g ?q ?t) (Graspable ?o)
+    :precondition (and (Kin ?a ?o ?p ?g ?q ?t) (Graspable ?o) (CanPick)
                        (AtPose ?o ?p) (HandEmpty ?a) (AtBConf ?q)
                        (not (UnsafeApproach ?o ?p ?g))
                        ; (not (UnsafeATraj ?t)) (not (UnsafeOTraj ?o ?g ?t)) (not (CanMove)) (not (Picked ?o))
@@ -361,7 +362,7 @@
                          (AtBConf ?q) (AtAConf ?a ?aq1)
                          ;(Enabled)
                     )
-      :effect (and (AtHandleGrasp ?a ?o ?g) (not (HandEmpty ?a))
+      :effect (and (AtHandleGrasp ?a ?o ?g) (not (HandEmpty ?a)) (not (CanPick))
                    (not (CanMove)) (CanPull) (not (CanUngrasp))
                    (not (AtAConf ?a ?aq1)) (AtAConf ?a ?aq2)
                    ;(increase (total-cost) (PickCost)) ; TODO: make one third of the cost
@@ -376,7 +377,7 @@
                          (AtBConf ?q) (UngraspBConf ?q) (AtAConf ?a ?aq1) ;; (DefaultAConf ?a ?aq2)
                          ;(Enabled)
                     )
-      :effect (and (GraspedHandle ?o) (HandEmpty ?a) (CanMove)
+      :effect (and (GraspedHandle ?o) (HandEmpty ?a) (CanMove) (CanPick)
                    (not (AtHandleGrasp ?a ?o ?g))
                    (not (AtAConf ?a ?aq1)) (AtAConf ?a ?aq2)
                    ;(increase (total-cost) (PlaceCost))

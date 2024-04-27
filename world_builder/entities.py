@@ -254,7 +254,7 @@ class Object(Index):
 
     def __int__(self):
         if not hasattr(self, 'body'):
-            print('what sy')
+            print(self, 'doesnt have attribute body thus cant be deepcopied')
         if self.body is None:
             return id(self)  # TODO: hack
         if self.joint is not None:

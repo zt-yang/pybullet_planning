@@ -1003,7 +1003,7 @@ def test_kitchen_plan_constraints(args, **kwargs):
         movable = movables[goal_object]
         # goals = ('test_grasps', movable)
         # goals = [("Holding", arm, movable)]
-        # goals = [("On", movable, counter)]
+        goals = [("On", movable, counter)]
         # goals = [("In", movable, drawer_link)]
 
         #########################################################################
@@ -1039,13 +1039,14 @@ def test_kitchen_plan_constraints(args, **kwargs):
 
             if goals == [("On", movables['fork'], counter)]:
                 if robot.dual_arm:
-                    skeleton += [(k, 'left', drawer_joint) for k in pull_with_link_actions]
-                    skeleton += [('pick_from_supporter', 'left', movable)]
                     skeleton += [(k, 'right', drawer_joint) for k in pull_with_link_actions]
-                    skeleton += [('place', 'left', movable)]
+                    skeleton += [('pick_from_supporter', 'right', movable)]
+                    skeleton += [(k, 'left', drawer_joint) for k in pull_with_link_actions]
+                    skeleton += [('place', 'right', movable)]
                 else:
                     skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
                     skeleton += [(k, arm, movable) for k in ['pick_from_supporter', 'place']]
+                set_camera_target_body(drawer_link, dx=1, dy=0.5, dz=2)
 
             if goals in [('test_grasps', movables['salt-shaker']), ('test_grasps', movables['pepper-shaker']),
                          [('Holding', arm, movables['salt-shaker'])], [('Holding', arm, movables['pepper-shaker'])]]:
@@ -1069,4 +1070,4 @@ def test_kitchen_plan_constraints(args, **kwargs):
 
         return {'goals': goals, 'skeleton': skeleton, 'subgoals': subgoals}
 
-    return test_nvidia_kitchen_domain(args, loader_fn, initial_xy=(2, 5), **kwargs)
+    return test_nvidia_kitchen_domain(args, loader_fn, initial_xy=(2, 8), **kwargs)

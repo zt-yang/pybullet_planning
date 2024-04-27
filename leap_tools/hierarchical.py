@@ -298,7 +298,9 @@ class PDDLStreamEnv(PDDLEnv):
         self._pddlstream_problem = pddlstream_problem
         self.domain = self.load_domain(self._domain_file, self.operators_as_actions, domain_modifier)
         self.domain_original = self.load_domain(self._domain_file, self.operators_as_actions, None)
+
         self.separate_base_planning = separate_base_planning
+        self.last_bconf = None
         # print('* '*20 + 'print operators' + ' *'*20)
         # pprint(self.domain.operators)
         # print('* '*40)
@@ -663,7 +665,7 @@ class PDDLStreamEnv(PDDLEnv):
                 self.last_obs = self._state
             else:
                 literals = [f for f in self._state_original.literals | frozenset(add_effects) if f not in del_effects]
-                self.update_original_state(literals, action)
+                self.update_original_state(literals, action, title='identify_missing_facts')
                 self.print_log(info)
 
             # canmoves = [(l.is_anti, l.is_negative, l.predicate.is_anti, l.predicate.is_negative)
@@ -700,14 +702,14 @@ class PDDLStreamEnv(PDDLEnv):
 
         return info
 
-    def update_original_state(self, literals, action):
+    def update_original_state(self, literals, action, title=''):
         self._state_original_last = self._state_original
         self._state_original = self._state_original.with_literals(literals)
 
         from_bconf_last = [f for f in self._state_original_last.literals if f.predicate.name == 'atbconf'][0]
         from_bconf = [f for f in self._state_original.literals if f.predicate.name == 'atbconf'][0]
 
-        print('\nupdate_original_state', action)
+        print(f'\nupdate_original_state.{title}', action)
         print('\tfrom_bconf_last', from_bconf_last)
         print('\tfrom_bconf', from_bconf)
 
@@ -755,14 +757,18 @@ class PDDLStreamEnv(PDDLEnv):
         missing_preconditions = [pre for pre in info_original['need_tests'] if pre not in info['need_tests']]
         print(f'\nget_missing_actions.missing_preconditions {missing_preconditions}\n')
         if len(missing_preconditions) > 0:
-            init = self._state_original.literals
+            init = self._state_original.literals  ## TODO: has problems because action sequence is wrong
             for pre in missing_preconditions:
                 name = pre.predicate.name
                 if name == 'atbconf':
-                    from_bconf = [f for f in init if f.predicate.name == 'atbconf'][0]
-                    if from_bconf.variables[0] == pre.variables[0]:
+                    if self.last_bconf is None:
+                        from_bconf = [f for f in init if f.predicate.name == 'atbconf'][0].variables[0]
+                    else:
+                        from_bconf = self.last_bconf
+                    if from_bconf == pre.variables[0]:
                         continue
-                    args = [from_bconf.variables[0], pre.variables[0], TypedEntity('?t', DEFAULT_TYPE)]
+                    self.last_bconf = pre.variables[0]
+                    args = [from_bconf, pre.variables[0], TypedEntity('?t', DEFAULT_TYPE)]
                     operator = [a for a in self.action_predicates if a.name == 'move_base'][0]
                     action_literal = operator(*args)
                     action_literals.append(action_literal)
@@ -1100,7 +1106,7 @@ class PDDLStreamEnv(PDDLEnv):
                 add_literals = [self.to_literal(f) for f in missing_info['add_effects']]
                 del_literals = [self.to_literal(f) for f in missing_info['del_effects']]
                 literals = [f for f in self._state_original.literals | frozenset(add_literals) if f not in del_literals]
-                self.update_original_state(literals, added_step_literal)
+                self.update_original_state(literals, added_step_literal, title='get_extended_plan')
 
                 if verbose:
                     print(f'\nStep {index}', done)

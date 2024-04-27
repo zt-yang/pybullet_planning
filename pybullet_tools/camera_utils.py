@@ -66,9 +66,8 @@ def get_camera_image_at_pose(camera_point, target_point, camera_matrix, far=5.0,
 
 
 def set_camera_target_body(body, link=None, dx=None, dy=None, dz=None, distance=1):
-    # if isinstance(body, tuple):
-    #     link = BODY_TO_OBJECT[body].handle_link
-    #     body = body[0]
+    if isinstance(body, tuple) and len(body) == 3:
+        body, _, link = body
     aabb = get_aabb(body, link)
     x = (aabb.upper[0] + aabb.lower[0]) / 2
     y = (aabb.upper[1] + aabb.lower[1]) / 2

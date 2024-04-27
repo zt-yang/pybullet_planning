@@ -554,7 +554,7 @@ from pybullet_tools.pr2_utils import open_arm
 class PR2Robot(MobileRobot):
 
     path = 'models/drake/pr2_description/urdf/pr2_simplified.urdf'
-    arms = ['left']  ## 'left', 'right'
+    arms = ['left', 'right']
     joint_groups = PR2_GROUPS
     joint_group_names = ['left', 'right', BASE_GROUP, BASE_TORSO_GROUP]
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
