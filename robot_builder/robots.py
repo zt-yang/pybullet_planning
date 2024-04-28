@@ -48,6 +48,7 @@ class RobotAPI(Robot):
         self.self_collisions = self_collisions
         self.separate_base_planning = separate_base_planning
 
+        self.LINK_POSE_TO_JOINT_POSITION = {}  ## for saving object joint position as robot pose changes
         self.grippers = {}
         self.possible_obstacles = {}  ## body: obstacles
         self.collision_animations = []
@@ -295,6 +296,13 @@ class RobotAPI(Robot):
 
     def remove_gripper(self, gripper_handle):
         remove_body(gripper_handle)
+
+    def get_all_arm_conf(self):
+        arm_groups = [f'{arm}_arm' for arm in self.arms]
+        positions = []
+        for group in arm_groups:
+            positions.extend(self.get_positions(joint_group=group, roundto=3))
+        return tuple(positions)
 
     def get_lisdf_string(self):
         return """

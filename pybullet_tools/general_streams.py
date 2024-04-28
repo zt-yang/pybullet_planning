@@ -769,7 +769,7 @@ def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
         grasps = [HandleGrasp('side', body_joint, g, robot.get_approach_pose(app, g),
                               robot.get_carry_conf(arm, g_type, g)) for g in grasps]
         for grasp in grasps:
-            if robot.name.startswith('pr2'):
+            if robot.name.startswith('pr2') and False:
                 grasp.grasp_width = get_handle_width(body_joint)
             else:  ## if robot.name.startswith('feg'):
                 body_pose = get_link_pose(body, handle_link)

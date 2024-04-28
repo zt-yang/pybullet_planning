@@ -926,7 +926,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
         joint = drawer_joint
         movable = movables['fork']
         goals = ('test_handle_grasps', joint)  ## fail for some reason
-        # goals = [("OpenedJoint", joint)]
+        goals = [("OpenedJoint", joint)]
         # goals = ('test_grasps', movable); world.open_joint(joint, extent=1)
         # goals = [("Holding", arm, movable)]; world.open_joint(joint, extent=1)
         # goals = [("OpenedJoint", joint), ("Holding", arm, movable)]
@@ -1035,7 +1035,7 @@ def test_kitchen_plan_constraints(args, **kwargs):
         if args.use_skeleton_constraints:
 
             if goals == [("OpenedJoint", drawer_joint)]:
-                skeleton += [(k, 'left', drawer_joint) for k in pull_with_link_actions]
+                skeleton += [(k, 'right', drawer_joint) for k in pull_with_link_actions]
 
             if goals == [("On", movables['fork'], counter)]:
                 if robot.dual_arm:

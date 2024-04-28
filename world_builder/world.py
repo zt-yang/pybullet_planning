@@ -1770,7 +1770,7 @@ class State(object):
 
     def assign(self):
         # TODO: topological sort
-        for attachment in self.attachments.values():
+        for i, attachment in enumerate(self.attachments.values()):
             attachment.assign()
         return self
 

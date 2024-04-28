@@ -54,31 +54,32 @@ class Attachment(object):
             self.parent, self.parent_link))
 
     def assign(self, verbose=False):
-        from .pr2_streams import LINK_POSE_TO_JOINT_POSITION as LP2JP
-
-        if verbose:
-            print('\nbullet.Attachment.assign() | LINK_POSE_TO_JOINT_POSITION')
-            pprint(LP2JP)
-
         # robot_base_pose = self.parent.get_positions(roundto=3)
         # robot_arm_pose = self.parent.get_positions(joint_group='left', roundto=3)  ## only left arm for now
         parent_link_pose = get_link_pose(self.parent.body, self.parent_link)
         child_pose = body_from_end_effector(parent_link_pose, self.grasp_pose)
         if self.child_link is None:
             set_pose(self.child, child_pose)
-        elif self.child in LP2JP:  ## pull drawer handle
-            if self.child in LP2JP and self.child_joint in LP2JP[self.child]:
-                ls = LP2JP[self.child][self.child_joint]
-                for group in self.parent.joint_groups: ## ['base', 'left', 'hand']:
-                    key = self.parent.get_positions(joint_group=group, roundto=3)
-                    result = in_list(key, ls)
-                    if result is not None:
-                        position = ls[result]
-                        set_joint_position(self.child, self.child_joint, position)
-                        # print(f'bullet.utils | Attachment | robot {key} @ {key} -> position @ {position}')
-                    # elif len(key) == 4:
-                    #     print('key', key)
-                    #     print(ls)
+        else:
+            LP2JP = self.parent.LINK_POSE_TO_JOINT_POSITION
+            if verbose:
+                print('\nbullet.Attachment.assign() | LINK_POSE_TO_JOINT_POSITION')
+                pprint(LP2JP)
+            if self.child in LP2JP:  ## pull drawer handle
+                if self.child in LP2JP and self.child_joint in LP2JP[self.child]:
+                    conf = self.parent.get_all_arm_conf()
+                    if conf in LP2JP[self.child][self.child_joint]:
+                        ls = LP2JP[self.child][self.child_joint][conf]
+                        for group in self.parent.joint_groups: ## ['base', 'left', 'hand']:
+                            key = self.parent.get_positions(joint_group=group, roundto=3)
+                            result = in_list(key, ls)
+                            if result is not None:
+                                position = ls[result]
+                                set_joint_position(self.child, self.child_joint, position)
+                                # print(f'bullet.utils | Attachment | robot {key} @ {key} -> position @ {position}')
+                            # elif len(key) == 4:
+                            #     print('key', key)
+                            #     print(ls)
         return child_pose
 
     def apply_mapping(self, mapping):
@@ -114,14 +115,13 @@ class ObjAttachment(Attachment):
         set_pose(self.child, child_pose)
 
 
-def add_attachment_in_world(state=None, obj=None, parent=-1, parent_link=None, attach_distance=0.1,
-                            OBJ=True, verbose=False):
+def add_attachment_in_world(state=None, obj=None, parent=-1, parent_link=None, attach_distance=0.1, **kwargs):
 
     from robot_builder.robots import RobotAPI
 
     ## can attach without contact
     new_attachments = add_attachment(state=state, obj=obj, parent=parent, parent_link=parent_link,
-                                     attach_distance=attach_distance, OBJ=OBJ, verbose=verbose)
+                                     attach_distance=attach_distance, **kwargs)
 
     ## update object info
     world = state.world
@@ -140,7 +140,8 @@ def add_attachment_in_world(state=None, obj=None, parent=-1, parent_link=None, a
     return new_attachments
 
 
-def add_attachment(state=None, obj=None, parent=-1, parent_link=None, attach_distance=0.1, OBJ=True, verbose=False):
+def add_attachment(state=None, obj=None, parent=-1, parent_link=None, attach_distance=0.1,
+                   OBJ=True, verbose=False, debug=False):
     """ can attach without contact """
     new_attachments = {}
 
@@ -168,7 +169,9 @@ def add_attachment(state=None, obj=None, parent=-1, parent_link=None, attach_dis
             attachment = create_attachment(parent, parent_link, obj, OBJ=OBJ)
         new_attachments[obj] = attachment  ## may overwrite older attachment
         if verbose:
-            print(f'\nbullet_utils.add_attachment | {new_attachments[obj]}\n')
+            print(f'\nbullet_utils.add_attachment | {attachment}\n')
+        if debug:
+            attachment.assign()
     return new_attachments
 
 

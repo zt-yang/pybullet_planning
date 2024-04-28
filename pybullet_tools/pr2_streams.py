@@ -16,7 +16,7 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
 
 from pybullet_tools.bullet_utils import multiply, has_tracik, visualize_bconf
 from pybullet_tools.camera_utils import set_camera_target_body
-from pybullet_tools.grasp_utils import check_cfree_gripper
+from pybullet_tools.grasp_utils import check_cfree_gripper, add_to_jp2jp
 from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics
 from pybullet_tools.ikfast.utils import USE_CURRENT
 from pybullet_tools.pr2_primitives import Grasp, iterate_approach_path, \
@@ -37,7 +37,7 @@ GRASP_LENGTH = 0.03
 APPROACH_DISTANCE = 0.1 + GRASP_LENGTH
 SELF_COLLISIONS = False
 DEFAULT_RESOLUTION = math.radians(3) # 0.05
-LINK_POSE_TO_JOINT_POSITION = {}
+
 
 ########################################################################
 
@@ -681,12 +681,7 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
         # wait_unlocked()
         return None
 
-    body, joint = o
-    if body not in LINK_POSE_TO_JOINT_POSITION:
-        LINK_POSE_TO_JOINT_POSITION[body] = {}
-    # mapping = sorted(mapping.items(), key=lambda kv: kv[1])
-    LINK_POSE_TO_JOINT_POSITION[body][joint] = mapping
-    # print(f'pr2_streams.get_pull_door_handle_motion_gen | last bconf = {rpose_rounded}, pstn value = {value}')
+    add_to_jp2jp(robot, o, mapping)
 
     # apath.append(apath[-1])
     # apath.append(apath[-1])
@@ -845,10 +840,7 @@ def get_turn_knob_handle_motion_gen(
         if len(apath) < num_intervals * 0.25:
             return None
 
-        body, joint = o
-        if body not in LINK_POSE_TO_JOINT_POSITION:
-            LINK_POSE_TO_JOINT_POSITION[body] = {}
-        LINK_POSE_TO_JOINT_POSITION[body][joint] = mapping
+        add_to_jp2jp(robot, o, mapping)
 
         at = Trajectory(apath) ## create_trajectory(robot, get_arm_joints(robot, a), apath)
         arm_cmd =  Commands(State(), savers=[BodySaver(robot.body)], commands=[at])

@@ -9,8 +9,7 @@ from pybullet_tools.pose_utils import is_above, remove_attachment, draw_pose2d_p
     add_attachment, draw_pose3d_path
 from pybullet_tools.camera_utils import get_obj_keys_for_segmentation, get_segmask
 from pybullet_tools.camera_utils import set_camera_target_robot
-from pybullet_tools.pr2_streams import Position, get_pull_door_handle_motion_gen, \
-    LINK_POSE_TO_JOINT_POSITION
+from pybullet_tools.pr2_streams import Position, get_pull_door_handle_motion_gen
 from pybullet_tools.utils import str_from_object, get_closest_points, INF, create_attachment, wait_if_gui, \
     get_aabb, get_joint_position, get_joint_name, get_link_pose, link_from_name, PI, Pose, Euler, \
     get_extend_fn, get_joint_positions, set_joint_positions, get_max_limit, get_pose, set_pose, set_color, \
@@ -213,11 +212,11 @@ class AttachObjectAction(RevisedAction):
         self.body = body
         self.verbose = verbose
 
-    def transition(self, state):
+    def transition(self, state, debug=True):
         parent = state.robot
         link = state.robot.get_attachment_link(self.arm)
         added_attachments = add_attachment_in_world(state=state, obj=self.get_body(), parent=parent, parent_link=link,
-                                                    attach_distance=None, verbose=False, OBJ=False)
+                                                    attach_distance=None, verbose=False, OBJ=False, debug=debug)
         new_attachments = dict(state.attachments)
         new_attachments.update(added_attachments)
         return state.new_state(attachments=new_attachments)

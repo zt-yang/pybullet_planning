@@ -35,7 +35,7 @@ data:
   exp_subdir: 'test'
   exp_name: 'original'
   record_problem: true
-  record_mp4: true
+  record_mp4: false
   save_testcase: true
 
 robot:

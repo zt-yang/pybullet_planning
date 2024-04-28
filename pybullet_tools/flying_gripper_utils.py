@@ -25,6 +25,7 @@ from pybullet_tools.general_streams import Position, get_grasp_list_gen, get_han
     process_motion_fluents
 from pybullet_tools.bullet_utils import collided, nice
 from pybullet_tools.camera_utils import set_camera_target_body
+from pybullet_tools.grasp_utils import add_to_jp2jp
 
 from pybullet_tools.ikfast.utils import IKFastInfo
 from pybullet_tools.ikfast.ikfast import * # For legacy purposes
@@ -446,7 +447,6 @@ def get_ik_fn(problem, teleport=False, verbose=False,
 
 def get_pull_handle_motion_gen(problem, collisions=True, teleport=False,
                                num_intervals=12, visualize=False, verbose=True):
-    from pybullet_tools.pr2_streams import LINK_POSE_TO_JOINT_POSITION
     if teleport:
         num_intervals = 1
     robot = problem.robot
@@ -533,13 +533,9 @@ def get_pull_handle_motion_gen(problem, collisions=True, teleport=False,
         if len(path) < num_intervals: ## * 0.75:
             return None
 
-        body, joint = o
-        if body not in LINK_POSE_TO_JOINT_POSITION:
-            LINK_POSE_TO_JOINT_POSITION[body] = {}
-        # mapping = sorted(mapping.items(), key=lambda kv: kv[1])
-        LINK_POSE_TO_JOINT_POSITION[body][joint] = mapping
-        # print(f'flying_gripper_utils.get_pull_door_handle_motion_gen | last bconf = {rpose_rounded}, pstn value = {value}')
+        add_to_jp2jp(robot, o, mapping)
 
+        add_data_path()
         t = Trajectory(path)
         cmd = Commands(State(), savers=[BodySaver(robot)], commands=[t])
         q2 = t.path[-1]
