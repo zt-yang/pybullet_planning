@@ -9,6 +9,7 @@ import time
 import math
 
 SPOT_URDF = "models/spot_description/model.urdf"
+SPOT_GRIPPER_ROOT = "arm0.link_wr1"
 SPOT_TOOL_LINK = "arm0.link_wr1"
 SPOT_FINGER_LINK = "arm0.link_fngr"
 SPOT_JOINT_GROUPS = {

@@ -85,10 +85,10 @@ class RobotAPI(Robot):
     def _close_cloned_gripper(self, gripper_cloned, arm):
         raise NotImplementedError('should implement this for RobotAPI!')
 
-    def open_cloned_gripper(self, gripper_cloned, arm=None, width=1):
+    def open_cloned_gripper(self, gripper_cloned, arm=None, **kwargs):
         if arm is None:
             arm = self.get_arm_from_gripper(gripper_cloned)
-        self._open_cloned_gripper(gripper_cloned, arm, width=1)
+        self._open_cloned_gripper(gripper_cloned, arm, **kwargs)
 
     def close_cloned_gripper(self, gripper_cloned, arm=None):
         if arm is None:
@@ -320,8 +320,8 @@ class MobileRobot(RobotAPI):
 
     def __init__(self, body, use_torso=True, **kwargs):
         self.base_group = BASE_TORSO_GROUP if use_torso else BASE_GROUP
-        joints = self.joint_groups[self.base_group]
-        super(MobileRobot, self).__init__(body, joints=joints, **kwargs)
+        # joints = self.joint_groups[self.base_group]
+        super(MobileRobot, self).__init__(body, **kwargs)
         self.use_torso = use_torso
 
     def get_arm_joints(self, arm):
@@ -450,7 +450,7 @@ class MobileRobot(RobotAPI):
         gripper = self.load_gripper(arm, color=color, new_gripper=new_gripper)
         self.set_gripper_pose(body_pose, grasp, gripper=gripper, arm=arm, **kwargs)
         if width is not None:
-            self.open_cloned_gripper(gripper, arm, width)
+            self.open_cloned_gripper(gripper, arm=arm, width=width)
         else:
             self.open_cloned_gripper(gripper, arm)
         return gripper
@@ -510,7 +510,8 @@ class MobileRobot(RobotAPI):
 ###############################################################################
 
 
-from robot_builder.spot_utils import SPOT_TOOL_LINK, SPOT_CARRY_ARM_CONF, SPOT_JOINT_GROUPS
+from robot_builder.spot_utils import SPOT_TOOL_LINK, SPOT_CARRY_ARM_CONF, SPOT_JOINT_GROUPS, \
+    SPOT_GRIPPER_ROOT
 
 
 class SpotRobot(MobileRobot):
@@ -531,6 +532,12 @@ class SpotRobot(MobileRobot):
 
     def get_gripper_joints(self, arm):
         return self.get_group_joints('gripper')
+
+    def get_gripper_root(self, arm):
+        return SPOT_GRIPPER_ROOT
+
+    def get_tool_link(self, arm):
+        return SPOT_TOOL_LINK
 
     def _close_cloned_gripper(self, gripper_cloned, arm):
         joints = get_cloned_gripper_joints(gripper_cloned)
