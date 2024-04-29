@@ -34,6 +34,7 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, pairw
     sample_placement_on_aabb, visual_shape_from_data, is_unknown_file, create_collision_shape
 from pybullet_tools.bullet_utils import draw_fitted_box, draw_points, nice, nice_tuple, nice_float, \
     in_list
+from pybullet_tools.pr2_primitives import Conf
 
 MIN_DISTANCE = 1e-2
 
@@ -282,6 +283,38 @@ def xyzyaw_to_pose(xyzyaw):
 def pose_from_xyzyaw(q):
     x, y, z, yaw = q
     return Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
+
+
+def bconf_to_pose(bq):
+    from pybullet_tools.utils import Pose
+    if len(bq.values) == 3:
+        x, y, yaw = bq.values
+        z = 0
+    elif len(bq.values) == 4:
+        x, y, z, yaw = bq.values
+    return Pose(point=Point(x, y, z), euler=Euler(yaw=yaw))
+
+
+def pose_to_bconf(rpose, robot):
+    (x, y, z), quant = rpose
+    yaw = euler_from_quat(quant)[-1]
+    if robot.use_torso:
+        return Conf(robot, robot.get_group_joints('base-torso'), (x, y, z, yaw))
+    return Conf(robot, robot.get_group_joints('base'), (x, y, yaw))
+
+
+def add_pose(p1, p2):
+    point = np.asarray(p1[0]) + np.asarray(p2[0])
+    euler = np.asarray(euler_from_quat(p1[1])) + np.asarray(euler_from_quat(p2[1]))
+    return (tuple(point.tolist()), quat_from_euler(tuple(euler.tolist())))
+
+
+def sample_new_bconf(bq1):
+    limits = [0.05] * 3
+    def rand(limit):
+        return np.random.uniform(-limit, limit)
+    values = (bq1.values[i] + rand(limits[i]) for i in range(len(limits)))
+    return Conf(bq1.body, bq1.joints, values)
 
 
 def draw_pose2d(pose2d, z=0., **kwargs):

@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+import time
+
 from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_link_pose, is_placement, \
     pairwise_collision, set_joint_positions, get_joint_positions, sample_placement, get_pose, waypoints_from_path, \
     unit_quat, plan_base_motion, plan_joint_motion, base_values_from_pose, pose_from_base_values, \
@@ -16,6 +18,7 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
 
 from pybullet_tools.bullet_utils import multiply, has_tracik, visualize_bconf
 from pybullet_tools.camera_utils import set_camera_target_body
+from pybullet_tools.pose_utils import bconf_to_pose, pose_to_bconf, add_pose, sample_new_bconf
 from pybullet_tools.grasp_utils import check_cfree_gripper, add_to_jp2jp
 from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics
 from pybullet_tools.ikfast.utils import USE_CURRENT
@@ -29,7 +32,6 @@ from pybullet_tools.pr2_utils import open_arm, arm_conf, get_gripper_link, get_a
 from pybullet_tools.utils import wait_unlocked, WorldSaver
 from pybullet_tools.general_streams import *
 
-import time
 
 BASE_EXTENT = 3.5 # 2.5
 BASE_LIMITS = (-BASE_EXTENT*np.ones(2), BASE_EXTENT*np.ones(2))
@@ -562,38 +564,6 @@ def get_base_from_ik_fn(robot, visualize=True):
 ##################################################
 
 
-def bconf_to_pose(bq):
-    from pybullet_tools.utils import Pose
-    if len(bq.values) == 3:
-        x, y, yaw = bq.values
-        z = 0
-    elif len(bq.values) == 4:
-        x, y, z, yaw = bq.values
-    return Pose(point=Point(x, y, z), euler=Euler(yaw=yaw))
-
-
-def pose_to_bconf(rpose, robot):
-    (x, y, z), quant = rpose
-    yaw = euler_from_quat(quant)[-1]
-    if robot.use_torso:
-        return Conf(robot, robot.get_group_joints('base-torso'), (x, y, z, yaw))
-    return Conf(robot, robot.get_group_joints('base'), (x, y, yaw))
-
-
-def add_pose(p1, p2):
-    point = np.asarray(p1[0]) + np.asarray(p2[0])
-    euler = np.asarray(euler_from_quat(p1[1])) + np.asarray(euler_from_quat(p2[1]))
-    return (tuple(point.tolist()), quat_from_euler(tuple(euler.tolist())))
-
-
-def sample_new_bconf(bq1):
-    limits = [0.05] * 3
-    def rand(limit):
-        return np.random.uniform(-limit, limit)
-    values = (bq1.values[i] + rand(limits[i]) for i in range(len(limits)))
-    return Conf(bq1.body, bq1.joints, values)
-
-
 def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs, saver, resolution=DEFAULT_RESOLUTION,
                                  num_intervals=30, collisions=True, visualize=False, verbose=False):
     a, o, pst1, pst2, g, bq1, aq1 = inputs
@@ -677,7 +647,7 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
     if visualize:
         remove_body(gripper_before)
 
-    if len(apath) < num_intervals:  ## * 0.75:
+    if len(bpath) < num_intervals:  ## * 0.75:
         # wait_unlocked()
         return None
 

@@ -7,17 +7,18 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     disable_real_time, enable_gravity, joint_controller_hold, get_distance, Point, Euler, set_joint_position, \
     get_min_limit, user_input, step_simulation, get_body_name, get_bodies, BASE_LINK, get_joint_position, \
     add_segments, get_max_limit, link_from_name, BodySaver, get_aabb, interpolate_poses, wait_for_user, \
-    plan_direct_joint_motion, has_gui, create_attachment, wait_for_duration, get_extend_fn, set_renderer, \
-    get_custom_limits, all_between, remove_body, draw_aabb, GREEN, MAX_DISTANCE, get_collision_fn
+    plan_direct_joint_motion, has_gui, create_attachment, wait_for_duration, WorldSaver, set_renderer, \
+    get_custom_limits, all_between, remove_body, draw_aabb, GREEN, MAX_DISTANCE, get_collision_fn, BROWN
 
 from pybullet_tools.bullet_utils import multiply, has_tracik, visualize_bconf
 from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics
 from pybullet_tools.ikfast.utils import USE_CURRENT
-from pybullet_tools.pr2_primitives import Conf, Commands, create_trajectory, State
+from pybullet_tools.pr2_primitives import Conf, Commands, create_trajectory, State, Trajectory
 from pybullet_tools.pr2_streams import DEFAULT_RESOLUTION
 from pybullet_tools.pr2_utils import open_arm, arm_conf, learned_pose_generator
-from pybullet_tools.utils import WorldSaver
 from pybullet_tools.general_streams import *
+from pybullet_tools.pose_utils import bconf_to_pose, pose_to_bconf, add_pose, sample_new_bconf
+from pybullet_tools.grasp_utils import add_to_jp2jp
 
 
 def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True, learned=True, verbose=False):
@@ -363,15 +364,15 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
             if collided(robot, obstacles, tag='ik_default_conf', **col_kwargs):
                 # wait_unlocked()
                 continue
-            if collision_fn(bconf, verbose=True):  ## TODO: figure out why sometimes the answers are different
-                print('sample_bconf | collision_ik_default_conf')
+            if collision_fn(bconf, verbose=verbose):  ## TODO: figure out why sometimes the answers are different
+                # print('sample_bconf | collision_ik_default_conf')
                 continue
 
             ik_solver.set_conf(conf)
             if collided(robot, obstacles, tag='ik_final_conf', visualize=visualize, **col_kwargs):
                 continue
-            if collision_fn(bconf, verbose=True):
-                print('sample_bconf | collision_ik_final_conf')
+            if collision_fn(bconf, verbose=verbose):
+                # print('sample_bconf | collision_ik_final_conf')
                 continue
 
             if visualize:
@@ -791,3 +792,166 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
 #                 #if not p.init:
 #                 #    return
 #     return gen
+
+
+###########################################
+
+
+def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs, saver, resolution=DEFAULT_RESOLUTION,
+                                 num_intervals=30, collisions=True, visualize=False, verbose=False):
+    a, o, pst1, pst2, g, bq1, aq1 = inputs
+
+    if pst1.value == pst2.value:
+        return None
+
+    saver.restore()
+    pst1.assign()
+    bq1.assign()
+    aq1.assign()
+
+    arm_joints = robot.get_arm_joints(a)
+    resolutions = resolution * np.ones(len(arm_joints))
+    other_obstacles = [mm for mm in obstacles if mm != o[0]]
+
+    # BODY_TO_OBJECT = problem.world.BODY_TO_OBJECT
+    # joint_object = BODY_TO_OBJECT[o]
+    # old_pose = get_link_pose(joint_object.body, joint_object.handle_link)
+    handle_link = get_handle_link(o)
+    old_pose = get_link_pose(o[0], handle_link)
+    tool_from_root = robot.get_tool_from_root(a)
+    if visualize:
+        # set_renderer(enable=True)
+        gripper_before = robot.visualize_grasp(old_pose, g.value)
+
+    # gripper_before = multiply(old_pose, invert(g.value))
+    gripper_before = multiply(robot.get_grasp_pose(old_pose, g.value, body=o), invert(tool_from_root))
+    world_from_base = bconf_to_pose(bq1)
+    gripper_from_base = multiply(invert(gripper_before), world_from_base)
+    # print('gripper_before', nice(gripper_before))
+    # print('invert(gripper_before)', nice(invert(gripper_before)))
+
+    ## saving the mapping between robot bconf to object pst for execution
+    mapping = {}
+    rpose_rounded = tuple([round(n, 3) for n in bq1.values])
+    mapping[rpose_rounded] = pst1.value
+
+    bpath = []
+    bq_after = Conf(bq1.body, bq1.joints, bq1.values)
+    for i in range(num_intervals):
+        step_str = f"pr2_streams.get_pull_door_handle_motion_gen | step {i}/{num_intervals}\t"
+        value = (i + 1) / num_intervals * (pst2.value - pst1.value) + pst1.value
+        pst_after = Position((pst1.body, pst1.joint), value)
+        pst_after.assign()
+        new_pose = get_link_pose(o[0], handle_link)
+        if visualize:
+            gripper_after = robot.visualize_grasp(new_pose, g.value, color=BROWN)
+            set_camera_target_body(gripper_after, dx=0.2, dy=0, dz=1)  ## look top down
+            remove_body(gripper_after)
+
+        gripper_after = multiply(robot.get_grasp_pose(new_pose, g.value, body=o), invert(tool_from_root))
+        # gripper_after = multiply(new_pose, invert(g.value))
+
+        ## try to transform the base the same way as gripper to a cfree pose
+        world_from_base = multiply(gripper_after, gripper_from_base)
+        bq_after = pose_to_bconf(world_from_base, robot)
+
+        bq_after.assign()
+        if collisions and collided(robot, obstacles, articulated=False, world=world, verbose=True):
+            if len(bpath) > 1:
+                bpath[-1].assign()
+            break
+        elif collisions and collided(o[0], other_obstacles, articulated=False,
+                                     world=world, verbose=True, ignored_pairs=ignored_pairs):
+            # import ipdb; ipdb.set_trace()
+            if len(bpath) > 1:
+                bpath[-1].assign()
+            break
+        else:
+            bpath.append(bq_after)
+            if verbose: print(f'{step_str} : {nice(bq_after.values)}')
+
+        ## save the joint positions as the base moves
+        bq_rounded = tuple([round(n, 3) for n in bq_after.values])
+        mapping[bq_rounded] = value
+
+    if visualize:
+        remove_body(gripper_before)
+
+    if len(bpath) < num_intervals:  ## * 0.75:
+        # wait_unlocked()
+        return None
+
+    add_to_jp2jp(robot, o, mapping)
+
+    bt = Trajectory(bpath)
+    base_cmd = Commands(State(), savers=[BodySaver(robot.body)], commands=[bt])
+    bq2 = bt.path[-1]
+    step_str = f"pr2_streams.get_pull_door_handle_motion_gen | step {len(bpath)}/{num_intervals}\t"
+    if verbose: print(f'{step_str} : {nice(bq2.values)}')
+
+    pst1.assign()
+    bq1.assign()
+    aq1.assign()
+    return bq2, base_cmd
+
+
+def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, teleport=False,
+                                    num_intervals=30, max_ir_trial=30, visualize=False, verbose=False):
+    visualize &= has_gui()
+    if teleport:
+        num_intervals = 1
+    robot = problem.robot
+    world = problem.world
+    saver = BodySaver(robot)
+    world_saver = WorldSaver()
+    obstacles = problem.fixed if collisions else []
+    ignored_pairs = problem.ignored_pairs if collisions else []
+
+    def fn(a, o, pst1, pst2, g, bq1, aq1, fluents=[]):
+        if fluents:
+            process_motion_fluents(fluents, robot)
+        else:
+            world_saver.restore()
+
+        inputs = a, o, pst1, pst2, g, bq1, aq1
+        return compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs, saver,
+                                            num_intervals=num_intervals, collisions=collisions,
+                                            visualize=visualize, verbose=verbose)
+
+    return fn
+
+
+def get_pull_door_handle_with_link_motion_gen(problem, custom_limits={}, collisions=True, teleport=False,
+                                              num_intervals=30, max_ir_trial=30, visualize=False, verbose=False):
+    visualize &= has_gui()
+    if teleport:
+        num_intervals = 1
+    robot = problem.robot
+    world = problem.world
+    saver = BodySaver(robot)
+    world_saver = WorldSaver()
+    obstacles = problem.fixed if collisions else []
+    ignored_pairs = problem.ignored_pairs if collisions else []
+
+    def fn(a, o, pst1, pst2, g, bq1, aq1, l, pl1, fluents=[]):
+        if fluents:
+            process_motion_fluents(fluents, robot)
+        else:
+            world_saver.restore()
+
+        pl1.assign()
+        inputs = a, o, pst1, pst2, g, bq1, aq1
+        results = compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs, saver,
+                                               num_intervals=num_intervals, collisions=collisions,
+                                               visualize=visualize, verbose=verbose)
+        if results is None:
+            return None
+        bq2, base_cmd = results
+
+        pst2.assign()
+        pl2 = LinkPose(l, get_link_pose(l[0], l[-1]), joint=pst2.joint, position=pst2.value)
+        pst1.assign()
+
+        return bq2, base_cmd, pl2
+
+    return fn

@@ -77,7 +77,7 @@ class PDDLStreamAgent(MotionAgent):
         self.initial_state = None
 
         self.state = init
-        self.static_facts = []
+        self.static_facts = [('=', ('PlaceCost',), 1), ('=', ('PickCost',), 1)]
         self.failed_count = None
         self.last_action_name = None
         self.actions = []
@@ -154,8 +154,7 @@ class PDDLStreamAgent(MotionAgent):
         return self.process_plan(observation)
 
     def process_plan(self, observation):
-        """
-        get the next action if a plan has been made
+        """ get the next action if a plan has been made
             example self.plan
             00 = {MoveBaseAction} MoveBaseAction{conf: q552=(1.529, 5.989, 0.228, 3.173)}
             01 = {MoveBaseAction} MoveBaseAction{conf: q592=(1.607, 6.104, 0.371, 3.123)}
@@ -186,11 +185,16 @@ class PDDLStreamAgent(MotionAgent):
                     self.plan = rest + self.plan
                     action = action[0]
                 self.actions.append(action)
+                if len(self.plan) > 0 and get_action_name(self.plan[0]) != get_action_name(action):
+                    print('pddlstream_agent.process_plan\tgetting new action', action)
                 return action
 
             name, args = action
             self.step_count += 1
             incomplete_action = isinstance(args[-1], str)
+
+            if self.step_count in [7,  8]:
+                print('self.step_count in [7,  8]')
 
             if self.env_execution is not None and name in self.env_execution.domain.operators and not incomplete_action:
                 facts_old = self.state

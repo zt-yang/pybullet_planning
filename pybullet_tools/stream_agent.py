@@ -8,14 +8,16 @@ from pprint import pprint, pformat
 
 from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_turn_knob_handle_motion_gen
 from pybullet_tools.pr2_streams import get_stable_gen, Position, get_pose_in_space_test, \
-    get_marker_grasp_gen, get_bconf_in_region_test, get_pull_door_handle_motion_gen, \
+    get_marker_grasp_gen, get_bconf_in_region_test, \
     get_bconf_in_region_gen, get_pose_in_region_gen, get_base_motion_gen, \
     get_marker_pose_gen, get_pull_marker_to_pose_motion_gen, get_pull_marker_to_bconf_motion_gen,  \
     get_pull_marker_random_motion_gen, get_ik_ungrasp_gen, get_pose_in_region_test, \
     get_cfree_btraj_pose_test, get_ik_ungrasp_mark_gen, \
-    sample_joint_position_gen, get_pull_door_handle_with_link_motion_gen
+    sample_joint_position_gen
 from pybullet_tools.mobile_streams import get_ik_fn_old, get_ik_gen_old, get_ik_rel_gen_old, \
     get_ik_rel_fn_old
+from pybullet_tools.mobile_streams import get_pull_door_handle_motion_gen, \
+    get_pull_door_handle_with_link_motion_gen
 
 from pybullet_tools.pr2_primitives import get_group_joints, get_base_custom_limits, Pose, Conf, \
     get_ik_ir_gen, move_cost_fn, Attach, Detach, Clean, Cook, \

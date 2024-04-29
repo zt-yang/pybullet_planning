@@ -1415,10 +1415,10 @@ class World(WorldBase):
 
                 else:
                     supporter = supporter_obj.pybullet_name
-                    if supporter_obj.link is not None:
-                        supporter_pose = supporter_poses[supporter]
-                    else:
-                        supporter_pose = get_body_pose(supporter_obj.body)
+                    # if supporter_obj.link is not None:
+                    #     supporter_pose = supporter_poses[supporter]
+                    # else:
+                    #     supporter_pose = get_body_pose(supporter_obj.body)
                     attachment = self.ATTACHMENTS[body]
                     rel_pose = pose_from_attachment(attachment)
                     # rel_pose_2 = multiply(invert(supporter_pose.value), pose.value)
@@ -1675,7 +1675,7 @@ class State(object):
 
         if len(attachments) == 0:
             attachments = copy.deepcopy(world.ATTACHMENTS)
-        self.attachments = dict(attachments) # TODO: relative pose
+        self.attachments = attachments
         self.facts = list(facts) # TODO: make a set?
         self.variables = defaultdict(lambda: None)
         self.variables.update(variables)

@@ -215,7 +215,10 @@ class AttachObjectAction(RevisedAction):
     def transition(self, state, debug=True):
         parent = state.robot
         link = state.robot.get_attachment_link(self.arm)
-        added_attachments = add_attachment_in_world(state=state, obj=self.get_body(), parent=parent, parent_link=link,
+        obj = self.get_body()
+        if isinstance(obj, int):
+            obj = state.world.get_object(self.get_body())
+        added_attachments = add_attachment_in_world(state=state, obj=obj, parent=parent, parent_link=link,
                                                     attach_distance=None, verbose=False, OBJ=False, debug=debug)
         new_attachments = dict(state.attachments)
         new_attachments.update(added_attachments)
@@ -674,7 +677,7 @@ def get_primitive_actions(action, world, teleport=False, verbose=True):
             t = [MoveBaseAction(conf) for conf in path]
             if viz:
                 world.add_handles(draw_pose3d_path(confs, length=0.05))
-
+                
         elif DoF == 6:
             t = [MoveArmAction(conf) for conf in path]
             if viz:

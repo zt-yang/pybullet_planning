@@ -131,6 +131,8 @@ class HierarchicalAgent(PDDLStreamAgent):
         original_action = Action(action_name, action.args)
 
         self.refinement_count += 1
+        if self.refinement_count == 3:
+            print('3rd refinement')
         myprint(f'\n## {self.refinement_count}th refinement problem')
 
         ## update goal and init
@@ -189,7 +191,7 @@ class HierarchicalAgent(PDDLStreamAgent):
         if plan is not None:
             self.plan = plan + self.plan
             add_facts = [s for s in preimage if s not in self.state]
-            self.static_facts += add_facts
+            self.static_facts += [f for f in add_facts if f[0].lower() in ['cleaned', 'cooked', 'seasoned']]
 
             ## need to have here because it may have just been refining and no action yet
             self.state += self.static_facts

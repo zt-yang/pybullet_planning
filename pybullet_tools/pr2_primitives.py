@@ -29,7 +29,6 @@ from pybullet_tools.utils import invert, multiply, get_name, set_pose, get_link_
 
 from pybullet_tools.bullet_utils import nice
 from pybullet_tools.camera_utils import set_camera_target_robot, set_camera_target_body
-from pybullet_tools.pose_utils import Attachment, create_attachment
 
 
 BASE_EXTENT = 3.5 # 2.5
@@ -272,6 +271,7 @@ class GripperCommand(Command):
     def __repr__(self):
         return '{}({},{},{})'.format(self.__class__.__name__, get_body_name(self.robot),
                                      self.arm, self.position)
+
 class Attach(Command):
     vacuum = True
     def __init__(self, robot, arm, grasp, body):
@@ -286,6 +286,7 @@ class Attach(Command):
         body_pose = multiply(gripper_pose, self.grasp.value)
         set_pose(self.body, body_pose)
     def apply(self, state, **kwargs):
+        from pybullet_tools.pose_utils import create_attachment
         state.attachments[self.body] = create_attachment(self.robot, self.link, self.body)
         state.grasps[self.body] = self.grasp
         if self.body not in state.poses:

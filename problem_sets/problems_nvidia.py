@@ -992,6 +992,8 @@ def test_kitchen_plan_constraints(args, **kwargs):
         arm = 'left'
         objects = []
         fridge_door = world.name_to_body('fridge_door')
+        braiser_bottom = world.name_to_body('braiser_bottom')
+        braiser_lid = world.name_to_body('braiserlid')
         counter = world.name_to_body('indigo_tmp')
         drawer_joint = world.name_to_body('indigo_drawer_top_joint')
         drawer_link = world.name_to_body('indigo_drawer_top')
@@ -1003,15 +1005,19 @@ def test_kitchen_plan_constraints(args, **kwargs):
         movable = movables[goal_object]
         # goals = ('test_grasps', movable)
         # goals = [("Holding", arm, movable)]
-        goals = [("On", movable, counter)]
+        # goals = [("On", movable, counter)]; world.open_joint(joint, extent=0.5)
         # goals = [("In", movable, drawer_link)]
+
+        # goals = [("On", movable, braiser_bottom)]  ## ; world.open_joint(joint, extent=0.5)
+        # goals = [("On", braiser_lid, counter), ("Holding", arm, movable)]
 
         #########################################################################
 
         # objects += [movable]  ## Holding
         # objects += [drawer_joint]  ## OpenedJoint
         # objects += [drawer_link]  ## In (place)
-        # objects += [drawer_joint, drawer_link]  ## In (place_rel)
+        # objects += [drawer_joint, drawer_link]  ## On (place_rel)
+        # objects += [braiser_lid, counter]  ## On (braiser_bottom)
         # objects += [dishwasher_space]  ## dishwasher_joint,
         # objects += [dishwasher_joint, dishwasher_space]
         # objects += cabinet_doors
@@ -1035,7 +1041,18 @@ def test_kitchen_plan_constraints(args, **kwargs):
         if args.use_skeleton_constraints:
 
             if goals == [("OpenedJoint", drawer_joint)]:
-                skeleton += [(k, 'right', drawer_joint) for k in pull_with_link_actions]
+                skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
+
+            if goals == [("On", braiser_lid, counter), ("Holding", arm, movable)]:
+                skeleton += [(k, arm, braiser_lid) for k in pick_place_actions]
+                skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
+                skeleton += [('pick_from_supporter', arm, movable)]
+
+            if goals == [("On", movables['fork'], braiser_bottom)]:
+                skeleton += [(k, arm, braiser_lid) for k in pick_place_actions]
+                skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
+                skeleton += [('pick_from_supporter', arm, movable)]
+                skeleton += [('place', arm, movable)]
 
             if goals == [("On", movables['fork'], counter)]:
                 if robot.dual_arm:
@@ -1044,7 +1061,7 @@ def test_kitchen_plan_constraints(args, **kwargs):
                     skeleton += [(k, 'left', drawer_joint) for k in pull_with_link_actions]
                     skeleton += [('place', 'right', movable)]
                 else:
-                    skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
+                    # skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
                     skeleton += [(k, arm, movable) for k in ['pick_from_supporter', 'place']]
                 set_camera_target_body(drawer_link, dx=1, dy=0.5, dz=2)
 

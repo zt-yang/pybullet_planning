@@ -14,7 +14,7 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     get_joint_limits, unit_pose, point_from_pose, draw_point, PI, quat_from_pose, angle_between, \
     tform_point, interpolate_poses, draw_pose, RED, remove_handles, stable_z, wait_unlocked, \
     get_aabb_center, set_renderer, timeout, get_aabb_extent, wait_if_gui, wait_for_duration, \
-    get_joint_type, PoseSaver, draw_aabb
+    get_joint_type, PoseSaver, draw_aabb, LockRenderer
 from pybullet_tools.pr2_primitives import Pose, Grasp
 
 from pybullet_tools.bullet_utils import nice, visualize_point, collided, is_box_entity, \
@@ -127,6 +127,7 @@ class HandleGrasp(object):
 
 class RelPose(object):
     num = count()
+
     def __init__(self, body, #link=BASE_LINK,
                  reference_body=None, reference_link=BASE_LINK,
                  confs=[], support=None, init=False, index=None):
@@ -143,6 +144,7 @@ class RelPose(object):
             index = next(self.num)
         self.index = index
         self.value = self.get_reference_from_body()
+
     @property
     def bodies(self):
         bodies = set() # (self.body, None)
@@ -151,26 +153,38 @@ class RelPose(object):
         for conf in self.confs:
             bodies.update(conf.bodies)
         return bodies
+
     def assign(self):
         for conf in self.confs: # Assumed to be totally ordered
             conf.assign()
+
     def get_world_from_reference(self):
         if self.reference_body is None:
             return unit_pose()
-        self.assign()
-        return get_link_pose(self.reference_body, self.reference_link)
+        with PoseSaver(self.body):
+            with LockRenderer(True):
+                self.assign()
+                link_pose = get_link_pose(self.reference_body, self.reference_link)
+        return link_pose
+
     def get_world_from_body(self):
-        self.assign()
-        return get_link_pose(self.body, BASE_LINK)
+        with PoseSaver(self.body):
+            with LockRenderer(True):
+                self.assign()
+                pose = get_link_pose(self.body, BASE_LINK)
+        return pose
+
     def get_reference_from_body(self):
         return multiply(invert(self.get_world_from_reference()),
                         self.get_world_from_body())
+
     def draw(self, **kwargs):
         point_reference = point_from_pose(self.get_reference_from_body())
         if self.reference_body is None:
             return draw_point(point_reference, **kwargs)
         return draw_point(point_reference, parent=self.reference_body,
                           parent_link=self.reference_link, **kwargs)
+
     def __repr__(self):
         index = self.index  ## id(self) % 1000
         if self.reference_body is None:
@@ -178,6 +192,7 @@ class RelPose(object):
             return 'wp{}={}'.format(index, nice(pose))
         rel_pose = self.get_reference_from_body()
         return 'rp{}={}'.format(index, nice(rel_pose))
+
 
 
 def pose_from_attachment(attachment, **kwargs):
