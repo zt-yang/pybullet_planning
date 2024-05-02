@@ -1009,15 +1009,15 @@ def test_kitchen_plan_constraints(args, **kwargs):
         # goals = [("In", movable, drawer_link)]
 
         # goals = [("On", movable, braiser_bottom)]  ## ; world.open_joint(joint, extent=0.5)
-        # goals = [("On", braiser_lid, counter), ("Holding", arm, movable)]
+        goals = [("On", braiser_lid, counter), ("Holding", arm, movable)]
 
         #########################################################################
 
         # objects += [movable]  ## Holding
         # objects += [drawer_joint]  ## OpenedJoint
         # objects += [drawer_link]  ## In (place)
-        # objects += [drawer_joint, drawer_link]  ## On (place_rel)
-        # objects += [braiser_lid, counter]  ## On (braiser_bottom)
+        objects += [drawer_joint, drawer_link]  ## On (place_rel)
+        objects += [braiser_lid, counter]  ## On (braiser_bottom)
         # objects += [dishwasher_space]  ## dishwasher_joint,
         # objects += [dishwasher_joint, dishwasher_space]
         # objects += cabinet_doors

@@ -6,10 +6,11 @@ import time
 import numpy as np
 from pprint import pprint
 
-from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_pull_drawer_handle_motion_gen
-from pybullet_tools.pr2_streams import get_pull_door_handle_motion_gen as get_turn_knob_handle_motion_gen
+from pybullet_tools.mobile_streams import get_pull_door_handle_motion_gen as get_pull_drawer_handle_motion_gen
+from pybullet_tools.mobile_streams import get_pull_door_handle_motion_gen as get_turn_knob_handle_motion_gen
+from pybullet_tools.mobile_streams import get_pull_door_handle_motion_gen
 from pybullet_tools.pr2_streams import get_stable_gen, Position, get_pose_in_space_test, \
-    get_marker_grasp_gen, get_bconf_in_region_test, get_pull_door_handle_motion_gen, \
+    get_marker_grasp_gen, get_bconf_in_region_test, \
     get_pull_marker_random_motion_gen, get_ik_ungrasp_gen, get_pose_in_region_test, sample_joint_position_gen
 
 from pybullet_tools.pr2_primitives import get_group_joints, get_base_custom_limits, Pose, Conf, \

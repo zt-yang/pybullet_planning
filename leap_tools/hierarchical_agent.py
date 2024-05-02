@@ -6,6 +6,7 @@ sys.path.append(join(RD, pardir, 'cognitive-architectures', 'pddlgym'))
 
 from cogarch_tools.processes.pddlstream_agent import *
 from pybullet_tools.stream_agent import log_goal_plan_init
+from pybullet_tools.logging_utils import print_lists
 
 hpn_kwargs = dict(domain_modifier='atbconf,canmove', exp_name='hpn')
 hpn_kwargs = dict(domain_modifier='atbconf,canmove,basemotion', exp_name='hpn')
@@ -131,8 +132,6 @@ class HierarchicalAgent(PDDLStreamAgent):
         original_action = Action(action_name, action.args)
 
         self.refinement_count += 1
-        if self.refinement_count == 3:
-            print('3rd refinement')
         myprint(f'\n## {self.refinement_count}th refinement problem')
 
         ## update goal and init
@@ -142,13 +141,17 @@ class HierarchicalAgent(PDDLStreamAgent):
         self.recover_unpickleble_attributes()
 
         ## skip planning if the subgoal has been achieved
-        missing_preconditions, _, preimage = self.check_action_preconditions(action, facts, goals)
-        if len(missing_preconditions) == 0:
+        missing_preconditions = None
+        if '--no-' in action.name:
+            missing_preconditions, _, preimage = self.check_action_preconditions(action, facts, goals)
+
+        if missing_preconditions is not None and len(missing_preconditions) == 0:
             plan = [original_action]
             env = None
             time_log = {'planning': 0, 'preimage': 0}
             time_log.update(log_goal_plan_init(goals[1:], plan, preimage))
-            print('skip replaning')
+            print('refine_plan.skip replaning')
+            # self._update_state(original_action)
 
         else:
 
@@ -190,12 +193,12 @@ class HierarchicalAgent(PDDLStreamAgent):
         print('------------------------ \nRefined plan:', plan)
         if plan is not None:
             self.plan = plan + self.plan
-            add_facts = [s for s in preimage if s not in self.state]
+            add_facts = [s for s in set(preimage) if s not in self.state]
             self.static_facts += [f for f in add_facts if f[0].lower() in ['cleaned', 'cooked', 'seasoned']]
 
             ## need to have here because it may have just been refining and no action yet
-            self.state += self.static_facts
-            self.state = list(set(self.state))
+            # self.state += self.static_facts
+            # self.state = list(set(self.state))
             self.record_time(time_log)
 
             print('\nnew plan:')
@@ -211,6 +214,8 @@ class HierarchicalAgent(PDDLStreamAgent):
             if self.failed_count is not None:
                 print('self.failed_count is not None')
                 sys.exit()
+
+            return plan
         else:
             if plan is None:
                 self.save_stats(solved=False)
@@ -235,20 +240,20 @@ class HierarchicalAgent(PDDLStreamAgent):
         if verbose:
             env.print_log(info)
 
+        ## method 1
         preconditions, effects = env.ground_operator_preconds_effects(action_literal)
         del_effects = [env.from_literal(a) for a in preconditions if a.predicate.name != 'identical']
         add_effects = [env.from_literal(a) for a in effects]
-        print('\tpreconditions\t', del_effects)
-        print('\teffects\t', add_effects)
+        print_lists([(del_effects, 'preconditions'), (add_effects, 'effects')])
 
+        ## method 2
         add_effects_2 = [env.from_literal(a) for a in info['add_effects']]
-        del_effects_2 = [env.from_literal(a) for a in info['del_effects'] + info['need_preconditions']]
-
         add_effects += [a for a in add_effects_2 if a not in add_effects]
+        del_effects_2 = [env.from_literal(a) for a in info['del_effects'] + info['need_preconditions']]
         for a in del_effects_2:
             if a[0] == 'not':
                 a = a[1]
-            if a[0] != 'identical':
+            if a[0] != 'identical' and a not in del_effects:
                 del_effects.append(a)
 
         variables = {}
@@ -294,7 +299,7 @@ class HierarchicalAgent(PDDLStreamAgent):
             preimage = self.preimages_after_op[op]
             goals = [self.env_execution.from_literal(n) for n in preimage]
             print(f"\n{index}\t{action}")
-            print('   eff:\n' + f'\n   '.join([str(g) for g in goals if g[0] != 'not']))
+            print('   eff:\n\t'+f'\n\t'.join([str(g) for g in goals if g[0] != 'not']))
             g2 = [str(g) for g in goals if g[0] == 'not']
             if len(g2) > 0:
                 print('   ' + f'\n   '.join(g2))

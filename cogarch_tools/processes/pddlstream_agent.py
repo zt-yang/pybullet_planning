@@ -18,7 +18,7 @@ from pybullet_tools.bullet_utils import get_datetime
 from pybullet_tools.pr2_primitives import Trajectory
 from pybullet_tools.stream_agent import solve_pddlstream
 from pybullet_tools.utils import SEPARATOR
-from pybullet_tools.logging_utils import save_commands, TXT_FILE
+from pybullet_tools.logging_utils import save_commands, TXT_FILE, summarize_state_changes
 
 from world_builder.actions import get_primitive_actions
 from world_builder.world_utils import get_camera_image
@@ -189,35 +189,35 @@ class PDDLStreamAgent(MotionAgent):
                     print('pddlstream_agent.process_plan\tgetting new action', action)
                 return action
 
+            # if self.step_count in [7,  8]:
+            #     print('self.step_count in [7,  8]')
+
             name, args = action
-            self.step_count += 1
-            incomplete_action = isinstance(args[-1], str)
-
-            if self.step_count in [7,  8]:
-                print('self.step_count in [7,  8]')
-
-            if self.env_execution is not None and name in self.env_execution.domain.operators and not incomplete_action:
-                facts_old = self.state
-                self.state = self.env_execution.step(action) + self.static_facts
-                self.state = list(set(self.state))
-                added = list(set(self.state) - set(facts_old))
-                deled = list(set(facts_old) - set(self.state))
-                if len(added) > 0:
-                    print(f'\tadded: {added}')
-                    print(f'\tdeled: {deled}')
-
-                # summarize_facts(self.state, self.world, name='Facts computed during execution')
+            incomplete_action = '?t' in args
 
             ## may be an abstract action or move_base action that hasn't been solved
             if '--no-' in name or incomplete_action:
                 self.refine_plan(action, observation)
             else:
+                if self.env_execution is not None and name in self.env_execution.domain.operators:
+                    self._update_state(action)
+
                 commands = get_primitive_actions(action, self.world, teleport=SAVE_TIME)
                 self.plan = commands + self.plan
                 self.plan_len += 1
                 return self.process_plan(observation)
 
         return None
+
+    def _update_state(self, action):
+        facts_old = set(self.state)
+        added, deled = self.env_execution.step(action)
+        self.state += added + self.static_facts
+        self.state = [f for f in set(self.state) if f not in deled]
+        print(f'pddlstream_agent._update_state(step={self.step_count}, {action})')
+        summarize_state_changes(self.state, facts_old, title='')
+        # summarize_facts(self.state, self.world, name='Facts computed during execution')
+        self.step_count += 1
 
     def replan(self, observation, **kwargs):
         """ make new plans given a pddlstream_problem """

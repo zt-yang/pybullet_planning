@@ -266,6 +266,14 @@ class RobotAPI(Robot):
             return positions
         return tuple([round(n, roundto) for n in positions])
 
+    def print_full_body_conf(self, title='full_body_conf', debug=False):
+        if debug:
+            print('\n'+title)
+            for group in ['left_arm', 'base-torso']:  ## , 'right_arm'
+                if group in self.joint_groups:
+                    print('\t', group, nice(self.get_positions(group)))
+            print()
+
     def set_group_positions(self, joint_group: str, positions: list):
         joints = self.get_group_joints(joint_group)
         assert len(joints) == len(positions)

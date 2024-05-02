@@ -1485,7 +1485,7 @@ class World(WorldBase):
 
         set_cost_scale(cost_scale=1)
         init = [Equal(('PickCost',), 1), Equal(('PlaceCost',), 1),
-                ('CanPull',), ('CanMove',), ('CanPick',)]
+                ('CanMove',), ('CanPick',)] + [('CanPull', arm) for arm in self.robot.arms]
 
         ## ---- robot conf ------------------
         init += self.robot.get_init(init_facts=init_facts, conf_saver=conf_saver)

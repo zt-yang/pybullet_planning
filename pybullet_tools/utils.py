@@ -3595,6 +3595,9 @@ def get_closest_points(body1, body2, link1=None, link2=None, max_distance=MAX_DI
     #     return []
     if not isinstance(body1, int):
         body1 = body1.body
+    if not isinstance(body2, int):
+        body2 = body2.body
+
     if (link1 is None) and (link2 is None):
         results = p.getClosestPoints(bodyA=body1, bodyB=body2, distance=max_distance, physicsClientId=CLIENT)
     elif link2 is None:
@@ -4008,7 +4011,8 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
                 if verbose:
                     from pybullet_tools.bullet_utils import nice  ## YANG
                     if not isinstance(body1, int):
-                        print('bullet.get_collision_fn', body1.body, 'at', nice(q), 'collides with', body2)
+                        print(f'get_collision_fn({body1.body}, {nice(q)}, {body2}) with attachments {attachments}')
+                        body.print_full_body_conf(title='get_collision_fn')
                     else:
                         print(body1, body2)
                     # if debug:
