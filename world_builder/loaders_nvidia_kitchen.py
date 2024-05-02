@@ -3,7 +3,7 @@ import random
 from pybullet_tools.pr2_primitives import Conf, get_group_joints
 from pybullet_tools.utils import invert, get_name, pairwise_collision, \
     get_link_pose, get_pose, set_pose
-from pybullet_tools.pose_utils import sample_pose, xyzyaw_to_pose
+from pybullet_tools.pose_utils import sample_pose, xyzyaw_to_pose, sample_center_top_surface
 from pybullet_tools.bullet_utils import nice, collided, equal
 
 from world_builder.world_utils import sort_body_indices
@@ -353,13 +353,23 @@ def load_nvidia_kitchen_joints(world: World, open_doors: bool = False):
 
 
 def learned_nvidia_pose_list_gen(world, body, surfaces, num_samples=30, obstacles=[], verbose=True):
+    if isinstance(surfaces, tuple):
+        surfaces = [surfaces]
+
     ## --------- Special case for plates -------------
     results = check_plate_placement(world, body, surfaces, num_samples=num_samples, obstacles=obstacles)
 
     name = world.BODY_TO_OBJECT[body].shorter_name
     for surface in surfaces:
-        body, _, link = surface
-        key = (name, get_link_name(body, link))
+
+        results += check_on_plate_placement(body, surface)
+
+        if isinstance(surface, tuple):
+            body, _, link = surface
+            surface_name = get_link_name(body, link)
+        else:
+            surface_name = world.BODY_TO_OBJECT[surface].shorter_name
+        key = (name, surface_name)
         if key in saved_relposes:
             results.append(saved_relposes[key])
             if verbose:
@@ -407,6 +417,22 @@ def check_plate_placement(world, body, surfaces, obstacles=[], num_samples=30, n
             trials += 1
 
     return []
+
+
+def check_on_plate_placement(body, surface, num_samples=30):
+    if isinstance(surface, tuple):
+        return []
+    if 'square_plate' in get_name(surface):
+        return sample_center_top_surface(surface, k=num_samples)
+
+
+def load_plate_on_counter(world, counter_name='indigo_tmp'):
+    plate = world.add_object(Movable(load_asset('plate')))
+    world.add_to_cat(plate, 'surface')
+
+    counter = world.name_to_object(counter_name)
+    counter.place_obj(plate)
+    return plate.body
 
 
 #####################################################################################################

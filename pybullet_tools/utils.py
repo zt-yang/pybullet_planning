@@ -1813,6 +1813,8 @@ def quat_angle_between(quat0, quat1):
     return angle
 
 def all_between(lower_limits, values, upper_limits):
+    if len(lower_limits) != len(values):
+        print('len(lower_limits) != len(values)')
     assert len(lower_limits) == len(values)
     assert len(values) == len(upper_limits)
     return np.less_equal(lower_limits, values).all() and \

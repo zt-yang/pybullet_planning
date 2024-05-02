@@ -41,7 +41,7 @@ data:
 robot:
   robot_name: 'pr2'
   draw_base_limits: false
-  dual_arm: false
+  dual_arm: true
   self_collisions: false
   separate_base_planning: true
 

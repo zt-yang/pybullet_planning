@@ -257,10 +257,11 @@ class RobotAPI(Robot):
         assert group in self.joint_groups
         return get_robot_group_joints(self.body, group, self.joint_groups)
 
-    def get_positions(self, joint_group=None, roundto=None):
-        if joint_group is None:
-            joint_group = self.base_group
-        joints = self.get_group_joints(joint_group)
+    def get_positions(self, joints=None, joint_group=None, roundto=None):
+        if joint_group is not None:
+            joints = self.get_group_joints(joint_group)
+        elif joints is None:
+            joints = self.joints
         positions = self.get_joint_positions(joints)
         if roundto is None:
             return positions

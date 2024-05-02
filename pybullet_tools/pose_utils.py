@@ -245,6 +245,24 @@ def has_much_larger_aabb(body_larger, body_smaller):
     return area_larger > area_smaller * 4
 
 
+def get_center_top_surface(body):
+    aabb = get_aabb(body)
+    x, y = get_aabb_center(aabb)[:2]
+    z = aabb.upper[2]
+    return x, y, z
+
+
+def sample_center_top_surface(body, k=None):
+    point = get_center_top_surface(body)
+    yaw = random.uniform(0, 2 * np.pi)
+    result = point, quat_from_euler(Euler(yaw=yaw))
+    if k is not None:
+        result = [result]
+        for _ in range(k-1):
+            result.append((point, quat_from_euler(Euler(yaw=random.uniform(0, 2 * np.pi)))))
+    return result
+
+
 def check_placement(obj, region):
     return is_center_stable(obj, region, above_epsilon=INF, below_epsilon=INF)  # is_center_stable | is_placement
 

@@ -8,12 +8,9 @@ from os import listdir, pardir
 RD = abspath(join(dirname(__file__), pardir, pardir))
 sys.path.extend([join(RD), join(RD, 'pddlstream'), join(RD, 'pybullet_planning'), join(RD, 'lisdf')])
 
-from world_builder.paths import PBP_PATH
 
-from pigi_tools.replay_utils import run_replay, load_pigi_data
-
-CONFIG_YAML_PATH = join(PBP_PATH, 'pigi_tools', 'configs', 'replay_debug.yaml')
+from pigi_tools.replay_utils import run_replay, load_pigi_data, REPLAY_CONFIG_DEBUG
 
 
 if __name__ == '__main__':
-    run_replay(CONFIG_YAML_PATH, load_pigi_data)
+    run_replay(REPLAY_CONFIG_DEBUG, load_pigi_data)
