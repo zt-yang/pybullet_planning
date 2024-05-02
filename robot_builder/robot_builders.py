@@ -7,7 +7,7 @@ from pybullet_tools.utils import LockRenderer, HideOutput, PI
 from world_builder.entities import Camera
 
 from robot_builder.robots import PR2Robot, FEGripper, SpotRobot
-from robot_builder.robot_utils import create_mobile_robot, BASE_GROUP
+from robot_builder.robot_utils import create_mobile_robot, BASE_GROUP, BASE_TORSO_GROUP
 
 
 def get_robot_builder(builder_name):
@@ -86,7 +86,7 @@ from robot_builder.spot_utils import load_spot, SPOT_JOINT_GROUPS
 
 
 def create_spot_robot(world, **kwargs):
-    return create_mobile_robot(world, load_spot, SpotRobot, BASE_GROUP, SPOT_JOINT_GROUPS, **kwargs)
+    return create_mobile_robot(world, load_spot, SpotRobot, BASE_TORSO_GROUP, SPOT_JOINT_GROUPS, **kwargs)
 
 
 #######################################################

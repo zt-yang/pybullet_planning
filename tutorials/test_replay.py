@@ -12,7 +12,7 @@ from world_builder.paths import PBP_PATH
 
 from pigi_tools.replay_utils import run_replay, load_pigi_data
 
-CONFIG_YAML_PATH = join(PBP_PATH, 'pigi_tools', 'config', 'replay_debug.yaml')
+CONFIG_YAML_PATH = join(PBP_PATH, 'pigi_tools', 'configs', 'replay_debug.yaml')
 
 
 if __name__ == '__main__':
