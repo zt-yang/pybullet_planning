@@ -116,7 +116,7 @@ class HierarchicalAgent(PDDLStreamAgent):
         add_relevant_facts_given_goals(facts, goals_check, removed)
 
         ## some basic fact is missing due to previuos steps
-        accepted_additions = ['canmove', 'canungrasp', 'canpick', 'not', '=']
+        accepted_additions = ['canmove', 'canungrasp', 'cangrasphandle', 'canpick', 'not', '=']
         missing_preconditions, ignored_goals, _ = self.check_action_preconditions(action, facts, goals[1:], verbose=True)
         facts += [f for f in missing_preconditions if f[0] in accepted_additions or \
                   (len(f) == 2 and isinstance(f[1], tuple) and f[1][0] in accepted_additions)]

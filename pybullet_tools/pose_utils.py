@@ -248,7 +248,7 @@ def has_much_larger_aabb(body_larger, body_smaller):
 def get_center_top_surface(body):
     aabb = get_aabb(body)
     x, y = get_aabb_center(aabb)[:2]
-    z = aabb.upper[2]
+    z = aabb.upper[2] + 0.01
     return x, y, z
 
 

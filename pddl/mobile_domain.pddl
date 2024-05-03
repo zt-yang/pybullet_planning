@@ -107,6 +107,7 @@
     (CanPull ?a)
     (CanUngrasp)
     (CanPick)
+    (CanGraspHandle)
 
     (Cleaned ?o)
     (Cooked ?o)
@@ -356,14 +357,14 @@
 
     (:action grasp_handle
       :parameters (?a ?o ?p ?g ?q ?aq1 ?aq2 ?t)
-      :precondition (and (Joint ?o) (AConf ?a ?aq1)
+      :precondition (and (Joint ?o) (AConf ?a ?aq1) (CanGraspHandle)
                          (KinGraspHandle ?a ?o ?p ?g ?q ?aq2 ?t)
                          (AtPosition ?o ?p) (HandEmpty ?a)
                          (AtBConf ?q) (AtAConf ?a ?aq1)
                          ;(Enabled)
                     )
       :effect (and (AtHandleGrasp ?a ?o ?g) (not (HandEmpty ?a)) (not (CanPick))
-                   (not (CanMove)) (CanPull ?a) (not (CanUngrasp))
+                   (not (CanMove)) (CanPull ?a) (not (CanUngrasp)) (not (CanGraspHandle))
                    (not (AtAConf ?a ?aq1)) (AtAConf ?a ?aq2)
                    ;(increase (total-cost) (PickCost)) ; TODO: make one third of the cost
                    (increase (total-cost) 0)
@@ -373,11 +374,11 @@
       :parameters (?a ?o ?p ?g ?q ?aq1 ?aq2 ?t)
       :precondition (and (Joint ?o) (AtPosition ?o ?p)
                          (KinUngraspHandle ?a ?o ?p ?g ?q ?aq1 ?aq2 ?t)
-                         (AtHandleGrasp ?a ?o ?g) (CanUngrasp)
+                         (AtHandleGrasp ?a ?o ?g) (CanUngrasp) (not (CanGraspHandle))
                          (AtBConf ?q) (UngraspBConf ?q) (AtAConf ?a ?aq1) ;; (DefaultAConf ?a ?aq2)
                          ;(Enabled)
                     )
-      :effect (and (GraspedHandle ?o) (HandEmpty ?a) (CanMove) (CanPick)
+      :effect (and (GraspedHandle ?o) (HandEmpty ?a) (CanMove) (CanPick) (CanGraspHandle)
                    (not (AtHandleGrasp ?a ?o ?g))
                    (not (AtAConf ?a ?aq1)) (AtAConf ?a ?aq2)
                    ;(increase (total-cost) (PlaceCost))

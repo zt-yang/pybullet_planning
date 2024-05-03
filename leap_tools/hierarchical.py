@@ -733,10 +733,6 @@ class PDDLStreamEnv(PDDLEnv):
 
         obs, reward, done, _ = super().step(action)
 
-        # canmoves = [(l.is_anti, l.is_negative, l.predicate.is_anti, l.predicate.is_negative)
-        #             for l in obs.literals if 'canmove' in l.predicate.name]
-        # print(f'\t!! after step() canmove ({len(canmoves)})', canmoves)
-
         ## include the changes and needed facts in debug_info
         info['add'] = list(obs.literals - self.last_obs.literals)
         derived = [n for n in info['add'] if n not in info['add_effects']]

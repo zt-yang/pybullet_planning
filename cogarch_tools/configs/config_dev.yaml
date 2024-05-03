@@ -10,7 +10,7 @@ planner:
   use_heuristic_fc: false
   dataset_mode: true
   downward_time: 3
-  evaluation_time: 30
+  evaluation_time: 60
   stream_planning_timeout: 80
   total_planning_timeout: 60
   max_plans: 1
@@ -35,7 +35,7 @@ data:
   exp_subdir: 'test'
   exp_name: 'original'
   record_problem: true
-  record_mp4: false
+  record_mp4: true
   save_testcase: true
 
 robot:
