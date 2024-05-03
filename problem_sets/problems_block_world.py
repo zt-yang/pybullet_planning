@@ -38,7 +38,6 @@ def test_pick(args, robot_builder_args=dict(), **kwargs):
 
     return problem_template(args, robot_builder_fn=build_table_domain_robot, robot_builder_args=robot_builder_args,
                             world_loader_fn=loader_fn, **kwargs)
-    # return test_simple_table_domain(args, loader_fn, **kwargs)
 
 
 def test_small_sink(args, **kwargs):

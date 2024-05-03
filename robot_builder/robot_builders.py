@@ -144,7 +144,7 @@ def build_table_domain_robot(world, robot_name, **kwargs):
         kwargs['initial_xy'] = (0, 0)
     if 'custom_limits' not in kwargs:
         kwargs['custom_limits'] = ((-4, -4, 0), (4, 4, 2))
-    if robot_name == 'pr2':
+    if robot_name != 'feg':
         kwargs['use_torso'] = True
     return build_robot_from_args(world, robot_name, **kwargs)
 

@@ -8,6 +8,13 @@ from pybullet_tools.utils import read_pickle, set_renderer, wait_for_user, PI
 
 from tutorials.test_grasps import test_grasps, test_handle_grasps_counter
 
+from cogarch_tools.cogarch_run import run_agent
+from cogarch_tools.processes.teleop_agent import TeleOpAgent
+
+from world_builder.paths import EXP_PATH
+
+from leap_tools.hierarchical_agent import HierarchicalAgent
+
 
 def test_spot_grasps():
     kwargs = dict(categories=['VeggieCabbage'], skip_grasps=False, base_q=(0, 0, 0, 0))
@@ -33,7 +40,10 @@ def test_spot_grasps():
     # test_grasps('feg', **debug_kwargs, **kwargs)
 
 
+def test_office_chair_domain_spot():
+    run_agent(problem='test_pick_low')
+
+
 if __name__ == '__main__':
     test_spot_grasps()
-    # test_rummy_handle_grasps()
     # test_nvidia_kitchen_domain_spot()
