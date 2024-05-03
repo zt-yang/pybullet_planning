@@ -148,6 +148,9 @@ class World(WorldBase):
             # if o.name in ['pr2', 'feg']:
             #     self.add_robot(id, o.name)
 
+    def get_object(self, body):
+        return body
+
     # def update_robot(self, domain_name):
     #     if 'pr2' in domain_name:
     #         self.robot = 'pr2'

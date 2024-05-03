@@ -986,6 +986,7 @@ def test_kitchen_plan_constraints(args, **kwargs):
         goal_object = ['chicken-leg', 'cabbage', 'fork', 'salt-shaker'][2]
         open_doors_for = []  ## goal_object
         objects, movables, movable_to_doors = load_open_problem_kitchen(world, open_doors_for=open_doors_for)
+        plate = load_plate_on_counter(world, counter_name='indigo_tmp')
 
         """ goals """
         robot = world.robot
@@ -1008,8 +1009,10 @@ def test_kitchen_plan_constraints(args, **kwargs):
         # goals = [("On", movable, counter)]; world.open_joint(joint, extent=0.5)
         # goals = [("In", movable, drawer_link)]
 
-        # goals = [("On", movable, braiser_bottom)]  ## ; world.open_joint(joint, extent=0.5)
+        # goals = [("On", movable, braiser_bottom)]; world.open_joint(joint, extent=0.5)
         # goals = [("On", braiser_lid, counter), ("Holding", arm, movable)]
+        # goals = [("On", braiser_lid, counter)]
+        goals = [("On", movable, plate)]  ## ; world.open_joint(joint, extent=0.5)
 
         #########################################################################
 
@@ -1017,7 +1020,7 @@ def test_kitchen_plan_constraints(args, **kwargs):
         # objects += [drawer_joint]  ## OpenedJoint
         # objects += [drawer_link]  ## In (place)
         # objects += [drawer_joint, drawer_link]  ## On (place_rel)
-        # objects += [braiser_lid, counter]  ## On (braiser_bottom)
+        objects += [braiser_lid, counter]  ## On (braiser_bottom)
         # objects += [dishwasher_space]  ## dishwasher_joint,
         # objects += [dishwasher_joint, dishwasher_space]
         # objects += cabinet_doors
@@ -1054,7 +1057,10 @@ def test_kitchen_plan_constraints(args, **kwargs):
                 skeleton += [('pick_from_supporter', arm, movable)]
                 skeleton += [('place', arm, movable)]
 
-            if goals == [("On", movables['fork'], counter)]:
+            if goals in [
+                [("On", movables['fork'], counter)],
+                [("On", movables['fork'], plate)]
+            ]:
                 if robot.dual_arm:
                     skeleton += [(k, 'right', drawer_joint) for k in pull_with_link_actions]
                     skeleton += [('pick_from_supporter', 'right', movable)]

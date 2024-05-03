@@ -194,8 +194,7 @@ class Object(Index):
 
         done = False
         if world.learned_pose_list_gen is not None:
-            results = world.learned_pose_list_gen(world, obj.body, self.pybullet_name,
-                                                  visualize=visualize, num_samples=14)
+            results = world.learned_pose_list_gen(world, obj.body, [self.pybullet_name], num_samples=14)
             if results is not None:
                 for body_pose in results:
                     obj.set_pose(body_pose)
@@ -729,6 +728,7 @@ class Robot(Object):
 
     def get_pose(self):
         return self.get_link_pose(self.base_link)
+
     # def get_positions(self, joint_group='base', roundto=None):
     #     if joint_group == 'base':
     #         joints = self.joints
@@ -743,7 +743,7 @@ class Robot(Object):
         set_group_conf(self.body, 'base', xytheta)
 
     def set_positions(self, positions, joints=None):
-        if joints == None:
+        if joints is None:
             joints = self.joints
         self.set_joint_positions(joints, positions)
 

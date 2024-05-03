@@ -188,10 +188,17 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     return args
 
 
+def debugger_is_active() -> bool:
+    """Return if the debugger is currently active"""
+    import sys
+    return hasattr(sys, 'gettrace') and sys.gettrace() is not None
+
+
 def get_pddlstream_kwargs(args, skeleton, subgoals, initializer):
     fc = None if not args.use_heuristic_fc else get_feasibility_checker(initializer, mode='heuristic')
     pddlstream_debug = args.pddlstream_debug if hasattr(args, 'pddlstream_debug') else False
     soft_subgoals = args.soft_subgoals if hasattr(args, 'soft_subgoals') else False
+    evaluation_time = args.evaluation_time * 2 if debugger_is_active() else args.evaluation_time
     solver_kwargs = dict(
         skeleton=skeleton,
         subgoals=subgoals,
@@ -203,7 +210,7 @@ def get_pddlstream_kwargs(args, skeleton, subgoals, initializer):
         max_solutions=args.max_solutions,
         visualization=args.visualization,  ## to draw constraint networks and stream plans
         log_failures=args.log_failures,  ## to summarize failed streams
-        evaluation_time=args.evaluation_time,
+        evaluation_time=evaluation_time,
         downward_time=args.downward_time,
         stream_planning_timeout=args.stream_planning_timeout,
         max_plans=args.max_plans,

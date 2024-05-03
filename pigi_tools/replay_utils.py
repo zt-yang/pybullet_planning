@@ -21,10 +21,14 @@ from lisdf_tools.lisdf_planning import Problem
 from lisdf_tools.image_utils import make_composed_image_multiple_episodes, images_to_gif
 
 from world_builder.actions import apply_actions
+from world_builder.paths import PBP_PATH
+
 from data_generator.run_utils import copy_dir_for_process, process_all_tasks
 
 from pigi_tools.data_utils import get_plan, get_body_map, get_multiple_solutions, add_to_planning_config, \
     load_planning_config, get_world_aabb, check_unrealistic_placement_z, get_goals
+
+REPLAY_CONFIG_DEBUG = join(PBP_PATH, 'pigi_tools', 'configs', 'replay_debug.yaml')
 
 
 def get_pkl_run(run_dir, verbose=True):
@@ -163,7 +167,7 @@ def load_replay_conf(conf_path):
     return c
 
 
-def run_replay(config_yaml_file, load_data_fn=load_pigi_data):
+def run_replay(config_yaml_file, load_data_fn=load_pigi_data, given_path=None):
     c = load_replay_conf(config_yaml_file)
 
     def process(run_dir_ori):
@@ -175,8 +179,11 @@ def run_replay(config_yaml_file, load_data_fn=load_pigi_data):
                            skip_if_processed_recently=c['skip_if_processed_recently'], check_time=c['check_time'])
         return case_filter(run_dir_ori, **case_kwargs)
 
+    if given_path is None:
+        given_path = c['given_path']
+
     process_all_tasks(process, c['task_name'], parallel=c['parallel'], cases=c['cases'],
-                      path=c['given_path'], dir=c['given_dir'], case_filter=_case_filter)
+                      path=given_path, dir=c['given_dir'], case_filter=_case_filter)
 
 
 def set_replay_camera_pose(world, run_dir, camera_kwargs, camera_point, target_point):

@@ -518,6 +518,8 @@ def get_successful_plan(run_dir, indices={}, skip_multiple_plans=True, **kwargs)
     plans = []
     with open(plan_file, 'r') as f:
         data = json.load(f)
+        if len(data) > 2:  ## HPN planning
+            data = data[2:]
         plan = []
         for episode in data:
             if 'plan' not in episode:

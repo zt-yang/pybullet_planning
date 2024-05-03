@@ -10,7 +10,7 @@ planner:
   use_heuristic_fc: false
   dataset_mode: true
   downward_time: 3
-  evaluation_time: 30
+  evaluation_time: 60
   stream_planning_timeout: 80
   total_planning_timeout: 60
   max_plans: 1
@@ -21,10 +21,8 @@ planner:
 problem:
   problem: 'test_kitchen_chicken_soup'
   goal: null
-#  domain_pddl: 'pddl/mobile_domain.pddl'
-#  stream_pddl: 'pddl/mobile_stream.pddl'
-  domain_pddl: 'pddl/mobile_domain_new.pddl'
-  stream_pddl: 'pddl/mobile_stream_new.pddl'
+  domain_pddl: 'pddl/mobile_domain.pddl'
+  stream_pddl: 'pddl/mobile_stream.pddl'
   use_skeleton_constraints: false
   use_subgoal_constraints: false
   use_rel_pose: true
@@ -37,13 +35,13 @@ data:
   exp_subdir: 'test'
   exp_name: 'original'
   record_problem: true
-  record_mp4: false
+  record_mp4: true
   save_testcase: true
 
 robot:
   robot_name: 'pr2'
   draw_base_limits: false
-  dual_arm: false
+  dual_arm: true
   self_collisions: false
   separate_base_planning: true
 

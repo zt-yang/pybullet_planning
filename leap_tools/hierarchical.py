@@ -30,7 +30,7 @@ from pybullet_tools.logging_utils import summarize_facts
 from pybullet_tools.pr2_primitives import Pose, Grasp, Conf, APPROACH_DISTANCE, \
     TOP_HOLDING_LEFT_ARM
 from pybullet_tools.utils import get_unit_vector, multiply, unit_quat
-from pybullet_tools.logging_utils import myprint as print
+from pybullet_tools.logging_utils import myprint as print, summarize_state_changes, print_list
 
 from pddlstream.language.constants import Action
 from pddlstream.algorithms.algorithm import parse_problem
@@ -311,6 +311,7 @@ class PDDLStreamEnv(PDDLEnv):
         self.problems = [PDDLProblemTranslator(self._pddlstream_problem, self.domain,
                                                init=init, objects=objects)]
         self._init_literals = []
+        self._last_literals = init
         #---------------------------------------------------------------------------
 
         # Determine if the domain is STRIPS
@@ -664,8 +665,7 @@ class PDDLStreamEnv(PDDLEnv):
                 self._state = state.with_literals(state.literals | frozenset(need_preconditions))
                 self.last_obs = self._state
             else:
-                literals = [f for f in self._state_original.literals | frozenset(add_effects) if f not in del_effects]
-                self.update_original_state(literals, action, title='identify_missing_facts')
+                print(f'identify_missing_facts.use_original_domain({action})')
                 self.print_log(info)
 
             # canmoves = [(l.is_anti, l.is_negative, l.predicate.is_anti, l.predicate.is_negative)
@@ -702,32 +702,36 @@ class PDDLStreamEnv(PDDLEnv):
 
         return info
 
-    def update_original_state(self, literals, action, title=''):
+    def update_original_state(self, info, action, title='get_extended_plan'):
+        """ use the add_effects and del_effects """
+        info['del_effects'] = [f[1] for f in info['del_effects'] if f[0] == 'not']
+        add_literals = [self.to_literal(f) for f in info['add_effects']]
+        del_literals = [self.to_literal(f) for f in info['del_effects']]
+        literals = [f for f in self._state_original.literals | frozenset(add_literals) if f not in del_literals]
+
         self._state_original_last = self._state_original
         self._state_original = self._state_original.with_literals(literals)
 
         from_bconf_last = [f for f in self._state_original_last.literals if f.predicate.name == 'atbconf'][0]
         from_bconf = [f for f in self._state_original.literals if f.predicate.name == 'atbconf'][0]
 
-        print(f'\nupdate_original_state.{title}', action)
-        print('\tfrom_bconf_last', from_bconf_last)
-        print('\tfrom_bconf', from_bconf)
+        print(f'\nupdate_original_state.{title} {action}')
+        print(f'\tfrom_bconf_last:\t{from_bconf_last}')
+        print(f'\tfrom_bconf:\t{from_bconf}\n')
 
-    def step(self, action):
+    def step(self, action, identify_missing_action=False):
 
         ## first find the missing preconditions for applying the action
         info = self.identify_missing_facts(action)
-        info_original = self.identify_missing_facts(action, use_original_domain=True)
+        if identify_missing_action:
+            info_original = self.identify_missing_facts(action, use_original_domain=True)
+            info['original'] = info_original
 
         ## step() would add derived literals that the previous function doesn't detect,
         ## because things like `on` just happens even it's not required for the next step
         ## but required for a future step, like season()
 
         obs, reward, done, _ = super().step(action)
-
-        # canmoves = [(l.is_anti, l.is_negative, l.predicate.is_anti, l.predicate.is_negative)
-        #             for l in obs.literals if 'canmove' in l.predicate.name]
-        # print(f'\t!! after step() canmove ({len(canmoves)})', canmoves)
 
         ## include the changes and needed facts in debug_info
         info['add'] = list(obs.literals - self.last_obs.literals)
@@ -737,7 +741,8 @@ class PDDLStreamEnv(PDDLEnv):
         info['action'] = action
 
         ## atbconf action
-        info = self.get_missing_actions(info_original, info)
+        if identify_missing_action:
+            info = self.get_missing_actions(info_original, info)
 
         ## this is very special purpose
         self.on_map.update(find_on_pose([n for n in derived if n.predicate.name == 'on'],
@@ -754,8 +759,11 @@ class PDDLStreamEnv(PDDLEnv):
         actions = []
         missing_info = []
 
+        ## when the required fact is not in abstract state and current state
         missing_preconditions = [pre for pre in info_original['need_tests'] if pre not in info['need_tests']]
-        print(f'\nget_missing_actions.missing_preconditions {missing_preconditions}\n')
+        missing_preconditions = [m for m in missing_preconditions if m not in self._state_original.literals]
+        print()
+        print_list(missing_preconditions, 'get_missing_actions.missing_preconditions')
         if len(missing_preconditions) > 0:
             init = self._state_original.literals  ## TODO: has problems because action sequence is wrong
             for pre in missing_preconditions:
@@ -1086,7 +1094,7 @@ class PDDLStreamEnv(PDDLEnv):
         self.derived = {0: self.derived_assignments}  ## the assignment after init facts
         for step in abstract_plan:
             action = self.to_literal(step)
-            obs, reward, done, debug_info = self.step(action)
+            obs, reward, done, debug_info = self.step(action, identify_missing_action=True)
             after_image = self.literals_to_facts(obs.literals)
             debug_info_missing = {
                 k: debug_info[k] for k in ['missing_actions', 'missing_info', 'missing_action_literals']
@@ -1100,13 +1108,17 @@ class PDDLStreamEnv(PDDLEnv):
                 added_step_literal = debug_info_missing['missing_action_literals'][i]
                 missing_info = debug_info_missing['missing_info'][i]
                 index += 1
-                self.after_images[added_step] = get_updated_facts(after_image, missing_info)
+
+                facts = [self.from_literal(f) for f in self._state_original.literals]
+                self.after_images[added_step] = get_updated_facts(facts, missing_info)
                 self.derived[index] = {}
 
-                add_literals = [self.to_literal(f) for f in missing_info['add_effects']]
-                del_literals = [self.to_literal(f) for f in missing_info['del_effects']]
-                literals = [f for f in self._state_original.literals | frozenset(add_literals) if f not in del_literals]
-                self.update_original_state(literals, added_step_literal, title='get_extended_plan')
+                self.update_original_state(missing_info, added_step_literal, title=f'step {index} missing_action')
+                # missing_info['del_effects'] = [f[1] for f in missing_info['del_effects'] if f[0] == 'not']
+                # add_literals = [self.to_literal(f) for f in missing_info['add_effects']]
+                # del_literals = [self.to_literal(f) for f in missing_info['del_effects']]
+                # literals = [f for f in self._state_original.literals | frozenset(add_literals) if f not in del_literals]
+                # self.update_original_state(literals, added_step_literal, title='get_extended_plan')
 
                 if verbose:
                     print(f'\nStep {index}', done)
@@ -1123,6 +1135,8 @@ class PDDLStreamEnv(PDDLEnv):
                 print('-'*50)
             self.after_images[step] = after_image
             self.derived[index] = self.derived_assignments  ## the assignment after each step
+            effects_info = {k: [self.from_literal(l) for l in debug_info['original'][k]] for k in ['add_effects', 'del_effects']}
+            self.update_original_state(effects_info, action, title=f'step {index} abstract_action')
             updated_plan.append(step)
 
         print('\n ========= ----------------------- ======== \n')
@@ -1180,7 +1194,13 @@ class PDDLStreamForwardEnv(PDDLStreamEnv):
         action = self.to_literal(action)
         obs, reward, done, debug_info = super().step(action)
         facts = [self.from_literal(l) for l in obs.literals]
-        return [f for f in facts if not (f[0] == 'not' and f[1][0] == '=')]
+
+        added, deled = summarize_state_changes(facts, self._last_literals, title='PDDLStreamForwardEnv')
+        self._last_literals = facts
+        return added, deled
+
+
+## ---------------------------------------------------------------------
 
 
 def empty_temp():
@@ -1296,19 +1316,19 @@ def get_updated_facts(facts, info):
     del_effects = [str(f) for f in info['del_effects']]
     for f in facts:
         if str(f) in del_effects:
-            print('\tDeleted fact:', f)
+            print(f'\tDeleted fact: {f}')
             del_effects.remove(str(f))
             continue
 
         new_facts.append(f)
         if str(f) in add_effects:
-            print('\tCannot add fact because already in facts:', f)
+            print(f'\tCannot add fact because already in facts: {f}')
             add_effects.remove(str(f))
 
     for f in info['add_effects']:
         if str(f) in add_effects:
             new_facts.append(f)
-            print('\tAdded fact:', f)
+            print(f'\tAdded fact: {f}')
 
     return new_facts
 

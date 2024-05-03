@@ -247,4 +247,30 @@ def summarize_bconfs(preimage, plan):
         print(f"({nice(bconf.values)}, {joint_state}), ")
     print('-'*50+'\n')
 
+
+def print_lists(tuples):
+    print()
+    for lst, title in tuples:
+        print_list(lst, title)
+    print('-'*70)
+
+
+def print_list(lst, title):
+    print(f'\t{title}({len(lst)})')
+    print('\t\t' + '\n\t\t'.join([str(f) for f in lst]))
+
+
+def summarize_state_changes(current_facts, old_facts, title='summarize_state_changes'):
+    added = list(set(current_facts) - set(old_facts))
+    added = remove_identical(added)
+    deled = list(set(old_facts) - set(current_facts))
+    deled = remove_identical(deled)
+    print_lists([(added, f'{title}.added'), (deled, f'{title}.deled')])
+    return added, deled
+
+
+def remove_identical(facts):
+    return [f for f in facts if f[0] not in ['='] and \
+            not (f[0] == 'not' and f[1][0] in ['=', 'identical'])]
+
 ## -----------------------------------------------------------

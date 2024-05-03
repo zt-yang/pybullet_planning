@@ -105,7 +105,7 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True, 
 
 
 def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
-                  ACONF=False, verbose=True, visualize=False, resolution=DEFAULT_RESOLUTION):
+                  ACONF=False, verbose=False, visualize=False, resolution=DEFAULT_RESOLUTION):
     robot = problem.robot
     world = problem.world
     obstacles = problem.fixed if collisions else []
@@ -120,6 +120,8 @@ def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
 
         if fluents:
             attachments = process_motion_fluents(fluents, robot)
+            if len(attachments) == 0:  ## even for picking, need to consider attachments because the traj will be used
+                attachments = [grasp.get_attachment(robot, arm)]
             attachments = {a.child: a for a in attachments}
             obstacles_here.extend([p[1] for p in fluents if p[0] in ['atpose', 'atrelpose'] if isinstance(p[1], int)])
         else:
@@ -135,14 +137,14 @@ def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
 
         return solve_approach_ik(
             arm, obj, pose_value, grasp, base_conf,
-            world, robot, custom_limits, obstacles_here, ignored_pairs_here, resolution,
+            world, robot, custom_limits, obstacles_here, ignored_pairs_here, resolution, attachments=attachments,
             title=title, ACONF=ACONF, teleport=teleport, verbose=verbose, visualize=visualize
         )
     return fn
 
 
 def get_ik_rel_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
-                      ACONF=False, verbose=True, visualize=False):
+                      ACONF=False, verbose=False, visualize=False):
     robot = problem.robot
     world = problem.world
     obstacles = problem.fixed if collisions else []
@@ -170,7 +172,7 @@ def get_ik_rel_fn_old(problem, custom_limits={}, collisions=True, teleport=False
 
         return solve_approach_ik(
             arm, obj, pose_value, grasp, base_conf,
-            world, robot, custom_limits, obstacles_here, ignored_pairs_here,
+            world, robot, custom_limits, obstacles_here, ignored_pairs_here, attachments=attachments,
             title=title, ACONF=ACONF, teleport=teleport, verbose=verbose, visualize=visualize
         )
     return fn
@@ -367,6 +369,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
             if collision_fn(bconf, verbose=verbose):  ## TODO: figure out why sometimes the answers are different
                 # print('sample_bconf | collision_ik_default_conf')
                 continue
+            robot.print_full_body_conf(title=f'sample_bconf({a}), default_conf={default_conf}')
 
             ik_solver.set_conf(conf)
             if collided(robot, obstacles, tag='ik_final_conf', visualize=visualize, **col_kwargs):
@@ -374,6 +377,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
             if collision_fn(bconf, verbose=verbose):
                 # print('sample_bconf | collision_ik_final_conf')
                 continue
+            robot.print_full_body_conf(title='sample_bconf.ik_solver.set_conf(conf)')
 
             if visualize:
                 samples.append(visualize_bconf(bconf))
@@ -448,9 +452,8 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
 
 def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
                       world, robot, custom_limits, obstacles_here, ignored_pairs_here,
-                      resolution=DEFAULT_RESOLUTION, max_distance=MAX_DISTANCE, title='solve_approach_ik',
-                      ACONF=False, teleport=False, verbose=True, visualize=False):
-    attachments = {}
+                      resolution=DEFAULT_RESOLUTION, attachments={}, title='solve_approach_ik',
+                      ACONF=False, teleport=False, verbose=False, visualize=False):
 
     if isinstance(obj, tuple):  ## may be a (body, joint) or a body with a marker
         body = obj[0]
@@ -480,6 +483,9 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
     robot.open_arm(arm)
     set_joint_positions(robot, arm_joints, default_conf)  # default_conf | sample_fn()
 
+    collision_fn = get_collision_fn(robot, robot.get_base_joints(), obstacles_here, [],
+                                    robot.self_collisions, custom_limits=robot.custom_limits, use_aabb=True)
+
     ## visualize the gripper
     gripper_grasp = None
     if visualize:
@@ -507,9 +513,15 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
             set_renderer(True)
             wait_unlocked('solve_approach_ik | visualized the arm')
 
-    if (grasp_conf is None) or collided(robot, obstacles_here, articulated=True, world=world, tag=title,
-                                        verbose=verbose, ignored_pairs=ignored_pairs_here,
-                                        min_num_pts=3):  ## approach_obstacles): # [obj]
+    collision = False
+    if collided(robot, obstacles_here, articulated=True, world=world, tag=title, verbose=verbose,
+                ignored_pairs=ignored_pairs_here, min_num_pts=3): ## approach_obstacles): # [obj]
+        collision = True
+    if collision_fn(base_conf.values, verbose=False):
+        collision = True
+    robot.print_full_body_conf(title=f'solve_approach_ik({arm}), grasp_conf={nice(grasp_conf)}')
+
+    if grasp_conf is None or collision:
         # wait_unlocked()
         if verbose:
             if grasp_conf is not None:
@@ -543,8 +555,17 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
             print('\n\n FastIK succeeded after TracIK failed\n\n')
         # approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits)
 
-    if (approach_conf is None) or collided(robot, obstacles_here, articulated=True, world=world, tag=title,
-                                           verbose=verbose, ignored_pairs=ignored_pairs_here, min_num_pts=3):  ##
+    if approach_conf is not None:
+        set_joint_positions(robot, arm_joints, approach_conf)
+    collision = False
+    if collided(robot, obstacles_here, articulated=True, world=world, tag=title,
+                verbose=verbose, ignored_pairs=ignored_pairs_here, min_num_pts=3):
+        collision = True
+    if collision_fn(base_conf.values, verbose=False):
+        collision = True
+    robot.print_full_body_conf(title=f'solve_approach_ik({arm}), approach_conf={nice(approach_conf)}')
+
+    if approach_conf is None or collision:
         if verbose:
             if approach_conf is not None:
                 approach_conf = nice(approach_conf)

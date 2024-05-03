@@ -7,9 +7,9 @@ from pybullet_tools.bullet_utils import clip_delta, multiply2d, nice, open_joint
     toggle_joint, query_right_left, collided, equal
 from pybullet_tools.pose_utils import is_above, remove_attachment, draw_pose2d_path, add_attachment_in_world, \
     add_attachment, draw_pose3d_path
-from pybullet_tools.camera_utils import get_obj_keys_for_segmentation, get_segmask
-from pybullet_tools.camera_utils import set_camera_target_robot
-from pybullet_tools.pr2_streams import Position, get_pull_door_handle_motion_gen
+from pybullet_tools.camera_utils import get_obj_keys_for_segmentation, get_segmask, set_camera_target_robot
+from pybullet_tools.pr2_streams import Position
+from pybullet_tools.mobile_streams import get_pull_door_handle_motion_gen
 from pybullet_tools.utils import str_from_object, get_closest_points, INF, create_attachment, wait_if_gui, \
     get_aabb, get_joint_position, get_joint_name, get_link_pose, link_from_name, PI, Pose, Euler, \
     get_extend_fn, get_joint_positions, set_joint_positions, get_max_limit, get_pose, set_pose, set_color, \
@@ -677,7 +677,7 @@ def get_primitive_actions(action, world, teleport=False, verbose=True):
             t = [MoveBaseAction(conf) for conf in path]
             if viz:
                 world.add_handles(draw_pose3d_path(confs, length=0.05))
-                
+
         elif DoF == 6:
             t = [MoveArmAction(conf) for conf in path]
             if viz:
