@@ -41,9 +41,9 @@ def test_spot_grasps():
 
 
 def test_office_chair_domain_spot():
-    run_agent(problem='test_pick_low')
+    run_agent(config='config_spot.yaml', problem='test_pick_low')
 
 
 if __name__ == '__main__':
-    test_spot_grasps()
-    # test_nvidia_kitchen_domain_spot()
+    # test_spot_grasps()
+    test_office_chair_domain_spot()

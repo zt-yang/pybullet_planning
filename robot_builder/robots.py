@@ -336,10 +336,13 @@ class MobileRobot(RobotAPI):
     def get_arm_joints(self, arm):
         raise NotImplementedError('should implement this for MobileRobot!')
 
-    def open_arm(self, arm):
-        raise NotImplementedError('should implement this for MobileRobot!')
-
     ## -----------------------------------------------------------------------------
+
+    def open_arm(self, arm):
+        for arm in self.arms:
+            joints = self.get_arm_joints(arm)
+            conf = self.get_carry_conf(arm, None, None)
+            set_joint_positions(self.body, joints, conf)
 
     def get_base_joints(self):
         return self.get_group_joints(self.base_group)

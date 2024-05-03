@@ -13,7 +13,7 @@ SPOT_GRIPPER_ROOT = "arm0.link_wr1"
 SPOT_TOOL_LINK = "arm0.link_wr1"
 SPOT_FINGER_LINK = "arm0.link_fngr"
 SPOT_JOINT_GROUPS = {
-    'base-torso': ['x', 'y', 'theta', 'torso_lift_joint'],
+    'base-torso': ['x', 'y', 'torso_lift_joint', 'theta'],
     'arm': ['arm0.sh0', 'arm0.sh1', 'arm0.hr0', 'arm0.el0', 'arm0.el1', 'arm0.wr0', 'arm0.wr1'],
     'leg': ['fl.hy', 'fl.kn', 'fr.hy', 'fr.kn', 'hl.hy', 'hl.kn', 'hr.hy', 'hr.kn'],
     'gripper': ['arm0.f1x']

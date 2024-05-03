@@ -6,8 +6,10 @@ def problem_fn_from_name(name):
     import problem_sets.problems_nvidia as problems_nvidia
     import problem_sets.pr2_problems_pigi as problems_pigi
     import problem_sets.feg_problems as feg_problems
+    import problem_sets.spot_problems as spot_problems
     import problem_sets.problems_kitchen_mini as kitchen_mini
-    funk_names = [pr2_problems, feg_problems, pr2_problems_new, problems_pigi, problems_nvidia, kitchen_mini]
+    funk_names = [pr2_problems, feg_problems, spot_problems,
+                  pr2_problems_new, problems_pigi, problems_nvidia, kitchen_mini]
     return find_problem_fn_from_name(name, funk_names)
 
 

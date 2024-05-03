@@ -7,7 +7,7 @@ from robot_builder.robot_builders import build_table_domain_robot
 from problem_sets.problem_utils import problem_template
 
 
-def test_pick_low(args, robot_builder_args=dict(), **kwargs):
+def test_pick_low(args, **kwargs):
     def loader_fn(world, **world_builder_args):
         robot = world.robot
 
@@ -24,7 +24,7 @@ def test_pick_low(args, robot_builder_args=dict(), **kwargs):
         return {'goals': goals}
 
     return problem_template(args, robot_builder_fn=build_table_domain_robot,
-                            robot_builder_args=robot_builder_args, world_loader_fn=loader_fn, **kwargs)
+                            world_loader_fn=loader_fn, **kwargs)
 
 
 def test_office_chairs(args, **kwargs):
@@ -41,5 +41,5 @@ def test_office_chairs(args, **kwargs):
 
         return goals
 
-    return problem_template(args, robot_builder_fn=build_table_domain_robot, robot_builder_args=robot_builder_args,
+    return problem_template(args, robot_builder_fn=build_table_domain_robot,
                             world_loader_fn=loader_fn, **kwargs)
