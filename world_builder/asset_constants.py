@@ -289,13 +289,17 @@ MODEL_HEIGHTS = {
         'models': ['22301', '22339', '23372', '23807', '23782', '25308',
                    '25913', '28164', '32932', '34617'],
     },
-    'Door': {
+    'DoorFrame': {
         'height': 2,
         'models': ['8867'],
     },
     'Cupboard': {
         'height': 2,
         'models': ['41085', '46490', '46563'],
+    },
+    'Bin': {
+        'height': 0.5,
+        'models': ['11361'],
     }
 }
 MODEL_HEIGHTS.update({k.lower(): v for k, v in MODEL_HEIGHTS.items()})

@@ -569,8 +569,8 @@ class Stove(Region):
 class Floor(Region):
     def __init__(self, body, **kwargs):
         super(Floor, self).__init__(body, **kwargs)
-        self.category = 'floor'
-        self.name = 'floor1'
+        # self.category = 'floor'
+        # self.name = 'floor1'
         self.is_box = True
 
 

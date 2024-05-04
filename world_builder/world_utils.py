@@ -148,6 +148,7 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
         return a dictionary of object name: (category, pose) as well as world dimensions
     """
     plan_path = abspath(join(asset_path, 'floorplans', plan_name))
+
     X_OFFSET, Y_OFFSET, SCALING = None, None, None
     FLOOR_X_MIN, FLOOR_X_MAX = inf, -inf
     FLOOR_Y_MIN, FLOOR_Y_MAX = inf, -inf
@@ -171,9 +172,13 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
 
         if '/' in text:
             category, yaw = text.split('/')
+            yaw = int(yaw)
+            if yaw in [90, 270]:
+                w = float(rect['width'])
+                h = float(rect['height'])
 
         elif text.startswith('.'):
-            category = 'door'
+            category = 'doorframe'
             if len(text) > 1:
                 name = f"{category}_{text[1:]}"
             if w > h:
@@ -195,7 +200,7 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
                 FLOOR_Y_MAX = float(rect['x']) + h
 
         elif 'office' in text:
-            category = 'room'
+            category = 'office'
             yaw = 0
             name = text
 
@@ -209,7 +214,7 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
             name = f"{category}#{next + 1}"
         objects_by_category[category].append(name)
 
-        objects[name] = {'x': x, 'y': y, 'yaw': int(yaw), 'w': w, 'l': h, 'category': category}
+        objects[name] = {'x': x, 'y': y, 'yaw': yaw, 'w': w, 'l': h, 'category': category}
 
     ## associate rooms with doors for computing walls
     objects = add_walls_given_rooms_doors(objects)
@@ -450,7 +455,7 @@ def get_scale_by_category(file=None, category=None, scale=1):
             parent = get_parent_category(category)
             if parent is None:
                 print('\tcant find model scale', category, 'using default 1')
-            if parent in MODEL_SCALES:
+            elif parent in MODEL_SCALES:
                 scale = MODEL_SCALES[parent][category]
 
     return scale

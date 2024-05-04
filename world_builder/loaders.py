@@ -2,16 +2,19 @@ import numpy as np
 import math
 import string
 
-from pybullet_tools.utils import PI, create_box, TAN, Point, \
-    BLACK, RGBA, YELLOW, set_all_static, set_color, get_aabb, get_link_name, get_links, link_from_name, AABB, INF, clip, aabb_union, get_aabb_center, Pose, Euler, \
-    get_box_geometry, get_aabb_extent, multiply, GREY, create_shape_array, create_body, STATIC_MASS, set_renderer, quat_from_euler
+from pybullet_tools.utils import PI, create_box, TAN, Point, get_movable_joints, aabb_overlap, \
+    BLACK, RGBA, YELLOW, set_all_static, set_color, get_aabb, get_link_name, get_links, link_from_name, \
+    AABB, INF, clip, aabb_union, get_aabb_center, Pose, Euler, set_joint_position, \
+    get_box_geometry, get_aabb_extent, multiply, GREY, create_shape_array, create_body, STATIC_MASS, \
+    set_renderer, quat_from_euler, get_joint_limits, get_aabb, draw_aabb, dump_joint, body_collision, \
+    get_pose, set_pose
 from pybullet_tools.camera_utils import set_camera_target_body
 
 from world_builder.world_utils import LIGHT_GREY, read_xml, load_asset, FLOOR_HEIGHT, WALL_HEIGHT, \
     find_point_for_single_push, ASSET_PATH
 from world_builder.world import World, State
 from world_builder.entities import Object, Environment, Floor, Supporter, Surface, Movable, \
-    Space, Steerable
+    Space, Steerable, Door
 
 from robot_builder.robot_builders import create_pr2_robot
 
@@ -163,6 +166,63 @@ def create_hollow(category, color=GREY, *args, **kwargs):
 #######################################################
 
 
+def get_room_boxes_given_room_door(room_region, door, height=0.4, thickness=0.2):
+    door_aabb = get_aabb(door)
+    dx = 0.2  ## door offset due to strange door aabb
+
+    room_aabb = get_aabb(room_region)
+    x0, y0 = room_aabb.lower[:2]
+    width, length, _ = get_aabb_extent(room_aabb)
+    walls = []
+    for i, (x1, x2, y1, y2) in enumerate([
+        [0, width, 0, 0+thickness], [0, width, length - thickness, length],
+        [0, 0+thickness, 0, length], [width-thickness, width, 0, length],
+    ]):
+        box = Box(x1=x0+x1, x2=x0+x2, y1=y0+y1, y2=y0+y2, z1=0, z2=height)
+        if aabb_overlap(box, door_aabb):
+            (xx1, yy1, _), (xx2, yy2, _) = get_aabb(door)
+            if i == 0:
+                walls += [
+                    Box(x1=x0+x1, x2=xx1, y1=yy2-thickness-dx, y2=yy2-dx, z1=0, z2=height),
+                    Box(x1=xx2, x2=x0+x2, y1=yy2-thickness-dx, y2=yy2-dx, z1=0, z2=height),
+                ]
+            elif i == 1:
+                walls += [
+                    Box(x1=x0+x1, x2=xx1, y1=yy1+dx, y2=yy1+thickness+dx, z1=0, z2=height),
+                    Box(x1=xx2, x2=x0+x2, y1=yy1+dx, y2=yy1+thickness+dx, z1=0, z2=height),
+                ]
+            elif i == 2:
+                walls += [
+                    Box(x1=xx2-thickness-dx, x2=xx2-dx, y1=y0+y1, y2=yy1, z1=0, z2=height),
+                    Box(x1=xx2-thickness-dx, x2=xx2-dx, y1=yy2, y2=y0+y2, z1=0, z2=height),
+                ]
+            else:
+                walls += [
+                    Box(x1=xx1+dx, x2=xx1+thickness+dx, y1=y0+y1, y2=yy1, z1=0, z2=height),
+                    Box(x1=xx1+dx, x2=xx1+thickness+dx, y1=yy2, y2=y0+y2, z1=0, z2=height),
+                ]
+        else:
+            walls += [box]
+    aabb = aabb_union(walls)
+    lower, _ = aabb
+    center = get_aabb_center(aabb)
+    base_center = np.append(center[:2], lower[2:])
+    # TODO: transform OOBB into a centered form
+    return [(get_box_geometry(*get_aabb_extent(box)),
+             Pose(get_aabb_center(box)-base_center)) for box in walls]
+
+
+def create_room_given_room_door(room_region, door, color=GREY, **kwargs):
+    shapes = get_room_boxes_given_room_door(room_region, door, **kwargs)
+    geoms, poses = zip(*shapes)
+    colors = len(shapes)*[color]
+    collision_id, visual_id = create_shape_array(geoms, poses, colors)
+    return create_body(collision_id, visual_id, mass=STATIC_MASS)
+
+
+#######################################################
+
+
 def load_experiment_objects(world, w=.5, h=.7, wb=.07, hb=.1, mass=1, EXIST_PLATE=True,
                             CABBAGE_ONLY=True, name='cabbage', color=(0, 1, 0, 1)) -> Object:
 
@@ -274,14 +334,20 @@ def load_kitchen_floor_plan(world, spaces=None, surfaces=None, **kwargs):
     return load_floor_plan(world, spaces=spaces, surfaces=surfaces, **kwargs)
 
 
-def load_floor_plan(world, plan_name='studio1.svg', debug=False, spaces=None, surfaces=None,
+def load_floor_plan(world, plan_name='studio1.svg', asset_renaming=None, debug=False, spaces=None, surfaces=None,
                     asset_path=ASSET_PATH, random_instance=False, load_movables=True, verbose=True):
     print(f'\nloading floor plan {plan_name}...')
     world.floorplan = plan_name
+    if asset_renaming is not None:
+        asset_renaming = {k.lower(): v.lower() for k, v in asset_renaming.items()}
 
-    spaces = {k.lower(): v for k, v in spaces.items()}
-    surfaces = {k.lower(): v for k, v in surfaces.items()}
-    regions = list(surfaces.keys()) + list(spaces.keys())
+    regions = []
+    if spaces is not None:
+        spaces = {k.lower(): v for k, v in spaces.items()}
+        regions += list(spaces.keys())
+    if surfaces is not None:
+        surfaces = {k.lower(): v for k, v in surfaces.items()}
+        regions += list(surfaces.keys())
 
     ## read xml file
     objects, X_OFFSET, Y_OFFSET, SCALING, FLOOR_X_MIN, FLOOR_X_MAX, FLOOR_Y_MIN, FLOOR_Y_MAX = \
@@ -299,21 +365,29 @@ def load_floor_plan(world, plan_name='studio1.svg', debug=False, spaces=None, su
     ## add each static object
     for name, o in objects.items():
         cat = o['category'].lower()
+        if asset_renaming is not None and cat in asset_renaming:
+            cat = asset_renaming[cat]
+
         x = (o['x'] - X_OFFSET) / SCALING
         y = (o['y'] - Y_OFFSET) / SCALING
         w = o['w'] / SCALING
         l = o['l'] / SCALING
 
-        if cat == 'floor':
+        if cat in ['floor', 'office']:
+            color = {'floor': TAN, 'office': GREY}[cat]
+            z = {'floor': -2 * FLOOR_HEIGHT, 'office': -2 * FLOOR_HEIGHT + 0.03}[cat]
             world.add_box(
-                Floor(create_box(w=round(w, 1), l=round(l, 1), h=FLOOR_HEIGHT, color=TAN, collision=True), name=name),
-                Pose(point=Point(x=round(x, 1), y=round(y, 1), z=-2 * FLOOR_HEIGHT)))
+                Floor(create_box(w=round(w, 1), l=round(l, 1), h=FLOOR_HEIGHT, color=color, collision=True), name=name),
+                Pose(point=Point(x=round(x, 1), y=round(y, 1), z=z)))
+            continue
+
+        elif cat == 'wall':
             continue
 
         # elif cat == 'room':
-        #     ## find the door to decide wall lengths
-        #     load_room(world, name, x, y, w, l, o['doors'], SCALING, asset_path=asset_path)
-        #     continue
+            # ## find the door to decide wall lengths
+            # load_room(world, name, x, y, w, l, o['doors'], SCALING, asset_path=asset_path)
+            # continue
 
         ## add the object itself
         yaw = {0: 0, 90: PI / 2, 180: PI, 270: -PI / 2}[o['yaw']]
@@ -323,14 +397,28 @@ def load_floor_plan(world, plan_name='studio1.svg', debug=False, spaces=None, su
                        w=round(w, 1), l=round(l, 1), random_instance=ri),
             category=cat))
         body = obj.body
-        if 'door' in cat.lower():
+        if cat == 'doorframe':
+            obj.name = name
+            door_joint = get_movable_joints(obj)[0]
+            lower = get_joint_limits(body, door_joint)[0]
+            set_joint_position(body, door_joint, lower)
+            office_number = name.split('_')[-1]
+            door = world.add_object(Door(body, joint=door_joint, name=f'door_{office_number}'))
+
+            room_region = world.name_to_body(f'office_{office_number}')
+            walls = create_room_given_room_door(room_region, body)
+            world.add_object(Object(walls, name=f'wall_{office_number}', category='wall'))
+            set_pose(walls, get_pose(room_region))
+
+        elif cat == 'door':
             world.add_box(
                 Floor(create_box(w=round(w, 1), l=round(l, 1), h=FLOOR_HEIGHT, color=TAN, collision=True), name=f'doorway_{name}'),
                 Pose(point=Point(x=round(x, 1), y=round(y, 1), z=-2 * FLOOR_HEIGHT)))
 
         #######################################################
         ## add movable objects on designated places
-        if not load_movables: continue
+        if not load_movables:
+            continue
 
         if cat in regions:
 
@@ -344,7 +432,7 @@ def load_floor_plan(world, plan_name='studio1.svg', debug=False, spaces=None, su
                 # draw_link_name(body, link)
                 link_name = get_link_name(body, link)
 
-                if cat in surfaces and link_name in surfaces[cat]:
+                if surfaces is not None and cat in surfaces and link_name in surfaces[cat]:
                     surface = Surface(body, link=link)
                     world.add_object(surface)
                     for o in surfaces[cat][link_name]:
@@ -352,7 +440,7 @@ def load_floor_plan(world, plan_name='studio1.svg', debug=False, spaces=None, su
                         if verbose:
                             print(f'\tadding object {obj.name} to surface {surface.lisdf_name}')
 
-                if cat in spaces and link_name in spaces[cat]:
+                if spaces is not None and cat in spaces and link_name in spaces[cat]:
                     space = Space(body, link=link)
                     world.add_object(space)
                     for o in spaces[cat][link_name]:

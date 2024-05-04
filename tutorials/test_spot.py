@@ -41,7 +41,8 @@ def test_spot_grasps():
 
 
 def test_office_chair_domain_spot():
-    run_agent(config='config_spot.yaml', problem='test_pick_low')
+    problem = ['test_spot_pick', 'test_office_chairs'][1]
+    run_agent(config='config_spot.yaml', problem=problem)
 
 
 if __name__ == '__main__':
