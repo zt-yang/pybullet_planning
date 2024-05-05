@@ -21,8 +21,8 @@ planner:
 problem:
   problem: 'test_office_chairs'
   goal: null
-  domain_pddl: 'pddl/mobile_domain.pddl'
-  stream_pddl: 'pddl/mobile_stream.pddl'
+  domain_pddl: 'pddl_domains/mobile_namo_domain.pddl'
+  stream_pddl: 'pddl_domains/mobile_namo_stream.pddl'
   use_skeleton_constraints: false
   use_subgoal_constraints: false
   use_rel_pose: true
@@ -65,3 +65,4 @@ sim:
   camera: false
   segment: false
   monitoring: false
+  show_object_names: true

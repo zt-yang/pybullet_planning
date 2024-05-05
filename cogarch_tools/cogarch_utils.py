@@ -78,6 +78,7 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     parser.add_argument('-cam', '--camera', action='store_true', default=conf.sim.camera, help='')
     parser.add_argument('-seg', '--segment', action='store_true', default=conf.sim.segment, help='')
     parser.add_argument('-mon', '--monitoring', action='store_true', default=conf.sim.monitoring, help='')
+    parser.add_argument('--show_object_names', action='store_true', default=conf.sim.show_object_names, help='')
 
     ## --------- streams related
     parser.add_argument('-c', '--cfree', action='store_true', default=conf.streams.cfree,
@@ -277,17 +278,7 @@ def get_pddlstream_problem(args, **kwargs):
         from problem_sets.pr2_problems import test_five_tables as problem_fn
     elif args.problem == 'test_exist_omelette':
         from problem_sets.pr2_problems import test_exist_omelette as problem_fn
-    # elif args.problem == 'test_three_omelettes':
-    #     from bullet.examples.pr2_problems import test_three_omelettes as problem_fn
-    # elif args.problem == 'test_bucket_lift':
-    #     from bullet.examples.pr2_problems import test_bucket_lift as problem_fn
-    elif args.problem == 'test_navigation':
-        from problem_sets.pr2_problems import test_navigation as problem_fn
-    elif args.problem == 'test_cart_pull':
-        from problem_sets.pr2_problems import test_cart_pull as problem_fn
-    elif args.problem == 'test_cart_obstacle_wconf': ## testing with other regions in room
-        # set_camera_pose(camera_point=[4, -4, 4], target_point=[2, 0, 0])
-        from problem_sets.pr2_problems import test_cart_obstacle_wconf as problem_fn
+
     elif args.problem == 'test_cart_obstacle':
         from problem_sets.pr2_problems import test_cart_obstacle as problem_fn
     elif args.problem == 'test_moving_carts':

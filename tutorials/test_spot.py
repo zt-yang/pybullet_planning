@@ -1,8 +1,9 @@
 import os
 import sys
 from os.path import join, abspath, dirname, isdir, isfile
-R = abspath(join(dirname(__file__), os.pardir))
+R = abspath(join(dirname(__file__), os.pardir, os.pardir))
 sys.path.extend([R] + [join(R, name) for name in ['pybullet_planning', 'lisdf', 'pddlstream']])
+# print('\n'.join([p for p in sys.path if 'vlm-tamp' in p]))
 
 from pybullet_tools.utils import read_pickle, set_renderer, wait_for_user, PI
 
@@ -14,6 +15,9 @@ from cogarch_tools.processes.teleop_agent import TeleOpAgent
 from world_builder.paths import EXP_PATH
 
 from leap_tools.hierarchical_agent import HierarchicalAgent
+
+
+namo_kwargs = dict(domain='pddl_domains/mobile_namo_domain.pddl', stream='pddl_domains/mobile_namo_stream.pddl')
 
 
 def test_spot_grasps():
@@ -40,6 +44,20 @@ def test_spot_grasps():
     # test_grasps('feg', **debug_kwargs, **kwargs)
 
 
+def test_pr2_grasps():
+    world_builder_args = dict(movable_category=None)
+    # world_builder_args = dict()
+    run_agent(config='config_dev.yaml', problem='test_pick', world_builder_args=world_builder_args)
+
+
+def test_cart_domain_pr2():
+    from pddl_domains.pddl_utils import update_namo_pddl
+    update_namo_pddl()
+
+    problem = ['test_navigation', 'test_cart_pull'][1]
+    run_agent(config='config_dev.yaml', problem=problem, **namo_kwargs)
+
+
 def test_office_chair_domain_spot():
     problem = ['test_spot_pick', 'test_office_chairs'][1]
     run_agent(config='config_spot.yaml', problem=problem)
@@ -47,4 +65,6 @@ def test_office_chair_domain_spot():
 
 if __name__ == '__main__':
     # test_spot_grasps()
-    test_office_chair_domain_spot()
+    test_pr2_grasps()
+    # test_cart_domain_pr2()
+    # test_office_chair_domain_spot()

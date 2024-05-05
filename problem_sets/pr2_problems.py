@@ -52,72 +52,42 @@ def find_points_for_dual_grasp(body, world):
 
 #######################################################
 
-def test_navigation(args, domain='pr2_eggs.pddl', w=.5, h=.9, mass=1):
-    world = create_world(args)
 
-    kitchen = load_rooms(world)
-
-    robot = create_pr2_robot(world, base_q=(2, 0, -PI))
-
-    set_all_static()
-    state = State(world)
-    exogenous = []
-
-    # visualize_sampled_bconf(state, living_room)
-
-    goals = [('InRoom', kitchen)]
-
-    pddlstream_problem = pddlstream_from_state_goal(state, goals, custom_limits=args.base_limits,
-                                                    domain_pddl=args.domain_pddl, stream_pddl=args.stream_pddl)
-    return state, exogenous, goals, pddlstream_problem
-
-
-def visualize_sampled_bconf(state, area):
-    funk = get_bconf_in_region_gen(state)(area) ## is a from_gen_fn
-    for i in range(10):
-        bq = next(funk)[0]
-        print(i, bq)
-        if bq != None:
-            visualize_point(bq.values[:2], state.world)
-
-#######################################################
-
-
-def test_cart_pull(args, w=.5, h=.9, mass=1):
-    world = create_world(args)
-
-    kitchen = load_rooms(world)
-
-    cart, marker = load_cart(world)
-
-    robot = create_pr2_robot(world, base_q=(2, 0, -PI))  ## (-0.214, -1.923, 0)) ##
-
-    set_all_static()
-    state = State(world)
-    exogenous = []
-
-    # grasps = test_marker_pull_grasps(state, robot, cart, marker, visualize=False)
-    # goals = [("AtMarkerGrasp", 'left', marker, grasps[-1][0])]
-
-    # goals = [('AtBConf', Conf(robot, get_group_joints(robot, 'base'), (1.204, 0.653, -2.424)))]
-    # goals = [('HoldingMarker', 'left', marker)]
-
-    ## --- test `plan-base-pull-marker-random`
-    # goals = [("PulledMarker", marker)]
-
-    ## --- test `plan-base-pull-marker-to-bconf`
-    # goals = [('HoldingMarker', 'left', marker), ('RobInRoom', world.name_to_body('laundry_room'))]
-
-    ## --- test `grasp` + `pull` + `ungrasp`
-    goals = [('GraspedMarker', marker)]
-
-    ## --- test `plan-base-pull-marker-to-pose`
-    # goals = [('InRoom', marker, world.name_to_body('laundry_room'))]
-    ## --------------------------------------------
-
-    pddlstream_problem = pddlstream_from_state_goal(state, goals, custom_limits=args.base_limits,
-                                                    domain_pddl=args.domain_pddl, stream_pddl=args.stream_pddl)
-    return state, exogenous, goals, pddlstream_problem
+# def test_cart_pull(args, w=.5, h=.9, mass=1):
+#     world = create_world(args)
+#
+#     kitchen = load_rooms(world)
+#
+#     cart, marker = load_cart(world)
+#
+#     robot = create_pr2_robot(world, base_q=(2, 0, -PI))  ## (-0.214, -1.923, 0)) ##
+#
+#     set_all_static()
+#     state = State(world)
+#     exogenous = []
+#
+#     # grasps = test_marker_pull_grasps(state, robot, cart, marker, visualize=False)
+#     # goals = [("AtMarkerGrasp", 'left', marker, grasps[-1][0])]
+#
+#     # goals = [('AtBConf', Conf(robot, get_group_joints(robot, 'base'), (1.204, 0.653, -2.424)))]
+#     # goals = [('HoldingMarker', 'left', marker)]
+#
+#     ## --- test `plan-base-pull-marker-random`
+#     # goals = [("PulledMarker", marker)]
+#
+#     ## --- test `plan-base-pull-marker-to-bconf`
+#     # goals = [('HoldingMarker', 'left', marker), ('RobInRoom', world.name_to_body('laundry_room'))]
+#
+#     ## --- test `grasp` + `pull` + `ungrasp`
+#     goals = [('GraspedMarker', marker)]
+#
+#     ## --- test `plan-base-pull-marker-to-pose`
+#     # goals = [('InRoom', marker, world.name_to_body('laundry_room'))]
+#     ## --------------------------------------------
+#
+#     pddlstream_problem = pddlstream_from_state_goal(state, goals, custom_limits=args.base_limits,
+#                                                     domain_pddl=args.domain_pddl, stream_pddl=args.stream_pddl)
+#     return state, exogenous, goals, pddlstream_problem
 
 #######################################################
 
@@ -244,8 +214,8 @@ def test_moving_carts(args):
     robot = create_pr2_robot(world, base_q=(2, -1.5, -PI))
 
     laundry_room = world.add_object(
-        Environment(create_box(w=2, l=6, h=FLOOR_HEIGHT, color=YELLOW, collision=True),
-                    name='laundry_room'),
+        Location(create_box(w=2, l=6, h=FLOOR_HEIGHT, color=YELLOW, collision=True),
+                 name='laundry_room'),
         Pose(point=Point(x=4, y=-1.5, z=-2 * FLOOR_HEIGHT)))
 
     ## --- test basic grasping and pulling

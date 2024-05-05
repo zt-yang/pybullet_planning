@@ -31,7 +31,8 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, pairw
     BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, tform_point, create_shape, STATIC_MASS, \
     get_box_geometry, create_body, get_link_parent, NULL_ID, get_joint_info, get_dynamics_info, \
     clone_collision_shape, clone_visual_shape, get_local_link_pose, get_joint_positions, \
-    collision_shape_from_data, visual_shape_from_data, is_unknown_file, create_collision_shape
+    collision_shape_from_data, visual_shape_from_data, is_unknown_file, create_collision_shape, \
+    aabb_from_extent_center
 
 
 OBJ = '?obj'
@@ -434,7 +435,7 @@ ROTATIONAL_MATRICES = {}
 def get_rotation_matrix(body, verbose=True):
     import untangle
     r = unit_pose()
-    if is_mesh_entity(body):
+    if is_mesh_entity(body) or is_box_entity(body):
         return r
     collision_data = get_collision_data(body, 0)
     # if set(get_all_links(body)) == {0, -1}:
@@ -511,6 +512,7 @@ def get_model_points(body, link=None):
 
 
 def draw_fitted_box(body, link=None, draw_box=False, draw_centroid=False, verbose=False, **kwargs):
+    """ return aabb when body pose is set to unit_pose() """
     body_pose = get_model_pose(body, link=link, verbose=verbose)
     vertices = get_model_points(body, link=link)
     if link is None:  link = -1
@@ -518,8 +520,7 @@ def draw_fitted_box(body, link=None, draw_box=False, draw_centroid=False, verbos
     if len(data) == 0 or data[0].geometry_type == p.GEOM_MESH:
         aabb = aabb_from_points(vertices)
     else: ## if data.geometry_typep == p.GEOM_BOX:
-        aabb = get_aabb(body)
-    # TODO(caelan): global DRAW variable that disables
+        aabb = aabb_from_extent_center(get_aabb_extent(get_aabb(body)))  ## get_aabb(body)
     handles = []
     if draw_box:
         handles += draw_bounding_box(aabb, body_pose, **kwargs)
@@ -761,7 +762,6 @@ def equal(tup_a, tup_b, epsilon=0.001):
 #     if len(tup1) == 2:
 #         return equal(tup1[0], tup2[0]) and equal(tup1[1], tup2[1])
 #     return all([abs(tup1[i] - tup2[i]) < epsilon for i in range(len(tup1))])
-
 
 
 def get_joint_range(body, joint):

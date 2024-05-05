@@ -13,16 +13,18 @@ def test_pick(args, robot_builder_args=dict(), **kwargs):
         xy = world_builder_args['xy'] if 'xy' in world_builder_args else (2, 2)
         w = world_builder_args['w'] if 'w' in world_builder_args else 0.25
         h = world_builder_args['h'] if 'h' in world_builder_args else 0.9
+        movable_category = world_builder_args['movable_category'] \
+            if 'movable_category' in world_builder_args else 'VeggieCabbage'
 
         arm = world.robot.arms[0]
         floor = create_floor_covering_base_limits(world)
         table = create_table(world, xy=xy, w=w, h=h)
-        cabbage = create_movable(world, supporter=table, xy=xy)
+        cabbage = create_movable(world, supporter=table, xy=xy, movable_category=movable_category)
         set_camera_target_body(table, dx=1.5, dy=1.5, dz=1.5)
 
         # goals = [('AtBConf', Conf(robot, get_group_joints(robot, 'base'), (2, 7, 0)))]
-        goals = ("test_grasps", cabbage)
-        goals = [("Holding", arm, cabbage)]
+        goals = ("test_object_grasps", cabbage)
+        # goals = [("Holding", arm, cabbage)]
 
         # ## debug
         # if not world.robot.move_base:
@@ -47,7 +49,7 @@ def test_small_sink(args, **kwargs):
         sink = create_table(world, xy=(2, 5), color=(.25, .25, .75, 1), w=0.125, name='sink')
         turkey = create_movable(world, supporter=sink, xy=(2, 5), movable_category='MeatTurkeyLeg', name='turkey')
 
-        goals = ('test_grasps', cabbage)
+        goals = ("test_object_grasps", cabbage)
         goals = [('Holding', 'left', cabbage)]
         goals = [('Holding', 'left', turkey)]
         goals = [('On', cabbage, sink)]
@@ -68,7 +70,7 @@ def test_plated_food(args, **kwargs):
         # goals = [('Debug1', cabbage, plate)]
         # goals = ('test_pose_kin', (cabbage, plate))
         # goals = [("Holding", 'left', cabbage)]
-        goals = ("test_grasps", plate)
+        goals = ("test_object_grasps", plate)
         # goals = [("Holding", 'left', plate)]
         # goals = [("On", cabbage, table)]
         # goals = [("On", plate, table)]
@@ -99,7 +101,7 @@ def test_five_tables(args, **kwargs):
         # goals = [('On', plate, stove)]
         # goals = [('On', cabbage, stove), ('On', plate, table)]
 
-        goals = ('test_grasps', plate)
+        goals = ("test_object_grasps", plate)
         goals = [('Holding', arm, cabbage)]
         goals = [('On', cabbage, stove)]
         goals = [('On', cabbage, stove), ('On', salter, table)]

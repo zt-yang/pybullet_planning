@@ -465,12 +465,12 @@ class Object(Index):
         if text is None:
             text = f':{self.body}'
         self.erase()
-        if self.name is not None and self.category != 'door':
+        if self.name is not None:  ##  and self.category != 'door':
             # TODO: attach to the highest link (for the robot)
-            self.handles.append(draw_body_label(self.body, name=self.name+text, **kwargs))
-        #self.handles.extend(draw_pose(Pose(), parent=self.body, **kwargs))
-        if not isinstance(self, Robot):
-            self.draw_joints()
+            self.handles.append(draw_body_label(self.body, text=self.name+text, **kwargs))
+        # # self.handles.extend(draw_pose(Pose(), parent=self.body, **kwargs))
+        # if not isinstance(self, Robot):
+        #     self.draw_joints()
         return self.handles
 
     def erase(self):
@@ -478,7 +478,7 @@ class Object(Index):
         self.handles = []
 
     def add_text(self, text):
-        if self.text_handle != None:
+        if self.text_handle is not None:
             # p.removeUserDebugItem(self.text_handle)
             remove_debug(self.text_handle)
             self.text += '_'
@@ -574,9 +574,9 @@ class Floor(Region):
         self.is_box = True
 
 
-class Environment(Region):
+class Location(Region):
     def __init__(self, body, **kwargs):
-        super(Environment, self).__init__(body, **kwargs)
+        super(Location, self).__init__(body, **kwargs)
 
 #######################################################
 

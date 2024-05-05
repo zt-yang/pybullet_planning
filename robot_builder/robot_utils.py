@@ -172,4 +172,6 @@ def create_mobile_robot(world, load_robot_urdf_fn, robot_class, base_group, join
 
     world.add_robot(robot, max_velocities=max_velocities)
 
+    for arm in robot.get_all_arms():
+        robot.open_arm(arm)
     return robot

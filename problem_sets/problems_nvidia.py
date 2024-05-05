@@ -42,7 +42,7 @@ def test_kitchen_fridge(args, domain='pr2_food.pddl', stream='pr2_stream.pddl'):
     # ## -- fix
     # world.close_joint_by_name('fridge_door')
     # goals = [('AtBConf', Conf(robot, get_group_joints(robot, 'base'), (2, 1, -PI)))]
-    # goals = ('test_grasps', egg)
+    # goals = ("test_object_grasps", egg)
     # goals = [("Holding", "left", egg)]
 
     set_all_static()
@@ -77,7 +77,7 @@ def test_kitchen_oven(args, **kwargs):
     # world.remove_object(oven)
     # world.remove_object(pot)
 
-    goals = ('test_grasps', cabbage)
+    goals = ("test_object_grasps", cabbage)
     goals = [("Holding", "left", cabbage)]
     goals = [("Holding", "left", lid)]
     # goals = [("On", cabbage, bottom)]
@@ -171,7 +171,7 @@ def test_braiser_lid(args, domain='pr2_food.pddl', stream='pr2_stream.pddl'):
     lid = name_to_body('braiserlid')
     world.put_on_surface(lid, 'braiserbody')
     surface = name_to_body('indigo_tmp')
-    goals = ('test_grasps', lid)
+    goals = ("test_object_grasps", lid)
     goals = ('test_pose_gen', (lid, surface))  ## success
     goals = [('AtBConf', Conf(robot, get_group_joints(robot, 'base'), (1.239, 8.136, 3.113)))]
     goals = [("On", lid, surface)]
@@ -623,7 +623,7 @@ def test_pr2_cabinets(args):
     world.open_all_doors_drawers()
 
     ## ------- grasping and placing various objects
-    goals = ('test_grasps', body)
+    goals = ("test_object_grasps", body)
     # goals = [('OpenedJoint', left_door)]
     # goals = [('OpenedJoint', left_door), ('OpenedJoint', right_door)]
     # goals = [('Holding', 'hand', body), ('OpenedJoint', left_door), ('OpenedJoint', right_door)]
@@ -732,7 +732,7 @@ def test_kitchen_drawers(args, **kwargs):
         goals = [("On", name_to_body('cabbage'), name_to_body('indigo_tmp'))]
         # goals = [("OpenedJoint", name_to_body('indigo_drawer_top_joint')),
         #          ("On", name_to_body('cabbage'), name_to_body('indigo_tmp'))]
-        # goals = ('test_grasps', 'cabbage')
+        # goals = ("test_object_grasps", 'cabbage')
         # goals = ('test_grasp_ik', 'cabbage')
 
         arm = 'left'
@@ -753,7 +753,7 @@ def test_kitchen_drawers(args, **kwargs):
 
         # world.open_joint_by_name('hitman_drawer_top_joint')
         # world.put_in_space(cabbage, 'hitman_drawer_top', learned=True)
-        # goals = ('test_grasps', 'cabbage')
+        # goals = ("test_object_grasps", 'cabbage')
         # goals = ('test_grasp_ik', 'cabbage')
         # goals = [("Holding", "left", cabbage)] ## unsuccessful
         # goals = [("On", cabbage, name_to_body('hitman_tmp'))] ## unsuccessful
@@ -818,7 +818,7 @@ def test_kitchen_doors(args, **kwargs):
         # goals = [("GraspedHandle", door)]
 
         movable = bottle.body
-        goals = ('test_grasps', movable)
+        goals = ("test_object_grasps", movable)
         goals = [("Holding", arm, movable)]
         # goals = [("OpenedJoint", door), ("Holding", arm, movable)]
         # goals = [("OpenedJoint", door)]
@@ -927,12 +927,12 @@ def test_kitchen_chicken_soup(args, **kwargs):
         movable = movables['fork']
         goals = ('test_handle_grasps', joint)  ## fail for some reason
         goals = [("OpenedJoint", joint)]
-        # goals = ('test_grasps', movable); world.open_joint(joint, extent=1)
+        # goals = ("test_object_grasps", movable); world.open_joint(joint, extent=1)
         # goals = [("Holding", arm, movable)]; world.open_joint(joint, extent=1)
         # goals = [("OpenedJoint", joint), ("Holding", arm, movable)]
 
         movable = movables[goal_object]
-        # goals = ('test_grasps', movable)
+        # goals = ("test_object_grasps", movable)
         # goals = [("Holding", arm, movable)]
         # goals = [("On", movable, counter)]
         # goals = ('test_relpose_inside_gen', (movable, drawer_link))
@@ -1004,7 +1004,7 @@ def test_kitchen_plan_constraints(args, **kwargs):
         goals = [("OpenedJoint", joint)]
 
         movable = movables[goal_object]
-        # goals = ('test_grasps', movable)
+        # goals = ("test_object_grasps", movable)
         # goals = [("Holding", arm, movable)]
         # goals = [("On", movable, counter)]; world.open_joint(joint, extent=0.5)
         # goals = [("In", movable, drawer_link)]
@@ -1071,13 +1071,13 @@ def test_kitchen_plan_constraints(args, **kwargs):
                     skeleton += [(k, arm, movable) for k in ['pick_from_supporter', 'place']]
                 set_camera_target_body(drawer_link, dx=1, dy=0.5, dz=2)
 
-            if goals in [('test_grasps', movables['salt-shaker']), ('test_grasps', movables['pepper-shaker']),
+            if goals in [("test_object_grasps", movables['salt-shaker']), ("test_object_grasps", movables['pepper-shaker']),
                          [('Holding', arm, movables['salt-shaker'])], [('Holding', arm, movables['pepper-shaker'])]]:
 
-                if goals in [('test_grasps', movables['salt-shaker']), [('Holding', arm, movables['salt-shaker'])]]:
+                if goals in [("test_object_grasps", movables['salt-shaker']), [('Holding', arm, movables['salt-shaker'])]]:
                     skeleton += [(k, arm, cabinet_doors[0]) for k in pull_actions]
 
-                if goals in [('test_grasps', movables['pepper-shaker']), [('Holding', arm, movables['pepper-shaker'])]]:
+                if goals in [("test_object_grasps", movables['pepper-shaker']), [('Holding', arm, movables['pepper-shaker'])]]:
                     skeleton += [(k, arm, cabinet_doors[1]) for k in pull_actions]
 
                 body = goals[-1] if isinstance(goals, tuple) else goals[0][-1]

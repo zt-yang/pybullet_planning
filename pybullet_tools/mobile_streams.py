@@ -56,9 +56,7 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True, 
                     return
                 if obj == b: continue
 
-        # gripper_pose = multiply(pose_value, invert(grasp.value)) # w_f_g = w_f_o * (g_f_o)^-1
-        tool_from_root = robot.get_tool_from_root(arm)
-        gripper_pose = multiply(robot.get_grasp_pose(pose_value, grasp.value, arm, body=grasp.body), invert(tool_from_root))
+        gripper_pose = robot.get_grasp_pose(pose_value, grasp.value, arm, body=grasp.body)
 
         default_conf = robot.get_carry_conf(arm, grasp.grasp_type, grasp.value)
         arm_joints = robot.get_arm_joints(arm)
@@ -181,15 +179,14 @@ def get_ik_rel_fn_old(problem, custom_limits={}, collisions=True, teleport=False
 ## --------------------------------------------------------------------
 
 
-def get_ik_gen_old(problem, max_attempts=30, collisions=True, learned=True, teleport=False, ir_only=False,
+def get_ik_gen_old(problem, max_attempts=80, collisions=True, learned=True, teleport=False, ir_only=False,
                    soft_failures=False, verbose=False, visualize=False, ACONF=False, **kwargs):
     """ given grasp of target object at relative pose rp with regard to supporter at p2, return base conf and arm traj """
-    ir_max_attempts = 40
     ## not using this if tracik compiled
     ir_sampler = get_ir_sampler(problem, collisions=collisions, learned=learned,
-                                max_attempts=ir_max_attempts, verbose=verbose, **kwargs)
-    ik_fn = get_ik_fn_old(problem, collisions=collisions, teleport=teleport, verbose=False, ACONF=ACONF,
-                          visualize=visualize, **kwargs)
+                                max_attempts=max_attempts, verbose=verbose, **kwargs)
+    ik_fn = get_ik_fn_old(problem, collisions=collisions, teleport=teleport, verbose=False,
+                          ACONF=ACONF, visualize=visualize, **kwargs)
     robot = problem.robot
     world = problem.world
     obstacles = problem.fixed if collisions else []
@@ -209,7 +206,7 @@ def get_ik_gen_old(problem, max_attempts=30, collisions=True, learned=True, tele
         return sample_bconf(
             world, robot, inputs, pose_value, obstacles, heading, ir_sampler=ir_sampler, ik_fn=ik_fn,
             verbose=verbose, visualize=visualize, soft_failures=soft_failures, learned=learned,
-            ir_max_attempts=ir_max_attempts, max_attempts=max_attempts, ir_only=ir_only)
+            ir_max_attempts=max_attempts, ir_only=ir_only)
 
     return gen
 
@@ -217,10 +214,9 @@ def get_ik_gen_old(problem, max_attempts=30, collisions=True, learned=True, tele
 def get_ik_rel_gen_old(problem, max_attempts=30, collisions=True, learned=True, teleport=False, ir_only=False,
                        soft_failures=False, verbose=False, visualize=False, ACONF=False, **kwargs):
     """ given grasp of target object at relative pose rp with regard to supporter at p2, return base conf and arm traj """
-    ir_max_attempts = 40
     ## not using this if tracik compiled
     ir_sampler = get_ir_sampler(problem, collisions=collisions, learned=learned,
-                                max_attempts=ir_max_attempts, verbose=verbose, **kwargs)
+                                max_attempts=max_attempts, verbose=verbose, **kwargs)
     ik_fn = get_ik_fn_old(problem, collisions=collisions, teleport=teleport, verbose=False, ACONF=ACONF, **kwargs)
     robot = problem.robot
     world = problem.world
@@ -237,7 +233,7 @@ def get_ik_rel_gen_old(problem, max_attempts=30, collisions=True, learned=True, 
         inputs = a, o1, rp1, o2, p2, g
         return sample_bconf(world, robot, inputs, pose_value, obstacles, heading, ir_sampler=ir_sampler, ik_fn=ik_fn,
                             verbose=verbose, visualize=visualize, soft_failures=soft_failures, learned=learned,
-                            ir_max_attempts=ir_max_attempts, max_attempts=max_attempts, ir_only=ir_only)
+                            ir_max_attempts=max_attempts, ir_only=ir_only)
 
     return gen
 
@@ -277,7 +273,7 @@ def process_ik_context(context, verbose=False):
 
 def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
                  ir_sampler=None, ik_fn=None, ir_only=False, learned=False,
-                 ir_max_attempts=40, max_attempts=30, soft_failures=False, verbose=False, visualize=False):
+                 ir_max_attempts=40, soft_failures=False, verbose=False, visualize=False):
     a, o = inputs[:2]
     g = inputs[-1]
     robot.open_arm(a)
@@ -328,9 +324,9 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
     ## solve IK for all 13 joints
     if robot.use_torso and has_tracik():
         from pybullet_tools.tracik import IKSolver
-        tool_from_root = robot.get_tool_from_root(a)
-        tool_pose = robot.get_grasp_pose(pose_value, g.value, a, body=g.body)
-        gripper_pose = multiply(tool_pose, invert(tool_from_root))
+
+        grasp_pose = robot.get_grasp_pose(pose_value, g.value, a, body=g.body)
+        tool_pose = robot.get_tool_pose_for_ik(a, grasp_pose)
 
         collision_fn = get_collision_fn(robot, base_joints, obstacles, [], robot.self_collisions,
                                         custom_limits=robot.custom_limits, use_aabb=True)
@@ -340,8 +336,8 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
                              custom_limits=robot.custom_limits)  ## using all 13 joints
 
         attempts = 0
-        for conf in ik_solver.generate(gripper_pose):  # TODO: islice
-            if max_attempts <= attempts:
+        for conf in ik_solver.generate(tool_pose):  # TODO: islice
+            if ir_max_attempts <= attempts:
                 if verbose:
                     print(f'sample_bconf failed after {attempts} attempts!')
                 # wait_unlocked()
@@ -395,7 +391,8 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
             ik_outputs = ik_fn(*(inputs + ir_outputs))
             if ik_outputs is None:
                 continue
-            if verbose: print('succeed after TracIK solutions:', attempts)
+            if verbose:
+                print('succeed after TracIK solutions:', attempts)
 
             if visualize:
                 [remove_body(samp) for samp in samples]
@@ -407,8 +404,8 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
         ir_generator = ir_sampler(*inputs)
         attempts = 0
         while True:
-            if max_attempts <= attempts:
-                # print(f'{heading} exceeding max_attempts = {max_attempts}')
+            if ir_max_attempts <= attempts:
+                # print(f'{heading} exceeding ir_max_attempts = {ir_max_attempts}')
                 yield None
                 # break # TODO(caelan): probably should be break/return
 
@@ -466,13 +463,12 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
             world.BODY_TO_OBJECT[body].grasp_parent is not None:
         addons.append(world.BODY_TO_OBJECT[body].grasp_parent)
 
-    approach_obstacles = copy.deepcopy(obstacles_here)
+    approach_obstacles = [oo for oo in obstacles_here if oo != body]
     ignored_pairs_here.extend([[(body, obst), (obst, body)] for obst in obstacles_here if is_placement(body, obst)])
     # approach_obstacles = problem.world.refine_marker_obstacles(obj, approach_obstacles)  ## for steerables
 
-    tool_from_root = robot.get_tool_from_root(arm)
-    gripper_pose = multiply(robot.get_grasp_pose(pose_value, grasp.value, body=obj), invert(tool_from_root))
-    approach_pose = multiply(robot.get_grasp_pose(pose_value, grasp.approach, body=obj), invert(tool_from_root))
+    gripper_pose = robot.get_grasp_pose(pose_value, grasp.value, arm, body=obj)
+    approach_pose = robot.get_grasp_pose(pose_value, grasp.approach, arm, body=obj)
 
     arm_link = robot.get_tool_link(arm)
     arm_joints = robot.get_arm_joints(arm)
@@ -599,7 +595,8 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
             grasp_path = plan_direct_joint_motion(robot.body, arm_joints, grasp_conf, obstacles=approach_obstacles,
                                                   resolutions=resolutions / 2., **motion_planning_kwargs)
             if grasp_path is None:
-                if verbose: print(f'{title}Grasp path failure')
+                if verbose:
+                    print(f'{title}Grasp path failure')
                 if visualize:
                     remove_body(gripper_grasp)
                 return None
@@ -846,6 +843,8 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
 
     # gripper_before = multiply(old_pose, invert(g.value))
     gripper_before = multiply(robot.get_grasp_pose(old_pose, g.value, body=o), invert(tool_from_root))
+    gripper_before = robot.get_grasp_pose(old_pose, g.value, a, body=o)
+
     world_from_base = bconf_to_pose(bq1)
     gripper_from_base = multiply(invert(gripper_before), world_from_base)
     # print('gripper_before', nice(gripper_before))
@@ -870,6 +869,7 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
             remove_body(gripper_after)
 
         gripper_after = multiply(robot.get_grasp_pose(new_pose, g.value, body=o), invert(tool_from_root))
+        gripper_after = robot.get_grasp_pose(new_pose, g.value, a, body=o)
         # gripper_after = multiply(new_pose, invert(g.value))
 
         ## try to transform the base the same way as gripper to a cfree pose

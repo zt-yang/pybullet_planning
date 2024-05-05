@@ -18,7 +18,8 @@ SPOT_JOINT_GROUPS = {
     'leg': ['fl.hy', 'fl.kn', 'fr.hy', 'fr.kn', 'hl.hy', 'hl.kn', 'hr.hy', 'hr.kn'],
     'gripper': ['arm0.f1x']
 }
-SPOT_CARRY_ARM_CONF = (0, -PI, 0, PI, 0, 0, 0)
+SPOT_REST_ARM_CONF = (0, -PI, 0, PI, 0, 0, 0)
+SPOT_CARRY_ARM_CONF = (0, -PI*0.75, 0, 1.83, 0, 1.83, 0)
 
 
 def load_spot():

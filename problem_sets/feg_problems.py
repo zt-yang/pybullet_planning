@@ -49,7 +49,7 @@ def test_feg_oven(args, **kwargs):
 
         # quick_demo(world)
 
-        goals = ('test_grasps', lid)
+        goals = ("test_object_grasps", lid)
         goals = [("Holding", arm, lid)]
 
         return goals
@@ -139,7 +139,7 @@ def test_feg_cabinets_from(args, **kwargs):
         world.remove_category_from_planning('surface', exceptions=[counter])
 
         ## ------- grasping and placing various objects
-        goals = ('test_grasps', body)
+        goals = ("test_object_grasps", body)
         goals = ('test_reachable_pose', turkey)
         goals = ('test_sample_wconf', body)
         goals = ('test_at_reachable_pose', body)
@@ -326,7 +326,7 @@ def test_feg_dishwasher(args, **kwargs):
             world.open_joint(dishwasher_door[0], dishwasher_door[1])
             world.add_to_init(['IsOpenPosition', dishwasher_door])
             world.del_fr_init(['IsClosedPosition', dishwasher_door])
-            goals = ("test_grasps", body)
+            goals = ("test_object_grasps", body)
             goals = [("Holding", 'hand', body)]
             goals = [("On", body, surface)]
             # goals = [("On", body, surface), ("On", food, body)]  ## fail because movable poses need to be in
@@ -360,7 +360,7 @@ def test_feg_dish(args, **kwargs):
         # world.remove_category_from_planning('surface')
         world.remove_category_from_planning('surface', exceptions=['basin_bottom', 'braiser_bottom'])
 
-        goals = ('test_grasps', cabbage)
+        goals = ("test_object_grasps", cabbage)
         goals = [("GraspedHandle", world.name_to_body('fridge_door'))]
         goals = [("Holding", 'hand', cabbage)]
         goals = [("On", cabbage, world.name_to_body('basin_bottom')),
@@ -396,7 +396,7 @@ def test_feg_dish(args, **kwargs):
 #     world.close_joint_by_name('fridge_door')
 #     # set_camera_target_body(cabbage, dx=0.5, dy=-0.5, dz=0.5)  ## made video for cook cabbage
 #
-#     goals = ('test_grasps', cabbage)
+#     goals = ("test_object_grasps", cabbage)
 #     goals = [("Holding", 'hand', cabbage)]
 #     goals = [("Cleaned", cabbage)]
 #     # goals = [("Cleaned", cabbage), ("On", cabbage, world.name_to_body('braiser_bottom'))]
@@ -490,7 +490,7 @@ def test_feg_tray(args, **kwargs):
         ## -------- just move the body in -----------
         # for d in distractors:
         #     world.remove_object(d)
-        goals = ("test_grasps", item)
+        goals = ("test_object_grasps", item)
         goals = [("Holding", arm, item)]
         goals = [("On", item, tray_bottom)]
         goals = [("On", item, tray_bottom), ("On", distractor, tray_bottom)]

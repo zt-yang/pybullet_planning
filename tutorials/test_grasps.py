@@ -334,9 +334,12 @@ if __name__ == '__main__':
     ------------------------------------------------------------------------ """
     robot = 'feg'  ## 'pr2'
 
+    """ --- just load assets --- """
+    test_grasps(robot, ['Cart'], skip_grasps=True)  ## 'Salter'
+
     """ --- grasps related --- """
     kwargs = dict(skip_grasps=False, test_attachment=False)
-    test_grasps(robot, ['Bottle'], given_instances=['3616'], **kwargs)  ## 'Salter'
+    # test_grasps(robot, ['Bottle'], given_instances=['3616'], **kwargs)  ## 'Salter'
     # test_grasps(robot, ['VeggieCabbage'], skip_grasps=False, test_attachment=False)
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()

@@ -23,13 +23,13 @@ from pybullet_tools.grasp_utils import check_cfree_gripper, add_to_jp2jp
 from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics
 from pybullet_tools.ikfast.utils import USE_CURRENT
 from pybullet_tools.pr2_primitives import Grasp, iterate_approach_path, \
-    APPROACH_DISTANCE, TOP_HOLDING_LEFT_ARM, get_tool_from_root, Conf, Commands, create_trajectory, \
+    APPROACH_DISTANCE, get_tool_from_root, Conf, Commands, create_trajectory, \
     Trajectory, State
 from pybullet_tools.pr2_problems import create_pr2
 from pybullet_tools.pr2_utils import open_arm, arm_conf, get_gripper_link, get_arm_joints, SIDE_HOLDING_LEFT_ARM, \
     learned_pose_generator, PR2_TOOL_FRAMES, get_group_joints, get_group_conf, TOOL_POSE, MAX_GRASP_WIDTH, GRASP_LENGTH, \
-    SIDE_HEIGHT_OFFSET, approximate_as_prism, set_group_conf
-from pybullet_tools.utils import wait_unlocked, WorldSaver
+    SIDE_HEIGHT_OFFSET, approximate_as_prism, set_group_conf, TOP_HOLDING_LEFT_ARM
+from pybullet_tools.utils import wait_unlocked, WorldSaver, ConfSaver
 from pybullet_tools.general_streams import *
 
 
@@ -901,18 +901,44 @@ def get_base_from_ik_fn(robot, visualize=True):
 #     return fn
 
 
-def get_marker_grasp_gen(problem, collisions=False, randomize=True, visualize=False):
+def get_marker_grasp_gen(problem, collisions=False, randomize=False, visualize=True, retrain_all=True):
+    world = problem.world
+    robot = world.robot
     collisions = True
     obstacles = problem.fixed if collisions else []
-    world = problem.world
+
+    # box_grasp_gen = get_box_grasp_gen(problem, grasp_length=-0.1, grasp_types=['side'],
+    #                                   collisions=collisions, randomize=randomize)
+
     def fn(marker):
-        grasps = []
-        obs = copy.deepcopy(obstacles)
-        approach_vector = APPROACH_DISTANCE * get_unit_vector([1, 0, 0]) ##[2, 0, -1])
-        grasps.extend(HandleGrasp('side', marker, g, multiply((approach_vector, unit_quat()), g), SIDE_HOLDING_LEFT_ARM)
-                      for g in get_marker_grasps(marker, grasp_length=GRASP_LENGTH, robot=world.robot, obstacles=obs))  ## , body_pose=body_pose
-        for grasp in grasps:
-            grasp.grasp_width = 1
+
+        def check_cfree_gripper(grasp):
+            gripper_grasp = robot.visualize_grasp(get_pose(marker), grasp.value, new_gripper=visualize)
+            if visualize:
+                set_camera_target_body(gripper_grasp, dx=0, dy=-1, dz=1)
+
+            for b in obstacles:
+                if pairwise_collision(gripper_grasp, b):
+                    print('making marker grasp collide with', b)
+                    # remove_body(gripper_grasp)
+                    return False
+
+            if not retrain_all:
+                remove_body(gripper_grasp)
+            return True
+
+        # approach_vector = APPROACH_DISTANCE * get_unit_vector([1, 0, 0]) ##[2, 0, -1])
+        # approach_pose = (approach_vector, unit_quat())
+        # carry = SIDE_HOLDING_LEFT_ARM
+        # grasps = get_marker_grasps(marker, grasp_length=GRASP_LENGTH, robot=world.robot, obstacles=obstacles)
+        # for grasp in grasps:
+        #     grasp.grasp_width = 1
+        # grasps = [HandleGrasp('side', marker, g, multiply(approach_pose, g), carry) for g in grasps]
+
+        grasps = get_hand_grasps(world, marker)
+        if collisions:
+            grasps = [g for g in grasps if check_cfree_gripper(g[0])]
+
         return [(g,) for g in grasps]
     return fn
 
@@ -923,18 +949,7 @@ def get_marker_grasps(body, under=False, tool_pose=TOOL_POSE, body_pose=unit_pos
 
     from pybullet_tools.utils import Pose
 
-    def check_cfree_gripper(grasp, visualize=False):
-        gripper_grasp = robot.visualize_grasp(get_pose(body), grasp)
-        if visualize:
-            set_camera_target_body(gripper_grasp, dx=0, dy=-1, dz=1)
 
-        for b in obstacles:
-            if pairwise_collision(gripper_grasp, b):
-                print('making marker grasp collide with', b)
-                remove_body(gripper_grasp)
-                return False
-        remove_body(gripper_grasp)
-        return True
 
     # TODO: compute bounding box width wrt tool frame
     center, (w, l, h) = approximate_as_prism(body, body_pose=body_pose)
@@ -1251,15 +1266,20 @@ def get_bconf_in_region_gen(problem, collisions=True, max_attempts=10, verbose=F
         bqs = []
         while attempts < max_attempts:
             attempts += 1
+            positions = list(robot.get_base_positions())
             x = np.random.uniform(lower[0], upper[0])
             y = np.random.uniform(lower[1], upper[1])
-            bq = Conf(robot, robot.get_base_joints(), (x, y, yaw))
-            bq.assign()
-            if not any(pairwise_collision(robot, obst) for obst in obstacles):
-                if visualize:
-                    rbb = create_pr2()
-                    set_group_conf(rbb, robot.base_group, bq.values)
-                bqs.append((bq,))
+            yaw = np.random.uniform(0, PI*2)
+            positions[:2] = [x, y]
+            positions[-1] = yaw
+            bq = Conf(robot, robot.get_base_joints(), positions)
+            with ConfSaver(robot):
+                bq.assign()
+                if not any(pairwise_collision(robot, obst) for obst in obstacles):
+                    if visualize:
+                        rbb = create_pr2()
+                        set_group_conf(rbb, robot.base_group, bq.values)
+                    bqs.append((bq,))
         return bqs
     return list_fn ## gen
 

@@ -52,7 +52,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
         exp_subdir = problem
     args = get_parser(config=config, config_root=config_root, viewer=viewer, problem=problem, open_goal=open_goal,
                       window_width=window_width, window_height=window_height, draw_base_limits=draw_base_limits,
-                      exp_dir=exp_dir, exp_subdir=exp_subdir, exp_name=exp_name, domain=domain, stream=stream,
+                      exp_dir=exp_dir, exp_subdir=exp_subdir, exp_name=exp_name, domain_pddl=domain, stream_pddl=stream,
                       use_rel_pose=use_rel_pose, record_problem=record_problem, save_testcase=save_testcase,
                       debug=debug, use_subgoal_constraints=use_subgoal_constraints,
                       use_skeleton_constraints=use_skeleton_constraints)

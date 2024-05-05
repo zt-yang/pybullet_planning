@@ -65,8 +65,8 @@ data:
 ## configuration for PDDLStream
 planner:
   timeout: 300
-  domain_pddl: 'pddl/feg_kitchen.pddl'
-  stream_pddl: 'pddl/feg_stream_kitchen.pddl'
+  domain_pddl: 'pddl_domains/feg_kitchen.pddl'
+  stream_pddl: 'pddl_domains/feg_stream_kitchen.pddl'
   diverse: false
   downward_time: 1
   dataset: false

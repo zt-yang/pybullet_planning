@@ -280,7 +280,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
     title = f'bullet_utils.get_hand_grasps({body_name}) | '
     dist = grasp_length
     robot = world.robot
-    scale = get_loaded_scale(body)
+    scale = 1 if is_box_entity(body) else get_loaded_scale(body)
     # print("get hand grasps scale", scale)
     # using_grasp_link, link = check_grasp_link(world, body, link)
 
@@ -378,9 +378,6 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
                     elif gripper_dl is not None:
                         remove_body(gripper_dl)
 
-        elif gripper is not None:
-            remove_body(gripper)
-
         return grasps
 
     ## get the points in hand frame to be transformed to the origin of object frame in different directions
@@ -442,6 +439,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
         add_grasp_in_db(db, db_file, instance_name, grasps, name=name,
                         length_variants=length_variants, scale=scale)
     remove_handles(handles)
+    robot.hide_cloned_grippers()
     # if len(grasps) > num_samples:
     #     random.shuffle(grasps)
     #     return grasps[:num_samples]
@@ -479,6 +477,7 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
     ## criteria 1: when gripper isn't closed, it shouldn't collide
     firstly = collided(gripper_grasp, obstacles, min_num_pts=min_num_pts,
                        world=world, verbose=False, tag='firstly')
+    finger_link = robot.cloned_finger_link
 
     ## criteria 2: when gripper is closed, it should collide with object
     secondly = False
@@ -490,11 +489,11 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
         ## boxes don't contain vertices for collision checking
         if body is not None and isinstance(body, int) and len(get_collision_data(body)) > 0 \
                 and get_collision_data(body)[0].geometry_type == p.GEOM_BOX:
-            secondly = secondly or aabb_contains_aabb(get_aabb(gripper_grasp, robot.finger_link), get_aabb(body))
+            secondly = secondly or aabb_contains_aabb(get_aabb(gripper_grasp, finger_link), get_aabb(body))
 
     ## criteria 3: the gripper shouldn't be pointing upwards, heuristically
     ## set_color(gripper_grasp, RED, link=2)  ## important to find out
-    finger_link = robot.cloned_finger_link
+
     aabb = nice(get_aabb(gripper_grasp), round_to=2)
     upwards = get_aabb_center(get_aabb(gripper_grasp, link=finger_link))[2] - get_aabb_center(aabb)[2] > 0.01
 
@@ -505,7 +504,7 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
         # remove_body(gripper_grasp)  ## TODO
         gripper_grasp = None
         # # weiyu: also remove the gripper from the robot
-        # robot.remove_grippers()
+        robot.remove_grippers()
 
     elif retain_all:
         robot.open_cloned_gripper(gripper_grasp)

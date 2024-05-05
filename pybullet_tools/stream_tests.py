@@ -44,7 +44,7 @@ def process_debug_goals(state, goals, init):
         ff = []
         if test == 'test_handle_grasps':
             goals = test_handle_grasps(state, args)
-        elif test == 'test_grasps':
+        elif test == 'test_object_grasps':
             goals = test_object_grasps(state, args)
         elif test == 'test_loaded_grasp_offset':
             goals = test_loaded_grasp_offset(state, args)
@@ -70,9 +70,12 @@ def process_debug_goals(state, goals, init):
             goals = test_at_reachable_pose(init, args)
         elif test == 'test_pose_kin':
             goals = test_rel_to_world_pose(init, args)
+        elif test == 'test_marker_grasp':
+            goals = test_marker_grasp(state, init, args)
+        elif test == 'test_marker_pull':
+            goals = test_marker_pull(state, init, args)
         else:
             # test_initial_region(state, init)
-            # test_marker_pull_bconfs(state, init)
             # test_pulling_handle_ik(state)
             # test_drawer_open(state, goals)
             print('\n\n\nstream_tests.pddlstream_from_state_goal | didnt implement', goals)
@@ -104,19 +107,34 @@ def test_initial_region(state, init):
         print('---------------\n')
 
 
-def test_marker_pull_bconfs(state, init):
-    world = state.world
-    funk = get_pull_marker_random_motion_gen(state)  ## is a from_fn
-    o = world.name_to_body('marker')
+def test_marker_pull(state, init, o, visualize=False):
     p1 = [i for i in init if i[0].lower() == "AtPose".lower() and i[1] == o][0][2]
-    g = test_marker_pull_grasps(state, o)
+    grasps = get_marker_grasps(state, o, visualize=visualize)
+    grasp = grasps[-1][0]
+
+    funk = get_pull_marker_random_motion_gen(state)
     bq1 = [i for i in init if i[0].lower() == "AtBConf".lower()][0][1]
-    p2, bq2, t = funk('left', o, p1, g, bq1)
+    p2, bq2, t = funk('left', o, p1, grasp, bq1)
     rbb = create_pr2()
     set_group_conf(rbb, 'base', bq2.values)
 
 
-def test_marker_pull_grasps(state, marker, visualize=False):
+
+def test_marker_grasp(state, init, o, visualize=False):
+    p1 = [i for i in init if i[0].lower() == "AtPose".lower() and i[1] == o][0][2]
+    grasps = get_marker_grasps(state, o, visualize=visualize)
+    grasp = grasps[-1][0]
+
+    # funk = get_pull_marker_random_motion_gen(state)
+    # bq1 = [i for i in init if i[0].lower() == "AtBConf".lower()][0][1]
+    # p2, bq2, t = funk('left', o, p1, grasp, bq1)
+    # rbb = create_pr2()
+    # set_group_conf(rbb, 'base', bq2.values)
+    goals = [("AtMarkerGrasp", 'left', o, grasp)]
+    return goals
+
+
+def get_marker_grasps(state, marker, visualize=False):
     funk = get_marker_grasp_gen(state)
     grasps = funk(marker) ## funk(cart) ## is a previous version
     if visualize:
@@ -128,7 +146,6 @@ def test_marker_pull_grasps(state, marker, visualize=False):
             print('collision with marker', pairwise_collision(gripper_grasp, marker))
             print('collision with cart', pairwise_collision(gripper_grasp, cart))
             remove_body(gripper_grasp)
-    print('test_marker_pull_grasps:', grasps)
     return grasps
 
 
@@ -177,13 +194,14 @@ def test_loaded_grasp_offset(state, args, test_translations=False, test_rotation
     return test_transformations_template(rotations, translations, funk, title, skip_until=skip_until)
 
 
-def test_object_grasps(state, name='cabbage', visualize=True, debug=True, debug_triads=False,
-                       loaded_offset=None, randomize=True, top_grasp_tolerance=None):
+def test_object_grasps(state, name='cabbage', visualize=False, debug=False, debug_triads=False,
+                       loaded_offset=None, randomize=True):
     """
     visualize = True:   to see all grasps for selecting the grasp index to plan for
     debug = True:       show the grasp to plan for
     """
-    set_renderer(True)
+    if visualize:
+        set_renderer(True)
     title = 'stream_tests.test_grasps | '
     if isinstance(name, tuple):
         name, top_grasp_tolerance = name
@@ -192,8 +210,9 @@ def test_object_grasps(state, name='cabbage', visualize=True, debug=True, debug_
     else:  ## if isinstance(name, Object):
         body = name
     robot = state.robot
+    top_grasp_tolerance = robot.top_grasp_tolerance
 
-    funk = get_grasp_list_gen(state, verbose=True, visualize=True, retain_all=True,
+    funk = get_grasp_list_gen(state, verbose=True, visualize=visualize, retain_all=False,
                               randomize=randomize,
                               loaded_offset=loaded_offset, debug=debug_triads,
                               top_grasp_tolerance=top_grasp_tolerance)  ## PI/4 | None
@@ -214,9 +233,16 @@ def test_object_grasps(state, name='cabbage', visualize=True, debug=True, debug_
                 for jj, gripper in enumerate(all_grippers):
                     if jj == k: continue
                     remove_body(gripper)
+
+            ## visualize approach pose
+            grasp = outputs[k][0]
+            gripper_approach = robot.visualize_grasp(body_pose, grasp.approach, body=grasp.body,
+                                                     color=BROWN, new_gripper=True)
+
             if debug:
                 wait_if_gui('chosen grasp')
             remove_body(all_grippers[k])
+            remove_body(gripper_approach)
         goals = [("AtGrasp", 'left', body, outputs[k][0])]
 
     elif 'hand_gripper' in robot.joint_groups:
@@ -300,6 +326,7 @@ def visualize_grasps(state, outputs, body_pose, retain_all=True, collisions=Fals
 
     # if retain_all:
     #     wait_if_gui()
+    robot.hide_cloned_grippers()
     return all_grippers
 
 

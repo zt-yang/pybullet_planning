@@ -19,7 +19,7 @@ def test_spot_pick(args, **kwargs):
 
         arm = robot.arms[0]
         goals = [('AtBConf', Conf(robot, robot.get_base_joints(), (2, 0, 0, 0)))]
-        # goals = ("test_grasps", cabbage)
+        # goals = ("test_object_grasps", cabbage)
         # goals = [("Holding", arm, cabbage)]
 
         return {'goals': goals}

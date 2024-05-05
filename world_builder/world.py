@@ -38,7 +38,7 @@ from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_
     Attach, Detach, Clean, Cook, control_commands, link_from_name, \
     get_gripper_joints, GripperCommand, apply_commands, State, Command
 
-from world_builder.entities import Region, Environment, Robot, Surface, ArticulatedObjectPart, Door, Drawer, \
+from world_builder.entities import Region, Location, Robot, Surface, ArticulatedObjectPart, Door, Drawer, \
     Knob, Camera, Object, StaticCamera
 from world_builder.world_utils import GRASPABLES, get_objs_in_camera_images, make_camera_collage, \
     get_camera_image, sort_body_indices, add_joint_status_facts
@@ -706,9 +706,9 @@ class World(WorldBase):
         for body in bodies:
             line = ''
 
-            if body in ROBOT_TO_OBJECT:
+            if isinstance(body, Robot):
+                body = body.body
                 object = ROBOT_TO_OBJECT[body]
-                line += f'{object.body}|'
             elif body in REMOVED_BODY_TO_OBJECT:
                 object = REMOVED_BODY_TO_OBJECT[body]
             else:
@@ -762,6 +762,9 @@ class World(WorldBase):
                     print_fn('----------------')
                     print_not_2 = True
                 line += f"\t (static world objects)"
+
+            else:
+                object.draw()
 
             print_fn(line)
 
@@ -1230,23 +1233,23 @@ class World(WorldBase):
             return
         if all_joints is None:
             all_links, all_joints = self.get_typed_objects()[-2:]
-        if verbose:
-            print(f'\ninit_link_joint_relations ... started')
         all_link_poses = {(body, _, link): get_link_pose(body, link) for (body, _, link) in all_links}
+
+        lines = []
         for (body, joint) in all_joints:
             position = get_joint_position(body, joint)
             toggle_joint(body, joint)
             new_link_poses = {(body2, _, link): get_link_pose(body, link) for (body2, _, link) in all_links if body == body2}
             changed_links = [k for k, v in new_link_poses.items() if v != all_link_poses[k]]
-            if verbose:
-                print(f'\tjoint = {get_joint_name(body, joint)}|{(body, joint)}')
+            lines.append(f'\tjoint = {get_joint_name(body, joint)}|{(body, joint)}')
             for body_link in changed_links:
                 obj = self.BODY_TO_OBJECT[body_link]
                 obj.set_governing_joints([(body, joint)])
-                if verbose:
-                    print(f'\t\tlink = {get_link_name(body_link[0], body_link[-1])}|{body_link}')
+                lines.append(f'\t\tlink = {get_link_name(body_link[0], body_link[-1])}|{body_link}')
             set_joint_position(body, joint, position)
-        if verbose:
+        if verbose and len(lines) > 0:
+            print(f'\ninit_link_joint_relations ... started')
+            [print(l) for l in lines]
             print(f'\ninit_link_joint_relations ... finished\n\n')
         self.inited_link_joint_relations = True
 
@@ -1461,6 +1464,9 @@ class World(WorldBase):
             obj = BODY_TO_OBJECT[body]
             for marker in obj.grasp_markers:
                 init += [('Marked', body, marker.body)]
+
+        for body in cat_to_bodies('location'):
+            init += [('Location', body)]
 
         if only_fluents:
             fluents_pred = ['AtPose', 'AtPosition']
@@ -1727,7 +1733,7 @@ class State(object):
         #     objs = [o for o in self.world.objects if o in objs and \
         #             self.world.BODY_TO_OBJECT[o].category != 'floor']
         # return objs
-        # return [obj for obj in self.objects if isinstance(obj, Region) or isinstance(obj, Environment)]
+        # return [obj for obj in self.objects if isinstance(obj, Region) or isinstance(obj, Location)]
 
     @property
     def movable(self): ## include steerables if want to exclude them when doing base motion plannig

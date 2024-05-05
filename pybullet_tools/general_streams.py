@@ -14,8 +14,8 @@ from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_
     get_joint_limits, unit_pose, point_from_pose, draw_point, PI, quat_from_pose, angle_between, \
     tform_point, interpolate_poses, draw_pose, RED, remove_handles, stable_z, wait_unlocked, \
     get_aabb_center, set_renderer, timeout, get_aabb_extent, wait_if_gui, wait_for_duration, \
-    get_joint_type, PoseSaver, draw_aabb, LockRenderer
-from pybullet_tools.pr2_primitives import Pose, Grasp
+    get_joint_type, PoseSaver, draw_aabb, LockRenderer, get_unit_vector, unit_quat
+from pybullet_tools.pr2_primitives import Pose, Grasp, APPROACH_DISTANCE, GRASP_LENGTH
 
 from pybullet_tools.bullet_utils import nice, visualize_point, collided, is_box_entity, \
     query_yes_no
@@ -687,15 +687,60 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None,  # None | 
     return fn
 
 
+# def get_box_grasp_gen(problem, grasp_length=GRASP_LENGTH, grasp_types=None, collisions=False, randomize=True):
+#     from pybullet_tools.pr2_utils import TOP_HOLDING_LEFT_ARM, SIDE_HOLDING_LEFT_ARM, \
+#         get_top_grasps, get_side_grasps
+#
+#     world = problem.world
+#     robot = world.robot
+#     if grasp_types is None:
+#         grasp_types = problem.grasp_types
+#
+#     def fn(body):
+#         grasps = []
+#         arm = robot.arms[0]
+#
+#         if 'top' in grasp_types:
+#             # approach_vector = APPROACH_DISTANCE*get_unit_vector([1, 0, 0])
+#             # grasps.extend(Grasp('top', body, g, multiply((approach_vector, unit_quat()), g), TOP_HOLDING_LEFT_ARM)
+#             #               for g in get_top_grasps(body, grasp_length=grasp_length))
+#             app = robot.get_approach_vector(arm, 'top')
+#             grasps.extend(Grasp('top', body, g, robot.get_approach_pose(app, g), TOP_HOLDING_LEFT_ARM)
+#                           for g in get_top_grasps(body, grasp_length=grasp_length))
+#         if 'side' in grasp_types:
+#             # approach_vector = APPROACH_DISTANCE*get_unit_vector([2, 0, -1])
+#             # grasps.extend(Grasp('side', body, g, multiply((approach_vector, unit_quat()), g), SIDE_HOLDING_LEFT_ARM)
+#             #               for g in get_side_grasps(body, grasp_length=grasp_length))
+#             app = robot.get_approach_vector(arm, 'side')
+#             grasps.extend(Grasp('side', body, g, robot.get_approach_pose(app, g), SIDE_HOLDING_LEFT_ARM)
+#                           for g in get_side_grasps(body, grasp_length=grasp_length))
+#         if 'hand' in grasp_types:
+#             from pybullet_tools.grasp_utils import get_hand_grasps
+#             approach_vector = APPROACH_DISTANCE*get_unit_vector([0, 0, -1])
+#             grasps.extend(Grasp('hand', body, g, multiply(g, (approach_vector, unit_quat())), g)
+#                           for g in get_hand_grasps(world, body))
+#         filtered_grasps = []
+#         for grasp in grasps:
+#             grasp_width = robot.compute_grasp_width(arm, grasp, body=body) if collisions else 0.0
+#             if grasp_width is not None:
+#                 grasp.grasp_width = grasp_width
+#                 filtered_grasps.append(grasp)
+#         if randomize:
+#             random.shuffle(filtered_grasps)
+#         return [(g,) for g in filtered_grasps]
+#         #for g in filtered_grasps:
+#         #    yield (g,)
+#     return fn
+
+
 def get_grasp_list_gen(problem, collisions=True, num_samples=10, **kwargs):
-    from pybullet_tools.pr2_primitives import get_grasp_gen as get_box_grasp_gen
     funk = get_grasp_gen(problem, collisions, num_samples=num_samples, **kwargs)
-    funk2 = get_box_grasp_gen(problem, collisions)
+    # funk2 = get_box_grasp_gen(problem, collisions)
 
     def gen(body):
-        ## use the original grasp generator for box
-        if is_box_entity(body):  ## len(get_all_links(body)) == 1:
-            return funk2(body)
+        # ## use the original grasp generator for box
+        # if is_box_entity(body):  ## len(get_all_links(body)) == 1:
+        #     return funk2(body)
         g = funk(body)
         grasps = []
         while len(grasps) < num_samples:

@@ -63,8 +63,8 @@ data:
 ## configuration for PDDLStream
 planner:
   timeout: 300
-  domain_pddl: 'pddl/pr2_domain_pigi.pddl'
-  stream_pddl: 'pddl/pr2_stream_pigi.pddl'
+  domain_pddl: 'pddl_domains/pr2_domain_pigi.pddl'
+  stream_pddl: 'pddl_domains/pr2_stream_pigi.pddl'
   diverse: false
   downward_time: 1
   dataset: false

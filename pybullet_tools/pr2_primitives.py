@@ -11,7 +11,7 @@ import numpy as np
 from .ikfast.pr2.ik import is_ik_compiled, pr2_inverse_kinematics
 from .ikfast.utils import USE_CURRENT, USE_ALL
 from pybullet_tools.pr2_problems import get_fixed_bodies
-from pybullet_tools.pr2_utils import TOP_HOLDING_LEFT_ARM, SIDE_HOLDING_LEFT_ARM, GET_GRASPS, get_gripper_joints, \
+from pybullet_tools.pr2_utils import GET_GRASPS, get_gripper_joints, \
     get_carry_conf, get_top_grasps, get_side_grasps, open_arm, arm_conf, get_gripper_link, get_arm_joints, \
     learned_pose_generator, PR2_TOOL_FRAMES, get_x_presses, PR2_GROUPS, joints_from_names, \
     is_drake_pr2, get_group_joints, get_group_conf, compute_grasp_width, PR2_GRIPPER_ROOTS
@@ -363,46 +363,6 @@ class Cook(Command):
         return '{}({})'.format(self.__class__.__name__, self.body)
 
 ##################################################
-
-
-def get_grasp_gen(problem, collisions=False, randomize=True):
-    world = problem.world
-    for grasp_type in problem.grasp_types:
-        if grasp_type not in GET_GRASPS:
-            raise ValueError('Unexpected grasp type:', grasp_type)
-    def fn(body):
-        print('\n\n\n\npr2_primitives.get_grasp_gen | DEPRECATED, please use bullet_utils.get_grasp_gen')
-        # TODO: max_grasps
-        # TODO: return grasps one by one
-        print('problem.grasp_types', problem.grasp_types)
-        grasps = []
-        arm = 'left'
-        # carry_conf = problem.robot.get_carry_conf('top')
-        if 'top' in problem.grasp_types:
-            approach_vector = APPROACH_DISTANCE*get_unit_vector([1, 0, 0])
-            grasps.extend(Grasp('top', body, g, multiply((approach_vector, unit_quat()), g), TOP_HOLDING_LEFT_ARM)
-                          for g in get_top_grasps(body, grasp_length=GRASP_LENGTH))
-        if 'side' in problem.grasp_types:
-            approach_vector = APPROACH_DISTANCE*get_unit_vector([2, 0, -1])
-            grasps.extend(Grasp('side', body, g, multiply((approach_vector, unit_quat()), g), SIDE_HOLDING_LEFT_ARM)
-                          for g in get_side_grasps(body, grasp_length=GRASP_LENGTH))
-        if 'hand' in problem.grasp_types:
-            from pybullet_tools.grasp_utils import get_hand_grasps
-            approach_vector = APPROACH_DISTANCE*get_unit_vector([0, 0, -1])
-            grasps.extend(Grasp('hand', body, g, multiply(g, (approach_vector, unit_quat())), g)
-                          for g in get_hand_grasps(world, body))
-        filtered_grasps = []
-        for grasp in grasps:
-            grasp_width = problem.robot.compute_grasp_width(arm, body, grasp.value, body=body) if collisions else 0.0
-            if grasp_width is not None:
-                grasp.grasp_width = grasp_width
-                filtered_grasps.append(grasp)
-        if randomize:
-            random.shuffle(filtered_grasps)
-        return [(g,) for g in filtered_grasps]
-        #for g in filtered_grasps:
-        #    yield (g,)
-    return fn
 
 ##################################################
 

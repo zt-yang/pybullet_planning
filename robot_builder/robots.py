@@ -117,7 +117,7 @@ class RobotAPI(Robot):
         return tool_from_root
 
     def get_approach_vector(self, arm, grasp_type, scale=1):
-        return tuple(scale * APPROACH_DISTANCE * get_unit_vector([0, 0, -1]))
+        return tuple(scale * APPROACH_DISTANCE / 2 * get_unit_vector([0, 0, -1]))
 
     def get_approach_pose(self, approach_vector, g):
         return multiply(g, (approach_vector, unit_quat()))
@@ -135,6 +135,10 @@ class RobotAPI(Robot):
         for tool_pose in interpolate_poses(grasp_pose, approach_pose):
             set_pose(gripper, multiply(tool_pose, tool_from_root))
             yield
+
+    def hide_cloned_grippers(self):
+        for arm, gripper in self.grippers.items():
+            set_pose(gripper, ((0, 0, -0.5), unit_quat()))
 
     def get_gripper(self, arm=None, **kwargs):
         if arm is None:
@@ -208,13 +212,17 @@ class RobotAPI(Robot):
 
     def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
         ## those primitive shapes
-        if body is not None and isinstance(body, int) and len(get_all_links(body)) == 1:
-            tool_from_root = multiply(((0, 0.025, 0.025), unit_quat()), self.tool_from_hand)  ## self.get_tool_from_root(arm)
-        ## those urdf files made from one .obj file
-        else:
-            body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
-            tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
+        # if body is not None and isinstance(body, int) and len(get_all_links(body)) == 1:
+        #     tool_from_root = multiply(((0, 0.025, 0.025), unit_quat()), self.tool_from_hand)  ## self.get_tool_from_root(arm)
+        # ## those urdf files made from one .obj file
+        # else:
+        body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
+        tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
         return multiply(body_pose, grasp, tool_from_root)
+
+    def get_tool_pose_for_ik(self, a, grasp_pose):
+        tool_from_root = self.get_tool_from_root(a)
+        return multiply(grasp_pose, invert(tool_from_root))
 
     def get_tool_from_hand(self, body):
         return self.tool_from_hand
@@ -347,9 +355,13 @@ class MobileRobot(RobotAPI):
     def get_base_joints(self):
         return self.get_group_joints(self.base_group)
 
+    def get_base_positions(self):
+        base_joints = self.get_base_joints()
+        return get_joint_positions(self.body, base_joints)
+
     def get_base_conf(self):
         base_joints = self.get_base_joints()
-        q = get_joint_positions(self.body, base_joints)
+        q = self.get_base_positions()
         return Conf(self.body, base_joints, q)
 
     def set_pose(self, conf):
@@ -457,7 +469,7 @@ class MobileRobot(RobotAPI):
     def visualize_grasp(self, body_pose, grasp, arm=None, color=GREEN, cache=False,
                         new_gripper=False, width=None, **kwargs):
         if arm is None:
-            arm = 'left'
+            arm = self.arms[0]
             # arm = random.choice(self.arms)
         gripper = self.load_gripper(arm, color=color, new_gripper=new_gripper)
         self.set_gripper_pose(body_pose, grasp, gripper=gripper, arm=arm, **kwargs)
@@ -472,7 +484,7 @@ class MobileRobot(RobotAPI):
 
     ## -------------------------------------------------------------
 
-    def run_ik_once(self, arm, gripper_pose, tool_link, arm_joint):
+    def run_ik_once(self, arm, tool_pose, tool_link, arm_joint):
         """ by default, assume IKFast is not compiled """
         kwargs = dict(custom_limits=self.custom_limits)
         if has_tracik():
@@ -480,13 +492,14 @@ class MobileRobot(RobotAPI):
             if self.ik_solvers[arm] is None:
                 self.ik_solvers[arm] = IKSolver(self.body, tool_link=tool_link, first_joint=arm_joint, **kwargs)
             current_conf = self.get_arm_conf(arm).values
-            return self.ik_solvers[arm].solve(gripper_pose, seed_conf=current_conf)
+            return self.ik_solvers[arm].solve(tool_pose, seed_conf=current_conf)
 
         else:
-            return sub_inverse_kinematics(self.body, arm_joint, tool_link, gripper_pose, **kwargs)
+            return sub_inverse_kinematics(self.body, arm_joint, tool_link, tool_pose, **kwargs)
 
-    def inverse_kinematics(self, arm, gripper_pose, obstacles,
+    def inverse_kinematics(self, arm, grasp_pose, obstacles,
                            verbose=True, visualize=True, debug=False):
+        tool_pose = self.get_tool_pose_for_ik(arm, grasp_pose)
         tool_link = self.get_tool_link(arm)
         arm_joints = self.get_arm_joints(arm)
         title = 'robots.inverse_kinematics | '
@@ -496,7 +509,7 @@ class MobileRobot(RobotAPI):
             set_renderer(True)
         result = None
         with ConfSaver(self.body):
-            arm_conf = self.run_ik_once(arm, gripper_pose, tool_link, arm_joints[0])
+            arm_conf = self.run_ik_once(arm, tool_pose, tool_link, arm_joints[0])
             if arm_conf is not None:
                 self.set_joint_positions(arm_joints, arm_conf)
                 if debug:
@@ -601,6 +614,10 @@ class PR2Robot(MobileRobot):
 
     def open_arm(self, arm):
         open_arm(self.body, arm)
+
+    # def get_finger_link(self, arm):
+    #     link_name = 'l_gripper_l_finger_link' if arm == 'left' else 'r_gripper_l_finger_link'
+    #     raise link_from_name(self.body, link_name)
 
     def get_arm_joints(self, arm):
         from pybullet_tools.pr2_utils import get_arm_joints
@@ -934,7 +951,7 @@ class FEGripper(RobotAPI):
     joint_group_names = ['hand']
     joint_groups = FEG_JOINT_GROUPS
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
-    finger_link = 8  ## for detecting if a grasp is pointing upwards
+    # finger_link = 8  ## for detecting if a grasp is pointing upwards
     cloned_finger_link = 7
 
     # def get_pose(self):

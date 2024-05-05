@@ -149,6 +149,17 @@ def build_table_domain_robot(world, robot_name, **kwargs):
     return build_robot_from_args(world, robot_name, **kwargs)
 
 
+def build_namo_domain_robot(world, robot_name, **kwargs):
+    """ testing pull in Navigation Among Movable Obstacles (NAMO) """
+    if 'base_q' not in kwargs:
+        kwargs['initial_xy'] = (1.5, 0)
+    if 'custom_limits' not in kwargs:
+        kwargs['custom_limits'] = ((-2.75, -3.5, 0), (5.5, 4.5, 2))
+    if robot_name != 'feg':
+        kwargs['use_torso'] = True
+    return build_robot_from_args(world, robot_name, **kwargs)
+
+
 def build_fridge_domain_robot(world, robot_name, **kwargs):
     """ counter and fridge in the (6, 6) range """
     kwargs['spawn_range'] = ((4.2, 2, 0.5), (5, 3.5, 1.9))

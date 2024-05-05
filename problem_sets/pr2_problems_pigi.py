@@ -70,12 +70,12 @@ def sample_full_kitchen_goal_rearrange_to_sink_or_braiser(world, movables, count
     world.add_to_cat(food, 'movable')
     lid = world.name_to_body('braiserlid')
 
-    goals = ('test_grasps', food)
+    goals = ("test_object_grasps", food)
     goals = [('Holding', arm, lid)]
     goals = [('On', food, obj_bottom)]
 
     # if case in [3]:
-    # goals = ('test_grasps', lid)
+    # goals = ("test_object_grasps", lid)
     # goals = [('Holding', arm, lid)]
     # goals = [('On', lid, counters[0])]
 

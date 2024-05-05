@@ -591,29 +591,6 @@ def world_of_models(floor_width=5, floor_length = 5):
     return floor
 
 
-def find_point_for_single_push(body):
-    (x_min, y_min, z_min), (x_max, y_max, z_max) = get_aabb(body)
-    x_c = (x_max + x_min) / 2
-    y_c = (y_max + y_min) / 2
-    pts = [(x_c, y_min, z_max), (x_c, y_max, z_max), (x_min, y_c, z_max), (x_max, y_c, z_max)]
-
-    poses = []
-    for link in get_links(body):
-        if '_4' not in get_link_name(body, link):
-            poses.append(list(get_link_pose(body, link)[0])[:2])
-    wheel_c = np.sum(np.asarray(poses), axis=0) / len(poses)
-
-    max_dist = -np.inf
-    max_pt = None
-    for (x,y,z) in pts:
-        dist = np.linalg.norm(np.asarray([x,y])-wheel_c)
-        if dist > max_dist:
-            max_dist = dist
-            max_pt = (x,y,z)
-
-    return max_pt
-
-
 def visualize_point(point, world):
     from .entities import Movable
     z = 0

@@ -58,7 +58,7 @@ from collections import namedtuple
 
 def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
                    pull_collisions=True, base_collisions=True, debug=False, verbose=False,
-                   use_all_grasps=False, top_grasp_tolerance=False,
+                   use_all_grasps=False, top_grasp_tolerance=False, ir_max_attempts=60,
                    resolution=DEFAULT_RESOLUTION, num_grasps=20):
     """ p = problem, c = collisions, l = custom_limits, t = teleport """
     from pybullet_tools.logging_utils import myprint as print
@@ -100,13 +100,15 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'test-inverse-reachability': from_test(get_reachable_test()),
 
         'inverse-reachability': from_gen_fn(
-            get_ik_gen_old(p, collisions=False, ir_only=True, learned=True, verbose=False, visualize=False, **tc)),
+            get_ik_gen_old(p, collisions=True, ir_only=True, learned=True, max_attempts=ir_max_attempts,
+                           verbose=False, visualize=False, **tc)),
         'inverse-kinematics': from_fn(
             get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=True,
                           visualize=debug, ACONF=False, resolution=resolution)),
 
         'inverse-reachability-rel': from_gen_fn(
-            get_ik_rel_gen_old(p, collisions=True, ir_only=True, learned=True, verbose=False, visualize=False, **tc)),
+            get_ik_rel_gen_old(p, collisions=True, ir_only=True, learned=True, max_attempts=ir_max_attempts,
+                               verbose=False, visualize=False, **tc)),
         'inverse-kinematics-rel': from_fn(
             get_ik_rel_fn_old(p, collisions=motion_collisions, teleport=t, verbose=False, visualize=False, ACONF=False)),
 
@@ -162,13 +164,13 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'sample-marker-pose': from_list_fn(get_marker_pose_gen(p, collisions=c)),
         'plan-base-pull-marker-to-bconf': from_fn(get_pull_marker_to_bconf_motion_gen(p, collisions=c, teleport=t)),
         'plan-base-pull-marker-to-pose': from_fn(get_pull_marker_to_pose_motion_gen(p, collisions=c, teleport=t)),
-        'test-bconf-in-region': from_test(get_bconf_in_region_test(p.robot)),
-        'test-pose-in-region': from_test(get_pose_in_region_test()),
+        'test-bconf-in-location': from_test(get_bconf_in_region_test(p.robot)),
+        'test-pose-in-location': from_test(get_pose_in_region_test()),
         'test-pose-in-space': from_test(get_pose_in_space_test()),
 
-        # 'sample-bconf-in-region': from_gen_fn(get_bconf_in_region_gen(p, collisions=c, visualize=False)),
-        'sample-bconf-in-region': from_list_fn(get_bconf_in_region_gen(p, collisions=c, visualize=False)),
-        'sample-pose-in-region': from_list_fn(get_pose_in_region_gen(p, collisions=c, visualize=False)),
+        # 'sample-bconf-in-location': from_gen_fn(get_bconf_in_region_gen(p, collisions=c, visualize=False)),
+        'sample-bconf-in-location': from_list_fn(get_bconf_in_region_gen(p, collisions=c, visualize=False)),
+        'sample-pose-in-location': from_list_fn(get_pose_in_region_gen(p, collisions=c, visualize=False)),
 
         'MoveCost': move_cost_fn,
 
@@ -186,8 +188,8 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
             'test-cfree-traj-position': from_test(universe_test),
             'test-cfree-btraj-pose': from_test(universe_test),
 
-            #'test-bconf-in-region': from_test(universe_test),
-            #'test-pose-in-region': from_test(universe_test),
+            #'test-bconf-in-location': from_test(universe_test),
+            #'test-pose-in-location': from_test(universe_test),
             #'test-pose-in-space': from_test(universe_test),
         })
 

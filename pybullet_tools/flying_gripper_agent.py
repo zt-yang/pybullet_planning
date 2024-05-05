@@ -54,13 +54,13 @@ def get_stream_map(p, c, l, t, **kwargs):
         # 'sample-marker-pose': from_list_fn(get_marker_pose_gen(p, collisions=c)),
         # 'plan-base-pull-marker-to-bconf': from_fn(get_pull_marker_to_bconf_motion_gen(p, collisions=c, teleport=t)),
         # 'plan-base-pull-marker-to-pose': from_fn(get_pull_marker_to_pose_motion_gen(p, collisions=c, teleport=t)),
-        # 'test-bconf-in-region': from_test(get_bconf_in_region_test(p.robot)),
-        # 'test-pose-in-region': from_test(get_pose_in_region_test()),
+        # 'test-bconf-in-location': from_test(get_bconf_in_region_test(p.robot)),
+        # 'test-pose-in-location': from_test(get_pose_in_region_test()),
         # 'test-pose-in-space': from_test(get_pose_in_space_test()),  ##
         #
-        # # 'sample-bconf-in-region': from_gen_fn(get_bconf_in_region_gen(p, collisions=c, visualize=False)),
-        # 'sample-bconf-in-region': from_list_fn(get_bconf_in_region_gen(p, collisions=c, visualize=False)),
-        # 'sample-pose-in-region': from_list_fn(get_pose_in_region_gen(p, collisions=c, visualize=False)),
+        # # 'sample-bconf-in-location': from_gen_fn(get_bconf_in_region_gen(p, collisions=c, visualize=False)),
+        # 'sample-bconf-in-location': from_list_fn(get_bconf_in_region_gen(p, collisions=c, visualize=False)),
+        # 'sample-pose-in-location': from_list_fn(get_pose_in_region_gen(p, collisions=c, visualize=False)),
 
         # 'MoveCost': move_cost_fn,
 
