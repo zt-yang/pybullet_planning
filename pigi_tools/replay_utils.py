@@ -192,22 +192,22 @@ def set_replay_camera_pose(world, run_dir, camera_kwargs, camera_point, target_p
             set_camera_pose(camera_kwargs['camera_point'], camera_kwargs['target_point'])
         elif 'camera_point_begin' in camera_kwargs:
             set_camera_pose(camera_kwargs['camera_point_begin'], camera_kwargs['target_point_begin'])
-    else:
-        set_camera_pose(camera_point, target_point)
-        return
-
-        planning_config = load_planning_config(run_dir)
-        if False and 'obs_camera_pose' in planning_config:
-            ### not working
-            camera_pose = planning_config['obs_camera_pose']
-            # camera_pose = adjust_camera_pose(camera_pose)
-            set_camera_pose2(camera_pose)
-        else:
-            aabb = world.get_world_aabb()
-            center = get_aabb_center(aabb)
-            extent = get_aabb_extent(aabb)
-            camera_point = center + extent / 2
-            set_camera_pose(camera_point, center)
+    # else:
+    #     set_camera_pose(camera_point, target_point)
+    #     return
+    #
+    #     planning_config = load_planning_config(run_dir)
+    #     if False and 'obs_camera_pose' in planning_config:
+    #         ### not working
+    #         camera_pose = planning_config['obs_camera_pose']
+    #         # camera_pose = adjust_camera_pose(camera_pose)
+    #         set_camera_pose2(camera_pose)
+    #     else:
+    #         aabb = world.get_world_aabb()
+    #         center = get_aabb_center(aabb)
+    #         extent = get_aabb_extent(aabb)
+    #         camera_point = center + extent / 2
+    #         set_camera_pose(camera_point, center)
 
 
 def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path=None, given_dir=None, cases=None,

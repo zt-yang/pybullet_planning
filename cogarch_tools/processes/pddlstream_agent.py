@@ -163,8 +163,8 @@ class PDDLStreamAgent(MotionAgent):
         """
         from pybullet_tools.logging_utils import myprint as print
 
-        if self.plan:
-            self.world.remove_redundant_bodies()
+        # if self.plan:
+        #     self.world.remove_redundant_bodies()
 
         if observation.unobserved_objs is not None:
             newly_observed = observation.update_unobserved_objs()
@@ -229,7 +229,6 @@ class PDDLStreamAgent(MotionAgent):
         self.pddlstream_kwargs.update({'skeleton': None, 'subgoals': None})
 
         self.record_time(time_log)
-        self.initial_state.remove_gripper()  ## after the first planning
 
         self.evaluations, self.goal_exp, self.domain, self.externals = knowledge
         self.state = list(set(self.pddlstream_problem.init + preimage))

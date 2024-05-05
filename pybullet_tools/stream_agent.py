@@ -6,16 +6,16 @@ import time
 import numpy as np
 from pprint import pprint, pformat
 
-from pybullet_tools.mobile_streams import get_pull_door_handle_motion_gen as get_turn_knob_handle_motion_gen
 from pybullet_tools.pr2_streams import get_stable_gen, Position, get_pose_in_space_test, \
     get_marker_grasp_gen, get_bconf_in_region_test, \
     get_bconf_in_region_gen, get_pose_in_region_gen, get_base_motion_gen, \
     get_marker_pose_gen, get_pull_marker_to_pose_motion_gen, get_pull_marker_to_bconf_motion_gen,  \
-    get_pull_marker_random_motion_gen, get_ik_ungrasp_gen, get_pose_in_region_test, \
-    get_cfree_btraj_pose_test, get_ik_ungrasp_mark_gen, \
+    get_pull_marker_random_motion_gen, get_pose_in_region_test, get_cfree_btraj_pose_test, \
     sample_joint_position_gen
 from pybullet_tools.mobile_streams import get_ik_fn_old, get_ik_gen_old, get_ik_rel_gen_old, \
-    get_ik_rel_fn_old, get_pull_door_handle_motion_gen, get_pull_door_handle_with_link_motion_gen
+    get_ik_rel_fn_old, get_pull_door_handle_motion_gen, get_pull_door_handle_with_link_motion_gen, \
+    get_ik_ungrasp_gen, get_ik_ungrasp_mark_gen, \
+    get_pull_door_handle_motion_gen as get_turn_knob_handle_motion_gen
 
 from pybullet_tools.pr2_primitives import get_group_joints, get_base_custom_limits, Pose, Conf, \
     get_ik_ir_gen, move_cost_fn, Attach, Detach, Clean, Cook, \
@@ -730,6 +730,9 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
 
     saver.restore()
     # profiler.restore()
+    reset_globals()
+    state.remove_gripper()
+    world.remove_redundant_bodies()
 
     knowledge = parse_problem(pddlstream_problem, stream_info=stream_info,
                               constraints=PlanConstraints(), unit_costs=True,
@@ -782,8 +785,6 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
         apply_actions(lisdf_problem, commands, time_step=5e-2)
         wait_if_gui('Finish?')
         state.assign()
-
-    reset_globals()  ## reset PDDLStream solutions
 
     return plan, env, knowledge, time_log, preimage
 

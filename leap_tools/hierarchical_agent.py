@@ -10,7 +10,7 @@ from pybullet_tools.logging_utils import print_lists
 
 hpn_kwargs = dict(domain_modifier='atbconf,canmove', exp_name='hpn')
 hpn_kwargs = dict(domain_modifier='atbconf,canmove,basemotion', exp_name='hpn')
-
+hpn_kwargs.update(dict(separate_base_planning=True))
 
 class HierarchicalAgent(PDDLStreamAgent):
 
@@ -178,12 +178,10 @@ class HierarchicalAgent(PDDLStreamAgent):
             # sub_problem = get_smaller_world(pddlstream_problem, observation.state.world)
 
             ## get new plan, by default it's using the original domain file
-            reset_globals()
             plan, env, knowledge, time_log, preimage = self.solve_pddlstream(
                 sub_problem, sub_state, domain_pddl=domain_pddl,
                 domain_modifier=domain_modifier,
                 **self.pddlstream_kwargs, **kwargs)  ## observation.objects
-            observation.state.remove_gripper()
 
             ## save the failures
             failures_file = join(VISUALIZATIONS_PATH, 'log.json')

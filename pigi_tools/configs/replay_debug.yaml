@@ -14,7 +14,7 @@ check_time: 1674417578
 
 ## ---- control
 preview_scene: false
-step_by_step: true
+step_by_step: false
 use_gym: false
 auto_play: true
 verbose: false
@@ -24,8 +24,8 @@ time_step: 0.025
 width: 1440
 height: 1120
 fx: 600
-camera_point: [8.5, 2.5, 3]
-target_point: [0, 2.5, 0]
+camera_point: null # [8.5, 2.5, 3]
+target_point: null # [0, 2.5, 0]
 camera_kwargs: null
 camera_movement: null
 light_conf: null

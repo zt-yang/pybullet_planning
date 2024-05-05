@@ -27,8 +27,8 @@ from pddlgym.spaces import LiteralSpace, LiteralSetSpace
 from world_builder.entities import Object
 
 from pybullet_tools.logging_utils import summarize_facts
-from pybullet_tools.pr2_primitives import Pose, Grasp, Conf, APPROACH_DISTANCE, \
-    TOP_HOLDING_LEFT_ARM
+from pybullet_tools.pr2_primitives import Pose, Grasp, Conf, APPROACH_DISTANCE
+from pybullet_tools.pr2_utils import TOP_HOLDING_LEFT_ARM
 from pybullet_tools.utils import get_unit_vector, multiply, unit_quat
 from pybullet_tools.logging_utils import myprint as print, summarize_state_changes, print_list
 
@@ -765,14 +765,16 @@ class PDDLStreamEnv(PDDLEnv):
         print()
         print_list(missing_preconditions, 'get_missing_actions.missing_preconditions')
         if len(missing_preconditions) > 0:
-            init = self._state_original.literals  ## TODO: has problems because action sequence is wrong
+            # init = self._state_original.literals  ## TODO: has problems because action sequence is wrong
             for pre in missing_preconditions:
                 name = pre.predicate.name
                 if name == 'atbconf':
-                    if self.last_bconf is None:
-                        from_bconf = [f for f in init if f.predicate.name == 'atbconf'][0].variables[0]
-                    else:
-                        from_bconf = self.last_bconf
+                    # if self.last_bconf is None:
+                    #     from_bconf = [f for f in init if f.predicate.name == 'atbconf'][0].variables[0]
+                    # else:
+                    #     from_bconf = self.last_bconf
+
+                    from_bconf = [f for f in self._state_original.literals if f.predicate.name == 'atbconf'][0].variables[0]
                     if from_bconf == pre.variables[0]:
                         continue
                     self.last_bconf = pre.variables[0]
