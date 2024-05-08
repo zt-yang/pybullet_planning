@@ -35,8 +35,9 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
               exp_dir=None, exp_subdir=None, exp_name='default', reset=False, draw_base_limits=None,
               record_problem=True, save_testcase=False, record_plans=False, data_generation=False, use_rel_pose=None,
               domain_modifier=None, object_reducer=None, comparing=False, load_initial_state=False,
-              window_width=1440, window_height=1120, debug=None, separate_base_planning=None,
-              use_subgoal_constraints=None, use_skeleton_constraints=None, **kwargs):
+              window_width=1440, window_height=1120, debug=None, separate_base_planning=None, dual_arm=None,
+              top_grasp_tolerance=None, use_subgoal_constraints=None, use_skeleton_constraints=None,
+              visualization=None, **kwargs):
     """
     problem:    name of the problem builder function to solve
     exp_dir:    sub-directory in `bullet/experiments` to save the planning data
@@ -54,8 +55,9 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
                       window_width=window_width, window_height=window_height, draw_base_limits=draw_base_limits,
                       exp_dir=exp_dir, exp_subdir=exp_subdir, exp_name=exp_name, domain_pddl=domain, stream_pddl=stream,
                       use_rel_pose=use_rel_pose, record_problem=record_problem, save_testcase=save_testcase,
-                      debug=debug, separate_base_planning=separate_base_planning,
-                      use_subgoal_constraints=use_subgoal_constraints, use_skeleton_constraints=use_skeleton_constraints)
+                      debug=debug, dual_arm=dual_arm, separate_base_planning=separate_base_planning,
+                      top_grasp_tolerance=top_grasp_tolerance, use_subgoal_constraints=use_subgoal_constraints,
+                      use_skeleton_constraints=use_skeleton_constraints, visualization=visualization)
     if 'robot_builder_args' not in kwargs:
         kwargs['robot_builder_args'] = args.robot_builder_args
     kwargs['robot_builder_args']['create_robot_fn'] = create_robot_fn
@@ -112,6 +114,9 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
         state.world.initiate_observation_cameras()
         state.save_default_observation(output_path=join(agent.llamp_api.obs_dir, 'observation_0.png'))
 
+    if hasattr(agent, 'llamp_api') and problem_dict['llamp_api'].planning_mode is None:
+        return
+
     """ before planning """
     if args.preview_scene and args.viewer:
         set_renderer(True)
@@ -150,7 +155,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
         if comparing:
             reorg_output_dirs(args.exp_name, output_dir, log_failures=solver_kwargs['log_failures'])
         else:
-            print('saved planning data to ' + output_dir)
+            print('\nsaved planning data to ' + output_dir)
 
     if record_plans:
         from world_builder.paths import KITCHEN_WORLD

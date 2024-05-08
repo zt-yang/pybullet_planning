@@ -357,7 +357,7 @@
 
     (:action grasp_handle
       :parameters (?a ?o ?p ?g ?q ?aq1 ?aq2 ?t)
-      :precondition (and (Joint ?o) (AConf ?a ?aq1) (CanGraspHandle)
+      :precondition (and (Joint ?o) (AConf ?a ?aq1) (CanGraspHandle) ; (CanUngrasp)
                          (KinGraspHandle ?a ?o ?p ?g ?q ?aq2 ?t)
                          (AtPosition ?o ?p) (HandEmpty ?a)
                          (AtBConf ?q) (AtAConf ?a ?aq1)
@@ -389,7 +389,7 @@
     ;; from position ?p1 pull to the position ?p2
     (:action pull_handle
       :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq)
-      :precondition (and (Joint ?o) (not (= ?p1 ?p2)) (CanPull ?a) (UnattachedJoint ?o)
+      :precondition (and (Joint ?o) (not (= ?p1 ?p2)) (CanPull ?a) (UnattachedJoint ?o) ; (not (CanUngrasp))
                          (AtPosition ?o ?p1) (Position ?o ?p2) (AtHandleGrasp ?a ?o ?g)
                          (KinPullDoorHandle ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq)
                          (AtBConf ?q1) (AtAConf ?a ?aq)
@@ -408,7 +408,7 @@
     ;; from position ?p1 pull to the position ?p2, also affecting the pose of link attached to it
     (:action pull_handle_with_link
       :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq ?l ?pl1 ?pl2)
-      :precondition (and (Joint ?o) (not (= ?p1 ?p2)) (CanPull ?a)
+      :precondition (and (Joint ?o) (not (= ?p1 ?p2)) (CanPull ?a) ; (not (CanUngrasp))
                          (JointAffectLink ?o ?l) (AtPose ?l ?pl1) (Pose ?l ?pl2)
                          (AtPosition ?o ?p1) (Position ?o ?p2) (AtHandleGrasp ?a ?o ?g)
                          (KinPullDoorHandleWithLink ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq ?l ?pl1 ?pl2)
@@ -488,11 +488,11 @@
 
   (:derived (OpenedJoint ?o)
     (exists (?pstn) (and (Joint ?o) (Position ?o ?pstn) (AtPosition ?o ?pstn)
-                      (IsOpenedPosition ?o ?pstn)))
+                      (IsOpenedPosition ?o ?pstn) (CanPick)))
   )
   (:derived (ClosedJoint ?o)
     (exists (?pstn) (and (Joint ?o) (Position ?o ?pstn) (AtPosition ?o ?pstn)
-                      (IsClosedPosition ?o ?pstn)))
+                      (IsClosedPosition ?o ?pstn) (CanPick)))
   )
 
     (:derived (HandleGrasped ?a ?o)

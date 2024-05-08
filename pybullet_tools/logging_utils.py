@@ -152,6 +152,8 @@ def save_commands(commands, commands_path):
 
 
 def get_readable_list(lst, world=None, NAME_ONLY=False, TO_LISDF=False):
+    if len(lst) == 0:
+        return []
     to_print = [lst[0]]
     for word in lst[1:]:
         if world is not None:
@@ -260,17 +262,26 @@ def print_list(lst, title):
     print('\t\t' + '\n\t\t'.join([str(f) for f in lst]))
 
 
-def summarize_state_changes(current_facts, old_facts, title='summarize_state_changes'):
+def print_dict(dic, title):
+    from pprint import pformat
+    title = title.replace('_', ' ').upper()
+    myprint('-' * 25 + f' {title} ' + '-' * 25)
+    myprint(pformat(dic, indent=3))
+    myprint('-' * 60)
+
+
+def summarize_state_changes(current_facts, old_facts, title='summarize_state_changes', verbose=True):
     added = list(set(current_facts) - set(old_facts))
-    added = remove_identical(added)
+    added = process_facts(added)
     deled = list(set(old_facts) - set(current_facts))
-    deled = remove_identical(deled)
-    print_lists([(added, f'{title}.added'), (deled, f'{title}.deled')])
+    deled = process_facts(deled)
+    if verbose:
+        print_lists([(added, f'{title}.added'), (deled, f'{title}.deled')])
     return added, deled
 
 
-def remove_identical(facts):
-    return [f for f in facts if f[0] not in ['='] and \
+def process_facts(facts):
+    facts = [f for f in facts if f[0] not in ['='] and \
             not (f[0] == 'not' and f[1][0] in ['=', 'identical'])]
-
-## -----------------------------------------------------------
+    facts = sorted(facts, key=lambda x: x[0])
+    return facts

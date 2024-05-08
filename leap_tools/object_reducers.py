@@ -1,3 +1,7 @@
+from pybullet_tools.utils import get_aabb_center
+from pybullet_tools.logging_utils import myprint as print
+
+
 def initialize_object_reducer(name):
     if name == 'goal-related':
         return reduce_facts_given_goals
@@ -40,15 +44,13 @@ def reduce_facts_given_goals(facts, objects=[], goals=[]):
             filtered_facts.append(f)
         else:
             reduced_facts.append(f)
-    print('\n\nreduce_facts_from_planning | Reduced %d facts' % len(reduced_facts),
-          'Remaining %d facts\n ' % len(filtered_facts))
-    print('\n '.join([str(f) for f in reduced_facts]))
+    print(f'\n\nreduce_facts_given_goals | reduced {len(reduced_facts)} facts \tremaining {len(filtered_facts)} facts')
+    print('\t'+'\n\t'.join([str(f) for f in reduced_facts]))
     return filtered_facts
 
 
-def reduce_facts_given_objects(facts, objects=[], goals=[]):
-    from pybullet_tools.logging_utils import myprint
-    myprint(f'\nfilter_init_by_objects | objects = {objects}')
+def reduce_facts_given_objects(facts, objects=[], goals=[], verbose=False):
+    print(f'\nfilter_init_by_objects | objects = {objects}')
 
     ## identify goal related objects
     objects_in_goals = []
@@ -66,11 +68,14 @@ def reduce_facts_given_objects(facts, objects=[], goals=[]):
     removed_facts = []
     for fact in facts:
         removed = False
-        if fact[0] not in ['=']:
+        if fact[0] in ['ungraspbconf']:
+            removed = True
+        elif fact[0] not in ['=']:
             for elem in fact[1:]:
                 if (isinstance(elem, int) or isinstance(elem, tuple)) and elem not in objects:
                     removed = True
-                    myprint(f'\t removing fact {fact}')
+                    if verbose:
+                        print(f'\t removing fact {fact}')
                     break
         if removed:
             removed_facts.append(fact)
@@ -93,7 +98,7 @@ def reduce_by_object_heuristic_joints(facts, objects=[], goals=[]):
         region = goals[0][2]
         for o in all_joints:
             if o[0] == region[0] and o not in objects:
-                print('add objects ny heuristic-joints', o)
+                print(f'add objects ny heuristic-joints\t{o}')
                 objects.append(o)
 
     return reduce_facts_given_objects(facts, objects=objects, goals=goals)
@@ -115,27 +120,39 @@ def reduce_by_objects_heuristic_movables(facts, objects=[], goals=[], aabb_expan
     import numpy as np
     from pybullet_tools.utils import get_aabb, AABB, aabb_overlap
 
-    def get_surface_aabb(region):
-        return get_aabb(region[0], region[-1]) if isinstance(region, tuple) else get_aabb(region)
+    def get_surface_aabb(surface):
+        return get_aabb(surface[0], surface[-1]) if isinstance(surface, tuple) else get_aabb(surface)
 
     if goals[0][0] in ['on', 'in']:
         region = goals[0][2]
         region_aabb = get_surface_aabb(region)
 
+        def get_distance_to_aabb(surface):
+            region_center = get_aabb_center(region_aabb)
+            surface_aabb = get_surface_aabb(surface)
+            surface_aabb_center = get_aabb_center(surface_aabb)
+            return np.linalg.norm(np.asarray(surface_aabb_center) - np.asarray(region_center))
+
         all_movables = [f[1] for f in facts if f[0].lower() == 'graspable' and f[1] not in objects]
         other_surfaces = [f[1] for f in facts if f[0].lower() == 'surface' and f[1] != region]
 
-        ## sort other_surfaces by aabb
+        ## sort other_surfaces by aabb side
         big_surface = sorted(other_surfaces, key=get_surface_aabb)[0]
         objects.append(big_surface)
-        print('add objects by heuristic-movables | surface:\t', big_surface)
+        print(f'add objects by heuristic-movables | surface:\t{big_surface}')
 
         for o in all_movables:
             mov_aabb = get_aabb(o)
             mov_aabb_expanded = AABB(lower=np.asarray(mov_aabb.lower) - aabb_expansion,
                                      upper=np.asarray(mov_aabb.upper) + aabb_expansion)
             if aabb_overlap(region_aabb, mov_aabb_expanded):
-                print('add objects by heuristic-movables | movable:\t', o)
+                print(f'add objects by heuristic-movables | obstacle:\t {o}')
                 objects.append(o)
+
+                ## add another surface closest to obstacle
+                closest_surface = sorted(other_surfaces, key=get_distance_to_aabb)[:2]
+                add_surfaces = [s for s in closest_surface if s not in objects]
+                objects.extend(add_surfaces)
+                print(f'add objects by heuristic-movables | surface close to obstacle:\t {add_surfaces}')
 
     return reduce_facts_given_objects(facts, objects=objects, goals=goals)

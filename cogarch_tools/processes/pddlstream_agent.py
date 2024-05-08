@@ -16,16 +16,15 @@ import sys
 from pybullet_tools.logging_utils import summarize_facts, print_goal
 from pybullet_tools.bullet_utils import get_datetime
 from pybullet_tools.pr2_primitives import Trajectory
-from pybullet_tools.stream_agent import solve_pddlstream
-from pybullet_tools.utils import SEPARATOR
-from pybullet_tools.logging_utils import save_commands, TXT_FILE, summarize_state_changes
+from pybullet_tools.stream_agent import solve_pddlstream, make_init_lower_case
+from pybullet_tools.utils import SEPARATOR, wait_if_gui
+from pybullet_tools.logging_utils import save_commands, TXT_FILE, summarize_state_changes, print_lists
 
 from world_builder.actions import get_primitive_actions
 from world_builder.world_utils import get_camera_image
 
 from cogarch_tools.processes.motion_agent import MotionAgent
 from cogarch_tools.cogarch_utils import clear_empty_exp_dirs
-from problem_sets.pr2_problems import pddlstream_from_state_goal
 
 from leap_tools.domain_modifiers import initialize_domain_modifier
 from leap_tools.object_reducers import initialize_object_reducer
@@ -77,6 +76,9 @@ class PDDLStreamAgent(MotionAgent):
         self.initial_state = None
 
         self.state = init
+        self.last_plan_state = None  ## updated after planning
+        self.last_added_facts = []
+        self.last_deled_facts = []
         self.static_facts = [('=', ('PlaceCost',), 1), ('=', ('PickCost',), 1)]
         self.failed_count = None
         self.last_action_name = None
@@ -132,7 +134,7 @@ class PDDLStreamAgent(MotionAgent):
         ## hack for checking if the plan has been executed
         if self.plan is not None and len(self.plan) == 0:
             print('\n\nfinished executing plan\n')
-            # wait_if_gui('finish?')
+            wait_if_gui('finish?')
             return True
         return False
 
@@ -175,7 +177,7 @@ class PDDLStreamAgent(MotionAgent):
             action = self.plan.pop(0)
             name = get_action_name(action)
             if self.last_action_name != name:
-                print(self.step_count, print_action(action))
+                print(f"{self.step_count}\t{print_action(action)}")
             self.last_action_name = name
 
             ## already broken down to specific robot commands
@@ -186,7 +188,7 @@ class PDDLStreamAgent(MotionAgent):
                     action = action[0]
                 self.actions.append(action)
                 if len(self.plan) > 0 and get_action_name(self.plan[0]) != get_action_name(action):
-                    print('pddlstream_agent.process_plan\tgetting new action', action)
+                    print(f'pddlstream_agent.process_plan\tgetting new action {action}')
                 return action
 
             # if self.step_count in [7,  8]:
@@ -212,12 +214,13 @@ class PDDLStreamAgent(MotionAgent):
     def _update_state(self, action):
         facts_old = set(self.state)
         added, deled = self.env_execution.step(action)
-        self.state += added + self.static_facts
-        self.state = [f for f in set(self.state) if f not in deled]
+        self.state = update_facts(self.state, added=added + self.static_facts, deled=deled)
         print(f'pddlstream_agent._update_state(step={self.step_count}, {action})')
         summarize_state_changes(self.state, facts_old, title='')
         # summarize_facts(self.state, self.world, name='Facts computed during execution')
         self.step_count += 1
+        self.last_added_facts = added
+        self.last_deled_facts = deled
 
     def replan(self, observation, **kwargs):
         """ make new plans given a pddlstream_problem """
@@ -227,21 +230,42 @@ class PDDLStreamAgent(MotionAgent):
             self.pddlstream_problem, observation.state, domain_pddl=self.domain_pddl,
             domain_modifier=self.domain_modifier, **self.pddlstream_kwargs, **kwargs)  ## observation.objects
         self.pddlstream_kwargs.update({'skeleton': None, 'subgoals': None})
-
-        self.record_time(time_log)
-
         self.evaluations, self.goal_exp, self.domain, self.externals = knowledge
-        self.state = list(set(self.pddlstream_problem.init + preimage))
+        self.record_time(time_log)
+        is_HPN = 'hpn' in self.exp_name or env is not None
 
-        ## save the failed streams
-        failures_file = join(VISUALIZATIONS_PATH, 'log.json')
-        if self.exp_name == 'hpn' and isdir(VISUALIZATIONS_PATH) and isfile(failures_file):
-            shutil.move(failures_file, join(VISUALIZATIONS_PATH, f'log_0.json'))
+        if is_HPN:
+            self.state = make_init_lower_case(set(self.pddlstream_problem.init + preimage))
 
-        if 'hpn' in self.exp_name:
+            ## save the failed streams
+            failures_file = join(VISUALIZATIONS_PATH, 'log.json')
+            if isdir(VISUALIZATIONS_PATH) and isfile(failures_file):
+                shutil.move(failures_file, join(VISUALIZATIONS_PATH, f'log_0.json'))
+        else:
+            print(f'pddlstream.replan\tstep_count = {self.step_count}')
+            self.state = make_init_lower_case(self.pddlstream_problem.init)
+            self.last_plan_state = copy.deepcopy(self.state)
+
+        ## the first planning problem - only for
+        if self.env_execution is None:  ## and not self.pddlstream_kwargs['visualization']:
+            self._init_env_execution()
+
+        ## hierarchical planning in the now
+        if is_HPN:
             self._replan_postprocess(env, preimage)
 
         return self.plan
+
+    def _init_env_execution(self):
+        from leap_tools.hierarchical import PDDLStreamForwardEnv
+
+        if self.plan is None:
+            self.save_stats(solved=False)
+        domain_pddl = self.domain_pddl
+        domain_pddl = join(PDDL_PATH, 'domains', domain_pddl)
+        init = self.state
+        self.env_execution = PDDLStreamForwardEnv(domain_pddl, self.pddlstream_problem, init=init)
+        self.env_execution.reset()
 
     def _replan_preprocess(self, observation):
         assert NotImplemented
@@ -269,6 +293,7 @@ class PDDLStreamAgent(MotionAgent):
     def save_commands(self, commands_path):
         self.remove_unpickleble_attributes()
         save_commands(self.commands, commands_path)
+        self.recover_unpickleble_attributes()
 
     def save_time_log(self, csv_name, solved=True):
         """ compare the planning time and plan length across runs """
@@ -278,8 +303,7 @@ class PDDLStreamAgent(MotionAgent):
         for i in range(len(self.time_log)):
             if 'planning' not in self.time_log[i]:
                 print('save_time_log', i, self.time_log[i])
-        print('pddlstream_agent.save_time_log\n\ttotal planning time:',
-              self.time_log[0]['planning'])  # --monitoring
+        print('pddlstream_agent.save_time_log\n\ttotal planning time:'+str(self.time_log[0]['planning']))
         durations = {i: self.time_log[i]['planning'] for i in range(len(self.time_log))}
         durations2 = {i: self.time_log[i]['preimage'] for i in range(len(self.time_log))}
         total_planning = sum(list(durations.values()))
@@ -359,3 +383,24 @@ def print_action(action):
                     new_args.append(ele)
             return Action(name, new_args)
     return action
+
+
+def update_facts(facts, added, deled):
+    return [f for f in set(facts + added) if f not in deled]
+
+
+def filter_dynamic_facts(facts):
+    ## the following predicates are generated again by state thus ignored
+    ignored_preds = ['aconf', 'ataconf', 'atbconf', 'atpose', 'atposition', 'atrelpose', 'basemotion',
+         'bconf', 'contained', 'defaultaconf', 'isclosedposition',
+         'kingrasphandle', 'kinpulldoorhandle', 'pose', 'position', 'relpose']
+    facts = [f for f in facts if f[0] not in ignored_preds]
+
+    ## some positive and negative effects cancel out
+    to_remove = []
+    for i in range(len(facts)):
+        fact = facts[i]
+        if fact[0] == 'not' and fact[1] in facts:
+            to_remove.extend([fact, fact[1]])
+    facts = [f for f in facts if f not in to_remove]
+    return facts

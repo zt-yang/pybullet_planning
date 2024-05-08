@@ -194,9 +194,8 @@ class RelPose(object):
         return 'rp{}={}'.format(index, nice(rel_pose))
 
 
-
 def pose_from_attachment(attachment, **kwargs):
-    return RelPose(attachment.child, reference_body=attachment.parent,
+    return RelPose(attachment.child.body, reference_body=attachment.parent,
                    reference_link=attachment.parent_link, confs=[attachment], **kwargs)
 
 
@@ -314,6 +313,7 @@ def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visu
             count -= 1
             surface = random.choice(surfaces)  # TODO: weight by area
             if isinstance(surface, tuple):  ## (body, link)
+                # body_pose = sample_obj_on_body_link_surface(body, surface[0], surface[-1])
                 body_pose = sample_placement(body, surface[0], bottom_link=surface[-1], **kwargs)
             elif has_much_larger_aabb(surface, body):
                 body_pose = smarter_sample_placement(body, surface, world, **kwargs)
@@ -548,7 +548,7 @@ def visualize_sampled_pstns(x_min, x_max, x_points):
     plt.show()
 
 
-def sample_joint_position_gen(num_samples=14, to_close=False, visualize=False, verbose=False):
+def sample_joint_position_gen(num_samples=14, to_close=False, visualize=False, verbose=True):
     """ generate open positions if closed=False and closed positions if closed=True (deprecated) """
     def fn(o, pstn1):
 
@@ -605,7 +605,7 @@ def sample_joint_position_gen(num_samples=14, to_close=False, visualize=False, v
                         lower_new = lower + 1/2 * math.pi
                     else:
                         lower_new = upper - a_third
-                    pstns.append(lower + math.pi/2)
+                    pstns.append(lower + math.pi*2/3)
 
                 lower = lower_new if lower_new else lower
                 upper = upper_new if upper_new else upper
@@ -1043,7 +1043,7 @@ def get_cfree_traj_pose_test(problem, collisions=True, verbose=False, visualize=
 """
 
 
-def process_motion_fluents(fluents, robot, verbose=False):
+def process_motion_fluents(fluents, robot, verbose=True):
 
     ## sort the fluents so that AtRelPose is assigned after AtPose
     sorted_fluents = [f for f in fluents if f[0].lower() == 'atpose']

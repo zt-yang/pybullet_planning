@@ -142,14 +142,18 @@ class IKSolver(object):
         return self.solve(tool_pose, seed_conf=self.reference_conf, **kwargs)
     def solve_warm(self, tool_pose, **kwargs):
         return self.solve(tool_pose, seed_conf=self.last_solution, **kwargs)
-    def generate(self, tool_pose, include_failures=False, max_attempts=30, **kwargs):
+    def generate(self, tool_pose, include_failures=False, max_attempts=30, verbose=False, **kwargs):
         attempt = 0
         while attempt < max_attempts:
             attempt += 1
             seed_conf = self.sample_conf()
             solution_conf = self.solve(tool_pose, seed_conf=seed_conf, **kwargs)
             if include_failures or (solution_conf is not None):
+                if verbose: print(f'tracik.generate {attempt} succeed')
                 yield solution_conf
+            else:
+                if verbose: print(f'tracik.generate {attempt} failed')
+        if verbose: print(f'tracik.generate exit loop to {max_attempts}')
         yield solution_conf
     def __str__(self):
         return '{}(body={}, tool={}, base={}, joints={})'.format(

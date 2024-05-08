@@ -1,8 +1,8 @@
 import random
 
 from pybullet_tools.pr2_primitives import Conf, get_group_joints
-from pybullet_tools.utils import invert, get_name, pairwise_collision, \
-    get_link_pose, get_pose, set_pose
+from pybullet_tools.utils import invert, get_name, pairwise_collision, sample_placement_on_aabb, \
+    get_link_pose, get_pose, set_pose, sample_placement, aabb_from_extent_center
 from pybullet_tools.pose_utils import sample_pose, xyzyaw_to_pose, sample_center_top_surface
 from pybullet_tools.bullet_utils import nice, collided, equal
 
@@ -28,7 +28,7 @@ part_names = {
 
 default_supports = [
     ['appliance', 'microwave', True, 'microwave', 'hitman_tmp'],
-    ['food', 'MeatTurkeyLeg', True, 'chicken-leg', 'shelf_bottom'],
+    ['food', 'MeatTurkeyLeg', True, 'chicken-leg', 'shelf_top'],
     ['food', 'VeggieCabbage', True, 'cabbage', 'upper_shelf'],  ## ['shelf_bottom', 'indigo_drawer_top]
     ['food', 'Salter', '3934', 'salt-shaker', 'sektion'],
     ['food', 'Salter', '5861', 'pepper-shaker', 'sektion'],
@@ -43,6 +43,7 @@ saved_joints = [
     # ('counter', ['indigo_door_left_joint', 'indigo_door_right_joint'], 1, 'indigo_tmp'),
     ('counter', ['indigo_drawer_top'], 1, 'indigo_drawer_top'),
     ('fridge', ['fridge_door'], 0.7, 'shelf_bottom'),  ## 0.5 if you want to close it
+    ('fridge', ['fridge_door'], 0.7, 'shelf_top'),  ## 0.5 if you want to close it
     ('dishwasher', ['dishwasher_door'], 1, 'upper_shelf'),
 ]
 
@@ -60,8 +61,10 @@ saved_poses = {
     ('vinegar-bottle', 'dagger'): ((0.45, 8.83, 1.54), (0.0, 0.0, 0.0, 1.0)),
     ('vinegar-bottle', 'indigo_tmp'): ((0.59, 8.88, 0.16), (0.0, 0.0, 0.0, 1.0)),
     ('vinegar-bottle', 'shelf_bottom'): ((0.64, 4.88, 0.89), (0.0, 0.0, 0.0, 1.0)),
-    ('chicken-leg', 'indigo_tmp'): ((0.717, 8.714, 0.849), (0.0, -0.0, -0.99987, 0.0163)),
+    # ('chicken-leg', 'indigo_tmp'): ((0.717, 8.714, 0.849), (0.0, -0.0, -0.99987, 0.0163)), ## grasp the meat end
+    ('chicken-leg', 'indigo_tmp'): ((0.787, 8.841, 0.849), (0.0, 0.0, 0.239, 0.971)), ## grasp the bone end
     ('chicken-leg', 'shelf_bottom'): ((0.654, 5.062, 0.797), (0.0, 0.0, 0.97, 0.25)),
+    ('chicken-leg', 'shelf_top'): ((0.654, 4.846, 1.384), (-0.0, 0.0, -0.182, 0.983)),
     ('cabbage', 'shelf_bottom'): ((0.668, 4.862, 0.83), (0, 0, 0.747, 0.665)),
     # ('cabbage', 'upper_shelf'): ((1.006, 6.295, 0.461), (0.0, 0.0, 0.941, 0.338)),
     # ('cabbage', 'indigo_drawer_top'): ((1.12, 8.671, 0.726), (0.0, 0.0, 0.173, 0.985)),
@@ -71,41 +74,47 @@ saved_poses = {
 }
 
 saved_base_confs = {
-    ('cabbage', 'shelf_bottom'): [
+    ('cabbage', 'shelf_bottom', 'left'): [
         (1.54, 4.693, 0.49, 2.081),
         ((1.353, 4.55, 0.651, 1.732), {0: 1.353, 1: 4.55, 2: 1.732, 17: 0.651, 61: 0.574, 62: 0.996, 63: -0.63, 65: -0.822, 66: -2.804, 68: -1.318, 69: -2.06}),
         ((1.374, 4.857, 0.367, -3.29), {0: 1.374, 1: 4.857, 2: -3.29, 17: 0.367, 61: 0.18, 62: 0.478, 63: 0.819, 65: -0.862, 66: 2.424, 68: -1.732, 69: 4.031}),
         ((1.43, 5.035, 0.442, -3.284), {0: 1.43, 1: 5.035, 2: -3.284, 17: 0.442, 61: 0.195, 62: 0.147, 63: 2.962, 65: -0.34, 66: 0.2, 68: -1.089, 69: 3.011}),
         ((1.369, 5.083, 0.366, 2.76), {0: 1.369, 1: 5.083, 2: 2.76, 17: 0.366, 61: 0.547, 62: -0.309, 63: 3.004, 65: -1.228, 66: 0.213, 68: -0.666, 69: -3.304}),
     ],
-    ('cabbage', 'upper_shelf'): [
+    ('cabbage', 'upper_shelf', 'left'): [
         ((1.2067, 5.65, 0.0253, 1.35), {0: 1.2067001768469119, 1: 5.649899504044555, 2: 1.34932216824778, 17: 0.025273033185228437, 61: 0.5622022164634521, 62: -0.11050738689251488, 63: 2.3065452971538147, 65: -1.382707387923262, 66: 1.2637544829338638, 68: -0.8836125960523644, 69: 2.9453111543097945}),
         ((1.166, 5.488, 0.222, 0.475), {0: 1.166, 1: 5.488, 2: 0.475, 17: 0.222, 61: 1.106, 62: 0.172, 63: 3.107, 65: -0.943, 66: 0.077, 68: -0.457, 69: -2.503}),
         ((1.684, 6.371, 0.328, 1.767), {0: 1.684, 1: 6.371, 2: 1.767, 17: 0.328, 61: 1.422, 62: 0.361, 63: 3.127, 65: -1.221, 66: 2.251, 68: -0.018, 69: 1.634}),
         ((1.392, 5.57, 0.141, 0.726), {0: 1.392, 1: 5.57, 2: 0.726, 17: 0.141, 61: 1.261, 62: -0.043, 63: 2.932, 65: -1.239, 66: 0.526, 68: -0.427, 69: 0.612}),
         ((1.737, 6.033, 0.279, -5.162), {0: 1.737, 1: 6.033, 2: -5.162, 17: 0.279, 61: 1.966, 62: 0.37, 63: 2.515, 65: -1.125, 66: -4.711, 68: -0.579, 69: 2.463}),
         ((1.666, 6.347, 0.404, 1.66), {0: 1.666, 1: 6.347, 2: 1.66, 17: 0.404, 61: 1.22, 62: 0.656, 63: 3.653, 65: -0.948, 66: -1.806, 68: -0.41, 69: 0.355}),
-
     ],
     # ('fork', 'indigo_drawer_top'): [
     #     ((1.718, 8.893, 0.0, -2.825), {0: 1.718, 1: 8.893, 2: -2.825, 17: 0.0, 61: -0.669, 62: 0.358, 63: -0.757, 65: -0.769, 66: 3.234, 68: -0.274, 69: -0.961}),
     #     ((1.718, 8.324, 0.439, 1.462), {0: 1.718, 1: 8.324, 2: 1.462, 17: 0.439, 61: 1.081, 62: 0.608, 63: 1.493, 65: -0.693, 66: 2.039, 68: -1.16, 69: -2.243}),
     #     ((1.702, 9.162, 0.002, -2.329), {0: 1.702, 1: 9.162, 2: -2.329, 17: 0.002, 61: -0.59, 62: 0.137, 63: 0.951, 65: -0.15, 66: 0.185, 68: -0.112, 69: 0.449}),
     # ],
-    # ('fork', 'indigo_tmp'): [
+    # ('fork', 'indigo_tmp', 'left'): [
     #     ((1.273, 8.334, 0.15, 0.881), {0: 1.273, 1: 8.334, 2: 0.881, 17: 0.15, 61: 1.009, 62: 1.396, 63: 0.382, 65: -1.986, 66: -1.594, 68: -1.654, 69: -2.563}),
     #     ((1.493, 8.18, 0.039, 1.83), {0: 1.493, 1: 8.18, 2: 1.83, 17: 0.039, 61: 0.19, 62: 0.083, 63: 2.022, 65: -0.357, 66: 2.77, 68: -1.454, 69: 2.908}),
     #     ((1.837, 8.537, 0.0, 1.649), {0: 1.837, 1: 8.537, 2: 1.649, 17: 0.0, 61: 0.586, 62: 0.407, 63: -0.782, 65: -0.921, 66: -1.597, 68: -0.398, 69: -2.335}),
     #     ((1.307, 8.365, 0.293, 1.613), {0: 1.307, 1: 8.365, 2: 1.613, 17: 0.293, 61: 1.063, 62: 0.265, 63: 0.077, 65: -0.412, 66: -3.217, 68: -1.716, 69: -2.743}),
     # ],
-    ('chicken-leg', 'indigo_tmp'):  [
-        ((1.785, 8.656, 0.467, 0.816), {0: 1.785, 1: 8.656, 2: 0.816, 17: 0.467, 61: 2.277, 62: 0.716, 63: -0.8, 65: -0.399, 66: 1.156, 68: -0.468, 69: -0.476}),
-        ((1.277, 8.072, 0.507, 1.023), {0: 1.277, 1: 8.072, 2: 1.023, 17: 0.507, 61: 0.939, 62: 0.347, 63: 2.877, 65: -0.893, 66: 2.076, 68: -1.644, 69: 0.396}),
+    # ('chicken-leg', 'indigo_tmp', 'left'):  [  ## grasp the meat end
+    #     ((1.785, 8.656, 0.467, 0.816), {0: 1.785, 1: 8.656, 2: 0.816, 17: 0.467, 61: 2.277, 62: 0.716, 63: -0.8, 65: -0.399, 66: 1.156, 68: -0.468, 69: -0.476}),
+    #     ((1.277, 8.072, 0.507, 1.023), {0: 1.277, 1: 8.072, 2: 1.023, 17: 0.507, 61: 0.939, 62: 0.347, 63: 2.877, 65: -0.893, 66: 2.076, 68: -1.644, 69: 0.396}),
+    # ],
+    ('chicken-leg', 'indigo_tmp', 'right'):  [  ## grasp the bone end
+        ((1.951, 8.831, 0.122, -1.558), {0: 1.951, 1: 8.831, 2: -1.558, 17: 0.122, 40: -1.71, 41: 0.38, 42: 0.027, 44: -0.706, 45: -2.012, 47: -0.696, 48: -1.049}),
+        ((1.835, 8.625, 0.088, -2.017), {0: 1.835, 1: 8.625, 2: -2.017, 17: 0.088, 40: -1.725, 41: -0.281, 42: -2.296, 44: -0.99, 45: 1.503, 47: -0.511, 48: -2.462}),
     ],
-    ('chicken-leg', 'shelf_bottom'):  [
+    ('chicken-leg', 'indigo_tmp', 'left'):  [  ## grasp the bone end
+        ((1.557, 9.315, 0.0, -2.741), {0: 1.557, 1: 9.315, 2: -2.741, 17: 0.0, 61: -0.364, 62: 0.293, 63: -0.567, 65: -1.113, 66: -2.77, 68: -0.665, 69: 0.258}),
+    ],
+    ('chicken-leg', 'shelf_bottom', 'left'):  [
         ((1.473, 4.787, 0.502, 2.237), {0: 1.473, 1: 4.787, 2: 2.237, 17: 0.502, 61: 0.232, 62: 0.601, 63: 3.858, 65: -0.465, 66: 2.487, 68: -0.943, 69: -0.248}),
     ],
-    ('pepper-shaker', 'sektion'): [
+    ('pepper-shaker', 'sektion', 'left'): [
         ((1.619, 7.741, 0.458, -3.348), {0: 1.619, 1: 7.741, 2: -3.348, 17: 0.458, 61: 0.926, 62: 0.187, 63: 1.498, 65: -0.974, 66: 3.51, 68: -0.257, 69: 1.392}),
     ]
 }
@@ -184,6 +193,7 @@ def load_open_problem_kitchen(world, reduce_objects=False, open_doors_for=[]):
     }
     surfaces = {
         'counter': {
+            'front_left_stove': [],
             'front_right_stove': ['BraiserBody'],
             'hitman_tmp': [],
             'indigo_tmp': ['BraiserLid'],
@@ -294,6 +304,7 @@ def load_nvidia_kitchen_movables(world: World, open_doors_for: list = [], custom
     """ add surfaces """
     for body_name, surface_name in [
         ('fridge', 'shelf_bottom'),
+        ('fridge', 'shelf_top'),
     ]:
         body = world.name_to_body(body_name)
         shelf = world.add_object(Surface(
@@ -317,16 +328,16 @@ def load_nvidia_kitchen_movables(world: World, open_doors_for: list = [], custom
             continue
         movable.supporting_surface = supporting_surface
 
-        interactive = name in []  ## 'cabbage'
         doors = supporter_to_doors[supporter_name] if supporter_name in supporter_to_doors else []
+        if name in open_doors_for:
+            for door, extent in doors:
+                world.open_joint(door, extent=extent)
+
+        interactive = name in []  ## 'cabbage'
         place_in_nvidia_kitchen_space(movable, supporter_name, interactive=interactive, doors=doors)
 
         movables[name] = movable.body
         movable_to_doors[name] = doors
-
-        if name in open_doors_for:
-            for door, extent in doors:
-                world.open_joint(door, extent=extent)
 
     """ load some smarter samplers for those movables """
     world.set_learned_bconf_list_gen(learned_nvidia_bconf_list_gen)
@@ -362,7 +373,7 @@ def learned_nvidia_pose_list_gen(world, body, surfaces, num_samples=30, obstacle
     name = world.BODY_TO_OBJECT[body].shorter_name
     for surface in surfaces:
 
-        results += check_on_plate_placement(body, surface)
+        results += check_on_plate_placement(body, surface, world)
 
         if isinstance(surface, tuple):
             body, _, link = surface
@@ -370,6 +381,7 @@ def learned_nvidia_pose_list_gen(world, body, surfaces, num_samples=30, obstacle
         else:
             surface_name = world.BODY_TO_OBJECT[surface].shorter_name
         key = (name, surface_name)
+
         if key in saved_relposes:
             results.append(saved_relposes[key])
             if verbose:
@@ -419,11 +431,18 @@ def check_plate_placement(world, body, surfaces, obstacles=[], num_samples=30, n
     return []
 
 
-def check_on_plate_placement(body, surface, num_samples=30):
-    if isinstance(surface, tuple):
-        return []
-    if 'square_plate' in get_name(surface):
-        return sample_center_top_surface(surface, k=num_samples)
+def check_on_plate_placement(body, surface, world=None, num_samples=30):
+    surface_name = world.get_name(surface)
+    if surface_name.startswith('counter') and surface_name.endswith('stove'):
+        aabb = get_aabb(surface[0], link=surface[-1])
+        center = get_aabb_center(aabb)
+        w, l, h = get_aabb_extent(aabb)
+        enlarged_aabb = aabb_from_extent_center((w*3, l*3, h), center)
+        z = sample_placement_on_aabb(body, enlarged_aabb)[0][2]
+        return sample_center_top_surface(body, surface, k=num_samples, _z=z, dy=-0.05)
+    if 'square_plate' in surface_name:
+        return sample_center_top_surface(body, surface, k=num_samples)
+    return []
 
 
 def load_plate_on_counter(world, counter_name='indigo_tmp'):
@@ -446,7 +465,7 @@ def learned_nvidia_bconf_list_gen(world, inputs, verbose=True):
 
     to_return = []
     for key, bqs in saved_base_confs.items():
-        if key[0] == movable:
+        if key[0] == movable and key[2] == a:
             results = []
             random.shuffle(bqs)
             for bq in bqs:

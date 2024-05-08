@@ -5,12 +5,14 @@ RD = abspath(join(dirname(__file__), pardir, pardir))
 sys.path.append(join(RD, pardir, 'cognitive-architectures', 'pddlgym'))
 
 from cogarch_tools.processes.pddlstream_agent import *
-from pybullet_tools.stream_agent import log_goal_plan_init
+
+from pybullet_tools.stream_agent import log_goal_plan_init, pddlstream_from_state_goal
 from pybullet_tools.logging_utils import print_lists
 
 hpn_kwargs = dict(domain_modifier='atbconf,canmove', exp_name='hpn')
 hpn_kwargs = dict(domain_modifier='atbconf,canmove,basemotion', exp_name='hpn')
 hpn_kwargs.update(dict(separate_base_planning=True))
+
 
 class HierarchicalAgent(PDDLStreamAgent):
 
@@ -18,32 +20,19 @@ class HierarchicalAgent(PDDLStreamAgent):
         pass
 
     def _replan_postprocess(self, env, preimage):
-        ## the first planning problem - only for
-        if self.env_execution is None:  ## and not self.pddlstream_kwargs['visualization']:
-            from leap_tools.hierarchical import PDDLStreamForwardEnv
+        self.env = env
+        self.process_hierarchical_env(env, self.plan, self.domain_pddl)
+        for f in preimage:
+            if f[0] in ['grasp', 'pose'] and str(f[-1]) in env.useful_variables:
+                self.useful_variables[f[-1]] = f
+        print('-' * 20, '\nuseful_variables:')
+        pprint(list(self.useful_variables.keys()))
 
-            if self.plan is None:
-                self.save_stats(solved=False)
-            domain_pddl = self.domain_pddl
-            domain_pddl = join(PDDL_PATH, 'domains', domain_pddl)
-            init = self.state
-            self.env_execution = PDDLStreamForwardEnv(domain_pddl, self.pddlstream_problem, init=init)
-            self.env_execution.reset()
-
-        if env is not None:
-            self.env = env
-            self.process_hierarchical_env(env, self.plan, self.domain_pddl)
-            for f in preimage:
-                if f[0] in ['grasp', 'pose'] and str(f[-1]) in env.useful_variables:
-                    self.useful_variables[f[-1]] = f
-            print('-' * 20, '\nuseful_variables:')
-            pprint(list(self.useful_variables.keys()))
-
-            self.on_map = {v.variables[1].name: [kk.name for kk in k.variables] for k, v in env.on_map.items()}
-            self.on_map = {('on', eval(k[0]), eval(k[1].replace('none', 'None'))): v for v, k in self.on_map.items()}
-            print('-' * 20, '\non_map:')
-            pprint(self.on_map)
-            print('-' * 20)
+        self.on_map = {v.variables[1].name: [kk.name for kk in k.variables] for k, v in env.on_map.items()}
+        self.on_map = {('on', eval(k[0]), eval(k[1].replace('none', 'None'))): v for v, k in self.on_map.items()}
+        print('-' * 20, '\non_map:')
+        pprint(self.on_map)
+        print('-' * 20)
 
     def get_refinement_goal_init(self, action):
         # facts = observation.get_facts(self.env.init_preimage)
@@ -116,13 +105,77 @@ class HierarchicalAgent(PDDLStreamAgent):
         add_relevant_facts_given_goals(facts, goals_check, removed)
 
         ## some basic fact is missing due to previuos steps
-        accepted_additions = ['canmove', 'canungrasp', 'cangrasphandle', 'canpick', 'not', '=']
-        missing_preconditions, ignored_goals, _ = self.check_action_preconditions(action, facts, goals[1:], verbose=True)
-        facts += [f for f in missing_preconditions if f[0] in accepted_additions or \
-                  (len(f) == 2 and isinstance(f[1], tuple) and f[1][0] in accepted_additions)]
+        facts, ignored_goals = self.add_missing_preconditions(action, facts, goals[1:])
+        # accepted_additions = ['canmove', 'canungrasp', 'cangrasphandle', 'canpick', 'not', '=']
+        # missing_preconditions, ignored_goals, _ = self.check_action_preconditions(action, facts, goals[1:], verbose=True)
+        # facts += [f for f in missing_preconditions if f[0] in accepted_additions or \
+        #           (len(f) == 2 and isinstance(f[1], tuple) and f[1][0] in accepted_additions)]
         goals = [g for g in goals if g not in ignored_goals]
 
         return goals, facts
+
+    def add_missing_preconditions(self, action, facts, goals=[]):
+        accepted_additions = ['canmove', 'canungrasp', 'cangrasphandle', 'canpick', 'not', '=']
+        missing_preconds, ignored_goals, _ = self.check_action_preconditions(action, facts, goals, verbose=True)
+        facts += [f for f in missing_preconds if f[0] in accepted_additions or \
+                  (len(f) == 2 and isinstance(f[1], tuple) and f[1][0] in accepted_additions)]
+        return facts, ignored_goals
+
+    def check_action_preconditions(self, action, facts, goals, verbose=False):
+        env = self.env_execution
+
+        action_name = get_original_action_name(action.name)
+        action = Action(action_name, action.args)
+
+        print('\n'+'-'*50+'\ncheck_action_preconditions', action)
+        action_literal = env.to_literal(action)
+        info = env.identify_missing_facts(action_literal)
+        if verbose:
+            env.print_log(info)
+
+        ## method 1
+        preconditions, effects = env.ground_operator_preconds_effects(action_literal)
+        del_effects = [env.from_literal(a) for a in preconditions if a.predicate.name != 'identical']
+        add_effects = [env.from_literal(a) for a in effects]
+        print_lists([(del_effects, 'preconditions'), (add_effects, 'effects')])
+
+        ## method 2
+        add_effects_2 = [env.from_literal(a) for a in info['add_effects']]
+        add_effects += [a for a in add_effects_2 if a not in add_effects]
+        del_effects_2 = [env.from_literal(a) for a in info['del_effects'] + info['need_preconditions']]
+        for a in del_effects_2:
+            if a[0] == 'not':
+                a = a[1]
+            if a[0] != 'identical' and a not in del_effects:
+                del_effects.append(a)
+
+        variables = {}
+        for fact in facts:
+            for arg in fact[1:]:
+                if arg not in variables:
+                    variables[arg] = []
+                variables[arg].append(fact)
+
+        missing_preconditions = []
+        for precond in del_effects:
+            if precond not in facts:
+                print(f'\t! precondition not met\t {precond}')
+                missing_preconditions.append(precond)
+
+        ignored_goals = []
+        for goal in goals:
+            goal_mod = tuple([goal[0].lower()] + list(goal[1:]))
+            if goal[0] == 'not':
+                ignored_goals.append(goal)
+                print(f'\t! goal ignored\t {goal}')
+            elif goal_mod not in add_effects:
+                print(f'\t! goal not met\t {goal}')
+                for arg in goal[1:]:
+                    if arg not in variables:
+                        print(f'\t! variable {arg} in goal is not the same in init')
+
+        print('-'*50)
+        return missing_preconditions, ignored_goals, del_effects
 
     def refine_plan(self, action, observation, **kwargs):
         from pybullet_tools.logging_utils import myprint
@@ -225,62 +278,6 @@ class HierarchicalAgent(PDDLStreamAgent):
             # else:
             #     self.failed_count -= 1
             # self.refine_plan(action, observation)
-
-    def check_action_preconditions(self, action, facts, goals, verbose=False):
-        env = self.env_execution
-
-        action_name = get_original_action_name(action.name)
-        action = Action(action_name, action.args)
-
-        print('\n'+'-'*50+'\ncheck_action_preconditions', action)
-        action_literal = env.to_literal(action)
-        info = env.identify_missing_facts(action_literal)
-        if verbose:
-            env.print_log(info)
-
-        ## method 1
-        preconditions, effects = env.ground_operator_preconds_effects(action_literal)
-        del_effects = [env.from_literal(a) for a in preconditions if a.predicate.name != 'identical']
-        add_effects = [env.from_literal(a) for a in effects]
-        print_lists([(del_effects, 'preconditions'), (add_effects, 'effects')])
-
-        ## method 2
-        add_effects_2 = [env.from_literal(a) for a in info['add_effects']]
-        add_effects += [a for a in add_effects_2 if a not in add_effects]
-        del_effects_2 = [env.from_literal(a) for a in info['del_effects'] + info['need_preconditions']]
-        for a in del_effects_2:
-            if a[0] == 'not':
-                a = a[1]
-            if a[0] != 'identical' and a not in del_effects:
-                del_effects.append(a)
-
-        variables = {}
-        for fact in facts:
-            for arg in fact[1:]:
-                if arg not in variables:
-                    variables[arg] = []
-                variables[arg].append(fact)
-
-        missing_preconditions = []
-        for precond in del_effects:
-            if precond not in facts:
-                print(f'\t! precondition not met\t {precond}')
-                missing_preconditions.append(precond)
-
-        ignored_goals = []
-        for goal in goals:
-            goal_mod = tuple([goal[0].lower()] + list(goal[1:]))
-            if goal[0] == 'not':
-                ignored_goals.append(goal)
-                print(f'\t! goal ignored\t {goal}')
-            elif goal_mod not in add_effects:
-                print(f'\t! goal not met\t {goal}')
-                for arg in goal[1:]:
-                    if arg not in variables:
-                        print(f'\t! variable {arg} in goal is not the same in init')
-
-        print('-'*50)
-        return missing_preconditions, ignored_goals, del_effects
 
     def process_hierarchical_env(self, env, plan, domain_pddl):
 

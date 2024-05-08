@@ -1,5 +1,5 @@
 ## debug related
-seed: 913700
+seed: null
 verbose: true
 
 ## configuration for PDDLStream
@@ -43,7 +43,7 @@ robot:
   draw_base_limits: true
   dual_arm: true
   self_collisions: false
-  separate_base_planning: false
+  separate_base_planning: true
 
 ## planning stream related
 streams:
@@ -52,8 +52,9 @@ streams:
   teleport: false
   disable_movable_collision: false
   disable_base_collision: false
-  top_grasp_tolerance: 0.8
-  ir_max_attempts: 60
+  top_grasp_tolerance: null # 0.8
+  ir_max_attempts: 30
+  use_all_grasps: false
 
 ## pybullet related
 sim:
@@ -63,7 +64,7 @@ sim:
   lock: true
   simulate: false
   drive: false
-  time_step: 0.05
+  time_step: 0.02
   camera: false
   segment: false
   monitoring: false

@@ -1,9 +1,11 @@
 import math
+import pprint
 from os.path import join, abspath, isfile
 
 from pybullet_tools.stream_agent import pddlstream_from_state_goal
 from pybullet_tools.pr2_streams import DEFAULT_RESOLUTION
 from pybullet_tools.utils import set_all_static
+from pybullet_tools.logging_utils import print_dict
 
 from world_builder.world import World, State
 from world_builder.world import World
@@ -35,15 +37,16 @@ def pddlstream_from_state_goal_args(state, goals, args=None, custom_limits=None,
         teleport = args.teleport
         if hasattr(args, 'use_all_grasps'):
             use_all_grasps = args.use_all_grasps
-            print(f'\n\npddlstream_from_state_goal | using all grasps? {use_all_grasps} \n\n')
         if hasattr(args, 'top_grasp_tolerance'):
             top_grasp_tolerance = args.top_grasp_tolerance
-            state.world.robot.top_grasp_tolerance = top_grasp_tolerance
-            print(f'\n\npddlstream_from_state_goal | top_grasp_tolerance? {top_grasp_tolerance} \n\n')
         if hasattr(args, 'resolution_angular'):
             resolution = math.radians(args.resolution_angular)
         if hasattr(args, 'ir_max_attempts'):
             ir_max_attempts = args.ir_max_attempts
+    stream_kwargs = dict(use_all_grasps=use_all_grasps, top_grasp_tolerance=top_grasp_tolerance,
+                         resolution=resolution, ir_max_attempts=ir_max_attempts)
+    state.world.stream_kwargs = stream_kwargs
+    print_dict(stream_kwargs, 'stream_kwargs')
 
     domain_pddl = join(PDDL_PATH, 'domains', domain_name)
     stream_pddl = join(PDDL_PATH, 'streams', stream_name)
@@ -59,8 +62,7 @@ def pddlstream_from_state_goal_args(state, goals, args=None, custom_limits=None,
     return pddlstream_from_state_goal(
         state, goals, custom_limits=custom_limits, debug=debug, verbose=verbose,
         domain_pddl=domain_pddl, stream_pddl=stream_pddl, collisions=not cfree, teleport=teleport,
-        use_all_grasps=use_all_grasps, top_grasp_tolerance=top_grasp_tolerance, resolution=resolution,
-        ir_max_attempts=ir_max_attempts, **kwargs)
+        **stream_kwargs, **kwargs)
 
 
 def save_to_kitchen_worlds(state, pddlstream_problem, exit=False, **kwargs):
@@ -71,12 +73,20 @@ def save_to_kitchen_worlds(state, pddlstream_problem, exit=False, **kwargs):
 def problem_template(args, robot_builder_fn, robot_builder_args, world_loader_fn,
                      observation_model=None, world_builder_args={}, **kwargs):
     """ the most general form of a test """
+
+    print_dict(robot_builder_args, 'robot_builder_args')
+    print_dict(world_builder_args, 'world_builder_args')
+
     world = create_world(args)
     robot = robot_builder_fn(world, **robot_builder_args)
 
     ## add skeleton or a sequence of goals as planning constraint
     problem_dict = {k: None for k in ['goals', 'skeleton', 'llamp_api', 'subgoals', 'goal_sequence']}
     loaded_problem_dict = world_loader_fn(world, **world_builder_args)
+
+    ## just process subgoals with llamp_agent, without actually plan
+    if loaded_problem_dict is None:
+        return None
 
     if not isinstance(loaded_problem_dict, dict):
         goals = problem_dict['goals'] = loaded_problem_dict

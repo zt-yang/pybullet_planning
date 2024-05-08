@@ -33,6 +33,7 @@ from pybullet_tools.pose_utils import ObjAttachment, draw_pose2d_path, draw_pose
     is_placement, is_contained
 from pybullet_tools.camera_utils import get_pose2d, get_camera_image_at_pose, visualize_camera_image, \
     set_camera_target_body, set_camera_target_body
+from pybullet_tools.logging_utils import print_dict
 
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
     Attach, Detach, Clean, Cook, control_commands, link_from_name, \
@@ -768,13 +769,7 @@ class World(WorldBase):
 
             print_fn(line)
 
-        print_fn('----------------')
-        print_fn(f'PART II: world attachments')
-        print_fn('----------------')
-
-        print_fn(pformat(self.ATTACHMENTS))
-
-        print_fn('----------------')
+        print_dict(self.ATTACHMENTS, 'PART II: world attachments')
 
     def summarize_body_indices(self, print_fn=print):
         print_fn(SEPARATOR+f'Robot: {self.robot} | Objects: {self.objects}\n'
@@ -1250,7 +1245,6 @@ class World(WorldBase):
         if verbose and len(lines) > 0:
             print(f'\ninit_link_joint_relations ... started')
             [print(l) for l in lines]
-            print(f'\ninit_link_joint_relations ... finished\n\n')
         self.inited_link_joint_relations = True
 
     def get_indices(self):

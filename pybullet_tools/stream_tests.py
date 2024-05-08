@@ -194,7 +194,7 @@ def test_loaded_grasp_offset(state, args, test_translations=False, test_rotation
     return test_transformations_template(rotations, translations, funk, title, skip_until=skip_until)
 
 
-def test_object_grasps(state, name='cabbage', visualize=False, debug=False, debug_triads=False,
+def test_object_grasps(state, name='cabbage', visualize=True, debug=False, debug_triads=False,
                        loaded_offset=None, randomize=True):
     """
     visualize = True:   to see all grasps for selecting the grasp index to plan for
@@ -210,12 +210,12 @@ def test_object_grasps(state, name='cabbage', visualize=False, debug=False, debu
     else:  ## if isinstance(name, Object):
         body = name
     robot = state.robot
-    top_grasp_tolerance = robot.top_grasp_tolerance
 
-    funk = get_grasp_list_gen(state, verbose=True, visualize=visualize, retain_all=False,
-                              randomize=randomize,
-                              loaded_offset=loaded_offset, debug=debug_triads,
-                              top_grasp_tolerance=top_grasp_tolerance)  ## PI/4 | None
+    stream_kwargs = state.world.stream_kwargs
+    stream_kwargs_here = {k: stream_kwargs[k] for k in ['top_grasp_tolerance', 'use_all_grasps']}
+
+    funk = get_grasp_list_gen(state, verbose=True, visualize=visualize, retain_all=False, randomize=randomize,
+                              loaded_offset=loaded_offset, debug=debug_triads, **stream_kwargs_here)
     outputs = funk(body)
 
     if 'left_gripper' in robot.joint_groups:

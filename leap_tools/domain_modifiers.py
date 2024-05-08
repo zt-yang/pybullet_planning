@@ -1,4 +1,4 @@
-
+from pybullet_tools.logging_utils import myprint as print
 
 def initialize_domain_modifier(predicates):
     """ e.g., 'atseconf' """
@@ -94,11 +94,11 @@ def modify_pddlgym_domain(domain, predicates):
             op.effects = LiteralConjunction(literals)
 
         if op.name != new_name:
-            print('   modify_pddlgym_domain |', op.name, removed)
+            print(f'   modify_pddlgym_domain({op.name})\t{removed}')
             op.name = new_name
             for a in domain.actions:
                 if a.name == name:
-                    print('   modify_pddlgym_domain |   renamed ', a.name, new_name)
+                    print(f'   modify_pddlgym_domain({a.name})\trenamed {new_name}')
                     domain.predicates.pop(a.name)
                     a.name = new_name
                     domain.predicates[new_name] = a
@@ -157,7 +157,7 @@ def modify_pddlstream_domain(domain, predicates):
             to_remove_operators.append(op)
         if op.name != new_name:
             ## remove the whole action
-            print('   modify_pddlstream_domain | ', op.name, removed)
+            print(f'   modify_pddlstream_domain({op.name})\t{removed}')
             op.name = new_name
 
     for op in to_remove_operators:
@@ -172,6 +172,6 @@ def modify_pddlstream_stream(externals, predicates):
         found = [t[0] for t in external.certified if t[0] in predicates]
         if len(found) > 0:
             to_remove.append(external.name)
-            print('   remove_pddlstream_stream | ', external.name, found)
+            print(f'   remove_pddlstream_stream({external.name})\t{found}')
     print()
     return [e for e in externals if e.name not in to_remove]

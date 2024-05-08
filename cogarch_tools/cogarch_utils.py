@@ -178,7 +178,10 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     ## update robot_builder_args
     if args.record_mp4:
         args.robot_builder_args['draw_base_limits'] = False
-    args.robot_builder_args['separate_base_planning'] = args.separate_base_planning
+    if hasattr(args, 'separate_base_planning'):
+        args.robot_builder_args['separate_base_planning'] = args.separate_base_planning
+    if hasattr(args, 'dual_arm'):
+        args.robot_builder_args['dual_arm'] = args.dual_arm
 
     ## other processing
     args.exp_dir = abspath(join(PBP_PATH, args.exp_dir))
@@ -198,7 +201,11 @@ def get_pddlstream_kwargs(args, skeleton, subgoals, initializer):
     fc = None if not args.use_heuristic_fc else get_feasibility_checker(initializer, mode='heuristic')
     pddlstream_debug = args.pddlstream_debug if hasattr(args, 'pddlstream_debug') else False
     soft_subgoals = args.soft_subgoals if hasattr(args, 'soft_subgoals') else False
-    evaluation_time = args.evaluation_time * 2 if debugger_is_active() else args.evaluation_time
+    evaluation_time = args.evaluation_time
+    total_planning_timeout = args.total_planning_timeout
+    if debugger_is_active():
+        evaluation_time *= 2
+        total_planning_timeout *= 2
     solver_kwargs = dict(
         skeleton=skeleton,
         subgoals=subgoals,
@@ -213,6 +220,7 @@ def get_pddlstream_kwargs(args, skeleton, subgoals, initializer):
         evaluation_time=evaluation_time,
         downward_time=args.downward_time,
         stream_planning_timeout=args.stream_planning_timeout,
+        total_planning_timeout=total_planning_timeout,
         max_plans=args.max_plans,
         debug=pddlstream_debug
     )

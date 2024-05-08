@@ -246,20 +246,28 @@ def has_much_larger_aabb(body_larger, body_smaller):
 
 
 def get_center_top_surface(body):
-    aabb = get_aabb(body)
+    aabb = get_aabb(body) if isinstance(body, int) else get_aabb(body[0], link=body[-1])
     x, y = get_aabb_center(aabb)[:2]
     z = aabb.upper[2] + 0.01
     return x, y, z
 
 
-def sample_center_top_surface(body, k=None):
-    point = get_center_top_surface(body)
-    yaw = random.uniform(0, 2 * np.pi)
-    result = point, quat_from_euler(Euler(yaw=yaw))
+def sample_center_top_surface(body, surface, k=None, _z=None, dy=None):
+    x, y, z = get_center_top_surface(surface)
+    z += get_aabb_extent(get_aabb(body))[2]
+    if _z is not None:
+        z = _z
+    if dy is not None:
+        y += dy
+    point = x, y, z
+
+    yaw = euler_from_quat(get_pose(body)[1])[-1]
+
+    result = point, quat_from_euler(Euler(yaw=yaw + random.uniform(-np.pi/4, np.pi/4)))
     if k is not None:
         result = [result]
         for _ in range(k-1):
-            result.append((point, quat_from_euler(Euler(yaw=random.uniform(0, 2 * np.pi)))))
+            result.append((point, quat_from_euler(Euler(yaw=yaw + random.uniform(-np.pi/4, np.pi/4)))))
     return result
 
 
@@ -423,7 +431,7 @@ def sample_pose(obj, aabb, obj_aabb=None, yaws=OBJ_YAWS):
     return x, y, z, yaw
 
 
-def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_trial=3, verbose=False):
+def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_trial=3, verbose=True):
     aabb = get_aabb(body, link)
     # x, y, z, yaw = sample_pose(obj, aabb)
     # maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), scale=scales[obj], maybe=True)

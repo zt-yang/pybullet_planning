@@ -27,7 +27,8 @@ from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_
     get_cfree_approach_rel_pose_test, get_reachable_test, get_stable_list_gen
 from pybullet_tools.camera_utils import set_camera_target_body
 from pybullet_tools.bullet_utils import BASE_LIMITS, initialize_collision_logs, clean_preimage
-from pybullet_tools.logging_utils import summarize_facts, print_plan, print_goal, summarize_bconfs, summarize_poses
+from pybullet_tools.logging_utils import summarize_facts, print_plan, print_goal, summarize_bconfs, \
+    summarize_poses, print_dict
 from pybullet_tools.pr2_utils import create_pr2_gripper, set_group_conf
 from pybullet_tools.pr2_streams import DEFAULT_RESOLUTION
 from pybullet_tools.utils import get_client, get_joint_limits, \
@@ -101,7 +102,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
 
         'inverse-reachability': from_gen_fn(
             get_ik_gen_old(p, collisions=True, ir_only=True, learned=True, max_attempts=ir_max_attempts,
-                           verbose=False, visualize=False, **tc)),
+                           verbose=True, visualize=False, **tc)),
         'inverse-kinematics': from_fn(
             get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=True,
                           visualize=debug, ACONF=False, resolution=resolution)),
@@ -466,20 +467,15 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     init = facts
 
     goal = process_debug_goals(state, goals, init)
-    init = fix_init_given_goals(goal[1:], init)
+    if len(goals) > 0:
+        init = fix_init_given_goals(goal[1:], init)
 
     summarize_facts(init, world, name='Facts extracted from observation', print_fn=print_fn)
+    init = make_init_lower_case(init)
 
-    ## make all pred lower case
-    new_init = []
-    for fact in init:
-        new_tup = [fact[0].lower()]
-        new_tup.extend(fact[1:])
-        new_init.append(tuple(new_tup))
-    init = new_init
-
+    ## only print the world facts the first time
     init_added = [n for n in init_facts if n not in init]
-    if len(init_facts) != 0:  ## only print the world facts the first time
+    if len(init_facts) != 0:
         summarize_facts(init_added, world, name='Added facts from PDDLStream preimage', print_fn=print_fn)
         init = init + init_added
 
@@ -540,8 +536,8 @@ def get_test_skeleton():
 
 
 def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visualize=True,
-              fc=None, domain_modifier=None, skeleton=None, subgoals=None, soft_subgoals=False,
-              max_time=INF, downward_time=10, evaluation_time=10, stream_planning_timeout=30,
+              fc=None, domain_modifier=None, skeleton=None, subgoals=None, soft_subgoals=False, max_time=INF,
+              downward_time=10, evaluation_time=10, stream_planning_timeout=30, total_planning_timeout=180,
               max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=0, **kwargs):
 
     from pybullet_tools.logging_utils import myprint as print
@@ -576,14 +572,13 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visual
     planner_kwargs_default = dict(planner='ff-astar1', unit_costs=False, success_cost=INF, verbose=True,
                                   unique_optimistic=True, forbid=True, bind=True)
     planner_kwargs = dict(max_planner_time=downward_time, max_time=max_time, evaluation_time=evaluation_time,
-                          stream_planning_timeout=stream_planning_timeout,
+                          stream_planning_timeout=stream_planning_timeout, total_planning_timeout=total_planning_timeout,
                           initial_complexity=5, visualize=visualize, fc=fc, domain_modifier=domain_modifier,
                           # unit_efforts=True, effort_weight=None,
                           max_solutions=max_solutions, search_sample_ratio=0, **kwargs)
     planner_dict, plan_dataset = get_diverse_kwargs(planner_kwargs, diverse=diverse, max_plans=max_plans)
-    print('-' * 25 + ' PLANNER KWARGS ' + '-' * 25)
-    print(pformat(planner_dict, indent=3))
-    print('-' * 60)
+
+    print_dict(planner_dict, 'planner_kwargs')
 
     # with Profiler():
     initialize_collision_logs()
@@ -828,3 +823,7 @@ def post_process(problem, plan, teleport=False, verbose=False):
         if verbose:
             print(i, action)
     return commands
+
+
+def make_init_lower_case(init):
+    return [tuple([x[0].lower()] + list(x[1:])) for x in init]

@@ -10,7 +10,7 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
     ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles, \
     interpolate_poses, Pose, Euler, quat_from_euler, get_bodies, get_all_links, PI, \
     is_darwin, wait_for_user, YELLOW, euler_from_quat, wait_unlocked, set_renderer, \
-    sub_inverse_kinematics, Point
+    sub_inverse_kinematics, Point, get_collision_fn
 
 from pybullet_tools.bullet_utils import equal, nice, is_tuple, \
     collided, query_yes_no, has_tracik, is_mesh_entity, get_rotation_matrix
@@ -44,6 +44,7 @@ class RobotAPI(Robot):
         super(RobotAPI, self).__init__(body, **kwargs)
         self.name = self.__class__.__name__.lower()
         self.move_base = move_base
+        self.base_group = BASE_GROUP
         self.max_distance = max_distance
         self.self_collisions = self_collisions
         self.separate_base_planning = separate_base_planning
@@ -278,9 +279,9 @@ class RobotAPI(Robot):
     def print_full_body_conf(self, title='full_body_conf', debug=False):
         if debug:
             print('\n'+title)
-            for group in ['left_arm', 'base-torso']:  ## , 'right_arm'
+            for group in ['left_arm', 'right_arm', 'base-torso']:
                 if group in self.joint_groups:
-                    print('\t', group, nice(self.get_positions(group)))
+                    print('\t', group, nice(self.get_positions(joint_group=group)))
             print()
 
     def set_group_positions(self, joint_group: str, positions: list):
@@ -321,6 +322,13 @@ class RobotAPI(Robot):
             positions.extend(self.get_positions(joint_group=group, roundto=3))
         return tuple(positions)
 
+    def get_base_joints(self):
+        return self.get_group_joints(self.base_group)
+
+    def get_collision_fn(self, obstacles=[], attachments=[]):
+        return get_collision_fn(self, self.get_base_joints(), obstacles=obstacles, attachments=[],
+                                self_collisions=self.self_collisions, custom_limits=self.custom_limits, use_aabb=True)
+
     def get_lisdf_string(self):
         return """
     <include name="{{name}}">
@@ -336,10 +344,10 @@ class MobileRobot(RobotAPI):
     grasp_types = ['top', 'side']
 
     def __init__(self, body, use_torso=True, **kwargs):
-        self.base_group = BASE_TORSO_GROUP if use_torso else BASE_GROUP
         # joints = self.joint_groups[self.base_group]
         super(MobileRobot, self).__init__(body, **kwargs)
         self.use_torso = use_torso
+        self.base_group = BASE_TORSO_GROUP if use_torso else BASE_GROUP
 
     def get_arm_joints(self, arm):
         raise NotImplementedError('should implement this for MobileRobot!')
@@ -351,9 +359,6 @@ class MobileRobot(RobotAPI):
             joints = self.get_arm_joints(arm)
             conf = self.get_carry_conf(arm, None, None)
             set_joint_positions(self.body, joints, conf)
-
-    def get_base_joints(self):
-        return self.get_group_joints(self.base_group)
 
     def get_base_positions(self):
         base_joints = self.get_base_joints()
@@ -498,7 +503,7 @@ class MobileRobot(RobotAPI):
             return sub_inverse_kinematics(self.body, arm_joint, tool_link, tool_pose, **kwargs)
 
     def inverse_kinematics(self, arm, grasp_pose, obstacles,
-                           verbose=True, visualize=True, debug=False):
+                           verbose=True, visualize=False, debug=False):
         tool_pose = self.get_tool_pose_for_ik(arm, grasp_pose)
         tool_link = self.get_tool_link(arm)
         arm_joints = self.get_arm_joints(arm)
@@ -594,7 +599,7 @@ from pybullet_tools.pr2_utils import open_arm
 class PR2Robot(MobileRobot):
 
     path = 'models/drake/pr2_description/urdf/pr2_simplified.urdf'
-    arms = ['left', 'right']
+    arms = ['left']  ## , 'right'
     joint_groups = PR2_GROUPS
     joint_group_names = ['left', 'right', BASE_GROUP, BASE_TORSO_GROUP]
     tool_from_hand = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
@@ -609,6 +614,7 @@ class PR2Robot(MobileRobot):
         self.dual_arm = dual_arm
         if dual_arm:
             self.arms = self.get_all_arms()
+            self.ik_solvers = {arm: None for arm in self.arms}
         self.grasp_aconfs = {}
         ## get away with the problem of Fluent stream outputs cannot be in action effects: ataconf
 

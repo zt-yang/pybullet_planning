@@ -335,7 +335,7 @@ if __name__ == '__main__':
     robot = 'feg'  ## 'pr2'
 
     """ --- just load assets --- """
-    test_grasps(robot, ['Cart'], skip_grasps=True)  ## 'Salter'
+    test_grasps(robot, ['BraiserLid'], skip_grasps=True)  ## 'Salter'
 
     """ --- grasps related --- """
     kwargs = dict(skip_grasps=False, test_attachment=False)

@@ -664,7 +664,7 @@ def test_nvidia_kitchen_domain(args, world_loader_fn, initial_xy=(1.5, 6), **kwa
     if 'robot_builder_args' not in kwargs:
         kwargs['robot_builder_args'] = args.robot_builder_args
     kwargs['robot_builder_args'].update({
-        'custom_limits': ((1.25, 3, 0), (5, 10, 3)),
+        'custom_limits': ((1, 3, 0), (5, 10, 3)),
         'initial_xy': initial_xy
     })
     return problem_template(args, robot_builder_fn=build_robot_from_args,
@@ -781,7 +781,7 @@ def test_kitchen_doors(args, **kwargs):
         }
         surfaces = {
             'counter': {
-                # 'front_left_stove': [],  ## 'Kettle'
+                'front_left_stove': [],  ## 'Kettle'
                 'front_right_stove': ['BraiserBody'],  ## 'PotBody',
                 # 'back_left_stove': [],
                 # 'back_right_stove': [],
@@ -848,6 +848,7 @@ def test_kitchen_braiser(args, **kwargs):
         }
         surfaces = {
             'counter': {
+                'front_left_stove': [],
                 'front_right_stove': ['BraiserBody'],
                 'indigo_tmp': ['BraiserLid'],
             },
@@ -863,8 +864,10 @@ def test_kitchen_braiser(args, **kwargs):
         movable = world.name_to_body('fork')
         obstacle = world.name_to_body('braiserlid')
         counter = world.name_to_body('indigo_tmp')
+        side_surface = world.name_to_body('front_left_stove')
         target_surface = world.name_to_body('braiser_bottom')
-        objects = [obstacle, counter]
+        counter_surface = world.name_to_body('indigo_tmp')
+        objects = [obstacle, side_surface]
         skeleton = []
         subgoals = []
 
@@ -872,7 +875,11 @@ def test_kitchen_braiser(args, **kwargs):
 
         """ goals """
         arm = 'left'
-        goals = [("Holding", arm, movable)]
+        goals = [("Holding", arm, obstacle)]
+        goals = [("On", obstacle, side_surface)]
+        # goals = [("On", obstacle, counter_surface)]
+
+        # goals = [("Holding", arm, movable)]
         goals = [("On", movable, target_surface)]
 
         #########################################################################
@@ -922,12 +929,13 @@ def test_kitchen_chicken_soup(args, **kwargs):
         # goals = ('test_handle_grasps', joint)
         # goals = [("OpenedJoint", joint)]
         # goals = [("ClosedJoint", joint)]
+        # world.open_joint(joint, extent=1)
 
         joint = drawer_joint
         movable = movables['fork']
         goals = ('test_handle_grasps', joint)  ## fail for some reason
         goals = [("OpenedJoint", joint)]
-        # goals = ("test_object_grasps", movable); world.open_joint(joint, extent=1)
+        # goals = ("test_object_grasps", movable);
         # goals = [("Holding", arm, movable)]; world.open_joint(joint, extent=1)
         # goals = [("OpenedJoint", joint), ("Holding", arm, movable)]
 
@@ -958,8 +966,8 @@ def test_kitchen_chicken_soup(args, **kwargs):
 
         subgoals = None
         skeleton = []
-        # skeleton += [(k, arm, drawer) for k in pull_actions]
         # skeleton += [(k, arm, goal_object) for k in pick_place_actions[:1]]
+        skeleton += [(k, arm, joint) for k in pull_actions]
         # skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
         # skeleton += [(k, arm, movable) for k in pick_place_rel_actions[:1]]
         # skeleton += [(k, arm, movable) for k in ['pick', 'place_to_supporter']]
@@ -1019,7 +1027,7 @@ def test_kitchen_plan_constraints(args, **kwargs):
         # objects += [movable]  ## Holding
         # objects += [drawer_joint]  ## OpenedJoint
         # objects += [drawer_link]  ## In (place)
-        # objects += [drawer_joint, drawer_link]  ## On (place_rel)
+        objects += [drawer_joint, drawer_link]  ## On (place_rel)
         objects += [braiser_lid, counter]  ## On (braiser_bottom)
         # objects += [dishwasher_space]  ## dishwasher_joint,
         # objects += [dishwasher_joint, dishwasher_space]
@@ -1067,7 +1075,7 @@ def test_kitchen_plan_constraints(args, **kwargs):
                     skeleton += [(k, 'left', drawer_joint) for k in pull_with_link_actions]
                     skeleton += [('place', 'right', movable)]
                 else:
-                    # skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
+                    skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
                     skeleton += [(k, arm, movable) for k in ['pick_from_supporter', 'place']]
                 set_camera_target_body(drawer_link, dx=1, dy=0.5, dz=2)
 
