@@ -84,9 +84,11 @@ def create_stream(base_domain, extensions, output_domain):
     save_pddl_file(header + new_streams, output_domain)
 
 
-def update_namo_pddl():
-    create_domain(base_domain='mobile_domain', extensions=['_namo_domain'], output_domain='mobile_namo_domain')
-    create_stream(base_domain='mobile_stream', extensions=['_namo_stream'], output_domain='mobile_namo_stream')
+def update_namo_pddl(domain_name='mobile'):
+    create_domain(base_domain=f'{domain_name}_domain', extensions=['_namo_domain'],
+                  output_domain=f'{domain_name}_namo_domain')
+    create_stream(base_domain=f'{domain_name}_stream', extensions=['_namo_stream'],
+                  output_domain=f'{domain_name}_namo_stream')
 
 
 if __name__ == '__main__':

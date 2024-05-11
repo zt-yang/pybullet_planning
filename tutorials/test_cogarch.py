@@ -17,7 +17,7 @@ def test_pick_place_domain():
     simple_problem = ['test_pick', 'test_small_sink'][0]
     run_agent(
         agent_class=HierarchicalAgent, config='config_dev.yaml', problem=simple_problem,
-        **hpn_kwargs
+        # **hpn_kwargs
     )
 
 
@@ -38,6 +38,6 @@ def test_pigi_data():
 
 
 if __name__ == '__main__':
-    # test_pick_place_domain()
-    test_nvidia_kitchen_domain()
+    test_pick_place_domain()
+    # test_nvidia_kitchen_domain()
     # test_pigi_data()

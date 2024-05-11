@@ -306,7 +306,7 @@ class RobotAPI(Robot):
         return close_until_collision(self.body, gripper_joints, bodies=bodies, **kwargs)
 
     def modify_pddl(self, pddlstream_problem):
-        pass
+        return pddlstream_problem
 
     def remove_grippers(self):
         for body in self.grippers.values():
@@ -500,6 +500,12 @@ class MobileRobot(RobotAPI):
             return self.ik_solvers[arm].solve(tool_pose, seed_conf=current_conf)
 
         else:
+            from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics, is_ik_compiled, USE_CURRENT
+            if is_ik_compiled():
+                # TODO(caelan): sub_inverse_kinematics's clone_body has large overhead
+                return pr2_inverse_kinematics(self.body, arm, tool_pose, **kwargs,
+                                              upper_limits=USE_CURRENT, nearby_conf=USE_CURRENT)
+            tool_link = link_from_name(self.body, tool_link)
             return sub_inverse_kinematics(self.body, arm_joint, tool_link, tool_pose, **kwargs)
 
     def inverse_kinematics(self, arm, grasp_pose, obstacles,
@@ -1034,7 +1040,7 @@ class FEGripper(RobotAPI):
         title = 'robots.visualize_grasp |'
 
         gripper = self.load_gripper(arm, color=color, new_gripper=new_gripper)
-        self.open_cloned_gripper(gripper, arm, width)
+        self.open_cloned_gripper(gripper, arm=arm, width=width)
 
         body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
         grasp_pose = multiply(body_pose, grasp)

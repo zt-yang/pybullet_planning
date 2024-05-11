@@ -21,6 +21,7 @@ from pybullet_tools.pose_utils import bconf_to_pose, pose_to_bconf, add_pose, sa
 from pybullet_tools.grasp_utils import add_to_jp2jp
 
 
+
 def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True, learned=True, verbose=False):
     robot = problem.robot
     world = problem.world
@@ -62,7 +63,7 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True, 
         arm_joints = robot.get_arm_joints(arm)
         base_joints = robot.get_base_joints()
         if learned:
-            base_generator = learned_pose_generator(robot, gripper_pose, arm=arm, grasp_type=grasp.grasp_type)
+            base_generator = learned_pose_generator(robot, gripper_pose, arm=arm, grasp_type='top')  ## grasp.grasp_type
         else:
             base_generator = uniform_pose_generator(robot, gripper_pose)
 
@@ -75,13 +76,13 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True, 
                 if not all_between(lower_limits, base_conf, upper_limits):
                     continue
 
-                ## added by YANG for adding torso value
-                if robot.use_torso:
-                    base_joints = robot.get_base_joints()
-                    z = gripper_pose[0][-1]
-                    z = random.uniform(z - 0.7, z - 0.3)
-                    x, y, yaw = base_conf
-                    base_conf = (x, y, z, yaw)
+                # ## added by YANG for adding torso value
+                # if robot.use_torso:
+                #     base_joints = robot.get_base_joints()
+                #     z = gripper_pose[0][-1]
+                #     z = random.uniform(z - 0.7, z - 0.3)
+                #     x, y, yaw = base_conf
+                #     base_conf = (x, y, z, yaw)
 
                 bq = Conf(robot.body, base_joints, base_conf)
                 pose.assign()
@@ -545,11 +546,10 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
         approach_conf = ik_solver.solve(tool_pose, seed_conf=grasp_conf)
 
     if (not has_tracik() or approach_conf is None) and 'pr2' in robot.name.lower():
-        # TODO(caelan): sub_inverse_kinematics's clone_body has large overhead
-        approach_conf = pr2_inverse_kinematics(robot, arm, approach_pose, custom_limits=custom_limits,
-                                               upper_limits=USE_CURRENT, nearby_conf=USE_CURRENT)
-        if not has_tracik() and approach_conf is not None:
-            print('\n\n FastIK succeeded after TracIK failed\n\n')
+
+        approach_conf = robot.inverse_kinematics(arm, approach_pose, obstacles_here, verbose=verbose)
+        # if not has_tracik() and approach_conf is not None:
+        #     print('\n\n FastIK succeeded after TracIK failed\n\n')
         # approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits)
 
     found_collision = False

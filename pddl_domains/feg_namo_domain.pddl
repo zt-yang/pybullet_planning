@@ -5,6 +5,7 @@
     @movable @bottle @edible @medicine
   )
 
+
   (:predicates
 
     (Drawer ?o)
@@ -59,7 +60,7 @@
     (HandleGrasped ?a ?o)
 
     (CanMove)
-    (CanPull)
+    (CanPull ?a)
     (CanUngrasp)
     (Cleaned ?o)
     (Cooked ?o)
@@ -92,7 +93,34 @@
 
     (Cleaned ?o)
     (Cooked ?o)
+
+  ;;----------------------------------------------------------------------
+  ;;      extended predicates from _namo_domain.pddl
+  ;;----------------------------------------------------------------------
+
+    (Location ?o)
+    (Cart ?o)
+    (Marker ?o)
+    (Marked ?o ?o2)
+
+    (BConfInLocation ?q ?r)
+    (PoseInLocation ?o ?p ?r)
+    (InRoom ?o ?r)
+    (RobInRoom ?r)
+
+    (MarkerGrasp ?o ?g)
+    (AtMarkerGrasp ?a ?o ?g)
+    (HoldingMarker ?a ?o)
+    (PulledMarker ?o)
+    (GraspedMarker ?o)
+    (SavedMarker ?o)
+
+    (KinGraspMarker ?a ?o ?p ?g ?q ?t)
+    (KinUngraspMarker ?a ?o ?p ?g ?q ?t)
+    (KinPullMarkerToPose ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?o2 ?p3 ?p4 ?t)
   )
+
+
 
   (:functions
     ; (MoveCost ?t)
@@ -108,7 +136,6 @@
                    )
     :effect (and (AtSEConf ?q2) (not (AtSEConf ?q1))
                  (not (CanMove))
-                 ; (CanPull)
                  ; (increase (total-cost) (MoveCost ?t))
                  (increase (total-cost) 1)
                  )
@@ -150,7 +177,7 @@
     ;; including grasping and pulling, q1 is approach grasp for p1, q2 is approach grasp for p2
     (:action grasp_pull_handle
       :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?t1 ?t2 ?t3)
-      :precondition (and (Joint ?o) (HandEmpty ?a) ; (CanPull)
+      :precondition (and (Joint ?o) (HandEmpty ?a) ; (CanPull ?a)
                          (AtSEConf ?q1)
                          (AtPosition ?o ?p1) (Position ?o ?p2) (not (= ?p1 ?p2))
                          (KinGraspHandle ?a ?o ?p1 ?g ?q1 ?t1)
@@ -161,7 +188,7 @@
                          ; (not (UnsafeApproach ?o ?p ?g))
                     )
       :effect (and (GraspedHandle ?o)
-                  (CanMove) ; (not (CanPull))
+                  (CanMove) ; (not (CanPull ?a))
                   (AtSEConf ?q2) (not (AtSEConf ?q1))
                   (AtPosition ?o ?p2) (not (AtPosition ?o ?p1))
                   (increase (total-cost) 1)
@@ -171,14 +198,13 @@
     ;; with attachment
     (:action pull_articulated_handle_attachment
       :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?t ?o3 ?p3 ?p4)
-      :precondition (and (Joint ?o) (not (= ?p1 ?p2)) (CanPull)
+      :precondition (and (Joint ?o) (not (= ?p1 ?p2)) (CanPull ?a)
                          (AtPosition ?o ?p1) (Position ?o ?p2) (AtHandleGrasp ?a ?o ?g)
                          (KinPullDoorHandle ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?t)
-
                          (ContainObj ?o3) (AtPose ?o3 ?p3) (Pose ?o3 ?p4)
                          (AtAttachment ?o3 ?o) (NewPoseFromAttachment ?o3 ?p4)
                     )
-      :effect (and (not (CanPull)) (CanUngrasp)
+      :effect (and (not (CanPull ?a)) (CanUngrasp)
                   (AtPosition ?o ?p2) (not (AtPosition ?o ?p1))
                   (not (AtPose ?o3 ?p3)) (AtPose ?o3 ?p4)
               )
@@ -248,4 +274,61 @@
   ;  (exists (?o2 ?p2) (and (Traj ?t) (Pose ?o2 ?p2) (AtPose ?o2 ?p2)
   ;                         (not (CFreeTrajPose ?t ?o2 ?p2))))
   ;)
+
+  ;;----------------------------------------------------------------------
+  ;;      extended operators & axioms from _namo_domain.pddl
+  ;;----------------------------------------------------------------------
+
+  (:action ungrasp_marker
+    :parameters (?a ?o ?o2 ?p ?g ?q ?t)
+    :precondition (and (Cart ?o) (Marker ?o2) (Marked ?o ?o2) (AtPose ?o2 ?p)
+                       (CanUngrasp) ;;
+                       (KinUngraspMarker ?a ?o2 ?p ?g ?q ?t)
+                       (AtMarkerGrasp ?a ?o ?g)
+                       (AtMarkerGrasp ?a ?o2 ?g) (AtBConf ?q))
+    :effect (and (HandEmpty ?a) (CanMove)
+                 (not (AtMarkerGrasp ?a ?o ?g))
+                 (not (AtMarkerGrasp ?a ?o2 ?g))
+                 (GraspedMarker ?o2) ;;
+                 (increase (total-cost) (PlaceCost)))
+  )
+
+    ;; to a sampled base position
+    (:action pull_marker_to_pose
+      :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?o2 ?p3 ?p4 ?t)
+      :precondition (and (not (CanMove)) (CanPull ?a) (not (= ?p1 ?p2))
+                         (Marker ?o) (Cart ?o2) (Marked ?o2 ?o)
+                         (KinPullMarkerToPose ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?o2 ?p3 ?p4 ?t)
+                         (AtPose ?o ?p1) (AtPose ?o2 ?p3) (AtBConf ?q1)
+                         (AtMarkerGrasp ?a ?o ?g)
+                         ;(not (UnsafeBTrajWithMarker ?t ?o))
+                    )
+      :effect (and (not (AtPose ?o ?p1)) (AtPose ?o ?p2) (PulledMarker ?o)
+                   (not (AtPose ?o2 ?p3)) (AtPose ?o2 ?p4)
+                   (AtBConf ?q2) (not (AtBConf ?q1))
+                   (not (CanPull ?a)) (CanUngrasp)
+                   (increase (total-cost) (MoveCost ?t))
+              )
+    )
+
+  (:action magic
+    :parameters (?o ?o2 ?p1 ?p3)
+    :precondition (and (Marker ?o) (Cart ?o2) (Marked ?o2 ?o)
+                       (AtPose ?o ?p1) (AtPose ?o2 ?p3))
+    :effect (and (not (AtPose ?o ?p1)) (not (AtPose ?o2 ?p3)))
+  )
+
+  (:derived (HoldingMarker ?a ?o)
+    (exists (?g) (and (Arm ?a) (Marker ?o) (MarkerGrasp ?o ?g)
+                      (AtMarkerGrasp ?a ?o ?g)))
+  )
+
+  (:derived (RobInRoom ?r)
+    (exists (?q) (and (BConfInLocation ?q ?r) (AtBConf ?q)))
+  )
+  (:derived (InRoom ?o ?r)
+    (exists (?p) (and (PoseInLocation ?o ?p ?r) (AtPose ?o ?p)))
+  )
+
+
 )

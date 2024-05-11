@@ -21,8 +21,8 @@ planner:
 problem:
   problem: 'test_kitchen_chicken_soup'
   goal: null
-  domain_pddl: 'pddl_domains/mobile_domain.pddl'
-  stream_pddl: 'pddl_domains/mobile_stream.pddl'
+  domain_pddl: 'pddl_domains/feg_domain.pddl'
+  stream_pddl: 'pddl_domains/feg_stream.pddl'
   use_skeleton_constraints: false
   use_subgoal_constraints: false
   use_rel_pose: true
@@ -39,9 +39,8 @@ data:
   save_testcase: true
 
 robot:
-  robot_name: 'pr2'
+  robot_name: 'feg'
   draw_base_limits: true
-  dual_arm: true
   self_collisions: false
   separate_base_planning: false
 

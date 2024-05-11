@@ -1,5 +1,4 @@
 import random
-from tqdm import tqdm
 import PIL.Image
 import numpy as np
 import time
@@ -456,6 +455,7 @@ def resize_mp4(input_mp4, output_mp4, size=(1280, 720)):
 
 def resize_mp4s_for_collage(new_dir_name, mp4s, size=(1280, 720)):
     import os
+    from tqdm import tqdm
 
     new_dir_name = join(mp4_dir, new_dir_name)
     if not os.path.exists(new_dir_name):

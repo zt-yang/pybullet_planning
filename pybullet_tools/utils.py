@@ -3051,6 +3051,7 @@ def get_collision_data(body, link=BASE_LINK):
         data = p.getCollisionShapeData(body, link, physicsClientId=CLIENT)
         return [CollisionShapeData(*tup) for tup in data]
     except:
+        print(traceback.format_exc())
         print(f'utils.get_collision_data({body}) | Error receiving collision info from pybullet. Just run again :)')
         sys.exit()
     return []
@@ -5033,7 +5034,7 @@ def plan_cartesian_motion(robot, first_joint, target_link, waypoint_poses,
                     remove_body(sub_robot)
                     return None
                 #print("IK iterations:", iteration)
-                solutions.append(kinematic_conf)
+                solutions.append(sub_kinematic_conf[:-4])
                 break
         else:
             remove_body(sub_robot)

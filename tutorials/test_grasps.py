@@ -60,7 +60,7 @@ def test_grasps(robot='feg', categories=[], given_instances=None, skip_grasps=Fa
     translation_matrices = [problem.robot.tool_from_hand[0]] if not test_translation_matrix \
         else enumerate_translation_matrices()
     test_offset = test_rotation_matrix or test_translation_matrix
-    color = GREEN
+    color = RED
 
     for k1, r in enumerate(rotation_matrices):
         for k2, t in enumerate(translation_matrices):

@@ -326,7 +326,7 @@ def visualize_grasps(state, outputs, body_pose, retain_all=True, collisions=Fals
 
     # if retain_all:
     #     wait_if_gui()
-    robot.hide_cloned_grippers()
+    # robot.hide_cloned_grippers()  ## put gripper below floor
     return all_grippers
 
 
