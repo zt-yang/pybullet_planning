@@ -926,14 +926,14 @@ def test_kitchen_chicken_soup(args, **kwargs):
         joint = fridge_door  ## fridge_door | cabinet_doors[0] | cabinet_doors[1]
         # goals = ('test_joint_open', joint)
         # goals = ('test_joint_closed', joint)
-        # goals = ('test_handle_grasps', joint)
-        # goals = [("OpenedJoint", joint)]
+        goals = ('test_handle_grasps', joint)
+        goals = [("OpenedJoint", joint)]
         # goals = [("ClosedJoint", joint)]
         # world.open_joint(joint, extent=1)
 
         joint = drawer_joint
         movable = movables['fork']
-        goals = ('test_handle_grasps', joint)  ## fail for some reason
+        # goals = ('test_handle_grasps', joint)  ## fail for some reason
         goals = [("OpenedJoint", joint)]
         # goals = ("test_object_grasps", movable);
         # goals = [("Holding", arm, movable)]; world.open_joint(joint, extent=1)
@@ -967,7 +967,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
         subgoals = None
         skeleton = []
         # skeleton += [(k, arm, goal_object) for k in pick_place_actions[:1]]
-        skeleton += [(k, arm, joint) for k in pull_actions]
+        # skeleton += [(k, arm, joint) for k in pull_actions]
         # skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
         # skeleton += [(k, arm, movable) for k in pick_place_rel_actions[:1]]
         # skeleton += [(k, arm, movable) for k in ['pick', 'place_to_supporter']]

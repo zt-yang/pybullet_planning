@@ -8,7 +8,7 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
     link_from_name, multiply, invert, LockRenderer, unit_point, draw_aabb, get_aabb, \
     set_joint_positions, set_pose, GREEN, get_pose, remove_body, PoseSaver, get_relative_pose, \
     ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles, \
-    interpolate_poses, Pose, Euler, quat_from_euler, get_bodies, get_all_links, PI, \
+    interpolate_poses, Pose, Euler, quat_from_euler, get_bodies, get_all_links, PI, RED, \
     is_darwin, wait_for_user, YELLOW, euler_from_quat, wait_unlocked, set_renderer, \
     sub_inverse_kinematics, Point, get_collision_fn
 
@@ -129,13 +129,25 @@ class RobotAPI(Robot):
     def get_custom_limits(self):
         return self.custom_limits
 
-    def iterate_approach_path(self, arm, gripper, pose_value, grasp, body=None):
-        tool_from_root = self.get_tool_from_root(arm)
-        grasp_pose = multiply(pose_value, invert(grasp.value))
-        approach_pose = multiply(pose_value, invert(grasp.approach))
-        for tool_pose in interpolate_poses(grasp_pose, approach_pose):
-            set_pose(gripper, multiply(tool_pose, tool_from_root))
+    def iterate_approach_path(self, arm, gripper, pose_value, grasp, body=None, visualize=False):
+        if visualize:
+            set_all_color(gripper, RED)
+            set_renderer(True)
+        if body is None:
+            body = grasp.body
+        kwargs = dict(arm=arm, body=body, verbose=False)
+        for grasp_pose in interpolate_poses(grasp.value, grasp.approach):
+            gripper_pose = self.get_grasp_pose(pose_value, grasp_pose, **kwargs)
+            set_pose(gripper, gripper_pose)
             yield
+
+    # def iterate_approach_path(self, arm, gripper, pose_value, grasp, body=None):
+    #     tool_from_root = self.get_tool_from_root(arm)
+    #     grasp_pose = multiply(pose_value, invert(grasp.value))
+    #     approach_pose = multiply(pose_value, invert(grasp.approach))
+    #     for tool_pose in interpolate_poses(grasp_pose, approach_pose):
+    #         set_pose(gripper, multiply(tool_pose, tool_from_root))
+    #         yield
 
     def hide_cloned_grippers(self):
         for arm, gripper in self.grippers.items():
@@ -483,6 +495,23 @@ class MobileRobot(RobotAPI):
         else:
             self.open_cloned_gripper(gripper, arm)
         return gripper
+
+    def visualize_grasp_approach(self, body_pose, grasp, title='', **kwargs):
+        kwargs.update(dict(new_gripper=True, body=grasp.body))
+        print('robot.visualize_grasp_approach | grasp_value', nice(grasp.value))
+        gripper_grasp = self.visualize_grasp(body_pose, grasp.value, color=RED, **kwargs)
+        gripper_approach = self.visualize_grasp(body_pose, grasp.approach, color=GREEN, **kwargs)
+
+        obj = grasp.body if isinstance(grasp.body, int) else grasp.body[0]
+        collided(gripper_grasp, [obj], verbose=True)
+        collided(gripper_approach, [obj], verbose=True)
+
+        set_camera_target_body(gripper_grasp, dx=0.2, dy=0.2, dz=0.4)
+        set_renderer(enable=True)
+        wait_unlocked(f'{title} | visualized the gripper at grasp and approach poses')
+        remove_body(gripper_grasp)
+        remove_body(gripper_approach)
+        set_renderer(enable=False)
 
     def mod_grasp_along_handle(self, grasp, dl):
         return multiply(grasp, Pose(point=(0, dl, 0)))

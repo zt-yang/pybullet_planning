@@ -27,7 +27,7 @@ def create_world(args):
 def pddlstream_from_state_goal_args(state, goals, args=None, custom_limits=None, debug=False, verbose=False,
                                     domain_name=None, stream_name=None, cfree=False, teleport=False,
                                     use_all_grasps=False, top_grasp_tolerance=None, resolution=DEFAULT_RESOLUTION,
-                                    ir_max_attempts=60, **kwargs):
+                                    use_learned_ir=True, ir_max_attempts=60, **kwargs):
     if args is not None:
         domain_name = args.domain_pddl
         stream_name = args.stream_pddl
@@ -43,8 +43,11 @@ def pddlstream_from_state_goal_args(state, goals, args=None, custom_limits=None,
             resolution = math.radians(args.resolution_angular)
         if hasattr(args, 'ir_max_attempts'):
             ir_max_attempts = args.ir_max_attempts
+        if hasattr(args, 'use_learned_ir'):
+            use_learned_ir = args.use_learned_ir
     stream_kwargs = dict(use_all_grasps=use_all_grasps, top_grasp_tolerance=top_grasp_tolerance,
-                         resolution=resolution, ir_max_attempts=ir_max_attempts)
+                         resolution=resolution, ir_max_attempts=ir_max_attempts,
+                         use_learned_ir=use_learned_ir)
     state.world.stream_kwargs = stream_kwargs
     print_dict(stream_kwargs, 'stream_kwargs')
 

@@ -106,10 +106,6 @@ class HierarchicalAgent(PDDLStreamAgent):
 
         ## some basic fact is missing due to previuos steps
         facts, ignored_goals = self.add_missing_preconditions(action, facts, goals[1:])
-        # accepted_additions = ['canmove', 'canungrasp', 'cangrasphandle', 'canpick', 'not', '=']
-        # missing_preconditions, ignored_goals, _ = self.check_action_preconditions(action, facts, goals[1:], verbose=True)
-        # facts += [f for f in missing_preconditions if f[0] in accepted_additions or \
-        #           (len(f) == 2 and isinstance(f[1], tuple) and f[1][0] in accepted_additions)]
         goals = [g for g in goals if g not in ignored_goals]
 
         return goals, facts

@@ -60,8 +60,10 @@ from collections import namedtuple
 def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
                    pull_collisions=True, base_collisions=True, debug=False, verbose=False,
                    use_all_grasps=False, top_grasp_tolerance=False, ir_max_attempts=60,
-                   resolution=DEFAULT_RESOLUTION, num_grasps=20):
-    """ p = problem, c = collisions, l = custom_limits, t = teleport """
+                   use_learned_ir=True, resolution=DEFAULT_RESOLUTION, num_grasps=20):
+    """ p = problem, c = collisions, l = custom_limits, t = teleport
+        add the kwargs to config yaml files in problem_sets.problem_utils.
+    """
     from pybullet_tools.logging_utils import myprint as print
 
     movable_collisions &= c
@@ -101,7 +103,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'test-inverse-reachability': from_test(get_reachable_test()),
 
         'inverse-reachability': from_gen_fn(
-            get_ik_gen_old(p, collisions=True, ir_only=True, learned=True, max_attempts=ir_max_attempts,
+            get_ik_gen_old(p, collisions=True, ir_only=True, learned=use_learned_ir, max_attempts=ir_max_attempts,
                            verbose=True, visualize=False, **tc)),
         'inverse-kinematics': from_fn(
             get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=True,
@@ -143,7 +145,8 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         #     get_ik_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l, learned=False,
         #                pick_up=False, given_grasp_conf=True, verbose=True, visualize=False)),
         'inverse-kinematics-grasp-handle': from_gen_fn(
-            get_ik_gen_old(p, collisions=pull_collisions, learned=False, verbose=debug, ACONF=True, visualize=debug, **tc)),
+            get_ik_gen_old(p, collisions=pull_collisions, learned=False, verbose=False,
+                           ACONF=True, visualize=False, **tc)),
 
         'inverse-kinematics-ungrasp-handle': from_gen_fn(
             get_ik_ungrasp_gen(p, collisions=pull_collisions, verbose=False, **tc)),
@@ -152,7 +155,8 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'plan-base-pull-handle-with-link': from_fn(
             get_pull_door_handle_with_link_motion_gen(p, collisions=pull_collisions, **tc)),
 
-        'plan-arm-turn-knob-handle': from_fn(get_turn_knob_handle_motion_gen(p, collisions=c, **tc)),
+        'plan-arm-turn-knob-handle': from_fn(
+            get_turn_knob_handle_motion_gen(p, collisions=c, visualize=False, **tc)),
 
         'sample-marker-grasp': from_list_fn(get_marker_grasp_gen(p, collisions=c)),
         'inverse-kinematics-grasp-marker': from_gen_fn(

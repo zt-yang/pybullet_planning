@@ -464,13 +464,14 @@ class Object(Index):
     def draw(self, text=None, **kwargs):
         if text is None:
             text = f':{self.body}'
-        self.erase()
-        if self.name is not None:  ##  and self.category != 'door':
-            # TODO: attach to the highest link (for the robot)
-            self.handles.append(draw_body_label(self.body, text=self.name+text, **kwargs))
-        # # self.handles.extend(draw_pose(Pose(), parent=self.body, **kwargs))
-        # if not isinstance(self, Robot):
-        #     self.draw_joints()
+        with LockRenderer(True):
+            self.erase()
+            if self.name is not None:  ##  and self.category != 'door':
+                # TODO: attach to the highest link (for the robot)
+                self.handles.append(draw_body_label(self.body, text=self.name+text, **kwargs))
+            # # self.handles.extend(draw_pose(Pose(), parent=self.body, **kwargs))
+            # if not isinstance(self, Robot):
+            #     self.draw_joints()
         return self.handles
 
     def erase(self):

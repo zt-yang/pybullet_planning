@@ -22,7 +22,7 @@ def test_pick_place_domain():
 
 
 def test_nvidia_kitchen_domain():
-    kitchen_problem = ['test_kitchen_chicken_soup', 'test_kitchen_braiser', None][1]
+    kitchen_problem = ['test_kitchen_chicken_soup', 'test_kitchen_braiser', None][0]
     run_agent(
         agent_class=HierarchicalAgent, config='config_dev.yaml', problem=kitchen_problem,
         dual_arm=False, top_grasp_tolerance=0.8, visualization=False,
@@ -38,6 +38,6 @@ def test_pigi_data():
 
 
 if __name__ == '__main__':
-    test_pick_place_domain()
-    # test_nvidia_kitchen_domain()
+    # test_pick_place_domain()
+    test_nvidia_kitchen_domain()
     # test_pigi_data()

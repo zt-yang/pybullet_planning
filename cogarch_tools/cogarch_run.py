@@ -31,18 +31,20 @@ SAVE_COLLISIONS = False
 
 
 def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH,
-              create_robot_fn=None, problem=None, open_goal=None, domain=None, stream=None, viewer=True,
-              exp_dir=None, exp_subdir=None, exp_name='default', reset=False, draw_base_limits=None,
-              record_problem=True, save_testcase=False, record_plans=False, data_generation=False, use_rel_pose=None,
-              domain_modifier=None, object_reducer=None, comparing=False, load_initial_state=False,
-              window_width=1440, window_height=1120, debug=None, separate_base_planning=None, dual_arm=None,
-              top_grasp_tolerance=None, use_subgoal_constraints=None, use_skeleton_constraints=None,
-              visualization=None, **kwargs):
+              viewer=True, reset=False, exp_name='default', record_problem=True, record_plans=False,
+              load_initial_state=False, comparing=False, save_testcase=False, data_generation=False,
+
+              create_robot_fn=None, problem=None, open_goal=None, domain=None, stream=None,
+              exp_dir=None, exp_subdir=None, draw_base_limits=None, use_rel_pose=None,
+              domain_modifier=None, object_reducer=None, dual_arm=None, visualization=None,
+              window_width=None, window_height=None, debug=None, separate_base_planning=None,
+              top_grasp_tolerance=None, use_subgoal_constraints=None, use_skeleton_constraints=None, **kwargs):
     """
     problem:    name of the problem builder function to solve
     exp_dir:    sub-directory in `bullet/experiments` to save the planning data
     exp_name:   for comparison groups of different algorithms, e.g. ['original', 'hpn', 'hpn_goal-related']
     comparing:  put solutions inside exp_dir/exp_name instead of inside exp_dir
+    kwargs:     if None, is the default set in config yaml file
     """
 
     from pybullet_tools.logging_utils import myprint

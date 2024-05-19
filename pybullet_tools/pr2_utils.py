@@ -482,14 +482,7 @@ def learned_pose_generator(robot, gripper_pose, arm, grasp_type):
         base_point, base_quat = multiply(gripper_pose, gripper_from_base)
         x, y, _ = base_point
         _, _, theta = euler_from_quat(base_quat)
-        if robot.use_torso:
-            z = robot.get_base_positions()[2] + random.uniform(0, 0.2)
-            # z_joint = robot.get_base_joints()[2]
-            # z_min, z_max = robot.custom_limits[z_joint]
-            # z = random.uniform(z_min, z_max)
-            base_values = (x, y, z, theta)
-        else:
-            base_values = (x, y, theta)
+        base_values = (x, y, theta)
         #handles.extend(draw_point(np.array([x, y, -0.1]), color=(1, 0, 0), size=0.05))
         #set_base_values(robot, base_values)
         #yield get_pose(robot)
