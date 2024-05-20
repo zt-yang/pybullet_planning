@@ -851,6 +851,11 @@ def get_primitive_actions(action, world, teleport=False, verbose=True):
         detach = DetachObjectAction(a, o)
         new_commands = [detach, open_gripper] + t[::-1]
 
+    elif name == 'sprinkle':
+        a, o1, p1, o2, p2, g, q, t = args
+        t = get_traj(t)
+        new_commands = t + t[::-1]
+
     ## ------------------------------------
     ##    symbolic high-level actions
     ## ------------------------------------

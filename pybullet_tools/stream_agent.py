@@ -21,10 +21,10 @@ from pybullet_tools.pr2_primitives import get_group_joints, get_base_custom_limi
     get_ik_ir_gen, move_cost_fn, Attach, Detach, Clean, Cook, \
     get_gripper_joints, GripperCommand, Simultaneous, create_trajectory
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, get_handle_grasp_list_gen, \
-    get_handle_grasp_gen, get_compute_pose_kin, get_compute_pose_rel_kin, \
+    get_handle_grasp_gen, get_compute_pose_kin, get_compute_pose_rel_kin, get_above_pose_gen, \
     get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
     get_bconf_close_to_surface, sample_joint_position_closed_gen, get_cfree_rel_pose_pose_test, \
-    get_cfree_approach_rel_pose_test, get_reachable_test, get_stable_list_gen
+    get_cfree_approach_rel_pose_test, get_reachable_test, get_stable_list_gen, get_cfree_pose_between_test
 from pybullet_tools.camera_utils import set_camera_target_body
 from pybullet_tools.bullet_utils import BASE_LIMITS, initialize_collision_logs, clean_preimage
 from pybullet_tools.logging_utils import summarize_facts, print_plan, print_goal, summarize_bconfs, \
@@ -88,6 +88,8 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'sample-pose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, verbose=debug_pose)),
         'sample-relpose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, relpose=True, verbose=debug_pose)),
 
+        'sample-pose-sprinkle': from_gen_fn(get_above_pose_gen(p, collisions=c)),
+
         'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False, verbose=debug_grasp,
                                                        top_grasp_tolerance=top_grasp_tolerance, debug=False,
                                                        use_all_grasps=use_all_grasps, num_samples=num_grasps)),
@@ -130,6 +132,8 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'test-cfree-approach-pose': from_test(get_cfree_approach_pose_test(p, collisions=c)),
         'test-cfree-rel-pose-pose': from_test(get_cfree_rel_pose_pose_test(p.robot, collisions=c)),
         'test-cfree-approach-rel-pose': from_test(get_cfree_approach_rel_pose_test(p, collisions=c)),
+
+        'test-cfree-pose-between': from_test(get_cfree_pose_between_test(p.robot, collisions=c)),
 
         'test-cfree-traj-pose': from_test(get_cfree_traj_pose_test(p, collisions=c)),
         'test-cfree-traj-position': from_test(get_cfree_traj_pose_test(p, collisions=c)),

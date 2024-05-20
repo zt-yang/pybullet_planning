@@ -18,7 +18,7 @@ from pybullet_tools.pr2_primitives import get_group_joints, get_base_custom_limi
     get_gripper_joints, GripperCommand, Simultaneous, create_trajectory
 from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, get_handle_grasp_list_gen, \
     get_handle_grasp_gen, get_compute_pose_kin, sample_joint_position_closed_gen, get_contain_gen, \
-    get_stable_list_gen
+    get_stable_list_gen, get_above_pose_gen
 from pybullet_tools.grasp_utils import enumerate_rotational_matrices, \
     enumerate_translation_matrices, test_transformations_template
 
@@ -56,6 +56,8 @@ def process_debug_goals(state, goals, init):
             goals, ff = test_pose_inside_gen(state, init, args)
         elif test == 'test_relpose_inside_gen':
             goals, ff = test_relpose_inside_gen(state, init, args)
+        elif test == 'test_pose_above_gen':
+            goals = test_pose_above_gen(state, init, args)
         elif test == 'test_joint_open':
             goals, ff = test_joint_open(init, args)
         elif test == 'test_joint_closed':
@@ -463,6 +465,21 @@ def test_relpose_inside_gen(problem, init, args):
     print(f'test_relpose_inside_gen({o}, {s}) | {p}')
     pose.assign()
     return [('AtRelPose', o, p, s)], [('RelPose', o, p, s)]
+
+
+def test_pose_above_gen(problem, init, args):
+    obj, region = args
+    obj_pose = [i for i in init if i[0].lower() == "AtPose".lower() and i[1] == obj][0][-1]
+    region_pose = [i for i in init if i[0].lower() == "AtPose".lower() and i[1] == region][0][-1]
+    outputs = get_above_pose_gen(problem)(region, region_pose, obj)
+    for (p, ) in outputs:
+        print(f'test_pose_above_gen({obj}, {region}) | {p}')
+        p.assign()
+        set_renderer(True)
+        wait_unlocked()
+        break
+    obj_pose.assign()
+    return [['SprinkledTo', obj, region]]
 
 
 def test_joint_open(init, o):

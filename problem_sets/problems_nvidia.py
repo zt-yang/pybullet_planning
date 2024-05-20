@@ -2,11 +2,14 @@ import random
 
 from pybullet_tools.utils import set_camera_pose
 
+from world_builder.loaders_partnet_kitchen import put_lid_on_braiser
 from world_builder.loaders_nvidia_kitchen import *
+
 from robot_builder.robot_builders import build_robot_from_args
 
 from problem_sets.problem_utils import create_world, pddlstream_from_state_goal, save_to_kitchen_worlds, \
-    problem_template, pull_actions, pick_place_actions, pull_with_link_actions
+    problem_template, pull_actions, pick_place_actions, pull_with_link_actions, \
+    pick_sprinkle_actions
 
 
 #######################################################
@@ -1096,6 +1099,66 @@ def test_kitchen_plan_constraints(args, **kwargs):
 
         ## --- for recording door open demo
         # world.open_joint_by_name('chewie_door_left_joint')
+
+        world.remove_bodies_from_planning(goals, exceptions=objects, skeleton=skeleton, subgoals=subgoals)
+
+        return {'goals': goals, 'skeleton': skeleton, 'subgoals': subgoals}
+
+    return test_nvidia_kitchen_domain(args, loader_fn, initial_xy=(2, 8), **kwargs)
+
+
+def test_kitchen_sprinkle(args, **kwargs):
+    """
+    Note: The grasp poses of the fork need to be hand-specified
+    """
+    def loader_fn(world, **world_builder_args):
+        robot = world.robot
+
+        open_doors_for = []  ## goal_object
+        objects, movables, movable_to_doors = load_open_problem_kitchen(world, open_doors_for=open_doors_for)
+        plate = load_plate_on_counter(world, counter_name='indigo_tmp')
+
+        salt_shaker = world.name_to_body('salt-shaker')
+        plate = world.name_to_body('plate')
+        braiser = world.name_to_object('braiserbody')
+        lid = world.name_to_object('braiserlid')
+        braiser_bottom = world.name_to_object('braiser_bottom')
+        counter = world.name_to_body('indigo_tmp')
+        side_surface = world.name_to_object('front_left_stove')
+        left_door = world.name_to_body('chewie_door_left_joint')
+        right_door = world.name_to_body('chewie_door_right_joint')
+        arm = robot.arms[0]
+
+        world.add_to_cat(salt_shaker, 'sprinkler')
+        world.add_to_cat(braiser_bottom, 'region')
+
+        ## changes to env for different goals
+        side_surface.place_obj(lid)
+        world.open_joint(left_door)
+        world.open_joint(right_door)
+
+        objects = []
+        skeleton = []
+        subgoals = []
+
+        """ step 1: sprinkle into """
+        # goals = [['Holding', arm, salt_shaker]]
+        # goals = ('test_pose_above_gen', (salt_shaker, plate))
+        # goals = [['SprinkledTo', salt_shaker, plate]]
+        goals = [['SprinkledTo', salt_shaker, braiser_bottom.pybullet_name]]
+
+        """ step 2: remove obstacles """
+        put_lid_on_braiser(world, lid, braiser)
+        goals = [['On', lid, plate]]
+        goals = [['SprinkledTo', salt_shaker, braiser_bottom.pybullet_name]]
+        objects += [lid] + [plate] ## + [side_surface.pybullet_name]
+        skeleton += [(k, arm, lid) for k in pick_place_actions]
+        skeleton += [(k, arm, salt_shaker) for k in pick_sprinkle_actions]
+
+        ## need push rim action to open the joint
+        if 'mobile_v3' in args.domain_pddl:
+            goals = [['ClosedJoint', right_door]]
+            objects += [right_door]
 
         world.remove_bodies_from_planning(goals, exceptions=objects, skeleton=skeleton, subgoals=subgoals)
 

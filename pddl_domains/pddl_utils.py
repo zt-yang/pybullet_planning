@@ -3,6 +3,7 @@ from os.path import join, abspath, dirname
 
 borderline = '  ;;' + '-' * 70 + '\n'
 comment = '\n' + borderline + """  ;;      extended {key} from {extension}.pddl\n""" + borderline + '\n'
+EXTENSIONS_DIR = join(dirname(abspath(__file__)), 'extensions')
 
 
 def get_full_pddl_path(name):
@@ -34,7 +35,7 @@ def parse_domain_pddl(domain_name):
         elif '(:action' in line and len(functions) == 0:
             if len(predicates) == 0:
                 predicates += lines
-                lines = []
+                lines = [line]
                 continue
             functions += lines
             lines = [line]
@@ -68,7 +69,7 @@ def save_pddl_file(blocks, domain_name):
 def create_domain(base_domain, extensions, output_domain):
     header, new_predicates, functions, new_operators_axioms = parse_domain_pddl(base_domain)
     for extension in extensions:
-        _, predicates, _, operators_axioms = parse_domain_pddl(extension)
+        _, predicates, _, operators_axioms = parse_domain_pddl(join(EXTENSIONS_DIR, extension))
         new_predicates.extend([comment.format(key='predicates', extension=extension)] + predicates)
         new_operators_axioms.extend([comment.format(key='operators & axioms', extension=extension)] + operators_axioms)
     blocks = header + ['\n  (:predicates\n'] + new_predicates + \
@@ -79,17 +80,26 @@ def create_domain(base_domain, extensions, output_domain):
 def create_stream(base_domain, extensions, output_domain):
     header, new_streams = parse_stream_pddl(base_domain)
     for extension in extensions:
-        _, streams = parse_stream_pddl(extension)
+        _, streams = parse_stream_pddl(join(EXTENSIONS_DIR, extension))
         new_streams.extend([comment.format(key='streams', extension=extension)] + streams)
     save_pddl_file(header + new_streams, output_domain)
 
 
-def update_namo_pddl(domain_name='mobile'):
-    create_domain(base_domain=f'{domain_name}_domain', extensions=['_namo_domain'],
-                  output_domain=f'{domain_name}_namo_domain')
-    create_stream(base_domain=f'{domain_name}_stream', extensions=['_namo_stream'],
-                  output_domain=f'{domain_name}_namo_stream')
+def create_domain_and_stream(base_name, extensions, output_name):
+    create_domain(base_domain=f'{base_name}_domain', extensions=[f'_{name}_domain' for name in extensions],
+                  output_domain=f'{output_name}_domain')
+    create_stream(base_domain=f'{base_name}_stream', extensions=[f'_{name}_stream' for name in extensions],
+                  output_domain=f'{output_name}_stream')
+
+
+def update_namo_pddl():
+    create_domain_and_stream('mobile', ['namo'], 'mobile_namo')
+
+
+def update_kitchen_pddl():
+    create_domain_and_stream('mobile', ['cooking'], 'mobile_v2')
 
 
 if __name__ == '__main__':
-    update_namo_pddl()
+    # update_namo_pddl()
+    update_kitchen_pddl()

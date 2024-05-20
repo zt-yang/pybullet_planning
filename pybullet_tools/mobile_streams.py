@@ -202,7 +202,7 @@ def get_ik_gen_old(problem, max_attempts=80, collisions=True, learned=True, tele
     robot = problem.robot
     world = problem.world
     obstacles = problem.fixed if collisions else []
-    heading = 'mobile_streams.get_ik_rel_gen | '
+    heading = 'mobile_streams.get_ik_gen | '
 
     def gen(a, o, p, g, context=None):
         process_ik_context(context)
@@ -582,7 +582,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
     # approach_conf = get_joint_positions(robot, arm_joints)
 
     attachments = attachments.values() if isinstance(obj, int) else []
-    motion_planning_kwargs = dict(attachments=attachments, self_collisions=robot.self_collisions,
+    motion_planning_kwargs = dict(self_collisions=robot.self_collisions,
                                   use_aabb=True, cache=True, ignored_pairs=ignored_pairs_here,
                                   custom_limits=custom_limits, max_distance=robot.max_distance)
 
@@ -604,6 +604,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
             grasp_path = []
             dest_conf = grasp_conf
 
+        motion_planning_kwargs.update(attachments=attachments)
         set_joint_positions(robot, arm_joints, default_conf)
         approach_path = plan_joint_motion(robot, arm_joints, dest_conf, obstacles=obstacles_here, resolutions=resolutions,
                                           restarts=2, iterations=25, smooth=50, **motion_planning_kwargs)  # smooth=25

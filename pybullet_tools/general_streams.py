@@ -478,6 +478,33 @@ def get_pose_in_space_test():
 
 """ ==============================================================
 
+            Sampling pose above object for sprinkling, pouring
+
+    ==============================================================
+"""
+
+
+def get_above_pose_gen(problem, collisions=True, num_samples=5):
+    def gen(region, p2, body):
+        if isinstance(region, int):  ## otherwise it's static link
+            p2.assign()
+            aabb = get_aabb(region)
+        else:
+            aabb = get_aabb(region[0], link=region[-1])
+        h = get_aabb_extent(get_aabb(body))[2]
+        (x, y, _), quat = p2.value
+        z = aabb.upper[2]
+        for dz in [0.03, 0.05, 0.1, 0.15]:
+            point = x, y, z + h/2 + dz
+            # yield (Pose(body, (point, quat)), )
+            for _ in range(num_samples):
+                yaw = random.uniform(0, 2*math.pi)
+                yield (Pose(body, (point, quat_from_euler(Euler(yaw=yaw)))), )
+    return gen
+
+
+""" ==============================================================
+
             Sampling joint position ?pstn
 
     ==============================================================
@@ -1032,6 +1059,25 @@ def get_cfree_traj_pose_test(problem, collisions=True, verbose=False, visualize=
         if visualize:
             remove_handles(handles)
         return result
+    return test
+
+
+def get_cfree_pose_between_test(robot, collisions=True, visualize=True):
+    def test(b1, p1, b2, p2, b3, p3, fluents=[]):
+        if not collisions or (b1 == b3) or (b2 == b3) or b2 in ['@world']:
+            return True
+        if fluents:
+            process_motion_fluents(fluents, robot)
+        p3.assign()
+        (x, y, z_upper), quat = p1.value
+        z_lower = p2.value[0][-1]
+        for z in np.linspace(z_lower, z_upper, num=5, endpoint=True)[1:-1]:
+            set_pose(b1, ((x, y, z), quat))
+            if pairwise_collision(b1, b3):
+                if visualize:
+                    set_renderer(True)
+                return False
+        return True
     return test
 
 

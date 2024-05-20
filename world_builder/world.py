@@ -1299,7 +1299,12 @@ class World(WorldBase):
         #         self.constants.remove('@world')
 
         def get_body_pose(body):
-            pose = get_pose(body) if obj_poses is None else obj_poses[body]
+            if obj_poses is not None:
+                pose = obj_poses[body]
+            elif isinstance(body, int):
+                pose = get_pose(body)
+            elif isinstance(body, tuple):
+                pose = get_link_pose(body[0], link=body[-1])
             pose = Pose(body, pose)
 
             for fact in init_facts:
@@ -1384,6 +1389,11 @@ class World(WorldBase):
         else:
             init.extend([('StaticLink', body_link) for body_link in all_links])
         init.extend([('StaticLink', body) for body in surfaces if body not in all_links])
+
+        regions = cat_to_bodies('region')
+        for region in regions:
+            pose = get_body_pose(region)
+            init += [('Pose', region, pose), ('AtPose', region, pose)]
 
         ## ---- object poses / grasps ------------------
         for body in graspables:
@@ -1498,14 +1508,14 @@ class World(WorldBase):
         ## ---- object types -------------
         for cat, objects in self.OBJECTS_BY_CATEGORY.items():
             if cat.lower() == 'movable': continue
-            if cat.lower() in ['edible', 'plate', 'cleaningsurface', 'heatingsurface']:
+            if cat.lower() in ['edible', 'food', 'plate', 'sprinkler', 'cleaningsurface', 'heatingsurface']:
                 objects = self.OBJECTS_BY_CATEGORY[cat]
                 init += [(cat, obj.pybullet_name) for obj in objects if obj.pybullet_name in BODY_TO_OBJECT]
                 # init += [(cat, obj.pybullet_name) for obj in objects if obj.pybullet_name in BODY_TO_OBJECT]
 
             for obj in objects:
                 if cat in ['space', 'surface'] and (cat, obj.pybullet_name) not in init:
-                    init += [(cat, obj.pybullet_name)]
+                    init += [(cat, obj.pybullet_name), ('Region', obj.pybullet_name)]
                 cat2 = f"@{cat}"
                 if cat2 in self.constants:
                     init += [('OfType', obj, cat2)]
