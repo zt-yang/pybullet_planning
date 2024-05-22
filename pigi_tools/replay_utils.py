@@ -72,22 +72,24 @@ def check_if_exist_rerun(run_dir, world, commands, plan):
 ##########################################################################################
 
 
-def load_basic_plan_commands(world, exp_dir, run_dir, verbose=False):
+def load_basic_plan_commands(world, exp_dir, run_dir, verbose=False, load_attach=True, maybe_hpn=True):
     problem = Problem(world)
     if verbose:
         world.summarize_all_objects()
     body_map = get_body_map(run_dir, world, larger=False)
-    load_attachments(run_dir, world, body_map=body_map)
-    plan = get_plan(run_dir, skip_multiple_plans=True)
+    if load_attach:
+        load_attachments(run_dir, world, body_map=body_map)
+    plan = get_plan(run_dir, skip_multiple_plans=True, maybe_hpn=maybe_hpn)
     commands = pickle.load(open(join(exp_dir, 'commands.pkl'), "rb"))
-    return world, problem, exp_dir, run_dir, commands, plan, body_map
+    return problem, commands, plan, body_map
 
 
 def load_pigi_data(run_dir, use_gui=True, width=1440, height=1120, verbose=False):
     """ for replaying """
     exp_dir = copy_dir_for_process(run_dir, tag='replaying', verbose=verbose)
     world = load_lisdf_pybullet(exp_dir, use_gui=use_gui, width=width, height=height, verbose=False)
-    return load_basic_plan_commands(world, exp_dir, run_dir, verbose=verbose)
+    problem, commands, plan, body_map = load_basic_plan_commands(world, exp_dir, run_dir, verbose=verbose)
+    return world, problem, exp_dir, run_dir, commands, plan, body_map
 
 
 def load_pigi_data_complex(run_dir_ori, use_gui=True, width=1440, height=1120, verbose=False):

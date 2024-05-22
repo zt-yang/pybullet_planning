@@ -51,6 +51,8 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
 
     initialize_logs()  ## everything would be loaded to txt log file
 
+    """ prepare arguments """
+
     if exp_subdir is None and isinstance(problem, str):
         exp_subdir = problem
     args = get_parser(config=config, config_root=config_root, viewer=viewer, problem=problem, open_goal=open_goal,
@@ -60,13 +62,24 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
                       debug=debug, dual_arm=dual_arm, separate_base_planning=separate_base_planning,
                       top_grasp_tolerance=top_grasp_tolerance, use_subgoal_constraints=use_subgoal_constraints,
                       use_skeleton_constraints=use_skeleton_constraints, visualization=visualization)
+
+    ## update robot_builder_args
     if 'robot_builder_args' not in kwargs:
         kwargs['robot_builder_args'] = args.robot_builder_args
     kwargs['robot_builder_args']['create_robot_fn'] = create_robot_fn
+
+    ## update world_builder_args
+    kwargs['world_builder_args'] = dict()
     if hasattr(args, 'goal_variations'):
-        kwargs['world_builder_args'] = {'goal_variations': args.goal_variations}
+        kwargs['world_builder_args']['goal_variations'] = args.goal_variations
+    for k in ['load_llm_memory', 'load_agent_state']:
+        if k in kwargs:
+            if kwargs[k] is not None:
+                kwargs['world_builder_args'][k] = kwargs[k]
+            kwargs.pop(k)
 
     """ load problem """
+
     if '/' in args.exp_subdir:
         world = load_lisdf_pybullet(args.exp_subdir, width=1440, height=1120, time_step=args.time_step)
         problem = Problem(world)
@@ -109,15 +122,20 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
     agent.set_pddlstream_problem(problem_dict, state)
 
     # note = kwargs['world_builder_args'].get('note', None) if 'world_builder_args' in kwargs else None
-    agent.init_experiment(args, domain_modifier=domain_modifier, object_reducer=object_reducer, comparing=comparing)
+    agent = agent.init_experiment(args, domain_modifier=domain_modifier, object_reducer=object_reducer, comparing=comparing)
 
     ## for visualizing observation
     if (hasattr(args, 'save_initial_observation') and args.save_initial_observation) or hasattr(agent, 'llamp_api'):
         state.world.initiate_observation_cameras()
         state.save_default_observation(output_path=join(agent.llamp_api.obs_dir, 'observation_0.png'))
 
-    if hasattr(agent, 'llamp_api') and problem_dict['llamp_api'].planning_mode is None:
-        return
+    ## for VLM-TAMP project
+    if hasattr(agent, 'llamp_api'):
+        if agent.llamp_api.agent_state_path is not None:
+            state = State(agent.world, objects=state.objects, observation_model=state.observation_model)
+            agent.set_world_state(state)
+        if problem_dict['llamp_api'].planning_mode is None:
+            return
 
     """ before planning """
     if args.preview_scene and args.viewer:

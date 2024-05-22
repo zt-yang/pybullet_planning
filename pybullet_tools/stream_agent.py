@@ -453,7 +453,7 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
                                facts=[],  ## completely overwrite
                                objects=None,  ## only some objects included in planning
                                collisions=True, teleport=False, verbose=True, print_fn=None,
-                               **kwargs):
+                               problem_dict=None, **kwargs):
     if print_fn is None:
         from pybullet_tools.logging_utils import myprint as print_fn
 
@@ -495,7 +495,11 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
 
     goal = [g for g in goal if not (g[0] == 'not' and g[1][0] == '=')]
 
-    print_goal(goal, world=world, print_fn=print_fn)
+    if problem_dict is not None and 'english_goal' in problem_dict:
+        print_goal([AND, [problem_dict['english_goal']]], world=world, print_fn=print_fn)
+    else:
+        print_goal(goal, world=world, print_fn=print_fn)
+
     world.summarize_body_indices(print_fn=print_fn)
     return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
 
@@ -793,9 +797,14 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
 
 
 def log_goal_plan_init(goal, plan, preimage):
+    def get_plan_skeleton(action):
+        args = tuple([a for a in action.args if isinstance(a, int) or isinstance(a, tuple)])
+        return f"{action.name}{args}".replace('),)', '))')
+
     return {
         'goal': [f'{g[0]}({g[1:]})' for g in goal],
         'plan': [str(a) for a in plan] if plan is not None else 'FAILED',
+        'plan_skeleton': [get_plan_skeleton(a) for a in plan] if plan is not None else 'FAILED',
         'plan_len': len(plan) if plan is not None else 0,
         'init': [[str(a) for a in f] for f in preimage]
     }

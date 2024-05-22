@@ -932,7 +932,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
         goals = ('test_handle_grasps', joint)
         goals = [("OpenedJoint", joint)]
         # goals = [("ClosedJoint", joint)]
-        # world.open_joint(joint, extent=1)
+        world.open_joint(joint, extent=1)
 
         joint = drawer_joint
         movable = movables['fork']
@@ -944,7 +944,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
 
         movable = movables[goal_object]
         # goals = ("test_object_grasps", movable)
-        # goals = [("Holding", arm, movable)]
+        goals = [("Holding", arm, movable)]
         # goals = [("On", movable, counter)]
         # goals = ('test_relpose_inside_gen', (movable, drawer_link))
         # goals = [("In", movable, drawer_link)]

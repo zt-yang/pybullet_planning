@@ -17,7 +17,7 @@ from pybullet_tools.logging_utils import summarize_facts, print_goal
 from pybullet_tools.bullet_utils import get_datetime
 from pybullet_tools.pr2_primitives import Trajectory
 from pybullet_tools.stream_agent import solve_pddlstream, make_init_lower_case
-from pybullet_tools.utils import SEPARATOR, wait_if_gui
+from pybullet_tools.utils import SEPARATOR, wait_if_gui, WorldSaver
 from pybullet_tools.logging_utils import save_commands, TXT_FILE, summarize_state_changes, print_lists
 
 from world_builder.actions import get_primitive_actions
@@ -28,6 +28,9 @@ from cogarch_tools.cogarch_utils import clear_empty_exp_dirs
 
 from leap_tools.domain_modifiers import initialize_domain_modifier
 from leap_tools.object_reducers import initialize_object_reducer
+
+from pigi_tools.replay_utils import apply_actions, load_basic_plan_commands
+from lisdf_tools.lisdf_planning import Problem
 
 from pddlstream.language.constants import Action, AND, PDDLProblem
 
@@ -74,6 +77,7 @@ class PDDLStreamAgent(MotionAgent):
 
         self.pddlstream_problem = None
         self.initial_state = None
+        self.world_state = None
 
         self.state = init
         self.last_plan_state = None  ## updated after planning
@@ -118,6 +122,19 @@ class PDDLStreamAgent(MotionAgent):
 
         ## HPN experiments
         self.comparing = comparing
+
+    ###################################################################
+
+    def initialize(self, state):
+        """ when the agent state is loaded from previous saved runs, the world state changes """
+        if self.world_state is None:
+            self.world_state = state
+        return self.world_state
+
+    def set_world_state(self, state):
+        self.world_state = state
+
+    ###################################################################
 
     def _init_object_reducer(self, args, object_reducer, exp_name):
         if hasattr(args, 'object_reducer'):
@@ -230,7 +247,7 @@ class PDDLStreamAgent(MotionAgent):
             self.pddlstream_problem, observation.state, domain_pddl=self.domain_pddl,
             domain_modifier=self.domain_modifier, **self.pddlstream_kwargs, **kwargs)  ## observation.objects
         self.pddlstream_kwargs.update({'skeleton': None, 'subgoals': None})
-        self.evaluations, self.goal_exp, self.domain, self.externals = knowledge
+        self.evaluations, self.goal_exp, self.domain, _ = knowledge
         self.record_time(time_log)
         is_HPN = 'hpn' in self.exp_name or env is not None
 
@@ -248,6 +265,8 @@ class PDDLStreamAgent(MotionAgent):
 
         ## the first planning problem - only for
         if self.env_execution is None:  ## and not self.pddlstream_kwargs['visualization']:
+            if self.plan is None:
+                self.save_stats(solved=False)
             self._init_env_execution()
 
         ## hierarchical planning in the now
@@ -259,8 +278,6 @@ class PDDLStreamAgent(MotionAgent):
     def _init_env_execution(self):
         from leap_tools.hierarchical import PDDLStreamForwardEnv
 
-        if self.plan is None:
-            self.save_stats(solved=False)
         domain_pddl = self.domain_pddl
         domain_pddl = join(PDDL_PATH, 'domains', domain_pddl)
         init = self.state
@@ -291,24 +308,26 @@ class PDDLStreamAgent(MotionAgent):
         self.commands.append(action)
 
     def save_commands(self, commands_path):
-        self.remove_unpickleble_attributes()
-        save_commands(self.commands, commands_path)
-        self.recover_unpickleble_attributes()
+        if len(self.commands) > 0:
+            self.remove_unpickleble_attributes()
+            save_commands(self.commands, commands_path)
+            shutil.copy(commands_path, join(self.exp_dir, 'states', f'commands_{self.problem_count}.pkl'))
+            self.recover_unpickleble_attributes()
 
-    def save_time_log(self, csv_name, solved=True):
+    def save_time_log(self, csv_name, solved=True, failed_time=False):
         """ compare the planning time and plan length across runs """
         from pybullet_tools.logging_utils import myprint as print
         from tabulate import tabulate
 
         for i in range(len(self.time_log)):
             if 'planning' not in self.time_log[i]:
-                print('save_time_log', i, self.time_log[i])
+                print(f'save_time_log, self.time_log[{i}] = {self.time_log[i]}')
         print('pddlstream_agent.save_time_log\n\ttotal planning time:'+str(self.time_log[0]['planning']))
         durations = {i: self.time_log[i]['planning'] for i in range(len(self.time_log))}
         durations2 = {i: self.time_log[i]['preimage'] for i in range(len(self.time_log))}
         total_planning = sum(list(durations.values()))
         total_preimage = sum(list(durations2.values()))
-        if not solved:
+        if not solved and not failed_time:
             total_planning = 99999
 
         fieldnames = ['exp_name']
@@ -316,45 +335,162 @@ class PDDLStreamAgent(MotionAgent):
         fieldnames.append('total_planning')
         fieldnames.append('preimage')
         fieldnames.append('plan_len')
-        if not isfile(csv_name):
-            with open(csv_name, mode='w') as csv_file:
+
+        row = {'exp_name': self.exp_name}
+        row.update(durations)
+        row['total_planning'] = total_planning
+        row['preimage'] = total_preimage
+        row['plan_len'] = self.plan_len
+
+        if csv_name is not None:
+            if not isfile(csv_name):
+                with open(csv_name, mode='w') as csv_file:
+                    writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+                    writer.writeheader()
+            with open(csv_name, mode='a') as csv_file:
                 writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-                writer.writeheader()
-        with open(csv_name, mode='a') as csv_file:
-            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-            row = {'exp_name': self.exp_name}
-            row.update(durations)
-            row['total_planning'] = total_planning
-            row['preimage'] = total_preimage
-            row['plan_len'] = self.plan_len
-            writer.writerow(row)
+                writer.writerow(row)
 
         print(tabulate([list(row.values())], headers=fieldnames, tablefmt='orgtbl'))
 
         return total_planning
 
-    def save_stats(self, solved=True):
+    def save_stats(self, solved=True, final=True, failed_time=False):
         print('\n\nsaving statistics\n\n')
         name = self.timestamped_name
 
         ## save one line in cvs of planning time and plan length
-        csv_name = join(dirname(self.exp_dir), f'{self.exp_name}.csv')
-        if self.comparing and ('original' not in self.exp_name):  ## put one directory up
-            csv_name = join(dirname(dirname(self.exp_dir)), f'{self.exp_name}.csv')
-        total_planning = self.save_time_log(csv_name, solved=solved)
+        if final:
+
+            ## save the log txt, commands, and video recording
+            if os.path.isfile(TXT_FILE):
+                shutil.move(TXT_FILE, join(self.exp_dir, f"log.txt"))
+
+            csv_name = join(dirname(self.exp_dir), f'{self.exp_name}.csv')
+            if self.comparing and ('original' not in self.exp_name):  ## put one directory up
+                csv_name = join(dirname(dirname(self.exp_dir)), f'{self.exp_name}.csv')
+        else:
+            csv_name = None
+
+        total_planning = self.save_time_log(csv_name, solved=solved, failed_time=failed_time)
+
+        if final:
+            print('save_stats.total_planning.final')
+            self.time_log.append({'total_planning': total_planning})
 
         ## save the final plan
         plan_log_path = join(self.exp_dir, f'time.json')
-        self.time_log.append({'total_planning': total_planning})
         with open(plan_log_path, 'w') as f:
             json.dump(self.time_log, f, indent=4)
             # f.write('\n'.join([str(t) for t in self.time_log]))
 
-        ## save the log txt, commands, and video recording
-        if os.path.isfile(TXT_FILE):
-            shutil.move(TXT_FILE, join(self.exp_dir, f"log.txt"))
-
         self.save_commands(join(self.exp_dir, f"commands.pkl"))
+
+    def save_agent_state(self):
+        """ resume planning """
+        agent_state_dir = join(self.exp_dir, 'states')
+        if not isdir(agent_state_dir):
+            os.makedirs(agent_state_dir)
+
+        stream_map = self.env_execution._pddlstream_problem[3]
+        static_literals = self.env_execution.static_literals
+        env_externals = self.env_execution.externals
+        _action_space = self.env_execution._action_space
+        _observation_space = self.env_execution._observation_space
+        variables = self.initial_state.variables
+
+        self.sample_fn = None
+        self.difference_fn = None
+        self.distance_fn = None
+        self.extend_fn = None
+        self.observations = []
+
+        a, b, c, _, e, f = self.env_execution._pddlstream_problem
+        self.env_execution._pddlstream_problem = PDDLProblem(a, b, c, None, e, f)
+        a, b, c, _, e, f = self.pddlstream_problem
+        self.pddlstream_problem = PDDLProblem(a, b, c, None, e, f)
+        self.env_execution.static_literals = None
+        self.env_execution.externals = None
+        self.env_execution._action_space = None
+        self.env_execution._observation_space = None
+        self.initial_state.variables = None
+
+        agent_state_path = join(agent_state_dir, f'agent_state_{self.problem_count}.pkl')
+        with open(agent_state_path, 'bw') as f:
+            pickle.dump(self, f)
+
+        # world_state_path = join(agent_state_dir, f'world_state_{self.problem_count}.pkl')
+        # with open(world_state_path, 'bw') as f:
+        #     pickle.dump(WorldSaver(), f)
+
+        # for k, v in self.__dict__.items():
+        #     print(k)
+        #     with open(agent_state_path, 'bw') as f:
+        #         pickle.dump(v, f)
+        #
+        # for k, v in self.env_execution.__dict__.items():
+        #     print(k)
+        #     with open(agent_state_path, 'bw') as f:
+        #         pickle.dump(v, f)
+
+        a, b, c, _, e, f = self.env_execution._pddlstream_problem
+        self.env_execution._pddlstream_problem = PDDLProblem(a, b, c, stream_map, e, f)
+        a, b, c, _, e, f = self.pddlstream_problem
+        self.pddlstream_problem = PDDLProblem(a, b, c, stream_map, e, f)
+        self.env_execution.static_literals = static_literals
+        self.env_execution.externals = env_externals
+        self.env_execution._action_space = _action_space
+        self.env_execution._observation_space = _observation_space
+        self.initial_state.variables = variables
+
+    def load_agent_state(self, agent_state_path):
+        """ resume planning """
+
+        print('\n\n'+'-'*60+f'\n[load_agent_state] from {agent_state_path}\n')
+
+        if self.env_execution is None:
+            self._init_env_execution()
+
+        exp_dir = self.exp_dir
+        stream_map = self.pddlstream_problem[3]
+        static_literals = self.env_execution.static_literals
+        env_externals = self.env_execution.externals
+        _action_space = self.env_execution._action_space
+        _observation_space = self.env_execution._observation_space
+        variables = self.initial_state.variables
+
+        with open(agent_state_path, 'br') as f:
+            self = pickle.load(f)
+
+        commands_path = agent_state_path.replace('agent_state_', 'commands_')
+        # commands_path = agent_state_path.replace('agent_state_', 'commands_')
+        self.apply_commands(commands_path)
+
+        self.exp_dir = exp_dir
+        self.plan = []
+
+        a, b, c, _, e, f = self.env_execution._pddlstream_problem
+        self.env_execution._pddlstream_problem = PDDLProblem(a, b, c, stream_map, e, f)
+        a, b, c, _, e, f = self.pddlstream_problem
+        self.pddlstream_problem = PDDLProblem(a, b, c, stream_map, e, f)
+        self.env_execution.static_literals = static_literals
+        self.env_execution.externals = env_externals
+        self.env_execution._action_space = _action_space
+        self.env_execution._observation_space = _observation_space
+        self.initial_state.variables = variables
+
+        print('\n'+'-'*60+f'\n\n')
+
+        return self
+
+    def apply_commands(self, commands_path):
+
+        with open(commands_path, 'br') as f:
+            commands = pickle.load(f)
+
+        problem, _, plan, body_map = load_basic_plan_commands(self.world, self.exp_dir, self.exp_dir,
+                                                              load_attach=False, maybe_hpn=False)
+        apply_actions(problem, commands, time_step=0.001, verbose=False, plan=plan)  ## , body_map=body_map
 
 
 ###########################################################################

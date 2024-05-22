@@ -222,6 +222,7 @@ def get_pddlstream_kwargs(args, skeleton, subgoals, initializer):
         stream_planning_timeout=args.stream_planning_timeout,
         total_planning_timeout=total_planning_timeout,
         max_plans=args.max_plans,
+        max_evaluation_plans=args.max_evaluation_plans,
         debug=pddlstream_debug
     )
     return solver_kwargs

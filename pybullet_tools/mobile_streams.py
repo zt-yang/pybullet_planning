@@ -581,7 +581,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
     set_joint_positions(robot, arm_joints, approach_conf)
     # approach_conf = get_joint_positions(robot, arm_joints)
 
-    attachments = attachments.values() if isinstance(obj, int) else []
+    attachments = list(attachments.values()) if isinstance(obj, int) else []
     motion_planning_kwargs = dict(self_collisions=robot.self_collisions,
                                   use_aabb=True, cache=True, ignored_pairs=ignored_pairs_here,
                                   custom_limits=custom_limits, max_distance=robot.max_distance)
@@ -1068,7 +1068,7 @@ def get_arm_ik_fn(problem, custom_limits={}, resolution=DEFAULT_RESOLUTION,
         attachment = grasp.get_attachment(problem.robot, arm)
         attachments = {}  ## {attachment.child: attachment} TODO: problem with having (body, joint) tuple
 
-        motion_planning_kwargs = dict(attachments=attachments.values(), self_collisions=robot.self_collisions,
+        motion_planning_kwargs = dict(attachments=list(attachments.values()), self_collisions=robot.self_collisions,
                                       use_aabb=True, cache=True,
                                       custom_limits=custom_limits, max_distance=robot.max_distance)
 

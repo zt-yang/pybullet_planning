@@ -247,9 +247,14 @@ def get_body_map(run_dir, world, inv=False, larger=True):
         if inv:
             return {v: k for k, v in body_to_new.items()}
         return body_to_new
+
+    if hasattr(world, 'BODY_TO_OBJECT'):
+        body_to_new = {k: world.name_to_body(v) for k, v in body_to_name.items()}
+
     ## if something doesn't exist, 'body_to_name_new' is incomplete
-    body_to_new = {k: world.name_to_body[v] for k, v in body_to_name.items() \
-                   if v in world.name_to_body}
+    else:
+        body_to_new = {k: world.name_to_body[v] for k, v in body_to_name.items() \
+                       if v in world.name_to_body}
     if inv:
         return {v: k for k, v in body_to_new.items()}
     body_to_new.update({eval(k): v for k, v in body_to_new.items()})
@@ -507,7 +512,7 @@ def parse_pddl_str(args, vs, inv_vs, indices={}):
     return new_args
 
 
-def get_successful_plan(run_dir, indices={}, skip_multiple_plans=True, **kwargs):
+def get_successful_plan(run_dir, indices={}, skip_multiple_plans=True, maybe_hpn=True, **kwargs):
     """ read the json file to extract the plans """
 
     ## default best plan is in 'plan.json'
@@ -518,7 +523,7 @@ def get_successful_plan(run_dir, indices={}, skip_multiple_plans=True, **kwargs)
     plans = []
     with open(plan_file, 'r') as f:
         data = json.load(f)
-        if len(data) > 2:  ## HPN planning
+        if maybe_hpn and len(data) > 2:  ## HPN planning
             data = data[2:]
         plan = []
         for episode in data:

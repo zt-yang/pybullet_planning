@@ -425,13 +425,17 @@ def adapt_attach_action(a, problem, plan, verbose=True):
 
     body = a.get_body()
     robot = problem.world.robot
+    body_to_name = problem.world.body_to_name
+    if hasattr(problem.world, 'BODY_TO_OBJECT'):
+        body_to_name = {eval(k): v for k, v in body_to_name.items()}
+
     if ' ' in plan[0][0]:
-        act = [aa for aa in plan if aa[0].startswith('pull') and aa[2] == problem.world.body_to_name[body]][0]
+        act = [aa for aa in plan if aa[0].startswith('pull') and aa[2] == body_to_name[body]][0]
     else:
-        print('adapt_attach_action', len(plan), [str(body), problem.world.body_to_name[body]], '->', plan)
+        print('adapt_attach_action', len(plan), [str(body), body_to_name[body]], '->', plan)
         pstn = get_joint_position(body[0], body[1])
-        act = [aa for aa in plan if aa[0] in ['pull_handle', 'pull_door_handle', 'pull_handle_with_link'] and \
-               aa[2] in [str(body), problem.world.body_to_name[body]] and \
+        act = [aa for aa in plan if aa[0] in ['pull_door_handle', 'pull_handle', 'pull_handle_with_link'] and \
+               aa[2] in [str(body), body_to_name[body]] and \
                equal(continuous[aa[3].split('=')[0]][0], pstn)][0]
 
     pstn1 = Position(body, get_value(act[3]))
@@ -499,7 +503,8 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
     while i < len(actions):
         action = actions[i]
         name = action.__class__.__name__
-        print(f"{i}/{len(actions)}\t{action}")
+        if verbose:
+            print(f"{i}/{len(actions)}\t{action}")
 
         if 'GripperAction' in name and check_collisions:
             next_action = actions[i+1]
@@ -539,8 +544,6 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
                     color_index += 1
 
                     body_name = world.body_to_name[body]
-                    if body_name not in obj_keys:
-                        print('ssssss')
                     for b, l in obj_keys[body_name]:
                         set_color(b, color, link=l)
                     recording = body_name

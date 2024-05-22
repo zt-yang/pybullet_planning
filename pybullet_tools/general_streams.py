@@ -694,7 +694,7 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None,  # None | 
             ori = len(grasps)
             grasps = [grasp for grasp in grasps if is_top_grasp(
                 robot, arm, body, grasp, top_grasp_tolerance=top_grasp_tolerance)]
-            if verbose:
+            if verbose and True:
                 print(f'   get_grasp_gen(top_grasp_tolerance={top_grasp_tolerance})',
                       f' selected {len(grasps)} out of {ori} grasps')
         if randomize_here:

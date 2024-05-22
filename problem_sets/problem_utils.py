@@ -109,8 +109,9 @@ def problem_template(args, robot_builder_fn, robot_builder_args, world_loader_fn
     exogenous = []
 
     ## may change the goal if they are debugging goals
-    problem_dict['pddlstream_problem'] = pddlstream_from_state_goal_args(state, goals, args, **kwargs)
-    goals = problem_dict['pddlstream_problem'].goal[1:]
+    pddlstream_problem = pddlstream_from_state_goal_args(state, goals, args, problem_dict=problem_dict, **kwargs)
+    goals = pddlstream_problem.goal[1:]
+    problem_dict['pddlstream_problem'] = pddlstream_problem
     # save_to_kitchen_worlds(state, pddlstream_problem, exp_name='blocks_pick', world_name='blocks_pick')
 
     return state, exogenous, goals, problem_dict
