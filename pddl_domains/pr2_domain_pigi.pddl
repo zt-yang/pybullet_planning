@@ -49,7 +49,7 @@
     (KinGraspHandle ?a ?o ?p ?g ?q ?aq ?t)  ;; grasp a handle
     (KinUngraspHandle ?a ?o ?p ?g ?q ?aq1 ?aq2 ?t)  ;; ungrasp a handle
     (KinPullDrawerHandle ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?t)  ;; pull the handle
-    (KinPullDoorHandle ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq1 ?aq2 ?at)  ;; pull the handle
+    (KinPullDoorHandle ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq)  ;; pull the handle
     (KinTurnKnob ?a ?o ?p1 ?p2 ?g ?q ?aq1 ?aq2 ?at)
 
     (Reach ?a ?o ?p ?g ?bq)
@@ -71,15 +71,18 @@
     (AtPose ?o ?p)
     (AtPosition ?o ?p)  ;; joint position of a body
     (AtGrasp ?a ?o ?g)
-    (AtHandleGrasp ?a ?o ?g)  ;; holding the handle
-    (HandleGrasped ?a ?o)  ;; holding the handle
-    (KnobTurned ?a ?o)  ;; holding the knob
+    (AtHandleGrasp ?a ?o ?g)  ;; in contact the handle
+    (HandleGrasped ?a ?o)  ;; released the handle
+    (GraspHandle ?a ?o ?p1 ?g ?q1 ?aq)
+    (UngraspHandle ?a ?o ?p2 ?g ?q2 ?aq)
+
+    (KnobTurned ?a ?o)  ;; released the knob
     (HandEmpty ?a)
     (AtBConf ?q)
     (AtAConf ?a ?q)
 
     (CanMove)
-    (CanPull)
+    (CanPull ?a)
     (CanUngrasp)
 
     (Cleaned ?o)
@@ -200,7 +203,7 @@
                          ;(Enabled)
                     )
       :effect (and (AtHandleGrasp ?a ?o ?g) (not (HandEmpty ?a))
-                   (not (CanMove)) (CanPull) (not (CanUngrasp))
+                   (not (CanMove)) (CanPull ?a) (not (CanUngrasp))
                    (not (AtAConf ?a ?aq1)) (AtAConf ?a ?aq2)
                    ;(increase (total-cost) (PickCost)) ; TODO: make one third of the cost
                    (increase (total-cost) 0)
@@ -224,20 +227,19 @@
 
     ;; from fully closed position ?p1 pull to the fully open position ?p2
     (:action pull_handle
-      :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq1 ?aq2 ?at)
-      :precondition (and (Joint ?o) (not (= ?p1 ?p2)) (CanPull)
+      :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq)
+      :precondition (and (Joint ?o) (not (= ?p1 ?p2)) (CanPull ?a)
                          (AtPosition ?o ?p1) (Position ?o ?p2) (AtHandleGrasp ?a ?o ?g)
-                         (KinPullDoorHandle ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq1 ?aq2 ?at)
-                         (AtBConf ?q1) (AtAConf ?a ?aq1)
+                         (KinPullDoorHandle ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq)
+                         (AtBConf ?q1) (AtAConf ?a ?aq)
                          ;(not (UnsafeApproach ?o ?p2 ?g))
                          ;(not (UnsafeATraj ?at))
                          ;(not (UnsafeBTraj ?bt))
                          ;(Enabled)
                     )
-      :effect (and (not (CanPull)) (CanUngrasp)
+      :effect (and (not (CanPull ?a)) (CanUngrasp)
                   (AtPosition ?o ?p2) (not (AtPosition ?o ?p1))
                   (AtBConf ?q2) (not (AtBConf ?q1))
-                  (AtAConf ?a ?aq2) (not (AtAConf ?a ?aq1))
                   (increase (total-cost) 1)
               )
     )

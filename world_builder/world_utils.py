@@ -24,6 +24,8 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sam
 from pybullet_tools.bullet_utils import is_joint_open, get_fine_rainbow_colors
 from pybullet_tools.camera_utils import get_segmask
 from pybullet_tools.logging_utils import dump_json
+from pybullet_tools.general_streams import Position
+
 from world_builder.asset_constants import DONT_LOAD
 from world_builder.paths import ASSET_PATH
 
@@ -903,6 +905,16 @@ def check_goal_achieved(facts, goal, world):
                  f[1] == body and f[2] == atpose and f[2] == supporter]
         if len(found) > 0:
             return True
+
+    if goal[0] in ['openedjoint', 'closedjoint'] and len(goal) == 2:
+        joint = goal[1]
+        min_position = Position(joint, 'min').value
+        atposition = [f[-1] for f in facts if f[0].lower() in ['atposition'] and f[1] == joint]
+        if len(atposition):
+            if goal[0] == 'openedjoint' and atposition[0].value != min_position:
+                return True
+            if goal[0] == 'closedjoint' and atposition[0].value == min_position:
+                return True
     return False
 
 

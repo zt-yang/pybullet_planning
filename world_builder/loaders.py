@@ -108,9 +108,9 @@ def create_house_floor(world, w=6, l=6, x=0.0, y=0.0):
         Pose(point=Point(x=x, y=y, z=-2 * FLOOR_HEIGHT)))
 
 
-def create_floor_covering_base_limits(world):
+def create_floor_covering_base_limits(world, x_min=0):
     limits = world.robot.custom_limits
-    x_min, x_max = limits[0]
+    _, x_max = limits[0]
     y_min, y_max = limits[1]
     w = x_max - x_min
     l = y_max - y_min

@@ -1111,7 +1111,7 @@ def query_right_left():
     import getch
 
     while True:
-        print('Please press `d` or `enter` to execute the next command; `a` to go back to the previous frame.')
+        print('Please press `d` or `enter` to execute the next command; `a` to go back to the previous frame (only works in shell).')
         key = getch.getche()
         if ord(key) == 10:  # Enter
             return 1

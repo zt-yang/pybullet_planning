@@ -1,13 +1,14 @@
 from world_builder.loaders_partnet_kitchen import *
 
 from robot_builder.robot_builders import build_robot_from_args
+from robot_builder.robots import PR2Robot
 
 from problem_sets.problem_utils import problem_template, pull_actions, pick_place_actions
 
 
 def test_full_kitchen_domain(args, world_loader_fn, x_max=3, **kwargs):
     kwargs['robot_builder_args'].update({
-        'custom_limits': ((-0.5, -2, 0), (x_max, 10, 3)),
+        'custom_limits': ((0.7, -2, 0), (x_max, 10, 3)),
         'initial_xy': (2, 4),
         'draw_base_limits': True
     })
@@ -42,7 +43,7 @@ def test_full_kitchen(args, **kwargs):
             goals, objects = sample_full_kitchen_goal_rearrange_to_storage(world, movables, counters)
 
         elif case in [2, 3, 992, 993]:
-            goals = sample_full_kitchen_goal_rearrange_to_sink_or_braiser(world, movables, counters)
+            goals, skeleton, objects = sample_full_kitchen_goal_rearrange_to_sink_or_braiser(world, movables, counters)
 
         elif case in [4, 41]:
             goals, skeleton, objects = sample_full_kitchen_goal_pot_to_counter(world)
@@ -61,6 +62,7 @@ def test_full_kitchen(args, **kwargs):
 
 def sample_full_kitchen_goal_rearrange_to_sink_or_braiser(world, movables, counters):
     objects = []
+    skeleton = []
     case = world.note
     arm = world.robot.arms[0]
 
@@ -84,10 +86,10 @@ def sample_full_kitchen_goal_rearrange_to_sink_or_braiser(world, movables, count
     # goals = [('On', food, obj_bottom)]
     # goals = [('On', lid, counters[0].pybullet_name)]
     # goals = [('On', food, obj_bottom), ('On', lid, counters[0].pybullet_name)]
+
     # skeleton += [(k, arm, lid) for k in pick_place_actions]
     # skeleton += [(k, arm, food) for k in pick_place_actions]
-
-    return goals
+    return goals, skeleton, objects
 
 
 def sample_full_kitchen_goal_rearrange_to_storage(world, movables, counters):
@@ -341,17 +343,17 @@ def sample_full_kitchen_goal_pot_to_counter(world):
 
         cabinettop = world.name_to_object('cabinettop')
         cabinettop_doors = cabinettop.doors
-        cabinettop_space = world.name_to_object('cabinettop_storage')
+        cabinettop_space = world.name_to_object('cabinettop::storage')
         world.open_doors_drawers(cabinettop, hide_door=True)  ## , extent=1.5)
 
         ## put braiser in space
         braiserbody = world.name_to_object('braiserbody')
         world.add_to_cat(braiserbody.body, 'movable')
-        cabinettop_space.place_obj(braiserbody, world=world)
-        braiserbody.adjust_pose(theta=PI / 2, world=world)
+        cabinettop_space.place_obj(braiserbody)
+        braiserbody.adjust_pose(theta=PI / 2)
         if isinstance(world.robot, PR2Robot):
             dx = cabinettop_space.aabb().upper[0] - braiserbody.aabb().upper[0] - 0.05
-            braiserbody.adjust_pose(dx=dx, dz=0.05, world=world)
+            braiserbody.adjust_pose(dx=dx, dz=0.05)
             world.add_highlighter(braiserbody)
             ## not colliding with cabinettop
             if collided(braiserbody.body, [cabinettop], articulated=False, world=world, verbose=True, min_num_pts=0):

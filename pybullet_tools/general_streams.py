@@ -20,7 +20,7 @@ from pybullet_tools.pr2_primitives import Pose, Grasp, APPROACH_DISTANCE, GRASP_
 from pybullet_tools.bullet_utils import nice, visualize_point, collided, is_box_entity, \
     query_yes_no
 from pybullet_tools.pose_utils import sample_obj_in_body_link_space, is_contained, \
-    ObjAttachment, sample_obj_on_body_link_surface, has_much_larger_aabb
+    ObjAttachment, sample_obj_on_body_link_surface, has_much_larger_aabb, adjust_sampled_pose
 from pybullet_tools.camera_utils import set_camera_target_body
 from pybullet_tools.grasp_utils import get_hand_grasps, sample_from_pickled_grasps, is_top_grasp
 
@@ -341,22 +341,6 @@ def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visu
                 if visualize:
                     wait_unlocked()
     return gen
-
-
-def adjust_sampled_pose(world, body, surface, body_pose):
-    ## hack to reduce planning time
-    (x, y, z), quat = body_pose
-    if 'braiser_bottom' in world.get_name(surface):
-        cx, cy, _ = get_aabb_center(get_aabb(body))
-        dx = x - cx
-        dy = y - cy
-        x, y, _ = get_aabb_center(get_aabb(surface[0], link=surface[-1]))
-        body_pose = (x+dx, y+dy, z+0.01), quat
-    # lisdf_name = world.get_mobility_id(body)
-    # learned_quat = get_learned_yaw(lisdf_name, quat)
-    # if learned_quat is not None:
-    #     body_pose = (x, y, z), quat
-    return body_pose
 
 
 def get_stable_list_gen(problem, num_samples=5, **kwargs):

@@ -11,6 +11,8 @@ from world_builder.world import World, State
 from world_builder.world import World
 from world_builder.paths import KITCHEN_WORLD, PBP_PATH
 
+from pddlstream.language.constants import Action, AND, PDDLProblem
+
 
 PDDL_PATH = abspath(join(__file__, '..', '..', 'assets', 'pddl'))
 
@@ -115,3 +117,8 @@ def problem_template(args, robot_builder_fn, robot_builder_args, world_loader_fn
     # save_to_kitchen_worlds(state, pddlstream_problem, exp_name='blocks_pick', world_name='blocks_pick')
 
     return state, exogenous, goals, problem_dict
+
+
+def update_stream_map(pddlstream_problem, stream_map):
+    a, b, c, _, e, f = pddlstream_problem
+    return PDDLProblem(a, b, c, stream_map, e, f)

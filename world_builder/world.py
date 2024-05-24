@@ -30,7 +30,7 @@ from pybullet_tools.bullet_utils import set_zero_world, nice, open_joint, summar
     nice, LINK_STR, CAMERA_MATRIX, equal, sort_body_parts, get_root_links, colorize_world, colorize_link, \
     draw_fitted_box, find_closest_match, multiply_quat, is_joint_open, get_merged_aabb, tupify
 from pybullet_tools.pose_utils import ObjAttachment, draw_pose2d_path, draw_pose3d_path, xyzyaw_to_pose, \
-    is_placement, is_contained
+    is_placement, is_contained, get_learned_yaw
 from pybullet_tools.camera_utils import get_pose2d, get_camera_image_at_pose, visualize_camera_image, \
     set_camera_target_body, set_camera_target_body
 from pybullet_tools.logging_utils import print_dict
@@ -43,7 +43,6 @@ from world_builder.entities import Region, Location, Robot, Surface, Articulated
     Knob, Camera, Object, StaticCamera
 from world_builder.world_utils import GRASPABLES, get_objs_in_camera_images, make_camera_collage, \
     get_camera_image, sort_body_indices, add_joint_status_facts
-from world_builder.samplers import get_learned_yaw
 
 DEFAULT_CONSTANTS = ['@movable', '@bottle', '@edible', '@medicine']  ## , '@world'
 
@@ -1475,6 +1474,12 @@ class World(WorldBase):
         if only_fluents:
             fluents_pred = ['AtPose', 'AtPosition']
             init = [i for i in init if i[0] in fluents_pred]
+
+        ## ---- to help with planning ------------------
+        if self.name_to_body('braiserlid') is not None and self.name_to_body('braiser_bottom') is not None:
+            fact = ('Stackable', self.name_to_body('braiserlid'), self.name_to_body('braiser_bottom'))
+            if fact in init:
+                init.remove(fact)
         return init
 
     def get_facts(self, conf_saver=None, init_facts=[], obj_poses=None, joint_positions=None, objects=None, verbose=True):
@@ -1518,7 +1523,7 @@ class World(WorldBase):
                     init += [(cat, obj.pybullet_name), ('Region', obj.pybullet_name)]
                 cat2 = f"@{cat}"
                 if cat2 in self.constants:
-                    init += [('OfType', obj, cat2)]
+                    init += [('OfType', obj.pybullet_name, cat2)]
 
         ## --- for testing IK
         # lid = self.name_to_body('braiserlid')
@@ -1651,7 +1656,7 @@ class World(WorldBase):
         }
         self.learned_pose_list_gen = None
         self.learned_bconf_list_gen = None
-        self.robot.ik_solvers = {arm: None for arm in self.robot.arms}
+        self.robot.reset_ik_solvers()
 
     def recover_unpickleble_attributes(self):
         self.learned_pose_list_gen = self.cached_attributes['learned_pose_list_gen']
@@ -2076,7 +2081,7 @@ class Process(object):
 
     def initialize(self, state):
         # TODO: move creation of bodies to agents
-        self.state = state ## YANG< HPN
+        self.state = state ## YANG < HPN
         return state # TODO: return or just update?
 
     def evolve(self, state, once=False, verbose=False, step=None):

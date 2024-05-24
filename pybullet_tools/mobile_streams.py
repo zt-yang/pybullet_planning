@@ -297,7 +297,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
 
     # set_renderer(enable=False)
     if visualize:
-        # set_renderer(enable=True)
+        set_renderer(enable=True)
         samples = []
 
     # gripper_grasp = robot.visualize_grasp(pose_value, g.value, arm=a, body=g.body)
@@ -373,7 +373,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
             if collided(robot, obstacles, tag='ik_default_conf', **col_kwargs):
                 # wait_unlocked()
                 continue
-            if collision_fn(bconf, verbose=False):  ## TODO: figure out why sometimes the answers are different
+            if collision_fn(bconf, verbose=True):  ## TODO: figure out why sometimes the answers are different
                 # print('sample_bconf | collision_ik_default_conf')
                 continue
             robot.print_full_body_conf(title=f'sample_bconf({a}), default_conf={default_conf}')
@@ -411,6 +411,8 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
             context_saver.restore()
 
         if verbose:
+            if visualize:
+                robot.visualize_grasp_approach(pose_value, g, arm=a, body=g.body, title='sample_bconf')
             print(f'sample_bconf\tIKSolver somehow stopped generating after {attempts} attempts')
 
     ## do ir sampling of x, y, theta, torso, then solve ik for arm
@@ -616,6 +618,8 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
         path = approach_path + grasp_path
 
     mt = create_trajectory(robot.body, arm_joints, path)
+
+    robot.reset_ik_solvers()  ## otherwise unpickleable
     cmd = Commands(State(attachments=attachments), savers=[BodySaver(robot.body)], commands=[mt])
 
     set_joint_positions(robot, arm_joints, default_conf)  # default_conf | sample_fn()
@@ -906,6 +910,7 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
     add_to_jp2jp(robot, o, mapping)
 
     bt = Trajectory(bpath)
+    robot.reset_ik_solvers()
     base_cmd = Commands(State(), savers=[BodySaver(robot.body)], commands=[bt])
     bq2 = bt.path[-1]
     step_str = f"pr2_streams.get_pull_door_handle_motion_gen | step {len(bpath)}/{num_intervals}\t"
@@ -1090,6 +1095,7 @@ def get_arm_ik_fn(problem, custom_limits={}, resolution=DEFAULT_RESOLUTION,
             path = approach_path + grasp_path
         mt = create_trajectory(robot.body, arm_joints, path)
         attachments = {attachment.child: attachment} ## TODO: problem with having (body, joint) tuple
+        robot.reset_ik_solvers()
         cmd = Commands(State(attachments=attachments), savers=[BodySaver(robot.body)], commands=[mt])
         return (mt.path[-1], cmd)
     return fn

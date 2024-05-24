@@ -42,14 +42,7 @@ def test_cooking_domain():
     )
 
 
-def test_pigi_data():
-    run_agent(
-        agent_class=PDDLStreamAgent, config='config_pigi.yaml',
-    )
-
-
 if __name__ == '__main__':
     # test_pick_place_domain()
     test_nvidia_kitchen_domain()
     # test_cooking_domain()
-    # test_pigi_data()

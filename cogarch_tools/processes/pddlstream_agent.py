@@ -25,6 +25,7 @@ from world_builder.world_utils import get_camera_image
 
 from cogarch_tools.processes.motion_agent import MotionAgent
 from cogarch_tools.cogarch_utils import clear_empty_exp_dirs
+from problem_sets.problem_utils import update_stream_map
 
 from leap_tools.domain_modifiers import initialize_domain_modifier
 from leap_tools.object_reducers import initialize_object_reducer
@@ -65,6 +66,7 @@ class PDDLStreamAgent(MotionAgent):
         self.solve_pddlstream = solve_pddlstream
         self.step_count = 0
         self.refinement_count = 0
+        self.problem_count = 0
         self.env = None  ## for preimage computation
         self.envs = []  ## for preimage computation
         self.env_execution = None  ## for saving states during execution
@@ -79,7 +81,7 @@ class PDDLStreamAgent(MotionAgent):
         self.initial_state = None
         self.world_state = None
 
-        self.state = init
+        self.state_facts = init
         self.last_plan_state = None  ## updated after planning
         self.last_added_facts = []
         self.last_deled_facts = []
@@ -93,11 +95,22 @@ class PDDLStreamAgent(MotionAgent):
         self.useful_variables = {}
         self.on_map = {}
 
+    ###################################################################
+
     """ planning related """
     def set_pddlstream_problem(self, problem_dict, state):
         pddlstream_problem = problem_dict['pddlstream_problem']
         self.pddlstream_problem = state.robot.modify_pddl(pddlstream_problem)
         self.initial_state = state
+
+    def initialize(self, state):
+        """ when the agent state is loaded from previous saved runs, the world state changes """
+        if self.world_state is None:
+            self.world_state = state
+        return self.world_state
+
+    def set_world_state(self, state):
+        self.world_state = state
 
     def init_experiment(self, args, domain_modifier=None, object_reducer=None, comparing=False):
         """ important for using the right files in replaning """
@@ -123,16 +136,7 @@ class PDDLStreamAgent(MotionAgent):
         ## HPN experiments
         self.comparing = comparing
 
-    ###################################################################
-
-    def initialize(self, state):
-        """ when the agent state is loaded from previous saved runs, the world state changes """
-        if self.world_state is None:
-            self.world_state = state
-        return self.world_state
-
-    def set_world_state(self, state):
-        self.world_state = state
+        return self
 
     ###################################################################
 
@@ -151,7 +155,7 @@ class PDDLStreamAgent(MotionAgent):
         ## hack for checking if the plan has been executed
         if self.plan is not None and len(self.plan) == 0:
             print('\n\nfinished executing plan\n')
-            wait_if_gui('finish?')
+            # wait_if_gui('finish?')
             return True
         return False
 
@@ -221,6 +225,7 @@ class PDDLStreamAgent(MotionAgent):
                 if self.env_execution is not None and name in self.env_execution.domain.operators:
                     self._update_state(action)
 
+                self.step_count += 1
                 commands = get_primitive_actions(action, self.world, teleport=SAVE_TIME)
                 self.plan = commands + self.plan
                 self.plan_len += 1
@@ -229,13 +234,13 @@ class PDDLStreamAgent(MotionAgent):
         return None
 
     def _update_state(self, action):
-        facts_old = set(self.state)
+        facts_old = set(self.state_facts)
         added, deled = self.env_execution.step(action)
-        self.state = update_facts(self.state, added=added + self.static_facts, deled=deled)
+        self.state_facts = update_facts(self.state_facts, added=added + self.static_facts, deled=deled)
         print(f'pddlstream_agent._update_state(step={self.step_count}, {action})')
-        summarize_state_changes(self.state, facts_old, title='')
-        # summarize_facts(self.state, self.world, name='Facts computed during execution')
-        self.step_count += 1
+        summarize_state_changes(self.state_facts, facts_old, title='')
+        # summarize_facts(self.state_facts, self.world, name='Facts computed during execution')
+
         self.last_added_facts = added
         self.last_deled_facts = deled
 
@@ -252,7 +257,7 @@ class PDDLStreamAgent(MotionAgent):
         is_HPN = 'hpn' in self.exp_name or env is not None
 
         if is_HPN:
-            self.state = make_init_lower_case(set(self.pddlstream_problem.init + preimage))
+            self.state_facts = make_init_lower_case(set(self.pddlstream_problem.init + preimage))
 
             ## save the failed streams
             failures_file = join(VISUALIZATIONS_PATH, 'log.json')
@@ -260,14 +265,15 @@ class PDDLStreamAgent(MotionAgent):
                 shutil.move(failures_file, join(VISUALIZATIONS_PATH, f'log_0.json'))
         else:
             print(f'pddlstream.replan\tstep_count = {self.step_count}')
-            self.state = make_init_lower_case(self.pddlstream_problem.init)
-            self.last_plan_state = copy.deepcopy(self.state)
+            self.state_facts = make_init_lower_case(self.pddlstream_problem.init)
+            self.last_plan_state = copy.deepcopy(self.state_facts)
 
         ## the first planning problem - only for
         if self.env_execution is None:  ## and not self.pddlstream_kwargs['visualization']:
             if self.plan is None:
                 self.save_stats(solved=False)
-            self._init_env_execution()
+            if is_HPN:
+                self._init_env_execution()
 
         ## hierarchical planning in the now
         if is_HPN:
@@ -280,7 +286,7 @@ class PDDLStreamAgent(MotionAgent):
 
         domain_pddl = self.domain_pddl
         domain_pddl = join(PDDL_PATH, 'domains', domain_pddl)
-        init = self.state
+        init = self.state_facts
         self.env_execution = PDDLStreamForwardEnv(domain_pddl, self.pddlstream_problem, init=init)
         self.env_execution.reset()
 
@@ -311,7 +317,6 @@ class PDDLStreamAgent(MotionAgent):
         if len(self.commands) > 0:
             self.remove_unpickleble_attributes()
             save_commands(self.commands, commands_path)
-            shutil.copy(commands_path, join(self.exp_dir, 'states', f'commands_{self.problem_count}.pkl'))
             self.recover_unpickleble_attributes()
 
     def save_time_log(self, csv_name, solved=True, failed_time=False):
@@ -319,16 +324,19 @@ class PDDLStreamAgent(MotionAgent):
         from pybullet_tools.logging_utils import myprint as print
         from tabulate import tabulate
 
+        durations = {}
+        durations2 = {}
         for i in range(len(self.time_log)):
+            ## failed
             if 'planning' not in self.time_log[i]:
-                print(f'save_time_log, self.time_log[{i}] = {self.time_log[i]}')
-        print('pddlstream_agent.save_time_log\n\ttotal planning time:'+str(self.time_log[0]['planning']))
-        durations = {i: self.time_log[i]['planning'] for i in range(len(self.time_log))}
-        durations2 = {i: self.time_log[i]['preimage'] for i in range(len(self.time_log))}
+                continue
+            durations[i] = self.time_log[i]['planning']
+            durations2[i] = self.time_log[i]['preimage']
         total_planning = sum(list(durations.values()))
         total_preimage = sum(list(durations2.values()))
         if not solved and not failed_time:
             total_planning = 99999
+        print(f'pddlstream_agent.save_time_log\n\ttotal planning time: {total_planning}')
 
         fieldnames = ['exp_name']
         fieldnames.extend(list(durations.keys()))
@@ -404,11 +412,11 @@ class PDDLStreamAgent(MotionAgent):
         self.distance_fn = None
         self.extend_fn = None
         self.observations = []
+        self.world_state = None
+        self.world.robot.reset_ik_solvers()
 
-        a, b, c, _, e, f = self.env_execution._pddlstream_problem
-        self.env_execution._pddlstream_problem = PDDLProblem(a, b, c, None, e, f)
-        a, b, c, _, e, f = self.pddlstream_problem
-        self.pddlstream_problem = PDDLProblem(a, b, c, None, e, f)
+        self.env_execution._pddlstream_problem = update_stream_map(self.env_execution._pddlstream_problem, None)
+        self.pddlstream_problem = update_stream_map(self.pddlstream_problem, None)
         self.env_execution.static_literals = None
         self.env_execution.externals = None
         self.env_execution._action_space = None
@@ -418,10 +426,6 @@ class PDDLStreamAgent(MotionAgent):
         agent_state_path = join(agent_state_dir, f'agent_state_{self.problem_count}.pkl')
         with open(agent_state_path, 'bw') as f:
             pickle.dump(self, f)
-
-        # world_state_path = join(agent_state_dir, f'world_state_{self.problem_count}.pkl')
-        # with open(world_state_path, 'bw') as f:
-        #     pickle.dump(WorldSaver(), f)
 
         # for k, v in self.__dict__.items():
         #     print(k)
@@ -433,10 +437,8 @@ class PDDLStreamAgent(MotionAgent):
         #     with open(agent_state_path, 'bw') as f:
         #         pickle.dump(v, f)
 
-        a, b, c, _, e, f = self.env_execution._pddlstream_problem
-        self.env_execution._pddlstream_problem = PDDLProblem(a, b, c, stream_map, e, f)
-        a, b, c, _, e, f = self.pddlstream_problem
-        self.pddlstream_problem = PDDLProblem(a, b, c, stream_map, e, f)
+        self.env_execution._pddlstream_problem = update_stream_map(self.env_execution._pddlstream_problem, stream_map)
+        self.pddlstream_problem = update_stream_map(self.pddlstream_problem, stream_map)
         self.env_execution.static_literals = static_literals
         self.env_execution.externals = env_externals
         self.env_execution._action_space = _action_space
@@ -452,6 +454,9 @@ class PDDLStreamAgent(MotionAgent):
             self._init_env_execution()
 
         exp_dir = self.exp_dir
+        agent_state_path = self.llamp_api.agent_state_path
+        robot = self.world.robot
+
         stream_map = self.pddlstream_problem[3]
         static_literals = self.env_execution.static_literals
         env_externals = self.env_execution.externals
@@ -468,6 +473,8 @@ class PDDLStreamAgent(MotionAgent):
 
         self.exp_dir = exp_dir
         self.plan = []
+        self.llamp_api.agent_state_path = agent_state_path
+        self.world.robot = robot
 
         a, b, c, _, e, f = self.env_execution._pddlstream_problem
         self.env_execution._pddlstream_problem = PDDLProblem(a, b, c, stream_map, e, f)

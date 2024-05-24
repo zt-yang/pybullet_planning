@@ -1,7 +1,7 @@
 ## all relative paths in this file has pybullet_planning as the root dir
 
 ## debug related
-seed: null
+seed: 378277
 verbose: true
 
 ## configuration for PDDLStream
@@ -16,12 +16,14 @@ planner:
   total_planning_timeout: 60
   max_plans: 10
   max_solutions: 1
+  max_skeletons: 300
+  max_evaluation_plans: 300
   log_failures: false
 
 ## specify the TAMP problem with preconfigured scene layout & robot
 problem:
   problem: 'test_full_kitchen'
-  goal_variations: [1]
+  goal_variations: [2]
   domain_pddl: 'pddl_domains/pr2_domain_pigi.pddl'
   stream_pddl: 'pddl_domains/pr2_stream_pigi.pddl'
   use_skeleton_constraints: false
@@ -43,7 +45,7 @@ robot:
   robot_name: 'pr2'
   draw_base_limits: true
   dual_arm: false
-  self_collisions: true
+  self_collisions: false
 
 ## planning stream related
 streams:
@@ -53,11 +55,14 @@ streams:
   disable_movable_collision: false
   disable_base_collision: false
   top_grasp_tolerance: 1.58
+  ir_max_attempts: 60
 
 ## pybullet related
 sim:
-  window_width: 1980
-  window_height: 1238
+  window_width: 1080
+  window_height: 675
+#  window_width: 1980
+#  window_height: 1238
   viewer: true
   lock: true
   simulate: false

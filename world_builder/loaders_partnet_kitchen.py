@@ -8,9 +8,9 @@ import copy
 from pybullet_tools.utils import euler_from_quat, set_camera_pose, draw_aabb, WHITE, get_link_pose, \
     get_joint_limits, unit_pose, draw_pose, stable_z, wait_unlocked, get_pose, set_pose, get_bodies
 from pybullet_tools.bullet_utils import aabb_larger, open_joint, collided, in_list, equal
+from pybullet_tools.pose_utils import get_learned_yaw, get_learned_poses
 
 from world_builder.loaders import *
-from world_builder.samplers import get_learned_yaw, get_learned_poses
 from world_builder.world_utils import get_partnet_doors, \
     get_partnet_spaces, FURNITURE_WHITE, adjust_for_reachability, get_partnet_links_by_type, \
     FURNITURE_YELLOW, FURNITURE_GREY, HEX_to_RGB
@@ -535,6 +535,8 @@ def load_kitchen_mini_scene(world, **kwargs):
     # rgb, depth, segmented, view_pose, camera_matrix = world.camera.get_image()
     # wait_unlocked()
 
+    # world.set_learned_pose_list_gen(learned_pigi_pose_list_gen)
+
     return food_ids, bottle_ids, medicine_ids
 
 
@@ -555,6 +557,7 @@ def load_counter_movables(world, counters, d_x_min=None, obstacles=[],
         d_x_min = - 0.3
     instances = {k: None for k in counters}
     n_objects = {k: 2 for k in categories}
+    n_objects['bottle'] = 1
 
     if world.note in [31]:
         braiser_bottom = world.name_to_object('braiser_bottom')
@@ -817,7 +820,7 @@ diswasher = 'DishwasherBox'
 def sample_kitchen_sink(world, floor=None, x=0.0, y=1.0, verbose=False, random_scale=1.0):
 
     if floor is None:
-        floor = create_floor_covering_base_limits(world)
+        floor = create_floor_covering_base_limits(world, x_min=-0.5)
         x = 0
 
     ins = True
@@ -1375,7 +1378,7 @@ def load_movables(world, counters, shelves, obstacles, x_food_min, reachability_
 def sample_full_kitchen(world, verbose=True, pause=True, reachability_check=True,
                         open_door_epsilon=0.5, make_doors_transparent=False):
     h_lower_cabinets = 1
-    dh_cabinets = 0.8
+    dh_cabinets = 1.2 ## 0.8
     h_upper_cabinets = 0.768
     l_max_kitchen = 8
 
@@ -1459,18 +1462,18 @@ def make_sure_obstacles(world, case, movables, counters, objects, food=None):
     """ add camera to the from or to region """
     obj = world.name_to_body(obj_name)
     obj_bottom = world.name_to_body(surface_name)
-    set_camera_target_body(obj, dx=d[0], dy=d[1], dz=d[2])
+    # set_camera_target_body(obj, dx=d[0], dy=d[1], dz=d[2])
     world.planning_config['camera_zoomins'].append(
         {'name': world.BODY_TO_OBJECT[obj].name, 'd': d}
     )
 
     """ add obstacles to the from or to region """
     bottom_obj = world.BODY_TO_OBJECT[obj_bottom]
-    obstacles = bottom_obj.supported_objects
+    obstacles = [a.pybullet_name for a in bottom_obj.supported_objects]
     start = time.time()
     time_allowed = 4
     while (case in [2, 21] and len(obstacles) <= 2 and random.random() < 1) \
-            or (case in [3] and len(obstacles) == 0 and random.random() < 1):
+            or (case in [3] and len(obstacles) == 0 and random.random() < 0.2):
         all_to_move = []
 
         """ add one goal unrelated obstacles """
@@ -1497,8 +1500,8 @@ def make_sure_obstacles(world, case, movables, counters, objects, food=None):
             pkwargs = dict(max_trial=5, obstacles=obstacles)
             result = bottom_obj.place_obj(something, **pkwargs)
             if result is not None:
-                obstacles.append(something)
-                obstacles += bottom_obj.supported_objects
+                possible = [something.pybullet_name] + [a.pybullet_name for a in bottom_obj.supported_objects]
+                obstacles += [o for o in possible if o not in obstacles]
             ## move objects away if there is no space
             else:
                 counters_tmp = world.find_surfaces_for_placement(something, counters)
@@ -1514,7 +1517,8 @@ def make_sure_obstacles(world, case, movables, counters, objects, food=None):
         # skeleton.extend([(k, arm, o) for k in pick_place_actions])
         # goals.append(('On', o.body, random.choice(sink_counters)))
         # goals = [('Holding', arm, o.body)]
-        objects.append(o)
+        if o not in objects:
+            objects.append(o)
     # skeleton.extend([(k, arm, food) for k in pick_place_actions])
 
     """ choose the object to rearrange """
@@ -1537,6 +1541,7 @@ def make_sure_obstacles(world, case, movables, counters, objects, food=None):
         counters_tmp = move_lid_away(world, counters, epsilon=epsilon)
         if counters_tmp is not None:
             objects += [counters_tmp.pybullet_name]
+            world.add_to_cat(counters_tmp, 'surface')
     elif case in [993]:
         world.remove_object(world.name_to_object('braiserlid'))
 
@@ -1648,6 +1653,10 @@ def check_kitchen_placement(world, body, surface, **kwargs):
         pose = place_in_cabinet(surface, body, place=False)
         poses = [pose]
     return poses
+
+
+# def learned_pigi_pose_list_gen(world, body, surfaces, num_samples=30, obstacles=[], verbose=True):
+#
 
 
 ######################################################################################

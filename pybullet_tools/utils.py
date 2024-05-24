@@ -3966,7 +3966,8 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
             if (not use_aabb or aabb_overlap(get_moving_aabb(body), get_moving_aabb(body))) and \
                     pairwise_link_collision(body, link1, body, link2): #, **kwargs):
                 # print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
-                if verbose: print(body, link1, body, link2)
+                if verbose:
+                    print(f'check_link_pairs body {body}, link1 {link1} link2 {link2}')
                 return True
 
         # #step_simulation()

@@ -63,26 +63,26 @@ class HierarchicalAgent(PDDLStreamAgent):
             for elem in goal:
                 if elem in self.useful_variables:
                     useful = self.useful_variables[elem]
-                    if useful not in facts and useful not in self.state:
+                    if useful not in facts and useful not in self.state_facts:
                         facts.append(useful)
                         print('\tadded useful fact', useful)
 
         ## remove irrelevant facts
         ignore = ['basemotion', 'btraj', 'cfreeapproachpose', 'cfreeposepose', 'not']
         removed = []
-        for f in self.state:
+        for f in self.state_facts:
             if f[0] in self.env_execution.domain.predicates and f[0] not in ignore and \
                     not self.env_execution.domain.predicates[f[0]].is_derived:
                 if f[0] == 'pose' and (
-                        ('atpose', f[1], f[2]) not in self.state and ('atpose', f[1], f[2]) not in goals):
+                        ('atpose', f[1], f[2]) not in self.state_facts and ('atpose', f[1], f[2]) not in goals):
                     print('removed irrelevant pose', f)
                     removed.append(f)
                     continue
-                if f[0] == 'bconf' and ('atbconf', f[1]) not in self.state:
+                if f[0] == 'bconf' and ('atbconf', f[1]) not in self.state_facts:
                     print('removed irrelevant bconf', f)
                     removed.append(f)
                     continue
-                if f[0] == 'reach' and ('bconf', f[3]) not in self.state:
+                if f[0] == 'reach' and ('bconf', f[3]) not in self.state_facts:
                     print('removed irrelevant reach', f)
                     removed.append(f)
                     continue
@@ -240,12 +240,12 @@ class HierarchicalAgent(PDDLStreamAgent):
         print('------------------------ \nRefined plan:', plan)
         if plan is not None:
             self.plan = plan + self.plan
-            add_facts = [s for s in set(preimage) if s not in self.state]
+            add_facts = [s for s in set(preimage) if s not in self.state_facts]
             self.static_facts += [f for f in add_facts if f[0].lower() in ['cleaned', 'cooked', 'seasoned']]
 
             ## need to have here because it may have just been refining and no action yet
-            # self.state += self.static_facts
-            # self.state = list(set(self.state))
+            # self.state_facts += self.static_facts
+            # self.state_facts = list(set(self.state_facts))
             self.record_time(time_log)
 
             print('\nnew plan:')

@@ -72,13 +72,14 @@ def check_if_exist_rerun(run_dir, world, commands, plan):
 ##########################################################################################
 
 
-def load_basic_plan_commands(world, exp_dir, run_dir, verbose=False, load_attach=True, maybe_hpn=True):
+def load_basic_plan_commands(world, exp_dir, run_dir, verbose=False, load_attach=True):
     problem = Problem(world)
     if verbose:
         world.summarize_all_objects()
     body_map = get_body_map(run_dir, world, larger=False)
     if load_attach:
         load_attachments(run_dir, world, body_map=body_map)
+    maybe_hpn = 'hpn' in run_dir
     plan = get_plan(run_dir, skip_multiple_plans=True, maybe_hpn=maybe_hpn)
     commands = pickle.load(open(join(exp_dir, 'commands.pkl'), "rb"))
     return problem, commands, plan, body_map
@@ -128,11 +129,14 @@ def load_attachments(run_dir, world, body_map):
         world.ATTACHMENTS[body] = ObjAttachment(parent, parent_link, grasp_pose, body)
 
 
-def load_replay_conf(conf_path):
+def load_replay_conf(conf_path, **kwargs):
     c = load_yaml(conf_path)
     for k, v in c.items():
         if v == 'none':
             c[k] = None
+
+    for k, v in kwargs.items():
+        c[k] = v
 
     # from types import SimpleNamespace
     # conf = SimpleNamespace(**kwargs)
@@ -169,8 +173,8 @@ def load_replay_conf(conf_path):
     return c
 
 
-def run_replay(config_yaml_file, load_data_fn=load_pigi_data, given_path=None):
-    c = load_replay_conf(config_yaml_file)
+def run_replay(config_yaml_file, load_data_fn=load_pigi_data, **kwargs):
+    c = load_replay_conf(config_yaml_file, **kwargs)
 
     def process(run_dir_ori):
         return run_one(run_dir_ori, load_data_fn=load_data_fn, **c)
@@ -181,11 +185,8 @@ def run_replay(config_yaml_file, load_data_fn=load_pigi_data, given_path=None):
                            skip_if_processed_recently=c['skip_if_processed_recently'], check_time=c['check_time'])
         return case_filter(run_dir_ori, **case_kwargs)
 
-    if given_path is None:
-        given_path = c['given_path']
-
     process_all_tasks(process, c['task_name'], parallel=c['parallel'], cases=c['cases'],
-                      path=given_path, dir=c['given_dir'], case_filter=_case_filter)
+                      path=c['given_path'], dir=c['given_dir'], case_filter=_case_filter)
 
 
 def set_replay_camera_pose(world, run_dir, camera_kwargs, camera_point, target_point):

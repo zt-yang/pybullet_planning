@@ -81,11 +81,11 @@
     )
 
     (:stream plan-base-pull-handle
-      :inputs (?a ?o ?p1 ?p2 ?g ?q1 ?aq1)
-      :domain (and (GraspHandle ?a ?o ?p1 ?g ?q1 ?aq1) (Position ?o ?p2) (IsSampledPosition ?o ?p1 ?p2))
-      :outputs (?q2 ?bt ?aq2 ?at)
-      :certified (and (BConf ?q2) (UngraspBConf ?q2) (BTraj ?bt) (AConf ?a ?aq2) (ATraj ?at)
-                      (UngraspHandle ?a ?o ?p2 ?g ?q2 ?aq2)
-                      (KinPullDoorHandle ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq1 ?aq2 ?at))
+      :inputs (?a ?o ?p1 ?p2 ?g ?q1 ?aq)
+      :domain (and (GraspHandle ?a ?o ?p1 ?g ?q1 ?aq) (Position ?o ?p2) (IsSampledPosition ?o ?p1 ?p2))
+      :outputs (?q2 ?bt)
+      :certified (and (BConf ?q2) (UngraspBConf ?q2) (BTraj ?bt)
+                      (UngraspHandle ?a ?o ?p2 ?g ?q2 ?aq)
+                      (KinPullDoorHandle ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq))
     )
 )

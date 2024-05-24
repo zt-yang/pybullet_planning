@@ -90,7 +90,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
 
         'sample-pose-sprinkle': from_gen_fn(get_above_pose_gen(p, collisions=c)),
 
-        'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False, verbose=debug_grasp,
+        'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False, verbose=True,
                                                        top_grasp_tolerance=top_grasp_tolerance, debug=False,
                                                        use_all_grasps=use_all_grasps, num_samples=num_grasps)),
         'compute-pose-kin': from_fn(get_compute_pose_kin()),
@@ -109,7 +109,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
                            verbose=True, visualize=False, **tc)),
         'inverse-kinematics': from_fn(
             get_ik_fn_old(p, collisions=motion_collisions, teleport=t, verbose=True,
-                          visualize=debug, ACONF=False, resolution=resolution)),
+                          visualize=False, ACONF=False, resolution=resolution)),
 
         'inverse-reachability-rel': from_gen_fn(
             get_ik_rel_gen_old(p, collisions=True, ir_only=True, learned=True, max_attempts=ir_max_attempts,

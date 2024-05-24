@@ -33,7 +33,6 @@ SAVE_COLLISIONS = False
 def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH,
               viewer=True, reset=False, exp_name='default', record_problem=True, record_plans=False,
               load_initial_state=False, comparing=False, save_testcase=False, data_generation=False,
-
               create_robot_fn=None, problem=None, open_goal=None, domain=None, stream=None,
               exp_dir=None, exp_subdir=None, draw_base_limits=None, use_rel_pose=None,
               domain_modifier=None, object_reducer=None, dual_arm=None, visualization=None,
@@ -123,6 +122,8 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
 
     # note = kwargs['world_builder_args'].get('note', None) if 'world_builder_args' in kwargs else None
     agent = agent.init_experiment(args, domain_modifier=domain_modifier, object_reducer=object_reducer, comparing=comparing)
+    output_dir = agent.exp_dir
+    save_kwargs = dict(goal=goals, init=init, domain=domain, stream=stream, pddlstream_kwargs=solver_kwargs, problem=problem)
 
     ## for visualizing observation
     if (hasattr(args, 'save_initial_observation') and args.save_initial_observation) or hasattr(agent, 'llamp_api'):
@@ -134,6 +135,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
         if agent.llamp_api.agent_state_path is not None:
             state = State(agent.world, objects=state.objects, observation_model=state.observation_model)
             agent.set_world_state(state)
+            state.world.save_test_case(output_dir, **save_kwargs)
         if problem_dict['llamp_api'].planning_mode is None:
             return
 
@@ -165,11 +167,9 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
                 disconnect()
                 return
 
-    output_dir = agent.exp_dir
     if record_problem and not isinstance(goals, tuple):
         state.restore()  ## go back to initial state
-        state.world.save_test_case(output_dir, goal=goals, init=init, domain=domain, stream=stream,
-                                   pddlstream_kwargs=solver_kwargs, problem=problem)
+        state.world.save_test_case(output_dir, **save_kwargs)
 
         ## putting solutions from all methods in the same directory as the problem
         if comparing:

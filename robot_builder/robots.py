@@ -221,6 +221,10 @@ class RobotAPI(Robot):
 
         return attachment
 
+    def reset_ik_solvers(self):
+        """ otherwise cannot pickle 'SwigPyObject' object """
+        self.ik_solvers = {arm: None for arm in self.arms}
+
     ###############################################################################
 
     def get_grasp_pose(self, body_pose, grasp, arm='left', body=None, verbose=False):
@@ -498,7 +502,6 @@ class MobileRobot(RobotAPI):
 
     def visualize_grasp_approach(self, body_pose, grasp, title='', **kwargs):
         kwargs.update(dict(new_gripper=True, body=grasp.body))
-        print('robot.visualize_grasp_approach | grasp_value', nice(grasp.value))
         gripper_grasp = self.visualize_grasp(body_pose, grasp.value, color=RED, **kwargs)
         gripper_approach = self.visualize_grasp(body_pose, grasp.approach, color=GREEN, **kwargs)
 
@@ -508,7 +511,7 @@ class MobileRobot(RobotAPI):
 
         set_camera_target_body(gripper_grasp, dx=0.2, dy=0.2, dz=0.4)
         set_renderer(enable=True)
-        wait_unlocked(f'{title} | visualized the gripper at grasp and approach poses')
+        wait_unlocked(f'{title}\trobots.visualize_grasp_approach')
         remove_body(gripper_grasp)
         remove_body(gripper_approach)
         set_renderer(enable=False)
