@@ -36,7 +36,7 @@ data:
   exp_name: 'original'
   record_problem: true
   record_mp4: false
-  save_testcase: true
+  save_testcase: false
 
 robot:
   robot_name: 'spot'

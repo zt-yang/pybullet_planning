@@ -1,7 +1,7 @@
 ## all relative paths in this file has pybullet_planning as the root dir
 
 ## debug related
-seed: 378277
+seed: null
 verbose: true
 
 ## configuration for PDDLStream
@@ -36,10 +36,10 @@ problem:
 data:
   exp_dir: '../outputs'
   exp_subdir: 'piginet_data'
-  exp_name: 'original'
+  exp_name: 'default'
   record_problem: true
   record_mp4: false
-  save_testcase: true
+  save_testcase: false
 
 robot:
   robot_name: 'pr2'

@@ -495,9 +495,9 @@ class PDDLStreamAgent(MotionAgent):
         with open(commands_path, 'br') as f:
             commands = pickle.load(f)
 
-        problem, _, plan, body_map = load_basic_plan_commands(self.world, self.exp_dir, self.exp_dir,
-                                                              load_attach=False, maybe_hpn=False)
-        apply_actions(problem, commands, time_step=0.001, verbose=False, plan=plan)  ## , body_map=body_map
+        problem, _, plan, body_map = load_basic_plan_commands(self.world, self.exp_dir, self.exp_dir, load_attach=False)
+        attachments = apply_actions(problem, commands, time_step=0.001, verbose=False, plan=plan)  ## , body_map=body_map
+        self.world.ATTACHMENTS = attachments
 
 
 ###########################################################################

@@ -651,6 +651,8 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
     if save_gif:
         return seg_images
 
+    return state_event.attachments
+
 
 def get_primitive_actions(action, world, teleport=False, verbose=True):
     def get_traj(t, sub=4, viz=True):

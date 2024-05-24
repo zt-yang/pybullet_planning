@@ -31,19 +31,15 @@ SAVE_COLLISIONS = False
 
 
 def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH,
-              viewer=True, reset=False, exp_name='default', record_problem=True, record_plans=False,
-              load_initial_state=False, comparing=False, save_testcase=False, data_generation=False,
-              create_robot_fn=None, problem=None, open_goal=None, domain=None, stream=None,
-              exp_dir=None, exp_subdir=None, draw_base_limits=None, use_rel_pose=None,
-              domain_modifier=None, object_reducer=None, dual_arm=None, visualization=None,
-              window_width=None, window_height=None, debug=None, separate_base_planning=None,
-              top_grasp_tolerance=None, use_subgoal_constraints=None, use_skeleton_constraints=None, **kwargs):
+              reset=False, load_initial_state=False, record_plans=False, comparing=False, data_generation=False,
+              create_robot_fn=None, problem=None, exp_subdir=None, world_builder_args=dict(), robot_builder_args=dict(),
+              domain_modifier=None, object_reducer=None, **kwargs):
     """
     problem:    name of the problem builder function to solve
     exp_dir:    sub-directory in `bullet/experiments` to save the planning data
     exp_name:   for comparison groups of different algorithms, e.g. ['original', 'hpn', 'hpn_goal-related']
     comparing:  put solutions inside exp_dir/exp_name instead of inside exp_dir
-    kwargs:     if None, is the default set in config yaml file
+    kwargs:     changing the default set in config yaml file
     """
 
     from pybullet_tools.logging_utils import myprint
@@ -54,31 +50,21 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
 
     if exp_subdir is None and isinstance(problem, str):
         exp_subdir = problem
-    args = get_parser(config=config, config_root=config_root, viewer=viewer, problem=problem, open_goal=open_goal,
-                      window_width=window_width, window_height=window_height, draw_base_limits=draw_base_limits,
-                      exp_dir=exp_dir, exp_subdir=exp_subdir, exp_name=exp_name, domain_pddl=domain, stream_pddl=stream,
-                      use_rel_pose=use_rel_pose, record_problem=record_problem, save_testcase=save_testcase,
-                      debug=debug, dual_arm=dual_arm, separate_base_planning=separate_base_planning,
-                      top_grasp_tolerance=top_grasp_tolerance, use_subgoal_constraints=use_subgoal_constraints,
-                      use_skeleton_constraints=use_skeleton_constraints, visualization=visualization)
+    args = get_parser(config=config, config_root=config_root, problem=problem, exp_subdir=exp_subdir, **kwargs)
 
     ## update robot_builder_args
-    if 'robot_builder_args' not in kwargs:
-        kwargs['robot_builder_args'] = args.robot_builder_args
-    kwargs['robot_builder_args']['create_robot_fn'] = create_robot_fn
+    args.robot_builder_args.update(robot_builder_args)
+    robot_builder_args = args.robot_builder_args
+    robot_builder_args['create_robot_fn'] = create_robot_fn
 
     ## update world_builder_args
-    kwargs['world_builder_args'] = dict()
-    if hasattr(args, 'goal_variations'):
-        kwargs['world_builder_args']['goal_variations'] = args.goal_variations
-    for k in ['load_llm_memory', 'load_agent_state']:
-        if k in kwargs:
-            if kwargs[k] is not None:
-                kwargs['world_builder_args'][k] = kwargs[k]
-            kwargs.pop(k)
+    for k in ['goal_variations', 'load_llm_memory', 'load_agent_state']:
+        if hasattr(args, k) and getattr(args, k) is not None:
+            world_builder_args[k] = getattr(args, k)
 
     """ load problem """
-
+    domain = args.domain_pddl
+    stream = args.stream_pddl
     if '/' in args.exp_subdir:
         world = load_lisdf_pybullet(args.exp_subdir, width=1440, height=1120, time_step=args.time_step)
         problem = Problem(world)
@@ -95,7 +81,8 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
         """ sample problem """
     else:
         init_pybullet_client(args)
-        state, exogenous, goals, problem_dict = get_pddlstream_problem(args, **kwargs)
+        state, exogenous, goals, problem_dict = get_pddlstream_problem(args, world_builder_args=world_builder_args,
+                                                                       robot_builder_args=robot_builder_args)
         pddlstream_problem = problem_dict['pddlstream_problem']
         subgoals = problem_dict['subgoals']
         skeleton = problem_dict['skeleton']
@@ -167,7 +154,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
                 disconnect()
                 return
 
-    if record_problem and not isinstance(goals, tuple):
+    if args.record_problem and not isinstance(goals, tuple):
         state.restore()  ## go back to initial state
         state.world.save_test_case(output_dir, **save_kwargs)
 

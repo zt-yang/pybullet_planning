@@ -151,6 +151,11 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     ## seed determines asset instances and object poses initiated for the problem
     args = parser.parse_args()
 
+    ## replace the default values with values provided, when running in IDE
+    for k, v in kwargs.items():
+        if v is not None:
+            args.__dict__[k] = v
+
     ## initialize random seed
     seed = args.seed
     if seed is None:
@@ -160,11 +165,6 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     set_random_seed(seed)
     set_numpy_seed(seed)
     args.seed = seed
-
-    ## replace the default values with values provided, when running in IDE
-    for k, v in kwargs.items():
-        if v is not None:
-            args.__dict__[k] = v
 
     ## other args, especially those related to problem and planner may be added directly in config files
     args.__dict__['robot_builder_args'] = conf.robot.__dict__
@@ -201,6 +201,7 @@ def get_pddlstream_kwargs(args, skeleton, subgoals, initializer):
     fc = None if not args.use_heuristic_fc else get_feasibility_checker(initializer, mode='heuristic')
     pddlstream_debug = args.pddlstream_debug if hasattr(args, 'pddlstream_debug') else False
     soft_subgoals = args.soft_subgoals if hasattr(args, 'soft_subgoals') else False
+    max_evaluation_plans = args.max_evaluation_plans if hasattr(args, 'max_evaluation_plans') else 30
     evaluation_time = args.evaluation_time
     total_planning_timeout = args.total_planning_timeout
     if debugger_is_active():
@@ -222,7 +223,7 @@ def get_pddlstream_kwargs(args, skeleton, subgoals, initializer):
         stream_planning_timeout=args.stream_planning_timeout,
         total_planning_timeout=total_planning_timeout,
         max_plans=args.max_plans,
-        max_evaluation_plans=args.max_evaluation_plans,
+        max_evaluation_plans=max_evaluation_plans,
         debug=pddlstream_debug
     )
     return solver_kwargs

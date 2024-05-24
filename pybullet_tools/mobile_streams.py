@@ -373,7 +373,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
             if collided(robot, obstacles, tag='ik_default_conf', **col_kwargs):
                 # wait_unlocked()
                 continue
-            if collision_fn(bconf, verbose=True):  ## TODO: figure out why sometimes the answers are different
+            if collision_fn(bconf, verbose=False):  ## TODO: figure out why sometimes the answers are different
                 # print('sample_bconf | collision_ik_default_conf')
                 continue
             robot.print_full_body_conf(title=f'sample_bconf({a}), default_conf={default_conf}')
