@@ -227,8 +227,8 @@ class World(WorldBase):
         self.OBJECTS_BY_CATEGORY = defaultdict(list)
         self.REMOVED_BODY_TO_OBJECT = {}
         self.REMOVED_OBJECTS_BY_CATEGORY = defaultdict(list)
-        self.ATTACHMENTS = {}  ## {child_obj: create_attachment(parent_obj, link_name, child_obj)}
 
+        self.attachments = {}  ## {child_obj: create_attachment(parent_obj, link_name, child_obj)}
         self.sub_categories = {}
         self.sup_categories = {}
         self.SKIP_JOINTS = False
@@ -645,7 +645,7 @@ class World(WorldBase):
         return return_dict
 
     def summarize_attachments(self):
-        return {k.body: (v.parent.body, v.parent_link, v.grasp_pose) for k, v in self.ATTACHMENTS.items()}
+        return {k.body: (v.parent.body, v.parent_link, v.grasp_pose) for k, v in self.attachments.items()}
 
     def summarize_all_types(self):
         printout = ''
@@ -768,7 +768,7 @@ class World(WorldBase):
 
             print_fn(line)
 
-        print_dict(self.ATTACHMENTS, 'PART II: world attachments')
+        print_dict(self.attachments, 'PART II: world attachments')
 
     def summarize_body_indices(self, print_fn=print):
         print_fn(SEPARATOR+f'Robot: {self.robot} | Objects: {self.objects}\n'
@@ -904,9 +904,9 @@ class World(WorldBase):
             obj = body
         else:
             obj = self.BODY_TO_OBJECT[body]
-        if obj in self.ATTACHMENTS:
-            print('world.remove_body_attachment\t', self.ATTACHMENTS[obj])
-            self.ATTACHMENTS.pop(obj)
+        if obj in self.attachments:
+            print('world.remove_body_attachment\t', self.attachments[obj])
+            self.attachments.pop(obj)
 
     def remove_object(self, object):
         object = self.get_object(object)
@@ -1023,7 +1023,7 @@ class World(WorldBase):
         title = f'   world.assign_attachment({body}) | '
         if tag is not None:
             title += f'tag = {tag} | '
-        for child, attach in self.ATTACHMENTS.items():
+        for child, attach in self.attachments.items():
             if attach.parent.body == body:
                 pose = get_pose(child)
                 attach.assign()
@@ -1341,7 +1341,7 @@ class World(WorldBase):
             return pose
 
         def get_grasp(body, attachment):
-            grasp = pr2_grasp(body, attachment.grasp_pose)
+            grasp = pr2_grasp(body, attachment.grasp_pose)  ## TODO: wrong
             for fact in init_facts:
                 if fact[0] == 'grasp' and fact[1] == body and equal(fact[2].value, grasp.value):
                     return fact[2]
@@ -1389,6 +1389,7 @@ class World(WorldBase):
             init.extend([('StaticLink', body_link) for body_link in all_links])
         init.extend([('StaticLink', body) for body in surfaces if body not in all_links])
 
+        ## ---- for pouring & sprinkling ------------------
         regions = cat_to_bodies('region')
         for region in regions:
             pose = get_body_pose(region)
@@ -1400,16 +1401,15 @@ class World(WorldBase):
             pose = get_body_pose(body)
             supporter_obj = BODY_TO_OBJECT[body].supporting_surface
 
-            if body in self.ATTACHMENTS and not isinstance(self.ATTACHMENTS[body], ObjAttachment):
-                attachment = self.ATTACHMENTS[body]
+            if body in self.attachments and not isinstance(self.attachments[body], ObjAttachment):
+                attachment = self.attachments[body]
                 grasp = get_grasp(body, attachment)
                 arm = 'hand'
                 if get_link_name(robot, attachment.parent_link).startswith('r_'):
-                    arm = 'left'
+                    arm = 'right'
                 if get_link_name(robot, attachment.parent_link).startswith('l_'):
                     arm = 'left'
-                init.remove(('HandEmpty', arm))
-                init += [('Grasp', body, grasp), ('AtGrasp', arm, body, grasp)]
+                # init += [('Grasp', body, grasp), ('AtGrasp', arm, body, grasp)]
 
             elif use_rel_pose and supporter_obj is not None and hasattr(supporter_obj, 'governing_joints') \
                     and len(supporter_obj.governing_joints) > 0:
@@ -1425,7 +1425,7 @@ class World(WorldBase):
                     #     supporter_pose = supporter_poses[supporter]
                     # else:
                     #     supporter_pose = get_body_pose(supporter_obj.body)
-                    attachment = self.ATTACHMENTS[body]
+                    attachment = self.attachments[body]
                     rel_pose = pose_from_attachment(attachment)
                     # rel_pose_2 = multiply(invert(supporter_pose.value), pose.value)
 
@@ -1690,7 +1690,7 @@ class State(object):
             self.assumed_obj_poses = {}
 
         if len(attachments) == 0:
-            attachments = copy.deepcopy(world.ATTACHMENTS)
+            attachments = copy.deepcopy(world.attachments)
         self.attachments = attachments
         self.facts = list(facts) # TODO: make a set?
         self.variables = defaultdict(lambda: None)

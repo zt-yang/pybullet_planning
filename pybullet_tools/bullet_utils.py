@@ -769,7 +769,7 @@ def get_joint_range(body, joint):
     return upper - lower
 
 
-def is_joint_open(body, joint=-1, threshold=0.25, is_closed=False, verbose=True):
+def is_joint_open(body, joint=-1, threshold=0.25, is_closed=False, verbose=False):
     if isinstance(body, tuple):
         body, joint = body
     lower, upper = get_joint_limits(body, joint)

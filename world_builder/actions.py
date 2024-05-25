@@ -816,6 +816,9 @@ def get_primitive_actions(action, world, teleport=False, verbose=True):
     elif name in ['place', 'place_half', 'place_to_supporter', 'arrange']:
         if 'to_supporter' in name:
             a, o, rp, o2, p2, g = args[:6]
+        elif name == 'arrange':
+            a, o, r, p = args[:4]
+            o2 = p.support
         else:
             a, o, p = args[:3]
             o2 = p.support

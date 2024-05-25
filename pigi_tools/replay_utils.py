@@ -126,7 +126,7 @@ def load_attachments(run_dir, world, body_map):
     attachments = config['attachments']
     for child, (parent, parent_link, grasp_pose) in attachments.items():
         body = body_map[child]
-        world.ATTACHMENTS[body] = ObjAttachment(parent, parent_link, grasp_pose, body)
+        world.attachments[body] = ObjAttachment(parent, parent_link, grasp_pose, body)
 
 
 def load_replay_conf(conf_path, **kwargs):

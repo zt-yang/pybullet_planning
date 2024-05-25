@@ -80,8 +80,8 @@ def change_world_state(world, test_case):
                 set_pose(body, pose)
                 print(f'{title} change pose of {model.name} from {nice(old)} to {nice(pose)}')
                 obj = world.BODY_TO_OBJECT[body]
-                if obj in world.ATTACHMENTS:
-                    parent = world.ATTACHMENTS[obj].parent
+                if obj in world.attachments:
+                    parent = world.attachments[obj].parent
                     if isinstance(parent, Space):
                         parent.include_and_attach(obj)
                     else:

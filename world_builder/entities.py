@@ -160,7 +160,7 @@ class Object(Index):
 
     def attach_obj(self, obj):
         link = self.link if self.link is not None else -1
-        self.world.ATTACHMENTS[obj] = create_attachment(self, link, obj, OBJ=True)
+        self.world.attachments[obj] = create_attachment(self, link, obj, OBJ=True)
         obj.change_supporting_surface(self)
 
     def place_new_obj(self, obj_name, category=None, name=None, max_trial=8, **kwargs):

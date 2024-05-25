@@ -150,6 +150,8 @@
     (Enabled)
     (Disabled)
 
+    (increase) ; pddlgym.parser
+
   )
 
   (:functions
@@ -269,7 +271,7 @@
   )
 
   (:action arrange
-    :parameters (?a ?o ?p ?r ?g ?q ?t)
+    :parameters (?a ?o ?r ?p ?g ?q ?t)
     :precondition (and (Kin ?a ?o ?p ?g ?q ?t) (Graspable ?o) (Supported ?o ?p ?r)
                        (AtGrasp ?a ?o ?g) (AtBConf ?q)
                        (not (UnsafePose ?o ?p))

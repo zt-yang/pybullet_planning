@@ -499,7 +499,7 @@ class PDDLStreamAgent(MotionAgent):
 
         problem, _, plan, body_map = load_basic_plan_commands(self.world, self.exp_dir, self.exp_dir, load_attach=False)
         attachments = apply_actions(problem, commands, time_step=0.001, verbose=False, plan=plan)  ## , body_map=body_map
-        self.world.ATTACHMENTS = attachments
+        self.world.attachments = attachments
 
 
 ###########################################################################
@@ -531,6 +531,9 @@ def print_action(action):
 
 
 def update_facts(facts, added, deled):
+    atgrasp = [f for f in added if f[0] == 'atgrasp']
+    if len(atgrasp) > 0:
+        added += [tuple(['grasp'] + list(f[1:])) for f in atgrasp]
     return [f for f in set(facts + added) if f not in deled]
 
 
