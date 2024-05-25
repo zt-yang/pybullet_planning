@@ -813,11 +813,11 @@ def get_primitive_actions(action, world, teleport=False, verbose=True):
     ##    variates of place
     ## ------------------------------------
 
-    elif name in ['place', 'place_half', 'place_to_supporter']:
+    elif name in ['place', 'place_half', 'place_to_supporter', 'arrange']:
         if 'to_supporter' in name:
             a, o, rp, o2, p2, g = args[:6]
         else:
-            a, o, p, g = args[:4]
+            a, o, p = args[:3]
             o2 = p.support
         t = get_traj(args[-1])
         open_gripper = GripperAction(a, extent=1, teleport=teleport)

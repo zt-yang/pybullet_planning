@@ -1194,8 +1194,6 @@ class PDDLStreamForwardEnv(PDDLStreamEnv):
 
     def step(self, action):
         action = self.to_literal(action)
-        # if 'place' in str(action):
-        #     print('place in action')
         obs, reward, done, debug_info = super().step(action)
         facts = [self.from_literal(l) for l in obs.literals]
 

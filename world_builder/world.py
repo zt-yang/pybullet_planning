@@ -1361,7 +1361,7 @@ class World(WorldBase):
                      ('Position', body, position), ('AtPosition', body, position),
                      # ('IsOpenedPosition' if is_joint_open(body) else 'IsClosedPosition', body, position),
                      ]
-            init += add_joint_status_facts(body, position)
+            init += add_joint_status_facts(body, position, verbose=False)
 
             if body in knobs:
                 controlled = BODY_TO_OBJECT[body].controlled

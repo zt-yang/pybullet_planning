@@ -281,13 +281,16 @@ class PDDLStreamAgent(MotionAgent):
 
         return self.plan
 
-    def _init_env_execution(self):
+    def _init_env_execution(self, pddlstream_problem=None):
         from leap_tools.hierarchical import PDDLStreamForwardEnv
+
+        if pddlstream_problem is None:
+            pddlstream_problem = self.pddlstream_problem
 
         domain_pddl = self.domain_pddl
         domain_pddl = join(PDDL_PATH, 'domains', domain_pddl)
         init = self.state_facts
-        self.env_execution = PDDLStreamForwardEnv(domain_pddl, self.pddlstream_problem, init=init)
+        self.env_execution = PDDLStreamForwardEnv(domain_pddl, pddlstream_problem, init=init)
         self.env_execution.reset()
 
     def _replan_preprocess(self, observation):
@@ -400,13 +403,16 @@ class PDDLStreamAgent(MotionAgent):
         if not isdir(agent_state_dir):
             os.makedirs(agent_state_dir)
 
-        stream_map = self.env_execution._pddlstream_problem[3]
-        static_literals = self.env_execution.static_literals
-        env_externals = self.env_execution.externals
-        _action_space = self.env_execution._action_space
-        _observation_space = self.env_execution._observation_space
+        ## cache some values
+        if self.env_execution is not None:
+            static_literals = self.env_execution.static_literals
+            env_externals = self.env_execution.externals
+            _action_space = self.env_execution._action_space
+            _observation_space = self.env_execution._observation_space
+        stream_map = self.pddlstream_problem[3]
         variables = self.initial_state.variables
 
+        ## set those unpickleble elements to None
         self.sample_fn = None
         self.difference_fn = None
         self.distance_fn = None
@@ -414,35 +420,31 @@ class PDDLStreamAgent(MotionAgent):
         self.observations = []
         self.world_state = None
         self.world.robot.reset_ik_solvers()
-
-        self.env_execution._pddlstream_problem = update_stream_map(self.env_execution._pddlstream_problem, None)
+        if self.env_execution is not None:
+            self.env_execution._pddlstream_problem = update_stream_map(self.env_execution._pddlstream_problem, None)
+            self.env_execution.static_literals = None
+            self.env_execution.externals = None
+            self.env_execution._action_space = None
+            self.env_execution._observation_space = None
         self.pddlstream_problem = update_stream_map(self.pddlstream_problem, None)
-        self.env_execution.static_literals = None
-        self.env_execution.externals = None
-        self.env_execution._action_space = None
-        self.env_execution._observation_space = None
         self.initial_state.variables = None
 
         agent_state_path = join(agent_state_dir, f'agent_state_{self.problem_count}.pkl')
         with open(agent_state_path, 'bw') as f:
             pickle.dump(self, f)
-
         # for k, v in self.__dict__.items():
         #     print(k)
         #     with open(agent_state_path, 'bw') as f:
         #         pickle.dump(v, f)
-        #
-        # for k, v in self.env_execution.__dict__.items():
-        #     print(k)
-        #     with open(agent_state_path, 'bw') as f:
-        #         pickle.dump(v, f)
 
-        self.env_execution._pddlstream_problem = update_stream_map(self.env_execution._pddlstream_problem, stream_map)
+        ## reassign those unpickleble elements to None
+        if self.env_execution is not None:
+            self.env_execution._pddlstream_problem = update_stream_map(self.env_execution._pddlstream_problem, stream_map)
+            self.env_execution.static_literals = static_literals
+            self.env_execution.externals = env_externals
+            self.env_execution._action_space = _action_space
+            self.env_execution._observation_space = _observation_space
         self.pddlstream_problem = update_stream_map(self.pddlstream_problem, stream_map)
-        self.env_execution.static_literals = static_literals
-        self.env_execution.externals = env_externals
-        self.env_execution._action_space = _action_space
-        self.env_execution._observation_space = _observation_space
         self.initial_state.variables = variables
 
     def load_agent_state(self, agent_state_path):

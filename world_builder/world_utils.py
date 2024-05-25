@@ -941,25 +941,25 @@ def sort_body_indices(lst):
     return sorted_lst
 
 
-def add_joint_status_facts(body, position):
+def add_joint_status_facts(body, position, verbose=False):
     init = []
     title = f'get_world_fluents | joint {body} is'
 
     if is_joint_open(body, threshold=1, is_closed=True):
         init += [('IsClosedPosition', body, position)]
-        print(title, 'fully closed')
+        if verbose: print(title, 'fully closed')
 
     elif not is_joint_open(body, threshold=0.25):
         init += [('IsClosedPosition', body, position)]
-        print(title, 'slightly open')
+        if verbose: print(title, 'slightly open')
 
     elif is_joint_open(body, threshold=1):
         init += [('IsOpenedPosition', body, position)]
-        print(title, 'fully open')
+        if verbose: print(title, 'fully open')
 
     else:
         init += [('IsOpenedPosition', body, position)]
-        print(title, 'partially open')
+        if verbose: print(title, 'partially open')
 
     return init
 

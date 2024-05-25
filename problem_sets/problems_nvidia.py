@@ -945,7 +945,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
         movable = movables[goal_object]
         # goals = ("test_object_grasps", movable)
         goals = [("Holding", arm, movable)]
-        # goals = [("On", movable, counter)]
+        goals = [("On", movable, counter)]
         # goals = ('test_relpose_inside_gen', (movable, drawer_link))
         # goals = [("In", movable, drawer_link)]
 
@@ -969,6 +969,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
 
         subgoals = None
         skeleton = []
+        skeleton += [('pick', arm, movable), ('arrange', arm, movable, counter)]
         # skeleton += [(k, arm, goal_object) for k in pick_place_actions[:1]]
         # skeleton += [(k, arm, joint) for k in pull_actions]
         # skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
