@@ -25,7 +25,7 @@ def test_nvidia_kitchen_domain():
     kitchen_problem = ['test_kitchen_chicken_soup', 'test_kitchen_braiser', None][0]
     run_agent(
         agent_class=HierarchicalAgent, config='config_dev.yaml', problem=kitchen_problem,
-        dual_arm=False, visualization=False, top_grasp_tolerance=0.8,
+        dual_arm=True, visualization=False, top_grasp_tolerance=0.8,
         separate_base_planning=False, # use_skeleton_constraints=True,
         # observation_model='exposed'
     )
@@ -35,7 +35,7 @@ def test_cooking_domain():
     kitchen_problem = ['test_kitchen_sprinkle'][0]
     run_agent(
         agent_class=HierarchicalAgent, config='config_dev.yaml', problem=kitchen_problem,
-        domain='pddl_domains/mobile_v2_domain.pddl', stream='pddl_domains/mobile_v2_stream.pddl',
+        domain_pddl='pddl_domains/mobile_v2_domain.pddl', stream_pddl='pddl_domains/mobile_v2_stream.pddl',
         dual_arm=False, top_grasp_tolerance=None, visualization=False,
         separate_base_planning=False, # use_skeleton_constraints=True,
         # observation_model='exposed'
@@ -44,5 +44,5 @@ def test_cooking_domain():
 
 if __name__ == '__main__':
     # test_pick_place_domain()
-    test_nvidia_kitchen_domain()
-    # test_cooking_domain()
+    # test_nvidia_kitchen_domain()
+    test_cooking_domain()

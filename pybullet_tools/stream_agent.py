@@ -36,6 +36,7 @@ from pybullet_tools.utils import get_client, get_joint_limits, \
     remove_body, LockRenderer, WorldSaver, wait_if_gui, SEPARATOR, safe_remove, ensure_dir, \
     get_distance, get_max_limit, BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS, wait_unlocked
 from pybullet_tools.stream_tests import process_debug_goals
+from pybullet_tools.logging_utils import myprint as print
 
 from world_builder.entities import Object
 from world_builder.actions import get_primitive_actions, repair_skeleton, apply_actions
@@ -552,15 +553,11 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visual
               downward_time=10, evaluation_time=10, stream_planning_timeout=30, total_planning_timeout=180,
               max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=0, **kwargs):
 
-    from pybullet_tools.logging_utils import myprint as print
-
     # skeleton = get_test_skeleton()
     # subgoals = get_test_subgoals(pddlstream_problem.init)
 
     if skeleton is not None and len(skeleton) > 0:
-        print('-' * 40 + f' skeleton ' + '-' * 40)
-        print('\n'.join([str(s) for s in skeleton]))
-        print('-' * 100)
+        print_skeleton(skeleton)
         constraints = PlanConstraints(skeletons=[repair_skeleton(skeleton)], exact=False, max_cost=max_cost + 1)
 
     elif subgoals is None or len(subgoals) == 0:
@@ -810,6 +807,13 @@ def log_goal_plan_init(goal, plan, preimage):
     }
 
 
+def print_skeleton(skeleton):
+    if skeleton is not None and len(skeleton) > 0:
+        print('-' * 40 + f' skeleton ' + '-' * 40)
+        print('\n'.join([str(s) for s in skeleton]))
+        print('-' * 90)
+
+
 def remove_all_streams_except_name(stream_pddl, stream_name):
     key = '(:stream '
     lines = stream_pddl.split(key)
@@ -821,6 +825,12 @@ def remove_stream_by_name(stream_pddl, stream_name):
     key = '(:stream '
     lines = stream_pddl.split(key)
     return key.join([l for l in lines if not l.startswith(f'{stream_name}\n')])
+
+
+def remove_operator_by_name(domain_pddl, operator_name):
+    key = '(:action '
+    lines = domain_pddl.split(key)
+    return key.join([l for l in lines if not l.startswith(f'{operator_name}\n')])
 
 
 def remove_predicate_by_name(domain_pddl, predicate_name):

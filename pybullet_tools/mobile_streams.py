@@ -907,8 +907,6 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
         # wait_unlocked()
         return None
 
-    add_to_jp2jp(robot, o, mapping)
-
     bt = Trajectory(bpath)
     robot.reset_ik_solvers()
     base_cmd = Commands(State(), savers=[BodySaver(robot.body)], commands=[bt])
@@ -919,6 +917,8 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
     pst1.assign()
     bq1.assign()
     aq1.assign()
+
+    add_to_jp2jp(robot, a, o, mapping)
     return bq2, base_cmd
 
 

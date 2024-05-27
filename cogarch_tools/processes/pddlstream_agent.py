@@ -1,8 +1,9 @@
 from __future__ import print_function
 
 import copy
-import os
 import shutil
+import os
+from os import listdir
 from os.path import isdir, isfile, dirname, abspath, basename
 from pprint import pprint
 import time
@@ -89,6 +90,7 @@ class PDDLStreamAgent(MotionAgent):
         self.failed_count = None
         self.last_action_name = None
         self.actions = []
+        self.actions_for_env = []
         self.commands = []
         self.plan_len = 0
         self.pddlstream_kwargs = pddlstream_kwargs
@@ -224,6 +226,7 @@ class PDDLStreamAgent(MotionAgent):
             else:
                 if self.env_execution is not None and name in self.env_execution.domain.operators:
                     self._update_state(action)
+                    self.actions_for_env.append(action)
 
                 self.step_count += 1
                 commands = get_primitive_actions(action, self.world, teleport=SAVE_TIME)
@@ -265,8 +268,10 @@ class PDDLStreamAgent(MotionAgent):
                 shutil.move(failures_file, join(VISUALIZATIONS_PATH, f'log_0.json'))
         else:
             print(f'pddlstream.replan\tstep_count = {self.step_count}')
-            self.state_facts = make_init_lower_case(self.pddlstream_problem.init)
-            self.last_plan_state = copy.deepcopy(self.state_facts)
+
+            # summarize_facts(preimage, name='preimage')
+            self.state_facts = make_init_lower_case(self.pddlstream_problem.init)  ##  + preimage
+            self.last_plan_state = self.state_facts  ## copy.deepcopy(self.state_facts)
 
         ## the first planning problem - only for
         if self.env_execution is None:  ## and not self.pddlstream_kwargs['visualization']:
@@ -283,6 +288,9 @@ class PDDLStreamAgent(MotionAgent):
 
     def _init_env_execution(self, pddlstream_problem=None):
         from leap_tools.hierarchical import PDDLStreamForwardEnv
+
+        if self.env_execution is not None:
+            return
 
         if pddlstream_problem is None:
             pddlstream_problem = self.pddlstream_problem
@@ -304,7 +312,7 @@ class PDDLStreamAgent(MotionAgent):
     def record_time(self, time_log):
         self.time_log.append(time_log)
         print('-'*50)
-        print('\n[TIME LOG]\n' + '\n'.join([str(v) for v in self.time_log]))
+        print(f'\n[TIME LOG] ({len(self.time_log)})\n' + '\n'.join([str(v) for v in self.time_log]))
         print('-'*50, '\n')
 
     def remove_unpickleble_attributes(self):
@@ -430,6 +438,7 @@ class PDDLStreamAgent(MotionAgent):
         self.initial_state.variables = None
 
         agent_state_path = join(agent_state_dir, f'agent_state_{self.problem_count}.pkl')
+        print(f'pddlstream_agent.agent_state_path at {agent_state_path}')
         with open(agent_state_path, 'bw') as f:
             pickle.dump(self, f)
         # for k, v in self.__dict__.items():
@@ -450,13 +459,18 @@ class PDDLStreamAgent(MotionAgent):
     def load_agent_state(self, agent_state_path):
         """ resume planning """
 
+        ## for indexing using -1 in given path
+        if '-1.pkl' in agent_state_path:
+            agent_state_dir = dirname(agent_state_path)
+            index = len([f for f in listdir(agent_state_dir) if 'agent_state_' in f])
+            agent_state_path = agent_state_path.replace('-1.pkl', f'{index}.pkl')
+
         print('\n\n'+'-'*60+f'\n[load_agent_state] from {agent_state_path}\n')
 
         if self.env_execution is None:
             self._init_env_execution()
 
         exp_dir = self.exp_dir
-        agent_state_path = self.llamp_api.agent_state_path
         robot = self.world.robot
 
         stream_map = self.pddlstream_problem[3]
@@ -480,8 +494,11 @@ class PDDLStreamAgent(MotionAgent):
 
         a, b, c, _, e, f = self.env_execution._pddlstream_problem
         self.env_execution._pddlstream_problem = PDDLProblem(a, b, c, stream_map, e, f)
-        a, b, c, _, e, f = self.pddlstream_problem
-        self.pddlstream_problem = PDDLProblem(a, b, c, stream_map, e, f)
+        a, b, c, _, init, f = self.pddlstream_problem
+        if self.facts_to_update_pddlstream_problem is not None:
+            added, deled = self.facts_to_update_pddlstream_problem
+            init = update_facts(init, added, deled)
+        self.pddlstream_problem = PDDLProblem(a, b, c, stream_map, init, f)
         self.env_execution.static_literals = static_literals
         self.env_execution.externals = env_externals
         self.env_execution._action_space = _action_space
@@ -533,7 +550,7 @@ def print_action(action):
 def update_facts(facts, added, deled):
     atgrasp = [f for f in added if f[0] == 'atgrasp']
     if len(atgrasp) > 0:
-        added += [tuple(['grasp'] + list(f[1:])) for f in atgrasp]
+        added += [tuple(['grasp'] + list(f[2:])) for f in atgrasp]
     return [f for f in set(facts + added) if f not in deled]
 
 

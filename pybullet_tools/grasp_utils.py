@@ -587,7 +587,7 @@ def test_transformations_template(rotations, translations, funk, title, skip_unt
     return results
 
 
-def add_to_jp2jp(robot, o, mapping):
+def add_to_jp2jp(robot, a, o, mapping):
     body, joint = o
     conf = robot.get_all_arm_conf()
     if body not in robot.LINK_POSE_TO_JOINT_POSITION:

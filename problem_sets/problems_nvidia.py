@@ -949,6 +949,13 @@ def test_kitchen_chicken_soup(args, **kwargs):
         # goals = ('test_relpose_inside_gen', (movable, drawer_link))
         # goals = [("In", movable, drawer_link)]
 
+        lid = world.name_to_body('braiserlid')
+        braiser =  world.name_to_body('braiserbody')
+        world.BODY_TO_OBJECT[counter].place_obj(world.BODY_TO_OBJECT[lid])
+        world.add_to_cat(lid, 'movable')
+        world.add_to_cat(braiser, 'surface')
+        goals = [("On", lid, braiser)]
+
         #########################################################################
 
         # objects += [movable]  ## Holding
@@ -969,7 +976,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
 
         subgoals = None
         skeleton = []
-        skeleton += [('pick', arm, movable), ('arrange', arm, movable, counter)]
+        # skeleton += [('pick', arm, movable), ('arrange', arm, movable, counter)]
         # skeleton += [(k, arm, goal_object) for k in pick_place_actions[:1]]
         # skeleton += [(k, arm, joint) for k in pull_actions]
         # skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
@@ -1132,6 +1139,7 @@ def test_kitchen_sprinkle(args, **kwargs):
 
         world.add_to_cat(salt_shaker, 'sprinkler')
         world.add_to_cat(braiser_bottom, 'region')
+        world.add_to_cat(braiser, 'region')
 
         ## changes to env for different goals
         side_surface.place_obj(lid)
@@ -1147,14 +1155,15 @@ def test_kitchen_sprinkle(args, **kwargs):
         # goals = ('test_pose_above_gen', (salt_shaker, plate))
         # goals = [['SprinkledTo', salt_shaker, plate]]
         goals = [['SprinkledTo', salt_shaker, braiser_bottom.pybullet_name]]
+        goals = [['SprinkledTo', salt_shaker, braiser.pybullet_name]]
 
         """ step 2: remove obstacles """
-        put_lid_on_braiser(world, lid, braiser)
-        goals = [['On', lid, plate]]
-        goals = [['SprinkledTo', salt_shaker, braiser_bottom.pybullet_name]]
-        objects += [lid] + [plate] ## + [side_surface.pybullet_name]
-        skeleton += [(k, arm, lid) for k in pick_place_actions]
-        skeleton += [(k, arm, salt_shaker) for k in pick_sprinkle_actions]
+        # put_lid_on_braiser(world, lid, braiser)
+        # goals = [['On', lid, plate]]
+        # goals = [['SprinkledTo', salt_shaker, braiser_bottom.pybullet_name]]
+        # objects += [lid] + [plate] ## + [side_surface.pybullet_name]
+        # skeleton += [(k, arm, lid) for k in pick_place_actions]
+        # skeleton += [(k, arm, salt_shaker) for k in pick_sprinkle_actions]
 
         ## need push rim action to open the joint
         if 'mobile_v3' in args.domain_pddl:

@@ -533,7 +533,7 @@ def get_pull_handle_motion_gen(problem, collisions=True, teleport=False,
         if len(path) < num_intervals: ## * 0.75:
             return None
 
-        add_to_jp2jp(robot, o, mapping)
+        add_to_jp2jp(robot, a, o, mapping)
 
         add_data_path()
         t = Trajectory(path)

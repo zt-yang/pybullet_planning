@@ -695,9 +695,10 @@ class World(WorldBase):
         #     else:
         #         print(f'{body}  |  Name: {get_name(body)}, not in BODY_TO_OBJECT')
 
-        print_fn('----------------')
+        print_fn('-'*80)
         print_fn(f'PART I: world objects | {self.summarize_all_types()} | obstacles({len(self.fixed)}) = {self.fixed}')
-        print_fn('----------------')
+        print_fn('-'*80)
+
         bodies = [self.robot] + sort_body_parts(BODY_TO_OBJECT.keys())
         bodies += sort_body_parts(REMOVED_BODY_TO_OBJECT.keys(), bodies)
         static_bodies = [b for b in get_bodies() if b not in bodies]
@@ -768,7 +769,7 @@ class World(WorldBase):
 
             print_fn(line)
 
-        print_dict(self.attachments, 'PART II: world attachments')
+        print_dict(self.attachments, '\nPART II: world attachments')
 
     def summarize_body_indices(self, print_fn=print):
         print_fn(SEPARATOR+f'Robot: {self.robot} | Objects: {self.objects}\n'
@@ -793,7 +794,7 @@ class World(WorldBase):
         bodies = [b for b in bodies if b in self.BODY_TO_OBJECT]
         return bodies
 
-    def remove_bodies_from_planning(self, goals=[], exceptions=[], skeleton=[], subgoals=[]):
+    def remove_bodies_from_planning(self, goals=[], exceptions=[], skeleton=[], subgoals=[], verbose=False):
 
         ## important for keeping related links and joints for planning
         self.init_link_joint_relations()
@@ -806,7 +807,6 @@ class World(WorldBase):
             'body_to_name': self.get_indices()
         })
 
-        print('\nremove_bodies_from_planning | exceptions =', exceptions)
         is_test_goal = False
         if isinstance(goals, tuple):
             goals = [goals]
@@ -864,9 +864,11 @@ class World(WorldBase):
             if str(body) not in bodies and str(body) not in exceptions:
                 self.remove_body_from_planning(body)
 
-        for cat, objs in self.REMOVED_OBJECTS_BY_CATEGORY.items():
-            print(f'\t{cat} ({len(objs)}) \t', [f"{obj.name}|{obj.pybullet_name}" for obj in objs])
-        print()
+        if verbose:
+            print('\nworld.remove_bodies_from_planning | exceptions =', exceptions)
+            for cat, objs in self.REMOVED_OBJECTS_BY_CATEGORY.items():
+                print(f'\t{cat} ({len(objs)}) \t', [f"{obj.name}|{obj.pybullet_name}" for obj in objs])
+            print()
 
     def remove_body_from_planning(self, body):
         if body is None: return
@@ -1482,7 +1484,7 @@ class World(WorldBase):
                 init.remove(fact)
         return init
 
-    def get_facts(self, conf_saver=None, init_facts=[], obj_poses=None, joint_positions=None, objects=None, verbose=True):
+    def get_facts(self, conf_saver=None, init_facts=[], obj_poses=None, joint_positions=None, objects=None, verbose=False):
 
         def cat_to_bodies(cat):
             ans = self.cat_to_bodies(cat)

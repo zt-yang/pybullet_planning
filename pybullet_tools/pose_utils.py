@@ -72,7 +72,7 @@ class Attachment(object):
                     conf = self.parent.get_all_arm_conf()
                     if conf in LP2JP[self.child][self.child_joint]:
                         ls = LP2JP[self.child][self.child_joint][conf]
-                        for group in self.parent.joint_groups: ## ['base', 'left', 'hand']:
+                        for group in [g for g in ['base-torso', 'base', 'hand'] if g in self.parent.joint_groups]:
                             key = self.parent.get_positions(joint_group=group, roundto=3)
                             result = in_list(key, ls)
                             if result is not None:
@@ -755,6 +755,11 @@ def adjust_sampled_pose(world, body, surface, body_pose):
         dy = y - cy
         x, y, _ = get_aabb_center(get_aabb(surface[0], link=surface[-1]))
         body_pose = (x+dx, y+dy, z+0.01), quat
+
+    if 'braiserlid' in world.get_name(body) and 'braiserbody' in world.get_name(surface):
+        from world_builder.loaders_partnet_kitchen import get_lid_pose_on_braiser
+        body_pose = get_lid_pose_on_braiser(surface)
+
     # if 'bottle' in world.get_name(body):
     #     yaw = 0
     #     quat = quat_from_euler(Euler(yaw=yaw))

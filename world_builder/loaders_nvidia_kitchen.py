@@ -154,7 +154,10 @@ def load_full_kitchen(world, load_cabbage=True, **kwargs):
 def load_braiser_bottom(world):
     braiser = world.name_to_body('braiserbody')
     world.add_object(Surface(braiser, link_from_name(braiser, 'braiser_bottom')))
+
     world.add_to_cat(world.name_to_body('braiserlid'), 'movable')
+    world.add_to_cat(world.name_to_body('braiserbody'), 'surface')
+    world.add_to_cat(world.name_to_body('braiserbody'), 'region')
 
 
 def load_cooking_mechanism(world):

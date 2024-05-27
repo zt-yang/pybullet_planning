@@ -1,4 +1,6 @@
-from pybullet_tools.utils import get_aabb_center
+import numpy as np
+
+from pybullet_tools.utils import get_aabb, get_aabb_center, get_aabb_extent, AABB, aabb_overlap
 from pybullet_tools.logging_utils import myprint as print
 
 
@@ -50,7 +52,7 @@ def reduce_facts_given_goals(facts, objects=[], goals=[]):
 
 
 def reduce_facts_given_objects(facts, objects=[], goals=[], verbose=False):
-    print(f'\nfilter_init_by_objects | objects = {objects}')
+    arms = [f[1] for f in facts if f[0] == 'controllable']
 
     ## identify goal related objects
     objects_in_goals = []
@@ -64,14 +66,17 @@ def reduce_facts_given_objects(facts, objects=[], goals=[], verbose=False):
     objects += [o for o in surfaces if o not in objects]
 
     ## retain only facts involving the objects
+    if verbose:
+        print(f'\nfilter_init_by_objects | objects = {objects}')
     new_facts = []
     removed_facts = []
     for fact in facts:
         removed = False
         if fact[0] in ['ungraspbconf']:
             removed = True
-        elif fact[0] not in ['=']:
+        elif fact[0] not in ['='] and 'grasp' not in fact[0]:
             for elem in fact[1:]:
+                ## involve objects not in planning object
                 if (isinstance(elem, int) or isinstance(elem, tuple)) and elem not in objects:
                     removed = True
                     if verbose:
@@ -117,11 +122,14 @@ def reduce_by_object_all_joints(facts, objects=[], goals=[]):
 def reduce_by_objects_heuristic_movables(facts, objects=[], goals=[], aabb_expansion=0.5):
     """ add movable objects that are close by in aabb, and also one other surface that's large enough """
 
-    import numpy as np
-    from pybullet_tools.utils import get_aabb, AABB, aabb_overlap
+    title = 'object_reducers.reduce_by_objects_heuristic_movables\t'
 
     def get_surface_aabb(surface):
         return get_aabb(surface[0], surface[-1]) if isinstance(surface, tuple) else get_aabb(surface)
+
+    def get_surface_area(surface):
+        w, l, _ = get_aabb_extent(get_surface_aabb(surface))
+        return w * l
 
     if goals[0][0] in ['on', 'in']:
         region = goals[0][2]
@@ -134,25 +142,26 @@ def reduce_by_objects_heuristic_movables(facts, objects=[], goals=[], aabb_expan
             return np.linalg.norm(np.asarray(surface_aabb_center) - np.asarray(region_center))
 
         all_movables = [f[1] for f in facts if f[0].lower() == 'graspable' and f[1] not in objects]
-        other_surfaces = [f[1] for f in facts if f[0].lower() == 'surface' and f[1] != region]
+        other_surfaces = [f[1] for f in facts if f[0].lower() == 'surface' and f[1] != region]  ## and isinstance(f, tuple)
 
         ## sort other_surfaces by aabb side
-        big_surface = sorted(other_surfaces, key=get_surface_aabb)[0]
+        print(f'{title}other_surfaces: {other_surfaces}')
+        big_surface = sorted(other_surfaces, key=get_surface_area)[0]
         objects.append(big_surface)
-        print(f'add objects by heuristic-movables | surface:\t{big_surface}')
+        print(f'{title}surface:\t{big_surface}')
 
         for o in all_movables:
             mov_aabb = get_aabb(o)
             mov_aabb_expanded = AABB(lower=np.asarray(mov_aabb.lower) - aabb_expansion,
                                      upper=np.asarray(mov_aabb.upper) + aabb_expansion)
             if aabb_overlap(region_aabb, mov_aabb_expanded):
-                print(f'add objects by heuristic-movables | obstacle:\t {o}')
+                print(f'{title}obstacle:\t {o}')
                 objects.append(o)
 
                 ## add another surface closest to obstacle
                 closest_surface = sorted(other_surfaces, key=get_distance_to_aabb)[:2]
                 add_surfaces = [s for s in closest_surface if s not in objects]
                 objects.extend(add_surfaces)
-                print(f'add objects by heuristic-movables | surface close to obstacle:\t {add_surfaces}')
+                print(f'{title}surface close to obstacle:\t {add_surfaces}')
 
     return reduce_facts_given_objects(facts, objects=objects, goals=goals)

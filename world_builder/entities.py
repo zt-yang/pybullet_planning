@@ -254,7 +254,7 @@ class Object(Index):
     def __int__(self):
         if not hasattr(self, 'body'):
             print(self, 'doesnt have attribute body thus cant be deepcopied')
-        if self.body is None:
+        if not hasattr(self, 'body') or self.body is None:
             return id(self)  # TODO: hack
         if self.joint is not None:
             return (self.body, self.joint)
@@ -263,8 +263,9 @@ class Object(Index):
         return self.body
 
     def __repr__(self):
-        #return repr(int(self))
-        return self.name
+        if hasattr(self, 'name'):
+            return self.name
+        return 'object.name'
 
     def _type(self):
         return self.__class__.__name__

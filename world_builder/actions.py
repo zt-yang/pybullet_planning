@@ -826,7 +826,7 @@ def get_primitive_actions(action, world, teleport=False, verbose=True):
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
         detach = DetachObjectAction(a, o, supporter=o2, verbose=verbose)
         new_commands = [detach, open_gripper] + t[::-1]
-        if name in ['place', 'place_to_supporter']:
+        if name != 'place_half':
             new_commands = t + new_commands
 
     elif name == 'ungrasp_handle':

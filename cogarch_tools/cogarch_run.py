@@ -122,9 +122,9 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
         if agent.llamp_api.agent_state_path is not None:
             state = State(agent.world, objects=state.objects, observation_model=state.observation_model)
             agent.set_world_state(state)
-            state.world.save_test_case(output_dir, **save_kwargs)
         if problem_dict['llamp_api'].planning_mode is None:
             return
+        state.world.save_test_case(output_dir, **save_kwargs)
 
     """ before planning """
     if args.preview_scene and args.viewer:

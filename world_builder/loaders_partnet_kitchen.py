@@ -1112,14 +1112,18 @@ def load_braiser(world, supporter, x_min=None, verbose=False):
     return braiser, braiser_bottom
 
 
+def get_lid_pose_on_braiser(braiser):
+    point, quat = get_pose(braiser)
+    r, p, y = euler_from_quat(quat)
+    return (point, quat_from_euler((r, p, y + PI / 4)))
+
+
 def put_lid_on_braiser(world, lid=None, braiser=None):
     if lid is None:
         lid = world.name_to_object('BraiserLid')
     if braiser is None:
         braiser = world.name_to_object('BraiserBody')
-    point, quat = get_pose(braiser)
-    r, p, y = euler_from_quat(quat)
-    lid.set_pose((point, quat_from_euler((r, p, y + PI / 4))))
+    lid.set_pose(get_lid_pose_on_braiser(braiser))
     braiser.attach_obj(lid)
 
 
