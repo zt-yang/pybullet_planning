@@ -829,6 +829,19 @@ def get_primitive_actions(action, world, teleport=False, verbose=True):
         if name != 'place_half':
             new_commands = t + new_commands
 
+    elif name == 'nudge_door':
+        a, o, p1, p2, g = args[:5]
+        at, bt = args[-2:]
+
+        at = get_traj(at)
+        close_gripper = GripperAction(a, extent=0, teleport=teleport)
+        attach = AttachObjectAction(a, g, o)
+        bt = get_traj(bt)
+        detach = DetachObjectAction(a, o)
+        open_gripper = GripperAction(a, extent=1, teleport=teleport)
+
+        new_commands = at + [close_gripper, attach] + bt + [detach, open_gripper] + at[::-1]
+
     elif name == 'ungrasp_handle':
         a, o, p, g, q, aq1, aq2, t = args
         t = get_traj(t)

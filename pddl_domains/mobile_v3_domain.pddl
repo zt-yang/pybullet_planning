@@ -621,7 +621,7 @@
     (:action nudge_door
       :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?aq ?at ?bt)
       :precondition (and (Door ?o) (AtBConf ?q1)
-                         (KinNudgeGrasp ?a ?o ?p ?g ?q1 ?aq ?at)
+                         (KinNudgeGrasp ?a ?o ?p1 ?g ?q1 ?aq ?at)
                          (KinNudgeDoor ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?aq)
                          (AtPosition ?o ?p1) (HandEmpty ?a)
                          (not (NudgedDoor ?o))
