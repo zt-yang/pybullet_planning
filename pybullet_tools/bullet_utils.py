@@ -277,6 +277,10 @@ def articulated_collisions(obj, obstacles, verbose=False, world=None, **kwargs):
                     name = world.get_name_from_body(obstacle)
                     to_print += f' ({name})'
                 print(to_print)
+
+            if hasattr(obj, 'log_collisions'):
+                obj.log_collisions(obstacle, source='collided.articulated_collisions')
+
             # dump_body(obj)
             # dump_body(obstacle)
             # for link in root_links:
@@ -344,9 +348,9 @@ def log_collided(obj, obs, visualize=False):
         wait_unlocked()
 
 
-def collided(obj, obstacles=[], world=None, tag='', articulated=False, verbose=False,
+def collided(obj, obstacles=[], world=None, articulated=False, verbose=False, tag='',
              visualize=False, min_num_pts=3, use_aabb=True, ignored_pairs=[],
-             log_collisions=False, **kwargs):
+             log_collisions=True, **kwargs):
 
     obj_print = world.get_name(obj) if world is not None else obj
     prefix = f'\t\tbullet_utils.collided({obj_print}) '
@@ -359,8 +363,9 @@ def collided(obj, obstacles=[], world=None, tag='', articulated=False, verbose=F
         obstacles_here = [o for o in obstacles if (o, body) not in ignored_pairs]
         result = articulated_collisions(body, obstacles_here, use_aabb=use_aabb, verbose=verbose,
                                         world=world, **kwargs)
-        if verbose and result:
-            print(prefix, '| articulated, obstacles =', obstacles)
+        if result:
+            if verbose:
+                print(prefix, '| articulated, obstacles =', obstacles)
         return result
     # else:
     #     result = any(pairwise_collision(obj, b, use_aabb=use_aabb, **kwargs) for b in obstacles)
@@ -384,32 +389,24 @@ def collided(obj, obstacles=[], world=None, tag='', articulated=False, verbose=F
                 #     print(obstacles)
                 to_print += f'{prefix} collides with {b_print}'
             result = True
+
             bodies.append(b)
+
             if log_collisions:
-                log_collided(obj_print, b_print)
+                ## the robot keeps track of objects collided
+                if hasattr(obj, 'log_collisions'):
+                    obj.log_collisions(b, source='collided.pairwise_collision(robot)')
+                elif world is not None:
+                    world.robot.log_collisions(b, robot_body=obj, source=f'collided.pairwise_collision({tag})')
+                # log_collided(obj_print, b_print)
 
     ## then find the exact links
     body_links = {}
     total = 0
     for b in bodies:
-        key = world.get_debug_name(b) if (world != None) else b
-        d = {}
-        for l in get_links(b):
-            pts = get_closest_points(b, obj, link1=l, link2=None)
-            if len(pts) > 0:
-                link = get_link_name(b, l)
-                d[link] = len(pts)
-
-                if visualize:  ## visualize collision points for debugging
-                    points = []
-                    for point in pts:
-                        points.append(visualize_point(point.positionOnA))
-                    print(f'visualized {len(pts)} collision points')
-                    for point in points:
-                        remove_body(point)
-
-            total += len(pts)
-        d = {k: v for k, v in sorted(d.items(), key=lambda item: item[1], reverse=True)}
+        key = world.get_debug_name(b) if (world is not None) else b
+        d = get_links_collided(obj, b, visualize=False)
+        total += sum(list(d.values()))
         body_links[key] = d
 
     ## when debugging, give a threshold for oven
@@ -424,6 +421,26 @@ def collided(obj, obstacles=[], world=None, tag='', articulated=False, verbose=F
             if not log_collisions:
                 return line.replace("'", "")
     return result
+
+
+def get_links_collided(body, obstacle, names_as_keys=True, visualize=False):
+    d = {}
+    for l in get_links(obstacle):
+        pts = get_closest_points(obstacle, body, link1=l, link2=None)
+        if len(pts) > 0:
+            if names_as_keys:
+                l = get_link_name(obstacle, l)
+            d[l] = len(pts)
+
+            if visualize:  ## visualize collision points for debugging
+                points = []
+                for point in pts:
+                    points.append(visualize_point(point.positionOnA))
+                print(f'visualized {len(pts)} collision points')
+                for point in points:
+                    remove_body(point)
+    d = {k: v for k, v in sorted(d.items(), key=lambda item: item[1], reverse=True)}
+    return d
 
 
 #######################################################

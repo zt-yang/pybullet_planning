@@ -26,7 +26,7 @@ def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
     robot = problem.robot
     world = problem.world
     obstacles = [o for o in problem.fixed if o not in problem.floors] if collisions else []
-    grippers = {arm: problem.get_gripper(arm=arm, visual=False) for arm in robot.arms}
+    grippers = {arm: problem.get_gripper(arm=arm, visual=True) for arm in robot.arms}
     heading = f'   mobile_streams.get_ir_sampler | '
 
     def gen_fn(arm, obj, pose, grasp):
@@ -302,7 +302,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
 
     # gripper_grasp = robot.visualize_grasp(pose_value, g.value, arm=a, body=g.body)
     gripper_grasp = robot.set_gripper_pose(pose_value, g.value, arm=a, body=g.body)
-    if collided(gripper_grasp, obstacles, articulated=True, world=world):  # w is not None
+    if collided(gripper_grasp, obstacles, articulated=False, world=world, tag='ir.gripper'):  # w is not None
         # wait_unlocked()
         # robot.remove_gripper(gripper_grasp)
         if verbose:

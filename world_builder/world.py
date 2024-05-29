@@ -724,7 +724,7 @@ class World(WorldBase):
             #         typ_str = f"{self.sup_categories[typ].capitalize()} -> {typ_str}"
             #         typ = self.sup_categories[typ]
 
-            line += f'{body}\t  |  {typ_str}: {object.name}'
+            line += f'{body}\t  |  {typ_str}: {object.name}\t  |  categories: {object.categories}'
 
             ## partnet mobility objects
             if hasattr(object, 'mobility_identifier'):
@@ -774,6 +774,12 @@ class World(WorldBase):
     def summarize_body_indices(self, print_fn=print):
         print_fn(SEPARATOR+f'Robot: {self.robot} | Objects: {self.objects}\n'
                  f'Movable: {self.movable} | Fixed: {self.fixed} | Floor: {self.floors}'+SEPARATOR)
+
+    def summarize_collisions(self):
+        log = self.robot.get_collisions_log()
+        print('\nsummarize_collisions')
+        pprint({self.body_to_name[str(k)]: v for k, v in log.items()}, indent=3)
+        return log
 
     def get_all_obj_in_body(self, body):
         if isinstance(body, tuple):
@@ -959,12 +965,18 @@ class World(WorldBase):
             return self.ROBOT_TO_OBJECT[body].name
         return None
 
-    def name_to_body(self, name, include_removed=False):
-        name = name.lower()
-        possible = {}
+    def get_all_body_objects(self, include_removed=False, body_only=False):
         all_objects = list(self.ROBOT_TO_OBJECT.items()) + list(self.BODY_TO_OBJECT.items())
         if include_removed:
             all_objects += list(self.REMOVED_BODY_TO_OBJECT.items())
+        if body_only:
+            all_objects = [a[0] for a in all_objects]
+        return all_objects
+
+    def name_to_body(self, name, include_removed=False):
+        name = name.lower()
+        possible = {}
+        all_objects = self.get_all_body_objects(include_removed)
         for body, obj in all_objects:
             if name == obj.name:
                 return body
@@ -974,14 +986,16 @@ class World(WorldBase):
             return find_closest_match(possible)
         return None
 
-    def name_to_object(self, name, **kwargs):
-        body = self.name_to_body(name, **kwargs)
-        if body is None:
-            return None ## object doesn't exist
+    def body_to_object(self, body):
         if body in self.BODY_TO_OBJECT:
             return self.BODY_TO_OBJECT[body]
         if body in self.REMOVED_BODY_TO_OBJECT:
             return self.REMOVED_BODY_TO_OBJECT[body]
+        return None  ## object doesn't exist
+
+    def name_to_object(self, name, **kwargs):
+        body = self.name_to_body(name, **kwargs)
+        return self.body_to_object(body)
 
     def cat_to_bodies(self, cat, get_all=False):
         bodies = []
@@ -1227,22 +1241,33 @@ class World(WorldBase):
         """ find whether moving certain joints would change the link poses or spaces and surfaces """
         if self.inited_link_joint_relations:
             return
+
+        ## another dictionary that needs only initiated once
+        body_to_name = self.get_indices()
+
         if all_joints is None:
             all_links, all_joints = self.get_typed_objects()[-2:]
-        all_link_poses = {(body, _, link): get_link_pose(body, link) for (body, _, link) in all_links}
+        # added_link_poses = {(body, _, link): get_link_pose(body, link) for (body, _, link) in all_links}
 
         lines = []
         for (body, joint) in all_joints:
             position = get_joint_position(body, joint)
+            all_link_poses = {(body, None, link): get_link_pose(body, link) for link in get_all_links(body)}
+
             toggle_joint(body, joint)
-            new_link_poses = {(body2, _, link): get_link_pose(body, link) for (body2, _, link) in all_links if body == body2}
+            joint_obj = self.BODY_TO_OBJECT[(body, joint)]
+            new_link_poses = {(body2, _, link): get_link_pose(body, link) for (body2, _, link) in all_link_poses}
             changed_links = [k for k, v in new_link_poses.items() if v != all_link_poses[k]]
             lines.append(f'\tjoint = {get_joint_name(body, joint)}|{(body, joint)}')
             for body_link in changed_links:
-                obj = self.BODY_TO_OBJECT[body_link]
-                obj.set_governing_joints([(body, joint)])
-                lines.append(f'\t\tlink = {get_link_name(body_link[0], body_link[-1])}|{body_link}')
+                if body_link in all_links:
+                    obj = self.BODY_TO_OBJECT[body_link]
+                    obj.set_governing_joints([(body, joint)])
+                    lines.append(f'\t\tlink = {get_link_name(body_link[0], body_link[-1])}|{body_link}')
+                joint_obj.all_affected_links.append(body_link[-1])
+            lines.append(f'\t\tall links affected = {changed_links}')
             set_joint_position(body, joint, position)
+
         if verbose and len(lines) > 0:
             print(f'\ninit_link_joint_relations ... started')
             [print(l) for l in lines]

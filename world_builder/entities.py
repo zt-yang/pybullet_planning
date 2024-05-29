@@ -134,6 +134,13 @@ class Object(Index):
         self.categories = [category] ## for added categories like movable
         self.grasps = grasps
 
+    def get_categories(self):
+        categories = self.categories
+        class_cat = self.__class__.__name__.lower()
+        if class_cat not in self.categories:
+            categories = [class_cat] + categories
+        return categories
+
     def add_grasps(self, grasps):
         self.grasps = grasps
 
@@ -629,7 +636,8 @@ class ArticulatedObjectPart(Object):
         self.max_limit = max_limit
         self.handle_link = self.find_handle_link(body, joint)
         self.handle_horizontal, self.handle_width = self.get_handle_orientation(body)
-        self.affected_links = []
+        self.affected_links = []  ## that are planning objects
+        self.all_affected_links = []  ## all links in the asset
 
     def find_handle_link(self, body, joint):
         link = get_joint_info(body, joint).linkName.decode("utf-8")

@@ -13,7 +13,7 @@ planner:
   evaluation_time: 60
   stream_planning_timeout: 80
   total_planning_timeout: 60
-  max_plans: 2
+  max_plans: 20
   max_solutions: 1
   log_failures: false
 

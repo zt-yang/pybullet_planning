@@ -559,9 +559,11 @@ def visualize_sampled_pstns(x_min, x_max, x_points):
     plt.show()
 
 
-def sample_joint_position_gen(num_samples=14, to_close=False, visualize=False, verbose=True):
+def sample_joint_position_gen(num_samples=14, p_max=2, to_close=False, visualize=False, verbose=True):
     """ generate open positions if closed=False and closed positions if closed=True (deprecated) """
     def fn(o, pstn1):
+
+        is_drawer = pstn1.is_prismatic()
 
         upper = Position(o, 'max').value
         lower = Position(o, 'min').value
@@ -569,6 +571,11 @@ def sample_joint_position_gen(num_samples=14, to_close=False, visualize=False, v
             sometime = lower
             lower = upper
             upper = sometime
+        if upper > p_max:
+            upper = min([upper, p_max])
+        if lower < -p_max:
+            lower = max([lower, -p_max])
+
         x_min = lower
         x_max = upper
 
@@ -576,7 +583,7 @@ def sample_joint_position_gen(num_samples=14, to_close=False, visualize=False, v
         a_half = (upper - lower) / 2
         a_third = (upper - lower) / 3
 
-        if pstn1.is_prismatic():
+        if is_drawer:
             if to_close:
                 pstns.extend([np.random.uniform(lower, upper - a_half) for k in range(num_samples)])
             else:

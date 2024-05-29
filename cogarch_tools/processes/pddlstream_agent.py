@@ -214,9 +214,6 @@ class PDDLStreamAgent(MotionAgent):
                     print(f'pddlstream_agent.process_plan\tgetting new action {action}')
                 return action
 
-            # if self.step_count in [7,  8]:
-            #     print('self.step_count in [7,  8]')
-
             name, args = action
             incomplete_action = '?t' in args
 
@@ -425,6 +422,7 @@ class PDDLStreamAgent(MotionAgent):
         self.difference_fn = None
         self.distance_fn = None
         self.extend_fn = None
+
         self.observations = []
         self.world_state = None
         self.world.robot.reset_ik_solvers()
@@ -458,13 +456,6 @@ class PDDLStreamAgent(MotionAgent):
 
     def load_agent_state(self, agent_state_path):
         """ resume planning """
-
-        ## for indexing using -1 in given path
-        if '-1.pkl' in agent_state_path:
-            agent_state_dir = dirname(agent_state_path)
-            index = len([f for f in listdir(agent_state_dir) if 'agent_state_' in f])
-            agent_state_path = agent_state_path.replace('-1.pkl', f'{index}.pkl')
-
         print('\n\n'+'-'*60+f'\n[load_agent_state] from {agent_state_path}\n')
 
         if self.env_execution is None:
@@ -472,6 +463,7 @@ class PDDLStreamAgent(MotionAgent):
 
         exp_dir = self.exp_dir
         robot = self.world.robot
+        attachments = self.world.attachments
 
         stream_map = self.pddlstream_problem[3]
         static_literals = self.env_execution.static_literals
@@ -483,14 +475,16 @@ class PDDLStreamAgent(MotionAgent):
         with open(agent_state_path, 'br') as f:
             self = pickle.load(f)
 
+        self.world.robot = robot
+        self.world.attachments = attachments
+
+        ## roll out world state to the last planning state
         commands_path = agent_state_path.replace('agent_state_', 'commands_')
-        # commands_path = agent_state_path.replace('agent_state_', 'commands_')
         self.apply_commands(commands_path)
 
         self.exp_dir = exp_dir
         self.plan = []
-        self.llamp_api.agent_state_path = agent_state_path
-        self.world.robot = robot
+        # self.goal_sequence.insert(0, 'reloaded')
 
         a, b, c, _, e, f = self.env_execution._pddlstream_problem
         self.env_execution._pddlstream_problem = PDDLProblem(a, b, c, stream_map, e, f)
@@ -515,7 +509,7 @@ class PDDLStreamAgent(MotionAgent):
             commands = pickle.load(f)
 
         problem, _, plan, body_map = load_basic_plan_commands(self.world, self.exp_dir, self.exp_dir, load_attach=False)
-        attachments = apply_actions(problem, commands, time_step=0.001, verbose=False, plan=plan)  ## , body_map=body_map
+        attachments = apply_actions(problem, commands, time_step=0.0001, verbose=False, plan=plan)  ## , body_map=body_map
         self.world.attachments = attachments
 
 

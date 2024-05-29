@@ -69,7 +69,7 @@ saved_poses = {
     # ('cabbage', 'upper_shelf'): ((1.006, 6.295, 0.461), (0.0, 0.0, 0.941, 0.338)),
     # ('cabbage', 'indigo_drawer_top'): ((1.12, 8.671, 0.726), (0.0, 0.0, 0.173, 0.985)),
     ('salt-shaker', 'sektion'): ((0.771, 7.071, 1.152), (0.0, 0.0, 1.0, 0)),
-    ('pepper-shaker', 'sektion'): ((0.764, 7.303, 1.16), (0.0, 0.0, 1.0, 0)),
+    ('pepper-shaker', 'sektion'): ((0.764, 7.303, 1.164), (0.0, 0.0, 1.0, 0)),
     ('fork', 'indigo_tmp'): ((0.767, 8.565, 0.842), (0.0, 0.0, 0.543415, 0.8395)),
 }
 
@@ -292,7 +292,7 @@ def place_in_nvidia_kitchen_space(obj, supporter_name, interactive=False, doors=
 
     ## check if the object is in collision with the surface
     collided(obj.body, [world.name_to_object(supporter_name).body],
-             world=world, verbose=True, tag='place_in_nvidia_kitchen_space')
+             world=world, verbose=True, tag='place_in_nvidia_kitchen_space', log_collisions=False)
 
 
 def load_nvidia_kitchen_movables(world: World, open_doors_for: list = [], custom_supports: dict = {}):

@@ -1127,6 +1127,7 @@ def test_kitchen_sprinkle(args, **kwargs):
         plate = load_plate_on_counter(world, counter_name='indigo_tmp')
 
         salt_shaker = world.name_to_body('salt-shaker')
+        salt_shaker = world.name_to_body('pepper-shaker')
         plate = world.name_to_body('plate')
         braiser = world.name_to_object('braiserbody')
         lid = world.name_to_object('braiserlid')
@@ -1137,33 +1138,39 @@ def test_kitchen_sprinkle(args, **kwargs):
         right_door = world.name_to_body('chewie_door_right_joint')
         arm = robot.arms[0]
 
+        objects = []
+        skeleton = []
+        subgoals = []
+
         world.add_to_cat(salt_shaker, 'sprinkler')
         world.add_to_cat(braiser_bottom, 'region')
         world.add_to_cat(braiser, 'region')
 
         ## changes to env for different goals
         side_surface.place_obj(lid)
-        world.open_joint(left_door)
-        world.open_joint(right_door)
+        # world.open_joint(left_door)
+        # world.open_joint(right_door)
+        objects += [left_door, right_door]
 
-        objects = []
-        skeleton = []
-        subgoals = []
-
-        """ step 1: sprinkle into """
-        # goals = [['Holding', arm, salt_shaker]]
+        """ test 1: sprinkle into """
+        goals = [['Holding', arm, salt_shaker]]
         # goals = ('test_pose_above_gen', (salt_shaker, plate))
         # goals = [['SprinkledTo', salt_shaker, plate]]
-        goals = [['SprinkledTo', salt_shaker, braiser_bottom.pybullet_name]]
-        goals = [['SprinkledTo', salt_shaker, braiser.pybullet_name]]
+        # goals = [['SprinkledTo', salt_shaker, braiser_bottom.pybullet_name]]
+        # goals = [['SprinkledTo', salt_shaker, braiser.pybullet_name]]
 
-        """ step 2: remove obstacles """
+        """ test 2: remove movable obstacles """
         # put_lid_on_braiser(world, lid, braiser)
         # goals = [['On', lid, plate]]
         # goals = [['SprinkledTo', salt_shaker, braiser_bottom.pybullet_name]]
         # objects += [lid] + [plate] ## + [side_surface.pybullet_name]
         # skeleton += [(k, arm, lid) for k in pick_place_actions]
         # skeleton += [(k, arm, salt_shaker) for k in pick_sprinkle_actions]
+
+        """ test 3: remove articulated obstacles """
+        # world.close_joint(left_door)
+        # world.close_joint(right_door)
+        # goals = ('test_joint_open', right_door)
 
         ## need push rim action to open the joint
         if 'mobile_v3' in args.domain_pddl:

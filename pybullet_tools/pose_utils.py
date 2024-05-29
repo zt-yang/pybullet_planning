@@ -171,7 +171,7 @@ def add_attachment(state=None, obj=None, parent=-1, parent_link=None, attach_dis
             attachment = create_attachment(parent, parent_link, obj, OBJ=OBJ)
         new_attachments[obj] = attachment  ## may overwrite older attachment
         if verbose:
-            print(f'\nbullet_utils.add_attachment | {attachment}\n')
+            print(f'pose_utils.add_attachment | {attachment}')
         if debug:
             attachment.assign()
     return new_attachments
@@ -192,7 +192,7 @@ def remove_attachment(state, obj=None, verbose=False):
     new_attachments = dict(state.attachments)
     if obj in new_attachments:
         if verbose:
-            print(f'\nbullet_utils.remove_attachment | {new_attachments[obj]}\n')
+            print(f'pose_utils.remove_attachment | {new_attachments[obj]}')
         new_attachments.pop(obj)
     return new_attachments
 

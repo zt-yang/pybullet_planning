@@ -19,6 +19,7 @@ PDDL_PATH = abspath(join(__file__, '..', '..', 'assets', 'pddl'))
 pull_actions = ['grasp_handle', 'pull_handle', 'ungrasp_handle']
 pull_with_link_actions = ['grasp_handle', 'pull_handle_with_link', 'ungrasp_handle']
 pick_place_actions = ['pick', 'place']
+pick_arrange_actions = ['pick', 'arrange']
 pick_sprinkle_actions = ['pick', 'sprinkle']
 pick_place_rel_actions = ['pick_from_supporter', 'place_to_supporter']
 
