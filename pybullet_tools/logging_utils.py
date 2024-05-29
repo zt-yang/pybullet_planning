@@ -1,6 +1,7 @@
 import json
+import zipfile
 import os
-from os.path import join, isfile, isdir, abspath, dirname
+from os.path import join, isfile, isdir, abspath, dirname, relpath
 from os import mkdir
 from datetime import datetime
 import csv
@@ -285,3 +286,20 @@ def process_facts(facts):
             not (f[0] == 'not' and f[1][0] in ['=', 'identical'])]
     facts = sorted(facts, key=lambda x: x[0])
     return facts
+
+
+## -------------------------------------------------------------------------
+
+
+def zipdir(path, ziph):
+    # ziph is zipfile handle
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            ziph.write(join(root, file), relpath(join(root, file), join(path, '..')))
+
+
+def zipit(dir_list, zip_name):
+    zipf = zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED)
+    for dir in dir_list:
+        zipdir(dir, zipf)
+    zipf.close()
