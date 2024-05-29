@@ -1153,6 +1153,7 @@ def test_kitchen_sprinkle(args, **kwargs):
         objects += [left_door, right_door]
 
         """ test 1: sprinkle into """
+        # goals = [['OpenedJoint', right_door]]
         goals = [['Holding', arm, salt_shaker]]
         # goals = ('test_pose_above_gen', (salt_shaker, plate))
         # goals = [['SprinkledTo', salt_shaker, plate]]
@@ -1176,6 +1177,42 @@ def test_kitchen_sprinkle(args, **kwargs):
         if 'mobile_v3' in args.domain_pddl:
             goals = [['ClosedJoint', right_door]]
             objects += [right_door]
+
+        world.remove_bodies_from_planning(goals, exceptions=objects, skeleton=skeleton, subgoals=subgoals)
+
+        return {'goals': goals, 'skeleton': skeleton, 'subgoals': subgoals}
+
+    return test_nvidia_kitchen_domain(args, loader_fn, initial_xy=(2, 8), **kwargs)
+
+
+def test_kitchen_nudge_door(args, **kwargs):
+    """
+    Note: The grasp poses of the fork need to be hand-specified
+    """
+    def loader_fn(world, **world_builder_args):
+        robot = world.robot
+
+        open_doors_for = []  ## goal_object
+        objects, movables, movable_to_doors = load_open_problem_kitchen(world, open_doors_for=open_doors_for)
+        plate = load_plate_on_counter(world, counter_name='indigo_tmp')
+
+        salt_shaker = world.name_to_body('salt-shaker')
+        salt_shaker = world.name_to_body('pepper-shaker')
+        counter = world.name_to_body('indigo_tmp')
+        left_door = world.name_to_body('chewie_door_left_joint')
+        right_door = world.name_to_body('chewie_door_right_joint')
+        arm = robot.arms[0]
+
+        door = right_door
+        world.open_joint(door, extent=0.7)
+
+        objects = []
+        skeleton = []
+        subgoals = []
+
+        goals = ('test_nudge_grasps', door)
+        # goals = [("HandleGrasped", 'left', door)]
+        # goals = [("OpenedJoint", door)]
 
         world.remove_bodies_from_planning(goals, exceptions=objects, skeleton=skeleton, subgoals=subgoals)
 

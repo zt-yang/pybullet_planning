@@ -1127,3 +1127,16 @@ def get_ik_ungrasp_mark_gen(problem, max_attempts=25, teleport=False, **kwargs):
         #     yield ik_fn(*(inputs))
         #     return
     return gen
+
+
+def get_ik_nudge_gen(problem, max_attempts=25, teleport=False, **kwargs):
+    ik_fn = get_arm_ik_fn(problem, teleport=teleport, **kwargs)
+    # ik_fn = get_ik_fn(problem, pick_up=False, given_grasp_conf=True, **kwargs)
+    def gen(*inputs):
+        attempts = 0
+        while True:
+            if max_attempts <= attempts:
+                return None
+            yield ik_fn(*(inputs))
+            return
+    return gen

@@ -634,8 +634,10 @@ class ArticulatedObjectPart(Object):
             max_limit = get_max_limit(body, joint)
         self.min_limit = min_limit
         self.max_limit = max_limit
+
         self.handle_link = self.find_handle_link(body, joint)
         self.handle_horizontal, self.handle_width = self.get_handle_orientation(body)
+
         self.affected_links = []  ## that are planning objects
         self.all_affected_links = []  ## all links in the asset
 

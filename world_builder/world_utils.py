@@ -21,7 +21,7 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sam
     set_camera_pose, TAN, RGBA, get_color, get_min_limit, get_max_limit, set_color, WHITE, get_links, \
     get_link_name, get_link_pose, euler_from_quat, get_collision_data, get_joint_name, get_joint_position, \
     set_renderer, link_from_name, parent_joint_from_link, set_random_seed, set_numpy_seed
-from pybullet_tools.bullet_utils import is_joint_open, get_fine_rainbow_colors
+from pybullet_tools.bullet_utils import is_joint_open, get_fine_rainbow_colors, open_joint, toggle_joint
 from pybullet_tools.camera_utils import get_segmask
 from pybullet_tools.logging_utils import dump_json
 from pybullet_tools.general_streams import Position

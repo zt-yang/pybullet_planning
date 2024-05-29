@@ -224,6 +224,13 @@ def print_goal(goal, world=None, print_fn=None):
     print_fn(')')
 
 
+def print_domain(domain_pddl, stream_pddl, custom_limits):
+    myprint(f'stream_agent.pddlstream_from_state_goal(\n'
+            f'\tdomain = {domain_pddl}, \n'
+            f'\tstream = {stream_pddl}, \n'
+            f'\tcustom_limits = {custom_limits}')
+
+
 def summarize_poses(preimage):
     from pybullet_tools.bullet_utils import nice
     atposes = [f[-1] for f in preimage if f[0].lower() == 'atpose']

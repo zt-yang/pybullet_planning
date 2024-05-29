@@ -100,6 +100,10 @@ def update_kitchen_pddl():
     create_domain_and_stream('mobile', ['cooking'], 'mobile_v2')
 
 
+def update_kitchen_nudge_pddl():
+    create_domain_and_stream('mobile', ['cooking'], 'mobile_v3')
+
+
 if __name__ == '__main__':
     # update_namo_pddl()
     update_kitchen_pddl()

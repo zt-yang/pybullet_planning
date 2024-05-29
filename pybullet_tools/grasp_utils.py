@@ -12,7 +12,7 @@ import json
 from pybullet_tools.logging_utils import dump_json
 from pybullet_tools.utils import unit_pose, get_collision_data, get_links, multiply, invert, \
     aabb_contains_aabb, get_pose, get_aabb, GREEN, AABB, remove_body, set_renderer, draw_aabb, \
-    pose_from_tform, wait_for_user, Euler, PI, LockRenderer, HideOutput, load_model, \
+    pose_from_tform, wait_for_user, Euler, PI, unit_point, LockRenderer, HideOutput, load_model, \
     get_client, JOINT_TYPES, get_joint_type, get_link_pose, get_closest_points, \
     get_link_subtree, quat_from_euler, euler_from_quat, create_box, set_pose, Pose, \
     YELLOW, add_line, draw_point, RED, remove_handles, apply_affine, vertices_from_rigid, \
@@ -131,7 +131,7 @@ def get_gripper_direction(pose, epsilon=0.01):
 
 
 def find_grasp_in_db(db_file, instance_name, length_variants=False, scale=None,
-                     use_all_grasps=False, verbose=True):
+                     use_all_grasps=False, verbose=True, world=None):
     """ find saved json files, prioritize databases/ subdir """
     db = json.load(open(db_file, 'r')) if isfile(db_file) else {}
 
@@ -174,11 +174,10 @@ def find_grasp_in_db(db_file, instance_name, length_variants=False, scale=None,
             data = all_data['other_scales'][str(scale)]
             found = rewrite_grasps(data)
 
-    return found, db, db_file
+    return found, db
 
 
-def add_grasp_in_db(db, db_file, instance_name, grasps, name=None,
-                    length_variants=False, scale=None):
+def add_grasp_in_db(db, db_file, instance_name, grasps, name=None, length_variants=False, scale=None):
     if instance_name is None: return
 
     key = 'grasps' if not length_variants else 'grasps_l'
@@ -222,12 +221,13 @@ def get_loaded_scale(body):
     return scale
 
 
-def get_grasp_db_file(robot):
+def get_grasp_db_file(robot, nudge=False):
     if isinstance(robot, str):
         robot_name = {'pr2': 'PR2Robot', 'feg': 'FEGripper'}[robot]
     else:
         robot_name = robot.__class__.__name__
-    db_file_name = f'hand_grasps_{robot_name}.json'
+    key = 'nudge' if nudge else 'hand'
+    db_file_name = f'{key}_grasps_{robot_name}.json'
     db_file = abspath(join(dirname(__file__), '..', 'databases', db_file_name))
     return db_file
 
@@ -272,12 +272,48 @@ def enumerate_rotational_matrices(return_list=False):
     return rots
 
 
+def visualize_found_grasps(found, robot, body, link, body_pose, retain_all=False, verbose=True):
+    bodies = []
+    for i, g in enumerate(found):
+        bb = body if link is None else None
+        color, color_name = get_color_by_index(i)
+        print(f'\t{nice(g)}\t{color_name}')
+        bodies.append(
+            robot.visualize_grasp(body_pose, g, body=bb, verbose=verbose,
+                                  new_gripper=retain_all, color=color)
+        )
+    # set_renderer(True)
+    if retain_all:
+        set_camera_target_body(body, dx=0.5, dy=0.5, dz=1)
+        wait_unlocked()
+    for b in bodies:
+        remove_body(b)
+
+
+def make_nudge_grasps_from_handle_grasps(world, found_hand_grasps, body, body_pose, verbose=False,
+                                         interactive=False, debug=False):
+    t = (0, 0, 0.32)
+    r = quat_from_euler(Euler(roll=PI))
+    x = (t, r)
+    if debug or interactive:
+        set_renderer(True)
+        g = found_hand_grasps[0]
+        gripper = world.robot.visualize_grasp(body_pose, multiply(g, x), body=None, verbose=verbose, width=0)
+        collided(gripper, [body])
+
+        if interactive:
+            from world_builder.entities import Object
+            world.add_object(Object(gripper), name='gripper')
+
+    return [multiply(g, x) for g in found_hand_grasps]
+
+
 def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
                     handle_filter=False, length_variants=False, use_all_grasps=True,
                     retain_all=False, verbose=True, collisions=False, debug_del=False,
-                    test_offset=False, skip_grasp_index=None):
+                    test_offset=False, skip_grasp_index=None, nudge=False):
     body_name = (body, None, link) if link is not None else body
-    title = f'bullet_utils.get_hand_grasps({body_name}) | '
+    title = f'grasp_utils.get_hand_grasps({body_name}) | '
     dist = grasp_length
     robot = world.robot
     scale = 1 if is_box_entity(body) else get_loaded_scale(body)
@@ -298,29 +334,26 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
         body_pose = multiply(body_pose, invert(tool_from_hand))
 
     instance_name = world.get_instance_name(body_name)
+    name_in_db = None if instance_name is None else world.get_name(body_name, use_default_link_name=True)
     if instance_name is not None:
-        grasp_db_file = get_grasp_db_file(robot)
-        found, db, db_file = find_grasp_in_db(grasp_db_file, instance_name, verbose=verbose, scale=scale,
-                                              length_variants=length_variants, use_all_grasps=use_all_grasps)
+        grasp_db_file = get_grasp_db_file(robot, nudge=nudge)
+        found, db = find_grasp_in_db(grasp_db_file, instance_name, verbose=verbose, scale=scale,
+                                     length_variants=length_variants, use_all_grasps=use_all_grasps, world=world)
+
+        ## TODO: hack to hand adjust the found hand grasps to make nudge grasps
+        if found is None and nudge:
+            hand_db_file = grasp_db_file.replace('/nudge_', '/hand_')
+            found_hand_grasps, _ = find_grasp_in_db(hand_db_file, instance_name, length_variants=False, scale=scale,
+                                                    use_all_grasps=use_all_grasps, verbose=verbose)
+            if found_hand_grasps is not None:
+                found = make_nudge_grasps_from_handle_grasps(world, found_hand_grasps, body, body_pose, verbose)
+                # add_grasp_in_db(db, grasp_db_file, instance_name, found, name=name_in_db, scale=scale)
+
         if found is not None:
+            if verbose:
+                print(f'get_hand_grasps({instance_name}) | found {len(found)} grasp poses')
             if visualize:
-                bodies = []
-                if verbose:
-                    print(f'get_hand_grasps({instance_name}) | found {len(found)} grasp poses')
-                for i, g in enumerate(found):
-                    bb = body if link is None else None
-                    color, color_name = get_color_by_index(i)
-                    print(f'\t{nice(g)}\t{color_name}')
-                    bodies.append(
-                        robot.visualize_grasp(body_pose, g, body=bb, verbose=verbose,
-                                              new_gripper=retain_all, color=color)
-                    )
-                # set_renderer(True)
-                if retain_all:
-                    set_camera_target_body(body, dx=0.5, dy=0.5, dz=1)
-                    wait_unlocked()
-                for b in bodies:
-                    remove_body(b)
+                visualize_found_grasps(found, robot, body, link, body_pose, retain_all, verbose)
             remove_handles(handles)
             return found
 
@@ -435,8 +468,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
 
     ## lastly store the newly sampled grasps
     if instance_name is not None:
-        name = world.get_name(body_name, use_default_link_name=True)
-        add_grasp_in_db(db, db_file, instance_name, grasps, name=name,
+        add_grasp_in_db(db, grasp_db_file, instance_name, grasps, name=name_in_db,
                         length_variants=length_variants, scale=scale)
     remove_handles(handles)
     robot.hide_cloned_grippers()

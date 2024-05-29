@@ -145,11 +145,15 @@
 
     (Identical ?v1 ?v2)
 
+    ;; making planning more efficient
     (Picked ?o)
     (Placed ?o)
     (Pulled ?o)
+
     (Enabled)
     (Disabled)
+
+    (increase) ; pddlgym.parser
 
 
   ;;----------------------------------------------------------------------
@@ -258,9 +262,10 @@
     :precondition (and (Kin ?a ?o ?p ?g ?q ?t) (Graspable ?o) (CanPick)
                        (AtPose ?o ?p) (HandEmpty ?a) (AtBConf ?q)
                        (not (UnsafeApproach ?o ?p ?g))
-                       ; (not (UnsafeATraj ?t)) (not (UnsafeOTraj ?o ?g ?t)) (not (CanMove)) (not (Picked ?o))
+                       (not (Picked ?o))
+                       ; (not (UnsafeATraj ?t)) (not (UnsafeOTraj ?o ?g ?t)) (not (CanMove))
                        )
-    :effect (and (AtGrasp ?a ?o ?g) (CanMove) ; (Picked ?o)
+    :effect (and (AtGrasp ?a ?o ?g) (CanMove) (Picked ?o)
                  (not (AtPose ?o ?p)) (not (HandEmpty ?a))
                  ; (increase (total-cost) (PickCost))
                  (increase (total-cost) 1)
@@ -270,6 +275,23 @@
   (:action place
     :parameters (?a ?o ?p ?g ?q ?t)
     :precondition (and (Kin ?a ?o ?p ?g ?q ?t) (Graspable ?o)
+                       (AtGrasp ?a ?o ?g) (AtBConf ?q)
+                       (not (UnsafePose ?o ?p))
+                       (not (UnsafeApproach ?o ?p ?g))
+                       (not (CanMove))
+                       ; (not (UnsafeATraj ?t)) (not (UnsafeOTraj ?o ?g ?t))
+                       ; (not (Placed ?o))
+                       )
+    :effect (and (AtPose ?o ?p) (HandEmpty ?a) (CanMove)
+                 (not (AtGrasp ?a ?o ?g))
+                 ; (increase (total-cost) (PlaceCost))
+                 (increase (total-cost) 1)
+            )
+  )
+
+  (:action arrange
+    :parameters (?a ?o ?r ?p ?g ?q ?t)
+    :precondition (and (Kin ?a ?o ?p ?g ?q ?t) (Graspable ?o) (Supported ?o ?p ?r)
                        (AtGrasp ?a ?o ?g) (AtBConf ?q)
                        (not (UnsafePose ?o ?p))
                        (not (UnsafeApproach ?o ?p ?g))
@@ -378,11 +400,13 @@
                          (KinGraspHandle ?a ?o ?p ?g ?q ?aq2 ?t)
                          (AtPosition ?o ?p) (HandEmpty ?a)
                          (AtBConf ?q) (AtAConf ?a ?aq1)
+                         (not (Pulled ?o))
                          ;(Enabled)
                     )
       :effect (and (AtHandleGrasp ?a ?o ?g) (not (HandEmpty ?a)) (not (CanPick))
                    (not (CanMove)) (CanPull ?a) (not (CanUngrasp)) (not (CanGraspHandle))
                    (not (AtAConf ?a ?aq1)) (AtAConf ?a ?aq2)
+                   (Pulled ?o)
                    ;(increase (total-cost) (PickCost)) ; TODO: make one third of the cost
                    (increase (total-cost) 0)
               )

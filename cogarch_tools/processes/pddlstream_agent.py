@@ -480,6 +480,7 @@ class PDDLStreamAgent(MotionAgent):
 
         ## roll out world state to the last planning state
         commands_path = agent_state_path.replace('agent_state_', 'commands_')
+        self.exp_dir = correct_home_path(self.exp_dir, exp_dir)
         self.apply_commands(commands_path)
 
         self.exp_dir = exp_dir
@@ -563,3 +564,10 @@ def filter_dynamic_facts(facts):
             to_remove.extend([fact, fact[1]])
     facts = [f for f in facts if f not in to_remove]
     return facts
+
+
+def correct_home_path(loaded_exp_dir, correct_exp_dir):
+    key = '/vlm-tamp/'
+    home_loaded, exp_path = loaded_exp_dir.split(key)
+    home_corrected = correct_exp_dir.split(key)[0]
+    return join(home_corrected, key.replace('/', ''), exp_path)

@@ -105,7 +105,7 @@ class HandleGrasp(object):
         self.value = tuple(value) # gripper_from_object
         self.approach = tuple(approach)
         self.carry = tuple(carry)
-        if index == None: index = id(self)
+        if index is None: index = id(self)
         self.index = index
 
     def get_attachment(self, robot, arm, **kwargs):
@@ -636,8 +636,8 @@ def sample_joint_position_gen(num_samples=14, p_max=2, to_close=False, visualize
             visualize_sampled_pstns(x_min, x_max, pstns)
 
         if verbose:
-            print(f'\tsample_joint_position_gen({o}, {pstn1.value}, closed={to_close}) choosing from {pstns}, '
-                  f'joint limits = [{round(x_min, 3)}, {round(x_max, 3)}]')
+            print(f'\tsample_joint_position_gen({o}, {pstn1.value}, closed={to_close}, p_max={p_max}) '
+                  f'choosing from {pstns}, joint limits = [{round(x_min, 3)}, {round(x_max, 3)}]')
         random.shuffle(pstns)
         positions = [(Position(o, p), ) for p in pstns]
 
@@ -833,16 +833,15 @@ def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
         handle_link = get_handle_link(body_joint, is_knob=is_knob)
         # print(f'{title} handle_link of body_joint {body_joint} is {handle_link}')
 
-        g_type = 'top'
-        arm = 'hand'
-        if robot.name.startswith('pr2'):
-            arm = 'left'
-
         grasps = get_hand_grasps(world, body, link=handle_link, handle_filter=True,
                                  visualize=visualize, retain_all=retain_all, length_variants=True, verbose=verbose)
 
         if verbose: print(f'\n{title} grasps =', [nice(g) for g in grasps])
 
+        g_type = 'top'
+        arm = 'hand'
+        if robot.name.startswith('pr2'):
+            arm = 'left'
         app = robot.get_approach_vector(arm, g_type, scale=0.5)
         grasps = [HandleGrasp('side', body_joint, g, robot.get_approach_pose(app, g),
                               robot.get_carry_conf(arm, g_type, g)) for g in grasps]
@@ -903,6 +902,66 @@ def get_reachable_test(radius=1.3, verbose=False):
                 print(f'general_streams.get_reachable_test({o}, {p}, {q}) -> {result}')
             return result
     return test
+
+
+""" ==============================================================
+
+            Nudge Grasp for Doors
+
+    ==============================================================
+"""
+
+
+def get_nudge_grasp_list_gen(problem, collisions=True, num_samples=10, **kwargs):
+    funk = get_nudge_grasp_gen(problem, collisions, max_samples=num_samples, **kwargs)
+
+    def gen(body):
+        g = funk(body)
+        grasps = []
+        while len(grasps) < num_samples:
+            try:
+                grasp = next(g)
+                grasps.append(grasp)
+            except StopIteration:
+                break
+        return grasps
+    return gen
+
+
+def get_nudge_grasp_gen(problem, collisions=False, max_samples=2,
+                        randomize=False, visualize=False, retain_all=False, verbose=False):
+    collisions = True
+    obstacles = problem.fixed if collisions else []
+    world = problem.world
+    robot = problem.robot
+    title = 'general_streams.get_nudge_grasp_gen |'
+
+    def fn(body_joint):
+        body, joint = body_joint
+        handle_link = get_handle_link(body_joint)
+
+        grasps = get_hand_grasps(world, body, link=handle_link, nudge=True,
+                                 visualize=visualize, retain_all=retain_all, verbose=verbose)
+
+        if verbose: print(f'\n{title} grasps =', [nice(g) for g in grasps])
+
+        g_type = 'top'
+        arm = 'hand'
+        if robot.name.startswith('pr2'):
+            arm = 'left'
+        app = robot.get_approach_vector(arm, g_type, scale=0.5)
+        grasps = [HandleGrasp('side', body_joint, g, robot.get_approach_pose(app, g),
+                              robot.get_carry_conf(arm, g_type, g)) for g in grasps]
+
+        if randomize:
+            random.shuffle(grasps)
+        if max_samples is not None and len(grasps) > max_samples:
+            random.shuffle(grasps)
+            grasps = grasps[:max_samples]
+        # return [(g,) for g in grasps]
+        for g in grasps:
+           yield (g,)
+    return fn
 
 
 """ ==============================================================

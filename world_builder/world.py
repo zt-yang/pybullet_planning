@@ -495,6 +495,7 @@ class World(WorldBase):
             n = self.get_instance_name(body)
             part_name = get_link_name(body, obj.handle_link)
             n = PART_INSTANCE_NAME.format(body_instance_name=n, part_name=part_name)
+
             self.instance_names[(body, None, obj.handle_link)] = n
 
         ## object parts: surface, space
@@ -617,6 +618,10 @@ class World(WorldBase):
         surface = Surface(body, link=link)
         self.add_object(surface)
         return surface
+
+    def remove_all_object_labels_in_pybullet(self):
+        for obj in self.get_all_objects():
+            obj.erase()
 
     def summarize_supporting_surfaces(self):
         from pybullet_tools.logging_utils import myprint as print
@@ -777,8 +782,8 @@ class World(WorldBase):
 
     def summarize_collisions(self):
         log = self.robot.get_collisions_log()
-        print('\nsummarize_collisions')
         pprint({self.body_to_name[str(k)]: v for k, v in log.items()}, indent=3)
+        print()
         return log
 
     def get_all_obj_in_body(self, body):
@@ -958,20 +963,32 @@ class World(WorldBase):
 
     ##################################################################################
 
+    def get_all_body_objects(self, include_removed=False):
+        all_objects = list(self.ROBOT_TO_OBJECT.items()) + list(self.BODY_TO_OBJECT.items())
+        if include_removed:
+            all_objects += list(self.REMOVED_BODY_TO_OBJECT.items())
+        return all_objects
+
+    def get_all_bodies(self, include_removed=False):
+        all_objects = self.get_all_body_objects(include_removed=include_removed)
+        return [a[0] for a in all_objects]
+
+    def get_all_objects(self, include_removed=False):
+        all_objects = self.get_all_body_objects(include_removed=include_removed)
+        return [a[1] for a in all_objects]
+
+    def get_collision_objects(self):
+        saved = list(self.BODY_TO_OBJECT.keys())
+        return [n for n in get_bodies() if n in saved and n > 1]
+
+    ## ---------------------------------------------------------
+
     def get_name_from_body(self, body):
         if body in self.BODY_TO_OBJECT:
             return self.BODY_TO_OBJECT[body].name
         elif body in self.ROBOT_TO_OBJECT:
             return self.ROBOT_TO_OBJECT[body].name
         return None
-
-    def get_all_body_objects(self, include_removed=False, body_only=False):
-        all_objects = list(self.ROBOT_TO_OBJECT.items()) + list(self.BODY_TO_OBJECT.items())
-        if include_removed:
-            all_objects += list(self.REMOVED_BODY_TO_OBJECT.items())
-        if body_only:
-            all_objects = [a[0] for a in all_objects]
-        return all_objects
 
     def name_to_body(self, name, include_removed=False):
         name = name.lower()
@@ -991,6 +1008,7 @@ class World(WorldBase):
             return self.BODY_TO_OBJECT[body]
         if body in self.REMOVED_BODY_TO_OBJECT:
             return self.REMOVED_BODY_TO_OBJECT[body]
+        print(f'world.body_to_object | body {body} not found')
         return None  ## object doesn't exist
 
     def name_to_object(self, name, **kwargs):
@@ -1031,9 +1049,7 @@ class World(WorldBase):
         bodies = self.cat_to_bodies(cat)
         return [self.BODY_TO_OBJECT[b] for b in bodies]
 
-    def get_collision_objects(self):
-        saved = list(self.BODY_TO_OBJECT.keys())
-        return [n for n in get_bodies() if n in saved and n > 1]
+    ## ---------------------------------------------------------
 
     def assign_attachment(self, body, tag=None):
         title = f'   world.assign_attachment({body}) | '
@@ -1237,11 +1253,14 @@ class World(WorldBase):
     #                                   camera_point=camera_point, target_point=target_point)
     #     visualize_camera_image(image, index, img_dir=self.img_dir, **kwargs)
 
-    def init_link_joint_relations(self, all_links=None, all_joints=None, verbose=True):
+    def init_link_joint_relations(self, all_links=[], all_joints=None, verbose=False):
         """ find whether moving certain joints would change the link poses or spaces and surfaces """
         if self.inited_link_joint_relations:
             return
+        self._init_link_joint_relations(all_links, all_joints, verbose)
+        self.inited_link_joint_relations = True
 
+    def _init_link_joint_relations(self, all_links=[], all_joints=None, verbose=False):
         ## another dictionary that needs only initiated once
         body_to_name = self.get_indices()
 
@@ -1271,7 +1290,6 @@ class World(WorldBase):
         if verbose and len(lines) > 0:
             print(f'\ninit_link_joint_relations ... started')
             [print(l) for l in lines]
-        self.inited_link_joint_relations = True
 
     def get_indices(self):
         """ for fastamp project """
@@ -1378,7 +1396,8 @@ class World(WorldBase):
 
         ## ---- object joint positions ------------- TODO: may need to add to saver
         for body in all_joints:
-            if BODY_TO_OBJECT[body].handle_link is None:
+            obj = BODY_TO_OBJECT[body]
+            if obj.handle_link is None:
                 continue
             if ('Joint', body) in init or ('joint', body) in init:
                 continue
@@ -1388,10 +1407,12 @@ class World(WorldBase):
                      ('Position', body, position), ('AtPosition', body, position),
                      # ('IsOpenedPosition' if is_joint_open(body) else 'IsClosedPosition', body, position),
                      ]
+            if 'door' in obj.get_categories():
+                init += [('Door', body)]
             init += add_joint_status_facts(body, position, verbose=False)
 
             if body in knobs:
-                controlled = BODY_TO_OBJECT[body].controlled
+                controlled = obj.controlled
                 if controlled is not None:
                     init += [('ControlledBy', controlled, body)]
 

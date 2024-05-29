@@ -67,7 +67,7 @@ def pr2_grasp(body, value, grasp_type=None):
 #     body = body_joint[0]
 #     handle_link = get_handle_link(body_joint)
 #
-#     found, db, db_file = find_grasp_in_db('handle_grasps.json', full_name)
+#     found, db = find_grasp_in_db('handle_grasps.json', full_name)
 #     if found is not None: return found
 #
 #     handle_pose = get_handle_pose(body_joint)

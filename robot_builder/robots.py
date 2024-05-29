@@ -365,7 +365,7 @@ class RobotAPI(Robot):
         categories = obj.get_categories()
         print(f'\n[log_collisions]\t{name}\tcategories={categories}\t<--\t{source}')
 
-        all_bodies = world.get_all_body_objects(body_only=True)
+        all_bodies = world.get_all_bodies()
         joints = [b[1] for b in all_bodies if isinstance(b, tuple) and len(b) == 2 and b[0] == body]
 
         ## single objects

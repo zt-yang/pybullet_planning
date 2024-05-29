@@ -24,11 +24,12 @@ from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_
     get_handle_grasp_gen, get_compute_pose_kin, get_compute_pose_rel_kin, get_above_pose_gen, \
     get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
     get_bconf_close_to_surface, sample_joint_position_closed_gen, get_cfree_rel_pose_pose_test, \
-    get_cfree_approach_rel_pose_test, get_reachable_test, get_stable_list_gen, get_cfree_pose_between_test
+    get_cfree_approach_rel_pose_test, get_reachable_test, get_stable_list_gen, get_cfree_pose_between_test, \
+    get_nudge_grasp_gen
 from pybullet_tools.camera_utils import set_camera_target_body
 from pybullet_tools.bullet_utils import BASE_LIMITS, initialize_collision_logs, clean_preimage
 from pybullet_tools.logging_utils import summarize_facts, print_plan, print_goal, summarize_bconfs, \
-    summarize_poses, print_dict
+    summarize_poses, print_dict, print_domain
 from pybullet_tools.pr2_utils import create_pr2_gripper, set_group_conf
 from pybullet_tools.pr2_streams import DEFAULT_RESOLUTION
 from pybullet_tools.utils import get_client, get_joint_limits, \
@@ -84,26 +85,39 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
     debug_grasp = False
 
     stream_map = {
+
+        ## ---------------------------------------------------
+        ##                    poses
+        ## ---------------------------------------------------
         'sample-pose': from_gen_fn(get_stable_list_gen(p, collisions=c, num_samples=30, verbose=debug_pose)),
         'sample-relpose': from_gen_fn(get_stable_list_gen(p, collisions=c, num_samples=30, relpose=True, verbose=debug_pose)),
         'sample-pose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, verbose=debug_pose)),
         'sample-relpose-inside': from_gen_fn(get_contain_list_gen(p, collisions=c, relpose=True, verbose=debug_pose)),
-
         'sample-pose-sprinkle': from_gen_fn(get_above_pose_gen(p, collisions=c)),
 
+        ## ---------------------------------------------------
+        ##                    positions
+        ## ---------------------------------------------------
+        'get-joint-position-open': from_gen_fn(sample_joint_position_gen(num_samples=6, p_max=2)),
+        'get-joint-position-closed': from_gen_fn(sample_joint_position_closed_gen()),
+        # 'get-joint-position-closed': from_gen_fn(sample_joint_position_gen(num_samples=6, closed=True)),
+        'get-joint-position-nudged-open': from_gen_fn(sample_joint_position_gen(num_samples=6, p_max=3.14)),
+
+        ## ---------------------------------------------------
+        ##                    grasps
+        ## ---------------------------------------------------
         'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False, verbose=True,
                                                        top_grasp_tolerance=top_grasp_tolerance, debug=False,
                                                        use_all_grasps=use_all_grasps, num_samples=num_grasps)),
+        'sample-handle-grasp': from_gen_fn(get_handle_grasp_gen(p, max_samples=None, collisions=c)),
+        'sample-nudge-grasp': from_gen_fn(get_nudge_grasp_gen(p, max_samples=None, collisions=c)),
+
+        ## ---------------------------------------------------
+        ##                    configurations
+        ## ---------------------------------------------------
+
         'compute-pose-kin': from_fn(get_compute_pose_kin()),
         'compute-pose-rel-kin': from_fn(get_compute_pose_rel_kin()),
-
-        # 'inverse-reachability': from_gen_fn(
-        #     get_ik_gen(p, collisions=c, teleport=t, ir_only=True, custom_limits=l,
-        #                verbose=True, visualize=False, learned=False)),
-        # 'inverse-kinematics': from_fn(
-        #     get_ik_fn(p, collisions=motion_collisions, teleport=t, verbose=True, visualize=False)),
-
-        'test-inverse-reachability': from_test(get_reachable_test()),
 
         'inverse-reachability': from_gen_fn(
             get_ik_gen_old(p, collisions=True, ir_only=True, learned=use_learned_ir, max_attempts=ir_max_attempts,
@@ -118,16 +132,43 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'inverse-kinematics-rel': from_fn(
             get_ik_rel_fn_old(p, collisions=motion_collisions, teleport=t, verbose=False, visualize=False, ACONF=False)),
 
-        # 'plan-arm-motion-grasp': from_fn(
-        #     get_ik_fn(p, pick_up=False, collisions=motion_collisions, verbose=True, visualize=False)),
-        # 'plan-arm-motion-ungrasp': from_gen_fn(
-        #     get_ik_ungrasp_gen(p, given_base_conf=False, collisions=motion_collisions, verbose=True, visualize=False)),
+        'inverse-kinematics-grasp-handle': from_gen_fn(
+            get_ik_gen_old(p, collisions=pull_collisions, learned=False, verbose=False,
+                           ACONF=True, visualize=False, **tc)),
+        'inverse-kinematics-ungrasp-handle': from_gen_fn(
+            get_ik_ungrasp_gen(p, collisions=pull_collisions, verbose=False, **tc)),
+
+        'inverse-kinematics-nudge-door': from_gen_fn(
+            get_ik_gen_old(p, collisions=pull_collisions, learned=False, verbose=False,
+                           ACONF=True, visualize=False, **tc)),
+
+        ## ---------------------------------------------------
+        ##                    motion
+        ## ---------------------------------------------------
 
         'plan-base-motion': from_fn(get_base_motion_gen(p, collisions=base_collisions, **tc)),
         # 'plan-base-motion-with-obj': from_fn(get_base_motion_with_obj_gen(p, collisions=base_collisions,
         #                                                          teleport=t, custom_limits=l)),
 
-        'test-bconf-close-to-surface': from_test(get_bconf_close_to_surface(p)),
+        # 'plan-arm-motion-grasp': from_fn(
+        #     get_ik_fn(p, pick_up=False, collisions=motion_collisions, verbose=True, visualize=False)),
+        # 'plan-arm-motion-ungrasp': from_gen_fn(
+        #     get_ik_ungrasp_gen(p, given_base_conf=False, collisions=motion_collisions, verbose=True, visualize=False)),
+
+        'plan-base-pull-handle': from_fn(get_pull_door_handle_motion_gen(p, collisions=pull_collisions, **tc)),
+        'plan-base-pull-handle-with-link': from_fn(
+            get_pull_door_handle_with_link_motion_gen(p, collisions=pull_collisions, **tc)),
+
+        'plan-base-nudge-door': from_fn(get_pull_door_handle_motion_gen(p, collisions=pull_collisions, **tc)),
+
+        'plan-arm-turn-knob-handle': from_fn(
+            get_turn_knob_handle_motion_gen(p, collisions=c, visualize=False, **tc)),
+
+        'MoveCost': move_cost_fn,
+
+        ## ---------------------------------------------------
+        ##                    tests
+        ## ---------------------------------------------------
 
         'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(p.robot, collisions=c, visualize=False)),
         'test-cfree-approach-pose': from_test(get_cfree_approach_pose_test(p, collisions=c)),
@@ -140,28 +181,13 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'test-cfree-traj-position': from_test(get_cfree_traj_pose_test(p, collisions=c)),
         'test-cfree-btraj-pose': from_test(get_cfree_btraj_pose_test(p.robot, collisions=c)),
 
-        'get-joint-position-open': from_gen_fn(sample_joint_position_gen(num_samples=6)),
-        'get-joint-position-closed': from_gen_fn(sample_joint_position_closed_gen()),
-        # 'get-joint-position-closed': from_gen_fn(sample_joint_position_gen(num_samples=6, closed=True)),
+        'test-bconf-close-to-surface': from_test(get_bconf_close_to_surface(p)),
 
-        'sample-handle-grasp': from_gen_fn(get_handle_grasp_gen(p, max_samples=None, collisions=c)),
+        'test-inverse-reachability': from_test(get_reachable_test()),
 
-        # 'inverse-kinematics-grasp-handle': from_gen_fn(
-        #     get_ik_gen(p, collisions=pull_collisions, teleport=t, custom_limits=l, learned=False,
-        #                pick_up=False, given_grasp_conf=True, verbose=True, visualize=False)),
-        'inverse-kinematics-grasp-handle': from_gen_fn(
-            get_ik_gen_old(p, collisions=pull_collisions, learned=False, verbose=False,
-                           ACONF=True, visualize=False, **tc)),
-
-        'inverse-kinematics-ungrasp-handle': from_gen_fn(
-            get_ik_ungrasp_gen(p, collisions=pull_collisions, verbose=False, **tc)),
-
-        'plan-base-pull-handle': from_fn(get_pull_door_handle_motion_gen(p, collisions=pull_collisions, **tc)),
-        'plan-base-pull-handle-with-link': from_fn(
-            get_pull_door_handle_with_link_motion_gen(p, collisions=pull_collisions, **tc)),
-
-        'plan-arm-turn-knob-handle': from_fn(
-            get_turn_knob_handle_motion_gen(p, collisions=c, visualize=False, **tc)),
+        ## ---------------------------------------------------
+        ##                    not in use
+        ## ---------------------------------------------------
 
         'sample-marker-grasp': from_list_fn(get_marker_grasp_gen(p, collisions=c)),
         'inverse-kinematics-grasp-marker': from_gen_fn(
@@ -181,8 +207,6 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         # 'sample-bconf-in-location': from_gen_fn(get_bconf_in_region_gen(p, collisions=c, visualize=False)),
         'sample-bconf-in-location': from_list_fn(get_bconf_in_region_gen(p, collisions=c, visualize=False)),
         'sample-pose-in-location': from_list_fn(get_pose_in_region_gen(p, collisions=c, visualize=False)),
-
-        'MoveCost': move_cost_fn,
 
         # 'TrajPoseCollision': fn_from_constant(False),
         # 'TrajArmCollision': fn_from_constant(False),
@@ -463,11 +487,7 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     problem = state
     if not isinstance(custom_limits, dict):
         custom_limits = get_base_custom_limits(robot, custom_limits)
-
-    print_fn(f'pr2_agent.pddlstream_from_state_goal(\n'
-             f'\tdomain = {domain_pddl}, \n'
-             f'\tstream = {stream_pddl}, \n'
-             f'\tcustom_limits = {custom_limits}')
+    print_domain(domain_pddl, stream_pddl, custom_limits)
 
     world.summarize_all_objects(print_fn=print_fn)
 
