@@ -118,10 +118,12 @@ def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
     world = problem.world
     obstacles = problem.fixed if collisions else []
     ignored_pairs = world.ignored_pairs
-    world_saver = WorldSaver()
+    # world_saver = WorldSaver()
     title = 'mobile_streams.get_ik_fn_old:\t'
 
     def fn(arm, obj, pose, grasp, base_conf, fluents=[]):
+
+        # world_saver = WorldSaver()
 
         obstacles_here = copy.deepcopy(obstacles)
         ignored_pairs_here = copy.deepcopy(ignored_pairs)
@@ -133,7 +135,7 @@ def get_ik_fn_old(problem, custom_limits={}, collisions=True, teleport=False,
             attachments = {a.child: a for a in attachments}
             obstacles_here.extend([p[1] for p in fluents if p[0] in ['atpose', 'atrelpose'] if isinstance(p[1], int)])
         else:
-            world_saver.restore()
+            # world_saver.restore()
             attachment = grasp.get_attachment(robot, arm, visualize=False)
             attachments = {attachment.child: attachment}  ## {}  ## TODO: problem with having (body, joint) tuple
 
@@ -171,7 +173,7 @@ def get_ik_rel_fn_old(problem, custom_limits={}, collisions=True, teleport=False
             attachments = {a.child: a for a in attachments}
             obstacles_here.extend([p[1] for p in fluents if p[0] in ['atpose', 'atrelpose'] if isinstance(p[1], int)])
         else:
-            world_saver.restore()
+            # world_saver.restore()
             attachment = grasp.get_attachment(robot, arm, visualize=False)
             attachments = {attachment.child: attachment}  ## {}  ## TODO: problem with having (body, joint) tuple
 
@@ -295,7 +297,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
     title = f'\t\tsample_bconf({o}, learned={learned}) | start sampling '
     col_kwargs = dict(articulated=True, verbose=False, world=world, min_num_pts=0)
 
-    # set_renderer(enable=False)
+    # set_renderer(enable=False)  ## TODO: debug
     if visualize:
         set_renderer(enable=True)
         samples = []
@@ -930,15 +932,15 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
     robot = problem.robot
     world = problem.world
     saver = BodySaver(robot)
-    world_saver = WorldSaver()
+    # world_saver = WorldSaver()
     obstacles = problem.fixed if collisions else []
     ignored_pairs = problem.ignored_pairs if collisions else []
 
     def fn(a, o, pst1, pst2, g, bq1, aq1, fluents=[]):
         if fluents:
             process_motion_fluents(fluents, robot)
-        else:
-            world_saver.restore()
+        # else:
+        #     world_saver.restore()
 
         inputs = a, o, pst1, pst2, g, bq1, aq1
         return compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs, saver,
@@ -1002,8 +1004,8 @@ def get_arm_ik_fn(problem, custom_limits={}, resolution=DEFAULT_RESOLUTION,
             body = obj
         if fluents:
             attachments = process_motion_fluents(fluents, robot) # TODO(caelan): use attachments
-        else:
-            world_saver.restore()
+        # else:
+        #     world_saver.restore()
 
         if 'pstn' in str(pose): ## isinstance(pose, Position):
             pose_value = linkpose_from_position(pose)
