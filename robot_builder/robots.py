@@ -352,18 +352,18 @@ class RobotAPI(Robot):
         return get_collision_fn(self, self.get_base_joints(), obstacles=obstacles, attachments=[],
                                 self_collisions=self.self_collisions, custom_limits=self.custom_limits, use_aabb=True)
 
-    def log_collisions(self, body, link=None, source='', robot_body=None):
+    def log_collisions(self, body, link=None, source='', robot_body=None, verbose=False):
         world = self.world
         if robot_body is None:  ## robot_body can be cloned gripper
             robot_body = self.body
 
         obj = world.body_to_object(body)
         name = world.get_debug_name(obj)
-        if obj is None:
-            print('obj is None')
         is_planning_object = body in world.BODY_TO_OBJECT
         categories = obj.get_categories()
-        print(f'\n[log_collisions]\t{name}\tcategories={categories}\t<--\t{source}')
+
+        if verbose:
+            print(f'\n[log_collisions]\t{name}\tcategories={categories}\t<--\t{source}')
 
         all_bodies = world.get_all_bodies()
         joints = [b[1] for b in all_bodies if isinstance(b, tuple) and len(b) == 2 and b[0] == body]
@@ -380,6 +380,7 @@ class RobotAPI(Robot):
             else:
                 links = [link]
             link_names = [f"{get_link_name(body, l)}|{n}" for l, n in links.items()]
+
             attributed_links = []
             for j in joints:
                 joint_obj = world.body_to_object((body, j))
@@ -388,9 +389,12 @@ class RobotAPI(Robot):
                     attributed_links += [f for f in found_links if f not in attributed_links]
                     self.collided_body_link[(body, j)] += 1
             unattributed_links = [l for l in links if l not in attributed_links]
-            if len(unattributed_links) > 0:
+
+            if verbose and len(unattributed_links) > 0:
                 print(f'\t!!!unattributed_links: \t{[get_link_name(body, l) for l in unattributed_links]}')
-        self.world.summarize_collisions()
+
+        if verbose:
+            self.world.summarize_collisions()
 
     def get_collisions_log(self):
         return {k: v for k, v in sorted(self.collided_body_link.items(), key=lambda item: item[1], reverse=True)}

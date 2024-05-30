@@ -23,7 +23,10 @@ from robot_builder.robot_utils import close_until_collision
 
 from lisdf_tools.image_utils import RAINBOW_COLORS, save_seg_mask
 
-from .world import State
+from world_builder.world import State
+
+PULL_UNTIL = 1.8
+NUDGE_UNTIL = 2.3
 
 
 class Action(object):  # TODO: command

@@ -559,7 +559,7 @@ def visualize_sampled_pstns(x_min, x_max, x_points):
     plt.show()
 
 
-def sample_joint_position_gen(num_samples=14, p_max=2, to_close=False, visualize=False, verbose=True):
+def sample_joint_position_gen(num_samples=14, p_max=PI, to_close=False, visualize=False, verbose=True):
     """ generate open positions if closed=False and closed positions if closed=True (deprecated) """
     def fn(o, pstn1):
 
@@ -605,30 +605,32 @@ def sample_joint_position_gen(num_samples=14, p_max=2, to_close=False, visualize
 
                 lower_new, upper_new = None, None
                 if lower < 0 and upper == 0:
-                    ## prevent from opening all the way is unreachable
-                    if upper - lower > 3/4 * math.pi:
-                        lower_new = upper - 3/4 * math.pi
+                    # ## prevent from opening all the way is unreachable
+                    # if upper - lower > 3/4 * math.pi:
+                    #     lower_new = upper - 3/4 * math.pi
+                    # pstns.append(upper - math.pi/2)
+
                     ## prevent from opening too little
                     if upper - lower > 1/2 * math.pi:
                         upper_new = upper - 1/2 * math.pi
                     else:
                         upper_new = lower + a_third
-                    pstns.append(upper - math.pi/2)
                 else:
-                    ## prevent from opening all the way is unreachable
-                    if upper - lower > 3/4 * math.pi:
-                        upper_new = lower + 3/4 * math.pi
+                    # ## prevent from opening all the way is unreachable
+                    # if upper - lower > 3/4 * math.pi:
+                    #     upper_new = lower + 3/4 * math.pi
+                    # pstns.append(lower + math.pi*2/3)
+
                     ## prevent from opening too little
                     if upper - lower > 1/2 * math.pi:
                         lower_new = lower + 1/2 * math.pi
                     else:
                         lower_new = upper - a_third
-                    pstns.append(lower + math.pi*2/3)
 
                 lower = lower_new if lower_new else lower
                 upper = upper_new if upper_new else upper
                 pstns.extend([np.random.uniform(lower, upper) for k in range(num_samples)])
-                pstns = [pstn for pstn in pstns if abs(pstn) > abs(pstn1.value)]
+                pstns = [pstn for pstn in pstns if abs(pstn) > abs(pstn1.value) + 0.3]
 
         pstns = [round(pstn, 3) for pstn in pstns]
 
@@ -913,7 +915,7 @@ def get_reachable_test(radius=1.3, verbose=False):
 
 
 def get_nudge_grasp_list_gen(problem, collisions=True, num_samples=10, **kwargs):
-    funk = get_nudge_grasp_gen(problem, collisions, max_samples=num_samples, **kwargs)
+    funk = get_nudge_grasp_gen(problem, collisions=collisions, max_samples=num_samples, **kwargs)
 
     def gen(body):
         g = funk(body)
@@ -928,19 +930,18 @@ def get_nudge_grasp_list_gen(problem, collisions=True, num_samples=10, **kwargs)
     return gen
 
 
-def get_nudge_grasp_gen(problem, collisions=False, max_samples=2,
+def get_nudge_grasp_gen(problem, collisions=True, nudge_back=False, max_samples=2,
                         randomize=False, visualize=False, retain_all=False, verbose=False):
-    collisions = True
     obstacles = problem.fixed if collisions else []
     world = problem.world
     robot = problem.robot
-    title = 'general_streams.get_nudge_grasp_gen |'
+    title = f'general_streams.get_nudge_grasp_gen(nudge_back={nudge_back}, max_samples={max_samples}) |'
 
     def fn(body_joint):
         body, joint = body_joint
         handle_link = get_handle_link(body_joint)
 
-        grasps = get_hand_grasps(world, body, link=handle_link, nudge=True,
+        grasps = get_hand_grasps(world, body, link=handle_link, nudge=True, nudge_back=nudge_back,
                                  visualize=visualize, retain_all=retain_all, verbose=verbose)
 
         if verbose: print(f'\n{title} grasps =', [nice(g) for g in grasps])

@@ -835,6 +835,8 @@ class World(WorldBase):
                 items = literal[1]
                 if items in self.BODY_TO_OBJECT:
                     items = [items]
+                elif items is None:
+                    continue
             else:
                 items = literal[1:]
             for item in items:
@@ -1016,6 +1018,7 @@ class World(WorldBase):
         return self.body_to_object(body)
 
     def cat_to_bodies(self, cat, get_all=False):
+
         bodies = []
         objects = []
         if cat in self.OBJECTS_BY_CATEGORY:
@@ -1035,6 +1038,7 @@ class World(WorldBase):
                 bodies.append((o.body, o.joint))
             else:
                 bodies.append(o.body)
+
         filtered_bodies = []
         for b in set(bodies):
             if b in self.BODY_TO_OBJECT or cat == 'floor':
@@ -1043,6 +1047,10 @@ class World(WorldBase):
                 filtered_bodies += [b]
             # else:
             #     print(f'   world.cat_to_bodies | category {cat} found {b}')
+
+        if cat == 'joint':
+            filtered_bodies += self.cat_to_bodies('door', get_all) + self.cat_to_bodies('drawer', get_all)
+            filtered_bodies = set(filtered_bodies)
         return sort_body_indices(filtered_bodies)
 
     def cat_to_objects(self, cat):

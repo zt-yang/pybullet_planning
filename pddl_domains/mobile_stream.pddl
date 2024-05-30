@@ -117,11 +117,6 @@
     :domain (and (RelPose ?o1 ?rp1 ?o2) (Pose ?o2 ?p2) (Pose ?o3 ?p3) (Grasp ?o1 ?g))
     :certified (CFreeApproachRelPose ?o1 ?rp1 ?o2 ?p2 ?g ?o3 ?p3)
   )
-  (:stream test-cfree-pose-between
-    :inputs (?o1 ?p1 ?o2 ?p2 ?o3 ?p3)
-    :domain (and (Pose ?o1 ?p1) (Pose ?o2 ?p2) (Pose ?o3 ?p3))
-    :certified (CFreePoseBetween ?o1 ?p1 ?o2 ?p2 ?o3 ?p3)
-  )
 
   (:stream test-cfree-traj-pose
     :inputs (?t ?o2 ?p2)
@@ -205,7 +200,6 @@
     )
     (:stream inverse-kinematics-ungrasp-handle
       :inputs (?a ?o ?p ?g ?q ?aq1)
-      ;:domain (and (Controllable ?a) (Position ?o ?p) (HandleGrasp ?o ?g) (BConf ?q) (AConf ?a ?aq1))
       :domain (and (UngraspHandle ?a ?o ?p ?g ?q ?aq1))
       :outputs (?aq2 ?t)
       :certified (and (AConf ?a ?aq2) (ATraj ?t)

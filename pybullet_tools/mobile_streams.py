@@ -302,15 +302,14 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
         set_renderer(enable=True)
         samples = []
 
-    # gripper_grasp = robot.visualize_grasp(pose_value, g.value, arm=a, body=g.body)
+    ## ----------- identifying collisions, but with this opening joint then picking won't work ------
     gripper_grasp = robot.set_gripper_pose(pose_value, g.value, arm=a, body=g.body)
-    if collided(gripper_grasp, obstacles, articulated=False, world=world, tag='ir.gripper'):  # w is not None
-        # wait_unlocked()
-        # robot.remove_gripper(gripper_grasp)
-        if verbose:
-            print(f'{heading} -------------- grasp {nice(g.value)} is in collision')
-        return
-    # robot.remove_gripper(gripper_grasp)
+    if collided(gripper_grasp, obstacles, articulated=False, world=world, tag='ir.gripper'):
+        pass
+        # if verbose:
+        #     print(f'{heading} -------------- grasp {nice(g.value)} is in collision, continue anyway')
+        # return
+    ## ----------------------------------------------------------------------------------------------
 
     arm_joints = robot.get_arm_joints(a)
     default_conf = robot.get_carry_conf(a, g.grasp_type, g.value)
@@ -375,18 +374,20 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
             if collided(robot, obstacles, tag='ik_default_conf', **col_kwargs):
                 # wait_unlocked()
                 continue
-            if collision_fn(bconf, verbose=False):  ## TODO: figure out why sometimes the answers are different
-                # print('sample_bconf | collision_ik_default_conf')
+            if collision_fn(bconf, verbose=False):
                 continue
             robot.print_full_body_conf(title=f'sample_bconf({a}), default_conf={default_conf}')
 
+            ## ----------- identifying collisions, but with this opening joint then picking won't work ------
             ik_solver.set_conf(conf)
             if collided(robot, obstacles, tag='ik_final_conf', visualize=visualize, **col_kwargs):
-                continue
+                pass
+                # continue
             if collision_fn(bconf, verbose=False):
-                # print('sample_bconf | collision_ik_final_conf')
-                continue
+                pass
+                # continue
             robot.print_full_body_conf(title='sample_bconf.ik_solver.set_conf(conf)')
+            ## ----------------------------------------------------------------------------------------------
 
             if visualize:
                 samples.append(visualize_bconf(bconf))

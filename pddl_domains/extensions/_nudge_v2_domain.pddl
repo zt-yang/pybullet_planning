@@ -1,0 +1,45 @@
+(define (domain nudge_v2)
+  (:predicates
+
+    (NudgeGrasp ?o ?g)
+    (NudgeBackGrasp ?o ?g)
+    (KinNudgeGrasp ?a ?o ?p ?g ?q ?aq ?t)
+    (KinNudgeBackGrasp ?a ?o ?p ?g ?q ?aq ?t)
+    (KinNudgeDoor ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?aq ?bt)
+    (KinNudgeBackDoor ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?aq ?bt)
+    (NudgedDoor ?o)
+    (NudgedBackDoor ?o)
+
+  )
+
+    (:action nudge_door
+      :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?aq ?at ?bt)
+      :precondition (and (Door ?o) (AtBConf ?q1) (NudgeGrasp ?o ?g)
+                         (KinNudgeGrasp ?a ?o ?p1 ?g ?q1 ?aq ?at)
+                         (KinNudgeDoor ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?aq ?bt)
+                         (AtPosition ?o ?p1) (HandEmpty ?a)
+                         (not (NudgedDoor ?o))
+                    )
+      :effect (and (not (AtPosition ?o ?p1)) (AtPosition ?o ?p2)
+                   (not (AtBConf ?q1)) (AtBConf ?q2)
+                   (NudgedDoor ?o)
+                   (increase (total-cost) 1)
+              )
+    )
+
+    ;(:action nudge_back_door
+    ;  :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?aq ?at ?bt)
+    ;  :precondition (and (Door ?o) (AtBConf ?q1) (NudgeBackGrasp ?o ?g)
+    ;                     (KinNudgeBackGrasp ?a ?o ?p1 ?g ?q1 ?aq ?at)
+    ;                     (KinNudgeBackDoor ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?aq ?bt)
+    ;                     (AtPosition ?o ?p1) (HandEmpty ?a)
+    ;                     (not (NudgedBackDoor ?o))
+    ;                )
+    ;  :effect (and (not (AtPosition ?o ?p1)) (AtPosition ?o ?p2)
+    ;               (not (AtBConf ?q1)) (AtBConf ?q2)
+    ;               (NudgedBackDoor ?o)
+    ;               (increase (total-cost) 1)
+    ;          )
+    ;)
+
+)

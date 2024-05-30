@@ -22,25 +22,30 @@ def remove_the_last_end_bracket(lines):
 def parse_domain_pddl(domain_name):
     header = []
     predicates = []
-    functions = []
+    functions = None
 
     lines = []
     for line in open(get_full_pddl_path(domain_name), 'r').readlines():
         if '(:predicates' in line:
             header += lines
             lines = []
+
         elif '(:functions' in line:
-            predicates += remove_the_last_end_bracket(lines) ## [l for l in lines if l.strip() != ')']
+            predicates += remove_the_last_end_bracket(lines)
             lines = []
-        elif '(:action' in line and len(functions) == 0:
-            if len(predicates) == 0:
-                predicates += lines
-                lines = [line]
-                continue
-            functions += lines
+
+        elif '(:action' in line and len(predicates) == 0:
+            predicates += remove_the_last_end_bracket(lines)
             lines = [line]
+            functions = []
+
+        elif '(:action' in line and functions is None:
+            functions = lines
+            lines = [line]
+
         else:
             lines.append(line)
+
     operators_axioms = remove_the_last_end_bracket(lines)
     return header, predicates, functions, operators_axioms
 
@@ -73,7 +78,7 @@ def create_domain(base_domain, extensions, output_domain):
         new_predicates.extend([comment.format(key='predicates', extension=extension)] + predicates)
         new_operators_axioms.extend([comment.format(key='operators & axioms', extension=extension)] + operators_axioms)
     blocks = header + ['\n  (:predicates\n'] + new_predicates + \
-             ['\n  (:functions\n'] + functions + new_operators_axioms
+             ['\n  )\n\n  (:functions\n'] + functions + new_operators_axioms
     save_pddl_file(blocks, output_domain)
 
 
@@ -101,7 +106,13 @@ def update_kitchen_pddl():
 
 
 def update_kitchen_nudge_pddl():
-    create_domain_and_stream('mobile', ['cooking'], 'mobile_v3')
+    """
+    nudge_v1 (working): use plan-base-nudge-door to do motion planning
+    nudge_v1b (best):   use plan-base-motion to do motion planning considering all world geometries
+    nudge_v2 (bad):     use fluents when generating bconf to nudge, based on v1
+    nudge_v3 (testing): open then nudge, based on v1b
+    """
+    create_domain_and_stream('mobile', ['cooking', 'nudge_v1b'], 'mobile_v3')
 
 
 if __name__ == '__main__':

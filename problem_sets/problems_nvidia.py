@@ -1194,25 +1194,38 @@ def test_kitchen_nudge_door(args, **kwargs):
 
         open_doors_for = []  ## goal_object
         objects, movables, movable_to_doors = load_open_problem_kitchen(world, open_doors_for=open_doors_for)
-        plate = load_plate_on_counter(world, counter_name='indigo_tmp')
 
         salt_shaker = world.name_to_body('salt-shaker')
-        salt_shaker = world.name_to_body('pepper-shaker')
+        pepper_shaker = world.name_to_body('pepper-shaker')
         counter = world.name_to_body('indigo_tmp')
         left_door = world.name_to_body('chewie_door_left_joint')
         right_door = world.name_to_body('chewie_door_right_joint')
         arm = robot.arms[0]
 
         door = right_door
-        world.open_joint(door, extent=0.7)
+        # world.open_joint(door, extent=0.7)
+        world.add_to_cat(salt_shaker, 'graspable')
+        world.add_to_cat(pepper_shaker, 'graspable')
 
-        objects = []
+        objects = [door]
         skeleton = []
         subgoals = []
 
+        goals = ('test_pull_nudge_joint_positions', None)
         goals = ('test_nudge_grasps', door)
-        # goals = [("HandleGrasped", 'left', door)]
-        # goals = [("OpenedJoint", door)]
+        goals = [("NudgedDoor", door)]
+        goals = [("NudgedDoor", right_door), ("Holding", arm, pepper_shaker)]
+        # goals = [("NudgedDoor", left_door), ("Holding", arm, salt_shaker)]
+        goals = [("Holding", arm, pepper_shaker)]
+
+        # if ("Holding", arm, pepper_shaker) in goals:
+        #     world.open_joint(left_door, extent=0.8)
+        #     world.open_joint(right_door, extent=0.8)
+
+
+        # goals = ('test_nudge_back_grasps', door)  ## not working yet
+        # goals = [("Closed", door)]
+        # goals = [("Closed", door)]
 
         world.remove_bodies_from_planning(goals, exceptions=objects, skeleton=skeleton, subgoals=subgoals)
 

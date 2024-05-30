@@ -16,11 +16,11 @@ from pddlstream.algorithms.meta import solve, create_parser
 from pybullet_tools.utils import disconnect, LockRenderer, has_gui, WorldSaver, wait_if_gui, \
     SEPARATOR, get_aabb, wait_for_duration, has_gui, reset_simulation, set_random_seed, \
     set_numpy_seed, set_renderer
-from pybullet_tools.bullet_utils import summarize_facts, print_goal, nice, get_datetime, initialize_logs
+from pybullet_tools.bullet_utils import nice, get_datetime, initialize_logs
 from pybullet_tools.stream_agent import solve_multiple, post_process, pddlstream_from_state_goal, \
     create_cwd_saver
 from pybullet_tools.pr2_primitives import control_commands, apply_commands
-from pybullet_tools.logging_utils import parallel_print, myprint
+from pybullet_tools.logging_utils import parallel_print, myprint, summarize_facts, print_goal
 
 from world_builder.world import State
 from world_builder.actions import apply_actions

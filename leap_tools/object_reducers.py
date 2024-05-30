@@ -52,7 +52,10 @@ def reduce_facts_given_goals(facts, objects=[], goals=[]):
 
 
 def reduce_facts_given_objects(facts, objects=[], goals=[], verbose=False):
+    """ the base function for all used by VLM-TAMP """
     arms = [f[1] for f in facts if f[0] == 'controllable']
+    dynamic_preds = ['atposition', 'atpose', 'atrelpose', 'atgrasp']
+    dynamic_preds_potential = [f[2:] for f in dynamic_preds]
 
     ## identify goal related objects
     objects_in_goals = []
@@ -70,11 +73,18 @@ def reduce_facts_given_objects(facts, objects=[], goals=[], verbose=False):
         print(f'\nfilter_init_by_objects | objects = {objects}')
     new_facts = []
     removed_facts = []
+    dynamic_variables = []
+    dynamic_facts_potential = []
     for fact in facts:
         removed = False
         if fact[0] in ['ungraspbconf']:
             removed = True
-        elif fact[0] not in ['='] and 'grasp' not in fact[0]:
+        elif fact[0] in dynamic_preds:
+            dynamic_variables.append(fact[-1])
+        elif fact[0] in dynamic_preds_potential:
+            removed = True
+            dynamic_facts_potential.append(fact)
+        elif fact[0] not in ['=']:
             for elem in fact[1:]:
                 ## involve objects not in planning object
                 if (isinstance(elem, int) or isinstance(elem, tuple)) and elem not in objects:
@@ -86,6 +96,13 @@ def reduce_facts_given_objects(facts, objects=[], goals=[], verbose=False):
             removed_facts.append(fact)
         else:
             new_facts.append(fact)
+
+    dynamic_facts = [f for f in dynamic_facts_potential if f not in new_facts and f[-1] in dynamic_variables]
+    dynamic_facts = sorted(dynamic_facts, key=lambda f: f[0])
+    new_facts += dynamic_facts
+    if verbose:
+        print('\nreduce_facts_given_objects\tfound dynamic_facts\n\t'+'\n\t'.join([str(f) for f in dynamic_facts])+'\n')
+
     return new_facts
 
 

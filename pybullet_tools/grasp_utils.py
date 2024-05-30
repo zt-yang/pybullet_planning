@@ -221,12 +221,17 @@ def get_loaded_scale(body):
     return scale
 
 
-def get_grasp_db_file(robot, nudge=False):
+def get_grasp_db_file(robot, nudge=False, nudge_back=False):
     if isinstance(robot, str):
         robot_name = {'pr2': 'PR2Robot', 'feg': 'FEGripper'}[robot]
     else:
         robot_name = robot.__class__.__name__
-    key = 'nudge' if nudge else 'hand'
+    key = 'hand'
+    if nudge:
+        if nudge_back:
+            key = 'back'
+        else:
+            key = 'nudge'
     db_file_name = f'{key}_grasps_{robot_name}.json'
     db_file = abspath(join(dirname(__file__), '..', 'databases', db_file_name))
     return db_file
@@ -290,11 +295,13 @@ def visualize_found_grasps(found, robot, body, link, body_pose, retain_all=False
         remove_body(b)
 
 
-def make_nudge_grasps_from_handle_grasps(world, found_hand_grasps, body, body_pose, verbose=False,
-                                         interactive=False, debug=False):
-    t = (0, 0, 0.32)
-    r = quat_from_euler(Euler(roll=PI))
-    x = (t, r)
+def make_nudge_grasps_from_handle_grasps(world, found_hand_grasps, body, body_pose, nudge_back=False,
+                                         verbose=False, interactive=False, debug=False):
+    if nudge_back:
+        x = ((-0.13, -0.25, 0.13), quat_from_euler(Euler(roll=-PI/2)))
+    else:
+        x = ((0, 0, 0.32), quat_from_euler(Euler(roll=PI)))
+
     if debug or interactive:
         set_renderer(True)
         g = found_hand_grasps[0]
@@ -311,7 +318,7 @@ def make_nudge_grasps_from_handle_grasps(world, found_hand_grasps, body, body_po
 def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
                     handle_filter=False, length_variants=False, use_all_grasps=True,
                     retain_all=False, verbose=True, collisions=False, debug_del=False,
-                    test_offset=False, skip_grasp_index=None, nudge=False):
+                    test_offset=False, skip_grasp_index=None, nudge=False, nudge_back=False):
     body_name = (body, None, link) if link is not None else body
     title = f'grasp_utils.get_hand_grasps({body_name}) | '
     dist = grasp_length
@@ -336,17 +343,16 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
     instance_name = world.get_instance_name(body_name)
     name_in_db = None if instance_name is None else world.get_name(body_name, use_default_link_name=True)
     if instance_name is not None:
-        grasp_db_file = get_grasp_db_file(robot, nudge=nudge)
+        grasp_db_file = get_grasp_db_file(robot, nudge=nudge, nudge_back=nudge_back)
         found, db = find_grasp_in_db(grasp_db_file, instance_name, verbose=verbose, scale=scale,
                                      length_variants=length_variants, use_all_grasps=use_all_grasps, world=world)
 
         ## TODO: hack to hand adjust the found hand grasps to make nudge grasps
         if found is None and nudge:
-            hand_db_file = grasp_db_file.replace('/nudge_', '/hand_')
-            found_hand_grasps, _ = find_grasp_in_db(hand_db_file, instance_name, length_variants=False, scale=scale,
-                                                    use_all_grasps=use_all_grasps, verbose=verbose)
+            found_hand_grasps, _ = find_grasp_in_db(get_grasp_db_file(robot), instance_name, length_variants=False,
+                                                    scale=scale, use_all_grasps=use_all_grasps, verbose=verbose)
             if found_hand_grasps is not None:
-                found = make_nudge_grasps_from_handle_grasps(world, found_hand_grasps, body, body_pose, verbose)
+                found = make_nudge_grasps_from_handle_grasps(world, found_hand_grasps, body, body_pose, nudge_back=nudge_back)
                 # add_grasp_in_db(db, grasp_db_file, instance_name, found, name=name_in_db, scale=scale)
 
         if found is not None:

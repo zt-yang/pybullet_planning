@@ -1091,6 +1091,10 @@ def set_renderer(enable):
     client = CLIENT
     if not has_gui(client):
         return
+    # if enable:
+    #     print('\nset_renderer = True\n')
+    #     import traceback
+    #     traceback.format_exc()
     CLIENTS[client] = enable
     p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, int(enable), physicsClientId=client)
 
