@@ -20,7 +20,8 @@ part_names = {
     'braiserlid': 'pot lid',
     'braiserbody': 'pot body',
     'braiser_bottom': 'pot bottom',
-    'front_right_stove': 'stove',
+    'front_left_stove': 'stove on the left',
+    'front_right_stove': 'stove on the right',
     'knob_joint_1': 'stove knob'
 }
 
@@ -155,15 +156,18 @@ def load_braiser_bottom(world):
     braiser = world.name_to_body('braiserbody')
     world.add_object(Surface(braiser, link_from_name(braiser, 'braiser_bottom')))
 
-    world.add_to_cat(world.name_to_body('braiserlid'), 'movable')
-    world.add_to_cat(world.name_to_body('braiserbody'), 'surface')
-    world.add_to_cat(world.name_to_body('braiserbody'), 'region')
+    world.add_to_cat('braiserlid', 'movable')
+    world.add_to_cat('braiserbody', 'surface')
+    world.add_to_cat('braiserbody', 'region')
 
 
 def load_cooking_mechanism(world):
     load_braiser_bottom(world)
     stove_knob = world.add_joints_by_keyword('oven', 'knob_joint_1')[0]
     # dishwasher_door = world.add_joints_by_keyword('dishwasher', 'dishwasher_door')[0]
+
+    world.add_to_cat('salt-shaker', 'sprinkler')
+    world.add_to_cat('pepper-shaker', 'sprinkler')
 
 
 def get_objects_for_open_kitchen(world):
@@ -172,7 +176,7 @@ def get_objects_for_open_kitchen(world):
                     'indigo_drawer_top', 'indigo_drawer_top_joint', 'indigo_tmp',
                     'sektion', 'chewie_door_left_joint', 'chewie_door_right_joint',
                     'salt-shaker', 'pepper-shaker',
-                    'front_right_stove', 'knob_joint_1']
+                    'front_left_stove', 'knob_joint_1']  ## 'front_right_stove',
     objects = [world.name_to_body(name) for name in object_names]
     objects = sort_body_indices(objects)
     world.set_english_names(part_names)

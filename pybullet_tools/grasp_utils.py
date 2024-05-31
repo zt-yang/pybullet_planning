@@ -131,7 +131,7 @@ def get_gripper_direction(pose, epsilon=0.01):
 
 
 def find_grasp_in_db(db_file, instance_name, length_variants=False, scale=None,
-                     use_all_grasps=False, verbose=True, world=None):
+                     use_all_grasps=False, verbose=False, world=None):
     """ find saved json files, prioritize databases/ subdir """
     db = json.load(open(db_file, 'r')) if isfile(db_file) else {}
 

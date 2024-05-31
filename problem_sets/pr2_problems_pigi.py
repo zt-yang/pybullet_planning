@@ -1,9 +1,10 @@
 from world_builder.loaders_partnet_kitchen import *
+from world_builder.actions import pull_actions, pick_place_actions
 
 from robot_builder.robot_builders import build_robot_from_args
 from robot_builder.robots import PR2Robot
 
-from problem_sets.problem_utils import problem_template, pull_actions, pick_place_actions
+from problem_sets.problem_utils import problem_template
 
 
 def test_full_kitchen_domain(args, world_loader_fn, x_max=3, **kwargs):

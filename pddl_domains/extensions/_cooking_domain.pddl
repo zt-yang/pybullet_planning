@@ -20,7 +20,7 @@
                        (not (UnsafePoseBetween ?o1 ?p1 ?o2 ?p2))
                        (not (CanMove))
                    )
-    :effect (and (SprinkledTo ?o1 ?o2)
+    :effect (and (SprinkledTo ?o1 ?o2) (CanMove)
                  (increase (total-cost) 1)
             )
   )

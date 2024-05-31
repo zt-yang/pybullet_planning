@@ -526,15 +526,8 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
 
     if grasp_conf is None or found_collision:
         # wait_unlocked()
-        if verbose:
-            if grasp_conf is not None:
-                grasp_conf = nice(grasp_conf)
-            print(
-                f'{title}Grasp IK failure | {grasp_conf} <- robot.inverse_kinematics({robot}, {nice(base_conf.values)}, '
-                f'{arm}, {nice(gripper_pose[0])}) | pose {nice(pose_value)}, grasp {nice(grasp.value)}')
-        # if grasp_conf is not None:
-        #    print(grasp_conf)
-        #    #wait_if_gui()
+        if grasp_conf is None and verbose:
+            print(f'{title}Grasp IK computation failure')
         if visualize:
             remove_body(gripper_grasp)
         return None

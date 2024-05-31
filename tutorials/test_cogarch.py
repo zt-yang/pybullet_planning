@@ -36,7 +36,7 @@ def test_nvidia_kitchen_domain():
 
 def test_cooking_domain():
     domain_name = 'pddl_domains/mobile_v2'
-    kitchen_problem = ['test_kitchen_sprinkle', 'test_kitchen_nudge_door'][1]
+    kitchen_problem = ['test_kitchen_sprinkle', 'test_kitchen_nudge_door'][0]
     if kitchen_problem in ['test_kitchen_nudge_door']:
         update_kitchen_nudge_pddl()
         domain_name = 'pddl_domains/mobile_v3'

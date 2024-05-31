@@ -492,6 +492,9 @@ class PDDLStreamAgent(MotionAgent):
         a, b, c, _, init, f = self.pddlstream_problem
         if self.facts_to_update_pddlstream_problem is not None:
             added, deled = self.facts_to_update_pddlstream_problem
+            if added[0] == 0:  ## added by mistake
+                added.pop(0)
+                deled.pop(0)
             init = update_facts(init, added, deled)
         self.pddlstream_problem = PDDLProblem(a, b, c, stream_map, init, f)
         self.env_execution.static_literals = static_literals
@@ -545,7 +548,11 @@ def print_action(action):
 def update_facts(facts, added, deled):
     atgrasp = [f for f in added if f[0] == 'atgrasp']
     if len(atgrasp) > 0:
-        added += [tuple(['grasp'] + list(f[2:])) for f in atgrasp]
+        add_grasp = [tuple(['grasp'] + list(f[2:])) for f in atgrasp]
+        add_grasp = [f for f in add_grasp if f not in facts + added]
+        if len(add_grasp) > 0:
+            print(f'\nupdate_facts\tsomehow mising {add_grasp}\n')
+            added += add_grasp
     return [f for f in set(facts + added) if f not in deled]
 
 

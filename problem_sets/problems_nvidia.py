@@ -8,7 +8,8 @@ from world_builder.loaders_nvidia_kitchen import *
 from robot_builder.robot_builders import build_robot_from_args
 
 from problem_sets.problem_utils import create_world, pddlstream_from_state_goal, save_to_kitchen_worlds, \
-    problem_template, pull_actions, pick_place_actions, pull_with_link_actions, \
+    problem_template
+from world_builder.actions import pull_actions, pick_place_actions, pull_with_link_actions, \
     pick_sprinkle_actions
 
 

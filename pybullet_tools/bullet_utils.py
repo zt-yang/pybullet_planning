@@ -363,9 +363,9 @@ def collided(obj, obstacles=[], world=None, articulated=False, verbose=False, ta
         obstacles_here = [o for o in obstacles if (o, body) not in ignored_pairs]
         result = articulated_collisions(body, obstacles_here, use_aabb=use_aabb, verbose=verbose,
                                         world=world, **kwargs)
-        if result:
-            if verbose:
-                print(prefix, '| articulated, obstacles =', obstacles)
+        # if result:
+        #     if verbose:
+        #         print(prefix, '| articulated, obstacles =', obstacles)
         return result
     # else:
     #     result = any(pairwise_collision(obj, b, use_aabb=use_aabb, **kwargs) for b in obstacles)

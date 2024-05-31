@@ -3,6 +3,8 @@ import numpy as np
 from pybullet_tools.utils import get_aabb, get_aabb_center, get_aabb_extent, AABB, aabb_overlap
 from pybullet_tools.logging_utils import myprint as print
 
+from leap_tools.heuristic_utils import *
+
 
 def initialize_object_reducer(name):
     if name == 'goal-related':
@@ -141,44 +143,29 @@ def reduce_by_objects_heuristic_movables(facts, objects=[], goals=[], aabb_expan
 
     title = 'object_reducers.reduce_by_objects_heuristic_movables\t'
 
-    def get_surface_aabb(surface):
-        return get_aabb(surface[0], surface[-1]) if isinstance(surface, tuple) else get_aabb(surface)
-
-    def get_surface_area(surface):
-        w, l, _ = get_aabb_extent(get_surface_aabb(surface))
-        return w * l
-
     if goals[0][0] in ['on', 'in']:
         region = goals[0][2]
         region_aabb = get_surface_aabb(region)
 
-        def get_distance_to_aabb(surface):
-            region_center = get_aabb_center(region_aabb)
-            surface_aabb = get_surface_aabb(surface)
-            surface_aabb_center = get_aabb_center(surface_aabb)
-            return np.linalg.norm(np.asarray(surface_aabb_center) - np.asarray(region_center))
+        other_surfaces = [f[1] for f in facts if f[0].lower() == 'surface' and f[1] != region]
 
+        ## add big surfaces in the world
+        big_surfaces = find_big_surfaces(other_surfaces, top_k=1, title=title)
+        objects.extend(big_surfaces)
+
+        ## find obstacles
         all_movables = [f[1] for f in facts if f[0].lower() == 'graspable' and f[1] not in objects]
-        other_surfaces = [f[1] for f in facts if f[0].lower() == 'surface' and f[1] != region]  ## and isinstance(f, tuple)
+        obstacles = find_movables_close_to_region(all_movables, region_aabb, title=title, aabb_expansion=aabb_expansion)
+        objects.extend(obstacles)
+        other_surfaces = [f for f in other_surfaces if f not in big_surfaces]
 
-        ## sort other_surfaces by aabb side
-        print(f'{title}other_surfaces: {other_surfaces}')
-        big_surface = sorted(other_surfaces, key=get_surface_area)[0]
-        objects.append(big_surface)
-        print(f'{title}surface:\t{big_surface}')
-
-        for o in all_movables:
-            mov_aabb = get_aabb(o)
-            mov_aabb_expanded = AABB(lower=np.asarray(mov_aabb.lower) - aabb_expansion,
-                                     upper=np.asarray(mov_aabb.upper) + aabb_expansion)
-            if aabb_overlap(region_aabb, mov_aabb_expanded):
-                print(f'{title}obstacle:\t {o}')
-                objects.append(o)
-
-                ## add another surface closest to obstacle
-                closest_surface = sorted(other_surfaces, key=get_distance_to_aabb)[:2]
-                add_surfaces = [s for s in closest_surface if s not in objects]
-                objects.extend(add_surfaces)
-                print(f'{title}surface close to obstacle:\t {add_surfaces}')
+        ## add another surfaces closest to obstacles
+        for o in obstacles:
+            add_surfaces = find_surfaces_close_to_region(other_surfaces, region_aabb, top_k=2, title=title+f'surface close to {o}\t')
+            objects.extend(add_surfaces)
 
     return reduce_facts_given_objects(facts, objects=objects, goals=goals)
+
+
+
+

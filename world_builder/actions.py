@@ -28,6 +28,16 @@ from world_builder.world import State
 PULL_UNTIL = 1.8
 NUDGE_UNTIL = 2.3
 
+pull_actions = ['grasp_handle', 'pull_handle', 'ungrasp_handle']
+nudge_actions = ['nudge_door']
+pull_with_link_actions = ['grasp_handle', 'pull_handle_with_link', 'ungrasp_handle']
+pick_place_actions = ['pick', 'place']
+pick_arrange_actions = ['pick', 'arrange']
+pick_sprinkle_actions = ['pick', 'sprinkle']
+pick_place_rel_actions = ['pick_from_supporter', 'place_to_supporter']
+
+attach_joint_actions = ['pull_door_handle', 'pull_handle', 'pull_handle_with_link', 'nudge_door']
+
 
 class Action(object):  # TODO: command
     def transition(self, state):
@@ -437,7 +447,7 @@ def adapt_attach_action(a, problem, plan, verbose=True):
     else:
         print('adapt_attach_action', len(plan), [str(body), body_to_name[body]], '->', plan)
         pstn = get_joint_position(body[0], body[1])
-        act = [aa for aa in plan if aa[0] in ['pull_door_handle', 'pull_handle', 'pull_handle_with_link'] and \
+        act = [aa for aa in plan if aa[0] in attach_joint_actions and \
                aa[2] in [str(body), body_to_name[body]] and \
                equal(continuous[aa[3].split('=')[0]][0], pstn)][0]
 
@@ -449,7 +459,8 @@ def adapt_attach_action(a, problem, plan, verbose=True):
         funk = get_pull_handle_motion_gen(problem, collisions=False, verbose=verbose)
         aq1 = None
     else:
-        aq1 = get_value(act[9])  ## continuous[act[9].split('=')[0]]
+        var = act[8] if act[0] == 'nudge_door' else act[9]
+        aq1 = get_value(var)  ## continuous[act[9].split('=')[0]]
         aq1 = Conf(robot.body, robot.get_arm_joints(a.arm), aq1)
         funk = get_pull_door_handle_motion_gen(problem, collisions=False, verbose=verbose)
 

@@ -1113,22 +1113,26 @@ def get_cfree_traj_pose_test(problem, collisions=True, verbose=False, visualize=
     return test
 
 
-def get_cfree_pose_between_test(robot, collisions=True, visualize=True):
+def get_cfree_pose_between_test(robot, collisions=True, visualize=False):
     def test(b1, p1, b2, p2, b3, p3, fluents=[]):
         if not collisions or (b1 == b3) or (b2 == b3) or b2 in ['@world']:
             return True
         if fluents:
             process_motion_fluents(fluents, robot)
         p3.assign()
-        (x, y, z_upper), quat = p1.value
-        z_lower = p2.value[0][-1]
-        for z in np.linspace(z_lower, z_upper, num=5, endpoint=True)[1:-1]:
-            set_pose(b1, ((x, y, z), quat))
-            if pairwise_collision(b1, b3):
-                if visualize:
-                    set_renderer(True)
-                return False
-        return True
+        with PoseSaver(b1):
+            (x, y, z_upper), quat = p1.value
+            z_lower = p2.value[0][-1]
+            if isinstance(b3, tuple):
+                b3 = b3[0]
+            for z in np.linspace(z_lower, z_upper, num=5, endpoint=True)[1:-1]:
+                set_pose(b1, ((x, y, z), quat))
+                if pairwise_collision(b1, b3):
+                    robot.log_collisions(b3, source='cfree_pose_between_test')
+                    if visualize:
+                        set_renderer(True)
+                    return False
+            return True
     return test
 
 
@@ -1140,7 +1144,7 @@ def get_cfree_pose_between_test(robot, collisions=True, visualize=True):
 """
 
 
-def process_motion_fluents(fluents, robot, verbose=True):
+def process_motion_fluents(fluents, robot, verbose=False):
 
     ## sort the fluents so that AtRelPose is assigned after AtPose
     sorted_fluents = [f for f in fluents if f[0].lower() == 'atpose']

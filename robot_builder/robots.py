@@ -354,8 +354,6 @@ class RobotAPI(Robot):
 
     def log_collisions(self, body, link=None, source='', robot_body=None, verbose=False):
         world = self.world
-        if robot_body is None:  ## robot_body can be cloned gripper
-            robot_body = self.body
 
         obj = world.body_to_object(body)
         name = world.get_debug_name(obj)
@@ -376,6 +374,8 @@ class RobotAPI(Robot):
         ## articulated objects
         else:
             if link is None:
+                if robot_body is None:  ## robot_body can be cloned gripper
+                    robot_body = self.body
                 links = get_links_collided(robot_body, body, names_as_keys=False)
             else:
                 links = [link]
