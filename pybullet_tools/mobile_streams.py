@@ -816,7 +816,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
 
 
 def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs, saver, resolution=DEFAULT_RESOLUTION,
-                                 num_intervals=30, collisions=True, visualize=False, verbose=False):
+                                 num_intervals=30, around_to=4, collisions=True, visualize=False, verbose=False):
     a, o, pst1, pst2, g, bq1, aq1 = inputs
 
     collision_fn = robot.get_collision_fn(obstacles=obstacles)
@@ -851,7 +851,7 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
 
     ## saving the mapping between robot bconf to object pst for execution
     mapping = {}
-    rpose_rounded = tuple([round(n, 3) for n in bq1.values])
+    rpose_rounded = tuple([round(n, around_to) for n in bq1.values])
     mapping[rpose_rounded] = pst1.value
 
     bpath = []
@@ -893,7 +893,7 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
             if verbose: print(f'{step_str} : {nice(bq_after.values)}')
 
         ## save the joint positions as the base moves
-        bq_rounded = tuple([round(n, 3) for n in bq_after.values])
+        bq_rounded = tuple([round(n, around_to) for n in bq_after.values])
         mapping[bq_rounded] = value
 
     if visualize:

@@ -73,7 +73,7 @@ class Attachment(object):
                     if conf in LP2JP[self.child][self.child_joint]:
                         ls = LP2JP[self.child][self.child_joint][conf]
                         for group in [g for g in ['base-torso', 'base', 'hand'] if g in self.parent.joint_groups]:
-                            key = self.parent.get_positions(joint_group=group, roundto=3)
+                            key = self.parent.get_positions(joint_group=group, roundto=4)
                             result = in_list(key, ls)
                             if result is not None:
                                 position = ls[result]

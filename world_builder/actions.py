@@ -14,7 +14,7 @@ from pybullet_tools.utils import str_from_object, get_closest_points, INF, creat
     get_aabb, get_joint_position, get_joint_name, get_link_pose, link_from_name, PI, Pose, Euler, \
     get_extend_fn, get_joint_positions, set_joint_positions, get_max_limit, get_pose, set_pose, set_color, \
     remove_body, create_cylinder, set_all_static, wait_for_duration, remove_handles, set_renderer, \
-    LockRenderer, wait_unlocked, ConfSaver
+    LockRenderer, wait_unlocked, ConfSaver, set_joint_position
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, get_gripper_joints
 from pybullet_tools.pr2_primitives import Trajectory, Command, Conf, Trajectory, Commands
 from pybullet_tools.flying_gripper_utils import set_se3_conf, get_pull_handle_motion_gen
@@ -154,6 +154,17 @@ class TeleportObjectAction(Action):
         set_pose(self.object, get_link_pose(state.robot, link))
         new_pose = get_pose(self.object)
         print(f"   [TeleportObjectAction] !!!! obj {self.object} is teleported from {nice(old_pose)} to {self.arm} gripper {nice(new_pose)}")
+        return state.new_state()
+
+
+class SetJointPositionAction(Action):
+    def __init__(self, body, position):
+        self.body = body
+        self.position = position.value
+
+    def transition(self, state):
+        body, joint = self.body
+        set_joint_position(body, joint, self.position)
         return state.new_state()
 
 
@@ -882,17 +893,19 @@ def get_primitive_actions(action, world, teleport=False, verbose=True):
         close_gripper = GripperAction(a, extent=0, teleport=teleport)
         attach = AttachObjectAction(a, g, o)
         bt = get_traj(bt)
+        pstn = SetJointPositionAction(o, p2)  ## just in case attachment failed
         detach = DetachObjectAction(a, o)
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
 
-        new_commands = at + [close_gripper, attach] + bt + [detach, open_gripper] + at[::-1]
+        new_commands = at + [close_gripper, attach] + bt + [detach, open_gripper, pstn] + at[::-1]
 
     elif name == 'ungrasp_handle':
         a, o, p, g, q, aq1, aq2, t = args
         t = get_traj(t)
         detach = DetachObjectAction(a, o)
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
-        new_commands = [detach, open_gripper] + t[::-1]
+        pstn = SetJointPositionAction(o, p)  ## just in case attachment failed
+        new_commands = [detach, open_gripper, pstn] + t[::-1]
 
     elif name == 'ungrasp_marker':
         a, o, o2, p, g, q, t = args

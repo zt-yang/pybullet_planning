@@ -782,7 +782,7 @@ class World(WorldBase):
 
     def summarize_collisions(self):
         log = self.robot.get_collisions_log()
-        pprint({self.body_to_name[str(k)]: v for k, v in log.items()}, indent=3)
+        pprint({self.body_to_name[str(k)]: v for k, v in log.items() if str(k) in self.body_to_name}, indent=3)
         print()
         return log
 

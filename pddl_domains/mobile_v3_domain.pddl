@@ -311,7 +311,7 @@
                        (not (UnsafePose ?o ?p))
                        (not (UnsafeApproach ?o ?p ?g))
                        (not (CanMove))
-                       ;(not (Placed ?o))
+                       (not (Placed ?o))
                        ; (not (UnsafeATraj ?t)) (not (UnsafeOTraj ?o ?g ?t))
                        )
     :effect (and (AtPose ?o ?p) (HandEmpty ?a) (CanMove)

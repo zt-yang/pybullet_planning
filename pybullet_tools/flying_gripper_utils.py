@@ -446,7 +446,7 @@ def get_ik_fn(problem, teleport=False, verbose=False,
 
 
 def get_pull_handle_motion_gen(problem, collisions=True, teleport=False,
-                               num_intervals=12, visualize=False, verbose=True):
+                               num_intervals=12, around_to=4, visualize=False, verbose=True):
     if teleport:
         num_intervals = 1
     robot = problem.robot
@@ -480,7 +480,7 @@ def get_pull_handle_motion_gen(problem, collisions=True, teleport=False,
 
         ## saving the mapping between robot bconf to object pst for execution
         mapping = {}
-        rpose_rounded = tuple([round(n, 3) for n in q1.values])
+        rpose_rounded = tuple([round(n, around_to) for n in q1.values])
         mapping[rpose_rounded] = pst1.value
 
         path = []
@@ -527,7 +527,7 @@ def get_pull_handle_motion_gen(problem, collisions=True, teleport=False,
                 path.append(q_after)
                 # if verbose: print(f'{step_str} : {nice(q_after.values)}')
 
-            rpose_rounded = tuple([round(n, 3) for n in q_after.values])
+            rpose_rounded = tuple([round(n, around_to) for n in q_after.values])
             mapping[rpose_rounded] = value
 
         if len(path) < num_intervals: ## * 0.75:
