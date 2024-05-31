@@ -558,10 +558,25 @@ def update_facts(facts, added, deled):
 
 def filter_dynamic_facts(facts):
     ## the following predicates are generated again by state thus ignored
-    ignored_preds = ['aconf', 'ataconf', 'atbconf', 'atpose', 'atposition', 'atrelpose', 'basemotion',
-         'bconf', 'contained', 'defaultaconf', 'isclosedposition',
-         'kingrasphandle', 'kinpulldoorhandle', 'pose', 'position', 'relpose']
-    facts = [f for f in facts if f[0] not in ignored_preds]
+    ignored_preds = [
+        'aconf', 'ataconf', 'atbconf', 'atpose', 'atposition', 'atrelpose', 'basemotion',
+        'bconf', 'contained', 'defaultaconf', 'grasp', 'isclosedposition',
+        'kin', 'kingrasphandle', 'kinpulldoorhandle', 'pose', 'position', 'relpose',
+    ]
+
+    def keep_fact(f):
+        return not (f[0] in ignored_preds or f[0].startswith('kin') or f[0].startswith('unsafe') or
+                    (f[0] == 'not' and f[1][0].startswith('unsafe')))
+
+    ## these cannot be observed by state ## TODO: fix it
+    keep_preds = [
+        'atgrasp', 'supported', 'contained'
+    ]
+
+    def keep_fact(f):
+        return f[0] in keep_preds
+
+    facts = [f for f in facts if keep_fact(f)]
 
     ## some positive and negative effects cancel out
     to_remove = []

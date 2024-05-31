@@ -238,7 +238,7 @@ class World(WorldBase):
         self.articulated_parts = {k: [] for k in ['door', 'drawer', 'knob', 'button']}
         self.changed_joints = []
         self.non_planning_objects = []
-        self.not_stackable = {}
+        self.not_stackable = defaultdict(list)
         self.c_ignored_pairs = []
         self.planning_config = {'camera_zoomins': [], 'camera_poses': {}}
         self.inited_link_joint_relations = False
@@ -267,10 +267,10 @@ class World(WorldBase):
                     if verbose:
                         print('world.removed redundant body', b)
 
-    def add_not_stackable(self, body, surface):
-        if body not in self.not_stackable:
-            self.not_stackable[body] = []
+    def add_not_stackable(self, body, surface, verbose=False):
         self.not_stackable[body].append(surface)
+        if verbose:
+            print(f'world.do_not_stack({body}, {surface})')
 
     def check_not_stackable(self, body, surface):
         return body in self.not_stackable and surface in self.not_stackable[body]

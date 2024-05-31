@@ -5,6 +5,7 @@ from pybullet_tools.utils import invert, get_name, pairwise_collision, sample_pl
     get_link_pose, get_pose, set_pose, sample_placement, aabb_from_extent_center
 from pybullet_tools.pose_utils import sample_pose, xyzyaw_to_pose, sample_center_top_surface
 from pybullet_tools.bullet_utils import nice, collided, equal
+from pybullet_tools.logging_utils import print_dict
 
 from world_builder.world_utils import sort_body_indices
 from world_builder.loaders import *
@@ -188,6 +189,28 @@ def get_objects_for_open_kitchen(world):
     return objects
 
 
+def prevent_funny_placements(world, verbose=True):
+    """ need to be automated by LLMs """
+
+    movables = world.cat_to_bodies('movable')
+
+    ## only the lid can be placed on braiser body
+    braiserbody = world.name_to_body('braiserbody')
+
+    ## only food can be placed on braiser bottom
+    braiser_bottom = world.name_to_body('braiser_bottom')
+
+    for o in movables:
+        if o in [world.name_to_body('braiserlid'), braiserbody]:
+            continue
+        world.add_not_stackable(o, braiserbody)
+        if o not in world.cat_to_bodies('food'):
+            world.add_not_stackable(o, braiser_bottom)
+
+    if verbose:
+        print_dict(world.not_stackable, 'world.not_stackable')
+
+
 def load_open_problem_kitchen(world, reduce_objects=False, open_doors_for=[]):
     spaces = {
         'counter': {
@@ -214,10 +237,12 @@ def load_open_problem_kitchen(world, reduce_objects=False, open_doors_for=[]):
     movables, movable_to_doors = load_nvidia_kitchen_movables(world, open_doors_for=open_doors_for,
                                                               custom_supports=custom_supports)
     load_cooking_mechanism(world)
+    prevent_funny_placements(world)
 
     objects = None
     if reduce_objects:
         objects = get_objects_for_open_kitchen(world)
+
     return objects, movables, movable_to_doors
 
 
