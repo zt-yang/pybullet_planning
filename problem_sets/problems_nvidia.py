@@ -664,7 +664,8 @@ def test_pr2_cabinets(args):
 
 
 def test_nvidia_kitchen_domain(args, world_loader_fn, initial_xy=(1.5, 6), **kwargs):
-    set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
+    set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])  ## target fridge
+    set_camera_pose(camera_point=[3, 7, 4], target_point=[0, 7, 1])
     if 'robot_builder_args' not in kwargs:
         kwargs['robot_builder_args'] = args.robot_builder_args
     kwargs['robot_builder_args'].update({

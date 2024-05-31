@@ -43,7 +43,7 @@ class World(WorldBase):
         self.mobility_ids = {}
         self.mobility_identifiers = {}
         self.name_to_body = {}
-        self.ATTACHMENTS = {}
+        self.attachments = {}
 
         self.robot = None
         self.movable = None

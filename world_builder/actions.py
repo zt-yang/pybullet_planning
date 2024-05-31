@@ -445,11 +445,16 @@ def adapt_attach_action(a, problem, plan, verbose=True):
     if ' ' in plan[0][0]:
         act = [aa for aa in plan if aa[0].startswith('pull') and aa[2] == body_to_name[body]][0]
     else:
-        print('adapt_attach_action', len(plan), [str(body), body_to_name[body]], '->', plan)
         pstn = get_joint_position(body[0], body[1])
+
         act = [aa for aa in plan if aa[0] in attach_joint_actions and \
                aa[2] in [str(body), body_to_name[body]] and \
-               equal(continuous[aa[3].split('=')[0]][0], pstn)][0]
+               equal(continuous[aa[3].split('=')[0]][0], pstn)]
+        if len(act) == 0:
+            print(f'adapt_attach_action({str(body)}|{body_to_name[body]},pstn={pstn}) not found in len = {len(plan)}')
+            return
+
+        act = act[0]
 
     pstn1 = Position(body, get_value(act[3]))
     pstn2 = Position(body, get_value(act[4]))
@@ -483,7 +488,7 @@ def adapt_action(a, problem, plan, verbose=True):
 
 def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body_map=None,
                   save_composed_jpg=False, save_gif=False, check_collisions=False,
-                  cfree_range=0.1, visualize_collisions=False):
+                  action_by_action=False, cfree_range=0.1, visualize_collisions=False):
     """ act out the whole plan and event in the world without observation/replanning """
     if actions is None:
         return
@@ -513,12 +518,38 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
     initial_collisions = copy.deepcopy(ignored_collisions)
     expected_pose = None
     cfree_until = None
+    # executed_action = []
+    # last_trajectory = []
+    # current_trajectory = []
+    # skipped_last = False
     i = 0
     while i < len(actions):
         action = actions[i]
         name = action.__class__.__name__
-        if verbose:
-            print(f"{i}/{len(actions)}\t{action}")
+
+        # ## TODO: fix this bug in saving commands ------------------------------
+        # if name == 'GripperAction':
+        #     last_trajectory = [str(a) for a in current_trajectory]
+        #     current_trajectory = []
+        #
+        # if str(action) in executed_action and str(action) not in last_trajectory:
+        #     if not name.startswith('Move') and not skipped_last:
+        #         pass
+        #     else:
+        #         print('Skipping already executed action:', action)
+        #         skipped_last = True
+        #         continue
+        # else:
+        #     executed_action.append(str(action))
+        # skipped_last = False
+        # current_trajectory.append(action)
+        # ## ---------------------------------------------------------------------
+
+        line = f"{i}/{len(actions)}\t{action}"
+        if action_by_action and name == 'GripperAction':
+            wait_if_gui(f'Execute {line}?')
+        elif verbose:
+            print(line)
 
         if 'GripperAction' in name and check_collisions:
             next_action = actions[i+1]

@@ -136,8 +136,8 @@ def add_attachment_in_world(state=None, obj=None, parent=-1, parent_link=None, a
                 else:
                     obj.change_supporting_surface(parent)
     # for k in new_attachments:
-    #     if k in state.world.ATTACHMENTS:
-    #         state.world.ATTACHMENTS.pop(k)
+    #     if k in state.world.attachments:
+    #         state.world.attachments.pop(k)
 
     return new_attachments
 

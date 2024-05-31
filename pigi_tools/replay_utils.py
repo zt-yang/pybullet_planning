@@ -89,7 +89,8 @@ def load_pigi_data(run_dir, use_gui=True, width=1440, height=1120, verbose=False
     """ for replaying """
     exp_dir = copy_dir_for_process(run_dir, tag='replaying', verbose=verbose)
     world = load_lisdf_pybullet(exp_dir, use_gui=use_gui, width=width, height=height, verbose=False)
-    problem, commands, plan, body_map = load_basic_plan_commands(world, exp_dir, run_dir, verbose=verbose)
+    problem, commands, plan, body_map = load_basic_plan_commands(world, exp_dir, run_dir,
+                                                                 verbose=verbose, load_attach=False)
     return world, problem, exp_dir, run_dir, commands, plan, body_map
 
 
@@ -215,8 +216,8 @@ def set_replay_camera_pose(world, run_dir, camera_kwargs, camera_point, target_p
 
 def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path=None, given_dir=None, cases=None,
             parallel=False, skip_if_processed_recently=False, check_time=None, preview_scene=False, step_by_step=False,
-            use_gym=False, auto_play=True, verbose=False, width=1280, height=800, fx=600, time_step=0.02,
-            camera_point=(8.5, 2.5, 3), target_point=(0, 2.5, 0), camera_kwargs=None, camera_movement=None,
+            action_by_action=False, use_gym=False, auto_play=True, verbose=False, width=1280, height=800, fx=600,
+            time_step=0.02, camera_point=(8.5, 2.5, 3), target_point=(0, 2.5, 0), camera_kwargs=None, camera_movement=None,
             light_conf=None, check_collisions=False, cfree_range=0.1, visualize_collisions=False,
             evaluate_quality=False, save_jpg=False, save_composed_jpg=False, save_gif=False,
             save_animation_json=False, save_mp4=False, mp4_side_view=False, mp4_top_view=False):
@@ -251,7 +252,8 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
 
     else:
         run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, body_map, task_name=task_name,
-                            step_by_step=step_by_step, auto_play=auto_play, check_collisions=check_collisions,
+                            step_by_step=step_by_step, action_by_action=action_by_action, auto_play=auto_play,
+                            check_collisions=check_collisions,
                             cfree_range=cfree_range, visualize_collisions=visualize_collisions,
                             evaluate_quality=evaluate_quality, zoomin_kwargs=zoomin_kwargs, time_step=time_step,
                             save_jpg=save_jpg, save_composed_jpg=save_composed_jpg, save_gif=save_gif, verbose=verbose)
@@ -293,7 +295,8 @@ def save_mp4_in_pybullet(run_dir, problem, commands, plan, time_step=0.025):
 
 
 def run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, body_map, task_name=None,
-                        step_by_step=False, auto_play=True, check_collisions=False, cfree_range=0.1, time_step=0.02,
+                        step_by_step=False, action_by_action=False, auto_play=True, check_collisions=False,
+                        cfree_range=0.1, time_step=0.02,
                         visualize_collisions=False, evaluate_quality=False, zoomin_kwargs=None,
                         save_jpg=False, save_composed_jpg=False, save_gif=False, verbose=False):
     run_name = basename(run_dir)
@@ -308,7 +311,7 @@ def run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, bo
         results = apply_actions(problem, commands, time_step=time_step, verbose=verbose, plan=plan,
                                 body_map=body_map, save_composed_jpg=save_composed_jpg, save_gif=save_gif,
                                 check_collisions=check_collisions, cfree_range=cfree_range,
-                                visualize_collisions=visualize_collisions)
+                                action_by_action=action_by_action, visualize_collisions=visualize_collisions)
 
     if check_collisions:
         new_data = {'cfree': results} if results else {'cfree': cfree_range}

@@ -321,10 +321,12 @@ class PDDLStreamAgent(MotionAgent):
     def record_command(self, action):
         self.commands.append(action)
 
-    def save_commands(self, commands_path):
-        if len(self.commands) > 0:
+    def save_commands(self, commands_path, commands=None):
+        if commands is None:
+            commands = self.commands
+        if len(commands) > 0:
             self.remove_unpickleble_attributes()
-            save_commands(self.commands, commands_path)
+            save_commands(commands, commands_path)
             self.recover_unpickleble_attributes()
 
     def save_time_log(self, csv_name, solved=True, failed_time=False):
@@ -570,7 +572,8 @@ def filter_dynamic_facts(facts):
 
     ## these cannot be observed by state ## TODO: fix it
     keep_preds = [
-        'atgrasp', 'supported', 'contained'
+        'atgrasp', 'supported', 'contained',
+        'isnudgedposition', 'isopenposition', 'issamplednudgedposition',
     ]
 
     def keep_fact(f):

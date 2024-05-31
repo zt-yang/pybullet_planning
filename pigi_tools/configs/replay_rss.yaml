@@ -22,6 +22,7 @@ camera_kwargs: { target_point_begin: [0.5, 3, 1], target_point_final:[0.5, 3, 1]
 ## ---- control
 preview_scene: false
 step_by_step: false
+action_by_action: false
 use_gym: false
 auto_play: true
 verbose: false

@@ -10,6 +10,7 @@ check_time: 1674417578
 ## ---- control
 preview_scene: false
 step_by_step: false
+action_by_action: false
 use_gym: false
 auto_play: true
 verbose: false
