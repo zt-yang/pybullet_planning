@@ -350,7 +350,8 @@ def load_nvidia_kitchen_movables(world: World, open_doors_for: list = [], custom
     movables = {}
     movable_to_doors = {}
     for category, asset_name, rand_ins, name, supporter_name in default_supports:
-        movable = world.add_object(Movable(
+        object_class = Movable if category not in ['appliance'] else Object
+        movable = world.add_object(object_class(
             load_asset(asset_name, x=0, y=0, yaw=random.uniform(-math.pi, math.pi), random_instance=rand_ins),
             category=category, name=name
         ))

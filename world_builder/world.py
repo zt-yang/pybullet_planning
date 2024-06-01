@@ -654,7 +654,7 @@ class World(WorldBase):
 
     def summarize_all_types(self):
         printout = ''
-        for typ in ['movable', 'surface', 'door', 'drawer']:
+        for typ in ['movable', 'surface', 'space', 'joint', 'door', 'drawer']:
             num = len(self.cat_to_bodies(typ))
             if num > 0:
                 printout += "{type}({num}), ".format(type=typ, num=num)

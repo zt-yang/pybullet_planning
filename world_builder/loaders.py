@@ -21,6 +21,8 @@ GRASPABLES = ['BraiserLid', 'Egg', 'VeggieCabbage', 'MeatTurkeyLeg', 'VeggieGree
               'VeggieTomato', 'VeggieZucchini', 'VeggiePotato', 'VeggieCauliflower', 'MeatChicken']
 GRASPABLES = [o.lower() for o in GRASPABLES]
 
+NOT_MOVABLES = ['microwave']
+
 ######################################################
 
 def Box(x1=0., x2=0.,

@@ -438,7 +438,7 @@ class PDDLStreamAgent(MotionAgent):
         self.initial_state.variables = None
 
         agent_state_path = join(agent_state_dir, f'agent_state_{self.problem_count}.pkl')
-        print(f'pddlstream_agent.agent_state_path at {agent_state_path}')
+        print(f'pddlstream_agent.save_agent_state at {agent_state_path}')
         with open(agent_state_path, 'bw') as f:
             pickle.dump(self, f)
         # for k, v in self.__dict__.items():
