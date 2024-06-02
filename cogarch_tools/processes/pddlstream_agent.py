@@ -114,7 +114,7 @@ class PDDLStreamAgent(MotionAgent):
     def set_world_state(self, state):
         self.world_state = state
 
-    def init_experiment(self, args, domain_modifier=None, object_reducer=None, comparing=False):
+    def init_experiment(self, args, domain_modifier=None, object_reducer=None, comparing=False, **kwargs):
         """ important for using the right files in replaning """
 
         ## related to saving data
@@ -574,7 +574,7 @@ def filter_dynamic_facts(facts):
     keep_preds = [
         'atgrasp', 'supported', 'contained',
         'isnudgedposition', 'isopenposition', 'issamplednudgedposition',
-    ]
+    ] ##
 
     def keep_fact(f):
         return f[0] in keep_preds

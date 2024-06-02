@@ -208,7 +208,7 @@ def prevent_funny_placements(world, verbose=True):
             world.add_not_stackable(o, braiser_bottom)
 
     if verbose:
-        print_dict(world.not_stackable, 'world.not_stackable')
+        print_dict(dict(world.not_stackable), 'world.not_stackable')
 
 
 def load_open_problem_kitchen(world, reduce_objects=False, open_doors_for=[]):

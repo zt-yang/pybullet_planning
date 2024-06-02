@@ -592,7 +592,11 @@ class PDDLStreamEnv(PDDLEnv):
             if not isinstance(pred.body, Exists):  ## don't ground things in exist
                 params = [TypedEntity(pred.param_names[i], pred.var_types[i]) for i in range(len(pred.param_names))]
                 mapping = {params[i]: cond.variables[i] for i in range(len(params))}
-                for lit in pred.body.body.literals:
+
+                if pred.name.lower() == 'arrangeable':
+                    print('arrangeable')
+                literals = pred.body.literals if isinstance(pred.body, LiteralDisjunction) else pred.body.body.literals
+                for lit in literals:
                     n = lit.predicate.name
                     args = []
                     for v in lit.variables:

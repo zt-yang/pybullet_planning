@@ -33,7 +33,7 @@ SAVE_COLLISIONS = False
 def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH,
               reset=False, load_initial_state=False, record_plans=False, comparing=False, data_generation=False,
               create_robot_fn=None, problem=None, exp_subdir=None, world_builder_args=dict(), robot_builder_args=dict(),
-              domain_modifier=None, object_reducer=None, **kwargs):
+              domain_modifier=None, object_reducer=None, serve_page=True, **kwargs):
     """
     problem:    name of the problem builder function to solve
     exp_dir:    sub-directory in `bullet/experiments` to save the planning data
@@ -102,7 +102,8 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
     agent.set_pddlstream_problem(problem_dict, state)
 
     # note = kwargs['world_builder_args'].get('note', None) if 'world_builder_args' in kwargs else None
-    agent = agent.init_experiment(args, domain_modifier=domain_modifier, object_reducer=object_reducer, comparing=comparing)
+    agent = agent.init_experiment(args, domain_modifier=domain_modifier, object_reducer=object_reducer,
+                                  comparing=comparing, serve_page=serve_page and not args.save_testcase)
 
     ## load next test problem
     if args.save_testcase:
@@ -191,10 +192,12 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
             print('failed to find any plans', data_path)
 
     clear_planning_dir(run_dir=dirname(__file__))
+    disconnect()
+    reset_simulation()
 
-    if reset:
-        reset_simulation()
-    else:
-        disconnect()
+    # if reset:
+    #     reset_simulation()
+    # else:
+    #     disconnect()
 
     return agent.commands, output_dir

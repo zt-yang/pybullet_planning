@@ -349,7 +349,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
 
         ## TODO: hack to hand adjust the found hand grasps to make nudge grasps
         if found is None and nudge:
-            found_hand_grasps, _ = find_grasp_in_db(get_grasp_db_file(robot), instance_name, length_variants=False,
+            found_hand_grasps, _ = find_grasp_in_db(get_grasp_db_file(robot), instance_name, length_variants=length_variants,
                                                     scale=scale, use_all_grasps=use_all_grasps, verbose=verbose)
             if found_hand_grasps is not None:
                 found = make_nudge_grasps_from_handle_grasps(world, found_hand_grasps, body, body_pose, nudge_back=nudge_back)

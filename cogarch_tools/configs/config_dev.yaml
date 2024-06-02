@@ -15,6 +15,7 @@ planner:
   total_planning_timeout: 60
   max_plans: 20
   max_solutions: 1
+  max_complexity_limit: 5
   log_failures: false
 
 ## specify the TAMP problem with preconfigured scene layout & robot
@@ -53,7 +54,7 @@ streams:
   disable_movable_collision: false
   disable_base_collision: false
   top_grasp_tolerance: null # 0.8
-  ir_max_attempts: 30
+  ir_max_attempts: 15
   use_all_grasps: false
 
 ## pybullet related
@@ -66,8 +67,9 @@ sim:
   lock: true
   simulate: false
   drive: false
-  time_step: 0.02
   camera: false
   segment: false
   monitoring: false
   show_object_names: true
+  time_step: 0.01
+  resolution_angular: 3

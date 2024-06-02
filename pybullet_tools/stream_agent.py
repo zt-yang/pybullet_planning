@@ -832,7 +832,14 @@ def remove_stream_by_name(stream_pddl, stream_name):
 def remove_operator_by_name(domain_pddl, operator_name):
     key = '(:action '
     lines = domain_pddl.split(key)
-    return key.join([l for l in lines if not l.startswith(f'{operator_name}\n')])
+    new_lines = []
+    for i, line in enumerate(lines):
+        if line.startswith(f'{operator_name}\n'):
+            if line.endswith(';') or line.endswith('; '):
+                new_lines[i-1] += ';'
+        else:
+            new_lines.append(line)
+    return key.join(new_lines)
 
 
 def remove_predicate_by_name(domain_pddl, predicate_name):

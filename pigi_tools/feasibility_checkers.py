@@ -10,10 +10,13 @@ import sys
 from pybullet_tools.utils import WorldSaver
 from pybullet_tools.bullet_utils import open_joint
 from pybullet_tools.general_streams import Position
+
 from world_builder.world_utils import get_potential_placements
+
 from pigi_tools.data_utils import get_plan_skeleton, get_indices, get_action_elems, \
     get_successful_plan, modify_plan_with_body_map, load_planning_config, get_old_actions, \
     get_joint_name_chars, modify_skeleton_with_body_map
+
 sys.path.append('/home/yang/Documents/fastamp')
 
 MODELS_PATH = '/home/yang/Documents/fastamp/test_models'
@@ -631,6 +634,26 @@ class Sorter(FeasibilityChecker):
     def _check(self, optimistic_plan):
         score = 1. / (1 + len(optimistic_plan))
         return score # Larger has higher priority
+
+##################################################
+
+
+class FilterFailed(FeasibilityChecker):
+
+    def __init__(self, run_dir, body_map, failed_skeletons):
+        super().__init__(run_dir, body_map)
+        self.failed_skeletons = failed_skeletons
+
+    def _check(self, plan):
+        plan = [[i.name] + [str(a) for a in i.args] for i in plan]
+        skeleton = get_plan_skeleton(plan, **self._skwargs)
+        line = f'\t{skeleton}'
+        result = False
+        if skeleton in self.failed_skeletons:
+            line += ' *'
+            result = True
+        print(line)
+        return result
 
 ##################################################
 

@@ -927,6 +927,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
         cabinet_doors = [world.name_to_body(name) for name in ['chewie_door_left_joint', 'chewie_door_right_joint']]
         dishwasher_space = world.name_to_body('upper_shelf')
         dishwasher_joint = world.name_to_body('dishwasher_door')
+        cabinet_space = world.name_to_body('sektion')
 
         joint = fridge_door  ## fridge_door | cabinet_doors[0] | cabinet_doors[1]
         # goals = ('test_joint_open', joint)
@@ -948,15 +949,16 @@ def test_kitchen_chicken_soup(args, **kwargs):
         # goals = ("test_object_grasps", movable)
         goals = [("Holding", arm, movable)]
         goals = [("On", movable, counter)]
+        goals = [("In", movable, cabinet_space)]
         # goals = ('test_relpose_inside_gen', (movable, drawer_link))
         # goals = [("In", movable, drawer_link)]
 
-        lid = world.name_to_body('braiserlid')
-        braiser =  world.name_to_body('braiserbody')
-        world.BODY_TO_OBJECT[counter].place_obj(world.BODY_TO_OBJECT[lid])
-        world.add_to_cat(lid, 'movable')
-        world.add_to_cat(braiser, 'surface')
-        goals = [("On", lid, braiser)]
+        # lid = world.name_to_body('braiserlid')
+        # braiser =  world.name_to_body('braiserbody')
+        # world.BODY_TO_OBJECT[counter].place_obj(world.BODY_TO_OBJECT[lid])
+        # world.add_to_cat(lid, 'movable')
+        # world.add_to_cat(braiser, 'surface')
+        # goals = [("On", lid, braiser)]
 
         #########################################################################
 
@@ -968,17 +970,26 @@ def test_kitchen_chicken_soup(args, **kwargs):
         # objects += [dishwasher_joint, dishwasher_space]
         # objects += cabinet_doors
 
+        subgoals = None
+        skeleton = []
+
         #########################################################################
 
         if goals[0][0] == "ClosedJoint":
             joint = goals[0][1]
             world.open_joint(joint, extent=0.5)
 
+        if goals == [("On", movable, counter)]:
+            skeleton += [('pick', arm, movable), ('arrange', arm, movable, counter)]
+            goals += [("Arranged", movable)]
+
+        if goals == [("In", movable, cabinet_space)]:
+            skeleton += [('pick', arm, movable), ('arrange', arm, movable, cabinet_space)]
+            goals += [("Arranged", movable)]
+            [world.open_joint(cc, extent=1) for cc in cabinet_doors]
+
         #########################################################################
 
-        subgoals = None
-        skeleton = []
-        # skeleton += [('pick', arm, movable), ('arrange', arm, movable, counter)]
         # skeleton += [(k, arm, goal_object) for k in pick_place_actions[:1]]
         # skeleton += [(k, arm, joint) for k in pull_actions]
         # skeleton += [(k, arm, drawer_joint) for k in pull_with_link_actions]
@@ -1223,7 +1234,6 @@ def test_kitchen_nudge_door(args, **kwargs):
         # if ("Holding", arm, pepper_shaker) in goals:
         #     world.open_joint(left_door, extent=0.8)
         #     world.open_joint(right_door, extent=0.8)
-
 
         # goals = ('test_nudge_back_grasps', door)  ## not working yet
         # goals = [("Closed", door)]
