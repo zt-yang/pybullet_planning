@@ -202,7 +202,7 @@ def get_pddlstream_kwargs(args, skeleton, subgoals, initializer):
     pddlstream_debug = args.pddlstream_debug if hasattr(args, 'pddlstream_debug') else False
     soft_subgoals = args.soft_subgoals if hasattr(args, 'soft_subgoals') else False
     max_evaluation_plans = args.max_evaluation_plans if hasattr(args, 'max_evaluation_plans') else 30
-    max_complexity_limit = args.max_complexity_limit if hasattr(args, 'max_complexity_limit') else 5
+    max_complexity = args.max_complexity if hasattr(args, 'max_complexity') else 5
     evaluation_time = args.evaluation_time
     total_planning_timeout = args.total_planning_timeout
     if debugger_is_active():
@@ -225,7 +225,7 @@ def get_pddlstream_kwargs(args, skeleton, subgoals, initializer):
         total_planning_timeout=total_planning_timeout,
         max_plans=args.max_plans,  ## used by diverse planning
         max_evaluation_plans=max_evaluation_plans,  ## used by focused planning loop
-        max_complexity_limit=max_complexity_limit,
+        max_complexity=max_complexity,
         debug=pddlstream_debug
     )
     return solver_kwargs

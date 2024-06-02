@@ -15,7 +15,7 @@ planner:
   total_planning_timeout: 60
   max_plans: 20
   max_solutions: 1
-  max_complexity_limit: 5
+  max_complexity: 5
   log_failures: false
 
 ## specify the TAMP problem with preconfigured scene layout & robot

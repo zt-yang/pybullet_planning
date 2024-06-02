@@ -59,7 +59,9 @@ def add_surfaces_given_obstacles(world, obstacles, title='add_surfaces_given_obs
     other_surfaces = [s for s in other_surfaces if s not in add_surfaces]
     for o in obstacles:
         region_aabb = get_surface_aabb(o)
-        placed = world.BODY_TO_OBJECT[o].supporting_surface.pybullet_name
+        placed = None
+        if world.BODY_TO_OBJECT[o].supporting_surface is not None:
+            placed = world.BODY_TO_OBJECT[o].supporting_surface.pybullet_name
         add = find_surfaces_close_to_region([s for s in other_surfaces if s != placed], region_aabb, top_k=2)
         add_surfaces.extend(add)
     if len(add_surfaces) > 0:
