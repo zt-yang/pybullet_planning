@@ -906,7 +906,7 @@ def check_goal_achieved(facts, goal, world):
         if len(found) > 0:
             return True
 
-    if goal[0] in ['openedjoint', 'closedjoint'] and len(goal) == 2:
+    if goal[0] in ['openedjoint', 'closedjoint'] and len(goal) == 2 and isinstance(goal[1], tuple):
         joint = goal[1]
         min_position = Position(joint, 'min').value
         atposition = [f[-1] for f in facts if f[0].lower() in ['atposition'] and f[1] == joint]
