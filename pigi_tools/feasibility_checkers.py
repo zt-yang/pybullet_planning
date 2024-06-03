@@ -638,18 +638,18 @@ class Sorter(FeasibilityChecker):
 ##################################################
 
 
-class FilterFailed(FeasibilityChecker):
+class ChooseSkeleton(FeasibilityChecker):
 
-    def __init__(self, run_dir, body_map, failed_skeletons):
+    def __init__(self, run_dir, body_map, allowed_plan):
         super().__init__(run_dir, body_map)
-        self.failed_skeletons = failed_skeletons
+        self.allowed_skeleton = get_plan_skeleton(allowed_plan, **self._skwargs)
 
     def _check(self, plan):
         plan = [[i.name] + [str(a) for a in i.args] for i in plan]
         skeleton = get_plan_skeleton(plan, **self._skwargs)
         line = f'\t{skeleton}'
         result = False
-        if skeleton in self.failed_skeletons:
+        if skeleton == self.allowed_skeleton:
             line += ' *'
             result = True
         print(line)

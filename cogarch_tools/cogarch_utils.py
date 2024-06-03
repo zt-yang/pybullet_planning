@@ -197,12 +197,10 @@ def debugger_is_active() -> bool:
     return hasattr(sys, 'gettrace') and sys.gettrace() is not None
 
 
-def get_pddlstream_kwargs(args, skeleton, subgoals, initializer):
+def get_pddlstream_kwargs(args, skeleton, subgoals, initializer, pddlstream_debug=False,
+                          soft_subgoals=False, max_evaluation_plans=30, max_complexity=5,
+                          max_iterations=4):
     fc = None if not args.use_heuristic_fc else get_feasibility_checker(initializer, mode='heuristic')
-    pddlstream_debug = args.pddlstream_debug if hasattr(args, 'pddlstream_debug') else False
-    soft_subgoals = args.soft_subgoals if hasattr(args, 'soft_subgoals') else False
-    max_evaluation_plans = args.max_evaluation_plans if hasattr(args, 'max_evaluation_plans') else 30
-    max_complexity = args.max_complexity if hasattr(args, 'max_complexity') else 5
     evaluation_time = args.evaluation_time
     total_planning_timeout = args.total_planning_timeout
     if debugger_is_active():
@@ -226,8 +224,13 @@ def get_pddlstream_kwargs(args, skeleton, subgoals, initializer):
         max_plans=args.max_plans,  ## used by diverse planning
         max_evaluation_plans=max_evaluation_plans,  ## used by focused planning loop
         max_complexity=max_complexity,
+        max_iterations=max_iterations,
         debug=pddlstream_debug
     )
+    for k in ['pddlstream_debug', 'soft_subgoals', 'max_evaluation_plans', 'max_complexity',
+              'max_iterations']:
+        if hasattr(args, k):
+            solver_kwargs[k] = getattr(args, k)
     return solver_kwargs
 
 

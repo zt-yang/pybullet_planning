@@ -343,7 +343,7 @@ def get_plan_skeleton(plan, indices={}, include_joint=True, include_movable=Fals
     inv_movables = {v: k for k, v in indices.items() if v in movable_names}
     inv_indices = {v: k for k, v in indices.items()}
 
-    if isinstance(plan[0], str):
+    if len(plan) == 0 or isinstance(plan[0], str):
         plan = get_plan_from_strings(plan, indices=indices)
 
     def get_action_abv(a):
