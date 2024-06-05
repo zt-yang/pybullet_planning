@@ -593,8 +593,6 @@ class PDDLStreamEnv(PDDLEnv):
                 params = [TypedEntity(pred.param_names[i], pred.var_types[i]) for i in range(len(pred.param_names))]
                 mapping = {params[i]: cond.variables[i] for i in range(len(params))}
 
-                if pred.name.lower() == 'arrangeable':
-                    print('arrangeable')
                 literals = pred.body.literals if isinstance(pred.body, LiteralDisjunction) else pred.body.body.literals
                 for lit in literals:
                     n = lit.predicate.name

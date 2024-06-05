@@ -902,7 +902,7 @@ def check_goal_achieved(facts, goal, world):
 
         atpose = [f[-1] for f in facts if f[0].lower() in ['atpose'] and f[1] == body]
         found = [f for f in facts if f[0].lower() in ['supported', 'contained'] and \
-                 f[1] == body and f[2] == atpose and f[2] == supporter]
+                 f[1] == body and f[2] in atpose and f[3] == supporter]
         if len(found) > 0:
             return True
 

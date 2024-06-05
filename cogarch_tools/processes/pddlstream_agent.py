@@ -20,6 +20,7 @@ from pybullet_tools.pr2_primitives import Trajectory
 from pybullet_tools.stream_agent import solve_pddlstream, make_init_lower_case
 from pybullet_tools.utils import SEPARATOR, wait_if_gui, WorldSaver
 from pybullet_tools.logging_utils import save_commands, TXT_FILE, summarize_state_changes, print_lists
+from pybullet_tools.logging_utils import myprint as print
 
 from world_builder.actions import get_primitive_actions
 from world_builder.world_utils import get_camera_image
@@ -152,7 +153,6 @@ class PDDLStreamAgent(MotionAgent):
         return exp_name
 
     def goal_achieved(self, observation):
-        from pybullet_tools.logging_utils import myprint as print
 
         ## hack for checking if the plan has been executed
         if self.plan is not None and len(self.plan) == 0:
@@ -186,7 +186,6 @@ class PDDLStreamAgent(MotionAgent):
             10 = {MoveBaseAction} MoveBaseAction{conf: q744=(1.474, 7.326, 0.808, 9.192)}
             11 = {Action: 2} Action(name='pick', args=('left', 4, p1=(0.75, 7.3, 1.24, 0.0, -0.0, 0.0), g104=(-0.0, 0.027, -0.137, 0.0, -0.0, -3.142), q728=(1.474, 7.326, 0.808, 2.909), c544=t(7, 129)))
         """
-        from pybullet_tools.logging_utils import myprint as print
 
         # if self.plan:
         #     self.world.remove_redundant_bodies()
@@ -331,7 +330,6 @@ class PDDLStreamAgent(MotionAgent):
 
     def save_time_log(self, csv_name, solved=True, failed_time=False):
         """ compare the planning time and plan length across runs """
-        from pybullet_tools.logging_utils import myprint as print
         from tabulate import tabulate
 
         durations = {}
@@ -373,17 +371,16 @@ class PDDLStreamAgent(MotionAgent):
 
         return total_planning
 
-    def save_stats(self, solved=True, final=True, failed_time=False):
+    def move_log_to_run_dir(self):
+        if os.path.isfile(TXT_FILE):
+            shutil.move(TXT_FILE, join(self.exp_dir, f"log.txt"))
+
+    def save_stats(self, solved=True, final=True, failed_time=False, save_csv=True):
         print('\n\nsaving statistics\n\n')
         name = self.timestamped_name
 
         ## save one line in cvs of planning time and plan length
-        if final:
-
-            ## save the log txt, commands, and video recording
-            if os.path.isfile(TXT_FILE):
-                shutil.move(TXT_FILE, join(self.exp_dir, f"log.txt"))
-
+        if save_csv:
             csv_name = join(dirname(self.exp_dir), f'{self.exp_name}.csv')
             if self.comparing and ('original' not in self.exp_name):  ## put one directory up
                 csv_name = join(dirname(dirname(self.exp_dir)), f'{self.exp_name}.csv')
@@ -394,6 +391,7 @@ class PDDLStreamAgent(MotionAgent):
 
         if final:
             print('save_stats.total_planning.final')
+            self.move_log_to_run_dir()
             self.time_log.append({'total_planning': total_planning})
 
         ## save the final plan
