@@ -266,15 +266,16 @@ def print_lists(tuples):
 
 
 def print_list(lst, title):
+    lst = sorted(lst, key=lambda x: x[0])
     print(f'\t{title}({len(lst)})')
     print('\t\t' + '\n\t\t'.join([str(f) for f in lst]))
 
 
-def print_dict(dic, title):
+def print_dict(dic, title, indent=3, width=80):
     from pprint import pformat
     title = title.replace('_', ' ').upper()
     myprint('-' * 25 + f' {title} ' + '-' * 25)
-    myprint(pformat(dic, indent=3))
+    myprint(pformat(dict(dic), indent=indent, width=width))
     myprint('-' * 60)
 
 

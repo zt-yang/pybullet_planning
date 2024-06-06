@@ -479,12 +479,14 @@ def sample_obj_in_body_link_space(obj, body, link=None, PLACEMENT_ONLY=False,
         print(f'sample_obj_in_body_link_space(obj={obj}, body={body}, link={link})')
         # wait_for_user()
 
-    aabb = get_aabb(body, link)
+    aabb = get_aabb(body, link) if link is not None else get_aabb(body)
     # draw_aabb(aabb)
 
     x, y, z, yaw = sample_pose(obj, aabb, obj_aabb=get_aabb(obj))
     maybe = obj
     handles = draw_fitted_box(maybe)[-1] if draw else []
+    if visualize:
+        draw_points(body, link)
 
     def sample_one(maybe, handles):
         x, y, z, yaw = sample_pose(obj, aabb, get_aabb(maybe))

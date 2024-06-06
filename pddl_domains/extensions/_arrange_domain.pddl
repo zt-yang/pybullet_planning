@@ -2,7 +2,7 @@
   (:predicates
 
     (Arrangeable ?o ?p ?r)
-    (Arranged ?o)
+    (Stacked ?o ?r)
 
   )
 
@@ -13,11 +13,12 @@
                        (not (UnsafePose ?o ?p))
                        (not (UnsafeApproach ?o ?p ?g))
                        (not (CanMove))
-                       (not (Placed ?o))
+                       (not (Stacked ?o ?r))
+                       ; (not (Placed ?o))  ;; allow regrapsing
                        ; (not (UnsafeATraj ?t)) (not (UnsafeOTraj ?o ?g ?t))
                        )
     :effect (and (AtPose ?o ?p) (HandEmpty ?a) (CanMove)
-                 (not (AtGrasp ?a ?o ?g)) (Placed ?o) (Arranged ?o)
+                 (not (AtGrasp ?a ?o ?g)) (Stacked ?o ?r) ; (Placed ?o)
                  ; (increase (total-cost) (PlaceCost))
                  (increase (total-cost) 1)
             )

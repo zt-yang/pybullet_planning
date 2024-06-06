@@ -87,7 +87,7 @@ class Position(object):
     def iterate(self):
         yield self
     def get_limits(self):
-        return get_joint_limits(self.body, self.joint)
+        return safely_get_joint_limits(self.body, self.joint)
     def is_prismatic(self):
         return get_joint_type(self.body, self.joint) == pybullet.JOINT_PRISMATIC
     def is_revolute(self):
@@ -96,6 +96,16 @@ class Position(object):
         index = self.index
         #index = id(self) % 1000
         return 'pstn{}={}'.format(index, nice(self.value))
+
+
+def safely_get_joint_limits(body, joint):
+    """ some partnet mobility joint has range [-pi/2, 0] where 0 is closed """
+    lower, upper = get_joint_limits(body, joint)
+    if upper == 0 and lower < 0:
+        i = upper
+        upper = lower
+        lower = i
+    return lower, upper
 
 
 class HandleGrasp(object):
@@ -382,6 +392,8 @@ def get_contain_gen(problem, collisions=True, num_samples=20, verbose=False, rel
             spaces = problem.spaces
         else:
             spaces = [space]
+        if isinstance(space, int):
+            print('trying to sample pose inside body', space)
 
         ## ------------------------------------------------
         if learned_sampling and world.learned_pose_list_gen is not None:
@@ -415,8 +427,15 @@ def get_contain_gen(problem, collisions=True, num_samples=20, verbose=False, rel
                 x, y, z, yaw = result
                 body_pose = ((x, y, z), quat_from_euler(Euler(yaw=yaw)))
             else:
-                print('\n\n trying to sample pose inside body', space)
-                body_pose = None
+                ## e.g. braiser body
+                result = sample_obj_in_body_link_space(body, body=space, link=None,
+                                                       PLACEMENT_ONLY=True, verbose=verbose, **kwargs)
+                if result is None:
+                    break
+                _, _, z, yaw = result
+                x, y, _ = get_aabb_center(get_aabb(space))
+                body_pose = ((x, y, z), quat_from_euler(Euler(yaw=yaw)))
+
             if body_pose is None:
                 break
 
@@ -468,7 +487,7 @@ def get_pose_in_space_test():
 """
 
 
-def get_above_pose_gen(problem, collisions=True, num_samples=5):
+def get_above_pose_gen(problem, collisions=True, num_samples=5, visualize=False):
     def gen(region, p2, body):
         if isinstance(region, int):  ## otherwise it's static link
             p2.assign()
@@ -483,7 +502,11 @@ def get_above_pose_gen(problem, collisions=True, num_samples=5):
             # yield (Pose(body, (point, quat)), )
             for _ in range(num_samples):
                 yaw = random.uniform(0, 2*math.pi)
-                yield (Pose(body, (point, quat_from_euler(Euler(yaw=yaw)))), )
+                p = Pose(body, (point, quat_from_euler(Euler(yaw=yaw, roll=PI))))
+                if visualize:
+                    set_renderer(True)
+                    p.assign()
+                yield (p, )
     return gen
 
 
@@ -526,10 +549,7 @@ def sample_joint_position_closed_gen():
     def fn(o, pstn1):
         upper = Position(o, 'max').value
         lower = Position(o, 'min').value
-        if upper > 0:
-            yield (Position(o, lower), )
-        if lower < 0:
-            yield (Position(o, upper), )
+        yield (Position(o, lower), )
     return fn
 
 
@@ -567,10 +587,6 @@ def sample_joint_position_gen(num_samples=14, p_max=PI, to_close=False, visualiz
 
         upper = Position(o, 'max').value
         lower = Position(o, 'min').value
-        if lower > upper:
-            sometime = lower
-            lower = upper
-            upper = sometime
         if upper > p_max:
             upper = min([upper, p_max])
         if lower < -p_max:

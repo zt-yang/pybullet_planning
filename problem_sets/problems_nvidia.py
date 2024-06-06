@@ -1,6 +1,7 @@
 import random
 
 from pybullet_tools.utils import set_camera_pose
+from pybullet_tools.pose_utils import sample_obj_in_body_link_space
 
 from world_builder.loaders_partnet_kitchen import put_lid_on_braiser
 from world_builder.loaders_nvidia_kitchen import *
@@ -928,6 +929,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
         dishwasher_space = world.name_to_body('upper_shelf')
         dishwasher_joint = world.name_to_body('dishwasher_door')
         cabinet_space = world.name_to_body('sektion')
+        braiser_body = world.name_to_body('braiserbody')
 
         joint = fridge_door  ## fridge_door | cabinet_doors[0] | cabinet_doors[1]
         # goals = ('test_joint_open', joint)
@@ -950,6 +952,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
         goals = [("Holding", arm, movable)]
         goals = [("On", movable, counter)]
         goals = [("In", movable, cabinet_space)]
+
         # goals = ('test_relpose_inside_gen', (movable, drawer_link))
         # goals = [("In", movable, drawer_link)]
 
@@ -959,6 +962,16 @@ def test_kitchen_chicken_soup(args, **kwargs):
         # world.add_to_cat(lid, 'movable')
         # world.add_to_cat(braiser, 'surface')
         # goals = [("On", lid, braiser)]
+
+        obj = world.name_to_object('chicken-leg')
+        world.name_to_object('indigo_tmp').place_obj(world.name_to_object('braiserlid'))
+        goals = [("In", movable, braiser_body)]
+
+        movable = world.name_to_body('chicken-leg')
+        goals = ("test_object_grasps", movable)
+
+        # sample_obj_in_body_link_space(obj, braiser_body, link=None, PLACEMENT_ONLY=False,
+        #                               draw=False, verbose=True, visualize=True, max_trial=3)
 
         #########################################################################
 
@@ -1168,7 +1181,7 @@ def test_kitchen_sprinkle(args, **kwargs):
         """ test 1: sprinkle into """
         # goals = [['OpenedJoint', right_door]]
         goals = [['Holding', arm, salt_shaker]]
-        # goals = ('test_pose_above_gen', (salt_shaker, plate))
+        goals = ('test_pose_above_gen', (salt_shaker, plate))
         # goals = [['SprinkledTo', salt_shaker, plate]]
         # goals = [['SprinkledTo', salt_shaker, braiser_bottom.pybullet_name]]
         # goals = [['SprinkledTo', salt_shaker, braiser.pybullet_name]]

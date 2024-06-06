@@ -3051,6 +3051,8 @@ def get_collision_data(body, link=BASE_LINK):
     ## https://products.aspose.app/3d/conversion/dae-to-obj
     if not isinstance(body, int):
         body = body.body
+    if link is None:
+        link = BASE_LINK
     try:
         data = p.getCollisionShapeData(body, link, physicsClientId=CLIENT)
         return [CollisionShapeData(*tup) for tup in data]

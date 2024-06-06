@@ -201,6 +201,7 @@ def get_pddlstream_kwargs(args, skeleton, subgoals, initializer, pddlstream_debu
                           soft_subgoals=False, max_evaluation_plans=30, max_complexity=5,
                           max_iterations=4):
     fc = None if not args.use_heuristic_fc else get_feasibility_checker(initializer, mode='heuristic')
+    debug = args.pddlstream_debug if hasattr(args, 'pddlstream_debug') else pddlstream_debug
     solver_kwargs = dict(
         skeleton=skeleton,
         subgoals=subgoals,
@@ -220,16 +221,15 @@ def get_pddlstream_kwargs(args, skeleton, subgoals, initializer, pddlstream_debu
         max_evaluation_plans=max_evaluation_plans,  ## used by focused planning loop
         max_complexity=max_complexity,
         max_iterations=max_iterations,
-        debug=pddlstream_debug
+        debug=debug
     )
-    for k in ['pddlstream_debug', 'soft_subgoals', 'max_evaluation_plans', 'max_complexity',
-              'max_iterations']:
+    for k in ['soft_subgoals', 'max_evaluation_plans', 'max_complexity', 'max_iterations']:
         if hasattr(args, k):
             solver_kwargs[k] = getattr(args, k)
     if debugger_is_active():
         solver_kwargs['evaluation_time'] *= 2
         solver_kwargs['total_planning_timeout'] *= 2
-        solver_kwargs['stream_planning_timeout'] *= 2.5
+        solver_kwargs['stream_planning_timeout'] *= 2
     return solver_kwargs
 
 

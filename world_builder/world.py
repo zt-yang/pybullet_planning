@@ -239,6 +239,7 @@ class World(WorldBase):
         self.changed_joints = []
         self.non_planning_objects = []
         self.not_stackable = defaultdict(list)
+        self.not_containable = defaultdict(list)
         self.c_ignored_pairs = []
         self.planning_config = {'camera_zoomins': [], 'camera_poses': {}}
         self.inited_link_joint_relations = False
@@ -267,6 +268,16 @@ class World(WorldBase):
                     if verbose:
                         print('world.removed redundant body', b)
 
+    ## --------------------------------------------------------------------------------------
+
+    def add_not_containable(self, body, space, verbose=False):
+        self.not_containable[body].append(space)
+        if verbose:
+            print(f'world.do_not_contain({body}, {space})')
+
+    def check_not_containable(self, body, space):
+        return body in self.not_containable and space in self.not_containable[body]
+
     def add_not_stackable(self, body, surface, verbose=False):
         self.not_stackable[body].append(surface)
         if verbose:
@@ -274,6 +285,8 @@ class World(WorldBase):
 
     def check_not_stackable(self, body, surface):
         return body in self.not_stackable and surface in self.not_stackable[body]
+
+    ## --------------------------------------------------------------------------------------
 
     def make_transparent(self, name, transparency=0.5):
         if isinstance(name, str):
@@ -986,10 +999,9 @@ class World(WorldBase):
     ## ---------------------------------------------------------
 
     def get_name_from_body(self, body):
-        if body in self.BODY_TO_OBJECT:
-            return self.BODY_TO_OBJECT[body].name
-        elif body in self.ROBOT_TO_OBJECT:
-            return self.ROBOT_TO_OBJECT[body].name
+        obj = self.body_to_object(body)
+        if obj is not None:
+            return obj.name
         return None
 
     def name_to_body(self, name, include_removed=False):
@@ -1010,6 +1022,8 @@ class World(WorldBase):
             return self.BODY_TO_OBJECT[body]
         if body in self.REMOVED_BODY_TO_OBJECT:
             return self.REMOVED_BODY_TO_OBJECT[body]
+        elif body in self.ROBOT_TO_OBJECT:
+            return self.ROBOT_TO_OBJECT[body]
         print(f'world.body_to_object | body {body} not found')
         return None  ## object doesn't exist
 
@@ -1503,6 +1517,8 @@ class World(WorldBase):
 
             ## potential places to put in ## TODO: check size
             for space in spaces:
+                if self.check_not_containable(body, space):
+                    continue
                 init += [('Containable', body, space)]
                 if is_contained(body, space) or BODY_TO_OBJECT[space].is_contained(body):
                     # if is_contained(body, space) != BODY_TO_OBJECT[space].is_contained(body):

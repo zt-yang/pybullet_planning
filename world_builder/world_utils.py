@@ -894,7 +894,7 @@ def get_objs_in_camera_images(camera_images, world=None, show=False, save=False,
 
 
 def check_goal_achieved(facts, goal, world):
-    if goal[0] in ['on', 'in'] and len(goal) == 3:
+    if goal[0] in ['on', 'in', 'stacked'] and len(goal) == 3:
         body, supporter = goal[1], goal[2]
         atrelpose = [f[-1] for f in facts if f[0].lower() in ['atrelpose'] and f[1] == body and f[-1] == supporter]
         if len(atrelpose) > 0:
@@ -906,14 +906,14 @@ def check_goal_achieved(facts, goal, world):
         if len(found) > 0:
             return True
 
-    if goal[0] in ['openedjoint', 'closedjoint'] and len(goal) == 2 and isinstance(goal[1], tuple):
+    if goal[0] in ['openedjoint', 'closedjoint', 'close', 'open'] and len(goal) == 2 and isinstance(goal[1], tuple):
         joint = goal[1]
         min_position = Position(joint, 'min').value
         atposition = [f[-1] for f in facts if f[0].lower() in ['atposition'] and f[1] == joint]
         if len(atposition):
-            if goal[0] == 'openedjoint' and atposition[0].value != min_position:
+            if goal[0] in ['openedjoint', 'open'] and atposition[0].value != min_position:
                 return True
-            if goal[0] == 'closedjoint' and atposition[0].value == min_position:
+            if goal[0] in ['closedjoint', 'close'] and atposition[0].value == min_position:
                 return True
     return False
 
@@ -941,25 +941,31 @@ def sort_body_indices(lst):
     return sorted_lst
 
 
-def add_joint_status_facts(body, position, verbose=False):
+def add_joint_status_facts(body, position=None, verbose=False, return_description=False):
     init = []
     title = f'get_world_fluents | joint {body} is'
 
     if is_joint_open(body, threshold=1, is_closed=True):
         init += [('IsClosedPosition', body, position)]
-        if verbose: print(title, 'fully closed')
+        description = 'fully closed'
 
     elif not is_joint_open(body, threshold=0.25):
         init += [('IsClosedPosition', body, position)]
-        if verbose: print(title, 'slightly open')
+        description = 'slightly open'
 
     elif is_joint_open(body, threshold=1):
         init += [('IsOpenedPosition', body, position)]
-        if verbose: print(title, 'fully open')
+        description = 'fully open'
 
     else:
         init += [('IsOpenedPosition', body, position)]
-        if verbose: print(title, 'partially open')
+        description = 'partially open'
+
+    if verbose:
+        print(title, description)
+
+    if return_description:
+        return description
 
     return init
 

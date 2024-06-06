@@ -492,9 +492,6 @@ class PDDLStreamAgent(MotionAgent):
         a, b, c, _, init, f = self.pddlstream_problem
         if self.facts_to_update_pddlstream_problem is not None:
             added, deled = self.facts_to_update_pddlstream_problem
-            if added[0] == 0:  ## added by mistake
-                added.pop(0)
-                deled.pop(0)
             init = update_facts(init, added, deled)
         self.pddlstream_problem = PDDLProblem(a, b, c, stream_map, init, f)
         self.env_execution.static_literals = static_literals
@@ -556,6 +553,11 @@ def update_facts(facts, added, deled):
     return [f for f in set(facts + added) if f not in deled]
 
 
+def find_facts_by_pair(facts, at_something, something):
+    objs = [f[-1] for f in facts if f[0] == at_something]
+    return [f for f in facts if f[0] in [at_something, something] and f[-1] in objs]
+
+
 def filter_dynamic_facts(facts):
     ## the following predicates are generated again by state thus ignored
     ignored_preds = [
@@ -570,14 +572,17 @@ def filter_dynamic_facts(facts):
 
     ## these cannot be observed by state ## TODO: fix it
     keep_preds = [
-        'atgrasp', 'supported', 'contained',
+        'supported', 'contained',  ## 'atgrasp',
         'isnudgedposition', 'isopenposition', 'issamplednudgedposition',
     ] ##
 
     def keep_fact(f):
         return f[0] in keep_preds
 
+    find_atgrasp = find_facts_by_pair(facts, 'atgrasp', 'grasp')
     facts = [f for f in facts if keep_fact(f)]
+    print(f'filter_dynamic_facts\t found grasps {find_atgrasp}')
+    facts += find_atgrasp
 
     ## some positive and negative effects cancel out
     to_remove = []

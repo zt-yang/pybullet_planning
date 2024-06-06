@@ -1,4 +1,5 @@
 import random
+from collections import defaultdict
 
 from pybullet_tools.pr2_primitives import Conf, get_group_joints
 from pybullet_tools.utils import invert, get_name, pairwise_collision, sample_placement_on_aabb, \
@@ -32,8 +33,8 @@ default_supports = [
     ['appliance', 'microwave', True, 'microwave', 'hitman_tmp'],
     ['food', 'MeatTurkeyLeg', True, 'chicken-leg', 'shelf_top'],
     ['food', 'VeggieCabbage', True, 'cabbage', 'upper_shelf'],  ## ['shelf_bottom', 'indigo_drawer_top]
-    ['food', 'Salter', '3934', 'salt-shaker', 'sektion'],
-    ['food', 'Salter', '5861', 'pepper-shaker', 'sektion'],
+    ['condiment', 'Salter', '3934', 'salt-shaker', 'sektion'],
+    ['condiment', 'Salter', '5861', 'pepper-shaker', 'sektion'],
     # ['utensil', 'PotBody', True, 'pot', 'indigo_tmp'],
     ['utensil', 'KitchenFork', True, 'fork', 'upper_shelf'],  ## ['indigo_drawer_top]
     # ['utensil', 'KitchenKnife', True, 'knife', 'indigo_drawer_top'],
@@ -160,6 +161,7 @@ def load_braiser_bottom(world):
     world.add_to_cat('braiserlid', 'movable')
     world.add_to_cat('braiserbody', 'surface')
     world.add_to_cat('braiserbody', 'region')
+    world.add_to_cat('braiserbody', 'space')
 
 
 def load_cooking_mechanism(world):
@@ -193,22 +195,42 @@ def prevent_funny_placements(world, verbose=True):
     """ need to be automated by LLMs """
 
     movables = world.cat_to_bodies('movable')
+    food = world.cat_to_bodies('food')
 
-    ## only the lid can be placed on braiser body
+    ## only the lid can be placed on braiserbody or the front left stove
+    ## only food can be placed on braiser bottom, or inside braiserbody
     braiserbody = world.name_to_body('braiserbody')
-
-    ## only food can be placed on braiser bottom
+    braiserlid = world.name_to_body('braiserlid')
+    stove = world.name_to_body('front_left_stove')
     braiser_bottom = world.name_to_body('braiser_bottom')
 
     for o in movables:
-        if o in [world.name_to_body('braiserlid'), braiserbody]:
-            continue
-        world.add_not_stackable(o, braiserbody)
         if o not in world.cat_to_bodies('food'):
             world.add_not_stackable(o, braiser_bottom)
+            world.add_not_containable(o, braiserbody)
+        if o != braiserlid:
+            world.add_not_stackable(o, braiserbody)
+            world.add_not_stackable(o, stove)
 
     if verbose:
-        print_dict(dict(world.not_stackable), 'world.not_stackable')
+        get_name = world.get_name_from_body
+
+        for dic, name1, name2 in [
+            (world.not_stackable, 'world.not_stackable', 'cannot_supported'),
+            (world.not_containable, 'world.not_containable', 'connot_contain'),
+        ]:
+            dic_to_print = defaultdict(list)
+            dic_to_print_inv = defaultdict(list)
+            for k, v in dic.items():
+                key = get_name(k)
+                values = [get_name(vv) for vv in v]
+                dic_to_print[key] = values
+                for vv in values:
+                    dic_to_print_inv[vv].append(key)
+            print_dict(dic_to_print, name1)
+            print_dict(dic_to_print_inv, name2)
+            print()
+        print()
 
 
 def load_open_problem_kitchen(world, reduce_objects=False, open_doors_for=[]):

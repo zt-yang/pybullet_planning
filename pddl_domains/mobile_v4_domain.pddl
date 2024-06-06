@@ -191,7 +191,7 @@
 
 
     (Arrangeable ?o ?p ?r)
-    (Arranged ?o)
+    (Stacked ?o ?r)
 
 
   )
@@ -303,11 +303,11 @@
                        (not (UnsafePose ?o ?p))
                        (not (UnsafeApproach ?o ?p ?g))
                        (not (CanMove))
-                       (not (Placed ?o))
+                       ; (not (Placed ?o))  ;; allow regrapsing
                        ; (not (UnsafeATraj ?t)) (not (UnsafeOTraj ?o ?g ?t))
                        )
     :effect (and (AtPose ?o ?p) (HandEmpty ?a) (CanMove)
-                 (not (AtGrasp ?a ?o ?g)) (Placed ?o)
+                 (not (AtGrasp ?a ?o ?g)) ; (Placed ?o)
                  ; (increase (total-cost) (PlaceCost))
                  (increase (total-cost) 1)
             )
@@ -407,7 +407,7 @@
                          (KinGraspHandle ?a ?o ?p ?g ?q ?aq2 ?t)
                          (AtPosition ?o ?p) (HandEmpty ?a)
                          (AtBConf ?q) (AtAConf ?a ?aq1)
-                         (not (Pulled ?o))
+                         (not (Pulled ?o)) (CanPull ?a)
                          ;(Enabled)
                     )
       :effect (and (AtHandleGrasp ?a ?o ?g) (not (HandEmpty ?a)) (not (CanPick))
@@ -689,11 +689,12 @@
                        (not (UnsafePose ?o ?p))
                        (not (UnsafeApproach ?o ?p ?g))
                        (not (CanMove))
-                       (not (Placed ?o))
+                       (not (Stacked ?o ?r))
+                       ; (not (Placed ?o))  ;; allow regrapsing
                        ; (not (UnsafeATraj ?t)) (not (UnsafeOTraj ?o ?g ?t))
                        )
     :effect (and (AtPose ?o ?p) (HandEmpty ?a) (CanMove)
-                 (not (AtGrasp ?a ?o ?g)) (Placed ?o) (Arranged ?o)
+                 (not (AtGrasp ?a ?o ?g)) (Stacked ?o ?r) ; (Placed ?o)
                  ; (increase (total-cost) (PlaceCost))
                  (increase (total-cost) 1)
             )
@@ -702,5 +703,7 @@
   (:derived (Arrangeable ?o ?p ?r)
     (or (Supported ?o ?p ?r) (Contained ?o ?p ?r))
   )
+
+
 
 )
