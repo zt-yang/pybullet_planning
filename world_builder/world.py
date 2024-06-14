@@ -290,6 +290,24 @@ class World(WorldBase):
     def check_not_stackable(self, body, surface):
         return body in self.not_stackable and surface in self.not_stackable[body]
 
+    def summarize_forbidden_placements(self):
+        for dic, name1, name2 in [
+            (self.not_stackable, 'world.not_stackable', 'cannot_supported'),
+            (self.not_containable, 'world.not_containable', 'connot_contain'),
+        ]:
+            dic_to_print = defaultdict(list)
+            dic_to_print_inv = defaultdict(list)
+            for k, v in dic.items():
+                key = self.get_name_from_body(k)
+                values = [self.get_name_from_body(vv) for vv in v]
+                dic_to_print[key] = values
+                for vv in values:
+                    dic_to_print_inv[vv].append(key)
+            print_dict(dic_to_print, name1)
+            print_dict(dic_to_print_inv, name2)
+            print()
+        print()
+
     ## --------------------------------------------------------------------------------------
 
     def make_transparent(self, name, transparency=0.5):

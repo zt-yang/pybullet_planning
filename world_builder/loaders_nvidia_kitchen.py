@@ -203,6 +203,7 @@ def prevent_funny_placements(world, verbose=True):
 
     movables = world.cat_to_bodies('movable')
     food = world.cat_to_bodies('food')
+    condiments = world.cat_to_bodies('condiment')
 
     ## only the lid can be placed on braiserbody or the front left stove
     ## only food can be placed on braiser bottom, or inside braiserbody
@@ -212,7 +213,7 @@ def prevent_funny_placements(world, verbose=True):
     braiser_bottom = world.name_to_body('braiser_bottom')
 
     for o in movables:
-        if o not in world.cat_to_bodies('food'):
+        if o not in food + condiments:
             world.add_not_stackable(o, braiser_bottom)
             world.add_not_containable(o, braiserbody)
         if o != braiserlid:
@@ -220,27 +221,10 @@ def prevent_funny_placements(world, verbose=True):
             world.add_not_stackable(o, stove)
 
     if verbose:
-        get_name = world.get_name_from_body
-
-        for dic, name1, name2 in [
-            (world.not_stackable, 'world.not_stackable', 'cannot_supported'),
-            (world.not_containable, 'world.not_containable', 'connot_contain'),
-        ]:
-            dic_to_print = defaultdict(list)
-            dic_to_print_inv = defaultdict(list)
-            for k, v in dic.items():
-                key = get_name(k)
-                values = [get_name(vv) for vv in v]
-                dic_to_print[key] = values
-                for vv in values:
-                    dic_to_print_inv[vv].append(key)
-            print_dict(dic_to_print, name1)
-            print_dict(dic_to_print_inv, name2)
-            print()
-        print()
+        world.summarize_forbidden_placements()
 
 
-def load_open_problem_kitchen(world, reduce_objects=False, open_doors_for=[]):
+def load_open_problem_kitchen(world, reduce_objects=False, difficulty=1, open_doors_for=[]):
     spaces = {
         'counter': {
             'sektion': [],
@@ -275,6 +259,11 @@ def load_open_problem_kitchen(world, reduce_objects=False, open_doors_for=[]):
     objects = None
     if reduce_objects:
         objects = get_objects_for_open_kitchen(world)
+
+    if difficulty == 0:
+        for door in world.cat_to_bodies('door'):
+            world.open_joint(door, extent=0.8)
+        world.name_to_object('front_left_stove').place_obj(world.name_to_object('braiserlid'))
 
     return objects, movables, movable_to_doors
 

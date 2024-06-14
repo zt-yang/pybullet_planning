@@ -156,7 +156,8 @@ def find_grasp_in_db(db_file, instance_name, length_variants=False, scale=None,
             grasp_key = 'grasps_l'
 
         ## the newest format has attr including 'name', 'grasps', 'grasps_length_variants'
-        if '::' not in instance_name or ('scale' in all_data and scale == all_data['scale']):
+        if '::' not in instance_name or ('scale' in all_data and scale == all_data['scale']) \
+                and grasp_key in all_data:
             data = all_data[grasp_key]
             if len(data) > 0:
                 found = rewrite_grasps(data)
