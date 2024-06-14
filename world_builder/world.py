@@ -247,6 +247,10 @@ class World(WorldBase):
         ## for speeding up planning
         self.learned_bconf_list_gen = None
         self.learned_pose_list_gen = None
+        self.learned_position_list_gen = None
+        self.learned_bconf_database = None
+        self.learned_pose_database = None
+        self.learned_position_database = None
 
         ## for visualization
         self.path = None
@@ -439,6 +443,17 @@ class World(WorldBase):
         for body in self.BODY_TO_OBJECT:
             aabbs.append(get_aabb(body))
         return get_merged_aabb(aabbs)
+
+    def get_objects_by_type(self, objects=None):
+        if objects is None:
+            objects = list(self.BODY_TO_OBJECT)
+        extra_categories = ['food', 'utensil', 'condiment', 'appliance', 'region', 'button', 'knob']
+        result = self.summarize_all_types(return_full=True, categories=extra_categories)
+        summary = {}
+        for cat, bodies in result.items():
+            summary[f"<{cat}>"] = [self.get_english_name(body) for body in bodies if body in objects]
+        print_dict(summary, 'objects by category')
+        return pformat(summary, indent=3)
 
     ## ---------------------------------------------------------
 
@@ -665,13 +680,20 @@ class World(WorldBase):
     def summarize_attachments(self):
         return {k.body: (v.parent.body, v.parent_link, v.grasp_pose) for k, v in self.attachments.items()}
 
-    def summarize_all_types(self):
-        printout = ''
-        for typ in ['movable', 'surface', 'space', 'joint', 'door', 'drawer']:
-            num = len(self.cat_to_bodies(typ))
-            if num > 0:
-                printout += "{type}({num}), ".format(type=typ, num=num)
-        return printout
+    def summarize_all_types(self, return_full=False, categories=[]):
+        summary = {}
+        printout = []
+        for typ in ['movable', 'surface', 'space', 'joint', 'door', 'drawer']+categories:
+            bodies = self.cat_to_bodies(typ)
+            if return_full:
+                summary[typ] = bodies
+            else:
+                num = len(bodies)
+                if num > 0:
+                    printout.append(f"{typ}({num})")
+        if return_full:
+            return summary
+        return ', '.join(printout)
 
     def summarize_all_objects(self, print_fn=None):
         if print_fn is None:
@@ -975,6 +997,33 @@ class World(WorldBase):
     def set_learned_pose_list_gen(self, pose_list_gen):
         """ likely defined in world_builder/loaders_{DOMAIN}.py """
         self.learned_pose_list_gen = pose_list_gen
+
+    def set_learned_position_list_gen(self, list_gen_fn):
+        """ likely defined in world_builder/loaders_{DOMAIN}.py """
+        self.learned_position_list_gen = list_gen_fn
+
+    def reset_learned_samplers(self):
+        self.learned_bconf_list_gen = None
+        self.learned_pose_list_gen = None
+        self.learned_position_list_gen = None
+        self.learned_bconf_database = None
+        self.learned_pose_database = None
+        self.learned_position_database = None
+
+    def remove_unpickleble_attributes(self):
+        cached_attributes = {
+            'learned_pose_list_gen': self.learned_pose_list_gen,
+            'learned_bconf_list_gen': self.learned_bconf_list_gen,
+            'learned_position_list_gen': self.learned_position_list_gen
+        }
+        self.reset_learned_samplers()
+        self.robot.reset_ik_solvers()
+        return cached_attributes
+
+    def recover_unpickleble_attributes(self, cached_attributes):
+        self.learned_pose_list_gen = cached_attributes['learned_pose_list_gen']
+        self.learned_bconf_list_gen = cached_attributes['learned_bconf_list_gen']
+        self.learned_position_list_gen = cached_attributes['learned_position_list_gen']
 
     ##################################################################################
 
@@ -1720,19 +1769,6 @@ class World(WorldBase):
             print(f'   find {len(possible)} out of {len(surfaces)} surfaces for {obj}', possible)
         possible = sorted(possible, key=get_area, reverse=True)
         return possible
-
-    def remove_unpickleble_attributes(self):
-        self.cached_attributes = {
-            'learned_pose_list_gen': self.learned_pose_list_gen,
-            'learned_bconf_list_gen': self.learned_bconf_list_gen
-        }
-        self.learned_pose_list_gen = None
-        self.learned_bconf_list_gen = None
-        self.robot.reset_ik_solvers()
-
-    def recover_unpickleble_attributes(self):
-        self.learned_pose_list_gen = self.cached_attributes['learned_pose_list_gen']
-        self.learned_bconf_list_gen = self.cached_attributes['learned_bconf_list_gen']
 
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, self.robot)

@@ -602,6 +602,7 @@ class MobileRobot(RobotAPI):
 
     def inverse_kinematics(self, arm, grasp_pose, obstacles,
                            verbose=True, visualize=False, debug=False):
+        start_time = time.time()
         tool_pose = self.get_tool_pose_for_ik(arm, grasp_pose)
         tool_link = self.get_tool_link(arm)
         arm_joints = self.get_arm_joints(arm)
@@ -620,7 +621,7 @@ class MobileRobot(RobotAPI):
                 if not collided(self.body, tag='robot.TracIK', **kwargs):
                     result = arm_conf
                     if verbose:
-                        print(title, f'found cfree ik for arm')
+                        print(title, f'found cfree ik for arm in {round(time.time() - start_time, 2)} seconds')
 
         if debug:
             set_renderer(False)

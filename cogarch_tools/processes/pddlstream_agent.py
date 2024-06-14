@@ -312,10 +312,10 @@ class PDDLStreamAgent(MotionAgent):
         print('-'*50, '\n')
 
     def remove_unpickleble_attributes(self):
-        self.world.remove_unpickleble_attributes()
+        return self.world.remove_unpickleble_attributes()
 
-    def recover_unpickleble_attributes(self):
-        self.world.recover_unpickleble_attributes()
+    def recover_unpickleble_attributes(self, cache):
+        self.world.recover_unpickleble_attributes(cache)
 
     def record_command(self, action):
         self.commands.append(action)
@@ -324,9 +324,9 @@ class PDDLStreamAgent(MotionAgent):
         if commands is None:
             commands = self.commands
         if len(commands) > 0:
-            self.remove_unpickleble_attributes()
+            cache = self.remove_unpickleble_attributes()
             save_commands(commands, commands_path)
-            self.recover_unpickleble_attributes()
+            self.recover_unpickleble_attributes(cache)
 
     def save_time_log(self, csv_name, solved=True, failed_time=False):
         """ compare the planning time and plan length across runs """
@@ -426,6 +426,7 @@ class PDDLStreamAgent(MotionAgent):
         self.observations = []
         self.world_state = None
         self.world.robot.reset_ik_solvers()
+        cache = self.world.remove_unpickleble_attributes()
         if self.env_execution is not None:
             self.env_execution._pddlstream_problem = update_stream_map(self.env_execution._pddlstream_problem, None)
             self.env_execution.static_literals = None
@@ -445,6 +446,7 @@ class PDDLStreamAgent(MotionAgent):
         #         pickle.dump(v, f)
 
         ## reassign those unpickleble elements to None
+        self.world.recover_unpickleble_attributes(cache)
         if self.env_execution is not None:
             self.env_execution._pddlstream_problem = update_stream_map(self.env_execution._pddlstream_problem, stream_map)
             self.env_execution.static_literals = static_literals
@@ -472,11 +474,14 @@ class PDDLStreamAgent(MotionAgent):
         _observation_space = self.env_execution._observation_space
         variables = self.initial_state.variables
 
+        cache = self.world.remove_unpickleble_attributes()
+
         with open(agent_state_path, 'br') as f:
             self = pickle.load(f)
 
         self.world.robot = robot
         self.world.attachments = attachments
+        self.world.recover_unpickleble_attributes(cache)
 
         ## roll out world state to the last planning state
         commands_path = agent_state_path.replace('agent_state_', 'commands_')

@@ -266,7 +266,7 @@
                        ; (not (Placed ?o))  ;; allow regrapsing
                        ; (not (UnsafeATraj ?t)) (not (UnsafeOTraj ?o ?g ?t))
                        )
-    :effect (and (AtPose ?o ?p) (HandEmpty ?a) (CanMove)
+    :effect (and (AtPose ?o ?p) (HandEmpty ?a) (CanPull ?a) (CanMove)
                  (not (AtGrasp ?a ?o ?g)) ; (Placed ?o)
                  ; (increase (total-cost) (PlaceCost))
                  (increase (total-cost) 1)

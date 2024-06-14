@@ -11,6 +11,7 @@ DATA_CONFIG_PATH = abs_join(PBP_PATH, 'data_generator', 'configs')
 
 """ ------ useful directories -------- """
 PROJECT_PATH = abs_join(PBP_PATH, '..')
+DATABASES_PATH = abs_join(PBP_PATH, 'databases')
 TEMP_PATH = abs_join(PROJECT_PATH, 'temp')
 ASSET_PATH = abs_join(PROJECT_PATH, 'assets')
 EXP_PATH = abs_join(PROJECT_PATH, 'experiments')

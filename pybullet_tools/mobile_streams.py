@@ -316,7 +316,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
 
     ## use domain specific bconf databases
     if learned and world.learned_bconf_list_gen is not None:
-        results = world.learned_bconf_list_gen(world, inputs)
+        results = world.learned_bconf_list_gen(world, inputs, num_samples=ir_max_attempts)
         searched = False
         for bq in results:
             searched = True

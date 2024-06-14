@@ -219,7 +219,8 @@ def print_goal(goal, world=None, print_fn=None):
         print_fn = myprint
 
     print_fn(f'Goal ({len(goal) - 1}): ({goal[0]}')
-    for each in get_readable_list(goal[1:], world):
+    goals_to_print = [get_readable_list(g, world) for g in goal[1:]]
+    for each in goals_to_print:
         print_fn(f'   {tuple(each)},')
     print_fn(')')
 

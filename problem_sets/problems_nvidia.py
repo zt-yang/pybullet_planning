@@ -945,30 +945,30 @@ def test_kitchen_chicken_soup(args, **kwargs):
         goals = [("OpenedJoint", joint)]
         # goals = ("test_object_grasps", movable);
         # goals = [("Holding", arm, movable)]; world.open_joint(joint, extent=1)
-        # goals = [("OpenedJoint", joint), ("Holding", arm, movable)]
+        goals = [("OpenedJoint", joint), ("Holding", arm, movable)]
 
-        movable = movables[goal_object]
+        # movable = movables[goal_object]
+        # # goals = ("test_object_grasps", movable)
+        # goals = [("Holding", arm, movable)]
+        # goals = [("On", movable, counter)]
+        # goals = [("In", movable, cabinet_space)]
+        #
+        # # goals = ('test_relpose_inside_gen', (movable, drawer_link))
+        # # goals = [("In", movable, drawer_link)]
+        #
+        # # lid = world.name_to_body('braiserlid')
+        # # braiser =  world.name_to_body('braiserbody')
+        # # world.BODY_TO_OBJECT[counter].place_obj(world.BODY_TO_OBJECT[lid])
+        # # world.add_to_cat(lid, 'movable')
+        # # world.add_to_cat(braiser, 'surface')
+        # # goals = [("On", lid, braiser)]
+        #
+        # obj = world.name_to_object('chicken-leg')
+        # world.name_to_object('indigo_tmp').place_obj(world.name_to_object('braiserlid'))
+        # goals = [("In", movable, braiser_body)]
+        #
+        # movable = world.name_to_body('chicken-leg')
         # goals = ("test_object_grasps", movable)
-        goals = [("Holding", arm, movable)]
-        goals = [("On", movable, counter)]
-        goals = [("In", movable, cabinet_space)]
-
-        # goals = ('test_relpose_inside_gen', (movable, drawer_link))
-        # goals = [("In", movable, drawer_link)]
-
-        # lid = world.name_to_body('braiserlid')
-        # braiser =  world.name_to_body('braiserbody')
-        # world.BODY_TO_OBJECT[counter].place_obj(world.BODY_TO_OBJECT[lid])
-        # world.add_to_cat(lid, 'movable')
-        # world.add_to_cat(braiser, 'surface')
-        # goals = [("On", lid, braiser)]
-
-        obj = world.name_to_object('chicken-leg')
-        world.name_to_object('indigo_tmp').place_obj(world.name_to_object('braiserlid'))
-        goals = [("In", movable, braiser_body)]
-
-        movable = world.name_to_body('chicken-leg')
-        goals = ("test_object_grasps", movable)
 
         # sample_obj_in_body_link_space(obj, braiser_body, link=None, PLACEMENT_ONLY=False,
         #                               draw=False, verbose=True, visualize=True, max_trial=3)

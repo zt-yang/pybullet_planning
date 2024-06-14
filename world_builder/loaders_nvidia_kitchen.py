@@ -1,5 +1,10 @@
+import pickle
 import random
 from collections import defaultdict
+
+from os.path import join
+
+import numpy as np
 
 from pybullet_tools.pr2_primitives import Conf, get_group_joints
 from pybullet_tools.utils import invert, get_name, pairwise_collision, sample_placement_on_aabb, \
@@ -7,7 +12,9 @@ from pybullet_tools.utils import invert, get_name, pairwise_collision, sample_pl
 from pybullet_tools.pose_utils import sample_pose, xyzyaw_to_pose, sample_center_top_surface
 from pybullet_tools.bullet_utils import nice, collided, equal
 from pybullet_tools.logging_utils import print_dict
+from pybullet_tools.general_streams import Position
 
+from world_builder.paths import DATABASES_PATH
 from world_builder.world_utils import sort_body_indices
 from world_builder.loaders import *
 
@@ -260,6 +267,10 @@ def load_open_problem_kitchen(world, reduce_objects=False, open_doors_for=[]):
                                                               custom_supports=custom_supports)
     load_cooking_mechanism(world)
     prevent_funny_placements(world)
+
+    world.set_learned_pose_list_gen(learned_nvidia_pickled_pose_list_gen)
+    world.set_learned_bconf_list_gen(learned_nvidia_pickled_bconf_list_gen)
+    world.set_learned_position_list_gen(learned_nvidia_pickled_position_list_gen)
 
     objects = None
     if reduce_objects:
@@ -545,3 +556,90 @@ def learned_nvidia_bconf_list_gen(world, inputs, verbose=True):
                     print('learned_nvidia_bconf_list_gen | found', len(to_return), 'base confs for', key)
                 break
     return to_return
+
+
+#####################################################################################################
+
+
+def load_database(world, name):
+    dual_arm = '' if not world.robot.dual_arm else 'dual_arm_'
+    pickled_path = join(DATABASES_PATH, f'nvidia_kitchen_{dual_arm}{name}.pickle')
+    return pickle.load(open(pickled_path, 'rb'))
+
+
+def learned_nvidia_pickled_position_list_gen(world, joint, p1, num_samples=30, verbose=True):
+    if world.learned_position_database is None:
+        world.learned_position_database = load_database(world, name='j_to_p')
+
+    results = None
+    key = (str(joint), p1.value)
+    if key in world.learned_position_database:
+        positions = world.learned_position_database[key]
+        results = random.sample(positions, min(num_samples, len(positions)))
+    else:
+        print(f'learned_nvidia_pickled_position_list_gen({key}) not found in database')
+    return results
+
+
+def learned_nvidia_pickled_pose_list_gen(world, body, surfaces, num_samples=30, obstacles=[], verbose=True):
+    if world.learned_pose_database is None:
+        world.learned_pose_database = load_database(world, name='or_to_p')
+    results = None
+    key = (str(body), str(surfaces[0]))
+    if key in world.learned_pose_database:
+        poses = world.learned_pose_database[key]
+        results = random.sample(poses, min(num_samples, len(poses)))
+        results = [(f[:3], quat_from_euler(f[3:])) for f in results]
+    else:
+        print(f'learned_nvidia_pickled_pose_list_gen({key}) not found in database')
+    return results
+
+
+def learned_nvidia_pickled_bconf_list_gen(world, inputs, num_samples=30, verbose=True):
+    from pybullet_tools.pr2_primitives import Pose
+
+    if world.learned_bconf_database is None:
+        database_names = ['ajg_to_p_to_q', 'aog_to_p_to_q']
+        world.learned_bconf_database = {
+            p: load_database(world, name=p) for p in database_names
+        }
+
+    robot = world.robot
+    joints = robot.get_group_joints('base-torso')
+    results = []
+
+    a, o, p, g = inputs[:4]
+    key = (a, str(o), nice(g.value))
+
+    if isinstance(p, Position):
+        database = world.learned_bconf_database['ajg_to_p_to_q']
+
+        if key in database:
+            p_to_q = database[key]
+            if p.value in p_to_q:
+                results = p_to_q[p.value]
+            else:
+                print(f'learned_nvidia_pickled_ajg_to_p_to_q({p.value}) not found in database')
+
+    if isinstance(p, Pose):
+        aog_to_p_to_q = world.learned_bconf_database['aog_to_p_to_q']
+        key = (a, str(o), nice(g.value))
+        if key in aog_to_p_to_q:
+            p_to_q = aog_to_p_to_q[key]
+            key2 = nice(p.value)
+            if key2 in p_to_q:
+                results = p_to_q[key2]
+            else:
+                keys = np.asarray(list(p_to_q.keys()))
+                diff = keys - np.asarray(key2)
+                min_index = np.argmin(np.sum(diff*diff, axis=1))
+                min_diff = diff[min_index]
+                if np.max(np.abs(min_diff)) < 0.1:
+                    key_found = list(p_to_q.keys())[min_index]
+                    results = p_to_q[key_found]
+                else:
+                    print(f'learned_nvidia_pickled_aog_to_p_to_q({key2}) not found in database')
+
+    results = random.sample(results, min(num_samples, len(results)))
+    results = [Conf(robot.body, joints, bq) for bq in results]
+    return results

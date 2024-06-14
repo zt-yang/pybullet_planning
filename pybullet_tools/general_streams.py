@@ -392,8 +392,6 @@ def get_contain_gen(problem, collisions=True, num_samples=20, verbose=False, rel
             spaces = problem.spaces
         else:
             spaces = [space]
-        if isinstance(space, int):
-            print('trying to sample pose inside body', space)
 
         ## ------------------------------------------------
         if learned_sampling and world.learned_pose_list_gen is not None:
@@ -402,16 +400,20 @@ def get_contain_gen(problem, collisions=True, num_samples=20, verbose=False, rel
                 for body_pose in result:
                     p = Pose(body, value=body_pose, support=space)
                     p.assign()
-                    coo = collided(body, obs, verbose=verbose,
-                                   tag='contain_gen_database', world=world)
-                    if not coo:
-                        attempts += 1
-                        if relpose:
-                            p = RelPose2(body, value=body_pose, support=space)
-                        yield (p,)
+                    # coo = collided(body, obs, verbose=verbose,
+                    #                tag='contain_gen_database', world=world)
+                    # if not coo:
+                    attempts += 1
+                    if relpose:
+                        p = RelPose2(body, value=body_pose, support=space)
+                    yield (p,)
 
-            if verbose: print(title, 'sample without learned_pose_list_gen')
+            if verbose:
+                print(title, 'sample without learned_pose_list_gen')
         ## ------------------------------------------------
+
+        if isinstance(space, int):
+            print('trying to sample pose inside body', space)
 
         while attempts < num_samples:
             attempts += 1
@@ -579,9 +581,18 @@ def visualize_sampled_pstns(x_min, x_max, x_points):
     plt.show()
 
 
-def sample_joint_position_gen(num_samples=14, p_max=PI, to_close=False, visualize=False, verbose=True):
+def sample_joint_position_gen(problem, num_samples=14, p_max=PI, to_close=False, visualize=False, verbose=True):
     """ generate open positions if closed=False and closed positions if closed=True (deprecated) """
+    world = problem.world
+
     def fn(o, pstn1):
+
+        if world.learned_position_list_gen is not None:
+            pstns = world.learned_position_list_gen(world, o, pstn1, num_samples=num_samples)
+            if pstns is not None:
+                positions = [(Position(o, p),) for p in pstns]
+                for pstn in positions:
+                    yield pstn
 
         is_drawer = pstn1.is_prismatic()
 
@@ -1034,12 +1045,11 @@ def get_cfree_approach_pose_test(problem, collisions=True):
             return True
         p2.assign()
         bb2 = b2[0] if isinstance(b2, tuple) else b2
-        result = False
+        result = True
         for _ in problem.robot.iterate_approach_path(arm, gripper, p1.value, g1, body=b1):
             if pairwise_collision(b1, bb2) or pairwise_collision(gripper, bb2):
                 result = False
                 break
-            result = True
         return result
     return test
 

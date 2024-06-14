@@ -87,7 +87,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
     gg = dict(collisions=c, max_samples=None)
     ir = dict(collisions=True, ir_only=True, max_attempts=ir_max_attempts)
     ik = dict(collisions=motion_collisions, ACONF=False, teleport=t, resolution=resolution)
-    pull = dict(collisions=pull_collisions, ACONF=True, learned=False, verbose=False, visualize=False)
+    pull = dict(collisions=pull_collisions, ACONF=True, learned=use_learned_ir, verbose=False, visualize=False)
 
     stream_map = {
 
@@ -103,10 +103,10 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         ## ---------------------------------------------------
         ##                    positions
         ## ---------------------------------------------------
-        'get-joint-position-open': from_gen_fn(sample_joint_position_gen(num_samples=6, p_max=PULL_UNTIL)),
+        'get-joint-position-open': from_gen_fn(sample_joint_position_gen(p, num_samples=6, p_max=PULL_UNTIL)),
         'get-joint-position-closed': from_gen_fn(sample_joint_position_closed_gen()),
         # 'get-joint-position-closed': from_gen_fn(sample_joint_position_gen(num_samples=6, closed=True)),
-        'get-joint-position-nudged-open': from_gen_fn(sample_joint_position_gen(num_samples=6, p_max=NUDGE_UNTIL)),
+        'get-joint-position-nudged-open': from_gen_fn(sample_joint_position_gen(p, num_samples=6, p_max=NUDGE_UNTIL)),
 
         ## ---------------------------------------------------
         ##                    grasps
@@ -128,7 +128,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'inverse-reachability': from_gen_fn(get_ik_gen_old(p, learned=use_learned_ir, verbose=True, visualize=False, **ir, **tc)),
         'inverse-kinematics': from_fn(get_ik_fn_old(p, verbose=True, visualize=False, **ik)),
 
-        'inverse-reachability-rel': from_gen_fn(get_ik_rel_gen_old(p, learned=True, verbose=False, visualize=False, **tc)),
+        'inverse-reachability-rel': from_gen_fn(get_ik_rel_gen_old(p, learned=use_learned_ir, verbose=False, visualize=False, **tc)),
         'inverse-kinematics-rel': from_fn(get_ik_rel_fn_old(p, verbose=False, visualize=False, **ik)),
 
         'inverse-kinematics-grasp-handle': from_gen_fn(get_ik_gen_old(p, **pull, **tc)),
@@ -767,11 +767,11 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
 
         if is_plan_abstract(plan):
             from leap_tools.hierarchical import check_preimage
-            state.world.remove_unpickleble_attributes()
+            cache = state.world.remove_unpickleble_attributes()
             env, plan = check_preimage(pddlstream_problem, plan, preimage, domain_pddl,
                                        init=pddlstream_problem.init, objects=objects,
                                        domain_modifier=domain_modifier)
-            state.world.recover_unpickleble_attributes()
+            state.world.recover_unpickleble_attributes(cache)
         else:
             env = None  ## preimage
     else:

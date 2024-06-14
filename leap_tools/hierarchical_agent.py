@@ -184,10 +184,10 @@ class HierarchicalAgent(PDDLStreamAgent):
         myprint(f'\n## {self.refinement_count}th refinement problem')
 
         ## update goal and init
-        self.remove_unpickleble_attributes()
+        cache = self.remove_unpickleble_attributes()
         goals, facts = self.get_refinement_goal_init(action)
         facts = self.object_reducer(facts, goals=goals)
-        self.recover_unpickleble_attributes()
+        self.recover_unpickleble_attributes(cache)
 
         ## skip planning if the subgoal has been achieved
         missing_preconditions = None

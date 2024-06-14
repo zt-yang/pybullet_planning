@@ -915,6 +915,12 @@ def check_goal_achieved(facts, goal, world):
                 return True
             if goal[0] in ['closedjoint', 'close'] and atposition[0].value == min_position:
                 return True
+
+    if goal[0] in ['holding']:
+        found = [f for f in facts if f[0].startswith('at') and f[0].endswith('grasp') and f[2] == goal[-1]]
+        if len(found) > 0:
+            return True
+
     return False
 
 
