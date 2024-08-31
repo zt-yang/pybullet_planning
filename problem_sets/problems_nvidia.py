@@ -370,47 +370,6 @@ def test_opened_space(args):
 
 #######################################################
 
-
-def test_skill_knob_stove(args):
-    world = create_world(args)
-    world.set_skip_joints()
-
-    floor = load_floor_plan(world, plan_name='counter.svg')
-    egg = load_experiment_objects(world, CABBAGE_ONLY=True, name='eggblock',
-                                  color=TAN, wb=.03, hb=.04)  ##
-    bottom, lid = load_pot_lid(world)
-    world.remove_object(floor)
-    robot = create_pr2_robot(world, base_q=(2.5, 6, PI / 2 + PI / 2))
-
-    name_to_body = world.name_to_body
-    name_to_object = world.name_to_object
-
-    oven = name_to_body('oven')
-    handles = world.add_joints_by_keyword('oven', 'knob_joint_2', 'knob')
-    set_camera_target_body(oven, dx=0.5, dy=-0.3, dz=1.1)
-
-    counter = name_to_body('counter')
-    for surface in ['front_left_stove', 'front_right_stove', 'back_left_stove', 'back_right_stove']:
-        set_color(counter, GREY, link_from_name(counter, surface))
-    world.put_on_surface(egg, 'braiser_bottom')
-
-    left_knob = name_to_object('knob_joint_2')
-    set_color(left_knob.body, GREY, left_knob.handle_link)
-
-    left_knob = name_to_body('knob_joint_2')
-    goals = ('test_handle_grasps', left_knob) ## for choosing grasps
-    goals = [("HandleGrasped", 'left', left_knob)]
-    goals = [("KnobTurned", 'left', left_knob)]
-    goals = [("GraspedHandle", left_knob)]
-
-    set_all_static()
-    state = State(world)
-    exogenous = []
-
-    pddlstream_problem = pddlstream_from_state_goal(state, goals, custom_limits=args.base_limits,
-                                                    domain_pddl=args.domain_pddl, stream_pddl=args.stream_pddl)
-    return state, exogenous, goals, pddlstream_problem
-
 #######################################################
 
 
@@ -905,6 +864,49 @@ def test_kitchen_braiser(args, **kwargs):
         world.remove_bodies_from_planning(goals, exceptions=objects)
 
         return {'goals': goals, 'skeleton': skeleton, 'subgoals': subgoals}
+
+    return test_nvidia_kitchen_domain(args, loader_fn, initial_xy=(2, 5), **kwargs)
+
+
+def test_skill_knob_stove(args, **kwargs):
+    def loader_fn(world, **world_builder_args):
+
+        surfaces = {
+            'counter': {
+                'front_right_stove': [],
+            }
+        }
+        floor = load_floor_plan(world, plan_name='counter.svg', surfaces=surfaces)
+        egg = load_experiment_objects(world, CABBAGE_ONLY=True, name='eggblock',
+                                      color=TAN, wb=.03, hb=.04)  ##
+        bottom, lid = load_pot_lid(world)
+        world.remove_object(floor)
+        robot = create_pr2_robot(world, base_q=(2.5, 6, PI / 2 + PI / 2))
+
+        name_to_body = world.name_to_body
+        name_to_object = world.name_to_object
+
+        oven = name_to_body('oven')
+        handles = world.add_joints_by_keyword('oven', 'knob_joint_2', 'knob')
+        set_camera_target_body(oven, dx=0.5, dy=-0.3, dz=1.1)
+
+        counter = name_to_body('counter')
+        for surface in ['front_left_stove', 'front_right_stove', 'back_left_stove', 'back_right_stove']:
+            set_color(counter, GREY, link_from_name(counter, surface))
+        world.put_on_surface(egg, 'braiser_bottom')
+
+        left_knob = name_to_object('knob_joint_2')
+        set_color(left_knob.body, GREY, left_knob.handle_link)
+
+        left_knob = name_to_body('knob_joint_2')
+        goals = ('test_handle_grasps', left_knob) ## for choosing grasps
+        goals = [("HandleGrasped", 'left', left_knob)]
+        goals = [("KnobTurned", 'left', left_knob)]
+        goals = [("GraspedHandle", left_knob)]
+
+        world.remove_bodies_from_planning(goals)
+
+        return {'goals': goals}
 
     return test_nvidia_kitchen_domain(args, loader_fn, initial_xy=(2, 5), **kwargs)
 

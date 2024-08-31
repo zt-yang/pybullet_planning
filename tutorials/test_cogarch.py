@@ -28,7 +28,7 @@ def test_pick_place_domain():
 
 
 def test_nvidia_kitchen_domain():
-    kitchen_problem = ['test_kitchen_chicken_soup', 'test_kitchen_braiser', None][0]
+    kitchen_problem = ['test_kitchen_chicken_soup', 'test_kitchen_braiser', 'test_skill_knob_stove'][-1]
     # update_kitchen_action_pddl()
     run_agent(
         problem=kitchen_problem,

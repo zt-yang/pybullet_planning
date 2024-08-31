@@ -1082,6 +1082,7 @@ class World(WorldBase):
                 possible[body] = obj.name
         if len(possible) >= 1:
             return find_closest_match(possible)
+        print('[world.name_to_body] cannot find name', name)
         return None
 
     def body_to_object(self, body):
@@ -1239,6 +1240,7 @@ class World(WorldBase):
         elif obj in self.ROBOT_TO_OBJECT:
             obj = self.ROBOT_TO_OBJECT[obj]
         else:
+            print('[world.object] cannot find object', obj)
             obj = None
         return obj
 
