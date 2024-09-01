@@ -818,8 +818,9 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
 def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs, saver, resolution=DEFAULT_RESOLUTION,
                                  num_intervals=30, around_to=4, collisions=True, visualize=False, verbose=False):
     a, o, pst1, pst2, g, bq1, aq1 = inputs
+    is_knob = o in world.cat_to_bodies('knob')
 
-    collision_fn = robot.get_collision_fn(obstacles=obstacles)
+    collision_fn = robot.get_collision_fn(obstacles=obstacles, verbose=verbose)
 
     if pst1.value == pst2.value:
         return None
@@ -854,11 +855,15 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
     rpose_rounded = tuple([round(n, around_to) for n in bq1.values])
     mapping[rpose_rounded] = pst1.value
 
+    ## may move arm only or base only
+    apath = []
+    aq_after = Conf(aq1.body, aq1.joints, aq1.values)
     bpath = []
     bq_after = Conf(bq1.body, bq1.joints, bq1.values)
     for i in range(num_intervals):
         step_str = f"pr2_streams.get_pull_door_handle_motion_gen | step {i}/{num_intervals}\t"
-        value = (i + 1) / num_intervals * (pst2.value - pst1.value) + pst1.value
+        change = (i + 1) / num_intervals * (pst2.value - pst1.value)
+        value = change + pst1.value
         pst_after = Position((pst1.body, pst1.joint), value)
         pst_after.assign()
         new_pose = get_link_pose(o[0], handle_link)
@@ -869,54 +874,85 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
 
         gripper_after = robot.get_grasp_pose(new_pose, g.value, a, body=o)
 
-        ## try to transform the base the same way as gripper to a cfree pose
-        world_from_base = multiply(gripper_after, gripper_from_base)
-        bq_after = pose_to_bconf(world_from_base, robot)
+        if is_knob:
+            aconf_after = list(aq1.values)
+            aconf_after[-1] -= change
+            aq_after = Conf(aq1.body, aq1.joints, aconf_after)
+            aq_after.assign()
+        else:
+            ## try to transform the base the same way as gripper to a cfree pose
+            world_from_base = multiply(gripper_after, gripper_from_base)
+            bq_after = pose_to_bconf(world_from_base, robot)
+            bq_after.assign()
 
-        bq_after.assign()
         found_collision = False
         if collisions:
-            col_kwargs = dict(articulated=False, world=world, verbose=True)
+            col_kwargs = dict(articulated=False, world=world, verbose=verbose)
             if collided(robot, obstacles, **col_kwargs):
                 found_collision = True
+                if verbose:
+                    print('[COLLISION 1]\tcollided(robot, obstacles, **col_kwargs)')
             if collided(o[0], other_obstacles, ignored_pairs=ignored_pairs, **col_kwargs):
                 found_collision = True
-            if collision_fn(bq_after.values, verbose=False):
+                if verbose:
+                    print('[COLLISION 2]\tcollided(o[0], other_obstacles, ignored_pairs=ignored_pairs, **col_kwargs)')
+            if collision_fn(bq_after.values, verbose=verbose):
                 found_collision = True
+                if verbose:
+                    print(f'[COLLISION 3]\tcollision_fn(bq_after.values)')
 
         if found_collision:
+            if len(apath) > 1:
+                apath[-1].assign()
             if len(bpath) > 1:
                 bpath[-1].assign()
             break
         else:
-            bpath.append(bq_after)
-            if verbose: print(f'{step_str} : {nice(bq_after.values)}')
-
-        ## save the joint positions as the base moves
-        bq_rounded = tuple([round(n, around_to) for n in bq_after.values])
-        mapping[bq_rounded] = value
+            if is_knob:
+                apath.append(aq_after)
+                rpose_rounded = tuple([round(n, 3) for n in aq_after.values])
+                mapping[rpose_rounded] = value
+                if verbose:
+                    print(f'{step_str} : {nice(aq_after.values)}')
+            else:
+                bpath.append(bq_after)
+                bq_rounded = tuple([round(n, around_to) for n in bq_after.values])
+                mapping[bq_rounded] = value
+                if verbose and False:
+                    print(f'{step_str} : {nice(bq_after.values)}')
 
     if visualize:
         remove_body(gripper_before)
 
-    if len(bpath) < num_intervals:  ## * 0.75:
-        # wait_unlocked()
+    if (is_knob and len(apath) < num_intervals * 0.25) or (not is_knob and len(bpath) < num_intervals):
         return None
 
-    bt = Trajectory(bpath)
-    robot.reset_ik_solvers()
-    base_cmd = Commands(State(), savers=[BodySaver(robot.body)], commands=[bt])
-    bq2 = bt.path[-1]
-    step_str = f"pr2_streams.get_pull_door_handle_motion_gen | step {len(bpath)}/{num_intervals}\t"
-    if verbose: print(f'{step_str} : {nice(bq2.values)}')
+    if is_knob:
+        at = Trajectory(apath)
+        arm_cmd = Commands(State(), savers=[BodySaver(robot.body)], commands=[at])
+        aq2 = at.path[-1]
+        if aq2.values == aq1.values:
+            aq2 = aq1
+        step_str = f"pr2_streams.get_turn_knob_handle_motion_gen | step {len(apath)}/{num_intervals}\t"
+        if verbose:
+            print(f'{step_str} : {nice(aq2.values)}')
+    else:
+        bt = Trajectory(bpath)
+        robot.reset_ik_solvers()
+        base_cmd = Commands(State(), savers=[BodySaver(robot.body)], commands=[bt])
+        bq2 = bt.path[-1]
+        step_str = f"pr2_streams.get_pull_door_handle_motion_gen | step {len(bpath)}/{num_intervals}\t"
+        if verbose:
+            print(f'{step_str} : {nice(bq2.values)}')
 
     pst1.assign()
     bq1.assign()
     aq1.assign()
-
     add_to_jp2jp(robot, a, o, mapping)
-    return bq2, base_cmd
 
+    if is_knob:
+        return aq2, arm_cmd
+    return bq2, base_cmd
 
 def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, teleport=False,
                                     num_intervals=30, max_ir_trial=30, visualize=False, verbose=False):

@@ -877,11 +877,7 @@ def test_skill_knob_stove(args, **kwargs):
             }
         }
         floor = load_floor_plan(world, plan_name='counter.svg', surfaces=surfaces)
-        egg = load_experiment_objects(world, CABBAGE_ONLY=True, name='eggblock',
-                                      color=TAN, wb=.03, hb=.04)  ##
-        bottom, lid = load_pot_lid(world)
         world.remove_object(floor)
-        robot = create_pr2_robot(world, base_q=(2.5, 6, PI / 2 + PI / 2))
 
         name_to_body = world.name_to_body
         name_to_object = world.name_to_object
@@ -893,7 +889,6 @@ def test_skill_knob_stove(args, **kwargs):
         counter = name_to_body('counter')
         for surface in ['front_left_stove', 'front_right_stove', 'back_left_stove', 'back_right_stove']:
             set_color(counter, GREY, link_from_name(counter, surface))
-        world.put_on_surface(egg, 'braiser_bottom')
 
         left_knob = name_to_object('knob_joint_2')
         set_color(left_knob.body, GREY, left_knob.handle_link)
@@ -901,7 +896,7 @@ def test_skill_knob_stove(args, **kwargs):
         left_knob = name_to_body('knob_joint_2')
         goals = ('test_handle_grasps', left_knob) ## for choosing grasps
         goals = [("HandleGrasped", 'left', left_knob)]
-        goals = [("KnobTurned", 'left', left_knob)]
+        # goals = [("KnobTurned", 'left', left_knob)]
         goals = [("GraspedHandle", left_knob)]
 
         world.remove_bodies_from_planning(goals)

@@ -860,10 +860,12 @@ def get_handle_grasp_gen(problem, collisions=False, max_samples=2,
         body, joint = body_joint
         is_knob = body_joint in world.cat_to_bodies('knob')
         handle_link = get_handle_link(body_joint, is_knob=is_knob)
+        grasp_length = 0.13 if is_knob else 0.1
         # print(f'{title} handle_link of body_joint {body_joint} is {handle_link}')
 
         grasps = get_hand_grasps(world, body, link=handle_link, handle_filter=True,
-                                 visualize=visualize, retain_all=retain_all, length_variants=True, verbose=verbose)
+                                 length_variants=True, grasp_length=grasp_length,
+                                 visualize=visualize, verbose=verbose, retain_all=retain_all)
 
         if verbose: print(f'\n{title} grasps =', [nice(g) for g in grasps])
 

@@ -493,6 +493,7 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
         print(f'\nbullet.check_cfree_gripper | '
               f'\trobot.visualize_grasp({nice(object_pose)}, ({nice(grasp)}):'
               f'\t{nice(robot.tool_from_hand)}\tkwargs = {kwargs}')
+
     gripper_grasp = robot.visualize_grasp(object_pose, grasp, verbose=verbose, body=body,
                                           new_gripper=test_offset, **kwargs)
     if test_offset:
@@ -504,14 +505,14 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
 
     if visualize: ## and not firstly: ## somtimes cameras blocked by robot, need to change dx, dy
         ## also helps slow down visualization of the sampling the testing process
-        # set_camera_target_body(gripper_grasp, dx=0.3, dy=0.5, dz=0.2) ## oven
+        set_camera_target_body(gripper_grasp, dx=0.3, dy=0.5, dz=0.2) ## oven
         # set_camera_target_body(gripper_grasp, dx=1, dy=0.5, dz=0.8) ## faucet
         # set_camera_target_body(gripper_grasp, dx=0.5, dy=-0.5, dz=0.5)  ## fridge shelf
         # set_camera_target_body(gripper_grasp, dx=0.05, dy=-0.05, dz=0.5)  ## above dishwasher
         # set_camera_target_body(gripper_grasp, dx=0.05, dy=-0.05, dz=0.15)  ## inside dishwasher
         # set_camera_target_body(gripper_grasp, dx=0.15, dy=-0.15, dz=0)  ## bottles on floor
         # set_camera_target_body(gripper_grasp, dx=2, dy=1, dz=1)  ## minifridges on the floor
-        set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=1)  ## fork inside indigo drawer top
+        # set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=1)  ## fork inside indigo drawer top
 
     ## criteria 1: when gripper isn't closed, it shouldn't collide
     firstly = collided(gripper_grasp, obstacles, min_num_pts=min_num_pts,

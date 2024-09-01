@@ -523,7 +523,7 @@ class World(WorldBase):
         name = name.lower()
         if joint is None and link is None:
             count = 1
-            while self.name_to_body(name) is not None:
+            while self.name_to_body(name, verbose=False) is not None:
                 if '#' in name:
                     name = name[:name.index('#')]
                 name = '{}#{}'.format(name, count)
@@ -1071,7 +1071,7 @@ class World(WorldBase):
             return obj.name
         return None
 
-    def name_to_body(self, name, include_removed=False):
+    def name_to_body(self, name, include_removed=False, verbose=False):
         name = name.lower()
         possible = {}
         all_objects = self.get_all_body_objects(include_removed)
@@ -1082,7 +1082,8 @@ class World(WorldBase):
                 possible[body] = obj.name
         if len(possible) >= 1:
             return find_closest_match(possible)
-        print('[world.name_to_body] cannot find name', name)
+        if verbose:
+            print('[world.name_to_body] cannot find name', name)
         return None
 
     def body_to_object(self, body):

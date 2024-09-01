@@ -3930,6 +3930,11 @@ def get_limits_fn(body, joints, custom_limits={}, verbose=False):
 
     def limits_fn(q):
         if not all_between(lower_limits, q, upper_limits):
+            if verbose:
+                for i in range(len(q)):
+                    if np.less_equal(q[i], lower_limits[i]) or np.greater_equal(q[i], upper_limits[i]):
+                        joint = get_joint_name(body, joints[i])
+                        print(f'get_limits_fn({(body, joint)}|{joint})\t {q[i]} not in [{lower_limits[i]}, {upper_limits[i]}]')
             #print('Joint limits violated')
             #if verbose: print(lower_limits, q, upper_limits)
             return True
@@ -3939,7 +3944,7 @@ def get_limits_fn(body, joints, custom_limits={}, verbose=False):
 
 def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions=True, disabled_collisions=set(),
                      custom_limits={}, use_aabb=False, cache=False, max_distance=MAX_DISTANCE,
-                     ignored_pairs=[], **kwargs):
+                     verbose=False, ignored_pairs=[], **kwargs):
     # TODO: convert most of these to keyword arguments
     check_link_pairs = get_self_link_pairs(body, joints, disabled_collisions) if self_collisions else []
     moving_links = frozenset(link for link in get_moving_links(body, joints)
@@ -3949,7 +3954,7 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
     #moving_bodies = list(flatten(flatten_links(*pair) for pair in moving_bodies)) # Introduces overhead
     #moving_bodies = [body] + [attachment.child for attachment in attachments]
     get_obstacle_aabb = cached_fn(get_buffered_aabb, cache=cache, max_distance=max_distance/2., **kwargs)
-    limits_fn = get_limits_fn(body, joints, custom_limits=custom_limits)
+    limits_fn = get_limits_fn(body, joints, custom_limits=custom_limits, verbose=verbose)
     # TODO: sort bodies by bounding box size
 
     def collision_fn(q, verbose=False):

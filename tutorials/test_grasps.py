@@ -45,10 +45,10 @@ def test_grasp(problem, body, funk, test_attachment=False, test_offset=False, **
     set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
 
 
-def test_grasps(robot='feg', categories=[], given_instances=None, skip_grasps=False,
-                visualize=True, retain_all=True, verbose=False, test_attachment=False,
-                test_rotation_matrix=False, test_translation_matrix=False, skip_grasp_index=None,
-                top_grasp_tolerance=None, **kwargs):
+def run_test_grasps(robot='feg', categories=[], given_instances=None, skip_grasps=False,
+                    visualize=True, retain_all=True, verbose=False, test_attachment=False,
+                    test_rotation_matrix=False, test_translation_matrix=False, skip_grasp_index=None,
+                    top_grasp_tolerance=None, **kwargs):
 
     from pybullet_tools.grasp_utils import enumerate_rotational_matrices as emu, enumerate_translation_matrices
 
@@ -213,7 +213,7 @@ def add_time_to_grasp_file():
 ## ----------------------------------------------------------------------
 
 
-def test_handle_grasps(robot, category, skip_grasps=False):
+def run_test_handle_grasps(robot, category, skip_grasps=False):
     from pybullet_tools.pr2_streams import get_handle_pose
 
     world = get_test_world(robot, draw_base_limits=False)
@@ -289,7 +289,7 @@ def test_handle_grasps(robot, category, skip_grasps=False):
     disconnect()
 
 
-def test_handle_grasps_counter(robot='pr2', visualize=True, **kwargs):
+def run_test_handle_grasps_counter(robot='pr2', visualize=True, **kwargs):
     from world_builder.loaders import load_floor_plan
 
     connect(use_gui=True, shadows=False, width=1980, height=1238)
@@ -335,17 +335,17 @@ if __name__ == '__main__':
     robot = 'feg'  ## 'pr2'
 
     """ --- just load assets --- """
-    test_grasps(robot, ['BraiserLid'], skip_grasps=True)  ## 'Salter'
+    run_test_grasps(robot, ['BraiserLid'], skip_grasps=True)  ## 'Salter'
 
     """ --- grasps related --- """
     kwargs = dict(skip_grasps=False, test_attachment=False)
-    # test_grasps(robot, ['Bottle'], given_instances=['3616'], **kwargs)  ## 'Salter'
-    # test_grasps(robot, ['VeggieCabbage'], skip_grasps=False, test_attachment=False)
+    # run_test_grasps(robot, ['Bottle'], given_instances=['3616'], **kwargs)  ## 'Salter'
+    # run_test_grasps(robot, ['VeggieCabbage'], skip_grasps=False, test_attachment=False)
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
 
     """ --- grasps for articulated storage units --- 
         IN: 'MiniFridge', 'MiniFridgeDoorless', 'CabinetTop'
     """
-    # test_handle_grasps(robot, category='CabinetTop', skip_grasps=True)
-    # test_handle_grasps_counter(robot)
+    # run_test_handle_grasps(robot, category='CabinetTop', skip_grasps=True)
+    # run_test_handle_grasps_counter(robot)

@@ -158,12 +158,13 @@ def get_marker_grasps(state, marker, visualize=False):
     return grasps
 
 
-def test_handle_grasps(state, arg='hitman_drawer_top_joint', visualize=False, retain_all=False, verbose=False):
+def test_handle_grasps(state, arg='hitman_drawer_top_joint', visualize=False, verbose=False):
     """ visualize both grasp pose and approach pose """
     body_joint, name = get_body_joint_and_name(state, arg)
 
     name_to_object = state.world.name_to_object
-    funk = get_handle_grasp_list_gen(state, num_samples=24, visualize=False, retain_all=retain_all, verbose=verbose)
+    funk = get_handle_grasp_list_gen(state, num_samples=24, visualize=True, retain_all=True,
+                                     verbose=verbose)
     outputs = funk(body_joint)
     if visualize:
         body_pose = name_to_object(name).get_handle_pose()

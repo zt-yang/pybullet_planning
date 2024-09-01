@@ -348,9 +348,10 @@ class RobotAPI(Robot):
     def get_base_joints(self):
         return self.get_group_joints(self.base_group)
 
-    def get_collision_fn(self, obstacles=[], attachments=[]):
-        return get_collision_fn(self, self.get_base_joints(), obstacles=obstacles, attachments=[],
-                                self_collisions=self.self_collisions, custom_limits=self.custom_limits, use_aabb=True)
+    def get_collision_fn(self, obstacles=[], attachments=[], verbose=False):
+        return get_collision_fn(self, self.get_base_joints(), obstacles=obstacles, attachments=attachments,
+                                self_collisions=self.self_collisions, custom_limits=self.custom_limits,
+                                verbose=verbose, use_aabb=True)
 
     def log_collisions(self, body, link=None, source='', robot_body=None, verbose=False):
         world = self.world

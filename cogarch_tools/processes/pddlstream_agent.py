@@ -175,7 +175,6 @@ class PDDLStreamAgent(MotionAgent):
                 return None
             self.replan(observation)
 
-        print('\n\npddlstream_agent.policy | start self.process_plan')
         return self.process_plan(observation)
 
     def process_plan(self, observation):
@@ -268,6 +267,9 @@ class PDDLStreamAgent(MotionAgent):
             # summarize_facts(preimage, name='preimage')
             self.state_facts = make_init_lower_case(self.pddlstream_problem.init)  ##  + preimage
             self.last_plan_state = self.state_facts  ## copy.deepcopy(self.state_facts)
+
+        if self.plan is not None:
+            wait_if_gui('Planning succeeded. Press to continue')
 
         ## the first planning problem - only for
         if self.env_execution is None:  ## and not self.pddlstream_kwargs['visualization']:
