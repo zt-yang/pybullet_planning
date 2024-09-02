@@ -230,20 +230,21 @@ class RevisedAction(Action):
 
 
 class AttachObjectAction(RevisedAction):
-    def __init__(self, arm, grasp, body, verbose=True):
+    def __init__(self, arm, grasp, body, verbose=True, debug_rc2oc=False):
         self.arm = arm
         self.grasp = grasp
         self.body = body
         self.verbose = verbose
+        self.attach_kwargs = dict(debug_rc2oc=debug_rc2oc, attach_distance=None, verbose=False, OBJ=False)
 
-    def transition(self, state, debug=True):
+    def transition(self, state):
         parent = state.robot
         link = state.robot.get_attachment_link(self.arm)
         obj = self.get_body()
         if isinstance(obj, int):
             obj = state.world.get_object(self.get_body())
         added_attachments = add_attachment_in_world(state=state, obj=obj, parent=parent, parent_link=link,
-                                                    attach_distance=None, verbose=False, OBJ=False, debug=debug)
+                                                    **self.attach_kwargs)
         new_attachments = dict(state.attachments)
         new_attachments.update(added_attachments)
         return state.new_state(attachments=new_attachments)
@@ -710,7 +711,7 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
     return state_event.attachments
 
 
-def get_primitive_actions(action, world, teleport=False, verbose=True):
+def get_primitive_actions(action, world, teleport=False, verbose=True, debug_rc2oc=False):
     def get_traj(t, sub=4, viz=True):
         world.remove_handles()
 
@@ -762,8 +763,30 @@ def get_primitive_actions(action, world, teleport=False, verbose=True):
 
         ## PR2
         else:
-            a, o, p1, p2, g, q1, q2, bt = args[:8]
-            new_commands = get_traj(bt)  ## list(get_traj(bt).path)
+            a, o, p1, p2, g, q1, q2, t = args[:8]
+
+            if debug_rc2oc:
+                rc2oc = world.robot.ROBOT_CONF_TO_OBJECT_CONF
+                body, joint = o
+                if body in rc2oc:
+                    if joint in rc2oc[body]:
+                        confs = world.robot.get_rc2oc_confs()
+                        for conf in confs:
+                            if conf in rc2oc[body][joint]:
+                                path = t.commands[0].path
+                                DOF = len(path[0].values)
+                                group = {3: 'base-torse', 4: 'base-torse', 7: f'{a}_arm'}[DOF]
+                                if group in rc2oc[body][joint][conf]:
+                                    x = range(len(path))
+                                    path = [conf.values for conf in path]
+                                    saved = [(conf, round(pstn, 4)) for conf, pstn in rc2oc[body][joint][conf][group].items()][1:]
+                                    diff = [round(np.linalg.norm(np.asarray(path[i]) - np.asarray(saved[i][0])), 4) for i in x]
+                                    path = [[round(n, 4) for n in conf] for conf in path]
+                                    lines = [f"{i}\t{path[i]}\t{saved[i][0]}\t{diff[i]}\t{saved[i][1]}" for i in x]
+                                    print(f'[actions.get_primitive_actions] : trajectory | rc2oc | diff | pstn{o}')
+                                    print('\t'+'\n\t'.join(lines))
+
+            new_commands = get_traj(t)
 
         ## for controlled event
         events = world.get_events(o)
@@ -839,7 +862,7 @@ def get_primitive_actions(action, world, teleport=False, verbose=True):
         a, o, p, g, q, aq1, aq2, t = args
         t = get_traj(t)
         close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
-        attach = AttachObjectAction(a, g, o)
+        attach = AttachObjectAction(a, g, o, debug_rc2oc=debug_rc2oc)
         new_commands = t + [close_gripper, attach]
 
     elif name == 'grasp_marker':

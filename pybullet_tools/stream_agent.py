@@ -144,11 +144,11 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'plan-base-motion': from_fn(get_base_motion_gen(p, collisions=base_collisions, **tc)),
         # 'plan-base-motion-with-obj': from_fn(get_base_motion_with_obj_gen(p, collisions=base_collisions, teleport=t, custom_limits=l)),
 
-        'plan-base-pull-handle': from_fn(get_pull_door_handle_motion_gen(p, **ptc, verbose=True)),
+        'plan-base-pull-handle': from_fn(get_pull_door_handle_motion_gen(p, **ptc, verbose=False)),
         'plan-base-pull-handle-with-link': from_fn(get_pull_door_handle_with_link_motion_gen(p, **ptc)),
         'plan-base-nudge-door': from_fn(get_pull_door_handle_motion_gen(p, **ptc)),
         'plan-base-nudge-door-back': from_fn(get_pull_door_handle_motion_gen(p, **ptc)),
-        'plan-arm-turn-knob-handle': from_fn(get_turn_knob_handle_motion_gen(p, visualize=False, **ptc)),
+        # 'plan-arm-turn-knob-handle': from_fn(get_turn_knob_handle_motion_gen(p, visualize=False, **ptc)),
 
         'MoveCost': move_cost_fn,
 

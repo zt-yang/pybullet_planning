@@ -51,7 +51,7 @@ class RobotAPI(Robot):
         self.self_collisions = self_collisions
         self.separate_base_planning = separate_base_planning
 
-        self.LINK_POSE_TO_JOINT_POSITION = {}  ## for saving object joint position as robot pose changes
+        self.ROBOT_CONF_TO_OBJECT_CONF = {}  ## for saving object joint position as robot pose changes
         self.grippers = {}
         self.possible_obstacles = {}  ## body: obstacles
         self.collision_animations = []
@@ -337,6 +337,13 @@ class RobotAPI(Robot):
 
     def remove_gripper(self, gripper_handle):
         remove_body(gripper_handle)
+
+    def get_rc2oc_confs(self):
+        """ check the changes in arm when base is fixed, check the changes in base when arms are fixed """
+        return [self.get_all_arm_conf(), self.get_all_base_conf()]
+
+    def get_all_base_conf(self):
+        return self.get_positions(joint_group='base-torso', roundto=3)
 
     def get_all_arm_conf(self):
         arm_groups = [f'{arm}_arm' for arm in self.arms]

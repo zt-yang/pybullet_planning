@@ -42,13 +42,14 @@ MIN_DISTANCE = 1e-2
 
 class Attachment(object):
     def __init__(self, parent, parent_link, grasp_pose, child,
-                 child_joint=None, child_link=None):
+                 child_joint=None, child_link=None, debug_rc2oc=False):
         self.parent = parent  # TODO: support no parent
         self.parent_link = parent_link
         self.grasp_pose = grasp_pose
         self.child = child
         self.child_joint = child_joint
         self.child_link = child_link
+        self.debug = debug_rc2oc
 
     @property
     def bodies(self):
@@ -56,6 +57,8 @@ class Attachment(object):
             self.parent, self.parent_link))
 
     def assign(self, verbose=False):
+        if self.debug:
+            print(f'\npose_utils.Attachment.assign({str(self)})')
         # robot_base_pose = self.parent.get_positions(roundto=3)
         # robot_arm_pose = self.parent.get_positions(joint_group='left', roundto=3)  ## only left arm for now
         parent_link_pose = get_link_pose(self.parent.body, self.parent_link)
@@ -63,25 +66,23 @@ class Attachment(object):
         if self.child_link is None:
             set_pose(self.child, child_pose)
         else:
-            LP2JP = self.parent.LINK_POSE_TO_JOINT_POSITION
-            if verbose:
-                print('\nbullet.Attachment.assign() | LINK_POSE_TO_JOINT_POSITION')
-                pprint(LP2JP)
-            if self.child in LP2JP:  ## pull drawer handle
-                if self.child in LP2JP and self.child_joint in LP2JP[self.child]:
-                    conf = self.parent.get_all_arm_conf()
-                    if conf in LP2JP[self.child][self.child_joint]:
-                        ls = LP2JP[self.child][self.child_joint][conf]
-                        for group in [g for g in ['base-torso', 'base', 'hand'] if g in self.parent.joint_groups]:
-                            key = self.parent.get_positions(joint_group=group, roundto=4)
-                            result = in_list(key, ls)
-                            if result is not None:
-                                position = ls[result]
-                                set_joint_position(self.child, self.child_joint, position)
-                                # print(f'bullet.utils | Attachment | robot {key} @ {key} -> position @ {position}')
-                            # elif len(key) == 4:
-                            #     print('key', key)
-                            #     print(ls)
+            RC2OC = self.parent.ROBOT_CONF_TO_OBJECT_CONF
+            # robot_groups = [g for g in ['base-torso', 'base', 'hand', 'left_arm', 'right_arm'] if g in self.parent.joint_groups]
+            if self.child in RC2OC:  ## pull drawer handle
+                if self.child in RC2OC and self.child_joint in RC2OC[self.child]:
+                    confs = self.parent.get_rc2oc_confs()
+                    for conf in confs:
+                        if conf in RC2OC[self.child][self.child_joint]:
+                            ls = RC2OC[self.child][self.child_joint][conf]
+                            for group in ls:
+                                group_ls = ls[group]
+                                key = self.parent.get_positions(joint_group=group, roundto=4)
+                                result = in_list(key, group_ls)
+                                if result is not None:
+                                    position = group_ls[result]
+                                    set_joint_position(self.child, self.child_joint, position)
+                                    if self.debug:
+                                        print(f'pose_utils | robot {group} @ {key} -> {(self.child, self.child_joint)} position @ {position}')
         return child_pose
 
     def apply_mapping(self, mapping):
@@ -143,7 +144,7 @@ def add_attachment_in_world(state=None, obj=None, parent=-1, parent_link=None, a
 
 
 def add_attachment(state=None, obj=None, parent=-1, parent_link=None, attach_distance=0.1,
-                   OBJ=True, verbose=False, debug=False):
+                   OBJ=True, verbose=False, debug=False, **kwargs):
     """ can attach without contact """
     new_attachments = {}
 
@@ -166,9 +167,9 @@ def add_attachment(state=None, obj=None, parent=-1, parent_link=None, attach_dis
     # if True or attach_distance is None or (min_distance < attach_distance):  ## (obj not in new_attachments) and
     if True:
         if joint is not None:
-            attachment = create_attachment(parent, parent_link, obj, child_link=link1, child_joint=joint, OBJ=OBJ)
+            attachment = create_attachment(parent, parent_link, obj, child_link=link1, child_joint=joint, OBJ=OBJ, **kwargs)
         else:
-            attachment = create_attachment(parent, parent_link, obj, OBJ=OBJ)
+            attachment = create_attachment(parent, parent_link, obj, OBJ=OBJ, **kwargs)
         new_attachments[obj] = attachment  ## may overwrite older attachment
         if verbose:
             print(f'pose_utils.add_attachment | {attachment}')
@@ -177,14 +178,14 @@ def add_attachment(state=None, obj=None, parent=-1, parent_link=None, attach_dis
     return new_attachments
 
 
-def create_attachment(parent, parent_link, child, child_link=None, child_joint=None, OBJ=False):
+def create_attachment(parent, parent_link, child, child_link=None, child_joint=None, OBJ=False, debug_rc2oc=False):
     parent_link_pose = get_link_pose(parent, parent_link)
     child_pose = get_pose(child)
     grasp_pose = multiply(invert(parent_link_pose), child_pose)
     if OBJ:  ## attachment between objects
         return ObjAttachment(parent, parent_link, grasp_pose, child)
     return Attachment(parent, parent_link, grasp_pose, child,
-                      child_link=child_link, child_joint=child_joint)
+                      child_link=child_link, child_joint=child_joint, debug_rc2oc=debug_rc2oc)
 
 
 def remove_attachment(state, obj=None, verbose=False):

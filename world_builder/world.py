@@ -1824,7 +1824,7 @@ class State(object):
         self.facts = list(facts) # TODO: make a set?
         self.variables = defaultdict(lambda: None)
         self.variables.update(variables)
-        self.assign()
+        self.assign()  ## object attachments
         self.saver = WorldSaver(bodies=self.bodies)
 
         ## serve as problem for streams

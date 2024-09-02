@@ -18,7 +18,7 @@ from pybullet_tools.pr2_streams import DEFAULT_RESOLUTION
 from pybullet_tools.pr2_utils import open_arm, arm_conf, learned_pose_generator
 from pybullet_tools.general_streams import *
 from pybullet_tools.pose_utils import bconf_to_pose, pose_to_bconf, add_pose, sample_new_bconf
-from pybullet_tools.grasp_utils import add_to_jp2jp
+from pybullet_tools.grasp_utils import add_to_rc2oc
 
 
 def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
@@ -816,7 +816,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
 
 
 def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs, saver, resolution=DEFAULT_RESOLUTION,
-                                 num_intervals=30, around_to=4, collisions=True, visualize=False, verbose=False):
+                                 num_intervals=30, round_to=4, collisions=True, visualize=False, verbose=False):
     a, o, pst1, pst2, g, bq1, aq1 = inputs
     is_knob = o in world.cat_to_bodies('knob')
 
@@ -852,8 +852,12 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
 
     ## saving the mapping between robot bconf to object pst for execution
     mapping = {}
-    rpose_rounded = tuple([round(n, around_to) for n in bq1.values])
-    mapping[rpose_rounded] = pst1.value
+    if is_knob:
+        rconf_rounded = tuple([round(n, round_to) for n in aq1.values])
+        mapping[rconf_rounded] = pst1.value
+    else:
+        rpose_rounded = tuple([round(n, round_to) for n in bq1.values])
+        mapping[rpose_rounded] = pst1.value
 
     ## may move arm only or base only
     apath = []
@@ -910,13 +914,13 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
         else:
             if is_knob:
                 apath.append(aq_after)
-                rpose_rounded = tuple([round(n, 3) for n in aq_after.values])
+                rpose_rounded = tuple([round(n, round_to) for n in aq_after.values])
                 mapping[rpose_rounded] = value
                 if verbose:
                     print(f'{step_str} : {nice(aq_after.values)}')
             else:
                 bpath.append(bq_after)
-                bq_rounded = tuple([round(n, around_to) for n in bq_after.values])
+                bq_rounded = tuple([round(n, round_to) for n in bq_after.values])
                 mapping[bq_rounded] = value
                 if verbose and False:
                     print(f'{step_str} : {nice(bq_after.values)}')
@@ -933,6 +937,7 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
         aq2 = at.path[-1]
         if aq2.values == aq1.values:
             aq2 = aq1
+        group = f"{a}_arm"
         step_str = f"pr2_streams.get_turn_knob_handle_motion_gen | step {len(apath)}/{num_intervals}\t"
         if verbose:
             print(f'{step_str} : {nice(aq2.values)}')
@@ -941,6 +946,7 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
         robot.reset_ik_solvers()
         base_cmd = Commands(State(), savers=[BodySaver(robot.body)], commands=[bt])
         bq2 = bt.path[-1]
+        group = 'base-torso'
         step_str = f"pr2_streams.get_pull_door_handle_motion_gen | step {len(bpath)}/{num_intervals}\t"
         if verbose:
             print(f'{step_str} : {nice(bq2.values)}')
@@ -948,11 +954,12 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
     pst1.assign()
     bq1.assign()
     aq1.assign()
-    add_to_jp2jp(robot, a, o, mapping)
+    add_to_rc2oc(robot, group, o, mapping)
 
     if is_knob:
         return aq2, arm_cmd
     return bq2, base_cmd
+
 
 def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, teleport=False,
                                     num_intervals=30, max_ir_trial=30, visualize=False, verbose=False):

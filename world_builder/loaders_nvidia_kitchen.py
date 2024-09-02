@@ -161,23 +161,45 @@ def load_full_kitchen(world, load_cabbage=True, **kwargs):
     return None
 
 
+# --------------------------------------------------------------------------------
+
+def load_cooking_mechanism(world):
+    load_braiser_bottom(world)
+    load_stove_knobs(world)
+    define_seasoning(world)
+    # load_dishwasher(world)
+
+
 def load_braiser_bottom(world):
     braiser = world.name_to_body('braiserbody')
     world.add_object(Surface(braiser, link_from_name(braiser, 'braiser_bottom')))
-
     world.add_to_cat('braiserlid', 'movable')
     world.add_to_cat('braiserbody', 'surface')
     world.add_to_cat('braiserbody', 'region')
     world.add_to_cat('braiserbody', 'space')
 
 
-def load_cooking_mechanism(world):
-    load_braiser_bottom(world)
-    stove_knob = world.add_joints_by_keyword('oven', 'knob_joint_1')[0]
-    # dishwasher_door = world.add_joints_by_keyword('dishwasher', 'dishwasher_door')[0]
+def load_stove_knobs(world):
+    for name in ['knob_joint_1', 'knob_joint_2']:
+        world.add_joints_by_keyword('oven', name, category='knob')
+        knob = world.name_to_object(name)
+        set_color(knob.body, GREY, knob.handle_link)
 
-    world.add_to_cat('salt-shaker', 'sprinkler')
-    world.add_to_cat('pepper-shaker', 'sprinkler')
+    counter = world.name_to_body('counter')
+    for surface in ['front_left_stove', 'front_right_stove', 'back_left_stove', 'back_right_stove']:
+        set_color(counter, GREY, link_from_name(counter, surface))
+
+
+def define_seasoning(world):
+    for name in ['salt-shaker', 'pepper-shaker']:
+        world.add_to_cat(name, 'sprinkler')
+
+
+def load_dishwasher(world):
+    dishwasher_door = world.add_joints_by_keyword('dishwasher', 'dishwasher_door')[0]
+
+
+# --------------------------------------------------------------------------------
 
 
 def get_objects_for_open_kitchen(world):

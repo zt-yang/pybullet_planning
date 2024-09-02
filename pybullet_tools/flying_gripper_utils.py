@@ -25,7 +25,7 @@ from pybullet_tools.general_streams import Position, get_grasp_list_gen, get_han
     process_motion_fluents
 from pybullet_tools.bullet_utils import collided, nice
 from pybullet_tools.camera_utils import set_camera_target_body
-from pybullet_tools.grasp_utils import add_to_jp2jp
+from pybullet_tools.grasp_utils import add_to_rc2oc
 
 from pybullet_tools.ikfast.utils import IKFastInfo
 from pybullet_tools.ikfast.ikfast import * # For legacy purposes
@@ -533,7 +533,7 @@ def get_pull_handle_motion_gen(problem, collisions=True, teleport=False,
         if len(path) < num_intervals: ## * 0.75:
             return None
 
-        add_to_jp2jp(robot, a, o, mapping)
+        add_to_rc2oc(robot, a, o, mapping)
 
         add_data_path()
         t = Trajectory(path)

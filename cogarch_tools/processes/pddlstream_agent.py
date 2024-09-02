@@ -197,8 +197,12 @@ class PDDLStreamAgent(MotionAgent):
         while self.plan:
             action = self.plan.pop(0)
             name = get_action_name(action)
+            print_name = print_action(action)
             if self.last_action_name != name:
-                print(f"{self.step_count}\t{print_action(action)}")
+                if isinstance(action, Action):
+                    print(f"{self.step_count}\t{print_name}")
+                else:
+                    print(f"\t{self.step_count-1}\t{print_name}")
             self.last_action_name = name
 
             ## already broken down to specific robot commands
@@ -208,8 +212,8 @@ class PDDLStreamAgent(MotionAgent):
                     self.plan = rest + self.plan
                     action = action[0]
                 self.actions.append(action)
-                if len(self.plan) > 0 and get_action_name(self.plan[0]) != get_action_name(action):
-                    print(f'pddlstream_agent.process_plan\tgetting new action {action}')
+                # if len(self.plan) > 0 and get_action_name(self.plan[0]) != get_action_name(action):
+                #     print(f'pddlstream_agent.process_plan\tgetting new action {action}')
                 return action
 
             name, args = action

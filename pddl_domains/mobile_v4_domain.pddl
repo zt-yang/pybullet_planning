@@ -63,7 +63,6 @@
     (KinPullDrawerHandle ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?t)  ;; pull the handle
     (KinPullDoorHandle ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq)  ;; pull the handle
     (KinPullDoorHandleWithLink ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq ?l ?pl1 ?pl2)  ;; pull the handle
-    (KinTurnKnob ?a ?o ?p1 ?p2 ?g ?q ?aq1 ?aq2 ?at)
 
     (Reach ?a ?o ?p ?g ?bq)
     (ReachRel ?a ?o1 ?rp1 ?o2 ?p2 ?g ?bq)
@@ -98,7 +97,6 @@
     (AtGraspHalf ?a ?o ?g)
     (AtHandleGrasp ?a ?o ?g)  ;; in contact the handle
     (HandleGrasped ?a ?o)  ;; released the handle
-    (KnobTurned ?a ?o)  ;; released the knob
     (HandEmpty ?a)
     (AtBConf ?q)
     (AtAConf ?a ?q)
@@ -496,24 +494,6 @@
   ;               ;(AtAConf ?a ?aq3) (not (AtAConf ?a ?aq1))
   ;          )
   ;)
-
-    ;; from fully closed position ?p1 pull to the fully open position ?p2
-    (:action turn_knob
-      :parameters (?a ?o ?p1 ?p2 ?g ?q ?aq1 ?aq2 ?at)
-      :precondition (and (Knob ?o) (not (= ?p1 ?p2)) (CanPull ?a)
-                         (AtPosition ?o ?p1) (Position ?o ?p2) (AtHandleGrasp ?a ?o ?g)
-                         (KinTurnKnob ?a ?o ?p1 ?p2 ?g ?q ?aq1 ?aq2 ?at)
-                         (AtBConf ?q) (AtAConf ?a ?aq1)
-                         ;(not (UnsafeApproach ?o ?p2 ?g))
-                         ;(not (UnsafeATraj ?at))
-                         ;(not (UnsafeBTraj ?bt))
-                    )
-      :effect (and (not (CanPull ?a)) (CanUngrasp) (KnobTurned ?a ?o)
-                  (AtPosition ?o ?p2) (not (AtPosition ?o ?p1))
-                  (UngraspBConf ?q)
-                  (AtAConf ?a ?aq2) (not (AtAConf ?a ?aq1))
-              )
-    )
 
   (:derived (On ?o ?r)
     (or

@@ -627,11 +627,13 @@ def test_transformations_template(rotations, translations, funk, title, skip_unt
     return results
 
 
-def add_to_jp2jp(robot, a, o, mapping):
+def add_to_rc2oc(robot, group, o, mapping):
     body, joint = o
-    conf = robot.get_all_arm_conf()
-    if body not in robot.LINK_POSE_TO_JOINT_POSITION:
-        robot.LINK_POSE_TO_JOINT_POSITION[body] = {}
-    if joint not in robot.LINK_POSE_TO_JOINT_POSITION[body]:
-        robot.LINK_POSE_TO_JOINT_POSITION[body][joint] = {}
-    robot.LINK_POSE_TO_JOINT_POSITION[body][joint][conf] = mapping
+    conf = robot.get_all_arm_conf() if group == 'base-torso' else robot.get_all_base_conf()
+    if body not in robot.ROBOT_CONF_TO_OBJECT_CONF:
+        robot.ROBOT_CONF_TO_OBJECT_CONF[body] = {}
+    if joint not in robot.ROBOT_CONF_TO_OBJECT_CONF[body]:
+        robot.ROBOT_CONF_TO_OBJECT_CONF[body][joint] = {}
+    if conf not in robot.ROBOT_CONF_TO_OBJECT_CONF[body][joint]:
+        robot.ROBOT_CONF_TO_OBJECT_CONF[body][joint][conf] = {}
+    robot.ROBOT_CONF_TO_OBJECT_CONF[body][joint][conf][group] = mapping
