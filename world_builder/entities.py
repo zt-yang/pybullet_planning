@@ -471,12 +471,13 @@ class Object(Index):
 
     def draw(self, text=None, **kwargs):
         if text is None:
-            text = f':{self.body}'
+            text = f':{self.pybullet_name}'
+        link = self.handle_link if hasattr(self, 'handle_link') else self.link
         with LockRenderer(True):
             self.erase()
-            if self.name is not None:  ##  and self.category != 'door':
-                # TODO: attach to the highest link (for the robot)
-                self.handles.append(draw_body_label(self.body, text=self.name+text, **kwargs))
+            if self.name is not None:
+                h = draw_body_label(self.body, text=self.name+text, link=link, **kwargs)
+                self.handles.append(h)
             # # self.handles.extend(draw_pose(Pose(), parent=self.body, **kwargs))
             # if not isinstance(self, Robot):
             #     self.draw_joints()
@@ -641,12 +642,15 @@ class ArticulatedObjectPart(Object):
         self.affected_links = []  ## that are planning objects
         self.all_affected_links = []  ## all links in the asset
 
-    def find_handle_link(self, body, joint):
+    def find_handle_link(self, body, joint, debug=True):
         link = get_joint_info(body, joint).linkName.decode("utf-8")
         children_link = get_link_children(body, link_from_name(body, link))
 
         ## the only handle, for those carefully engineered names
         links = [l for l in get_links(body) if 'handle' in get_link_name(body, l)]
+
+        # if debug and body == 4:
+        #     print('set debug point')
         if len(links) == 1:
             return links[0]
 
@@ -657,10 +661,10 @@ class ArticulatedObjectPart(Object):
                 return also_in_children[0]
 
         ## when the substring matches, for those carefully engineered names, e.g. counter
-        if link.endswith('_link'):
+        if '_link' in link:
             name = link[:link.index('_link')]
             links = [l for l in get_links(body) if name in get_link_name(body, l)]
-            links = [l for l in links if 'handle' in get_link_name(body, l) or 'nob' in get_link_name(body, l)]
+            links = [l for l in links if 'handle' in get_link_name(body, l) or 'knob' in get_link_name(body, l)]
             if len(links) == 1:
                 return links[0]
 

@@ -976,11 +976,11 @@ def add_joint_status_facts(body, position=None, verbose=False, return_descriptio
     return init
 
 
-def draw_body_label(body, text, offset=(0, -0.05, 0.05), **kwargs):
+def draw_body_label(body, text, link=None, offset=(0, -0.05, 0.05), **kwargs):
     with PoseSaver(body):
-        if get_color(body) == GREEN:
+        if link is None and get_color(body) == GREEN:
             set_pose(body, unit_pose())
-        lower, upper = get_aabb(body)
+        lower, upper = get_aabb(body, link=link)
     position = ((lower[0] + upper[0]) / 2, (lower[1] + upper[1]) / 2, upper[2])
     position = [position[i]+offset[i] for i in range(len(position))]
     return add_text(text, position=position, **kwargs)  # , lifetime=0 , parent=body

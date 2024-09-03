@@ -8,7 +8,7 @@ import numpy as np
 
 from pybullet_tools.pr2_primitives import Conf, get_group_joints
 from pybullet_tools.utils import invert, get_name, pairwise_collision, sample_placement_on_aabb, \
-    get_link_pose, get_pose, set_pose, sample_placement, aabb_from_extent_center
+    get_link_pose, get_pose, set_pose, sample_placement, aabb_from_extent_center, RED, BLUE, YELLOW, GREEN
 from pybullet_tools.pose_utils import sample_pose, xyzyaw_to_pose, sample_center_top_surface
 from pybullet_tools.bullet_utils import nice, collided, equal
 from pybullet_tools.logging_utils import print_dict
@@ -179,15 +179,28 @@ def load_braiser_bottom(world):
     world.add_to_cat('braiserbody', 'space')
 
 
-def load_stove_knobs(world):
-    for name in ['knob_joint_1', 'knob_joint_2']:
+def load_stove_knobs(world, color_code_surfaces=True, draw_label=True):
+    colors = [RED, YELLOW, BLUE, GREEN] if color_code_surfaces else [GREY] * 4
+    knobs = ['knob_joint_1', 'knob_joint_2']
+    surfaces = ['front_left_stove', 'front_right_stove', 'back_left_stove', 'back_right_stove']
+
+    oven = world.name_to_body('oven')
+    for i, name in enumerate(knobs):
         world.add_joints_by_keyword('oven', name, category='knob')
         knob = world.name_to_object(name)
-        set_color(knob.body, GREY, knob.handle_link)
+        # knob.handle_link = link_from_name(oven, name.replace('joint', 'link'))
+        if draw_label:
+            knob.draw()
+        set_color(knob.body, colors[i], link=knob.handle_link)
 
     counter = world.name_to_body('counter')
-    for surface in ['front_left_stove', 'front_right_stove', 'back_left_stove', 'back_right_stove']:
-        set_color(counter, GREY, link_from_name(counter, surface))
+    for i, name in enumerate(surfaces):
+        surface = world.name_to_object(name)
+        if surface is None:
+            continue
+        if draw_label:
+            surface.draw()
+        set_color(counter, colors[i], link=link_from_name(counter, name))
 
 
 def define_seasoning(world):

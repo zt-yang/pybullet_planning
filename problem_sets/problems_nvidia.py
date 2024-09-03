@@ -868,19 +868,21 @@ def test_kitchen_braiser(args, **kwargs):
 
 def test_skill_knob_stove(args, **kwargs):
     """
-    turn the knob to the front stoves
-    move the pot to the counter before turning on the stove, (then move the pot to the stove)
-    turn on the knob of the other stove, (then move the pot there)
+    difficulty == 0: turn the knob to the front stoves
+    difficulty == 1: move the pot to the counter before turning on the stove, (then move the pot to the stove)
+    difficulty == 2: turn on the knob of the other stove, (then move the pot there)
     """
-    def loader_fn(world, **world_builder_args):
+    def loader_fn(world, difficulty=0, **world_builder_args):
         surfaces = {
             'counter': {
                 'front_left_stove': [],
                 'front_right_stove': [],
-                # 'front_right_stove': ['BraiserBody'],
                 'indigo_tmp': [],
             }
         }
+        if difficulty == 1:
+            surfaces['counter']['front_right_stove'] = ['BraiserBody']
+
         floor = load_floor_plan(world, plan_name='counter.svg', surfaces=surfaces)
         world.remove_object(floor)
 
@@ -890,12 +892,22 @@ def test_skill_knob_stove(args, **kwargs):
         set_camera_target_body(oven, dx=0.5, dy=-0.3, dz=1.1)
 
         load_stove_knobs(world)
-        # world.add_to_cat('braiserbody', 'movable')
 
-        left_knob = name_to_body('knob_joint_2')
-        goals = ('test_handle_grasps', left_knob) ## for choosing grasps
-        goals = [("HandleGrasped", 'left', left_knob)]
-        goals = [("GraspedHandle", left_knob)]
+        if difficulty == 0:
+            knob_name = ['knob_joint_2', 'knob_joint_1'][1]
+            knob = name_to_body(knob_name)
+            goals = ('test_handle_grasps', knob)  ## for choosing grasps
+            goals = [("HandleGrasped", 'left', knob)]
+            goals = [("GraspedHandle", knob)]
+
+        elif difficulty == 1:
+            pot = name_to_body('braiserbody')
+            world.add_to_cat('braiserbody', 'movable')
+            goals = ('test_object_grasps', pot)
+
+        else:
+            print('Invalid difficulty level:', difficulty)
+            return {}
 
         world.remove_bodies_from_planning(goals)
 
