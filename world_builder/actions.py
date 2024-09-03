@@ -99,6 +99,10 @@ class MoveArmAction(Action):
 
     def transition(self, state):
         set_joint_positions(self.conf.body, self.conf.joints, self.conf.values)
+        if self.__class__.__name__ == 'MoveArmAction':
+            movables = [o for o in state.movable if o != state.robot]
+            if collided(state.robot, movables, verbose=True):
+                wait_if_gui()
         return state.new_state()
 
 

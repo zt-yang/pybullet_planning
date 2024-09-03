@@ -179,13 +179,20 @@ def load_braiser_bottom(world):
     world.add_to_cat('braiserbody', 'space')
 
 
-def load_stove_knobs(world, color_code_surfaces=True, draw_label=True):
+def fix_braiser_orientation(world):
+    braiser = world.name_to_object('braiserbody')
+    point, quat = braiser.get_pose()
+    braiser.set_pose((point, quat_from_euler(Euler(yaw=PI/2))))
+
+
+def load_stove_knobs(world, knobs=['knob_joint_2'], color_code_surfaces=True, draw_label=True):
     colors = [RED, YELLOW, BLUE, GREEN] if color_code_surfaces else [GREY] * 4
-    knobs = ['knob_joint_1', 'knob_joint_2']
-    surfaces = ['front_left_stove', 'front_right_stove', 'back_left_stove', 'back_right_stove']
+    # knobs = ['knob_joint_1', 'knob_joint_2']
+    surfaces = ['back_right_stove', 'front_right_stove', 'front_left_stove', 'back_left_stove']
 
     oven = world.name_to_body('oven')
-    for i, name in enumerate(knobs):
+    for name in knobs:
+        i = int(name.split('_')[-1]) - 1
         world.add_joints_by_keyword('oven', name, category='knob')
         knob = world.name_to_object(name)
         # knob.handle_link = link_from_name(oven, name.replace('joint', 'link'))

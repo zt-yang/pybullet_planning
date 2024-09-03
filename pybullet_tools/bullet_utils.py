@@ -352,6 +352,8 @@ def collided(obj, obstacles=[], world=None, articulated=False, verbose=False, ta
              visualize=False, min_num_pts=3, use_aabb=True, ignored_pairs=[],
              log_collisions=True, **kwargs):
 
+    if world is None and hasattr(obj, 'world'):
+        world = obj.world
     obj_print = world.get_name(obj) if world is not None else obj
     prefix = f'\t\tbullet_utils.collided({obj_print}) '
     if len(tag) > 0: prefix += f'( {tag} )'
@@ -379,9 +381,9 @@ def collided(obj, obstacles=[], world=None, articulated=False, verbose=False, ta
     for b in obstacles:
         if pairwise_collision(obj, b) and (obj, b) not in ignored_pairs:
             if world is None:
-                import traceback
                 print('bullet_utils.collided | world is None')
-                print(traceback.format_exc())
+                import traceback
+                print(traceback.print_exc())
 
             b_print = world.get_name(b) if world is not None else b
             if verbose:
