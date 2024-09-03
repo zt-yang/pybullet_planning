@@ -1179,6 +1179,7 @@ def process_motion_fluents(fluents, robot, verbose=False):
     sorted_fluents += [f for f in fluents if f[0].lower() == 'atrelpose']
     sorted_fluents += [f for f in fluents if f not in sorted_fluents]
     if verbose:
+        print(f'[process_motion_fluents] len = {len(fluents)}:')
         print('\t'+'\n\t'.join([str(b) for b in sorted_fluents]))
 
     attachments = []

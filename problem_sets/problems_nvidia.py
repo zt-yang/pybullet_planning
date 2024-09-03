@@ -870,9 +870,10 @@ def test_skill_knob_stove(args, **kwargs):
     """
     difficulty == 0: turn the knob to the front stoves
     difficulty == 1: move the pot to the counter before turning on the stove, (then move the pot to the stove)
+    difficulty == 12: move the lid to the counter before turning on the stove, (then move the pot to the stove)
     difficulty == 2: turn on the knob of the other stove, (then move the pot there)
     """
-    def loader_fn(world, difficulty=1, **world_builder_args):
+    def loader_fn(world, difficulty=12, **world_builder_args):
         surfaces = {
             'counter': {
                 'front_left_stove': [],
@@ -880,9 +881,10 @@ def test_skill_knob_stove(args, **kwargs):
                 'indigo_tmp': [],
             }
         }
-        if difficulty == 1:
+        if difficulty in [1, 12]:
             surfaces['counter']['front_right_stove'] = ['BraiserBody']
-            surfaces['counter']['indigo_tmp'] = ['BraiserLid']
+            if difficulty in [12]:
+                surfaces['counter']['indigo_tmp'] = ['BraiserLid']
 
         floor = load_floor_plan(world, plan_name='counter.svg', surfaces=surfaces)
         world.remove_object(floor)
@@ -895,36 +897,43 @@ def test_skill_knob_stove(args, **kwargs):
         knob_names = ['knob_joint_2', 'knob_joint_3']
         load_stove_knobs(world, knob_names)
 
+        right_knob = name_to_body(knob_names[0])
+        left_knob = name_to_body(knob_names[1])
+        arm = world.robot.arms[0]
+        surface = name_to_body('indigo_tmp')
+
         objects = []
+        skeleton = []
         if difficulty == 0:
-            knob_name = knob_names[1]
-            knob = name_to_body(knob_name)
+            knob = right_knob
             goals = ('test_handle_grasps', knob)  ## for choosing grasps
             goals = [("HandleGrasped", 'left', knob)]
             goals = [("GraspedHandle", knob)]
 
-        elif difficulty == 1:
-            right_knob = name_to_body(knob_names[0])
-            left_knob = name_to_body(knob_names[1])
-            arm = world.robot.arms[0]
+        elif difficulty in [1, 12]:
 
             pot = name_to_body('braiserbody')
             world.add_to_cat('braiserbody', 'movable')
             fix_braiser_orientation(world)
 
-            lid = world.name_to_body('braiserlid')
-            world.put_on_surface(lid, 'braiserbody')
-            world.add_to_cat('braiserlid', 'movable')
+            if difficulty in [1]:
+                goals = [("GraspedHandle", left_knob)]
+                goals = ('test_object_grasps', pot)
+                goals = [("Holding", arm, pot)]
+                goals = [("On", pot, surface)]
 
-            surface = name_to_body('indigo_tmp')
+            elif difficulty in [12]:
+                lid = world.name_to_body('braiserlid')
+                world.put_on_surface(lid, 'braiserbody')
+                world.add_to_cat('braiserlid', 'movable')
+                goals = [("On", lid, surface)]
+                goals = [("On", pot, surface)]
+                # goals = [("GraspedHandle", right_knob)]; objects += [pot, lid, surface]
 
-            goals = [("GraspedHandle", left_knob)]
-            goals = ('test_object_grasps', pot)
-            goals = [("Holding", arm, pot)]
-            goals = [("On", pot, surface)]
-            goals = [("On", lid, surface)]
+                skeleton += [(k, arm, pot) for k in pick_place_actions]
+                skeleton += [(k, arm, right_knob) for k in pull_actions]
 
-            goals = [("GraspedHandle", right_knob)]; objects += [pot, lid, surface]
+            goals = [("GraspedHandle", right_knob)]; objects += [pot, surface]
 
         else:
             print('Invalid difficulty level:', difficulty)
@@ -932,7 +941,7 @@ def test_skill_knob_stove(args, **kwargs):
 
         world.remove_bodies_from_planning(goals, exceptions=objects)
 
-        return {'goals': goals}
+        return {'goals': goals, 'skeleton': skeleton}
 
     return test_nvidia_kitchen_domain(args, loader_fn, initial_xy=(2, 5), **kwargs)
 

@@ -579,7 +579,6 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
     set_joint_positions(robot, arm_joints, approach_conf)
     # approach_conf = get_joint_positions(robot, arm_joints)
 
-    attachments = list(attachments.values()) if isinstance(obj, int) else []
     motion_planning_kwargs = dict(self_collisions=robot.self_collisions,
                                   use_aabb=True, cache=True, ignored_pairs=ignored_pairs_here,
                                   custom_limits=custom_limits, max_distance=robot.max_distance)
@@ -602,12 +601,25 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
             grasp_path = []
             dest_conf = grasp_conf
 
-        motion_planning_kwargs.update(attachments=attachments)
+        attachments_arg = list(attachments.values()) if isinstance(obj, int) else []
+        initially_attached_to_o = [m.child.body for m in world.attachments.values() if m.parent.body == obj]
+        obstacles_here = [m for m in obstacles_here if m not in initially_attached_to_o]
+        motion_planning_kwargs.update(attachments=attachments_arg, resolutions=resolutions,
+                                      restarts=2, iterations=25, smooth=50, )
         set_joint_positions(robot, arm_joints, default_conf)
-        approach_path = plan_joint_motion(robot, arm_joints, dest_conf, obstacles=obstacles_here, resolutions=resolutions,
-                                          restarts=2, iterations=25, smooth=50, **motion_planning_kwargs)  # smooth=25
+        approach_path = plan_joint_motion(robot, arm_joints, dest_conf, obstacles=obstacles_here, **motion_planning_kwargs)  # smooth=25
         if approach_path is None:
-            if verbose: print(f'{title}\tApproach path failure')
+            if verbose:
+                found_objects = []
+                for o in obstacles_here:
+                    isolated_obstacles = [m for m in obstacles_here if m != o]
+                    set_joint_positions(robot, arm_joints, default_conf)
+                    approach_path = plan_joint_motion(robot, arm_joints, dest_conf, obstacles=isolated_obstacles,
+                                                      **motion_planning_kwargs)
+                    if approach_path is not None:
+                        found_objects.append(o)
+                found_objects = [f"{world.BODY_TO_OBJECT[m].debug_name}" for m in found_objects]
+                print(f'{title}\tApproach path failure, would have succeeded without any object in {found_objects}')
             if visualize:
                 remove_body(gripper_grasp)
             return None
@@ -975,7 +987,7 @@ def get_pull_door_handle_motion_gen(problem, custom_limits={}, collisions=True, 
 
     def fn(a, o, pst1, pst2, g, bq1, aq1, fluents=[]):
         if fluents:
-            process_motion_fluents(fluents, robot)
+            process_motion_fluents(fluents, robot, verbose=verbose)
         # else:
         #     world_saver.restore()
 

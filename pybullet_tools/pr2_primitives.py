@@ -716,22 +716,21 @@ def control_commands(commands, **kwargs):
 
 class State(object):
     def __init__(self, attachments={}, cleaned=set(), cooked=set()):
-        # if type(attachments) is {}.values().__class__:
-        #     print('{}.values().__class__')
         self.poses = {body: Pose(body, get_pose(body))
                       for body in get_bodies() if body not in attachments}
         self.grasps = {}
         self.attachments = attachments
         self.cleaned = cleaned
         self.cooked = cooked
+
     def assign(self):
         for attachment in self.attachments.values():
-            #attach.attachment.assign()
+            # attach.attachment.assign()
             attachment.assign()
 
 
 def apply_commands(state, commands, time_step=None, pause=False, **kwargs):
-    #wait_if_gui('Apply?')
+    # wait_if_gui('Apply?')
     for i, command in enumerate(commands):
         print(i, command)
         for j, _ in enumerate(command.apply(state, **kwargs)):
