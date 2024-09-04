@@ -12,10 +12,7 @@ import math
 import inspect
 
 from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sample_placement_on_aabb, wait_unlocked, \
-    set_pose, get_aabb_center, draw_pose, pose_from_pose2d, set_velocity, set_joint_states, get_bodies, \
-    flatten, INF, inf_generator, get_time_step, get_all_links, get_visual_data, pose2d_from_pose, multiply, invert, \
-    get_sample_fn, pairwise_collisions, sample_placement, is_placement, aabb_contains_point, point_from_pose, \
-    aabb2d_from_aabb, is_center_stable, aabb_contains_aabb, get_model_info, get_name, get_pose, dump_link, \
+    set_pose, get_aabb_center, aabb_from_extent_center, aabb_overlap, sample_placement, \
     CameraImage, dump_joint, dump_body, PoseSaver, get_aabb, add_text, GREEN, AABB, remove_body, HideOutput, \
     stable_z, Pose, Point, create_box, load_model, get_joints, set_joint_position, BROWN, Euler, PI, \
     set_camera_pose, TAN, RGBA, get_color, get_min_limit, get_max_limit, set_color, WHITE, get_links, \
@@ -831,8 +828,8 @@ def get_camera_image(camera, include_rgb=False, include_depth=False, include_seg
     return CameraImage(rgb, depth, seg, pose, matrix)
 
 
-def make_camera_image(rgbd_matrix, figsize=None, name_to_loc={}, fontsize=12, padding=4, show_bb=True,
-                      show=True, output_path='observation.png', verbose=False):
+def make_camera_image(rgbd_matrix, figsize=None, name_to_loc={}, fontsize=12, alpha=0.7, padding=4,
+                      show_bb=True, show=True, output_path='observation.png', verbose=False):
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
     fig, ax = plt.subplots(figsize=figsize)
@@ -850,16 +847,20 @@ def make_camera_image(rgbd_matrix, figsize=None, name_to_loc={}, fontsize=12, pa
         for i, (text, (textx, texty, left, top, width, height)) in enumerate(name_to_loc.items()):
             if show_bb:
                 color = colors[i % len(colors)]
-                rect = mpatches.Rectangle(
+                ax.add_patch(mpatches.Rectangle(
                     (left + padding, top + padding), width - 2 * padding, height - 2 * padding,
-                    fill=False, edgecolor=color, linewidth=2
-                )
-                ax.add_patch(rect)
+                    fill=False, edgecolor=color, alpha=alpha, linewidth=2
+                ))
                 plt.text(textx, texty, text, fontsize=fontsize, color='white',
-                         bbox=dict(fill=True, color=color, linewidth=0))
+                         bbox=dict(fill=True, color=color, alpha=alpha, linewidth=0))
+
+                # left, top, width, height = _get_rect_of_text_box(text, textx, texty, fontsize, lineheight, padding)
+                # ax.add_patch(mpatches.Rectangle(
+                #     (left, top), width, height, fill=False, edgecolor='white', linewidth=1
+                # ))
+
             else:
                 plt.text(textx, texty, text, fontsize=fontsize)
-
 
     if show:
         fig.show()
@@ -869,6 +870,24 @@ def make_camera_image(rgbd_matrix, figsize=None, name_to_loc={}, fontsize=12, pa
     if verbose:
         print(f'world_utils.make_camera_image(rgbd_matrix) \t {output_path}')
 
+
+def _get_rect_of_text_box(text, textx, texty, fontsize, lineheight, padding):
+    left = textx-padding
+    top = texty-lineheight/2-padding*0.6
+    width = _get_text_width(text, fontsize)
+    height = lineheight
+    return left, top, width, height
+
+
+def _get_bb_of_text_box(text, textx, texty, fontsize, lineheight, padding):
+    left, top, width, height = _get_rect_of_text_box(text, textx, texty, fontsize, lineheight, padding)
+    return aabb_from_extent_center((width, height), (left+width/2, top+height/2))
+
+
+def _get_text_width(text, fontsize):
+    narrower = 'iflj'
+    widths = [0.3 if c in narrower else 0.6 for c in text+'  ']
+    return sum(widths) * fontsize
 
 def make_camera_collage(camera_images, output_path='observation.png', verbose=False):
     import matplotlib.pyplot as plt
@@ -885,6 +904,11 @@ def make_camera_collage(camera_images, output_path='observation.png', verbose=Fa
 
 ##############################################################################
 
+special_cases = {
+    'pot lid': 2,
+    'pot body': 1,
+    'top drawer': 0,
+}
 
 def make_camera_image_with_object_labels(camera, body_to_english_names,
                                          fontsize=8, lineheight=18, padding=4, **kwargs):
@@ -897,8 +921,9 @@ def make_camera_image_with_object_labels(camera, body_to_english_names,
 
     heights = []
     name_to_loc = {}
-    case = 0
     for k, name in body_to_english_names.items():
+        if name.endswith('space'):
+            continue
         keys = obj_keys[name]
         mask = get_seg_foreground_given_obj_keys(rgb, keys, unique)
         bb = get_mask_bb(mask)
@@ -906,59 +931,71 @@ def make_camera_image_with_object_labels(camera, body_to_english_names,
             center = get_aabb_center(bb)
             width, height = get_aabb_extent(bb)
             left, top = bb.lower
-
-            box_area = (width-padding) * (height-padding)
-            text_box_area = len(name)/2 * fontsize * lineheight
-            is_small_box = box_area < 3 * text_box_area
-            print(f'{name}\tis_small_box = {is_small_box}\t box_area = {box_area}\t '
-                  f'text_box_area = {text_box_area}')
-
             x, y = center.tolist()
 
-            if is_small_box:
-                x, y = _adjust_xy_for_small_box(x, y, case%3, top, left, width, height, fontsize, lineheight, name)
+            box_area = (width - padding) * (height - padding)
+            _, _, textbox_width, textbox_height = _get_rect_of_text_box(name, x, y, fontsize, lineheight, padding)
+            text_box_area = textbox_width * textbox_height
+            is_small_box = name in special_cases  # box_area < 2.4 * text_box_area
+            print(f'{name}\tis_small_box = {is_small_box}\t box_area = {box_area}\ttext_box_area = {text_box_area}')
 
             ## adjust the x of label to align it to the center of object parts
-            x -= (fontsize * 0.5) * (len(name) / 2)
+            x = x + padding / 2 - textbox_width / 2
+            y += padding / 2
 
-            ## adjust the y of label to ensure not overlapping
-            yp = _adjust_y_to_prevent_overlap(y, heights, lineheight)
-            while is_small_box and yp is None:
-                case += 1
-                x, y = _adjust_xy_for_small_box(x, y, case%3, top, left, width, height, fontsize, lineheight, name)
-                yp = _adjust_y_to_prevent_overlap(y, heights, lineheight)
-            if yp is not None:
-                y = yp
+            ## adjust for specific cases
+            if is_small_box:
+                x, y = _adjust_xy_for_small_box(x, y, top, left, width, height, padding,
+                                                name, textbox_width, textbox_height)
+
+            else:
+                ## adjust the y of label to ensure not overlapping
+                yp = _adjust_y_to_prevent_overlap(y, heights, lineheight, bb, name, x, fontsize, padding)
+                if yp is not None:
+                    y = yp
             heights.append(y)
 
             name_to_loc[name] = [x, y, left, top, width, height]
 
     figsize = (8, 6)  ## (16, 12)
-    make_camera_image(rgb, figsize=figsize, name_to_loc=name_to_loc, fontsize=fontsize, padding=padding, **kwargs)
+    make_camera_image(rgb, figsize=figsize, name_to_loc=name_to_loc,
+                      fontsize=fontsize, padding=padding, **kwargs)
 
 
-def _adjust_xy_for_small_box(x, y, case, top, left, width, height, fontsize, lineheight, name):
+def _adjust_xy_for_small_box(x, y, top, left, width, height, padding, text, textbox_width, textbox_height):
+    case = 0
+    if text in special_cases:
+        case = special_cases[text]
+    ## above box
     if case == 0:
-        y = top - lineheight * 0.25
+        y = top + padding - textbox_height / 2
+    ## below box
     if case == 1:
-        x = left + width + (fontsize * 0.5) * len(name) / 2
+        y = top + height - padding + textbox_height / 2
+    ## right of box
     if case == 2:
-        y = top + height + lineheight * 0.25
+        x = left + width / 2 + textbox_width / 2
     return x, y
 
 
-def _adjust_y_to_prevent_overlap(y, heights, lineheight):
+def _adjust_y_to_prevent_overlap(y, heights, lineheight, bb, name, x, fontsize, padding):
     for yy in heights:
         if abs(yy - y) < lineheight:
             found = False
             for dy in [1, -1]:
                 yyy = y + lineheight * dy
 
-                overlapped = False
+                ## first criteria to check: label not overlapping with other boxes
+                overlap_with_others = False
                 for yyyy in heights:
                     if yyyy != yy and abs(yyyy - yyy) < lineheight:
-                        overlapped = True
-                if not overlapped:
+                        overlap_with_others = True
+
+                ## second criteria to check: label not overlapping with other boxes
+                new_bb = _get_bb_of_text_box(name, x, yyy, fontsize, lineheight, padding)
+                overlap_with_bb = aabb_overlap(bb, new_bb)
+
+                if not overlap_with_others and overlap_with_bb:
                     found = True
                     print(f'\t{y} -> {yyy}')
                     y = yyy
