@@ -7,6 +7,7 @@ from os.path import join, isdir, abspath, dirname, isfile
 sys.path.append(abspath(join(dirname(__file__), '..')))
 
 
+from pybullet_tools.utils import AABB
 from pybullet_tools.camera_utils import get_segmask
 
 
@@ -148,15 +149,18 @@ def make_image_background(old_arr):
     return new_arr
 
 
-def save_seg_image_given_obj_keys(rgb, keys, unique, file_name, crop=False, center=False, **kwargs):
+def get_seg_foreground_given_obj_keys(rgb, keys, unique):
     mask = np.zeros_like(rgb[:, :, 0])
-    background = make_image_background(rgb)
     for k in keys:
         if k in unique:
             c, r = zip(*unique[k])
             mask[(np.asarray(c), np.asarray(r))] = 1
-        # else:
-        #     print('key not found', k)
+    return mask
+
+
+def save_seg_image_given_obj_keys(rgb, keys, unique, file_name, crop=False, center=False, **kwargs):
+    background = make_image_background(rgb)
+    mask = get_seg_foreground_given_obj_keys(rgb, keys, unique)
     foreground = rgb * expand_mask(mask)
     background[np.where(mask != 0)] = 0
     new_image = foreground + background
@@ -179,9 +183,9 @@ def save_seg_image_given_obj_keys(rgb, keys, unique, file_name, crop=False, cent
 ##############################################################################
 
 
-def save_seg_mask(imgs, obj_keys, verbose=False):
-    rgb = imgs.rgbPixels[:, :, :3]
-    seg = imgs.segmentationMaskBuffer
+def save_seg_mask(camera_image, obj_keys, verbose=False):
+    rgb = camera_image.rgbPixels[:, :, :3]
+    seg = camera_image.segmentationMaskBuffer
     unique = get_segmask(seg)
     mask = np.zeros_like(rgb[:, :, 0])
     for k in obj_keys:

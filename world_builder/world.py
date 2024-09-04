@@ -138,7 +138,6 @@ class WorldBase(object):
 
     def add_camera(self, pose=unit_pose(), img_dir=join('visualizations', 'camera_images'),
                    width=640, height=480, fx=400, **kwargs):
-
         # camera_matrix = get_camera_matrix(width=width, height=height, fx=525., fy=525.)
         camera_matrix = get_camera_matrix(width=width, height=height, fx=fx)
         camera = StaticCamera(pose, camera_matrix=camera_matrix, **kwargs)
@@ -180,9 +179,11 @@ class WorldBase(object):
         quat_right = multiply_quat(quat_front, quat_from_euler(Euler(yaw=0, pitch=PI / 2, roll=0)))
         quat_left = multiply_quat(quat_front, quat_from_euler(Euler(yaw=0, pitch=-PI / 2, roll=0)))
         quat_front_down = multiply_quat(quat_front, quat_from_euler(Euler(yaw=0, pitch=0, roll=-PI / 4)))
-        for pose in [(self.front_camera_point, (0.5, 0.5, -0.5, -0.5)),
-                     (self.downward_camera_point, quat_front_down)]:
-            self.observation_cameras.append(self.add_camera(pose=pose))
+        for pose, name in [
+            [(self.front_camera_point, quat_front), 'front_camera'],
+            [(self.downward_camera_point, quat_front_down), 'downward_camera']
+        ]:
+            self.observation_cameras.append(self.add_camera(pose=pose, name=name))
 
     def initiate_space_markers(self, s=0.03):
         if self.space_markers is not None:
@@ -1321,29 +1322,6 @@ class World(WorldBase):
         if parent is not None and parent in obstacles:
             obstacles.remove(parent)
         return obstacles
-
-    # def add_camera(self, pose=unit_pose(), img_dir=join('visualizations', 'camera_images')):
-    #     camera = StaticCamera(pose, camera_matrix=CAMERA_MATRIX, max_depth=6)
-    #     self.cameras.append(camera)
-    #     self.camera = camera
-    #     self.img_dir = img_dir
-    #     if self.camera:
-    #         return self.cameras[-1].get_image(segment=self.segment)
-    #     return None
-    #
-    # def visualize_image(self, pose=None, img_dir=None, far=8, index=None,
-    #                     camera_point=None, target_point=None, **kwargs):
-    #     if not isinstance(self.camera, StaticCamera):
-    #         self.add_camera()
-    #     if pose is not None:
-    #         self.camera.set_pose(pose)
-    #     if index is None:
-    #         index = self.camera.index
-    #     if img_dir is not None:
-    #         self.img_dir = img_dir
-    #     image = self.camera.get_image(segment=self.segment, far=far,
-    #                                   camera_point=camera_point, target_point=target_point)
-    #     visualize_camera_image(image, index, img_dir=self.img_dir, **kwargs)
 
     def init_link_joint_relations(self, all_links=[], all_joints=None, verbose=False):
         """ find whether moving certain joints would change the link poses or spaces and surfaces """

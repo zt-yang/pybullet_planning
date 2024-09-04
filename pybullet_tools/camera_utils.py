@@ -199,9 +199,9 @@ def take_selected_seg_images(world, img_dir, body, indices, width=1280, height=9
     world.add_camera(**common, **camera_kwargs)
 
     ## take seg images
-    imgs = world.camera.get_image(segment=True, segment_links=True)
-    rgb = imgs.rgbPixels[:, :, :3]
-    seg = imgs.segmentationMaskBuffer
+    camera_image = world.camera.get_image(segment=True, segment_links=True)
+    rgb = camera_image.rgbPixels[:, :, :3]
+    seg = camera_image.segmentationMaskBuffer
     # seg = imgs.segmentationMaskBuffer[:, :, 0].astype('int32')
     unique = get_segmask(seg)
     obj_keys = get_obj_keys_for_segmentation(indices, unique)
@@ -265,7 +265,7 @@ def get_obj_keys_for_segmentation(indices, unique=None):
         return obj_keys: {'minifridge::joint_0': [(15, 1), (15, 2)], 'pr20': [(0, 0)], 'minifridge': [(15, 0), (15, 1)]}
     """
     obj_keys = {}
-    for k, v in indices.items():
+    for k, name in indices.items():
         keys = []
         if isinstance(k, str):
             k = eval(k)
@@ -282,5 +282,5 @@ def get_obj_keys_for_segmentation(indices, unique=None):
         elif isinstance(k, tuple) and len(k) == 2:
             if k[0] in get_bodies():
                 keys = [(k[0], l) for l in get_door_links(k[0], k[1])]
-        obj_keys[v] = keys
+        obj_keys[name] = keys
     return obj_keys

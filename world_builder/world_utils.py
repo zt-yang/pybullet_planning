@@ -12,7 +12,7 @@ import math
 import inspect
 
 from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sample_placement_on_aabb, wait_unlocked, \
-    set_pose, get_movable_joints, draw_pose, pose_from_pose2d, set_velocity, set_joint_states, get_bodies, \
+    set_pose, get_aabb_center, draw_pose, pose_from_pose2d, set_velocity, set_joint_states, get_bodies, \
     flatten, INF, inf_generator, get_time_step, get_all_links, get_visual_data, pose2d_from_pose, multiply, invert, \
     get_sample_fn, pairwise_collisions, sample_placement, is_placement, aabb_contains_point, point_from_pose, \
     aabb2d_from_aabb, is_center_stable, aabb_contains_aabb, get_model_info, get_name, get_pose, dump_link, \
@@ -22,9 +22,11 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sam
     get_link_name, get_link_pose, euler_from_quat, get_collision_data, get_joint_name, get_joint_position, \
     set_renderer, link_from_name, parent_joint_from_link, set_random_seed, set_numpy_seed
 from pybullet_tools.bullet_utils import is_joint_open, get_fine_rainbow_colors, open_joint, toggle_joint
-from pybullet_tools.camera_utils import get_segmask
+from pybullet_tools.camera_utils import get_segmask, get_obj_keys_for_segmentation
 from pybullet_tools.logging_utils import dump_json
 from pybullet_tools.general_streams import Position
+
+from lisdf_tools.image_utils import get_seg_foreground_given_obj_keys, get_mask_bb, RAINBOW_COLORS, DARKER_COLORS
 
 from world_builder.asset_constants import DONT_LOAD
 from world_builder.paths import ASSET_PATH
@@ -829,7 +831,46 @@ def get_camera_image(camera, include_rgb=False, include_depth=False, include_seg
     return CameraImage(rgb, depth, seg, pose, matrix)
 
 
-def make_camera_collage(camera_images, output_path='observation.png'):
+def make_camera_image(rgbd_matrix, figsize=None, name_to_loc={}, fontsize=12, padding=4, show_bb=True,
+                      show=True, output_path='observation.png', verbose=False):
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.imshow(rgbd_matrix)
+
+    ax.axis('off')
+    # plt.margins(0, 0)
+    # plt.gca().set_axis_off()
+    # plt.gca().xaxis.set_major_locator(plt.NullLocator())
+    # plt.gca().yaxis.set_major_locator(plt.NullLocator())
+    fig.tight_layout()
+
+    if figsize is not None:
+        colors = DARKER_COLORS[:-1]
+        for i, (text, (textx, texty, left, top, width, height)) in enumerate(name_to_loc.items()):
+            if show_bb:
+                color = colors[i % len(colors)]
+                rect = mpatches.Rectangle(
+                    (left + padding, top + padding), width - 2 * padding, height - 2 * padding,
+                    fill=False, edgecolor=color, linewidth=2
+                )
+                ax.add_patch(rect)
+                plt.text(textx, texty, text, fontsize=fontsize, color='white',
+                         bbox=dict(fill=True, color=color, linewidth=0))
+            else:
+                plt.text(textx, texty, text, fontsize=fontsize)
+
+
+    if show:
+        fig.show()
+    else:
+        fig.savefig(output_path, dpi=300)
+
+    if verbose:
+        print(f'world_utils.make_camera_image(rgbd_matrix) \t {output_path}')
+
+
+def make_camera_collage(camera_images, output_path='observation.png', verbose=False):
     import matplotlib.pyplot as plt
     images = [camera_image.rgbPixels for camera_image in camera_images]
     fig, axes = plt.subplots(1, len(images), figsize=(5 * len(images), 4))
@@ -838,6 +879,95 @@ def make_camera_collage(camera_images, output_path='observation.png'):
         axes[i].axis('off')
     fig.tight_layout()
     fig.savefig(output_path)
+    if verbose:
+        print(f'world_utils.make_camera_collage(images) len = {len(images)} \t {output_path}')
+
+
+##############################################################################
+
+
+def make_camera_image_with_object_labels(camera, body_to_english_names,
+                                         fontsize=8, lineheight=18, padding=4, **kwargs):
+    """ for creating image for VLM query """
+    camera_image = camera.get_image(segment=True, segment_links=True)
+    rgb = camera_image.rgbPixels[:, :, :3]
+    seg = camera_image.segmentationMaskBuffer
+    unique = get_segmask(seg)
+    obj_keys = get_obj_keys_for_segmentation(body_to_english_names, unique)
+
+    heights = []
+    name_to_loc = {}
+    case = 0
+    for k, name in body_to_english_names.items():
+        keys = obj_keys[name]
+        mask = get_seg_foreground_given_obj_keys(rgb, keys, unique)
+        bb = get_mask_bb(mask)
+        if bb is not None:
+            center = get_aabb_center(bb)
+            width, height = get_aabb_extent(bb)
+            left, top = bb.lower
+
+            box_area = (width-padding) * (height-padding)
+            text_box_area = len(name)/2 * fontsize * lineheight
+            is_small_box = box_area < 3 * text_box_area
+            print(f'{name}\tis_small_box = {is_small_box}\t box_area = {box_area}\t '
+                  f'text_box_area = {text_box_area}')
+
+            x, y = center.tolist()
+
+            if is_small_box:
+                x, y = _adjust_xy_for_small_box(x, y, case%3, top, left, width, height, fontsize, lineheight, name)
+
+            ## adjust the x of label to align it to the center of object parts
+            x -= (fontsize * 0.5) * (len(name) / 2)
+
+            ## adjust the y of label to ensure not overlapping
+            yp = _adjust_y_to_prevent_overlap(y, heights, lineheight)
+            while is_small_box and yp is None:
+                case += 1
+                x, y = _adjust_xy_for_small_box(x, y, case%3, top, left, width, height, fontsize, lineheight, name)
+                yp = _adjust_y_to_prevent_overlap(y, heights, lineheight)
+            if yp is not None:
+                y = yp
+            heights.append(y)
+
+            name_to_loc[name] = [x, y, left, top, width, height]
+
+    figsize = (8, 6)  ## (16, 12)
+    make_camera_image(rgb, figsize=figsize, name_to_loc=name_to_loc, fontsize=fontsize, padding=padding, **kwargs)
+
+
+def _adjust_xy_for_small_box(x, y, case, top, left, width, height, fontsize, lineheight, name):
+    if case == 0:
+        y = top - lineheight * 0.25
+    if case == 1:
+        x = left + width + (fontsize * 0.5) * len(name) / 2
+    if case == 2:
+        y = top + height + lineheight * 0.25
+    return x, y
+
+
+def _adjust_y_to_prevent_overlap(y, heights, lineheight):
+    for yy in heights:
+        if abs(yy - y) < lineheight:
+            found = False
+            for dy in [1, -1]:
+                yyy = y + lineheight * dy
+
+                overlapped = False
+                for yyyy in heights:
+                    if yyyy != yy and abs(yyyy - yyy) < lineheight:
+                        overlapped = True
+                if not overlapped:
+                    found = True
+                    print(f'\t{y} -> {yyy}')
+                    y = yyy
+                    break
+            if not found:
+                return None
+    return y
+
+##############################################################################
 
 
 def get_objs_in_camera_images(camera_images, world=None, show=False, save=False, verbose=False):
