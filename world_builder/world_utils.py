@@ -11,7 +11,7 @@ import random
 import math
 import inspect
 
-from pybullet_tools.utils import unit_pose, get_aabb_extent, draw_aabb, RED, sample_placement_on_aabb, wait_unlocked, \
+from pybullet_tools.utils import unit_pose, get_aabb_extent, is_darwin, RED, sample_placement_on_aabb, wait_unlocked, \
     set_pose, get_aabb_center, aabb_from_extent_center, aabb_overlap, sample_placement, \
     CameraImage, dump_joint, dump_body, PoseSaver, get_aabb, add_text, GREEN, AABB, remove_body, HideOutput, \
     stable_z, Pose, Point, create_box, load_model, get_joints, set_joint_position, BROWN, Euler, PI, \
@@ -828,7 +828,8 @@ def get_camera_image(camera, include_rgb=False, include_depth=False, include_seg
     return CameraImage(rgb, depth, seg, pose, matrix)
 
 
-def make_camera_image(rgbd_matrix, figsize=None, name_to_loc={}, fontsize=12, alpha=0.7, padding=4,
+def make_camera_image(rgbd_matrix, figsize=None, name_to_loc={},
+                      fontsize=12, lineheight=18, alpha=0.7, padding=4,
                       show_bb=True, show=True, output_path='observation.png', verbose=False):
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
@@ -836,10 +837,6 @@ def make_camera_image(rgbd_matrix, figsize=None, name_to_loc={}, fontsize=12, al
     ax.imshow(rgbd_matrix)
 
     ax.axis('off')
-    # plt.margins(0, 0)
-    # plt.gca().set_axis_off()
-    # plt.gca().xaxis.set_major_locator(plt.NullLocator())
-    # plt.gca().yaxis.set_major_locator(plt.NullLocator())
     fig.tight_layout()
 
     if figsize is not None:
@@ -854,16 +851,19 @@ def make_camera_image(rgbd_matrix, figsize=None, name_to_loc={}, fontsize=12, al
                 plt.text(textx, texty, text, fontsize=fontsize, color='white',
                          bbox=dict(fill=True, color=color, alpha=alpha, linewidth=0))
 
-                # left, top, width, height = _get_rect_of_text_box(text, textx, texty, fontsize, lineheight, padding)
-                # ax.add_patch(mpatches.Rectangle(
-                #     (left, top), width, height, fill=False, edgecolor='white', linewidth=1
-                # ))
+                if show:
+                    left, top, width, height = _get_rect_of_text_box(text, textx, texty, fontsize, lineheight, padding)
+                    ax.add_patch(mpatches.Rectangle(
+                        (left, top), width, height, fill=False, edgecolor='white', linewidth=1
+                    ))
 
             else:
                 plt.text(textx, texty, text, fontsize=fontsize)
 
     if show:
         fig.show()
+        if is_darwin():
+            wait_unlocked()
     else:
         fig.savefig(output_path, dpi=300)
 
@@ -904,13 +904,21 @@ def make_camera_collage(camera_images, output_path='observation.png', verbose=Fa
 
 ##############################################################################
 
+ABOVE = 0
+BELOW = 1
+RIGHT = 2
+
 special_cases = {
-    'pot lid': 2,
-    'pot body': 1,
-    'top drawer': 0,
+    'pot lid': RIGHT,
+    'pot body': BELOW,
+    'top drawer': ABOVE,
+    'cabinet right door': BELOW,
+    'stove knob on the left': ABOVE,
+    'stove knob on the right': RIGHT
 }
 
-def make_camera_image_with_object_labels(camera, body_to_english_names,
+
+def make_camera_image_with_object_labels(camera, body_to_english_names, verbose=False,
                                          fontsize=8, lineheight=18, padding=4, **kwargs):
     """ for creating image for VLM query """
     camera_image = camera.get_image(segment=True, segment_links=True)
@@ -934,11 +942,22 @@ def make_camera_image_with_object_labels(camera, body_to_english_names,
             x, y = center.tolist()
 
             box_area = (width - padding) * (height - padding)
+            if box_area <= 100:
+                left -= 2 * padding
+                top -= 2 * padding
+                width += 4 * padding
+                height += 4 * padding
+                box_area = (width - padding) * (height - padding)
+
             _, _, textbox_width, textbox_height = _get_rect_of_text_box(name, x, y, fontsize, lineheight, padding)
             text_box_area = textbox_width * textbox_height
             is_small_box = name in special_cases  # box_area < 2.4 * text_box_area
-            print(f'{name}\tis_small_box = {is_small_box}\t box_area = {box_area}\ttext_box_area = {text_box_area}')
+            if verbose:
+                print(f'{name}\tis_small_box = {is_small_box}\t box_area = {box_area}\t (top, left) = {(top, left)}'
+                      f'\t textbox_width = {round(textbox_width, 2)}\t text_box_area = {round(text_box_area, 2)}')
 
+            if name == 'stove knob on the right':
+                print('stove knob on the right')
             ## adjust the x of label to align it to the center of object parts
             x = x + padding / 2 - textbox_width / 2
             y += padding / 2
@@ -957,9 +976,10 @@ def make_camera_image_with_object_labels(camera, body_to_english_names,
 
             name_to_loc[name] = [x, y, left, top, width, height]
 
-    figsize = (8, 6)  ## (16, 12)
+    figsize = (8, 6)  ## (800px by 600px)
+    name_to_loc = dict(sorted(name_to_loc.items(), key=lambda item: item[1][0]))
     make_camera_image(rgb, figsize=figsize, name_to_loc=name_to_loc,
-                      fontsize=fontsize, padding=padding, **kwargs)
+                      fontsize=fontsize, padding=padding, lineheight=lineheight, **kwargs)
 
 
 def _adjust_xy_for_small_box(x, y, top, left, width, height, padding, text, textbox_width, textbox_height):
@@ -968,17 +988,17 @@ def _adjust_xy_for_small_box(x, y, top, left, width, height, padding, text, text
         case = special_cases[text]
     ## above box
     if case == 0:
-        y = top + padding - textbox_height / 2
+        y = top - textbox_height / 2
     ## below box
     if case == 1:
         y = top + height - padding + textbox_height / 2
     ## right of box
     if case == 2:
-        x = left + width / 2 + textbox_width / 2
+        x = left + width
     return x, y
 
 
-def _adjust_y_to_prevent_overlap(y, heights, lineheight, bb, name, x, fontsize, padding):
+def _adjust_y_to_prevent_overlap(y, heights, lineheight, bb, name, x, fontsize, padding, verbose=False):
     for yy in heights:
         if abs(yy - y) < lineheight:
             found = False
@@ -997,7 +1017,8 @@ def _adjust_y_to_prevent_overlap(y, heights, lineheight, bb, name, x, fontsize, 
 
                 if not overlap_with_others and overlap_with_bb:
                     found = True
-                    print(f'\t{y} -> {yyy}')
+                    if verbose:
+                        print(f'\t{y} -> {yyy}')
                     y = yyy
                     break
             if not found:
@@ -1114,13 +1135,16 @@ def sort_body_indices(lst):
     return sorted_lst
 
 
-def add_joint_status_facts(body, position=None, verbose=False, return_description=False):
+def add_joint_status_facts(body, position=None, categories=None,
+                           verbose=False, return_description=False):
     init = []
     title = f'get_world_fluents | joint {body} is'
 
     if is_joint_open(body, threshold=1, is_closed=True):
         init += [('IsClosedPosition', body, position)]
         description = 'fully closed'
+        if 'knob' in categories:
+            description = 'turned off'
 
     elif not is_joint_open(body, threshold=0.25):
         init += [('IsClosedPosition', body, position)]
@@ -1129,6 +1153,8 @@ def add_joint_status_facts(body, position=None, verbose=False, return_descriptio
     elif is_joint_open(body, threshold=1):
         init += [('IsOpenedPosition', body, position)]
         description = 'fully open'
+        if 'knob' in categories:
+            description = 'turned on'
 
     else:
         init += [('IsOpenedPosition', body, position)]

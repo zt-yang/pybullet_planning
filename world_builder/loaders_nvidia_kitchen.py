@@ -19,9 +19,9 @@ from world_builder.world_utils import sort_body_indices
 from world_builder.loaders import *
 
 part_names = {
-    'sektion': 'side cabinet',
-    'chewie_door_left_joint': 'side cabinet left door',
-    'chewie_door_right_joint': 'side cabinet right door',
+    'sektion': 'cabinet',
+    'chewie_door_left_joint': 'cabinet left door',
+    'chewie_door_right_joint': 'cabinet right door',
     'indigo_drawer_top': 'top drawer space',
     'indigo_drawer_top_joint': 'top drawer',
     'indigo_tmp': 'counter top on the right',
@@ -31,7 +31,8 @@ part_names = {
     'braiser_bottom': 'pot bottom',
     'front_left_stove': 'stove on the left',
     'front_right_stove': 'stove on the right',
-    'knob_joint_1': 'stove knob'
+    'knob_joint_2': 'stove knob on the right',
+    'knob_joint_3': 'stove knob on the left'
 }
 
 ###############################################################################
@@ -185,7 +186,7 @@ def fix_braiser_orientation(world):
     braiser.set_pose((point, quat_from_euler(Euler(yaw=PI/2))))
 
 
-def load_stove_knobs(world, knobs=['knob_joint_2'], color_code_surfaces=True, draw_label=True):
+def load_stove_knobs(world, knobs=['knob_joint_2', 'knob_joint_3'], color_code_surfaces=True, draw_label=True):
     colors = [RED, YELLOW, BLUE, GREEN] if color_code_surfaces else [GREY] * 4
     # knobs = ['knob_joint_1', 'knob_joint_2']
     surfaces = ['back_right_stove', 'front_right_stove', 'front_left_stove', 'back_left_stove']
@@ -228,15 +229,20 @@ def get_objects_for_open_kitchen(world):
                     'indigo_drawer_top', 'indigo_drawer_top_joint', 'indigo_tmp',
                     'sektion', 'chewie_door_left_joint', 'chewie_door_right_joint',
                     'salt-shaker', 'pepper-shaker',
-                    'front_left_stove', 'knob_joint_1']  ## 'front_right_stove',
+                    'front_left_stove', 'front_right_stove', 'knob_joint_2', 'knob_joint_3']
     objects = [world.name_to_body(name) for name in object_names]
     objects = sort_body_indices(objects)
     world.set_english_names(part_names)
     world.remove_bodies_from_planning([], exceptions=objects)
 
     print('reduce_objects_for_open_kitchen')
-    print(f"\t{len(objects)} objects provided:\t {objects}")
-    print(f"\t{len(world.BODY_TO_OBJECT.keys())} objects in world:\t {sort_body_indices(list(world.BODY_TO_OBJECT.keys()))}")
+    print(f"\t{len(objects)} objects provided (A):\t {objects}")
+    world_objects = sort_body_indices(list(world.BODY_TO_OBJECT.keys()))
+    in_a_not_in_b = [o for o in objects if o not in world_objects]
+    in_b_not_in_a = [o for o in world_objects if o not in objects]
+    print(f"\t\t in A not in B ({len(in_a_not_in_b)}):\t {in_a_not_in_b}")
+    print(f"\t{len(world.BODY_TO_OBJECT.keys())} objects in world (B):\t {world_objects}")
+    print(f"\t\t in B not in A ({len(in_b_not_in_a)}):\t {in_b_not_in_a}")
     return objects
 
 
