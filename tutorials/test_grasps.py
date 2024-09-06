@@ -24,7 +24,7 @@ from pybullet_tools.general_streams import get_grasp_list_gen, Position, \
     get_stable_list_gen, get_handle_grasp_gen, sample_joint_position_gen
 
 from world_builder.world import State
-from world_builder.loaders import load_kitchen_floor_plan
+from world_builder.loaders_nvidia_kitchen import load_kitchen_floor_plan
 from world_builder.world_utils import load_asset, get_instance_name, get_partnet_doors, draw_body_label
 
 from tutorials.test_utils import get_test_world, get_instances, \

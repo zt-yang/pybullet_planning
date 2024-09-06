@@ -15,7 +15,7 @@ from pybullet_tools.logging_utils import print_dict
 from pybullet_tools.general_streams import Position
 
 from world_builder.paths import DATABASES_PATH
-from world_builder.world_utils import sort_body_indices
+from world_builder.world_utils import sort_body_indices, RIGHT, LEFT, ABOVE, BELOW
 from world_builder.loaders import *
 
 part_names = {
@@ -34,6 +34,21 @@ part_names = {
     'knob_joint_2': 'stove knob on the right',
     'knob_joint_3': 'stove knob on the left',
     'shelf_top': 'fridge shelf'
+}
+
+## used by make_camera_image_with_object_labels() in world_builder.world_utils.py
+object_label_locations = {
+    'pot lid': RIGHT,
+    'pot body': BELOW,
+    'top drawer': ABOVE,
+    'cabinet right door': BELOW,
+    'stove knob on the left': ABOVE,
+    'stove knob on the right': RIGHT,
+    'stove on the left': LEFT,
+    'chicken leg': BELOW,
+    'fridge shelf': ABOVE,
+    'salt shaker': BELOW,
+    'pepper shaker': ABOVE
 }
 
 ###############################################################################
@@ -134,8 +149,52 @@ saved_base_confs = {
 FRONT_CAMERA_POINT = (3.9, 7, 1.3)
 DOWNWARD_CAMERA_POINT = (2.9, 7, 3.3)
 
-
 #######################################################################################################
+
+
+def load_kitchen_floor_plan(world, spaces=None, surfaces=None, **kwargs):
+    if spaces is None:
+        spaces = {
+            'counter': {
+                # 'sektion': [], ## 'OilBottle', 'VinegarBottle'
+                # 'dagger': ['Salter'],
+                'hitman_drawer_top': [],  ## 'Pan'
+                # 'hitman_drawer_bottom': [],
+                'indigo_drawer_top': [],  ## 'Fork', 'Knife'
+                # 'indigo_drawer_bottom': ['Fork', 'Knife'],
+                # 'indigo_tmp': ['Pot']
+            },
+        }
+
+    if surfaces is None:
+        surfaces = {
+            'counter': {
+                # 'front_left_stove': [],  ## 'Kettle'
+                'front_right_stove': ['BraiserBody'],  ## 'PotBody',
+                # 'back_left_stove': [],
+                # 'back_right_stove': [],
+                # 'range': [], ##
+                # 'hitman_tmp': ['Microwave'],  ##
+                'indigo_tmp': ['BraiserLid'],  ## 'MeatTurkeyLeg', 'Toaster',
+            },
+            'Fridge': {
+                # 'shelf_top': ['MilkBottle'],  ## 'Egg', 'Egg',
+                # 'shelf_bottom': [  ## for recording many objects
+                #     'VeggieCabbage', ## 'MeatTurkeyLeg',
+                #     'VeggieArtichoke',
+                #     'VeggieTomato',
+                #     'VeggieZucchini', 'VeggiePotato', 'VeggieCauliflower',
+                #     'MeatChicken',
+                #     'VeggieGreenPepper',
+                # ]
+                # 'shelf_bottom': ['VeggieCabbage']  ## for kitchen demo
+                # 'shelf_bottom': []  ## 'VeggieCabbage' ## for HPN testing
+            },
+            'Basin': {
+                'faucet_platform': []  ## 'Faucet'
+            }
+        }
+    return load_floor_plan(world, spaces=spaces, surfaces=surfaces, **kwargs)
 
 
 def load_full_kitchen(world, load_cabbage=True, **kwargs):
@@ -161,6 +220,183 @@ def load_full_kitchen(world, load_cabbage=True, **kwargs):
         cabbage.set_pose(Pose(point=Point(x=0.85, y=y, z=z)))
         return cabbage
     return None
+
+
+def load_feg_kitchen_dishwasher(world):
+    surfaces = {
+        'counter': {
+            'front_left_stove': [],
+            'front_right_stove': ['BraiserBody'],
+            # 'back_left_stove': [],
+            # 'back_right_stove': [],
+            'hitman_tmp': [],
+            'indigo_tmp': ['BraiserLid', 'MeatTurkeyLeg', 'VeggieCabbage'],  ##
+        },
+        'Fridge': {
+            'shelf_top': [],  ## 'Egg', 'Egg', 'MilkBottle'
+            # 'shelf_bottom': [  ## for recording many objects
+            #     'VeggieCabbage', ## 'MeatTurkeyLeg',
+            #     'VeggieArtichoke',
+            #     'VeggieTomato',
+            #     'VeggieZucchini', 'VeggiePotato', 'VeggieCauliflower',
+            #     'MeatChicken',
+            #     'VeggieGreenPepper',
+            # ]
+            # 'shelf_bottom': ['VeggieCabbage']  ## for kitchen demo
+            'shelf_bottom': []  ## 'VeggieCabbage' ## for HPN testing
+        },
+        'Basin': {
+            'faucet_platform': ['Faucet']
+        },
+        'dishwasher': {
+            "surface_plate_left": ['Plate'],  ## 'VeggieTomato', 'PlateFat'
+            # "surface_plate_right": ['Plate']  ## two object attached to one joint is too much
+        }
+    }
+    spaces = {
+        # 'counter': {
+        #     # 'sektion': [],  ##
+        #     # 'dagger': ['VinegarBottle', 'OilBottle'],  ## 'Salter',
+        #     # 'hitman_drawer_top': [],  ## 'Pan'
+        #     # 'hitman_drawer_bottom': ['Pan'],
+        #     # 'indigo_drawer_top': ['Fork'],  ## 'Fork', 'Knife'
+        #     # 'indigo_drawer_bottom': ['Fork', 'Knife'],
+        #     # 'indigo_tmp': ['Pot']
+        # }
+    }
+    floor = load_kitchen_floor_plan(world, plan_name='kitchen_v3.svg', surfaces=surfaces, spaces=spaces)
+    world.remove_object(floor)
+    load_kitchen_mechanism(world)
+    # load_kitchen_mechanism_stove(world)
+    dishwasher_door = world.add_joints_by_keyword('dishwasher', 'dishwasher_door')[0]
+
+    cabbage = world.name_to_body('cabbage')
+    chicken = world.name_to_body('turkey')
+    for ingredient in [cabbage, chicken]:
+        world.add_to_cat(ingredient, 'edible')
+        world.add_to_cat(ingredient, 'movable')
+    world.put_on_surface(cabbage, 'shelf_bottom')
+    world.put_on_surface(chicken, 'indigo_tmp')
+
+    lid = world.name_to_body('lid')
+    world.open_joint_by_name('fridge_door', pstn=1.5)
+    # world.put_on_surface(lid, 'indigo_tmp')
+
+    # world.add_to_cat(chicken, 'cleaned')
+
+    ## ------- test placement with tomato
+    # obj = world.name_to_object('tomato')
+    # world.name_to_object('surface_plate_left').attach_obj(obj)
+    # world.add_to_init(['ContainObj', obj.body])
+    # world.add_to_init(['AtAttachment', obj.body, dishwasher_door])
+
+    world.open_joint_by_name('dishwasher_door')
+    obj = world.name_to_object('Plate')  ## 'PlateFat'
+    obj.set_pose(((0.97, 6.23, 0.512), quat_from_euler((0, 0, math.pi))))
+    world.name_to_object('surface_plate_left').attach_obj(obj)
+    world.add_to_cat(obj.body, 'movable')
+    world.add_to_cat(obj.body, 'surface')
+    world.add_to_init(['ContainObj', obj.body])
+    world.add_to_init(['AtAttachment', obj.body, dishwasher_door])
+    world.close_joint_by_name('dishwasher_door')
+
+    ## ------- two object attached to one joint is too much
+    # obj = world.name_to_object('PlateFlat')
+    # obj.set_pose(((0.97, 6.23, 0.495), quat_from_euler((0, 0, math.pi))))
+    # world.name_to_object('surface_plate_right').attach_obj(obj)
+    # world.add_to_init(['ContainObj', obj.body])
+    # world.add_to_init(['AtAttachment', obj.body, dishwasher_door])
+
+    return dishwasher_door
+
+
+def load_feg_kitchen(world):
+    surfaces = {
+        'counter': {
+            'front_left_stove': [],
+            'front_right_stove': ['BraiserBody'],
+            # 'back_left_stove': [],
+            # 'back_right_stove': [],
+            'hitman_tmp': [],
+            'indigo_tmp': ['BraiserLid', 'MeatTurkeyLeg', 'VeggieCabbage'],  ##
+        },
+        'Fridge': {
+            'shelf_top': [],  ## 'Egg', 'Egg', 'MilkBottle'
+            # 'shelf_bottom': [  ## for recording many objects
+            #     'VeggieCabbage', ## 'MeatTurkeyLeg',
+            #     'VeggieArtichoke',
+            #     'VeggieTomato',
+            #     'VeggieZucchini', 'VeggiePotato', 'VeggieCauliflower',
+            #     'MeatChicken',
+            #     'VeggieGreenPepper',
+            # ]
+            # 'shelf_bottom': ['VeggieCabbage']  ## for kitchen demo
+            'shelf_bottom': []  ## 'VeggieCabbage' ## for HPN testing
+        },
+        'Basin': {
+            'faucet_platform': ['Faucet']
+        },
+    }
+    floor = load_kitchen_floor_plan(world, plan_name='kitchen_v3.svg', surfaces=surfaces)
+    world.remove_object(floor)
+    load_kitchen_mechanism(world)
+    # load_kitchen_mechanism_stove(world)
+
+    cabbage = world.name_to_body('cabbage')
+    turkey = world.name_to_body('turkey')
+    for ingredient in [cabbage, turkey]:
+        world.add_to_cat(ingredient, 'edible')
+        world.add_to_cat(ingredient, 'movable')
+    world.put_on_surface(cabbage, 'shelf_bottom')
+    world.put_on_surface(turkey, 'indigo_tmp')
+
+    lid = world.name_to_body('lid')
+    world.open_joint_by_name('fridge_door', pstn=1.5)
+    # world.put_on_surface(lid, 'indigo_tmp')
+
+    world.add_to_cat(turkey, 'cleaned')
+
+    return cabbage, turkey, lid
+
+
+def studio(args):
+    """
+    for testing fridge: plan_name = 'fridge.svg', robot pose: x=1.79, y=4.5
+    for testing fridge: plan_name = 'kitchen.svg', robot pose: x=1.79, y=8 | 5.5
+    for testing planning: plan_name = 'studio0.svg', robot pose: x=1.79, y=8
+    """
+    world = World(time_step=args.time_step, camera=args.camera, segment=args.segment)
+
+    # floor = load_floor_plan(world, plan_name='studio0.svg')  ## studio1
+    floor = load_kitchen_floor_plan(world, plan_name='kitchen.svg')
+    # load_experiment_objects(world, CABBAGE_ONLY=False)
+    world.remove_object(floor)  ## remove the floor for support
+
+    ## base_q=(0, 0, 0))  ## 4.309, 5.163, 0.82))  ##
+    robot = create_pr2_robot(world, base_q=(1.79, 6, PI/2+PI/2))
+    # set_camera_target_robot(robot, FRONT=False)
+    if args.camera: robot.cameras[-1].get_image(segment=args.segment)
+    # remove_object(floor) ## remove the floor for support
+
+    # floor = load_pybullet(FLOOR_URDF)
+
+    # open_doors_drawers(5)  ## open fridge
+    # open_joint(2, 'indigo_drawer_top_joint')
+    # open_joint(2, 56)  ## open fridge
+    # open_joint(2, 58)  ## open fridge
+    # open_all_doors_drawers()  ## for debugging
+    set_all_static()
+    # enable_gravity()
+    # wait_if_gui('Begin?')
+
+    exogenous = []
+    state = State(world)
+
+    return robot, state, exogenous
+
+    # enable_gravity()
+    # enable_real_time()
+    # run_thread(robot)
 
 
 # --------------------------------------------------------------------------------
@@ -317,8 +553,9 @@ def load_open_problem_kitchen(world, reduce_objects=False, difficulty=1, open_do
         objects = get_objects_for_open_kitchen(world)
 
     if difficulty == 0:
-        for door in world.cat_to_bodies('door'):
-            world.open_joint(door, extent=0.8)
+        for door in world.cat_to_objects('door'):
+            extent = 0.5 if 'fridge' in door.name else 0.8
+            world.open_joint(door.body, joint=door.joint, extent=extent)
         world.name_to_object('front_left_stove').place_obj(world.name_to_object('braiserlid'))
 
     return objects, movables, movable_to_doors

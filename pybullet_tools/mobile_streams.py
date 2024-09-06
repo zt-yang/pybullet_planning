@@ -193,6 +193,100 @@ def get_ik_rel_fn_old(problem, custom_limits={}, collisions=True, teleport=False
 ## --------------------------------------------------------------------
 
 
+def get_ik_pull_gen(problem, max_attempts=80, num_intervals=30, collisions=True, learned=True, teleport=False,
+                    ir_only=False, soft_failures=False, verbose=False, visualize=False, ACONF=False, **kwargs):
+    """ the one func that combines all """
+    ## not using this if tracik compiled
+    ir_sampler = get_ir_sampler(problem, collisions=collisions, learned=learned,
+                                max_attempts=max_attempts, verbose=verbose, visualize=visualize, **kwargs)
+    ik_fn = get_ik_fn_old(problem, collisions=collisions, teleport=teleport, verbose=False,
+                          ACONF=ACONF, visualize=visualize, **kwargs)
+    robot = problem.robot
+    world = problem.world
+    obstacles = problem.fixed if collisions else []
+    heading = 'mobile_streams.get_ik_pull_gen | '
+    saver = BodySaver(robot)
+    obstacles = problem.fixed if collisions else []
+    ignored_pairs = problem.ignored_pairs if collisions else []
+
+    def gen(a, o, pst1, pst2, g, context=None):
+        process_ik_context(context)
+
+        """ check if hand pose is in collision """
+        pst1.assign()
+        if 'pstn' in str(pst1):
+            pose_value = linkpose_from_position(pst1)
+        else:
+            pose_value = pst1.value
+
+        inputs = a, o, pst1, g
+        results = sample_bconf(
+            world, robot, inputs, pose_value, obstacles, heading, ir_sampler=ir_sampler, ik_fn=ik_fn,
+            verbose=verbose, visualize=visualize, soft_failures=soft_failures, learned=learned,
+            ir_max_attempts=max_attempts, ir_only=ir_only)
+        for (bq1, aq1, at) in results:
+            inputs = a, o, pst1, pst2, g, bq1, aq1
+            result = compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs, saver,
+                                                  num_intervals=num_intervals, collisions=collisions,
+                                                  visualize=visualize, verbose=verbose)
+            if result is not None:
+                bq2, bt = result
+                yield bq1, bq2, aq1, at, bt
+
+    return gen
+
+
+def get_ik_pull_with_link_gen(problem, max_attempts=80, num_intervals=30, collisions=True, learned=True, teleport=False,
+                              ir_only=False, soft_failures=False, verbose=False, visualize=False, ACONF=False, **kwargs):
+    """ the one func that combines all """
+    ## not using this if tracik compiled
+    ir_sampler = get_ir_sampler(problem, collisions=collisions, learned=learned,
+                                max_attempts=max_attempts, verbose=verbose, visualize=visualize, **kwargs)
+    ik_fn = get_ik_fn_old(problem, collisions=collisions, teleport=teleport, verbose=False,
+                          ACONF=ACONF, visualize=visualize, **kwargs)
+    robot = problem.robot
+    world = problem.world
+    obstacles = problem.fixed if collisions else []
+    heading = 'mobile_streams.get_ik_pull_gen | '
+    saver = BodySaver(robot)
+    obstacles = problem.fixed if collisions else []
+    ignored_pairs = problem.ignored_pairs if collisions else []
+
+    def gen(a, o, pst1, pst2, g, l, pl1, context=None):
+        process_ik_context(context)
+
+        """ check if hand pose is in collision """
+        pst1.assign()
+        if 'pstn' in str(pst1):
+            pose_value = linkpose_from_position(pst1)
+        else:
+            pose_value = pst1.value
+
+        pl1.assign()
+        inputs = a, o, pst1, g
+        results = sample_bconf(
+            world, robot, inputs, pose_value, obstacles, heading, ir_sampler=ir_sampler, ik_fn=ik_fn,
+            verbose=verbose, visualize=visualize, soft_failures=soft_failures, learned=learned,
+            ir_max_attempts=max_attempts, ir_only=ir_only)
+        for (bq1, aq1, at) in results:
+            inputs = a, o, pst1, pst2, g, bq1, aq1
+            result = compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs, saver,
+                                                  num_intervals=num_intervals, collisions=collisions,
+                                                  visualize=visualize, verbose=verbose)
+            if result is not None:
+                bq2, bt = result
+
+                pst2.assign()
+                pl2 = LinkPose(l, get_link_pose(l[0], l[-1]), joint=pst2.joint, position=pst2.value)
+                pst1.assign()
+
+                yield bq1, bq2, aq1, at, bt, pl2
+
+    return gen
+
+## --------------------------------------------------------------------
+
+
 def get_ik_gen_old(problem, max_attempts=80, collisions=True, learned=True, teleport=False, ir_only=False,
                    soft_failures=False, verbose=False, visualize=False, ACONF=False, **kwargs):
     """ given grasp of target object at relative pose rp with regard to supporter at p2, return base conf and arm traj """
@@ -1038,7 +1132,7 @@ def get_pull_door_handle_with_link_motion_gen(problem, custom_limits={}, collisi
 ##################################################
 
 
-def get_arm_ik_fn(problem, custom_limits={}, resolution=DEFAULT_RESOLUTION,
+def get_arm_ik_fn(problem, custom_limits={}, resolution=DEFAULT_RESOLUTION, return_first_aconf=False,
                   collisions=True, teleport=False, verbose=False):
     robot = problem.robot
     obstacles = problem.fixed if collisions else []
@@ -1101,7 +1195,7 @@ def get_arm_ik_fn(problem, custom_limits={}, resolution=DEFAULT_RESOLUTION,
 
         #approach_conf = sub_inverse_kinematics(robot, arm_joints[0], arm_link, approach_pose, custom_limits=custom_limits) ##, max_iterations=500
         # approach_conf = solve_nearby_ik(robot, arm, approach_pose, custom_limits=custom_limits)
-        approach_conf = robot.inverse_kinematics(arm, gripper_pose, obstacles, verbose=verbose)
+        approach_conf = robot.inverse_kinematics(arm, approach_pose, obstacles, verbose=verbose)
         if (approach_conf is None) or collided(robot, obstacles, articulated=True, tag=title, world=world): ##
             if verbose:
                 if approach_conf != None:
@@ -1117,7 +1211,6 @@ def get_arm_ik_fn(problem, custom_limits={}, resolution=DEFAULT_RESOLUTION,
             if verbose:
                 print(f'{title}Approach IK success | sub_inverse_kinematics({robot} at {nice(base_conf.values)}, '
                       f'{arm}, {nice(approach_pose[0])}) | pose = {pose}, grasp = {nice(grasp.approach)} -> {nice(approach_conf)}')
-
 
         set_joint_positions(robot, arm_joints, approach_conf)
         #approach_conf = get_joint_positions(robot, arm_joints)
@@ -1148,12 +1241,15 @@ def get_arm_ik_fn(problem, custom_limits={}, resolution=DEFAULT_RESOLUTION,
         attachments = {attachment.child: attachment} ## TODO: problem with having (body, joint) tuple
         robot.reset_ik_solvers()
         cmd = Commands(State(attachments=attachments), savers=[BodySaver(robot.body)], commands=[mt])
-        return (mt.path[-1], cmd)
+        aconf = mt.path[-1]
+        if return_first_aconf:
+            aconf = mt.path[0]
+        return (aconf, cmd)
     return fn
 
 
 def get_ik_ungrasp_gen(problem, max_attempts=25, teleport=False, **kwargs):
-    ik_fn = get_arm_ik_fn(problem, teleport=teleport, **kwargs)
+    ik_fn = get_arm_ik_fn(problem, teleport=teleport, return_first_aconf=True, **kwargs)
     # ik_fn = get_ik_fn(problem, pick_up=False, given_grasp_conf=True, **kwargs)
     def gen(*inputs):
         attempts = 0

@@ -18,15 +18,20 @@ def get_all_modules_in_directory():
     """
     ignore_files = ['__init__.py', 'problem_utils.py']
     root = dirname(__file__)
-    specs = [(f.split('.')[0], join(root, f)) for f in listdir(root) if f.endswith('.py') and f not in ignore_files]
-    funk_names = []
-    for name, path in specs:
-        spec = importlib.util.spec_from_file_location(f'problem_sets.{name}', path)
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = module
-        spec.loader.exec_module(module)
-        funk_names.append(module)
-    return funk_names
+    paths = [join(root, f) for f in listdir(root) if f.endswith('.py') and f not in ignore_files]
+    return [get_functions_in_file(path) for path in paths]
+
+
+def get_functions_in_file(path, name=None):
+    if name is None:
+        ## e.g. problem_sets.pr2_problems_pigi, vlm_tools.vlm_tamp_problems
+        ## assumes the root dir has been added to PYTHONPATH
+        name = '/'.join(path.split('/')[-2:]).replace('.py', '')
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def find_problem_fn_from_name(name, funk_names):

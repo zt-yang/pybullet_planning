@@ -9,7 +9,8 @@ from pybullet_tools.utils import PI, wait_if_gui, set_camera_pose
 from problem_sets.problem_utils import create_world
 from cogarch_tools.cogarch_utils import get_parser, init_pybullet_client
 
-from world_builder.loaders import load_floor_plan, load_kitchen_floor_plan
+from world_builder.loaders import load_floor_plan
+from world_builder.loaders_nvidia_kitchen import load_kitchen_floor_plan
 
 from robot_builder.robot_builders import build_robot_from_args
 

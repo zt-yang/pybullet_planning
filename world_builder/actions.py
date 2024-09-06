@@ -801,7 +801,7 @@ def get_primitive_actions(action, world, teleport=False, verbose=True, debug_rc2
             new_commands += world.get_events(o)
 
     elif name == 'grasp_pull_handle':
-        """ grasp, pull, ungrasp together """
+        """ grasp, pull, ungrasp together (FEG) """
         a, o, p1, p2, g, q1, q2, t1, t2, t3 = args
 
         ## step 1: grasp handle
@@ -826,6 +826,25 @@ def get_primitive_actions(action, world, teleport=False, verbose=True, debug_rc2
         from pybullet_tools.pr2_primitives import State
         cmd = Commands(State(), savers=[], commands=[t])
         get_traj(cmd)
+
+    elif name == 'grasp_pull_ungrasp_handle':
+        """ grasp, pull, ungrasp together (Mobile) """
+        a, o, p1, p2, g, q1, q2, bt, aq1, aq2, at = args
+
+        ## step 1: grasp handle
+        at = get_traj(at)
+        close_gripper = GripperAction(a, position=g.grasp_width, teleport=teleport)
+        attach = AttachObjectAction(a, g, o, debug_rc2oc=debug_rc2oc)
+        new_commands = at + [close_gripper, attach]
+
+        ## step 2: move the handle (door, drawer, knob)
+        bt = get_traj(bt)
+        new_commands += bt
+
+        ## step 3: ungrasp the handle
+        open_gripper = GripperAction(a, extent=1, teleport=teleport)
+        detach = DetachObjectAction(a, o)
+        new_commands += [detach, open_gripper] + at[::-1]
 
     elif 'move_base' in name or 'pull_' in name:
         if 'move_base' in name:

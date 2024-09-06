@@ -2,6 +2,8 @@ from pybullet_tools.general_streams import Position
 
 from world_builder.builders import *
 from world_builder.loaders import *
+from world_builder.loaders_partnet_kitchen import load_table_stationaries
+from world_builder.loaders_nvidia_kitchen import load_feg_kitchen, load_feg_kitchen_dishwasher
 from world_builder.world import State
 from world_builder.paths import KITCHEN_WORLD
 
@@ -16,7 +18,7 @@ from problem_sets.problem_utils import create_world, pddlstream_from_state_goal,
 
 def change_world_state(world, test_case):
     sys.path.append(join('../..', 'lisdf'))
-    from lisdf_tools.lisdf_loader import change_world_state as change_helper
+    from lisdf_tools.lisdf_utils import change_world_state as change_helper
     testcase_path = join(KITCHEN_WORLD, 'test_cases', test_case)
     return change_helper(world, testcase_path)
 

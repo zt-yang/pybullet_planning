@@ -321,6 +321,7 @@ def get_pddlstream_problem(args, **kwargs):
     else:
         problem_fn = problem_fn_from_name(args.problem)
 
+    ## problem_sets.problem_template()
     return problem_fn(args, **kwargs, **problem_kwargs)
 
 

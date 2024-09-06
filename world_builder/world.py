@@ -1251,6 +1251,9 @@ class World(WorldBase):
     def put_on_surface(self, obj, surface='hitman_tmp', max_trial=20, OAO=False, **kwargs):
         obj = self.get_object(obj)
         surface_obj = self.get_object(surface)
+        if surface_obj is None or obj is None:
+            print(f'[world.put_on_surface]\tskipping obj={obj} or surface_obj={surface_obj} not found')
+            return
         surface = surface_obj.name
 
         surface_obj.place_obj(obj, max_trial=max_trial, **kwargs)
@@ -1496,7 +1499,7 @@ class World(WorldBase):
                 if isinstance(body_link, tuple) and len(obj.governing_joints) > 0:
                     supporter_pose = get_body_link_pose(obj)
                     supporter_poses[body_link] = supporter_pose
-                    init += [(k, body_link, supporter_pose) for k in ('Pose', 'AtPose')]
+                    init += [(k, body_link, supporter_pose) for k in ('Pose', 'AtPose', 'StartPose')]
 
                     init.append(('MovableLink', body_link))
                     for body_joint in obj.governing_joints:

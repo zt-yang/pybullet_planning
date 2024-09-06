@@ -3,6 +3,7 @@ from pybullet_tools.pr2_streams import sample_points_along_line, get_bconf_in_re
 
 from world_builder.builders import *
 from world_builder.loaders import *
+from world_builder.loaders_nvidia_kitchen import load_kitchen_floor_plan
 from world_builder.world_utils import load_asset, FLOOR_HEIGHT, visualize_point
 
 from robot_builder.robot_builders import build_fridge_domain_robot

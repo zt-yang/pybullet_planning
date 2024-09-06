@@ -918,25 +918,15 @@ BELOW = 1
 RIGHT = 2
 LEFT = 3
 
-special_cases = {
-    'pot lid': RIGHT,
-    'pot body': BELOW,
-    'top drawer': ABOVE,
-    'cabinet right door': BELOW,
-    'stove knob on the left': ABOVE,
-    'stove knob on the right': RIGHT,
-    'stove on the left': LEFT
-}
 
-
-def make_camera_image_with_object_labels(camera, body_to_english_names, verbose=False,
-                                         fontsize=8, lineheight=18, padding=4, **kwargs):
+def make_camera_image_with_object_labels(camera, body_to_english_names, object_label_locations={},
+                                         verbose=False, fontsize=8, lineheight=18, padding=4, **kwargs):
     """ for creating image for VLM query """
 
     ## reorg to label the special cases first
     body_to_english_names = {k: v for k, v in body_to_english_names.items() if not v.endswith('space')}
-    body_dict = {k: v for k, v in body_to_english_names.items() if v in special_cases}
-    body_dict.update({k: v for k, v in body_to_english_names.items() if v not in special_cases})
+    body_dict = {k: v for k, v in body_to_english_names.items() if v in object_label_locations}
+    body_dict.update({k: v for k, v in body_to_english_names.items() if v not in object_label_locations})
 
     camera_image = camera.get_image(segment=True, segment_links=True)
     rgb = camera_image.rgbPixels[:, :, :3]
@@ -966,7 +956,7 @@ def make_camera_image_with_object_labels(camera, body_to_english_names, verbose=
 
             _, _, textbox_width, textbox_height = _get_rect_of_text_box(name, x, y, fontsize, lineheight, padding)
             text_box_area = textbox_width * textbox_height
-            is_small_box = name in special_cases  # box_area < 2.4 * text_box_area
+            is_small_box = name in object_label_locations  # box_area < 2.4 * text_box_area
             if verbose:
                 print(f'{name}\tis_small_box = {is_small_box}\t box_area = {box_area}\t (top, left) = {(top, left)}'
                       f'\t textbox_width = {round(textbox_width, 2)}\t text_box_area = {round(text_box_area, 2)}')
@@ -978,7 +968,7 @@ def make_camera_image_with_object_labels(camera, body_to_english_names, verbose=
             ## adjust for specific cases
             if is_small_box:
                 x, y = _adjust_xy_for_small_box(x, y, top, left, width, height, padding,
-                                                name, textbox_width, textbox_height)
+                                                name, textbox_width, textbox_height, object_label_locations)
 
             else:
                 ## adjust the y of label to ensure not overlapping
@@ -995,13 +985,14 @@ def make_camera_image_with_object_labels(camera, body_to_english_names, verbose=
                       fontsize=fontsize, padding=padding, lineheight=lineheight, **kwargs)
 
 
-def _adjust_xy_for_small_box(x, y, top, left, width, height, padding, text, textbox_width, textbox_height):
+def _adjust_xy_for_small_box(x, y, top, left, width, height, padding, text, textbox_width, textbox_height,
+                             object_label_locations):
     case = 0
-    if text in special_cases:
-        case = special_cases[text]
+    if text in object_label_locations:
+        case = object_label_locations[text]
     ## above box
     if case == 0:
-        y = top - textbox_height / 2
+        y = top - textbox_height / 2 + padding
     ## below box
     if case == 1:
         y = top + height - padding + textbox_height / 2

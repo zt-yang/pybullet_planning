@@ -18,7 +18,7 @@ from world_builder.actions import pull_actions, pick_place_actions, pull_with_li
 
 
 def test_kitchen_fridge(args, **kwargs):
-    def loader_fn(world, **world_builder_args):
+    def loader_fn(world, difficulty=2, **world_builder_args):
 
         floor = load_kitchen_floor_plan(world, plan_name='kitchen_v2.svg')
         # cabbage = load_experiment_objects(world)
@@ -26,32 +26,35 @@ def test_kitchen_fridge(args, **kwargs):
         egg = load_experiment_objects(world, CABBAGE_ONLY=True, name='eggblock', color=TAN)
         world.remove_object(floor)
         set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
+        robot = world.robot
 
-        name_to_body = world.name_to_body
+        door = world.add_joints_by_keyword('fridge', 'fridge_door')[0]
 
         ## -- open the door, requires kitchen_v2 floorplan
-        # door = 'fridge_door'
-        # door = name_to_body(door)
-        door = world.add_joints_by_keyword('fridge', 'fridge_door')[0]
-        goals = ('test_handle_grasps', door)
-        goals = [("HandleGrasped", 'left', door)]
-        # goals = [("OpenedJoint", door)]
-        # goals = [("GraspedHandle", door)]
-        #
-        # ## -- just pick get the block
-        # world.open_joint_by_name('fridge_door')
-        # world.put_on_surface(egg, 'shelf_bottom')
-        # goals = [("Holding", "left", egg)]
-        #
-        # ## -- fix
-        # world.close_joint_by_name('fridge_door')
-        # goals = [('AtBConf', Conf(robot, get_group_joints(robot, 'base'), (2, 1, -PI)))]
-        # goals = ("test_object_grasps", egg)
-        # goals = [("Holding", "left", egg)]
+        if difficulty == 0:
+            goals = ('test_handle_grasps', door)
+            goals = [("HandleGrasped", 'left', door)]
+            # goals = [("OpenedJoint", door)]
+            # goals = [("GraspedHandle", door)]
+            #
+            # ## -- just pick get the block
+            # world.open_joint_by_name('fridge_door')
+            # world.put_on_surface(egg, 'shelf_bottom')
+            # goals = [("Holding", "left", egg)]
+
+        if difficulty == 1:
+            world.close_joint_by_name('fridge_door')
+            goals = [('AtBConf', Conf(robot, get_group_joints(robot, 'base'), (2, 1, -PI)))]
+            goals = ("test_object_grasps", egg)
+            goals = [("Holding", "left", egg)]
 
         ## --- using three actions or one action
-        # goals = [("Pulled", door)]  ## mobile_v4_domain.pddl
-        goals = [("PulledOneAction", door)]  ## mobile_v5_domain.pddl
+        if difficulty == 2:
+            goals = [("Pulled", door)]  ## mobile_v4_domain.pddl
+            goals = [("Pulled", door), ("CanUngrasp",)]  ## mobile_v4_domain.pddl
+            goals = [("GraspedHandle", door)]  ## mobile_v4_domain.pddl
+
+            # goals = [("PulledOneAction", door)]  ## mobile_v5_domain.pddl
 
         skeleton = []
         world.remove_bodies_from_planning(goals, skeleton=skeleton)
@@ -655,76 +658,88 @@ def test_skill_knob_faucet(args, **kwargs):
 
 
 def test_kitchen_drawers(args, **kwargs):
-    def loader_fn(world, **world_builder_args):
-        cabbage = load_full_kitchen(world)
+    def loader_fn(world, difficulty=0, **world_builder_args):
+        surfaces = {
+            'counter': {
+                'front_right_stove': [],
+                'hitman_tmp': [],
+                'indigo_tmp': [],
+            },
+        }
+
+        cabbage = load_full_kitchen(world, surfaces=surfaces)
         skeleton = []
 
         name_to_body = world.name_to_body
-        drawer = 'hitman_drawer'  ## 'baker_joint' ##'indigo_door_left_joint' ##
+        drawer = 'hitman_drawer'  ## 'baker_joint'  ## 'indigo_door_left_joint'  ##
         drawer = world.add_joints_by_keyword('counter', 'hitman_drawer')[0]
         drawer = world.add_joints_by_keyword('counter', 'indigo_drawer')[0]
 
         ## ================================================
         ##  GOALS
         ## ================================================
+        if difficulty == 0:
+            # --------- grasp and open handle - hitman
+            set_camera_pose(camera_point=[1.3, 7.5, 2], target_point=[1, 7, 0])
+            goals = ('test_handle_grasps', 'hitman_drawer_top_joint')
+            goals = [("HandleGrasped", 'left', name_to_body('hitman_drawer_top_joint'))]
+            # world.put_in_space(cabbage, 'hitman_drawer_top')
+            goals = [("AtPosition", name_to_body('hitman_drawer_top_joint'),
+                      Position(name_to_body('hitman_drawer_top_joint'), 'max'))]
+            goals = [("AtPosition", name_to_body('hitman_drawer_bottom_joint'),
+                      Position(name_to_body('hitman_drawer_bottom_joint'), 'max'))]
+            goals = [("OpenedJoint", name_to_body('hitman_drawer_top_joint'))]
 
-        ## --------- use kitchen fridge and cabinet
-        # world.put_on_surface(cabbage, 'indigo_tmp')
-        # world.open_joint_by_name('hitman_drawer_top_joint')
-        goals = [("Holding", 'left', cabbage)]
-        goals = [("In", cabbage, name_to_body('hitman_drawer_top'))]
+        if difficulty == 1:
+            ## --------- use kitchen fridge and cabinet
+            # world.put_on_surface(cabbage, 'indigo_tmp')
+            # world.open_joint_by_name('hitman_drawer_top_joint')
+            goals = [("Holding", 'left', cabbage)]
+            goals = [("In", cabbage, name_to_body('hitman_drawer_top'))]
 
-        ## --------- grasp and open handle - hitmam
-        # set_camera_pose(camera_point=[1.3, 7.5, 2], target_point=[1, 7, 0])
-        # goals = ('test_handle_grasps', 'hitman_drawer_top_joint')
-        # goals = [("HandleGrasped", 'left', name_to_body('hitman_drawer_top_joint'))]
-        # # world.put_in_space(cabbage, 'hitman_drawer_top')
-        # goals = [("AtPosition", name_to_body('hitman_drawer_top_joint'),
-        #           Position(name_to_body('hitman_drawer_top_joint'), 'max'))]
-        # goals = [("AtPosition", name_to_body('hitman_drawer_bottom_joint'),
-        #           Position(name_to_body('hitman_drawer_bottom_joint'), 'max'))]
-        # goals = [("OpenedJoint", name_to_body('hitman_drawer_top_joint'))]
+            ## --------- grasp and open handle - indigo
+            set_camera_pose(camera_point=[1.3, 9, 2], target_point=[1, 9, 0])
+            world.make_transparent('indigo_tmp')
+            # world.open_joint_by_name('indigo_drawer_top_joint')
+            world.put_in_space(cabbage, 'indigo_drawer_top')
+            # goals = [("AtPosition", name_to_body('indigo_drawer_top_joint'),
+            #           Position(name_to_body('indigo_drawer_top_joint'), 'max'))]
+            # goals = [("OpenedJoint", name_to_body('indigo_drawer_top_joint'))]
+            goals = [("On", name_to_body('cabbage'), name_to_body('indigo_tmp'))]
+            # goals = [("OpenedJoint", name_to_body('indigo_drawer_top_joint')),
+            #          ("On", name_to_body('cabbage'), name_to_body('indigo_tmp'))]
+            # goals = ("test_object_grasps", 'cabbage')
+            # goals = ('test_grasp_ik', 'cabbage')
 
-        ## --------- grasp and open handle - indigo
-        set_camera_pose(camera_point=[1.3, 9, 2], target_point=[1, 9, 0])
-        world.make_transparent('indigo_tmp')
-        # world.open_joint_by_name('indigo_drawer_top_joint')
-        world.put_in_space(cabbage, 'indigo_drawer_top')
-        # goals = [("AtPosition", name_to_body('indigo_drawer_top_joint'),
-        #           Position(name_to_body('indigo_drawer_top_joint'), 'max'))]
-        # goals = [("OpenedJoint", name_to_body('indigo_drawer_top_joint'))]
-        goals = [("On", name_to_body('cabbage'), name_to_body('indigo_tmp'))]
-        # goals = [("OpenedJoint", name_to_body('indigo_drawer_top_joint')),
-        #          ("On", name_to_body('cabbage'), name_to_body('indigo_tmp'))]
-        # goals = ("test_object_grasps", 'cabbage')
-        # goals = ('test_grasp_ik', 'cabbage')
+            arm = 'left'
+            drawer = name_to_body('indigo_drawer_top_joint')
+            skeleton += [(k, arm, drawer) for k in pull_actions]
+            skeleton += [(k, arm, cabbage) for k in pick_place_actions]
 
-        arm = 'left'
-        drawer = name_to_body('indigo_drawer_top_joint')
-        skeleton += [(k, arm, drawer) for k in pull_actions]
-        skeleton += [(k, arm, cabbage) for k in pick_place_actions]
+        if difficulty == 2:
 
-        ## --------- ideally, requires closing the drawer in order to put on
-        # world.open_joint_by_name('indigo_drawer_top_joint')
-        # world.put_on_surface(cabbage, 'hitman_tmp')
-        # goals = [("On", name_to_body('cabbage'), name_to_body('indigo_tmp'))]
+            ## --------- ideally, requires closing the drawer in order to put on
+            # world.open_joint_by_name('indigo_drawer_top_joint')
+            # world.put_on_surface(cabbage, 'hitman_tmp')
+            # goals = [("On", name_to_body('cabbage'), name_to_body('indigo_tmp'))]
 
-        ## --------- test moving objects from drawer to counter
-        # goals = [("On", cabbage, name_to_body('hitman_tmp'))] ## successful
+            ## --------- test moving objects from drawer to counter
+            # goals = [("On", cabbage, name_to_body('hitman_tmp'))] ## successful
 
-        # world.put_in_space(cabbage, 'hitman_drawer_top')
-        # goals = [("On", cabbage, name_to_body('hitman_tmp'))] ## unsuccessful
+            # world.put_in_space(cabbage, 'hitman_drawer_top')
+            # goals = [("On", cabbage, name_to_body('hitman_tmp'))] ## unsuccessful
 
-        # world.open_joint_by_name('hitman_drawer_top_joint')
-        # world.put_in_space(cabbage, 'hitman_drawer_top', learned=True)
-        # goals = ("test_object_grasps", 'cabbage')
-        # goals = ('test_grasp_ik', 'cabbage')
-        # goals = [("Holding", "left", cabbage)] ## unsuccessful
-        # goals = [("On", cabbage, name_to_body('hitman_tmp'))] ## unsuccessful
+            # world.open_joint_by_name('hitman_drawer_top_joint')
+            # world.put_in_space(cabbage, 'hitman_drawer_top', learned=True)
+            # goals = ("test_object_grasps", 'cabbage')
+            # goals = ('test_grasp_ik', 'cabbage')
+            # goals = [("Holding", "left", cabbage)] ## unsuccessful
+            goals = [("On", cabbage, name_to_body('hitman_tmp'))]  ## unsuccessful
 
-        ## --------- temporary
-        # goals = [("HandleGrasped", 'left', name_to_body('hitman_drawer_top_joint'))]
+            ## --------- temporary
+            # goals = [("HandleGrasped", 'left', name_to_body('hitman_drawer_top_joint'))]
 
+        world.remove_bodies_from_planning(goals)
         return {'goals': goals, 'skeleton': skeleton}
 
     return test_nvidia_kitchen_domain(args, loader_fn, **kwargs)
@@ -796,7 +811,6 @@ def test_kitchen_doors(args, **kwargs):
         skeleton += [(k, arm, door) for k in pull_actions]
         skeleton += [(k, arm, door) for k in pull_actions]
         skeleton += [(k, arm, bottle) for k in pick_place_actions[:1]]
-
 
         ## --- for recording door open demo
         # world.open_joint_by_name('chewie_door_left_joint')
@@ -880,7 +894,7 @@ def test_skill_knob_stove(args, **kwargs):
     difficulty == 12: move the lid to the counter before turning on the stove, (then move the pot to the stove)
     difficulty == 2: turn on the knob of the other stove, (then move the pot there)
     """
-    def loader_fn(world, difficulty=12, **world_builder_args):
+    def loader_fn(world, difficulty=0, **world_builder_args):
         surfaces = {
             'counter': {
                 'front_left_stove': [],
@@ -916,6 +930,7 @@ def test_skill_knob_stove(args, **kwargs):
             goals = ('test_handle_grasps', knob)  ## for choosing grasps
             goals = [("HandleGrasped", 'left', knob)]
             goals = [("GraspedHandle", knob)]
+            goals = [("PulledOneAction", knob)]
 
         elif difficulty in [1, 12]:
 

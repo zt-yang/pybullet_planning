@@ -105,7 +105,7 @@ def update_namo_pddl():
 
 
 def update_kitchen_pddl():
-    create_domain_and_stream('mobile', ['cooking'], 'mobile_v2')
+    create_domain_and_stream('mobile', ['pull_decomposed', 'cooking'], 'mobile_v2')
 
 
 def update_kitchen_nudge_pddl():
@@ -115,15 +115,20 @@ def update_kitchen_nudge_pddl():
     nudge_v2 (bad):     use fluents when generating bconf to nudge, based on v1
     nudge_v3 (testing): open then nudge, based on v1b
     """
-    create_domain_and_stream('mobile', ['cooking', 'nudge_v1b'], 'mobile_v3')
+    extensions = ['pull_decomposed', 'cooking', 'nudge_v1b']
+    create_domain_and_stream('mobile', extensions, 'mobile_v3')
 
 
 def update_kitchen_action_pddl():
-    create_domain_and_stream('mobile', ['cooking', 'nudge_v1b', 'arrange'], 'mobile_v4')
+    extensions = ['pull_decomposed', 'cooking', 'nudge_v1b', 'arrange']
+    create_domain_and_stream('mobile', extensions, 'mobile_v4')
 
 
 def update_kitchen_pull_pddl():
-    create_domain_and_stream('mobile', ['cooking', 'nudge_v1b', 'arrange', 'pull'], 'mobile_v5')
+    extensions = ['cooking', 'arrange']
+    # extensions += ['pull_decomposed']
+    extensions += ['pull']
+    create_domain_and_stream('mobile', extensions, 'mobile_v5')
 
 
 if __name__ == '__main__':

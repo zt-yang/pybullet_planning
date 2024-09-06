@@ -17,7 +17,7 @@ import sys
 from pybullet_tools.logging_utils import summarize_facts, print_goal
 from pybullet_tools.bullet_utils import get_datetime
 from pybullet_tools.pr2_primitives import Trajectory
-from pybullet_tools.stream_agent import solve_pddlstream, make_init_lower_case
+from pybullet_tools.stream_agent import solve_pddlstream, make_init_lower_case, heuristic_modify_stream
 from pybullet_tools.utils import SEPARATOR, wait_if_gui, WorldSaver
 from pybullet_tools.logging_utils import save_commands, TXT_FILE, summarize_state_changes, print_lists
 from pybullet_tools.logging_utils import myprint as print
@@ -246,12 +246,17 @@ class PDDLStreamAgent(MotionAgent):
         self.last_added_facts = added
         self.last_deled_facts = deled
 
+    def _heuristic_reduce_pddlstream_problem(self):
+        """ too many streams make planning slow, remove streams like `get-joint-position-closed` """
+        return heuristic_modify_stream(self.pddlstream_problem, self.world)
+
     def replan(self, observation, **kwargs):
         """ make new plans given a pddlstream_problem """
 
         self.plan_step = self.num_steps
+        pddlstream_problem = self._heuristic_reduce_pddlstream_problem()
         self.plan, env, knowledge, time_log, preimage = self.solve_pddlstream(
-            self.pddlstream_problem, observation.state, domain_pddl=self.domain_pddl,
+            pddlstream_problem, observation.state, domain_pddl=self.domain_pddl,
             domain_modifier=self.domain_modifier, **self.pddlstream_kwargs, **kwargs)  ## observation.objects
         self.pddlstream_kwargs.update({'skeleton': None, 'subgoals': None})
         self.evaluations, self.goal_exp, self.domain, _ = knowledge

@@ -14,8 +14,7 @@ from pybullet_tools.pr2_streams import get_stable_gen, Position, get_pose_in_spa
     sample_joint_position_gen
 from pybullet_tools.mobile_streams import get_ik_fn_old, get_ik_gen_old, get_ik_rel_gen_old, \
     get_ik_rel_fn_old, get_pull_door_handle_motion_gen, get_pull_door_handle_with_link_motion_gen, \
-    get_ik_ungrasp_gen, get_ik_ungrasp_mark_gen, \
-    get_pull_door_handle_motion_gen as get_turn_knob_handle_motion_gen
+    get_ik_ungrasp_gen, get_ik_ungrasp_mark_gen, get_ik_pull_gen, get_ik_pull_with_link_gen
 
 from pybullet_tools.pr2_primitives import get_group_joints, get_base_custom_limits, Pose, Conf, \
     get_ik_ir_gen, move_cost_fn, Attach, Detach, Clean, Cook, \
@@ -27,7 +26,7 @@ from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_
     get_cfree_approach_rel_pose_test, get_reachable_test, get_stable_list_gen, get_cfree_pose_between_test, \
     get_nudge_grasp_gen
 from pybullet_tools.camera_utils import set_camera_target_body
-from pybullet_tools.bullet_utils import BASE_LIMITS, initialize_collision_logs, clean_preimage
+from pybullet_tools.bullet_utils import BASE_LIMITS, initialize_collision_logs, clean_preimage, check_joint_state
 from pybullet_tools.logging_utils import summarize_facts, print_plan, print_goal, summarize_bconfs, \
     summarize_poses, print_dict, print_domain
 from pybullet_tools.pr2_utils import create_pr2_gripper, set_group_conf
@@ -131,11 +130,17 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'inverse-reachability-rel': from_gen_fn(get_ik_rel_gen_old(p, learned=use_learned_ir, verbose=False, visualize=False, **tc)),
         'inverse-kinematics-rel': from_fn(get_ik_rel_fn_old(p, verbose=False, visualize=False, **ik)),
 
+        ## pddl_domains/extensions/_pull_decomposed_stream.pddl
         'inverse-kinematics-grasp-handle': from_gen_fn(get_ik_gen_old(p, **pull, **tc)),
         'inverse-kinematics-ungrasp-handle': from_gen_fn(get_ik_ungrasp_gen(p, verbose=False, **ptc)),
 
+        ## pddl_domains/extensions/_nudge_v1b.pddl
         'inverse-kinematics-nudge-door': from_gen_fn(get_ik_gen_old(p, **pull, **tc)),
         'inverse-kinematics-nudge-door-back': from_gen_fn(get_ik_gen_old(p, **pull, **tc)),
+
+        ## pddl_domains/extensions/_pull_stream.pddl
+        'inverse-kinematics-pull': from_gen_fn(get_ik_pull_gen(p, **pull, **tc)),
+        'inverse-kinematics-pull-with-link': from_gen_fn(get_ik_pull_with_link_gen(p, **pull, **tc)),
 
         ## ---------------------------------------------------
         ##                    motion
@@ -145,8 +150,12 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         # 'plan-base-motion-with-obj': from_fn(get_base_motion_with_obj_gen(p, collisions=base_collisions, teleport=t, custom_limits=l)),
 
         'plan-arm-turn-knob': from_fn(get_pull_door_handle_motion_gen(p, **ptc, verbose=True)),
+
+        ## pddl_domains/extensions/_pull_decomposed_stream.pddl
         'plan-base-pull-handle': from_fn(get_pull_door_handle_motion_gen(p, **ptc, verbose=True)),
         'plan-base-pull-handle-with-link': from_fn(get_pull_door_handle_with_link_motion_gen(p, **ptc)),
+
+        ## pddl_domains/extensions/_nudge_v1b.pddl
         'plan-base-nudge-door': from_fn(get_pull_door_handle_motion_gen(p, **ptc)),
         'plan-base-nudge-door-back': from_fn(get_pull_door_handle_motion_gen(p, **ptc)),
         # 'plan-arm-turn-knob-handle': from_fn(get_turn_knob_handle_motion_gen(p, visualize=False, **ptc)),
@@ -817,22 +826,36 @@ def print_skeleton(skeleton):
         print('-' * 90)
 
 
+def get_uncommented_splits_by_key(pddl_content, key):
+    """ avoids commented """
+    all_lines = pddl_content.split(key)
+    new_lines = []
+    for i in range(len(all_lines)):
+        if i > 0 and all_lines[i - 1].endswith(';'):
+            continue
+        line = all_lines[i]
+        if line.endswith(';'):
+            line = line[:-1]
+        new_lines.append(line)
+    return new_lines
+
+
 def remove_all_streams_except_name(stream_pddl, stream_name):
     key = '(:stream '
-    lines = stream_pddl.split(key)
+    lines = get_uncommented_splits_by_key(stream_pddl, key)
     text = key.join([lines[0]]+[l for l in lines if l.startswith(f'{stream_name}\n')])
     return text + '\n)'
 
 
 def remove_stream_by_name(stream_pddl, stream_name):
     key = '(:stream '
-    lines = stream_pddl.split(key)
+    lines = get_uncommented_splits_by_key(stream_pddl, key)
     return key.join([l for l in lines if not l.startswith(f'{stream_name}\n')])
 
 
 def remove_operator_by_name(domain_pddl, operator_name):
     key = '(:action '
-    lines = domain_pddl.split(key)
+    lines = get_uncommented_splits_by_key(domain_pddl, key)
     new_lines = []
     for i, line in enumerate(lines):
         if line.startswith(f'{operator_name}\n'):
@@ -847,6 +870,39 @@ def remove_predicate_by_name(domain_pddl, predicate_name):
     for key in [f"(not ({predicate_name}))", f"({predicate_name})"]:
         domain_pddl = domain_pddl.replace(key, '')
     return domain_pddl
+
+
+def heuristic_modify_stream(pddlstream_problem, world):
+    from pddlstream.language.constants import PDDLProblem
+    from pybullet_tools.stream_agent import remove_stream_by_name
+
+    domain_pddl, constant_map, stream_pddl, stream_map, init, goal = pddlstream_problem
+    title = 'pddlstream_agent._heuristic_modify_stream |\t'
+
+    sample_open = True
+    for goal_item in goal[1:]:
+        goal_pred = goal_item[0].lower()
+        if goal_pred in ['openedjoint']:
+            sample_open = True
+        elif goal_pred in ['closedjoint']:
+            sample_open = False
+        elif goal_pred in ['handlegrasped', 'openedjoint', 'graspedhandle', 'pulled', 'pulledoneaction']:
+            body, joint = goal_item[1]
+            category, status = check_joint_state(body, joint)
+            if 'OPEN' in status:
+                sample_open = False
+        else:
+            continue
+        break
+
+    stream_name = 'get-joint-position-closed' if sample_open else 'get-joint-position-open'
+    print(f'{title}remove_stream_by_name({stream_name})')
+    stream_pddl = remove_stream_by_name(stream_pddl, stream_name)
+
+    return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
+
+
+## -----------------------------------------------------------------------------------
 
 
 def post_process(problem, plan, teleport=False, verbose=False):
