@@ -5,6 +5,7 @@
     @movable @bottle @edible @medicine
   )
 
+
   (:predicates
 
     (Sink ?r)
@@ -151,6 +152,52 @@
     (Disabled)
 
     (increase) ; pddlgym.parser
+
+
+  ;;----------------------------------------------------------------------
+  ;;      extended predicates from _cooking_domain.pddl
+  ;;----------------------------------------------------------------------
+
+
+    (Region ?o)
+    (Sprinkler ?o)
+    (Food ?o)
+    (SprinklePose ?o1 ?p1 ?o2 ?p2)
+    (SprinkledTo ?o1 ?o2)
+    (UnsafePoseBetween ?o1 ?p1 ?o2 ?p2)
+    (CFreePoseBetween ?o1 ?p1 ?o2 ?p2 ?o3 ?p3)
+
+
+  ;;----------------------------------------------------------------------
+  ;;      extended predicates from _nudge_v1b_domain.pddl
+  ;;----------------------------------------------------------------------
+
+
+    (NudgeGrasp ?o ?g)
+    (KinNudgeGrasp ?a ?o ?p ?g ?q ?aq ?t)
+    (KinNudgeDoor ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?aq)
+    (NudgedDoor ?o)
+
+    (NudgeBackGrasp ?o ?g)
+    (KinNudgeBackGrasp ?a ?o ?p ?g ?q ?aq ?t)
+    (KinNudgeBackDoor ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?aq)
+    (NudgedBackDoor ?o)
+
+  ;;----------------------------------------------------------------------
+  ;;      extended predicates from _arrange_domain.pddl
+  ;;----------------------------------------------------------------------
+
+
+    (Moved ?o)
+    (Arrangeable ?o ?p ?r)
+    (Stacked ?o ?r)
+
+
+  ;;----------------------------------------------------------------------
+  ;;      extended predicates from _pull_domain.pddl
+  ;;----------------------------------------------------------------------
+
+     (PulledOneAction ?o)
 
   )
 
@@ -536,4 +583,121 @@
   ;  (exists (?a ?o ?g) (and (TrajGraspCollision ?t ?a ?o ?g)
   ;                          (AtGrasp ?a ?o ?g)))
   ;))
+
+  ;;----------------------------------------------------------------------
+  ;;      extended operators & axioms from _cooking_domain.pddl
+  ;;----------------------------------------------------------------------
+
+  (:action sprinkle
+    ;; move o1 from default grasping arm conf to p1, which is above o2 at p2
+    :parameters (?a ?o1 ?p1 ?o2 ?p2 ?g ?q ?t)
+    :precondition (and (Kin ?a ?o1 ?p1 ?g ?q ?t) (Sprinkler ?o1) (Region ?o2)
+                       (AtPose ?o2 ?p2) (AtGrasp ?a ?o1 ?g) (SprinklePose ?o2 ?p2 ?o1 ?p1) (AtBConf ?q)
+                       (not (UnsafePose ?o1 ?p1))
+                       (not (UnsafePoseBetween ?o1 ?p1 ?o2 ?p2))
+                       (not (CanMove))
+                   )
+    :effect (and (SprinkledTo ?o1 ?o2) (CanMove)
+                 (increase (total-cost) 1)
+            )
+  )
+
+  (:derived (UnsafePoseBetween ?o1 ?p1 ?o2 ?p2)
+    (exists (?o3 ?p3) (and (Pose ?o1 ?p1) (Pose ?o2 ?p2) (AtPose ?o3 ?p3)
+                           (not (= ?o3 ?o1)) (not (= ?o3 ?o2)) (not (Food ?o3))
+                           (not (CFreePoseBetween ?o1 ?p1 ?o2 ?p2 ?o3 ?p3)) ))
+  )
+
+
+  ;;----------------------------------------------------------------------
+  ;;      extended operators & axioms from _nudge_v1b_domain.pddl
+  ;;----------------------------------------------------------------------
+
+    (:action nudge_door
+      :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?aq ?at ?bt)
+      :precondition (and (HandEmpty ?a) (Door ?o) (AtPosition ?o ?p1)
+                         (NudgeGrasp ?o ?g) (AtBConf ?q1)
+                         (KinNudgeGrasp ?a ?o ?p1 ?g ?q1 ?aq ?at)
+                         (KinNudgeDoor ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?aq)
+                         (BaseMotion ?q1 ?bt ?q2)
+                         (not (NudgedDoor ?o))
+                    )
+      :effect (and (not (AtPosition ?o ?p1)) (AtPosition ?o ?p2)
+                   (not (AtBConf ?q1)) (AtBConf ?q2)
+                   (NudgedDoor ?o) (CanMove)
+                   (increase (total-cost) 1)
+              )
+    )
+
+    ;(:action nudge_back_door
+    ;  :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?aq ?at ?bt)
+    ;  :precondition (and (HandEmpty ?a) (Door ?o) (AtPosition ?o ?p1)
+    ;                     (NudgeBackGrasp ?o ?g) (AtBConf ?q1)
+    ;                     (KinNudgeBackGrasp ?a ?o ?p1 ?g ?q1 ?aq ?at)
+    ;                     (KinNudgeBackDoor ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?aq)
+    ;                     (not (NudgedBackDoor ?o))
+    ;                )
+    ;  :effect (and (not (AtPosition ?o ?p1)) (AtPosition ?o ?p2)
+    ;               (not (AtBConf ?q1)) (AtBConf ?q2)
+    ;               (NudgedBackDoor ?o)
+    ;               (increase (total-cost) 1)
+    ;          )
+    ;)
+
+
+  ;;----------------------------------------------------------------------
+  ;;      extended operators & axioms from _arrange_domain.pddl
+  ;;----------------------------------------------------------------------
+
+  (:action arrange
+    :parameters (?a ?o ?r ?p ?g ?q ?t)
+    :precondition (and (Kin ?a ?o ?p ?g ?q ?t) (Graspable ?o) (Arrangeable ?o ?p ?r)
+                       (AtGrasp ?a ?o ?g) (AtBConf ?q)
+                       (not (UnsafePose ?o ?p))
+                       (not (UnsafeApproach ?o ?p ?g))
+                       (not (CanMove))
+                       (not (Stacked ?o ?r))
+                       ; (not (Placed ?o))  ;; allow regrasping
+                       ; (not (UnsafeATraj ?t)) (not (UnsafeOTraj ?o ?g ?t))
+                       )
+    :effect (and (AtPose ?o ?p) (HandEmpty ?a) (CanPull ?a) (CanMove)
+                 (not (AtGrasp ?a ?o ?g)) (Stacked ?o ?r) (Moved ?o) ; (Placed ?o)
+                 ; (increase (total-cost) (PlaceCost))
+                 (increase (total-cost) 1)
+            )
+  )
+
+  (:derived (Arrangeable ?o ?p ?r)
+    (or (Supported ?o ?p ?r) (Contained ?o ?p ?r))
+  )
+
+
+
+  ;;----------------------------------------------------------------------
+  ;;      extended operators & axioms from _pull_domain.pddl
+  ;;----------------------------------------------------------------------
+
+  (:action pull_door
+   :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq1 ?aq2 ?at ?t1 ?aq3 ?t2)
+   :precondition (and ; (Door ?o) (not (= ?p1 ?p2)) (CanPull ?a)
+                      (AtPosition ?o ?p1) ; (AtHandleGrasp ?a ?o ?g)
+                      (KinPullDoorHandle ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq1)
+                      (KinGraspHandle ?a ?o ?p1 ?g ?q1 ?aq1 ?t1)
+                      (KinUngraspHandle ?a ?o ?p2 ?g ?q2 ?aq2 ?aq3 ?t2)
+                      (AtBConf ?q1) ; (AtAConf ?a ?aq1)
+                      (HandEmpty ?a)
+                      ;(not (UnsafeApproach ?o ?p2 ?g))
+                      ;(not (UnsafeATraj ?at))
+                      ;(not (UnsafeBTraj ?bt))
+                      ;(not (Pulled ?o))
+                      (Enabled)
+                    )
+    :effect (and (AtPosition ?o ?p2) (not (AtPosition ?o ?p1))
+                 (PulledOneAction ?o) (CanMove)
+                 (AtBConf ?q2) (not (AtBConf ?q1))
+                 ;(AtAConf ?a ?aq3) (not (AtAConf ?a ?aq1))
+            )
+  )
+
+
 )

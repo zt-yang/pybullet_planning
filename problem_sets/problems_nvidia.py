@@ -17,46 +17,47 @@ from world_builder.actions import pull_actions, pick_place_actions, pull_with_li
 #######################################################
 
 
-def test_kitchen_fridge(args, domain='pr2_food.pddl', stream='pr2_stream.pddl'):
-    world = create_world(args)
-    world.set_skip_joints()
+def test_kitchen_fridge(args, **kwargs):
+    def loader_fn(world, **world_builder_args):
 
-    floor = load_kitchen_floor_plan(world, plan_name='kitchen_v2.svg')
-    # cabbage = load_experiment_objects(world)
-    # floor = load_floor_plan(world, plan_name='fridge_v2.svg')
-    egg = load_experiment_objects(world, CABBAGE_ONLY=True, name='eggblock', color=TAN)
-    world.remove_object(floor)
-    robot = create_pr2_robot(world, base_q=(1.79, 6, PI / 2 + PI / 2))
+        floor = load_kitchen_floor_plan(world, plan_name='kitchen_v2.svg')
+        # cabbage = load_experiment_objects(world)
+        # floor = load_floor_plan(world, plan_name='fridge_v2.svg')
+        egg = load_experiment_objects(world, CABBAGE_ONLY=True, name='eggblock', color=TAN)
+        world.remove_object(floor)
+        set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
 
-    name_to_body = world.name_to_body
+        name_to_body = world.name_to_body
 
-    ## -- open the door, requires kitchen_v2 floorplan
-    # door = 'fridge_door'
-    # door = name_to_body(door)
-    door = world.add_joints_by_keyword('fridge', 'fridge_door')[0]
-    goals = ('test_handle_grasps', door)
-    goals = [("HandleGrasped", 'left', door)]
-    # goals = [("OpenedJoint", door)]
-    # goals = [("GraspedHandle", door)]
-    #
-    # ## -- just pick get the block
-    # world.open_joint_by_name('fridge_door')
-    # world.put_on_surface(egg, 'shelf_bottom')
-    # goals = [("Holding", "left", egg)]
-    #
-    # ## -- fix
-    # world.close_joint_by_name('fridge_door')
-    # goals = [('AtBConf', Conf(robot, get_group_joints(robot, 'base'), (2, 1, -PI)))]
-    # goals = ("test_object_grasps", egg)
-    # goals = [("Holding", "left", egg)]
+        ## -- open the door, requires kitchen_v2 floorplan
+        # door = 'fridge_door'
+        # door = name_to_body(door)
+        door = world.add_joints_by_keyword('fridge', 'fridge_door')[0]
+        goals = ('test_handle_grasps', door)
+        goals = [("HandleGrasped", 'left', door)]
+        # goals = [("OpenedJoint", door)]
+        # goals = [("GraspedHandle", door)]
+        #
+        # ## -- just pick get the block
+        # world.open_joint_by_name('fridge_door')
+        # world.put_on_surface(egg, 'shelf_bottom')
+        # goals = [("Holding", "left", egg)]
+        #
+        # ## -- fix
+        # world.close_joint_by_name('fridge_door')
+        # goals = [('AtBConf', Conf(robot, get_group_joints(robot, 'base'), (2, 1, -PI)))]
+        # goals = ("test_object_grasps", egg)
+        # goals = [("Holding", "left", egg)]
 
-    set_all_static()
-    state = State(world)
-    exogenous = []
+        ## --- using three actions or one action
+        # goals = [("Pulled", door)]  ## mobile_v4_domain.pddl
+        goals = [("PulledOneAction", door)]  ## mobile_v5_domain.pddl
 
-    pddlstream_problem = pddlstream_from_state_goal(state, goals, custom_limits=args.base_limits,
-                                                    domain_pddl=args.domain_pddl, stream_pddl=args.stream_pddl) ##, stream_pddl='pr2_stream_wconf.pddl'
-    return state, exogenous, goals, pddlstream_problem
+        skeleton = []
+        world.remove_bodies_from_planning(goals, skeleton=skeleton)
+        return {'goals': goals, 'skeleton': skeleton}
+
+    return test_nvidia_kitchen_domain(args, loader_fn, initial_xy=(2, 5), **kwargs)
 
 
 def test_kitchen_oven(args, **kwargs):
@@ -730,6 +731,7 @@ def test_kitchen_drawers(args, **kwargs):
 
 
 def test_kitchen_doors(args, **kwargs):
+    """ currently broken with problem in place_in_nvidia_kitchen_space() """
     def loader_fn(world, **world_builder_args):
         spaces = {
             'counter': {
@@ -752,6 +754,10 @@ def test_kitchen_doors(args, **kwargs):
                 'hitman_tmp': [],  ##  'Microwave'
                 'indigo_tmp': ['BraiserLid'],  ## 'MeatTurkeyLeg', 'Toaster',
             },
+            'fridge': {
+                'shelf_top': [],
+                'shelf_bottom': [],
+            }
         }
         load_full_kitchen(world, surfaces=surfaces, spaces=spaces, load_cabbage=False)
 
@@ -777,19 +783,20 @@ def test_kitchen_doors(args, **kwargs):
         goals = ('test_handle_grasps', door)
         # goals = [("HandleGrasped", 'left', door)]
         # goals = [("AtPosition", door, Position(door, 'min'))]
-        goals = [("OpenedJoint", door)]
+        # goals = [("OpenedJoint", door)]
         # goals = [("GraspedHandle", door)]
 
         movable = bottle.body
         goals = ("test_object_grasps", movable)
-        goals = [("Holding", arm, movable)]
-        # goals = [("OpenedJoint", door), ("Holding", arm, movable)]
+        # goals = [("Holding", arm, movable)]
+        goals = [("OpenedJoint", door), ("Holding", arm, movable)]
         # goals = [("OpenedJoint", door)]
 
         skeleton = []
         skeleton += [(k, arm, door) for k in pull_actions]
         skeleton += [(k, arm, door) for k in pull_actions]
         skeleton += [(k, arm, bottle) for k in pick_place_actions[:1]]
+
 
         ## --- for recording door open demo
         # world.open_joint_by_name('chewie_door_left_joint')

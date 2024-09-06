@@ -281,65 +281,42 @@ def get_pddlstream_problem(args, **kwargs):
     # elif args.problem == 'test_pick':
     #     set_kitchen_camera_pose()
     #     from problem_sets.pr2_problems import test_pick as problem_fn
-    elif args.problem == 'test_plated_food':
-        set_kitchen_camera_pose()
-        from problem_sets.pr2_problems import test_plated_food as problem_fn
-    elif args.problem == 'test_small_sink':
-        set_kitchen_camera_pose()
-        from problem_sets.pr2_problems import test_small_sink as problem_fn
-    elif args.problem == 'test_five_tables':
-        from problem_sets.pr2_problems import test_five_tables as problem_fn
-    elif args.problem == 'test_exist_omelette':
-        from problem_sets.pr2_problems import test_exist_omelette as problem_fn
-
-    elif args.problem == 'test_cart_obstacle':
-        from problem_sets.pr2_problems import test_cart_obstacle as problem_fn
-    elif args.problem == 'test_moving_carts':
-        set_camera_pose(camera_point=[4, -2, 4], target_point=[0, -2, 0])
-        set_camera_pose(camera_point=[5, -2, 4], target_point=[1, -2, 0])  ## laundry area
-        from problem_sets.pr2_problems import test_moving_carts as problem_fn
-    elif args.problem == 'test_three_moving_carts':
-        set_camera_pose(camera_point=[5, 0, 4], target_point=[1, 0, 0])
-        from problem_sets.pr2_problems import test_three_moving_carts as problem_fn
-    elif args.problem == 'test_fridge_pose':
-        set_camera_pose(camera_point=[3, 6.5, 2], target_point=[1, 4, 1])
-        from problem_sets.pr2_problems import test_fridge_pose as problem_fn
-    elif args.problem == 'test_kitchen_fridge':
-        set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
-        from problem_sets.pr2_problems import test_kitchen_fridge as problem_fn
-    elif args.problem == 'test_kitchen_oven':
-        set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
-        from problem_sets.pr2_problems import test_kitchen_oven as problem_fn
-    elif args.problem == 'test_oven_egg':
-        set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
-        set_kitchen_camera_pose()
-        from problem_sets.pr2_problems import test_oven_egg as problem_fn
-    elif args.problem == 'test_braiser_lid':
-        set_kitchen_camera_pose()
-        from problem_sets.pr2_problems import test_braiser_lid as problem_fn
-    elif args.problem == 'test_egg_movements':
-        set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
-        from problem_sets.pr2_problems import test_egg_movements as problem_fn
-
-    # ## ------------------- demo PR2 problem_sets
-    # elif args.problem == 'test_skill_knob_faucet':
+    # elif args.problem == 'test_plated_food':
+    #     set_kitchen_camera_pose()
+    #     from problem_sets.pr2_problems import test_plated_food as problem_fn
+    # elif args.problem == 'test_small_sink':
+    #     set_kitchen_camera_pose()
+    #     from problem_sets.pr2_problems import test_small_sink as problem_fn
+    # elif args.problem == 'test_five_tables':
+    #     from problem_sets.pr2_problems import test_five_tables as problem_fn
+    # elif args.problem == 'test_exist_omelette':
+    #     from problem_sets.pr2_problems import test_exist_omelette as problem_fn
+    #
+    # elif args.problem == 'test_cart_obstacle':
+    #     from problem_sets.pr2_problems import test_cart_obstacle as problem_fn
+    # elif args.problem == 'test_moving_carts':
+    #     set_camera_pose(camera_point=[4, -2, 4], target_point=[0, -2, 0])
+    #     set_camera_pose(camera_point=[5, -2, 4], target_point=[1, -2, 0])  ## laundry area
+    #     from problem_sets.pr2_problems import test_moving_carts as problem_fn
+    # elif args.problem == 'test_three_moving_carts':
+    #     set_camera_pose(camera_point=[5, 0, 4], target_point=[1, 0, 0])
+    #     from problem_sets.pr2_problems import test_three_moving_carts as problem_fn
+    # elif args.problem == 'test_fridge_pose':
+    #     set_camera_pose(camera_point=[3, 6.5, 2], target_point=[1, 4, 1])
+    #     from problem_sets.pr2_problems import test_fridge_pose as problem_fn
+    # elif args.problem == 'test_kitchen_oven':
     #     set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
-    #     from bullet.examples.pr2_problems import test_skill_knob_faucet as problem_fn
-    # elif args.problem == 'test_skill_knob_stove':
+    #     from problem_sets.pr2_problems import test_kitchen_oven as problem_fn
+    # elif args.problem == 'test_oven_egg':
     #     set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
-    #     from bullet.examples.pr2_problems import test_skill_knob_stove as problem_fn
-    # elif args.problem == 'test_kitchen_demo':
+    #     set_kitchen_camera_pose()
+    #     from problem_sets.pr2_problems import test_oven_egg as problem_fn
+    # elif args.problem == 'test_braiser_lid':
+    #     set_kitchen_camera_pose()
+    #     from problem_sets.pr2_problems import test_braiser_lid as problem_fn
+    # elif args.problem == 'test_egg_movements':
     #     set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
-    #     from bullet.examples.pr2_problems import test_kitchen_demo as problem_fn
-    # elif args.problem == 'test_kitchen_demo_two':
-    #     set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
-    #     from bullet.examples.pr2_problems import test_kitchen_demo_two as problem_fn
-    # elif args.problem == 'test_kitchen_demo_objects':
-    #     set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
-    #     from bullet.examples.pr2_problems import test_kitchen_demo_objects as problem_fn
-    # elif args.problem == 'test_kitchen_joints':
-    #     set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
-    #     from bullet.examples.pr2_problems import test_kitchen_joints as problem_fn
+    #     from problem_sets.pr2_problems import test_egg_movements as problem_fn
 
     else:
         problem_fn = problem_fn_from_name(args.problem)

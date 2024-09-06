@@ -187,7 +187,7 @@ def fix_braiser_orientation(world):
     braiser.set_pose((point, quat_from_euler(Euler(yaw=PI/2))))
 
 
-def load_stove_knobs(world, knobs=['knob_joint_2', 'knob_joint_3'], color_code_surfaces=True, draw_label=True):
+def load_stove_knobs(world, knobs=('knob_joint_2', 'knob_joint_3'), color_code_surfaces=True, draw_label=True):
     colors = [RED, YELLOW, BLUE, GREEN] if color_code_surfaces else [GREY] * 4
     # knobs = ['knob_joint_1', 'knob_joint_2']
     surfaces = ['back_right_stove', 'front_right_stove', 'front_left_stove', 'back_left_stove']

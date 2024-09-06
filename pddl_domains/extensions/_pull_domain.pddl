@@ -1,0 +1,28 @@
+(define (domain pull)
+  (:predicates
+     (PulledOneAction ?o)
+  )
+
+  (:action pull_door
+   :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq1 ?aq2 ?at ?t1 ?aq3 ?t2)
+   :precondition (and ; (Door ?o) (not (= ?p1 ?p2)) (CanPull ?a)
+                      (AtPosition ?o ?p1) ; (AtHandleGrasp ?a ?o ?g)
+                      (KinPullDoorHandle ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq1)
+                      (KinGraspHandle ?a ?o ?p1 ?g ?q1 ?aq1 ?t1)
+                      (KinUngraspHandle ?a ?o ?p2 ?g ?q2 ?aq2 ?aq3 ?t2)
+                      (AtBConf ?q1) ; (AtAConf ?a ?aq1)
+                      (HandEmpty ?a)
+                      ;(not (UnsafeApproach ?o ?p2 ?g))
+                      ;(not (UnsafeATraj ?at))
+                      ;(not (UnsafeBTraj ?bt))
+                      ;(not (Pulled ?o))
+                      (Enabled)
+                    )
+    :effect (and (AtPosition ?o ?p2) (not (AtPosition ?o ?p1))
+                 (PulledOneAction ?o) (CanMove)
+                 (AtBConf ?q2) (not (AtBConf ?q1))
+                 ;(AtAConf ?a ?aq3) (not (AtAConf ?a ?aq1))
+            )
+  )
+
+)

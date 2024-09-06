@@ -716,7 +716,7 @@ class World(WorldBase):
             return summary
         return ', '.join(printout)
 
-    def summarize_all_objects(self, print_fn=None):
+    def summarize_all_objects(self, print_fn=None, draw_object_labels=False):
         if print_fn is None:
             from pybullet_tools.logging_utils import myprint as print_fn
 
@@ -825,7 +825,7 @@ class World(WorldBase):
                     print_not_2 = True
                 line += f"\t (static world objects)"
 
-            else:
+            elif draw_object_labels:
                 object.draw()
 
             print_fn(line)

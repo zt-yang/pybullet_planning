@@ -15,7 +15,7 @@ from leap_tools.hierarchical_agent import HierarchicalAgent, hpn_kwargs
 
 from pddl_domains.pddl_utils import *
 
-domain_name = 'pddl_domains/mobile_v4'
+domain_name = 'pddl_domains/mobile_v5'
 domain_kwargs = dict(agent_class=HierarchicalAgent, config='config_dev.yaml',
                      domain_pddl=f'{domain_name}_domain.pddl', stream_pddl=f'{domain_name}_stream.pddl')
 
@@ -28,12 +28,14 @@ def test_pick_place_domain():
 
 
 def test_nvidia_kitchen_domain():
-    kitchen_problem = ['test_kitchen_chicken_soup', 'test_kitchen_braiser', 'test_skill_knob_stove'][-1]
+    kitchen_problem = ['test_kitchen_chicken_soup', 'test_kitchen_braiser',
+                       'test_skill_knob_stove', 'test_kitchen_fridge'][-1]
     # update_kitchen_action_pddl()
     run_agent(
         problem=kitchen_problem,
         dual_arm=True, visualization=False, top_grasp_tolerance=0.8,
-        separate_base_planning=False, **domain_kwargs, # use_skeleton_constraints=True,
+        separate_base_planning=False, **domain_kwargs,
+        # use_skeleton_constraints=True,
         # observation_model='exposed'
     )
 

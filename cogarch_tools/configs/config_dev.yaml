@@ -22,8 +22,8 @@ planner:
 problem:
   problem: 'test_kitchen_chicken_soup'
   goal: null
-  domain_pddl: 'pddl_domains/mobile_domain.pddl'
-  stream_pddl: 'pddl_domains/mobile_stream.pddl'
+  domain_pddl: 'pddl_domains/mobile_v4_domain.pddl'
+  stream_pddl: 'pddl_domains/mobile_v4_stream.pddl'
   use_skeleton_constraints: false
   use_subgoal_constraints: false
   use_rel_pose: true
