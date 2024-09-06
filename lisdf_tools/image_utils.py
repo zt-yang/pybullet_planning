@@ -1,3 +1,4 @@
+import os
 import random
 import PIL.Image
 import numpy as np
@@ -76,7 +77,7 @@ def draw_bb(im, bb):
 def crop_image(im, bb=None, width=1280, height=960, N_PX=224,
                align_vertical='center', keep_ratio=False):
     from pybullet_tools.utils import get_aabb_extent, get_aabb_center, AABB
-    from pybullet_tools.bullet_utils import get_segmask
+    from pybullet_tools.camera_utils import get_segmask
 
     if bb is None:
         # crop the center of the blank image
@@ -248,6 +249,37 @@ def make_composed_image_multiple_episodes(episodes, image_name, verbose=False, c
     im.save(image_name)
     if verbose:
         print(f'saved composed image {image_name} from {len(episodes)} episodes')
+
+
+def merge_center_crops_of_images(image_paths, output_path, crop=None, spacing=20, show=False):
+    """ used by vlm-tamp """
+    images = [PIL.Image.open(path) for path in image_paths]
+
+    if crop is None:
+        right, bottom = images[0].size
+        left = 0
+        top = int(bottom // 4 - spacing // 4)
+        bottom -= int(bottom // 4 + spacing // 4)
+        crop = left, top, right, bottom
+    else:
+        left, top, right, bottom = crop
+
+    width = right - left
+    height = bottom - top
+    n = len(images)
+    composed = np.ones((n*height + (n-1)*spacing, width, 4), dtype=np.uint8) * 255
+    for i, image in enumerate(images):
+        image = image.crop(crop)
+        start = i * (height + spacing)
+        composed[start:start+height, :, :] = image
+        os.remove(image_paths[i])
+
+    compose_im = PIL.Image.fromarray(composed)
+    if show:
+        compose_im.show()
+    else:
+        compose_im.save(output_path)
+    return composed
 
 
 #################################################################################

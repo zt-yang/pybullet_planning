@@ -224,14 +224,6 @@
     )
   ;; -------------------------------------------------------------------
 
-    (:stream plan-arm-turn-knob-handle
-      :inputs (?a ?o ?p1 ?p2 ?g ?q ?aq1)
-      :domain (and (Controllable ?a) (Knob ?o) (Position ?o ?p1) (Position ?o ?p2) (HandleGrasp ?o ?g)
-                   (BConf ?q) (AConf ?a ?aq1) (IsClosedPosition ?o ?p1) (IsOpenedPosition ?o ?p2))
-      :outputs (?aq2 ?at)
-      :certified (and (AConf ?a ?aq2) (ATraj ?at) (KinTurnKnob ?a ?o ?p1 ?p2 ?g ?q ?aq1 ?aq2 ?at))
-    )
-
   ;(:function (MoveCost ?t)
   ;  (and (BTraj ?t))
   ;)

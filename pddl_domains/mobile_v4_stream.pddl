@@ -208,7 +208,6 @@
     (:stream plan-base-pull-handle
       :inputs (?a ?o ?p1 ?p2 ?g ?q1 ?aq)
       :domain (and (GraspHandle ?a ?o ?p1 ?g ?q1 ?aq) (Position ?o ?p2) (IsSampledPosition ?o ?p1 ?p2) (UnattachedJoint ?o))
-      ;:fluents (AtPose AtRelPose AtGrasp AtPosition AtAConf)
       :outputs (?q2 ?bt)
       :certified (and (BConf ?q2) (UngraspBConf ?q2) (BTraj ?bt)
                       (UngraspHandle ?a ?o ?p2 ?g ?q2 ?aq)
@@ -223,15 +222,6 @@
                       (UngraspHandle ?a ?o ?p2 ?g ?q2 ?aq) (Pose ?l ?pl2)
                       (KinPullDoorHandleWithLink ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq ?l ?pl1 ?pl2))
     )
-    ;(:stream plan-arm-turn-knob
-    ;  :inputs (?a ?o ?p1 ?p2 ?g ?q1 ?aq)
-    ;  :domain (and (GraspHandle ?a ?o ?p1 ?g ?q1 ?aq) (Knob ?o) (Position ?o ?p2) (IsSampledPosition ?o ?p1 ?p2) (UnattachedJoint ?o))
-    ;  :fluents (AtPose AtRelPose AtGrasp AtPosition AtAConf)
-    ;  :outputs (?q2 ?bt)
-    ;  :certified (and (BConf ?q2) (UngraspBConf ?q2) (ATraj ?bt)
-    ;                  (UngraspHandle ?a ?o ?p2 ?g ?q2 ?aq)
-    ;                  (KinPullDoorHandle ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq))
-    ;)
   ;; -------------------------------------------------------------------
 
   ;(:function (MoveCost ?t)

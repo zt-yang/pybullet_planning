@@ -1103,7 +1103,7 @@ def load_braiser(world, supporter, x_min=None, verbose=False):
     adjust_for_reachability(braiser, supporter, x_min)
     set_camera_target_body(braiser)
 
-    lid = braiser.place_new_obj('BraiserLid', category='moveable', name='BraiserLid', max_trial=1,
+    lid = braiser.place_new_obj('BraiserLid', category='movable', name='BraiserLid', max_trial=1,
                                 random_instance=braiser.mobility_id, verbose=verbose)
     world.make_transparent(lid)
     put_lid_on_braiser(world, lid, braiser)

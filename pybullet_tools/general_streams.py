@@ -304,17 +304,18 @@ def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visu
         if learned_sampling and world.learned_pose_list_gen is not None:
 
             result = world.learned_pose_list_gen(world, body, surfaces, num_samples=num_samples-5, verbose=verbose)
-            for body_pose in result:
-                p = Pose(body, value=body_pose, support=surface)
-                p.assign()
-                coo = collided(body, obs, verbose=verbose, visualize=visualize,
-                               tag='stable_gen_database', world=world)
-                if not coo:
-                    count -= 1
-                    p0.assign()
-                    if relpose:
-                        p = get_rel_pose(body, surface, body_pose)
-                    yield (p,)
+            if result is not None:
+                for body_pose in result:
+                    p = Pose(body, value=body_pose, support=surface)
+                    p.assign()
+                    coo = collided(body, obs, verbose=verbose, visualize=visualize,
+                                   tag='stable_gen_database', world=world)
+                    if not coo:
+                        count -= 1
+                        p0.assign()
+                        if relpose:
+                            p = get_rel_pose(body, surface, body_pose)
+                        yield (p,)
 
             if verbose: print(title, 'sample without learned_pose_list_gen')
         ## ------------------------------------------------

@@ -284,6 +284,8 @@ class World(WorldBase):
         return body in self.not_containable and space in self.not_containable[body]
 
     def add_not_stackable(self, body, surface, verbose=False):
+        if surface is None:
+            return
         self.not_stackable[body].append(surface)
         if verbose:
             print(f'world.do_not_stack({body}, {surface})')

@@ -752,7 +752,7 @@ def get_sink_counter_x(run_dir, keyw='sink_counter_front'):
 def aabb_placed_on_aabb(top_aabb, bottom_aabb, above_epsilon=1e-2, below_epsilon=0.02):
     assert (0 <= above_epsilon) and (0 <= below_epsilon)
     lower = copy.deepcopy(bottom_aabb.lower)
-    upper = copy.deepcopy(bottom_aabb.upper)
+    upper = list(copy.deepcopy(bottom_aabb.upper))
     upper[0] += get_aabb_extent(bottom_aabb)[0] / 2
     new_bottom_aabb = AABB(lower=lower, upper=upper)
     top_z_min = top_aabb[0][2]

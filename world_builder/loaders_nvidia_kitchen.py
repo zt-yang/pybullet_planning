@@ -32,7 +32,8 @@ part_names = {
     'front_left_stove': 'stove on the left',
     'front_right_stove': 'stove on the right',
     'knob_joint_2': 'stove knob on the right',
-    'knob_joint_3': 'stove knob on the left'
+    'knob_joint_3': 'stove knob on the left',
+    'shelf_top': 'fridge shelf'
 }
 
 ###############################################################################
@@ -224,7 +225,7 @@ def load_dishwasher(world):
 
 
 def get_objects_for_open_kitchen(world):
-    object_names = ['chicken-leg', 'fridge', 'fridge_door', 'fork',
+    object_names = ['chicken-leg', 'fridge', 'fridge_door', 'shelf_top', 'fork',
                     'braiserbody', 'braiserlid', 'braiser_bottom',
                     'indigo_drawer_top', 'indigo_drawer_top_joint', 'indigo_tmp',
                     'sektion', 'chewie_door_left_joint', 'chewie_door_right_joint',
@@ -255,18 +256,25 @@ def prevent_funny_placements(world, verbose=True):
 
     ## only the lid can be placed on braiserbody or the front left stove
     ## only food can be placed on braiser bottom, or inside braiserbody
+    cabinet = world.name_to_body('sektion')
     braiserbody = world.name_to_body('braiserbody')
     braiserlid = world.name_to_body('braiserlid')
-    stove = world.name_to_body('front_left_stove')
+    left_stove = world.name_to_body('front_left_stove')
+    right_stove = world.name_to_body('front_right_stove')
     braiser_bottom = world.name_to_body('braiser_bottom')
 
     for o in movables:
-        if o not in food + condiments:
+        if o not in food:  ##  + condiments
             world.add_not_stackable(o, braiser_bottom)
             world.add_not_containable(o, braiserbody)
+        if o not in condiments:
+            world.add_not_containable(o, cabinet)
         if o != braiserlid:
             world.add_not_stackable(o, braiserbody)
-            world.add_not_stackable(o, stove)
+            world.add_not_stackable(o, left_stove)
+            world.add_not_stackable(o, right_stove)
+        else:
+            world.add_not_stackable(o, right_stove)
 
     if verbose:
         world.summarize_forbidden_placements()
@@ -410,7 +418,7 @@ def load_nvidia_kitchen_movables(world: World, open_doors_for: list = [], custom
     ]:
         body = world.name_to_body(body_name)
         shelf = world.add_object(Surface(
-            body, link=link_from_name(body, surface_name), name=surface_name, category='supporter'
+            body, link=link_from_name(body, surface_name), name=surface_name,
         ))
 
     # ## left half of the kitchen

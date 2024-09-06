@@ -38,6 +38,15 @@ DARK_GREEN = RGBA(35/255, 66/255, 0, 1)
 FLOOR_HEIGHT = 1e-3
 WALL_HEIGHT = 0.5
 
+JOINT = 'joint'
+DOOR = 'door'
+DRAWER = 'drawer'
+KNOB = 'knob'
+MOVABLE = 'movable'
+GRASPABLE = 'graspable'
+SURFACE = 'surface'
+SPACE = 'space'
+
 GRASPABLES = ['BraiserLid', 'Egg', 'VeggieCabbage', 'MeatTurkeyLeg', 'VeggieGreenPepper', 'VeggieArtichoke',
               'VeggieTomato', 'VeggieZucchini', 'VeggiePotato', 'VeggieCauliflower', 'MeatChicken']
 GRASPABLES = [o.lower() for o in GRASPABLES]
@@ -830,7 +839,7 @@ def get_camera_image(camera, include_rgb=False, include_depth=False, include_seg
 
 def make_camera_image(rgbd_matrix, figsize=None, name_to_loc={},
                       fontsize=12, lineheight=18, alpha=0.7, padding=4,
-                      show_bb=True, show=True, output_path='observation.png', verbose=False):
+                      show_annotation=True, show=False, output_path='observation.png', verbose=False):
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
     fig, ax = plt.subplots(figsize=figsize)
@@ -842,7 +851,7 @@ def make_camera_image(rgbd_matrix, figsize=None, name_to_loc={},
     if figsize is not None:
         colors = DARKER_COLORS[:-1]
         for i, (text, (textx, texty, left, top, width, height)) in enumerate(name_to_loc.items()):
-            if show_bb:
+            if show_annotation:
                 color = colors[i % len(colors)]
                 ax.add_patch(mpatches.Rectangle(
                     (left + padding, top + padding), width - 2 * padding, height - 2 * padding,
@@ -865,7 +874,7 @@ def make_camera_image(rgbd_matrix, figsize=None, name_to_loc={},
         if is_darwin():
             wait_unlocked()
     else:
-        fig.savefig(output_path, dpi=300)
+        fig.savefig(output_path, dpi=100)
 
     if verbose:
         print(f'world_utils.make_camera_image(rgbd_matrix) \t {output_path}')
@@ -907,6 +916,7 @@ def make_camera_collage(camera_images, output_path='observation.png', verbose=Fa
 ABOVE = 0
 BELOW = 1
 RIGHT = 2
+LEFT = 3
 
 special_cases = {
     'pot lid': RIGHT,
@@ -914,13 +924,20 @@ special_cases = {
     'top drawer': ABOVE,
     'cabinet right door': BELOW,
     'stove knob on the left': ABOVE,
-    'stove knob on the right': RIGHT
+    'stove knob on the right': RIGHT,
+    'stove on the left': LEFT
 }
 
 
 def make_camera_image_with_object_labels(camera, body_to_english_names, verbose=False,
                                          fontsize=8, lineheight=18, padding=4, **kwargs):
     """ for creating image for VLM query """
+
+    ## reorg to label the special cases first
+    body_to_english_names = {k: v for k, v in body_to_english_names.items() if not v.endswith('space')}
+    body_dict = {k: v for k, v in body_to_english_names.items() if v in special_cases}
+    body_dict.update({k: v for k, v in body_to_english_names.items() if v not in special_cases})
+
     camera_image = camera.get_image(segment=True, segment_links=True)
     rgb = camera_image.rgbPixels[:, :, :3]
     seg = camera_image.segmentationMaskBuffer
@@ -929,9 +946,7 @@ def make_camera_image_with_object_labels(camera, body_to_english_names, verbose=
 
     heights = []
     name_to_loc = {}
-    for k, name in body_to_english_names.items():
-        if name.endswith('space'):
-            continue
+    for k, name in body_dict.items():
         keys = obj_keys[name]
         mask = get_seg_foreground_given_obj_keys(rgb, keys, unique)
         bb = get_mask_bb(mask)
@@ -942,7 +957,7 @@ def make_camera_image_with_object_labels(camera, body_to_english_names, verbose=
             x, y = center.tolist()
 
             box_area = (width - padding) * (height - padding)
-            if box_area <= 100:
+            if box_area <= 500:
                 left -= 2 * padding
                 top -= 2 * padding
                 width += 4 * padding
@@ -956,8 +971,6 @@ def make_camera_image_with_object_labels(camera, body_to_english_names, verbose=
                 print(f'{name}\tis_small_box = {is_small_box}\t box_area = {box_area}\t (top, left) = {(top, left)}'
                       f'\t textbox_width = {round(textbox_width, 2)}\t text_box_area = {round(text_box_area, 2)}')
 
-            if name == 'stove knob on the right':
-                print('stove knob on the right')
             ## adjust the x of label to align it to the center of object parts
             x = x + padding / 2 - textbox_width / 2
             y += padding / 2
@@ -995,6 +1008,9 @@ def _adjust_xy_for_small_box(x, y, top, left, width, height, padding, text, text
     ## right of box
     if case == 2:
         x = left + width
+    ## left of box
+    if case == 3:
+        x = left - textbox_width + padding
     return x, y
 
 
@@ -1143,7 +1159,7 @@ def add_joint_status_facts(body, position=None, categories=None,
     if is_joint_open(body, threshold=1, is_closed=True):
         init += [('IsClosedPosition', body, position)]
         description = 'fully closed'
-        if 'knob' in categories:
+        if categories is not None and 'knob' in categories:
             description = 'turned off'
 
     elif not is_joint_open(body, threshold=0.25):
@@ -1153,7 +1169,7 @@ def add_joint_status_facts(body, position=None, categories=None,
     elif is_joint_open(body, threshold=1):
         init += [('IsOpenedPosition', body, position)]
         description = 'fully open'
-        if 'knob' in categories:
+        if categories is not None and 'knob' in categories:
             description = 'turned on'
 
     else:

@@ -618,7 +618,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
                                                       **motion_planning_kwargs)
                     if approach_path is not None:
                         found_objects.append(o)
-                found_objects = [f"{world.BODY_TO_OBJECT[m].debug_name}" for m in found_objects]
+                found_objects = [f"{world.body_to_object(m).debug_name}" for m in found_objects]
                 print(f'{title}\tApproach path failure, would have succeeded without any object in {found_objects}')
             if visualize:
                 remove_body(gripper_grasp)

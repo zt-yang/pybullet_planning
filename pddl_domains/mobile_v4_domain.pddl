@@ -63,6 +63,7 @@
     (KinPullDrawerHandle ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?t)  ;; pull the handle
     (KinPullDoorHandle ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq)  ;; pull the handle
     (KinPullDoorHandleWithLink ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq ?l ?pl1 ?pl2)  ;; pull the handle
+    (KinTurnKnob ?a ?o ?p1 ?p2 ?g ?q ?aq1 ?aq2 ?at)
 
     (Reach ?a ?o ?p ?g ?bq)
     (ReachRel ?a ?o1 ?rp1 ?o2 ?p2 ?g ?bq)
@@ -97,6 +98,7 @@
     (AtGraspHalf ?a ?o ?g)
     (AtHandleGrasp ?a ?o ?g)  ;; in contact the handle
     (HandleGrasped ?a ?o)  ;; released the handle
+    (KnobTurned ?a ?o)  ;; released the knob
     (HandEmpty ?a)
     (AtBConf ?q)
     (AtAConf ?a ?q)

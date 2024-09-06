@@ -575,6 +575,24 @@ class PDDLStreamEnv(PDDLEnv):
 
     def _resolve_cond(self, cond, need_preconditions, applied_axioms, need_tests,
                       use_original_domain=False, verbose=False):
+        """
+        example outputs for [move_base]
+            need_preconditions:
+                [basemotion(q0=(2.0, 5.0, 0.2, 3.142):default,c80=t(4, 23):default,q800=(1.305, 4.525, 0.971, 3.043):default),
+                Notidentical(q0=(2.0, 5.0, 0.2, 3.142):default,q800=(1.305, 4.525, 0.971, 3.043):default),
+                atbconf(q0=(2.0, 5.0, 0.2, 3.142):default)]
+
+        example outputs for [grasp_handle]
+            need_preconditions:
+                [aconf(left:default,aq976=(0.677, -0.343, 1.2, -1.467, 1.242, -1.954, 2.223):default),
+                atposition((9, 1):default,pstn9=0.0:default),
+                ataconf(left:default,aq976=(0.677, -0.343, 1.2, -1.467, 1.242, -1.954, 2.223):default),
+                Notpulled((9, 1):default),
+                kingrasphandle(left:default,(9, 1):default,pstn9=0.0:default,hg824=(-0.584, 0.111, 0.234, -3.142, -0.0, 0.0):default,q448=(1.571, 4.728, 0.469, -2.943):default,aq544=(0.005, 0.805, 0.667, -1.452, 3.579, -0.715, -0.803):default,c240=t(7, 89):default),
+                Notunsafeatraj(c240=t(7, 89):default)]
+            need_tests:
+                [atposition((9, 1):default,pstn9=0.0:default)]
+        """
         pred = cond.predicate  ## self.domain.predicates[name]
         if use_original_domain:
             domain = self.domain
@@ -589,12 +607,16 @@ class PDDLStreamEnv(PDDLEnv):
             # but also the assigned variables in its preconditions
             applied_axioms.append((cond, self.derived_assignments))
 
-            if not isinstance(pred.body, Exists):  ## don't ground things in exist
+            ## TODO: for now, don't ground things in (exist ) or (or (exist ))
+            if not isinstance(pred.body, Exists):
                 params = [TypedEntity(pred.param_names[i], pred.var_types[i]) for i in range(len(pred.param_names))]
                 mapping = {params[i]: cond.variables[i] for i in range(len(params))}
 
                 literals = pred.body.literals if isinstance(pred.body, LiteralDisjunction) else pred.body.body.literals
                 for lit in literals:
+                    ## TODO: investigate whether need to consider this
+                    if isinstance(lit, Exists):
+                        continue
                     n = lit.predicate.name
                     args = []
                     for v in lit.variables:
