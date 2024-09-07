@@ -338,19 +338,27 @@ class RobotAPI(Robot):
     def remove_gripper(self, gripper_handle):
         remove_body(gripper_handle)
 
-    def get_rc2oc_confs(self):
+    ## -------------------------------------------------------------
+
+    def get_rc2oc_confs(self, roundto=3):
         """ check the changes in arm when base is fixed, check the changes in base when arms are fixed """
-        return [self.get_all_arm_conf(), self.get_all_base_conf()]
+        return self.get_all_arm_conf(roundto) + [self.get_all_base_conf(roundto)]
 
-    def get_all_base_conf(self):
-        return self.get_positions(joint_group='base-torso', roundto=3)
+    def get_one_arm_conf(self, arm, roundto=3):
+        return self.get_positions(joint_group=f'{arm}_arm', roundto=roundto)
 
-    def get_all_arm_conf(self):
-        arm_groups = [f'{arm}_arm' for arm in self.arms]
-        positions = []
-        for group in arm_groups:
-            positions.extend(self.get_positions(joint_group=group, roundto=3))
-        return tuple(positions)
+    def get_all_base_conf(self, roundto=3):
+        x, y, z, theta = self.get_positions(joint_group='base-torso', roundto=None)
+        while theta > 2 * math.pi:
+            theta -= 2 * math.pi
+        while theta < -2 * math.pi:
+            theta += 2 * math.pi
+        return tuple([round(n, roundto) for n in [x, y, z, theta]])
+
+    def get_all_arm_conf(self, roundto=3):
+        return [(arm, self.get_one_arm_conf(arm, roundto=roundto)) for arm in self.arms]
+
+    ## -------------------------------------------------------------
 
     def get_base_joints(self):
         return self.get_group_joints(self.base_group)
@@ -495,7 +503,7 @@ class MobileRobot(RobotAPI):
         random.shuffle(arms)
         for arm in arms:
             conf = get_arm_conf(arm)
-            init += [('AConf', arm, conf), ('AtAConf', arm, conf), ('DefaultAConf', arm, conf)]
+            init += [('AConf', arm, conf), ('AtAConf', arm, conf)]  ## , ('DefaultAConf', arm, conf)
             if arm in self.arms:
                 init += [('Arm', arm), ('HandEmpty', arm), ('Controllable', arm)]
 

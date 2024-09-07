@@ -4103,7 +4103,14 @@ def check_initial_end(start_conf, end_conf, collision_fn, verbose=False):
 def plan_joint_motion(body, joints, end_conf, obstacles=[], attachments=[],
                       self_collisions=True, disabled_collisions=set(), ignored_pairs=[],
                       weights=None, resolutions=None, max_distance=MAX_DISTANCE,
-                      use_aabb=False, cache=True, custom_limits={}, algorithm=None, **kwargs):
+                      use_aabb=False, cache=True, custom_limits={}, algorithm=None, verbose=False, **kwargs):
+
+    start_conf = get_joint_positions(body, joints)
+    if verbose:
+        from pybullet_tools.bullet_utils import nice
+        print(f"\t{verbose}\t {nice(start_conf)} -> {nice(end_conf)}\t obstacles = {obstacles}"
+              f"\t attachments = {attachments}\t ignored_pairs = {ignored_pairs}")
+    start_time = time.time()
 
     assert len(joints) == len(end_conf)
     if (weights is None) and (resolutions is not None):
@@ -4116,14 +4123,19 @@ def plan_joint_motion(body, joints, end_conf, obstacles=[], attachments=[],
                                     custom_limits=custom_limits, max_distance=max_distance, use_aabb=use_aabb,
                                     cache=cache, ignored_pairs=ignored_pairs)
 
-    start_conf = get_joint_positions(body, joints)
     if not check_initial_end(start_conf, end_conf, collision_fn):
         return None
 
     if algorithm is None:
-        return birrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
-    return solve(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, algorithm=algorithm, **kwargs)
-    #return plan_lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn)
+        path = birrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
+    else:
+        path = solve(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, algorithm=algorithm, **kwargs)
+        # path = plan_lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn)
+    duration = time.time() - start_time
+    if duration > 1:
+        print(f'\t[utils.plan_joint_motion] in {round(duration, 2)} seconds')
+    return path
+
 
 plan_holonomic_motion = plan_joint_motion
 

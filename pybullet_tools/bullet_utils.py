@@ -693,6 +693,7 @@ def open_joint(body, joint, extent=0.95, pstn=None,
     if return_pstn:
         return pstn
     set_joint_position(body, joint, pstn)
+    return pstn
 
 
 def close_joint(body, joint):

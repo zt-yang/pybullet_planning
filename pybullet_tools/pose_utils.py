@@ -57,8 +57,8 @@ class Attachment(object):
             self.parent, self.parent_link))
 
     def assign(self, verbose=False):
-        if self.debug:
-            print(f'\npose_utils.Attachment.assign({str(self)})')
+        # if self.debug:
+        #     print(f'\npose_utils.Attachment.assign({str(self)})')
         # robot_base_pose = self.parent.get_positions(roundto=3)
         # robot_arm_pose = self.parent.get_positions(joint_group='left', roundto=3)  ## only left arm for now
         parent_link_pose = get_link_pose(self.parent.body, self.parent_link)
@@ -67,22 +67,31 @@ class Attachment(object):
             set_pose(self.child, child_pose)
         else:
             RC2OC = self.parent.ROBOT_CONF_TO_OBJECT_CONF
+            # if self.debug:
+            #     print('\t\tRC2OC', {b: {j: {c: {g: len(gg) for g, gg in cc.items()} for c, cc in jj.items()} for j, jj in bb.items()} for b, bb in RC2OC.items()})
             # robot_groups = [g for g in ['base-torso', 'base', 'hand', 'left_arm', 'right_arm'] if g in self.parent.joint_groups]
             if self.child in RC2OC:  ## pull drawer handle
-                if self.child in RC2OC and self.child_joint in RC2OC[self.child]:
+                if self.child_joint in RC2OC[self.child]:
                     confs = self.parent.get_rc2oc_confs()
+                    if self.debug:
+                        print(f'\t\t\tRC2OC[{self.child}][{self.child_joint}]', {c: {g: len(gg) for g, gg in cc.items()} for c, cc in RC2OC[self.child][self.child_joint].items()})
+                        print('\t\t\tconfs =', [(conf[0], nice(conf[1])) for conf in confs[:2]] + [nice(conf) for conf in confs[2:]])
                     for conf in confs:
                         if conf in RC2OC[self.child][self.child_joint]:
                             ls = RC2OC[self.child][self.child_joint][conf]
                             for group in ls:
                                 group_ls = ls[group]
                                 key = self.parent.get_positions(joint_group=group, roundto=4)
+                                positions = list(group_ls.keys())
+                                if self.debug:
+                                    print(f'\t\t\t\tls[group] contains {len(positions)} positions from {positions[0]} to {positions[-1]}')
+                                    print('\t\t\t\tcurr position =', nice(key))
                                 result = in_list(key, group_ls)
                                 if result is not None:
                                     position = group_ls[result]
                                     set_joint_position(self.child, self.child_joint, position)
                                     if self.debug:
-                                        print(f'pose_utils | robot {group} @ {key} -> {(self.child, self.child_joint)} position @ {position}')
+                                        print(f'pose_utils.Attachment | robot {group} @ {key} -> {(self.child, self.child_joint)} position @ {position}')
         return child_pose
 
     def apply_mapping(self, mapping):

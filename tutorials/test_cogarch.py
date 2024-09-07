@@ -34,7 +34,7 @@ def test_nvidia_kitchen_domain():
     update_kitchen_pull_pddl()
     run_agent(
         problem=kitchen_problem,
-        dual_arm=True, visualization=True, top_grasp_tolerance=0.8,
+        dual_arm=True, visualization=False, top_grasp_tolerance=0.8,
         separate_base_planning=False, **domain_kwargs,
         # use_skeleton_constraints=True,
         # observation_model='exposed'

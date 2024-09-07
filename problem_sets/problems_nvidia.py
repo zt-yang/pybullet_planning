@@ -975,7 +975,7 @@ def test_kitchen_chicken_soup(args, **kwargs):
     def loader_fn(world, **world_builder_args):
         goal_object = ['chicken-leg', 'cabbage', 'fork', 'salt-shaker'][0]
         open_doors_for = []  ## goal_object
-        objects, movables, movable_to_doors = load_open_problem_kitchen(world, open_doors_for=open_doors_for)
+        objects, movables = load_open_problem_kitchen(world, open_doors_for=open_doors_for)
 
         """ goals """
         arm = random.choice(world.robot.arms)
@@ -1089,7 +1089,7 @@ def test_kitchen_plan_constraints(args, **kwargs):
     def loader_fn(world, **world_builder_args):
         goal_object = ['chicken-leg', 'cabbage', 'fork', 'salt-shaker'][2]
         open_doors_for = []  ## goal_object
-        objects, movables, movable_to_doors = load_open_problem_kitchen(world, open_doors_for=open_doors_for)
+        objects, movables = load_open_problem_kitchen(world, open_doors_for=open_doors_for)
         plate = load_plate_on_counter(world, counter_name='indigo_tmp')
 
         """ goals """
@@ -1208,7 +1208,7 @@ def test_kitchen_sprinkle(args, **kwargs):
         robot = world.robot
 
         open_doors_for = []  ## goal_object
-        objects, movables, movable_to_doors = load_open_problem_kitchen(world, open_doors_for=open_doors_for)
+        objects, movables = load_open_problem_kitchen(world, open_doors_for=open_doors_for)
         plate = load_plate_on_counter(world, counter_name='indigo_tmp')
 
         salt_shaker = world.name_to_body('salt-shaker')
@@ -1278,7 +1278,7 @@ def test_kitchen_nudge_door(args, **kwargs):
         robot = world.robot
 
         open_doors_for = []  ## goal_object
-        objects, movables, movable_to_doors = load_open_problem_kitchen(world, open_doors_for=open_doors_for)
+        objects, movables = load_open_problem_kitchen(world, open_doors_for=open_doors_for)
 
         salt_shaker = world.name_to_body('salt-shaker')
         pepper_shaker = world.name_to_body('pepper-shaker')

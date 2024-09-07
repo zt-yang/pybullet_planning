@@ -992,7 +992,7 @@ def _adjust_xy_for_small_box(x, y, top, left, width, height, padding, text, text
         case = object_label_locations[text]
     ## above box
     if case == 0:
-        y = top - textbox_height / 2 + padding
+        y = top - textbox_height / 2 + padding * 2
     ## below box
     if case == 1:
         y = top + height - padding + textbox_height / 2

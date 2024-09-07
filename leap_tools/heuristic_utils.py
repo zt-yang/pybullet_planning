@@ -34,7 +34,6 @@ def find_big_surfaces(other_surfaces, top_k=1, title='find_big_surfaces\t'):
 
 
 def find_surfaces_close_to_region(other_surfaces, region_aabb, top_k=2, title='find_surfaces_close_to_region\t'):
-    print(f'\n{title}other_surfaces: {other_surfaces}')
     closest_surface = sorted(other_surfaces, key=get_distance_to_aabb_fn(region_aabb))[:top_k]
     print(f'{title}closest surface:\t{closest_surface}')
     return closest_surface
@@ -62,7 +61,9 @@ def add_surfaces_given_obstacles(world, obstacles, title='add_surfaces_given_obs
         placed = None
         if world.BODY_TO_OBJECT[o].supporting_surface is not None:
             placed = world.BODY_TO_OBJECT[o].supporting_surface.pybullet_name
-        add = find_surfaces_close_to_region([s for s in other_surfaces if s != placed], region_aabb, top_k=2)
+        feasible_surfaces = [s for s in other_surfaces if s not in world.not_stackable[o]]
+        print(f'\n{title}other_surfaces: {other_surfaces} -> stackable surfaces {feasible_surfaces}')
+        add = find_surfaces_close_to_region([s for s in feasible_surfaces if s != placed], region_aabb, top_k=2)
         add_surfaces.extend(add)
     if len(add_surfaces) > 0:
         print(f'\n{title} for obstacles {obstacles} add surfaces {add_surfaces}\n')

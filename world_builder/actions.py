@@ -36,7 +36,9 @@ pick_arrange_actions = ['pick', 'arrange']
 pick_sprinkle_actions = ['pick', 'sprinkle']
 pick_place_rel_actions = ['pick_from_supporter', 'place_to_supporter']
 
-attach_joint_actions = ['pull_door_handle', 'pull_handle', 'pull_handle_with_link', 'nudge_door']
+attach_joint_actions = ['pull_door_handle', 'pull_handle', 'pull_handle_with_link', 'nudge_door',
+                        'grasp_pull_ungrasp_handle', 'grasp_pull_ungrasp_handle_with_link',
+                        'grasp_pull_handle']
 
 
 class Action(object):  # TODO: command
@@ -827,9 +829,9 @@ def get_primitive_actions(action, world, teleport=False, verbose=True, debug_rc2
         cmd = Commands(State(), savers=[], commands=[t])
         get_traj(cmd)
 
-    elif name == 'grasp_pull_ungrasp_handle':
+    elif name.startswith('grasp_pull_ungrasp_handle'):
         """ grasp, pull, ungrasp together (Mobile) """
-        a, o, p1, p2, g, q1, q2, bt, aq1, aq2, at = args
+        a, o, p1, p2, g, q1, q2, bt, aq1, aq2, at = args[:11]
 
         ## step 1: grasp handle
         at = get_traj(at)

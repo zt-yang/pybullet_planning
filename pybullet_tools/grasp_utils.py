@@ -627,9 +627,9 @@ def test_transformations_template(rotations, translations, funk, title, skip_unt
     return results
 
 
-def add_to_rc2oc(robot, group, o, mapping):
+def add_to_rc2oc(robot, group, a, o, mapping):
     body, joint = o
-    conf = robot.get_all_arm_conf() if group == 'base-torso' else robot.get_all_base_conf()
+    conf = (a, robot.get_one_arm_conf(a)) if group == 'base-torso' else robot.get_all_base_conf()
     if body not in robot.ROBOT_CONF_TO_OBJECT_CONF:
         robot.ROBOT_CONF_TO_OBJECT_CONF[body] = {}
     if joint not in robot.ROBOT_CONF_TO_OBJECT_CONF[body]:

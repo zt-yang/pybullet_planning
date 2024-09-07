@@ -220,10 +220,9 @@ def get_ik_pull_gen(problem, max_attempts=80, num_intervals=30, collisions=True,
             pose_value = pst1.value
 
         inputs = a, o, pst1, g
-        results = sample_bconf(
-            world, robot, inputs, pose_value, obstacles, heading, ir_sampler=ir_sampler, ik_fn=ik_fn,
-            verbose=verbose, visualize=visualize, soft_failures=soft_failures, learned=learned,
-            ir_max_attempts=max_attempts, ir_only=ir_only)
+        results = sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
+            ir_sampler=ir_sampler, ik_fn=ik_fn, ir_max_attempts=max_attempts, ir_only=ir_only,
+            verbose=verbose, visualize=visualize, soft_failures=soft_failures, learned=learned)
         for (bq1, aq1, at) in results:
             inputs = a, o, pst1, pst2, g, bq1, aq1
             result = compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs, saver,
@@ -264,10 +263,9 @@ def get_ik_pull_with_link_gen(problem, max_attempts=80, num_intervals=30, collis
 
         pl1.assign()
         inputs = a, o, pst1, g
-        results = sample_bconf(
-            world, robot, inputs, pose_value, obstacles, heading, ir_sampler=ir_sampler, ik_fn=ik_fn,
-            verbose=verbose, visualize=visualize, soft_failures=soft_failures, learned=learned,
-            ir_max_attempts=max_attempts, ir_only=ir_only)
+        results = sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
+            ir_sampler=ir_sampler, ik_fn=ik_fn, ir_max_attempts=max_attempts, ir_only=ir_only,
+            verbose=verbose, visualize=visualize, soft_failures=soft_failures, learned=learned)
         for (bq1, aq1, at) in results:
             inputs = a, o, pst1, pst2, g, bq1, aq1
             result = compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs, saver,
@@ -564,7 +562,7 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
 def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
                       world, robot, custom_limits, obstacles_here, ignored_pairs_here,
                       resolution=DEFAULT_RESOLUTION, attachments={}, title='solve_approach_ik',
-                      ACONF=False, teleport=False, verbose=False, visualize=False):
+                      ACONF=False, teleport=False, verbose=False, debug_mp_obstacles=False, visualize=False):
 
     if isinstance(obj, tuple):  ## may be a (body, joint) or a body with a marker
         body = obj[0]
@@ -698,25 +696,43 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
         attachments_arg = list(attachments.values()) if isinstance(obj, int) else []
         initially_attached_to_o = [m.child.body for m in world.attachments.values() if m.parent.body == obj]
         obstacles_here = [m for m in obstacles_here if m not in initially_attached_to_o]
+        verbose = f'[{title}.plan_joint_motion]' if debug_mp_obstacles else False
         motion_planning_kwargs.update(attachments=attachments_arg, resolutions=resolutions,
-                                      restarts=2, iterations=25, smooth=50, )
+                                      restarts=3, iterations=25, smooth=50, verbose=verbose)
         set_joint_positions(robot, arm_joints, default_conf)
         approach_path = plan_joint_motion(robot, arm_joints, dest_conf, obstacles=obstacles_here, **motion_planning_kwargs)  # smooth=25
         if approach_path is None:
-            if verbose:
+
+            if debug_mp_obstacles:
+                recover_threshold = 3
                 found_objects = []
                 for o in obstacles_here:
                     isolated_obstacles = [m for m in obstacles_here if m != o]
                     set_joint_positions(robot, arm_joints, default_conf)
-                    approach_path = plan_joint_motion(robot, arm_joints, dest_conf, obstacles=isolated_obstacles,
+                    possible_path = plan_joint_motion(robot, arm_joints, dest_conf, obstacles=isolated_obstacles,
                                                       **motion_planning_kwargs)
-                    if approach_path is not None:
+                    if possible_path is not None:
                         found_objects.append(o)
+                        print(f'\t\tsolved after removing {world.name_to_object(o).debug_name}, '
+                              f'len(possible_path) = {len(possible_path)}')
+
+                    if len(found_objects) >= recover_threshold:
+                        print(f'\tfound more than {recover_threshold} that enable cfree motion planning')
+                        break
                 found_objects = [f"{world.body_to_object(m).debug_name}" for m in found_objects]
                 print(f'{title}\tApproach path failure, would have succeeded without any object in {found_objects}')
-            if visualize:
-                remove_body(gripper_grasp)
-            return None
+
+                if len(found_objects) >= recover_threshold:
+                    approach_path = plan_joint_motion(robot, arm_joints, dest_conf, obstacles=obstacles_here,
+                                                      **motion_planning_kwargs)
+
+            if approach_path is None:
+                if verbose:
+                    print(f'{title}\tApproach path failure')
+
+                if visualize:
+                    remove_body(gripper_grasp)
+                return None
         path = approach_path + grasp_path
 
     mt = create_trajectory(robot.body, arm_joints, path)
@@ -1060,7 +1076,7 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
     pst1.assign()
     bq1.assign()
     aq1.assign()
-    add_to_rc2oc(robot, group, o, mapping)
+    add_to_rc2oc(robot, group, a, o, mapping)
 
     if is_knob:
         return aq2, arm_cmd

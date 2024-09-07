@@ -887,7 +887,7 @@ def get_base_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
         # default_conf = arm_conf(arm, grasp.carry)
         # set_joint_positions(robot, arm_joints, default_conf)
 
-        params = [(6, 75)] ## (4, 50), (10, 100)
+        params = [(4, 75)] ## (4, 50), (10, 100)
         num_trials = len(params)  ## sometimes it can't find a path to get around the open door
         while num_trials > 0:
             param = params[-num_trials]

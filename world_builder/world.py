@@ -1179,7 +1179,7 @@ class World(WorldBase):
         close_joint(body, joint)
         self._change_joint_state(body, joint)
 
-    def open_joint(self, body, joint=None, extent=1, pstn=None, random_gen=False, **kwargs):
+    def open_joint(self, body, joint=None, extent=1, pstn=None, random_gen=False, verbose=True, **kwargs):
         if joint is None and isinstance(body, tuple):
             body, joint = body
         if random_gen:
@@ -1189,7 +1189,10 @@ class World(WorldBase):
             if len(pstns) == 0:
                 return
             pstn = random.choice(pstns)[0].value
-        open_joint(body, joint, extent=extent, pstn=pstn, **kwargs)
+        pstn = open_joint(body, joint, extent=extent, pstn=pstn, **kwargs)
+        if verbose:
+            name = self.body_to_object((body, joint)).name
+            print(f'[world.open_joint({body}, {joint}, {round(pstn, 3)})]\tobj name = {name}')
         self._change_joint_state(body, joint)
 
     def open_doors_drawers(self, body, ADD_JOINT=True, **kwargs):

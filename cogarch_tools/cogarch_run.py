@@ -192,8 +192,8 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
             print('failed to find any plans', data_path)
 
     clear_planning_dir(run_dir=dirname(__file__))
-    # disconnect()
     reset_simulation()
+    # disconnect()
 
     # if reset:
     #     reset_simulation()

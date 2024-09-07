@@ -40,7 +40,7 @@ part_names = {
 object_label_locations = {
     'pot lid': RIGHT,
     'pot body': BELOW,
-    'top drawer': ABOVE,
+    'top drawer': BELOW,
     'cabinet right door': BELOW,
     'stove knob on the left': ABOVE,
     'stove knob on the right': RIGHT,
@@ -48,7 +48,8 @@ object_label_locations = {
     'chicken leg': BELOW,
     'fridge shelf': ABOVE,
     'salt shaker': BELOW,
-    'pepper shaker': ABOVE
+    'pepper shaker': ABOVE,
+    'robot': ABOVE
 }
 
 ###############################################################################
@@ -555,10 +556,11 @@ def load_open_problem_kitchen(world, reduce_objects=False, difficulty=1, open_do
     if difficulty == 0:
         for door in world.cat_to_objects('door'):
             extent = 0.5 if 'fridge' in door.name else 0.8
-            world.open_joint(door.body, joint=door.joint, extent=extent)
-        world.name_to_object('front_left_stove').place_obj(world.name_to_object('braiserlid'))
+            world.open_joint(door.body, joint=door.joint, extent=extent, verbose=True)
+        # world.name_to_object('front_left_stove').place_obj(world.name_to_object('braiserlid'))
+        world.name_to_object('indigo_tmp').place_obj(world.name_to_object('braiserlid'))
 
-    return objects, movables, movable_to_doors
+    return objects, movables
 
 
 ##########################################################

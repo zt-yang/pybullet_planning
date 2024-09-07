@@ -15,7 +15,9 @@ from pybullet_tools.utils import create_box, disconnect, add_data_path, connect,
 from pybullet_tools.pr2_problems import create_table
 from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics, is_ik_compiled
 from pybullet_tools.ikfast.utils import USE_CURRENT
-from pybullet_tools.pr2_primitives import get_stable_gen, get_grasp_gen, get_ik_ir_gen
+from pybullet_tools.pr2_primitives import get_stable_gen, get_ik_ir_gen
+from pybullet_tools.general_streams import get_grasp_gen
+
 
 def save_inverse_reachability(robot, arm, grasp_type, tool_link, gripper_from_base_list):
     # TODO: store value of torso and roll joint for the IK database. Sample the roll joint.
