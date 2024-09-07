@@ -448,6 +448,8 @@ def load_stove_knobs(world, knobs=('knob_joint_2', 'knob_joint_3'), color_code_s
             surface.draw()
         set_color(counter, colors[i], link=link_from_name(counter, name))
 
+    world.add_to_cat('braiserbody', 'movable')
+
 
 def define_seasoning(world):
     for name in ['salt-shaker', 'pepper-shaker']:
@@ -496,14 +498,17 @@ def prevent_funny_placements(world, verbose=True):
     cabinet = world.name_to_body('sektion')
     braiserbody = world.name_to_body('braiserbody')
     braiserlid = world.name_to_body('braiserlid')
+
     left_stove = world.name_to_body('front_left_stove')
     right_stove = world.name_to_body('front_right_stove')
     braiser_bottom = world.name_to_body('braiser_bottom')
+    shelf_top = world.name_to_body('shelf_top')
 
     for o in movables:
         if o not in food:  ##  + condiments
             world.add_not_stackable(o, braiser_bottom)
             world.add_not_containable(o, braiserbody)
+            world.add_not_stackable(o, shelf_top)
         if o not in condiments:
             world.add_not_containable(o, cabinet)
         if o != braiserlid:

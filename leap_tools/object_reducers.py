@@ -87,13 +87,23 @@ def reduce_facts_given_objects(facts, objects=[], goals=[], verbose=False):
             removed = True
             dynamic_facts_potential.append(fact)
         elif fact[0] not in ['=']:
-            for elem in fact[1:]:
-                ## involve objects not in planning object
-                if (isinstance(elem, int) or isinstance(elem, tuple)) and elem not in objects:
-                    removed = True
-                    if verbose:
-                        print(f'\t removing fact {fact}')
-                    break
+            found_objects = [elem for elem in fact[1:] if isinstance(elem, int) or isinstance(elem, tuple)]
+            goal_mentioned_objects = [elem for elem in found_objects if elem in objects_in_goals]
+            goal_supportive_objects = [elem for elem in found_objects if elem in objects and elem not in objects_in_goals]
+            irrelevant_objects = [elem for elem in found_objects if elem not in objects]
+            if len(goal_mentioned_objects) == 0 and len(irrelevant_objects) > 0:
+                if verbose:
+                    print(f'\t removing fact {fact} containing'
+                          f'\t irrelevant_objects={irrelevant_objects}'
+                          f'\t goal_supportive_objects={goal_supportive_objects}')
+                removed = True
+            # for elem in fact[1:]:
+            #     ## involve objects not in planning object
+            #     if (isinstance(elem, int) or isinstance(elem, tuple)) and elem not in objects:
+            #         removed = True
+            #         if verbose:
+            #             print(f'\t removing fact {fact}')
+            #         break
         if removed:
             removed_facts.append(fact)
         else:
@@ -105,7 +115,21 @@ def reduce_facts_given_objects(facts, objects=[], goals=[], verbose=False):
     if verbose:
         print('\nreduce_facts_given_objects\tfound dynamic_facts\n\t'+'\n\t'.join([str(f) for f in dynamic_facts])+'\n')
 
+    ## if the goal is place on surface, remove the surface as graspable to prevent pddlstream blowing up
+    new_facts = _remove_exploding_init_combo(new_facts, goals)
     return new_facts
+
+
+def _remove_exploding_init_combo(facts, goals):
+    for goal in goals:
+        if goal[0] in ['in', 'on']:
+            found_exploding = [f for f in facts if f[0] == 'graspable' and f[1] == goal[-1]]
+            found_exploding += [f for f in facts if f[0] in ['stackable', 'containable'] and f[1] == goal[-1]]
+            if found_exploding:
+                print(f'[object_reducers.reduce_facts_given_objects] removed {found_exploding} because {goal}')
+                for f in found_exploding:
+                    facts.remove(f)
+    return facts
 
 
 def reduce_by_object_heuristic_joints(facts, objects=[], goals=[]):

@@ -105,14 +105,19 @@ class MoveArmAction(Action):
             carrying = [a.child for a in state.attachments.values() if a.parent == state.robot]
             carrying = [o.body if hasattr(o, 'body') else o for o in carrying]
             movables = [o for o in state.movable if o not in [state.robot]+carrying]
+
+            ## TODO: make collision checking stricter
             if len(movables) > 0:
                 if collided(state.robot, movables, verbose=True):
-                    wait_if_gui(f'[MoveArmAction] Robot collided with objects {movables}')
+                    line = f'\t[MoveArmAction] Robot collided with objects {movables}'
+                    print(line)
+                    # wait_if_gui(line)
         return state.new_state()
 
 
 class MoveBaseAction(MoveArmAction):
     pass
+
 
 #######################################################
 

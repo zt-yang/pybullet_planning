@@ -193,5 +193,9 @@ def fix_facts_due_to_loaded_agent_state(facts):
         so there may be (handempty left) and (atgrasp left), so manually remove the later """
     handempty = [f[1] for f in facts if f[0] == 'handempty']
     for arm in handempty:
-        facts = [f for f in facts if not (f[0].startswith('at') and f[0].endswith('grasp') and f[1] == arm)]
+        found_conflicting = [f for f in facts if f[0].startswith('at') and f[0].endswith('grasp') and f[1] == arm]
+        if found_conflicting:
+            for f in found_conflicting:
+                print(f'[hierarchical_utils.fix_facts_due_to_loaded_agent_state] removed {f} because handempty')
+                facts.remove(f)
     return facts

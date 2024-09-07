@@ -312,3 +312,14 @@ def zipit(dir_list, zip_name):
     for dir in dir_list:
         zipdir(dir, zipf)
     zipf.close()
+
+
+## -------------------------------------------------------------------------
+
+
+def print_heading(text):
+    from pybullet_tools.utils import SEPARATOR
+    spacing = SEPARATOR.replace('-', ' ')
+    myprint(f'{SEPARATOR}{SEPARATOR}')
+    myprint(f'{spacing} {text} {spacing} ')
+    myprint(f'{SEPARATOR}{SEPARATOR}')
