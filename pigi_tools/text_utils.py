@@ -4,7 +4,9 @@ ACTION_NAMES = {
     "move_base": "move the robot",
     "move_base_wconf": "move the robot",
     "pick": "pick the object",
+    "pick_from_supporter": "pick the object",
     "place": "place the object",
+    "place_to_supporter": "place the object",
     "arrange": "place the object on somewhere",
 
     "grasp_handle": "grasp the handle of door joint",

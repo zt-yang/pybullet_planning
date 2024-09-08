@@ -71,8 +71,8 @@ class FeasibilityChecker(object):
                 predictions.append(prediction)
                 plan = get_plan_from_input(input)
                 skeleton = get_plan_skeleton(plan, **self._skwargs) ## _old
-                if 'kc' in skeleton:
-                    print('\nkckckckckckckckckckckckckckckckckcv!!!\n')
+                # if 'kc' in skeleton:
+                #     print('\nkckckckckckckckckckckckckckckckckcv!!!\n')
                 if prediction != SKIP:
                     self._log['checks'].append((skeleton, plan, prediction))
                     self._log['run_time'].append(round(time.time() - start, 4))
@@ -159,6 +159,7 @@ class PassAll(FeasibilityChecker):
     def __init__(self, run_dir, body_map, shuffle=False):
         super().__init__(run_dir, body_map)
         self.skeletons_gt = self._get_gt_skeletons()
+        self.verbose = False
 
     def _check(self, plan):
         plan = [[i.name] + [str(a) for a in i.args] for i in plan]
@@ -166,7 +167,8 @@ class PassAll(FeasibilityChecker):
         line = f'\t{skeleton}'
         if skeleton in self.skeletons_gt:
             line += ' *'
-        print(line)
+        if self.verbose:
+            print(line)
         return True
 
 
@@ -201,7 +203,7 @@ class Oracle(FeasibilityChecker):
     def _check(self, plan):
         plan = [[i.name] + [str(a) for a in i.args] for i in plan]
         skeleton = get_plan_skeleton(plan, **self._skwargs)
-        print(f'\t{skeleton}')
+        print(f'\t[Oracle(FeasibilityChecker)]\t{skeleton}')
         return skeleton in self.skeletons
 
 
@@ -643,16 +645,20 @@ class ChooseSkeleton(FeasibilityChecker):
     def __init__(self, run_dir, body_map, allowed_plan):
         super().__init__(run_dir, body_map)
         self.allowed_skeleton = get_plan_skeleton(allowed_plan, **self._skwargs)
+        self.verbose = True
 
     def _check(self, plan):
         plan = [[i.name] + [str(a) for a in i.args] for i in plan]
         skeleton = get_plan_skeleton(plan, **self._skwargs)
-        line = f'\t{skeleton}'
+        line = f'\tChooseSkeleton(FeasibilityChecker)\t{skeleton}'
         result = False
         if skeleton == self.allowed_skeleton:
             line += ' *'
             result = True
-        print(line)
+        else:
+            line += f'\tself.allowed_skeleton = {self.allowed_skeleton}'
+        if self.verbose:
+            print(line)
         return result
 
 ##################################################

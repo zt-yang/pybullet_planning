@@ -940,14 +940,17 @@ class World(WorldBase):
         ## find hacky relevant objects added by world loader
         ## TODO: fix this with smarter object reducer seq
         hacky_exceptions = []
-        if hasattr(self, 'relevant_objects'):
-            search_preserved_bodies = new_exceptions + [eval(o) for o in bodies if o.isdigit() or '(' in o]
-            print(f'{title} self.relevant_objects: {dict(self.relevant_objects)}'
-                  f'\t search_preserved_bodies = {search_preserved_bodies}')
-            for b in search_preserved_bodies:
-                objs = self.relevant_objects[b]
-                hacky_exceptions.extend(objs)
-                print(f'{title} adding relevant bodies {objs} for preserved body {b}')
+        # if hasattr(self, 'relevant_objects'):
+        #     search_preserved_bodies = new_exceptions + [eval(o) for o in bodies if o.isdigit() or '(' in o]
+        #     if verbose:
+        #         print(f'{title} self.relevant_objects: {dict(self.relevant_objects)}'
+        #               f'\t search_preserved_bodies = {search_preserved_bodies}')
+        #     for b in search_preserved_bodies:
+        #         objs = self.relevant_objects[b]
+        #         if len(objs) > 0:
+        #             hacky_exceptions.extend(objs)
+        #             if verbose:
+        #                 print(f'{title} adding relevant bodies {objs} for preserved body {b}')
         exceptions = new_exceptions + hacky_exceptions
 
         ## remove all other objects
