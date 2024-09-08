@@ -28,9 +28,11 @@ from world_builder.world import State
 PULL_UNTIL = 1.8
 NUDGE_UNTIL = 2.3
 
-pull_actions = ['grasp_handle', 'pull_handle', 'ungrasp_handle']
+# pull_actions = ['grasp_handle', 'pull_handle', 'ungrasp_handle']
+# pull_with_link_actions = ['grasp_handle', 'pull_handle_with_link', 'ungrasp_handle']
+pull_actions = ['grasp_pull_ungrasp_handle']
+pull_with_link_actions = ['grasp_pull_ungrasp_handle_with_link']
 nudge_actions = ['nudge_door']
-pull_with_link_actions = ['grasp_handle', 'pull_handle_with_link', 'ungrasp_handle']
 pick_place_actions = ['pick', 'place']
 pick_arrange_actions = ['pick', 'arrange']
 pick_sprinkle_actions = ['pick', 'sprinkle']
@@ -108,7 +110,7 @@ class MoveArmAction(Action):
 
             ## TODO: make collision checking stricter
             if len(movables) > 0:
-                if collided(state.robot, movables, verbose=True):
+                if collided(state.robot, movables, verbose=True, log_collisions=False):
                     line = f'\t[MoveArmAction] Robot collided with objects {movables}'
                     print(line)
                     # wait_if_gui(line)

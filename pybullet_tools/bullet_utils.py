@@ -356,7 +356,8 @@ def collided(obj, obstacles=[], world=None, articulated=False, verbose=False, ta
         world = obj.world
     obj_print = world.get_name(obj) if world is not None else obj
     prefix = f'\t\tbullet_utils.collided({obj_print}) '
-    if len(tag) > 0: prefix += f'( {tag} )'
+    if len(tag) > 0:
+        prefix += f'( {tag} )'
     # verbose = True
 
     ## first get answer

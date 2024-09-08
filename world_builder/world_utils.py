@@ -1089,6 +1089,7 @@ def get_objs_in_camera_images(camera_images, world=None, show=False, save=False,
 
 
 def check_goal_achieved(facts, goal, world):
+    print('[world_utils.check_goal_achieved]\t', goal)
     if goal[0] in ['on', 'in', 'stacked'] and len(goal) == 3:
         body, supporter = goal[1], goal[2]
         atrelpose = [f[-1] for f in facts if f[0].lower() in ['atrelpose'] and f[1] == body and f[-1] == supporter]

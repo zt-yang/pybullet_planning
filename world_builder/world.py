@@ -33,7 +33,7 @@ from pybullet_tools.pose_utils import ObjAttachment, draw_pose2d_path, draw_pose
     is_placement, is_contained, get_learned_yaw
 from pybullet_tools.camera_utils import get_pose2d, get_camera_image_at_pose, visualize_camera_image, \
     set_camera_target_body, set_camera_target_body
-from pybullet_tools.logging_utils import print_dict
+from pybullet_tools.logging_utils import print_dict, myprint
 
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
     Attach, Detach, Clean, Cook, control_commands, link_from_name, \
@@ -841,14 +841,14 @@ class World(WorldBase):
         print_fn(SEPARATOR+f'Robot: {self.robot} | Objects: {self.objects}\n'
                  f'Movable: {self.movable} | Fixed: {self.fixed} | Floor: {self.floors}'+SEPARATOR)
 
-    def summarize_collisions(self, return_verbose_line=False):
+    def summarize_collisions(self, return_verbose_line=False, title='[world.summarize_collisions]'):
         log = self.robot.get_collisions_log()
-        data = {'[cc]'+self.body_to_name[str(k)]: v for k, v in log.items() if str(k) in self.body_to_name}
+        data = {f'[cc]{k}|'+self.body_to_name[str(k)]: v for k, v in log.items() if str(k) in self.body_to_name}
         # data = dict(sorted(data.items(), key=lambda d: d[1], reverse=True))
-        line = f'\t[world.summarize_collisions] = {data}'
+        line = f'\t{title} = {data}'
         if return_verbose_line:
             return line
-        print(line, '\r')
+        myprint(line, '\r')
         return log
 
     def get_all_obj_in_body(self, body):

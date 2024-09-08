@@ -55,7 +55,7 @@ object_label_locations = {
 ###############################################################################
 
 default_supports = [
-    ['appliance', 'microwave', True, 'microwave', 'hitman_tmp'],
+    # ['appliance', 'microwave', True, 'microwave', 'hitman_tmp'],
     ['food', 'MeatTurkeyLeg', True, 'chicken-leg', 'shelf_top'],
     ['food', 'VeggieCabbage', True, 'cabbage', 'upper_shelf'],  ## ['shelf_bottom', 'indigo_drawer_top]
     ['condiment', 'Salter', '3934', 'salt-shaker', 'sektion'],
