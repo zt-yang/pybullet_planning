@@ -377,6 +377,7 @@ def collided(obj, obstacles=[], world=None, articulated=False, verbose=False, ta
     result = False
     ## first find the bodies that collides with obj
     bodies = []
+    verbose_bodies = []
     to_print = ''
     for b in obstacles:
         if pairwise_collision(obj, b) and (obj, b) not in ignored_pairs:
@@ -392,15 +393,18 @@ def collided(obj, obstacles=[], world=None, articulated=False, verbose=False, ta
                 to_print += f'{prefix} collides with {b_print}'
             result = True
 
-            bodies.append(b)
-
             if log_collisions:
                 ## the robot keeps track of objects collided
                 if hasattr(obj, 'log_collisions'):
                     obj.log_collisions(b, source='collided.pairwise_collision(robot)')
                 elif world is not None:
-                    world.robot.log_collisions(b, robot_body=obj, source=f'collided.pairwise_collision({tag})')
-                # log_collided(obj_print, b_print)
+                    log_kwargs = dict(source=f'collided.pairwise_collision({tag})')
+                    if b not in bodies:
+                        log_kwargs['verbose'] = False
+                    world.robot.log_collisions(b, robot_body=obj, **log_kwargs)
+
+            if b not in bodies:
+                bodies.append(b)
 
     ## then find the exact links
     body_links = {}

@@ -318,8 +318,8 @@ def zipit(dir_list, zip_name):
 
 
 def print_heading(text):
-    from pybullet_tools.utils import SEPARATOR
-    spacing = SEPARATOR.replace('-', ' ')
-    myprint(f'{SEPARATOR}{SEPARATOR}')
+    separator = 50 * '-'
+    spacing = 50 * ' '
+    myprint(f'{separator}{separator}')
     myprint(f'{spacing} {text} {spacing} ')
-    myprint(f'{SEPARATOR}{SEPARATOR}')
+    myprint(f'{separator}{separator}')

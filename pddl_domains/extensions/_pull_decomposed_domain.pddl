@@ -4,7 +4,7 @@
     (KinGraspHandle ?a ?o ?p ?g ?q ?aq ?t)  ;; grasp a handle
     (KinUngraspHandle ?a ?o ?p ?g ?q ?aq1 ?aq2 ?t)  ;; ungrasp a handle
     (KinPullDoorHandle ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq)  ;; pull the handle
-    (KinPullDoorHandleWithLink ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq ?l ?pl1 ?pl2)  ;; pull the handle
+    (KinPullDoorHandleWithLink ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq ?l ?lp1 ?lp2)  ;; pull the handle
 
   )
 
@@ -65,12 +65,12 @@
 
     ;; from position ?p1 pull to the position ?p2, also affecting the pose of link attached to it
     (:action pull_handle_with_link
-      :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq ?l ?pl1 ?pl2)
+      :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq ?l ?lp1 ?lp2)
       :precondition (and (Joint ?o) (not (= ?p1 ?p2)) (CanPull ?a) ; (not (CanUngrasp))
                          (AtBConf ?q1) (AtAConf ?a ?aq)
                          (AtPosition ?o ?p1) (Position ?o ?p2) (AtHandleGrasp ?a ?o ?g)
-                         (JointAffectLink ?o ?l) (AtPose ?l ?pl1) (Pose ?l ?pl2)
-                         (KinPullDoorHandleWithLink ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq ?l ?pl1 ?pl2)
+                         (JointAffectLink ?o ?l) (AtPose ?l ?lp1) (Pose ?l ?lp2)
+                         (KinPullDoorHandleWithLink ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq ?l ?lp1 ?lp2)
                          ; (not (UnsafeApproach ?o ?p2 ?g))
                          ; (not (UnsafeATraj ?at))
                          ; (not (UnsafeBTraj ?bt))
@@ -79,7 +79,7 @@
       :effect (and (not (CanPull ?a)) (CanUngrasp)
                   (AtPosition ?o ?p2) (not (AtPosition ?o ?p1))
                   (AtBConf ?q2) (not (AtBConf ?q1))
-                  (not (AtPose ?l ?pl1)) (AtPose ?l ?pl2)
+                  (not (AtPose ?l ?lp1)) (AtPose ?l ?lp2)
                   (increase (total-cost) 1)
               )
     )

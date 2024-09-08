@@ -56,7 +56,7 @@ class Attachment(object):
         return flatten_links(self.child) | flatten_links(self.parent, get_link_subtree(
             self.parent, self.parent_link))
 
-    def assign(self, verbose=False):
+    def assign(self, verbose=True):
         # if self.debug:
         #     print(f'\npose_utils.Attachment.assign({str(self)})')
         # robot_base_pose = self.parent.get_positions(roundto=3)

@@ -4028,9 +4028,9 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
                     else:
                         print(f'collision_fn({body1}, {body2})')
 
-                    ## robot object
-                    if not isinstance(body, int):
-                        body.log_collisions(body2, source='collision_fn')
+                ## robot object
+                if not isinstance(body, int):
+                    body.log_collisions(body2, source=f'collision_fn(obstacles={obstacles})')
 
                     # if debug:
                     #     set_camera_target_body(body2)

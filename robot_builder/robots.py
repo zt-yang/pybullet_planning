@@ -368,7 +368,7 @@ class RobotAPI(Robot):
                                 self_collisions=self.self_collisions, custom_limits=self.custom_limits,
                                 verbose=verbose, use_aabb=True)
 
-    def log_collisions(self, body, link=None, source='', robot_body=None, verbose=False):
+    def log_collisions(self, body, link=None, source='', robot_body=None, verbose=True):
         world = self.world
 
         obj = world.body_to_object(body)
@@ -376,8 +376,9 @@ class RobotAPI(Robot):
         is_planning_object = body in world.BODY_TO_OBJECT
         categories = obj.get_categories()
 
-        if verbose:
-            print(f'\n[log_collisions]\t{name}\tcategories={categories}\t<--\t{source}')
+        verbose_line = ''
+        if verbose and self.name not in name:
+            verbose_line += f'\t\t\t[log_collisions({name})]\tcategories={categories}\t<--\t{source}'
 
         all_bodies = world.get_all_bodies()
         joints = [b[1] for b in all_bodies if isinstance(b, tuple) and len(b) == 2 and b[0] == body]
@@ -407,10 +408,11 @@ class RobotAPI(Robot):
             unattributed_links = [l for l in links if l not in attributed_links]
 
             if verbose and len(unattributed_links) > 0:
-                print(f'\t!!!unattributed_links: \t{[get_link_name(body, l) for l in unattributed_links]}')
+                verbose_line += f'\t!!!unattributed_links: \t{[get_link_name(body, l) for l in unattributed_links]}'
 
         if verbose:
-            self.world.summarize_collisions()
+            verbose_line += '\t' + self.world.summarize_collisions(return_verbose_line=True)
+            print(verbose_line)
 
     def get_collisions_log(self):
         return {k: v for k, v in sorted(self.collided_body_link.items(), key=lambda item: item[1], reverse=True)}

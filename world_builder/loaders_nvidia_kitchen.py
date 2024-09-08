@@ -439,6 +439,7 @@ def load_stove_knobs(world, knobs=('knob_joint_2', 'knob_joint_3'), color_code_s
             knob.draw()
         set_color(knob.body, colors[i], link=knob.handle_link)
 
+    braiser = world.name_to_body('braiserbody')
     counter = world.name_to_body('counter')
     for i, name in enumerate(surfaces):
         surface = world.name_to_object(name)
@@ -448,6 +449,13 @@ def load_stove_knobs(world, knobs=('knob_joint_2', 'knob_joint_3'), color_code_s
             surface.draw()
         set_color(counter, colors[i], link=link_from_name(counter, name))
 
+        # ## consider removing braiserbody when the knob is blocked
+        # corresponding_knob = world.name_to_body(f'knob_joint_{i+1}')
+        # if corresponding_knob is not None:
+        #     world.add_to_relevant_objects(corresponding_knob, braiser)
+        #     # world.add_to_init(('HeatableOnSurfaceWhenTurnedOn', braiser, surface.pybullet_name, corresponding_knob))
+
+    ## consider removing braiserbody when the knob is blocked
     world.add_to_cat('braiserbody', 'movable')
 
 
@@ -522,7 +530,8 @@ def prevent_funny_placements(world, verbose=True):
         world.summarize_forbidden_placements()
 
 
-def load_open_problem_kitchen(world, reduce_objects=False, difficulty=1, open_doors_for=[]):
+def load_open_problem_kitchen(world, reduce_objects=False, difficulty=1, open_doors_for=[],
+                              randomize_joint_positions=True):
     spaces = {
         'counter': {
             'sektion': [],
@@ -561,6 +570,8 @@ def load_open_problem_kitchen(world, reduce_objects=False, difficulty=1, open_do
     if difficulty == 0:
         for door in world.cat_to_objects('door'):
             extent = 0.5 if 'fridge' in door.name else 0.8
+            if randomize_joint_positions:
+                extent += (random.random() - 0.5) * 0.1
             world.open_joint(door.body, joint=door.joint, extent=extent, verbose=True)
         # world.name_to_object('front_left_stove').place_obj(world.name_to_object('braiserlid'))
         world.name_to_object('indigo_tmp').place_obj(world.name_to_object('braiserlid'))

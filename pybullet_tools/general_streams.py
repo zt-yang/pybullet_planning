@@ -8,7 +8,7 @@ import math
 import numpy as np
 import pybullet
 
-from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_link_pose, \
+from pybullet_tools.utils import invert, ConfSaver, get_name, set_pose, get_link_pose, \
     pairwise_collision, sample_placement, get_pose, Point, Euler, set_joint_position, \
     BASE_LINK, get_joint_position, get_aabb, quat_from_euler, flatten_links, multiply, \
     get_joint_limits, unit_pose, point_from_pose, draw_point, PI, quat_from_pose, angle_between, \
@@ -1094,52 +1094,84 @@ def get_cfree_approach_rel_pose_test(problem, collisions=True):
     return test
 
 
-def get_cfree_traj_pose_test(problem, collisions=True, verbose=False, visualize=True):
-    robot = problem.robot
+## ------------------------------------------------------------------------------------------------
+
+
+def _check_cfree_traj_pose(c, b2, p2, world, collisions=True, verbose=False, visualize=True):
+    from pybullet_tools.flying_gripper_utils import pose_from_se3
+    # TODO: infer robot from c
+    if not collisions:
+        return True
+    state = c.assign()
+
+    if isinstance(b2, tuple):
+        b2 = b2[0]
+    if b2 in state.attachments:
+        return True
+    p2.assign()
+
+    handles = []
+    if visualize:
+        if len(c.commands[0].path) == 6:
+            for conf in c.commands[0].path:
+                pose = pose_from_se3(conf.values)
+                handles.extend(draw_pose(pose))
+        # else:
+        #     play_trajectory(c, p=p2, title='get_cfree_traj_pose_test')
+
+    attached_objects = list(state.attachments.keys())
+    if len(attached_objects) > 0 and isinstance(attached_objects[0], tuple):
+        attached_objects = [b for b, j in attached_objects]
+    obstacles = attached_objects + [world.robot]
+
+    count = 0
+    length = len(c.commands[0].path)
+    result = True
+    for _ in c.apply(state):
+        count += 1
+        if count == length > 10:
+            continue
+        title = f'[step {count}/{length}]'
+        state.assign()
+        if collided(b2, obstacles, verbose=verbose, world=world, tag=title):
+            result = False
+    if visualize:
+        remove_handles(handles)
+    return result
+
+
+def get_cfree_traj_pose_test(problem, **kwargs):
     world = problem.world
 
     def test(c, b2, p2):
-        from pybullet_tools.flying_gripper_utils import pose_from_se3
-        # TODO: infer robot from c
-        if not collisions:
-            return True
-        state = c.assign()
-
-        if isinstance(b2, tuple):
-            b2 = b2[0]
-        if b2 in state.attachments:
-            return True
-        p2.assign()
-
-        handles = []
-        if visualize:
-            if len(c.commands[0].path) == 6:
-                for conf in c.commands[0].path:
-                    pose = pose_from_se3(conf.values)
-                    handles.extend(draw_pose(pose))
-            # else:
-            #     play_trajectory(c, p=p2, title='get_cfree_traj_pose_test')
-
-        attached_objects = list(state.attachments.keys())
-        if len(attached_objects) > 0 and isinstance(attached_objects[0], tuple):
-            attached_objects = [b for b, j in attached_objects]
-        obstacles = attached_objects + [robot]
-
-        count = 0
-        length = len(c.commands[0].path)
-        result = True
-        for _ in c.apply(state):
-            count += 1
-            if count == length > 10:
-                continue
-            title = f'[step {count}/{length}]'
-            state.assign()
-            if collided(b2, obstacles, verbose=verbose, world=world, tag=title):
-                result = False
-        if visualize:
-            remove_handles(handles)
-        return result
+        return _check_cfree_traj_pose(c, b2, p2, world, **kwargs)
     return test
+
+
+def get_cfree_traj_pose_at_bconf_at_joint_position_test(problem, **kwargs):
+    world = problem.world
+
+    def test(c, b2, p2, q, o, pstn):
+        with ConfSaver(world.robot.body):
+            q.assign()
+            pstn.assign()
+            return _check_cfree_traj_pose(c, b2, p2, world, **kwargs)
+    return test
+
+
+def get_cfree_traj_pose_at_bconf_at_joint_position_at_link_pose_test(problem, **kwargs):
+    world = problem.world
+
+    def test(c, b2, p2, q, o, pstn, l, p):
+        with ConfSaver(world.robot.body):
+            q.assign()
+            pstn.assign()
+            p.assign()
+            return _check_cfree_traj_pose(c, b2, p2, world, **kwargs)
+    return test
+
+
+## ------------------------------------------------------------------------------------------------
 
 
 def get_cfree_pose_between_test(robot, collisions=True, visualize=False):

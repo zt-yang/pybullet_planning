@@ -24,7 +24,8 @@ from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_
     get_cfree_approach_pose_test, get_cfree_pose_pose_test, get_cfree_traj_pose_test, \
     get_bconf_close_to_surface, sample_joint_position_closed_gen, get_cfree_rel_pose_pose_test, \
     get_cfree_approach_rel_pose_test, get_reachable_test, get_stable_list_gen, get_cfree_pose_between_test, \
-    get_nudge_grasp_gen
+    get_nudge_grasp_gen, get_cfree_traj_pose_at_bconf_at_joint_position_test, \
+    get_cfree_traj_pose_at_bconf_at_joint_position_at_link_pose_test
 from pybullet_tools.camera_utils import set_camera_target_body
 from pybullet_tools.bullet_utils import BASE_LIMITS, initialize_collision_logs, clean_preimage, check_joint_state
 from pybullet_tools.logging_utils import summarize_facts, print_plan, print_goal, summarize_bconfs, \
@@ -58,6 +59,8 @@ from pddlstream.language.external import defer_unique
 from pddlstream.language.conversion import params_from_objects
 from collections import namedtuple
 
+pull_kwargs = dict(collisions=True, ACONF=True, learned=True, verbose=False, visualize=False)
+
 
 def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
                    pull_collisions=True, base_collisions=True, debug=False, verbose=False,
@@ -86,7 +89,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
     gg = dict(collisions=c, max_samples=None)
     ir = dict(collisions=True, ir_only=True, max_attempts=ir_max_attempts)
     ik = dict(collisions=motion_collisions, ACONF=False, teleport=t, resolution=resolution)
-    pull = dict(collisions=pull_collisions, ACONF=True, learned=use_learned_ir, verbose=False, visualize=False)
+    pull = pull_kwargs
 
     stream_map = {
 
@@ -175,6 +178,17 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
 
         'test-cfree-traj-pose': from_test(get_cfree_traj_pose_test(p, collisions=c)),
         'test-cfree-traj-position': from_test(get_cfree_traj_pose_test(p, collisions=c)),
+
+        ## pddl_domains/extensions/_pull_stream.pddl
+        'test-cfree-traj-pose-at-bconf-at-joint-position': from_test(
+            get_cfree_traj_pose_at_bconf_at_joint_position_test(p, collisions=c)),
+        'test-cfree-traj-position-at-bconf-at-joint-position': from_test(
+            get_cfree_traj_pose_at_bconf_at_joint_position_test(p, collisions=c)),
+        'test-cfree-traj-pose-at-bconf-at-joint-position-at-link-pose': from_test(
+            get_cfree_traj_pose_at_bconf_at_joint_position_at_link_pose_test(p, collisions=c)),
+        'test-cfree-traj-position-at-bconf-at-joint-position-at-link-pose': from_test(
+            get_cfree_traj_pose_at_bconf_at_joint_position_at_link_pose_test(p, collisions=c)),
+
         'test-cfree-btraj-pose': from_test(get_cfree_btraj_pose_test(p.robot, collisions=c)),
 
         'test-bconf-close-to-surface': from_test(get_bconf_close_to_surface(p)),

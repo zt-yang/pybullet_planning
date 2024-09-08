@@ -236,6 +236,7 @@ class World(WorldBase):
         self.floorplan = None  ## for saving LISDF
         self.init = []
         self.init_del = []
+        self.relevant_objects = defaultdict(list)
         self.articulated_parts = {k: [] for k in ['door', 'drawer', 'knob', 'button']}
         self.changed_joints = []
         self.non_planning_objects = []
@@ -589,6 +590,10 @@ class World(WorldBase):
             print('world.get_whole_fact | ', fact)
         return fact
 
+    def add_to_relevant_objects(self, o, o2):
+        """ used by remove_bodies_from_planning(), in case object reducer removes important objects """
+        self.relevant_objects[o].append(o2)
+
     def add_to_init(self, fact):
         self.init.append(fact)
 
@@ -836,10 +841,14 @@ class World(WorldBase):
         print_fn(SEPARATOR+f'Robot: {self.robot} | Objects: {self.objects}\n'
                  f'Movable: {self.movable} | Fixed: {self.fixed} | Floor: {self.floors}'+SEPARATOR)
 
-    def summarize_collisions(self):
+    def summarize_collisions(self, return_verbose_line=False):
         log = self.robot.get_collisions_log()
-        pprint({self.body_to_name[str(k)]: v for k, v in log.items() if str(k) in self.body_to_name}, indent=3)
-        print()
+        data = {'[cc]'+self.body_to_name[str(k)]: v for k, v in log.items() if str(k) in self.body_to_name}
+        # data = dict(sorted(data.items(), key=lambda d: d[1], reverse=True))
+        line = f'\t[world.summarize_collisions] = {data}'
+        if return_verbose_line:
+            return line
+        print(line, '\r')
         return log
 
     def get_all_obj_in_body(self, body):
@@ -862,6 +871,8 @@ class World(WorldBase):
         return bodies
 
     def remove_bodies_from_planning(self, goals=[], exceptions=[], skeleton=[], subgoals=[], verbose=False):
+
+        title = "[world.remove_bodies_from_planning]\t"
 
         ## important for keeping related links and joints for planning
         self.init_link_joint_relations()
@@ -925,7 +936,19 @@ class World(WorldBase):
             if isinstance(b, tuple) and str(b[0]) not in new_exceptions:
                 new_exceptions.append(str(b[0]))
             new_exceptions.append(str(b))
-        exceptions = new_exceptions
+
+        ## find hacky relevant objects added by world loader
+        ## TODO: fix this with smarter object reducer seq
+        hacky_exceptions = []
+        if hasattr(self, 'relevant_objects'):
+            search_preserved_bodies = new_exceptions + [eval(o) for o in bodies if o.isdigit() or '(' in o]
+            print(f'{title} self.relevant_objects: {dict(self.relevant_objects)}'
+                  f'\t search_preserved_bodies = {search_preserved_bodies}')
+            for b in search_preserved_bodies:
+                objs = self.relevant_objects[b]
+                hacky_exceptions.extend(objs)
+                print(f'{title} adding relevant bodies {objs} for preserved body {b}')
+        exceptions = new_exceptions + hacky_exceptions
 
         ## remove all other objects
         all_bodies = list(self.BODY_TO_OBJECT.keys())
@@ -1404,7 +1427,9 @@ class World(WorldBase):
 
     def get_world_fluents(self, obj_poses=None, joint_positions=None, init_facts=[], objects=None, use_rel_pose=False,
                           cat_to_bodies=None, cat_to_objects=None, verbose=False, only_fluents=False):
-        """ if only_fluents = Ture: return only AtPose, AtPosition """
+        """ if only_fluents = Ture: return only AtPose, AtPosition
+        tips: to help with planning, run something like loaders_nvidia_kitchen.prevent_funny_placements()
+        """
 
         robot = self.robot
         BODY_TO_OBJECT = self.BODY_TO_OBJECT
@@ -1603,11 +1628,6 @@ class World(WorldBase):
             fluents_pred = ['AtPose', 'AtPosition']
             init = [i for i in init if i[0] in fluents_pred]
 
-        ## ---- to help with planning ------------------
-        if self.name_to_body('braiserlid') is not None and self.name_to_body('braiser_bottom') is not None:
-            fact = ('Stackable', self.name_to_body('braiserlid'), self.name_to_body('braiser_bottom'))
-            if fact in init:
-                init.remove(fact)
         return init
 
     def get_facts(self, conf_saver=None, init_facts=[], obj_poses=None, joint_positions=None, objects=None, verbose=False):

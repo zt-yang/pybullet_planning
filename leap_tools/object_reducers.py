@@ -167,13 +167,22 @@ def reduce_by_objects_heuristic_movables(facts, objects=[], goals=[], aabb_expan
 
     title = 'object_reducers.reduce_by_objects_heuristic_movables\t'
 
+    region_aabb = None
     if goals[0][0] in ['on', 'in']:
         region = goals[0][2]
         region_aabb = get_surface_aabb(region)
 
+    elif goals[0][0] in ['openedjoint', 'closedjoint', 'nudgeddoor']:
+        region = joint = goals[0][1]
+        region_aabb = get_aabb(joint[0], link=joint[1])
+
+    else:
+        print(f'{title} goals {goals} not recognized for region, see object_reducers.py')
+
+    if region_aabb is not None:
         other_surfaces = [f[1] for f in facts if f[0].lower() == 'surface' and f[1] != region]
 
-        ## add big surfaces in the world
+        ## add big surfaces in the world as temporary surfaces
         big_surfaces = find_big_surfaces(other_surfaces, top_k=1, title=title)
         objects.extend(big_surfaces)
 

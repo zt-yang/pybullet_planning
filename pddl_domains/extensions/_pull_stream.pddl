@@ -18,4 +18,28 @@
                       (KinPullWithLinkOneAction ?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq ?at ?l ?pl1 ?pl2))
     )
 
+  (:stream test-cfree-traj-pose-at-bconf-at-joint-position
+    :inputs (?t ?o2 ?p2 ?q ?o ?p1)
+    :domain (and (ATraj ?t) (Pose ?o2 ?p2) (BConf ?q) (Position ?o ?p1))
+    :certified (CFreeTrajPoseAtBConfAtJointPosition ?t ?o2 ?p2 ?q ?o ?p1)
+  )
+
+  (:stream test-cfree-traj-position-at-bconf-at-joint-position
+    :inputs (?t ?o2 ?p2 ?q ?o ?p1)
+    :domain (and (ATraj ?t) (Position ?o2 ?p2) (BConf ?q) (Position ?o ?p1))
+    :certified (CFreeTrajPositionAtBConfAtJointPosition ?t ?o2 ?p2 ?q ?o ?p1)
+  )
+
+  (:stream test-cfree-traj-pose-at-bconf-at-joint-position-at-link-pose
+    :inputs (?t ?o2 ?p2 ?q ?o ?p1 ?l ?lp)
+    :domain (and (ATraj ?t) (Pose ?o2 ?p2) (BConf ?q) (Position ?o ?p1) (Pose ?l ?lp))
+    :certified (CFreeTrajPoseAtBConfAtJointPositionAtLinkPose ?t ?o2 ?p2 ?q ?o ?p1 ?l ?lp)
+  )
+
+  (:stream test-cfree-traj-position-at-bconf-at-joint-position-at-link-pose
+    :inputs (?t ?o2 ?p2 ?q ?o ?p1 ?l ?lp)
+    :domain (and (ATraj ?t) (Position ?o2 ?p2) (BConf ?q) (Position ?o ?p1) (Pose ?l ?lp))
+    :certified (CFreeTrajPositionAtBConfAtJointPositionAtLinkPose ?t ?o2 ?p2 ?q ?o ?p1 ?l ?lp)
+  )
+
 )
