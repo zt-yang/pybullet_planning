@@ -368,7 +368,7 @@ class RobotAPI(Robot):
                                 self_collisions=self.self_collisions, custom_limits=self.custom_limits,
                                 verbose=verbose, use_aabb=True)
 
-    def log_collisions(self, body, link=None, source='', robot_body=None, verbose=True):
+    def log_collisions(self, body, link=None, source='', robot_body=None, verbose=False):
         world = self.world
 
         obj = world.body_to_object(body)
