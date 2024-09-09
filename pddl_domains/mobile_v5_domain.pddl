@@ -207,51 +207,10 @@
                        (AtBConf ?q1))
     :effect (and (AtBConf ?q2)
                  (not (AtBConf ?q1)) (not (CanMove))
-                 ;(increase (total-cost) (MoveCost ?t))
                  (increase (total-cost) 1)
             )
   )
 
-  ;(:action move_arm
-  ;  :parameters (?q1 ?q2 ?t)
-  ;  :precondition (and (ArmMotion ?a ?q1 ?t ?q2)
-  ;                     (AtAConf ?a ?q1))
-  ;  :effect (and (AtAConf ?a ?q2)
-  ;               (not (AtAConf ?a ?q1)))
-  ;)
-
-  ;(:action pick_half
-  ;  :parameters (?a ?o ?p ?g ?bq ?aq1 ?aq2 ?t)
-  ;  :precondition (and (KinGrasp ?a ?o ?p ?g ?bq ?aq2 ?t) (Enabled)
-  ;                     (AtPose ?o ?p) (HandEmpty ?a)
-  ;                     (AtBConf ?bq) (AtAConf ?a ?aq1) (DefaultAConf ?a ?aq1)
-  ;                     (not (UnsafeApproach ?o ?p ?g))
-  ;                     (not (UnsafeATraj ?t))
-  ;                )
-  ;  :effect (and (AtGrasp ?a ?o ?g) (CanMove)
-  ;               (AtAConf ?a ?aq2) (not (AtAConf ?a ?aq1))
-  ;               (not (AtPose ?o ?p)) (not (HandEmpty ?a))
-  ;               (increase (total-cost) 1)
-  ;          )
-  ;)
-
-  ;(:action place_half
-  ;  :parameters (?a ?o ?p ?g ?bq ?aq1 ?aq2 ?t)
-  ;  :precondition (and (KinUngrasp ?a ?o ?p ?g ?bq ?aq1 ?aq2 ?t) (Enabled)
-  ;                     (AtGrasp ?a ?o ?g) (AtBConf ?bq)
-  ;                     (AtAConf ?a ?aq1) (DefaultAConf ?a ?aq2)
-  ;                     (not (UnsafePose ?o ?p))
-  ;                     (not (UnsafeApproach ?o ?p ?g))
-  ;                     (not (UnsafeATraj ?t))
-  ;                     )
-  ;  :effect (and (AtPose ?o ?p) (HandEmpty ?a) (CanMove)
-  ;               (AtAConf ?a ?aq2) (not (AtAConf ?a ?aq1))
-  ;               (not (AtGrasp ?a ?o ?g))
-  ;               (increase (total-cost) 1)
-  ;          )
-  ;)
-
-  ;; pick from drawer or movable object
   (:action pick_from_supporter
     :parameters (?a ?o1 ?rp1 ?o2 ?p2 ?g ?q ?t)
     :precondition (and (KinRel ?a ?o1 ?rp1 ?o2 ?p2 ?g ?q ?t) (Graspable ?o1) (MovableLink ?o2) (CanPick)
@@ -264,7 +223,6 @@
             )
   )
 
-  ;; place onto drawer or movable object
   (:action place_to_supporter
     :parameters (?a ?o1 ?rp1 ?o2 ?p2 ?g ?q ?t)
     :precondition (and (KinRel ?a ?o1 ?rp1 ?o2 ?p2 ?g ?q ?t) (Graspable ?o1) (MovableLink ?o2)
@@ -285,11 +243,9 @@
                        (AtPose ?o ?p) (HandEmpty ?a) (AtBConf ?q)
                        (not (UnsafeApproach ?o ?p ?g))
                        (not (Picked ?o))
-                       ; (not (UnsafeATraj ?t)) (not (UnsafeOTraj ?o ?g ?t)) (not (CanMove))
                        )
     :effect (and (AtGrasp ?a ?o ?g) (CanMove) (Picked ?o)
                  (not (AtPose ?o ?p)) (not (HandEmpty ?a))
-                 ; (increase (total-cost) (PickCost))
                  (increase (total-cost) 1)
             )
   )
@@ -301,30 +257,20 @@
                        (not (UnsafePose ?o ?p))
                        (not (UnsafeApproach ?o ?p ?g))
                        (not (CanMove))
-                       ; (not (Placed ?o))  ;; allow regrapsing
-                       ; (not (UnsafeATraj ?t)) (not (UnsafeOTraj ?o ?g ?t))
                        )
     :effect (and (AtPose ?o ?p) (HandEmpty ?a) (CanPull ?a) (CanMove)
-                 (not (AtGrasp ?a ?o ?g)) ; (Placed ?o)
-                 ; (increase (total-cost) (PlaceCost))
+                 (not (AtGrasp ?a ?o ?g)) 
                  (increase (total-cost) 1)
             )
   )
 
-    ;(:action declare_store_in_space
-    ;  :parameters (?t ?r)
-    ;  :precondition (and (Space ?r)
-    ;                     (forall (?o) (imply (OfType ?o ?t) (In ?o ?r)))
-    ;                )
-    ;  :effect (and (StoredInSpace ?t ?r))
-    ;)
-
-  (:action clean
+    (:action clean
     :parameters (?o ?r)
     :precondition (and (Stackable ?o ?r) (Sink ?r) (On ?o ?r))
     :effect (and (Cleaned ?o))
   )
-  (:action cook
+  
+ (:action cook
     :parameters (?o ?r)
     :precondition (and (Stackable ?o ?r) (Stove ?r) (On ?o ?r)
                        (Cleaned ?o)
@@ -333,7 +279,8 @@
                  (not (Cleaned ?o))
                  )
   )
-  (:action season
+  
+ (:action season
     :parameters (?o ?r ?o2)
     :precondition (and (Stackable ?o ?r) (Counter ?r)
                        (On ?o ?r) (Cooked ?o)
@@ -341,7 +288,8 @@
                        (On ?o2 ?r))
     :effect (and (Seasoned ?o))
   )
-  (:action serve
+  
+ (:action serve
     :parameters (?o ?r ?o2)
     :precondition (and (Stackable ?o ?r) (Table ?r)
                        (On ?o ?r) (Seasoned ?o)
@@ -353,29 +301,26 @@
 
   (:action just-clean
     :parameters (?a ?o ?s)
-    :precondition (and (Controllable ?a) (HandEmpty ?a) ;; (CanMove)
+    :precondition (and (Controllable ?a) (HandEmpty ?a) 
                        (Stackable ?o ?s) (On ?o ?s)
                        (CleaningSurface ?s)
-                       ;; (AtBConf ?q) (BConfCloseToSurface ?q ?s)
                        )
-    :effect (and (Cleaned ?o) ) ;(not (Picked ?o))
+    :effect (and (Cleaned ?o) ) 
   )
 
   (:action just-cook
     :parameters (?a ?o ?s)
-    :precondition (and (Controllable ?a) (HandEmpty ?a) ;; (CanMove)
+    :precondition (and (Controllable ?a) (HandEmpty ?a) 
                        (Stackable ?o ?s) (On ?o ?s)
                        (HeatingSurface ?s) (Cleaned ?o)
-                       ;; (AtBConf ?q) (BConfCloseToSurface ?q ?s)
                        )
-    :effect (and (Cooked ?o)) ; (not (Picked ?o))
+    :effect (and (Cooked ?o)) 
   )
 
   (:action just-serve
     :parameters (?a ?o ?r)
-    :precondition (and (Controllable ?a) (HandEmpty ?a) ;; (CanMove) ;; (Enabled)
+    :precondition (and (Controllable ?a) (HandEmpty ?a) 
                        (Stackable ?o ?r) (On ?o ?r) (Plate ?r)
-                       ;; (AtBConf ?q) (BConfCloseToSurface ?q ?r)
                        (Cleaned ?o)
                        )
     :effect (and (Served ?o ?r))
@@ -389,7 +334,8 @@
                        )
     :effect (and (Cleaned ?o))
   )
-  (:action wait-cook
+  
+ (:action wait-cook
     :parameters (?o ?s ?n)
     :precondition (and (Edible ?o) (HeatingSurface ?s) (ControlledBy ?s ?n)
                        (On ?o ?s) (GraspedHandle ?n)
@@ -405,13 +351,15 @@
         (exists (?p) (and (AtRelPose ?o ?p ?r)))
     )
   )
-  (:derived (In ?o ?r)
+  
+ (:derived (In ?o ?r)
     (or
         (exists (?p) (and (Contained ?o ?p ?r) (AtPose ?o ?p)))
         (exists (?p) (and (AtRelPose ?o ?p ?r)))
     )
   )
-  (:derived (Holding ?a ?o)
+  
+ (:derived (Holding ?a ?o)
     (or
         (exists (?g) (and (Arm ?a) (Grasp ?o ?g)
                       (AtGrasp ?a ?o ?g)))
@@ -424,7 +372,8 @@
     (exists (?pstn) (and (Joint ?o) (Position ?o ?pstn) (AtPosition ?o ?pstn)
                       (IsOpenedPosition ?o ?pstn) (CanPick)))
   )
-  (:derived (ClosedJoint ?o)
+  
+ (:derived (ClosedJoint ?o)
     (exists (?pstn) (and (Joint ?o) (Position ?o ?pstn) (AtPosition ?o ?pstn)
                       (IsClosedPosition ?o ?pstn) (CanPick)))
   )
@@ -439,7 +388,8 @@
                            (not (CFreePosePose ?o ?p ?o2 ?p2))
                            (AtPose ?o2 ?p2)))
   )
-  (:derived (UnsafeApproach ?o ?p ?g)
+  
+ (:derived (UnsafeApproach ?o ?p ?g)
     (exists (?o2 ?p2) (and (Graspable ?o2) (Pose ?o ?p) (Grasp ?o ?g) (Pose ?o2 ?p2) (not (= ?o ?o2))
                            (not (CFreeApproachPose ?o ?p ?g ?o2 ?p2))
                            (AtPose ?o2 ?p2)))
@@ -451,7 +401,8 @@
                            (not (CFreeRelPosePose ?o1 ?rp1 ?o2 ?p2 ?o3 ?p3))
                            (AtPose ?o3 ?p3)))
   )
-  (:derived (UnsafeApproachRel ?o1 ?rp1 ?o2 ?p2 ?g)
+  
+ (:derived (UnsafeApproachRel ?o1 ?rp1 ?o2 ?p2 ?g)
     (exists (?o3 ?p3) (and (RelPose ?o1 ?rp1 ?o2) (Pose ?o2 ?p2) (Pose ?o3 ?p3)
                            (not (= ?o1 ?o3)) (not (= ?o2 ?o3)) (Graspable ?o3)
                            (not (CFreeApproachRelPose ?o1 ?rp1 ?o2 ?p2 ?g ?o3 ?p3))
@@ -469,45 +420,13 @@
     )
   )
 
-  ;(:derived (UnsafeBTraj ?t)
-  ;  (exists (?o2 ?p2) (and (BTraj ?t) (Pose ?o2 ?p2) (AtPose ?o2 ?p2)
-  ;                         (not (CFreeBTrajPose ?t ?o2 ?p2))))
-  ;)
-
-    ;(:derived (PoseObstacle ?o ?p ?o2)
-    ;  (exists (?p2)
-    ;     (and (Pose ?o ?p) (Pose ?o2 ?p2) (not (= ?o ?o2))
-    ;           (not (CFreePosePose ?o ?p ?o2 ?p2))
-    ;           (AtPose ?o2 ?p2)))
-    ;)
-    ;(:derived (ApproachObstacle ?o ?p ?g ?o2)
-    ;  (exists (?p2)
-    ;     (and (Pose ?o ?p) (Grasp ?o ?g) (Pose ?o2 ?p2) (not (= ?o ?o2))
-    ;          (not (CFreeApproachPose ?o ?p ?g ?o2 ?p2))
-    ;          (AtPose ?o2 ?p2)))
-    ;)
-    ;(:derived (ATrajObstacle ?t ?o2)
-    ;  (exists (?p2)
-    ;     (and (ATraj ?t) (Pose ?o2 ?p2)
-    ;          (not (CFreeTrajPose ?t ?o2 ?p2))
-    ;          (AtPose ?o2 ?p2)))
-    ;)
-
-  ;(:derived (UnsafeBTraj ?t) (or
-  ;  (exists (?o2 ?p2) (and (TrajPoseCollision ?t ?o2 ?p2)
-  ;                         (AtPose ?o2 ?p2)))
-  ;  (exists (?a ?q) (and (TrajArmCollision ?t ?a ?q)
-  ;                       (AtAConf ?a ?q)))
-  ;  (exists (?a ?o ?g) (and (TrajGraspCollision ?t ?a ?o ?g)
-  ;                          (AtGrasp ?a ?o ?g)))
-  ;))
+  
 
   ;;----------------------------------------------------------------------
   ;;      extended operators & axioms from _cooking_domain.pddl
   ;;----------------------------------------------------------------------
 
   (:action sprinkle
-    ;; move o1 from default grasping arm conf to p1, which is above o2 at p2
     :parameters (?a ?o1 ?p1 ?o2 ?p2 ?g ?q ?t)
     :precondition (and (Kin ?a ?o1 ?p1 ?g ?q ?t) (Sprinkler ?o1) (Region ?o2)
                        (AtPose ?o2 ?p2) (AtGrasp ?a ?o1 ?g) (SprinklePose ?o2 ?p2 ?o1 ?p1) (AtBConf ?q)
@@ -527,6 +446,7 @@
   )
 
 
+
   ;;----------------------------------------------------------------------
   ;;      extended operators & axioms from _arrange_domain.pddl
   ;;----------------------------------------------------------------------
@@ -539,12 +459,9 @@
                        (not (UnsafeApproach ?o ?p ?g))
                        (not (CanMove))
                        (not (Stacked ?o ?r))
-                       ; (not (Placed ?o))  ;; allow regrasping
-                       ; (not (UnsafeATraj ?t)) (not (UnsafeOTraj ?o ?g ?t))
                        )
     :effect (and (AtPose ?o ?p) (HandEmpty ?a) (CanPull ?a) (CanMove)
-                 (not (AtGrasp ?a ?o ?g)) (Stacked ?o ?r) (Moved ?o) ; (Placed ?o)
-                 ; (increase (total-cost) (PlaceCost))
+                 (not (AtGrasp ?a ?o ?g)) (Stacked ?o ?r) (Moved ?o) 
                  (increase (total-cost) 1)
             )
   )
@@ -552,6 +469,7 @@
   (:derived (Arrangeable ?o ?p ?r)
     (or (Supported ?o ?p ?r) (Contained ?o ?p ?r))
   )
+
 
 
 
@@ -576,11 +494,10 @@
                     )
     :effect (and (AtPosition ?o ?p2) (not (AtPosition ?o ?p1)) (GraspedHandle ?o)
                  (PulledOneAction ?o) (GraspedHandle ?o) (CanMove)
-                 (AtBConf ?q2) (not (AtBConf ?q1)) ; plan-base-pull-handle
+                 (AtBConf ?q2) (not (AtBConf ?q1)) 
             )
   )
 
-  ;; from position ?p1 pull to the position ?p2, also affecting the pose of link attached to it
   (:action grasp_pull_ungrasp_handle_with_link
    :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq1 ?aq2 ?at ?l ?lp1 ?lp2)
    :precondition (and (Joint ?o) (CanGraspHandle)
@@ -598,7 +515,7 @@
                     )
    :effect (and (AtPosition ?o ?p2) (not (AtPosition ?o ?p1)) (GraspedHandle ?o)
                 (PulledOneAction ?o) (GraspedHandle ?o) (CanMove)
-                (AtBConf ?q2) (not (AtBConf ?q1)) ; plan-base-pull-handle
+                (AtBConf ?q2) (not (AtBConf ?q1)) 
                 (not (AtPose ?l ?lp1)) (AtPose ?l ?lp2)
            )
   )
@@ -622,6 +539,7 @@
     (exists (?o2 ?p2) (and (ATraj ?t) (Position ?o2 ?p2) (AtPosition ?o2 ?p2) (BConf ?q) (Position ?o ?p1) (Pose ?l ?lp)
                             (not (CFreeTrajPositionAtBConfAtJointPositionAtLinkPose ?t ?o2 ?p2 ?q ?o ?p1 ?l ?lp)) ))
   )
+
 
 
 )

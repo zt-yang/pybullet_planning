@@ -17,7 +17,8 @@ import sys
 from pybullet_tools.logging_utils import summarize_facts, print_goal
 from pybullet_tools.bullet_utils import get_datetime
 from pybullet_tools.pr2_primitives import Trajectory
-from pybullet_tools.stream_agent import solve_pddlstream, make_init_lower_case, heuristic_modify_stream
+from pybullet_tools.stream_agent import solve_pddlstream, make_init_lower_case, heuristic_modify_stream, \
+    solve_one
 from pybullet_tools.utils import SEPARATOR, wait_if_gui, WorldSaver
 from pybullet_tools.logging_utils import save_commands, TXT_FILE, summarize_state_changes, print_lists
 from pybullet_tools.logging_utils import myprint as print
@@ -27,13 +28,17 @@ from world_builder.world_utils import get_camera_image
 
 from cogarch_tools.processes.motion_agent import MotionAgent
 from cogarch_tools.cogarch_utils import clear_empty_exp_dirs
+
 from problem_sets.problem_utils import update_stream_map
 
 from leap_tools.domain_modifiers import initialize_domain_modifier
 from leap_tools.object_reducers import initialize_object_reducer
 
 from pigi_tools.replay_utils import apply_actions, load_basic_plan_commands
+
 from lisdf_tools.lisdf_planning import Problem
+
+from pddl_domains.pddl_utils import make_symbolic_pddl_inplace
 
 from pddlstream.language.constants import Action, AND, PDDLProblem
 
@@ -255,9 +260,17 @@ class PDDLStreamAgent(MotionAgent):
 
         self.plan_step = self.num_steps
         pddlstream_problem = self._heuristic_reduce_pddlstream_problem()
+
+        if not self._check_subgoals_grounding(pddlstream_problem):
+            print(f'\n[pddlstream_agent.replan] _check_subgoals_grounding failed for {pddlstream_problem.goal}')
+            self.plan = None
+            self.pddlstream_kwargs.update({'skeleton': None, 'subgoals': None})
+            return False
+
         self.plan, env, knowledge, time_log, preimage = self.solve_pddlstream(
             pddlstream_problem, observation.state, domain_pddl=self.domain_pddl,
             domain_modifier=self.domain_modifier, **self.pddlstream_kwargs, **kwargs)  ## observation.objects
+
         self.pddlstream_kwargs.update({'skeleton': None, 'subgoals': None})
         self.evaluations, self.goal_exp, self.domain, _ = knowledge
         self.record_time(time_log)
@@ -530,8 +543,37 @@ class PDDLStreamAgent(MotionAgent):
         attachments = apply_actions(problem, commands, time_step=0.0001, verbose=False, plan=plan)  ## , body_map=body_map
         self.world.attachments = attachments
 
+    ## ----------------------------------------------------------------------------------
+
+    def _check_subgoals_grounding(self, pddlstream_problem):
+        """ remove all continuous variables from the domain pddl, just do task planning """
+        domain_pddl, constant_map, stream_pddl, stream_map, init, goal = pddlstream_problem
+        goal = goal[:1] + _get_derived_goal(goal[1], init)
+
+        symbolic_domain_pddl, predicates_to_keep = make_symbolic_pddl_inplace(domain_pddl)
+        new_init = [f for f in init if (f[0] == '=' and f[1][0].lower() in predicates_to_keep) or \
+                    (f[0].lower() in predicates_to_keep)]
+        pddlstream_problem = symbolic_domain_pddl, constant_map, '(define (stream symbolic)\n )', {}, new_init, goal
+
+        kwargs = copy.deepcopy(self.pddlstream_kwargs)
+        for k in ['preview', 'collect_dataset', 'visualization']:
+            kwargs.pop(k)
+        plan = solve_one(pddlstream_problem, stream_info={}, visualize=False, world=self.world, **kwargs)[0]
+        return plan is not None
 
 ###########################################################################
+
+
+def _get_derived_goal(goal, init):
+    if goal[0] in ['openedjoint', 'closedjoint', 'nudgeddoor']:
+        return [['joint'] + goal[1:]]
+    if goal[0] in ['on']:
+        return [['stackable'] + goal[1:]]
+    if goal[0] in ['in']:
+        return [['containable'] + goal[1:]]
+    if goal[0] in ['holding']:
+        return [['graspable'] + goal[-1:]]
+    return goal
 
 
 def add_timestamp(exp_name):

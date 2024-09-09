@@ -45,6 +45,8 @@ from world_builder.actions import get_primitive_actions, repair_skeleton, apply_
 
 from lisdf_tools.lisdf_planning import Problem as LISDFProblem
 
+from pddl_domains.pddl_utils import remove_stream_by_name
+
 from pddlstream.utils import read, INF, TmpCWD
 from pddlstream.algorithms.focused import solve_focused
 from pddlstream.algorithms.algorithm import parse_problem, reset_globals
@@ -840,55 +842,8 @@ def print_skeleton(skeleton):
         print('-' * 90)
 
 
-def get_uncommented_splits_by_key(pddl_content, key):
-    """ avoids commented """
-    all_lines = pddl_content.split(key)
-    new_lines = []
-    for i in range(len(all_lines)):
-        if i > 0 and all_lines[i - 1].endswith(';'):
-            continue
-        line = all_lines[i]
-        if line.endswith(';'):
-            line = line[:-1]
-        new_lines.append(line)
-    return new_lines
-
-
-def remove_all_streams_except_name(stream_pddl, stream_name):
-    key = '(:stream '
-    lines = get_uncommented_splits_by_key(stream_pddl, key)
-    text = key.join([lines[0]]+[l for l in lines if l.startswith(f'{stream_name}\n')])
-    return text + '\n)'
-
-
-def remove_stream_by_name(stream_pddl, stream_name):
-    key = '(:stream '
-    lines = get_uncommented_splits_by_key(stream_pddl, key)
-    return key.join([l for l in lines if not l.startswith(f'{stream_name}\n')])
-
-
-def remove_operator_by_name(domain_pddl, operator_name):
-    key = '(:action '
-    lines = get_uncommented_splits_by_key(domain_pddl, key)
-    new_lines = []
-    for i, line in enumerate(lines):
-        if line.startswith(f'{operator_name}\n'):
-            if line.endswith(';') or line.endswith('; '):
-                new_lines[i-1] += ';'
-        else:
-            new_lines.append(line)
-    return key.join(new_lines)
-
-
-def remove_predicate_by_name(domain_pddl, predicate_name):
-    for key in [f"(not ({predicate_name}))", f"({predicate_name})"]:
-        domain_pddl = domain_pddl.replace(key, '')
-    return domain_pddl
-
-
 def heuristic_modify_stream(pddlstream_problem, world):
     from pddlstream.language.constants import PDDLProblem
-    from pybullet_tools.stream_agent import remove_stream_by_name
 
     domain_pddl, constant_map, stream_pddl, stream_map, init, goal = pddlstream_problem
     title = 'pddlstream_agent._heuristic_modify_stream |\t'

@@ -23,7 +23,8 @@ from pybullet_tools.pr2_primitives import APPROACH_DISTANCE, Conf, Grasp, get_ba
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, PR2_GROUPS, TOP_HOLDING_LEFT_ARM, PR2_GRIPPER_ROOTS
 from pybullet_tools.general_streams import get_handle_link, get_grasp_list_gen, get_contain_list_gen, \
     get_cfree_approach_pose_test, get_stable_list_gen, play_trajectory
-from pybullet_tools.stream_agent import remove_stream_by_name, remove_predicate_by_name, \
+
+from pddl_domains.pddl_utils import remove_stream_by_name, remove_predicate_by_name, \
     remove_all_streams_except_name, remove_operator_by_name
 
 from world_builder.entities import Robot

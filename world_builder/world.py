@@ -848,7 +848,7 @@ class World(WorldBase):
         line = f'\t{title} = {data}'
         if return_verbose_line:
             return line
-        myprint(line, '\r')
+        myprint(line)
         return log
 
     def get_all_obj_in_body(self, body):
