@@ -50,6 +50,8 @@ from world_builder.paths import PBP_PATH
 PDDL_PATH = join(PBP_PATH, '..', 'assets', 'pddl')
 VISUALIZATIONS_PATH = join(PBP_PATH, '..', 'examples', 'visualizations')
 
+UNGROUNDED = 'ungrounded'
+
 
 def get_traj(t):
     [t] = t.commands
@@ -265,7 +267,7 @@ class PDDLStreamAgent(MotionAgent):
             print(f'\n[pddlstream_agent.replan] _check_subgoals_grounding failed for {pddlstream_problem.goal}')
             self.plan = None
             self.pddlstream_kwargs.update({'skeleton': None, 'subgoals': None})
-            return False
+            return UNGROUNDED
 
         self.plan, env, knowledge, time_log, preimage = self.solve_pddlstream(
             pddlstream_problem, observation.state, domain_pddl=self.domain_pddl,
