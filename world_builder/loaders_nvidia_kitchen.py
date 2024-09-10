@@ -557,6 +557,7 @@ def load_open_problem_kitchen(world, reduce_objects=False, difficulty=1, open_do
     movables, movable_to_doors = load_nvidia_kitchen_movables(world, open_doors_for=open_doors_for,
                                                               custom_supports=custom_supports)
     load_cooking_mechanism(world)
+    fix_braiser_orientation(world)
     prevent_funny_placements(world)
 
     world.set_learned_pose_list_gen(learned_nvidia_pickled_pose_list_gen)
@@ -823,7 +824,7 @@ def load_plate_on_counter(world, counter_name='indigo_tmp'):
 #####################################################################################################
 
 
-def learned_nvidia_bconf_list_gen(world, inputs, verbose=True):
+def learned_nvidia_bconf_list_gen(world, inputs, verbose=True, num_samples=5):
     a, o, p = inputs[:3]
     robot = world.robot
     joints = robot.get_group_joints('base-torso')
@@ -855,7 +856,7 @@ def learned_nvidia_bconf_list_gen(world, inputs, verbose=True):
                 if verbose:
                     print('learned_nvidia_bconf_list_gen | found', len(to_return), 'base confs for', key)
                 break
-    return to_return
+    return to_return[:num_samples]
 
 
 #####################################################################################################

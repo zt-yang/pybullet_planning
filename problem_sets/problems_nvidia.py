@@ -859,12 +859,13 @@ def test_kitchen_braiser(args, **kwargs):
 
         """ goals """
         arm = 'left'
-        goals = [("Holding", arm, obstacle)]
-        goals = [("On", obstacle, side_surface)]
+        # goals = [("Holding", arm, obstacle)]
+        goals = [("Picked", obstacle)]
+        # goals = [("On", obstacle, side_surface)]
         # goals = [("On", obstacle, counter_surface)]
 
         # goals = [("Holding", arm, movable)]
-        goals = [("On", movable, target_surface)]
+        # goals = [("On", movable, target_surface)]
 
         #########################################################################
 
@@ -894,7 +895,7 @@ def test_skill_knob_stove(args, **kwargs):
     difficulty == 12: move the lid to the counter before turning on the stove, (then move the pot to the stove)
     difficulty == 2: turn on the knob of the other stove, (then move the pot there)
     """
-    def loader_fn(world, difficulty=0, **world_builder_args):
+    def loader_fn(world, difficulty=12, **world_builder_args):
         surfaces = {
             'counter': {
                 'front_left_stove': [],

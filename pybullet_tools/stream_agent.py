@@ -586,7 +586,8 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visual
 
     if skeleton is not None and len(skeleton) > 0:
         print_skeleton(skeleton)
-        constraints = PlanConstraints(skeletons=[repair_skeleton(skeleton)], exact=False, max_cost=max_cost + 1)
+        skeleton = repair_skeleton(skeleton, pddlstream_problem.domain_pddl)
+        constraints = PlanConstraints(skeletons=[skeleton], exact=False, max_cost=max_cost + 1)
 
     elif subgoals is None or len(subgoals) == 0:
         constraints = PlanConstraints(max_cost=max_cost + 1)

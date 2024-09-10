@@ -150,7 +150,7 @@ class WorldBase(object):
     def visualize_image(self, pose=None, img_dir=None, index=None,
                         image=None, segment=False, far=8, segment_links=False,
                         camera_point=None, target_point=None, **kwargs):
-        from pybullet_tools.bullet_utils import visualize_camera_image
+        from pybullet_tools.camera_utils import visualize_camera_image
 
         if not isinstance(self.camera, StaticCamera):
             self.add_camera()
@@ -373,6 +373,9 @@ class World(WorldBase):
         objs = [obj for obj in self.objects if not isinstance(obj, tuple)]
         objs += [o for o in self.non_planning_objects if isinstance(o, int) and o not in objs]
         objs = [o for o in objs if o not in self.floors and o not in self.movable]
+        ## remove objects that are attached to a movable planning object
+        attached_objects = {a.child.body: a.parent.body for a in self.attachments.values()}
+        objs = [o for o in objs if not (o in attached_objects and attached_objects[o] in self.movable)]
         return sort_body_indices(objs)
 
     @property

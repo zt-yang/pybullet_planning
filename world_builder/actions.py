@@ -1047,8 +1047,10 @@ def get_primitive_actions(action, world, teleport=False, verbose=True, debug_rc2
     return new_commands
 
 
-def repair_skeleton(skeleton):
+def repair_skeleton(skeleton, domain_pddl):
     from pddlstream.algorithms.constraints import WILD
+    from pddl_domains.pddl_utils import load_num_args_from_domain_pddl
+    """ 
     operators = {
         'pick_hand': 6,
         'place_hand': 6,
@@ -1061,6 +1063,8 @@ def repair_skeleton(skeleton):
         'ungrasp_handle': 8,
         'pull_door_handle': 11,
     }
+    """
+    operators = load_num_args_from_domain_pddl(domain_pddl)
     new_skeleton = []
     for a in skeleton:
         name = a[0]
@@ -1068,4 +1072,6 @@ def repair_skeleton(skeleton):
         if name in operators:
             args = list(args) + [WILD] * (operators[name] - len(args))
             new_skeleton.append(tuple([name, args]))
+        else:
+            print(f'[actions.repair_skeleton]\t provided skeleton action {a} is not in domain operators')
     return new_skeleton

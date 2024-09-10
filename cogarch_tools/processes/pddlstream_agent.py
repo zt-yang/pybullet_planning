@@ -38,7 +38,7 @@ from pigi_tools.replay_utils import apply_actions, load_basic_plan_commands
 
 from lisdf_tools.lisdf_planning import Problem
 
-from pddl_domains.pddl_utils import make_symbolic_pddl_inplace
+from pddl_domains.pddl_utils import make_symbolic_pddl_inplace, empty_stream_body
 
 from pddlstream.language.constants import Action, AND, PDDLProblem
 
@@ -594,10 +594,10 @@ class PDDLStreamAgent(MotionAgent):
                     (f[0].lower() in predicates_to_keep)]
         if tuple(goal[1]) in new_init:
             return True
-        pddlstream_problem = symbolic_domain_pddl, constant_map, '(define (stream symbolic)\n )', {}, new_init, goal
+        pddlstream_problem = PDDLProblem(symbolic_domain_pddl, constant_map, empty_stream_body, {}, new_init, goal)
 
         kwargs = copy.deepcopy(self.pddlstream_kwargs)
-        for k in ['preview', 'collect_dataset', 'visualization']:
+        for k in ['preview', 'collect_dataset', 'visualization', 'skeleton']:
             kwargs.pop(k)
         plan = solve_one(pddlstream_problem, stream_info={}, visualize=False,
                          verbose_outside=False, world=self.world, **kwargs)[0]

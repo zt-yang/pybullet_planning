@@ -9,6 +9,9 @@ STREAM_KEY = '(:stream '
 OPERATOR_KEY = '(:action '
 AXIOM_KEY = '(:derived '
 
+empty_stream_body = '(define (stream symbolic)\n )'
+
+
 def get_full_pddl_path(name):
     return abspath(join(dirname(__file__), f"{name}.pddl"))
 
@@ -359,6 +362,14 @@ def make_symbolic_pddl_inplace(domain_pddl):
     return ''.join(body), predicates_to_keep
 
 ## ----------------------------------------------------------------------------------------------
+
+
+def load_num_args_from_domain_pddl(body):
+    body = [l + '\n' for l in body.split('\n')]
+    _, predicates, _, operators_axioms = parse_domain(body)
+    blocks = clean_operator_lines(operators_axioms, return_blocks=True)
+    operator_blocks = [b.split('\n')[:2] for b in blocks if b.startswith(OPERATOR_KEY)]
+    return {b[0].replace(OPERATOR_KEY, ''): len(b[1]) - len(b[1].replace('?', '')) for b in operator_blocks}
 
 
 if __name__ == '__main__':
