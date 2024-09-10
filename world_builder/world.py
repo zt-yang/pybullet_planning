@@ -374,7 +374,9 @@ class World(WorldBase):
         objs += [o for o in self.non_planning_objects if isinstance(o, int) and o not in objs]
         objs = [o for o in objs if o not in self.floors and o not in self.movable]
         ## remove objects that are attached to a movable planning object
-        attached_objects = {a.child.body: a.parent.body for a in self.attachments.values()}
+        def get_attached_body(obj):
+            return obj.body if hasattr(obj, 'body') else obj
+        attached_objects = {get_attached_body(a.child): get_attached_body(a.parent) for a in self.attachments.values()}
         objs = [o for o in objs if not (o in attached_objects and attached_objects[o] in self.movable)]
         return sort_body_indices(objs)
 
