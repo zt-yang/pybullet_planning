@@ -226,6 +226,11 @@ def get_pddlstream_kwargs(args, skeleton, subgoals, initializer, pddlstream_debu
     for k in ['soft_subgoals', 'max_evaluation_plans', 'max_complexity', 'max_iterations']:
         if hasattr(args, k):
             solver_kwargs[k] = getattr(args, k)
+    solver_kwargs = update_timeout_for_debugging(solver_kwargs)
+    return solver_kwargs
+
+
+def update_timeout_for_debugging(solver_kwargs):
     if debugger_is_active():
         solver_kwargs['evaluation_time'] *= 2
         solver_kwargs['total_planning_timeout'] *= 2

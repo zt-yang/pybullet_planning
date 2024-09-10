@@ -579,7 +579,7 @@ def get_test_skeleton():
 def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visualize=True,
               fc=None, domain_modifier=None, skeleton=None, subgoals=None, soft_subgoals=False, max_time=INF,
               downward_time=10, evaluation_time=10, stream_planning_timeout=30, total_planning_timeout=180,
-              max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=0, **kwargs):
+              max_cost=INF, collect_dataset=False, max_plans=None, max_solutions=0, verbose_outside=True, **kwargs):
 
     # skeleton = get_test_skeleton()
     # subgoals = get_test_subgoals(pddlstream_problem.init)
@@ -615,7 +615,8 @@ def solve_one(pddlstream_problem, stream_info, diverse=False, lock=False, visual
                           max_solutions=max_solutions, search_sample_ratio=0, **kwargs)
     planner_dict, plan_dataset = get_diverse_kwargs(planner_kwargs, diverse=diverse, max_plans=max_plans)
 
-    print_dict(planner_dict, 'planner_kwargs')
+    if verbose_outside:
+        print_dict(planner_dict, 'planner_kwargs')
 
     # with Profiler():
     initialize_collision_logs()
@@ -822,6 +823,7 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
 
 
 def log_goal_plan_init(goal, plan, preimage):
+    """ goal is a sequence of predicates, excluding AND """
     def get_plan_skeleton(action):
         args = tuple([a for a in action.args if isinstance(a, int) or isinstance(a, tuple)])
         return f"{action.name}{args}".replace('),)', '))')

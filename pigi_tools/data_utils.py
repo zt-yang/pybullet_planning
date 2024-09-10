@@ -530,7 +530,7 @@ def get_successful_plan(run_dir, indices={}, skip_multiple_plans=True, maybe_hpn
             if 'plan' not in episode:
                 continue
             actions = episode['plan']
-            if actions == 'FAILED':
+            if actions == 'FAILED' or len(actions) == 0:
                 if len(data) == 2:
                     return None
                 continue

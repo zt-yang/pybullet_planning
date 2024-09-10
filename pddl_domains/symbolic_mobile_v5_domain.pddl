@@ -79,7 +79,6 @@
     (Debug2)
     (Debug3)
 
-    (Identical ?v1 ?v2)
 
     ;; making planning more efficient
     (Picked ?o)
@@ -126,6 +125,16 @@
   (:functions
     (PickCost)
     (PlaceCost)
+  )
+
+(:action move_base
+    :parameters ()
+    :precondition (and (CanMoveBase) (CanMove) 
+                       )
+    :effect (and 
+                  (not (CanMove))
+                 (increase (total-cost) 1)
+            )
   )
 
 (:action pick_from_supporter

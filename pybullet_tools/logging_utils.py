@@ -323,3 +323,9 @@ def print_heading(text):
     myprint(f'{separator}{separator}')
     myprint(f'{spacing} {text} {spacing} ')
     myprint(f'{separator}{separator}')
+
+
+def get_success_rate_string(num_success, num_problems, roundto=2):
+    if num_problems == 0:
+        return f"0 (0 / 0)"
+    return f"{round(num_success / num_problems, roundto)} ({num_success} / {num_problems})"

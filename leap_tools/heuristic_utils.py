@@ -1,6 +1,7 @@
 import numpy as np
 
 from pybullet_tools.utils import get_aabb, get_aabb_extent, get_aabb_center, aabb_overlap, AABB
+from pybullet_tools.logging_utils import myprint as print
 
 
 def get_surface_aabb(surface):
@@ -25,10 +26,19 @@ def get_distance_to_aabb_fn(region_aabb):
     return funk
 
 
-def find_big_surfaces(other_surfaces, top_k=1, title='find_big_surfaces\t'):
+def find_big_surfaces(other_surfaces, top_k=1, world=None, title='find_big_surfaces\t'):
+    """ world != None: calculate surface area based on surface area - area of objects placed in it """
+    def get_available_area(surface):
+        surface_area = get_surface_area(surface)
+        surface_obj = world.body_to_object(surface)
+        objs = surface_obj.supported_objects
+        for o in objs:
+            surface_area -= get_surface_area(o)
+        print(f'\t[heuristic_utils.find_big_surfaces] consider {surface_obj.debug_name} minus area of {objs}')
+        return surface_area
     ## sort other_surfaces by aabb area
     print(f'\n{title}other_surfaces: {other_surfaces}')
-    big_surface = sorted(other_surfaces, key=get_surface_area)[:top_k]
+    big_surface = sorted(other_surfaces, key=get_available_area)[:top_k]
     print(f'{title}surface:\t{big_surface}')
     return big_surface
 
@@ -54,7 +64,7 @@ def find_movables_close_to_region(all_movables, region_aabb, title='find_movable
 
 def add_surfaces_given_obstacles(world, obstacles, title='add_surfaces_given_obstacles\t'):
     other_surfaces = world.cat_to_bodies('surface')
-    add_surfaces = find_big_surfaces(other_surfaces, top_k=1)
+    add_surfaces = find_big_surfaces(other_surfaces, world=world, top_k=1)
     other_surfaces = [s for s in other_surfaces if s not in add_surfaces]
     for o in obstacles:
         region_aabb = get_surface_aabb(o)

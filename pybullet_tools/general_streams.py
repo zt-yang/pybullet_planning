@@ -490,7 +490,7 @@ def get_pose_in_space_test():
 """
 
 
-def get_above_pose_gen(problem, collisions=True, num_samples=5, visualize=False):
+def get_above_pose_gen(problem, collisions=True, num_samples=2, visualize=False):
     def gen(region, p2, body):
         if isinstance(region, int):  ## otherwise it's static link
             p2.assign()

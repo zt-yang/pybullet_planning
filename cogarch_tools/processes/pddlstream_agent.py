@@ -18,7 +18,7 @@ from pybullet_tools.logging_utils import summarize_facts, print_goal
 from pybullet_tools.bullet_utils import get_datetime
 from pybullet_tools.pr2_primitives import Trajectory
 from pybullet_tools.stream_agent import solve_pddlstream, make_init_lower_case, heuristic_modify_stream, \
-    solve_one
+    solve_one, log_goal_plan_init
 from pybullet_tools.utils import SEPARATOR, wait_if_gui, WorldSaver
 from pybullet_tools.logging_utils import save_commands, TXT_FILE, summarize_state_changes, print_lists
 from pybullet_tools.logging_utils import myprint as print
@@ -27,7 +27,7 @@ from world_builder.actions import get_primitive_actions
 from world_builder.world_utils import get_camera_image
 
 from cogarch_tools.processes.motion_agent import MotionAgent
-from cogarch_tools.cogarch_utils import clear_empty_exp_dirs
+from cogarch_tools.cogarch_utils import clear_empty_exp_dirs, update_timeout_for_debugging
 
 from problem_sets.problem_utils import update_stream_map
 
@@ -76,6 +76,7 @@ class PDDLStreamAgent(MotionAgent):
         self.step_count = 0
         self.refinement_count = 0
         self.problem_count = 0
+        self.problem_count_suffix = ''
         self.env = None  ## for preimage computation
         self.envs = []  ## for preimage computation
         self.env_execution = None  ## for saving states during execution
@@ -257,6 +258,12 @@ class PDDLStreamAgent(MotionAgent):
         """ too many streams make planning slow, remove streams like `get-joint-position-closed` """
         return heuristic_modify_stream(self.pddlstream_problem, self.world)
 
+    def _record_skipped_time_log(self, goal, **kwargs):
+        time_log = log_goal_plan_init([goal], [], [])
+        time_log.update({k: 0 for k in ['planning', 'preimage']})
+        time_log.update(dict(kwargs))
+        self.record_time(time_log)
+
     def replan(self, observation, **kwargs):
         """ make new plans given a pddlstream_problem """
 
@@ -267,14 +274,16 @@ class PDDLStreamAgent(MotionAgent):
             print(f'\n[pddlstream_agent.replan] _check_subgoals_grounding failed for {pddlstream_problem.goal}')
             self.plan = None
             self.pddlstream_kwargs.update({'skeleton': None, 'subgoals': None})
+            self._record_skipped_time_log(pddlstream_problem.goal, status=UNGROUNDED)
             return UNGROUNDED
 
         self.plan, env, knowledge, time_log, preimage = self.solve_pddlstream(
             pddlstream_problem, observation.state, domain_pddl=self.domain_pddl,
             domain_modifier=self.domain_modifier, **self.pddlstream_kwargs, **kwargs)  ## observation.objects
-
         self.pddlstream_kwargs.update({'skeleton': None, 'subgoals': None})
         self.evaluations, self.goal_exp, self.domain, _ = knowledge
+
+        time_log['objects_by_category'] = summarize_planning_objects(pddlstream_problem.init)
         self.record_time(time_log)
         is_HPN = 'hpn' in self.exp_name or env is not None
 
@@ -334,9 +343,19 @@ class PDDLStreamAgent(MotionAgent):
 
     def record_time(self, time_log):
         self.time_log.append(time_log)
-        print('-'*50)
-        print(f'\n[TIME LOG] ({len(self.time_log)})\n' + '\n'.join([str(v) for v in self.time_log]))
-        print('-'*50, '\n')
+        self.print_time_log()
+
+    def print_time_log(self):
+        print('-' * 50)
+
+        def get_print_log(log):
+            first_keys = ['goal', 'status', 'planning']
+            new_log = {k: log[k] for k in first_keys if k in log}
+            new_log.update({k: log[k] for k in sorted(log) if k not in ['init', 'preimage'] + first_keys})
+            return str(new_log)
+
+        print(f'\n[TIME LOG] ({len(self.time_log)})\n' + '\n'.join([get_print_log(v) for v in self.time_log]))
+        print('\n' + '-' * 50)
 
     def remove_unpickleble_attributes(self):
         return self.world.remove_unpickleble_attributes()
@@ -355,7 +374,7 @@ class PDDLStreamAgent(MotionAgent):
             save_commands(commands, commands_path)
             self.recover_unpickleble_attributes(cache)
 
-    def save_time_log(self, csv_name, solved=True, failed_time=False):
+    def save_time_log(self, csv_name, final=False, solved=True, failed_time=False):
         """ compare the planning time and plan length across runs """
         from tabulate import tabulate
 
@@ -372,6 +391,8 @@ class PDDLStreamAgent(MotionAgent):
         if not solved and not failed_time:
             total_planning = 99999
         print(f'pddlstream_agent.save_time_log\n\ttotal planning time: {total_planning}')
+        if final:
+            self.time_log.append({'total_planning': total_planning})
 
         fieldnames = ['exp_name']
         fieldnames.extend(list(durations.keys()))
@@ -414,12 +435,11 @@ class PDDLStreamAgent(MotionAgent):
         else:
             csv_name = None
 
-        total_planning = self.save_time_log(csv_name, solved=solved, failed_time=failed_time)
+        self.save_time_log(csv_name, final=final, solved=solved, failed_time=failed_time)
 
         if final:
             print('save_stats.total_planning.final')
             self.move_log_to_run_dir()
-            self.time_log.append({'total_planning': total_planning})
 
         ## save the final plan
         plan_log_path = join(self.exp_dir, f'time.json')
@@ -431,9 +451,6 @@ class PDDLStreamAgent(MotionAgent):
 
     def save_agent_state(self):
         """ resume planning """
-        agent_state_dir = join(self.exp_dir, 'states')
-        if not isdir(agent_state_dir):
-            os.makedirs(agent_state_dir)
 
         ## cache some values
         if self.env_execution is not None:
@@ -463,7 +480,7 @@ class PDDLStreamAgent(MotionAgent):
         self.pddlstream_problem = update_stream_map(self.pddlstream_problem, None)
         self.initial_state.variables = None
 
-        agent_state_path = join(agent_state_dir, f'agent_state_{self.problem_count}.pkl')
+        agent_state_path = self.get_state_file_path(key='agent_state')
         print(f'pddlstream_agent.save_agent_state at {agent_state_path}')
         with open(agent_state_path, 'bw') as f:
             pickle.dump(self, f)
@@ -482,6 +499,17 @@ class PDDLStreamAgent(MotionAgent):
             self.env_execution._observation_space = _observation_space
         self.pddlstream_problem = update_stream_map(self.pddlstream_problem, stream_map)
         self.initial_state.variables = variables
+
+    def _get_problem_count_suffix(self):
+        return ''
+
+    def get_state_file_path(self, key='agent_state'):
+        """ agent_state_{n}.pkl, commands_{n}.pkl """
+        agent_state_dir = join(self.exp_dir, 'states')
+        if not isdir(agent_state_dir):
+            os.makedirs(agent_state_dir)
+        suffix = self._get_problem_count_suffix()  ## multiple trials of one problem
+        return join(agent_state_dir, f'{key}_{self.problem_count}{suffix}.pkl')
 
     def load_agent_state(self, agent_state_path):
         """ resume planning """
@@ -513,7 +541,8 @@ class PDDLStreamAgent(MotionAgent):
         ## roll out world state to the last planning state
         commands_path = agent_state_path.replace('agent_state_', 'commands_')
         self.exp_dir = correct_home_path(self.exp_dir, exp_dir)
-        self.apply_commands(commands_path)
+        if isfile(commands_path):
+            self.apply_commands(commands_path)
 
         self.exp_dir = exp_dir
         self.plan = []
@@ -526,6 +555,7 @@ class PDDLStreamAgent(MotionAgent):
             added, deled = self.facts_to_update_pddlstream_problem
             init = update_facts(init, added, deled)
         self.pddlstream_problem = PDDLProblem(a, b, c, stream_map, init, f)
+        self.pddlstream_kwargs = update_timeout_for_debugging(self.pddlstream_kwargs)
         self.env_execution.static_literals = static_literals
         self.env_execution.externals = env_externals
         self.env_execution._action_space = _action_space
@@ -537,6 +567,8 @@ class PDDLStreamAgent(MotionAgent):
         return self
 
     def apply_commands(self, commands_path):
+        if not isfile(commands_path):
+            return
 
         with open(commands_path, 'br') as f:
             commands = pickle.load(f)
@@ -549,33 +581,45 @@ class PDDLStreamAgent(MotionAgent):
 
     def _check_subgoals_grounding(self, pddlstream_problem):
         """ remove all continuous variables from the domain pddl, just do task planning """
+        title = '[pddlstream_agent._check_subgoals_grounding]'
         domain_pddl, constant_map, stream_pddl, stream_map, init, goal = pddlstream_problem
-        goal = goal[:1] + _get_derived_goal(goal[1], init)
+        goal = tuple([goal[0]] + _get_derived_goal(list(goal[1]), init))
+        print(f'{title}\t goal = {goal}')
 
         symbolic_domain_pddl, predicates_to_keep = make_symbolic_pddl_inplace(domain_pddl)
+        with open(join(self.exp_dir, 'symbolic_domain.pddl'), 'w') as f:
+            f.write(symbolic_domain_pddl)
+
         new_init = [f for f in init if (f[0] == '=' and f[1][0].lower() in predicates_to_keep) or \
                     (f[0].lower() in predicates_to_keep)]
+        if tuple(goal[1]) in new_init:
+            return True
         pddlstream_problem = symbolic_domain_pddl, constant_map, '(define (stream symbolic)\n )', {}, new_init, goal
 
         kwargs = copy.deepcopy(self.pddlstream_kwargs)
         for k in ['preview', 'collect_dataset', 'visualization']:
             kwargs.pop(k)
-        plan = solve_one(pddlstream_problem, stream_info={}, visualize=False, world=self.world, **kwargs)[0]
+        plan = solve_one(pddlstream_problem, stream_info={}, visualize=False,
+                         verbose_outside=False, world=self.world, **kwargs)[0]
+        if plan is not None:
+            print(f'{title}\t symbolic plan = {plan}')
         return plan is not None
 
 ###########################################################################
 
 
 def _get_derived_goal(goal, init):
-    if goal[0] in ['openedjoint', 'closedjoint', 'nudgeddoor']:
+    goal_predicate = goal[0].lower()
+    if goal_predicate in ['openedjoint', 'closedjoint', 'nudgeddoor']:
         return [['joint'] + goal[1:]]
-    if goal[0] in ['on']:
+    if goal_predicate in ['on']:
         return [['stackable'] + goal[1:]]
-    if goal[0] in ['in']:
+    if goal_predicate in ['in']:
         return [['containable'] + goal[1:]]
-    if goal[0] in ['holding']:
+    if goal_predicate in ['holding']:
         return [['graspable'] + goal[-1:]]
-    return goal
+    return [[goal_predicate] + goal[1:]]
+    # return [goal]
 
 
 def add_timestamp(exp_name):
@@ -660,3 +704,7 @@ def correct_home_path(loaded_exp_dir, correct_exp_dir):
     home_loaded, exp_path = loaded_exp_dir.split(key)
     home_corrected = correct_exp_dir.split(key)[0]
     return join(home_corrected, key.replace('/', ''), exp_path)
+
+
+def summarize_planning_objects(init):
+    return {k: [f[1] for f in init if f[0].lower() == k] for k in ['graspable', 'joint', 'surface', 'space']}

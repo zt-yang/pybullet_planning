@@ -42,7 +42,8 @@ from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_
 from world_builder.entities import Region, Location, Robot, Surface, ArticulatedObjectPart, Door, Drawer, \
     Knob, Camera, Object, StaticCamera
 from world_builder.world_utils import GRASPABLES, get_objs_in_camera_images, make_camera_collage, \
-    get_camera_image, sort_body_indices, add_joint_status_facts
+    get_camera_image, sort_body_indices
+from world_builder.init_utils import add_joint_status_facts
 
 DEFAULT_CONSTANTS = ['@movable', '@bottle', '@edible', '@medicine']  ## , '@world'
 

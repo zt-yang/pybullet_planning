@@ -22,12 +22,12 @@ def initialize_object_reducer(name):
     if name == 'heuristic-movables':
         return reduce_by_objects_heuristic_movables
 
-    def return_as_is(facts, objects=[], goals=[]):
+    def return_as_is(facts, objects=[], goals=[], world=None):
         return facts
     return return_as_is
 
 
-def reduce_facts_given_goals(facts, objects=[], goals=[]):
+def reduce_facts_given_goals(facts, objects=[], goals=[], world=None):
     goal_objects = []
     for g in goals[:1]:
         for elem in g:
@@ -53,7 +53,7 @@ def reduce_facts_given_goals(facts, objects=[], goals=[]):
     return filtered_facts
 
 
-def reduce_facts_given_objects(facts, objects=[], goals=[], verbose=False):
+def reduce_facts_given_objects(facts, objects=[], goals=[], world=None, verbose=False):
     """ the base function for all used by VLM-TAMP """
     arms = [f[1] for f in facts if f[0] == 'controllable']
     dynamic_preds = ['atposition', 'atpose', 'atrelpose', 'atgrasp']
@@ -132,7 +132,7 @@ def _remove_exploding_init_combo(facts, goals):
     return facts
 
 
-def reduce_by_object_heuristic_joints(facts, objects=[], goals=[]):
+def reduce_by_object_heuristic_joints(facts, objects=[], goals=[], world=None):
     """ add joints that are related to the surface / space mentioned in the goal """
 
     if goals[0][0] in ['on', 'in']:
@@ -152,7 +152,7 @@ def reduce_by_object_heuristic_joints(facts, objects=[], goals=[]):
     return reduce_facts_given_objects(facts, objects=objects, goals=goals)
 
 
-def reduce_by_object_all_joints(facts, objects=[], goals=[]):
+def reduce_by_object_all_joints(facts, objects=[], goals=[], world=None):
     """ add all joints in the problem """
     for f in facts:
         for elem in f[1:]:
@@ -162,13 +162,13 @@ def reduce_by_object_all_joints(facts, objects=[], goals=[]):
     return reduce_facts_given_objects(facts, objects=objects, goals=goals)
 
 
-def reduce_by_objects_heuristic_movables(facts, objects=[], goals=[], aabb_expansion=0.5):
+def reduce_by_objects_heuristic_movables(facts, objects=[], goals=[], world=None, aabb_expansion=0.5):
     """ add movable objects that are close by in aabb, and also one other surface that's large enough """
 
     title = 'object_reducers.reduce_by_objects_heuristic_movables\t'
 
     region_aabb = None
-    if goals[0][0] in ['on', 'in']:
+    if goals[0][0] in ['on', 'in', 'sprinkledto']:
         region = goals[0][2]
         region_aabb = get_surface_aabb(region)
 
@@ -183,7 +183,7 @@ def reduce_by_objects_heuristic_movables(facts, objects=[], goals=[], aabb_expan
         other_surfaces = [f[1] for f in facts if f[0].lower() == 'surface' and f[1] != region]
 
         ## add big surfaces in the world as temporary surfaces
-        big_surfaces = find_big_surfaces(other_surfaces, top_k=1, title=title)
+        big_surfaces = find_big_surfaces(other_surfaces, top_k=1, world=world, title=title)
         objects.extend(big_surfaces)
 
         ## find obstacles

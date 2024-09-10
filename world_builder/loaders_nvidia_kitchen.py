@@ -474,7 +474,7 @@ def load_dishwasher(world):
 def get_objects_for_open_kitchen(world):
     object_names = ['chicken-leg', 'fridge', 'fridge_door', 'shelf_top', 'fork',
                     'braiserbody', 'braiserlid', 'braiser_bottom',
-                    'indigo_drawer_top', 'indigo_drawer_top_joint', 'indigo_tmp',
+                    'indigo_drawer_top', 'indigo_drawer_top_joint', 'indigo_tmp', 'hitman_tmp',
                     'sektion', 'chewie_door_left_joint', 'chewie_door_right_joint',
                     'salt-shaker', 'pepper-shaker',
                     'front_left_stove', 'front_right_stove', 'knob_joint_2', 'knob_joint_3']

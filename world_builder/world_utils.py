@@ -21,7 +21,6 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, is_darwin, RED, sam
 from pybullet_tools.bullet_utils import is_joint_open, get_fine_rainbow_colors, open_joint, toggle_joint
 from pybullet_tools.camera_utils import get_segmask, get_obj_keys_for_segmentation
 from pybullet_tools.logging_utils import dump_json
-from pybullet_tools.general_streams import Position
 
 from lisdf_tools.image_utils import get_seg_foreground_given_obj_keys, get_mask_bb, RAINBOW_COLORS, DARKER_COLORS
 
@@ -786,26 +785,6 @@ def reduce_model_scale(txt_file, scale_down=10, new_scale_file='new_scale.txt'):
         f.writelines(new_lines)
 
 
-def get_potential_placements(goals, init):
-    def get_body(body):
-        from world_builder.entities import Object
-        if isinstance(body, Object):
-            return body.pybullet_name
-        return body
-
-    placements = {}
-    for goal in goals:
-        pred = goal[0].lower()
-        if pred in ['on', 'in']:
-            placements[get_body(goal[1])] = get_body(goal[2])
-        elif pred in ['storedinspace']:
-            for f in init:
-                if f[0].lower() == 'oftype' and f[2] == goal[1]:
-                    placements[get_body(f[1])] = get_body(goal[2])
-    print('\nworld_builder.utils.get_potential_placements: ', placements, '\n')
-    return placements
-
-
 def get_lisdf_name(body, name, joint=None, link=None):
     LINK_STR = '::'
     if joint is not None or link is not None:
@@ -1088,38 +1067,6 @@ def get_objs_in_camera_images(camera_images, world=None, show=False, save=False,
     return objs
 
 
-def check_goal_achieved(facts, goal, world):
-    print('[world_utils.check_goal_achieved]\t', goal)
-    if goal[0] in ['on', 'in', 'stacked'] and len(goal) == 3:
-        body, supporter = goal[1], goal[2]
-        atrelpose = [f[-1] for f in facts if f[0].lower() in ['atrelpose'] and f[1] == body and f[-1] == supporter]
-        if len(atrelpose) > 0:
-            return True
-
-        atpose = [f[-1] for f in facts if f[0].lower() in ['atpose'] and f[1] == body]
-        found = [f for f in facts if f[0].lower() in ['supported', 'contained'] and \
-                 f[1] == body and f[2] in atpose and f[3] == supporter]
-        if len(found) > 0:
-            return True
-
-    if goal[0] in ['openedjoint', 'closedjoint', 'close', 'open'] and len(goal) == 2 and isinstance(goal[1], tuple):
-        joint = goal[1]
-        min_position = Position(joint, 'min').value
-        atposition = [f[-1] for f in facts if f[0].lower() in ['atposition'] and f[1] == joint]
-        if len(atposition):
-            if goal[0] in ['openedjoint', 'open'] and atposition[0].value != min_position:
-                return True
-            if goal[0] in ['closedjoint', 'close'] and atposition[0].value == min_position:
-                return True
-
-    if goal[0] in ['holding']:
-        found = [f for f in facts if f[0].startswith('at') and f[0].endswith('grasp') and f[2] == goal[-1]]
-        if len(found) > 0:
-            return True
-
-    return False
-
-
 def sort_body_indices(lst):
     """ given a list of int (whole object) and tuples (joints or links), return a sorted list """
     bodies = [o for o in lst if isinstance(o, int)]
@@ -1141,40 +1088,6 @@ def sort_body_indices(lst):
         found_links.sort()
         sorted_lst.extend([(body, None, l) for l in found_links])
     return sorted_lst
-
-
-def add_joint_status_facts(body, position=None, categories=None,
-                           verbose=False, return_description=False):
-    init = []
-    title = f'get_world_fluents | joint {body} is'
-
-    if is_joint_open(body, threshold=1, is_closed=True):
-        init += [('IsClosedPosition', body, position)]
-        description = 'fully closed'
-        if categories is not None and 'knob' in categories:
-            description = 'turned off'
-
-    elif not is_joint_open(body, threshold=0.25):
-        init += [('IsClosedPosition', body, position)]
-        description = 'slightly open'
-
-    elif is_joint_open(body, threshold=1):
-        init += [('IsOpenedPosition', body, position)]
-        description = 'fully open'
-        if categories is not None and 'knob' in categories:
-            description = 'turned on'
-
-    else:
-        init += [('IsOpenedPosition', body, position)]
-        description = 'partially open'
-
-    if verbose:
-        print(title, description)
-
-    if return_description:
-        return description
-
-    return init
 
 
 def draw_body_label(body, text, link=None, offset=(0, -0.05, 0.05), **kwargs):

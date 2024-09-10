@@ -252,8 +252,8 @@ def _remove_predicates_in_operators_axioms(operators_axioms, predicates, include
 
     new_operator_blocks = []
     for block in operator_blocks:
-        if ':parameters ()' in block:
-            continue
+        # if ':parameters ()' in block:
+        #     continue
         for literal in _get_literals_to_remove_in_operator(block, predicates) + ['(not )', '(not (=))']:
             block = block.replace(literal, '')
         block = block.replace('(and  ', '(and ')
@@ -312,6 +312,8 @@ def _make_symbolic_domain(body, header, functions, predicates_arity, **kwargs):
     _, new_predicates, _, new_operators_axioms = parse_domain(body)
     new_predicates_arity = _get_predicate_arity(new_predicates)
     predicates_to_remove = [k for k in predicates_arity if predicates_arity[k] != new_predicates_arity[k]]
+    predicates_to_remove += ['Identical']
+    # predicates_to_remove += ['CanMove']  ## because move_base is removed
     predicates_to_keep = [k for k in predicates_arity if k not in predicates_to_remove]
 
     new_operators, axioms_mapping = _remove_predicates_in_operators_axioms(new_operators_axioms, predicates_to_remove, **kwargs)
