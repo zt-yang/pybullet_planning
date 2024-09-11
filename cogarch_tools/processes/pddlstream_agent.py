@@ -354,7 +354,8 @@ class PDDLStreamAgent(MotionAgent):
             new_log.update({k: log[k] for k in sorted(log) if k not in ['init', 'preimage'] + first_keys})
             return str(new_log)
 
-        print(f'\n[TIME LOG] ({len(self.time_log)})\n' + '\n'.join([get_print_log(v) for v in self.time_log]))
+        data = [get_print_log(v) for v in self.time_log if 'num_success' not in v]
+        print(f'\n[TIME LOG] ({len(self.time_log)})\n' + '\n'.join(data))
         print('\n' + '-' * 50)
 
     def remove_unpickleble_attributes(self):
@@ -592,12 +593,18 @@ class PDDLStreamAgent(MotionAgent):
 
         new_init = [f for f in init if (f[0] == '=' and f[1][0].lower() in predicates_to_keep) or \
                     (f[0].lower() in predicates_to_keep)]
+        ## we want to check semantics, not whether the goal is achievable, so ignore things like handempty
+        for arm in self.robot.arms:
+            literal = ('handempty', arm)
+            if literal not in new_init:
+                new_init.append(literal)
+
         if tuple(goal[1]) in new_init:
             return True
         pddlstream_problem = PDDLProblem(symbolic_domain_pddl, constant_map, empty_stream_body, {}, new_init, goal)
 
         kwargs = copy.deepcopy(self.pddlstream_kwargs)
-        for k in ['preview', 'collect_dataset', 'visualization', 'skeleton']:
+        for k in ['preview', 'collect_dataset', 'visualization', 'skeleton', 'fc']:
             kwargs.pop(k)
         plan = solve_one(pddlstream_problem, stream_info={}, visualize=False,
                          verbose_outside=False, world=self.world, **kwargs)[0]

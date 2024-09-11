@@ -38,18 +38,18 @@ def add_joint_status_facts(body, position=None, categories=None, verbose=False, 
 
 
 def check_subgoal_achieved(facts, goal, world):
-    print('[world_utils.check_goal_achieved]\t', goal)
+    result = False
     if goal[0] in ['on', 'in', 'stacked'] and len(goal) == 3:
         body, supporter = goal[1], goal[2]
         atrelpose = [f[-1] for f in facts if f[0].lower() in ['atrelpose'] and f[1] == body and f[-1] == supporter]
         if len(atrelpose) > 0:
-            return True
+            result = True
 
         atpose = [f[-1] for f in facts if f[0].lower() in ['atpose'] and f[1] == body]
         found = [f for f in facts if f[0].lower() in ['supported', 'contained'] and \
                  f[1] == body and f[2] in atpose and f[3] == supporter]
         if len(found) > 0:
-            return True
+            result = True
 
     if goal[0] in ['openedjoint', 'closedjoint', 'close', 'open'] and len(goal) == 2 and isinstance(goal[1], tuple):
         joint = goal[1]
@@ -57,16 +57,17 @@ def check_subgoal_achieved(facts, goal, world):
         atposition = [f[-1] for f in facts if f[0].lower() in ['atposition'] and f[1] == joint]
         if len(atposition):
             if goal[0] in ['openedjoint', 'open'] and atposition[0].value != min_position:
-                return True
+                result = True
             if goal[0] in ['closedjoint', 'close'] and atposition[0].value == min_position:
-                return True
+                result = True
 
     if goal[0] in ['holding']:
         found = [f for f in facts if f[0].startswith('at') and f[0].endswith('grasp') and f[2] == goal[-1]]
         if len(found) > 0:
-            return True
+            result = True
 
-    return False
+    print('[world_utils.check_goal_achieved]\t', goal, result)
+    return result
 
 
 def get_potential_placements(goals, init):

@@ -31,7 +31,7 @@
                       (not (UnsafeATrajToPosesAtBConfAtJointPosition ?at ?q2 ?o ?p1))
                       (not (UnsafeATrajToPositionsAtBConfAtJointPosition ?at ?q2 ?o ?p1))
                     )
-    :effect (and (AtPosition ?o ?p2) (not (AtPosition ?o ?p1)) (GraspedHandle ?o)
+    :effect (and (AtPosition ?o ?p2) (not (AtPosition ?o ?p1))
                  (PulledOneAction ?o) (GraspedHandle ?o) (CanMove)
                  (AtBConf ?q2) (not (AtBConf ?q1)) ; plan-base-pull-handle
             )
@@ -53,7 +53,7 @@
                       (not (UnsafeATrajToPosesAtBConfAtJointPositionAtLinkPose ?at ?q2 ?o ?p1 ?l ?lp2))
                       (not (UnsafeATrajToPositionsAtBConfAtJointPositionAtLinkPose ?at ?q2 ?o ?p1 ?l ?lp2))
                     )
-   :effect (and (AtPosition ?o ?p2) (not (AtPosition ?o ?p1)) (GraspedHandle ?o)
+   :effect (and (AtPosition ?o ?p2) (not (AtPosition ?o ?p1))
                 (PulledOneAction ?o) (GraspedHandle ?o) (CanMove)
                 (AtBConf ?q2) (not (AtBConf ?q1)) ; plan-base-pull-handle
                 (not (AtPose ?l ?lp1)) (AtPose ?l ?lp2)

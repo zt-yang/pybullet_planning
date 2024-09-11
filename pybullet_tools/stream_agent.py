@@ -849,7 +849,7 @@ def heuristic_modify_stream(pddlstream_problem, world):
     from pddlstream.language.constants import PDDLProblem
 
     domain_pddl, constant_map, stream_pddl, stream_map, init, goal = pddlstream_problem
-    title = 'pddlstream_agent._heuristic_modify_stream |\t'
+    title = '[pddlstream_agent._heuristic_modify_stream] \t'
 
     sample_open = True
     for goal_item in goal[1:]:
@@ -859,10 +859,13 @@ def heuristic_modify_stream(pddlstream_problem, world):
         elif goal_pred in ['closedjoint']:
             sample_open = False
         elif goal_pred in ['handlegrasped', 'openedjoint', 'graspedhandle', 'pulled', 'pulledoneaction']:
-            body, joint = goal_item[1]
-            category, status = check_joint_state(body, joint)
-            if 'OPEN' in status:
-                sample_open = False
+            if isinstance(goal_item[1], tuple):
+                body, joint = goal_item[1]
+                category, status = check_joint_state(body, joint)
+                if 'OPEN' in status:
+                    sample_open = False
+            else:
+                print(f'{title} trying to use a movable as joint in {goal}')
         else:
             continue
         break

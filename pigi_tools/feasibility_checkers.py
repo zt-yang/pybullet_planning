@@ -11,7 +11,7 @@ from pybullet_tools.utils import WorldSaver
 from pybullet_tools.bullet_utils import open_joint
 from pybullet_tools.general_streams import Position
 
-from world_builder.world_utils import get_potential_placements
+from world_builder.init_utils import get_potential_placements
 
 from pigi_tools.data_utils import get_plan_skeleton, get_indices, get_action_elems, \
     get_successful_plan, modify_plan_with_body_map, load_planning_config, get_old_actions, \
