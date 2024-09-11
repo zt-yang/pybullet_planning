@@ -471,13 +471,18 @@ def load_dishwasher(world):
 # --------------------------------------------------------------------------------
 
 
-def get_objects_for_open_kitchen(world):
+def get_objects_for_open_kitchen(world, difficulty):
     object_names = ['chicken-leg', 'fridge', 'fridge_door', 'shelf_top', 'fork',
                     'braiserbody', 'braiserlid', 'braiser_bottom',
                     'indigo_drawer_top', 'indigo_drawer_top_joint', 'indigo_tmp', 'hitman_tmp',
                     'sektion', 'chewie_door_left_joint', 'chewie_door_right_joint',
                     'salt-shaker', 'pepper-shaker',
                     'front_left_stove', 'front_right_stove', 'knob_joint_2', 'knob_joint_3']
+    if difficulty in [20]:
+        for k in ['sektion', 'chewie_door_left_joint', 'chewie_door_right_joint',
+                  'indigo_drawer_top', 'indigo_drawer_top_joint',
+                  'front_left_stove', 'knob_joint_3']:
+            object_names.remove(k)
     objects = [world.name_to_body(name) for name in object_names]
     objects = sort_body_indices(objects)
     world.set_english_names(part_names)
@@ -532,6 +537,11 @@ def prevent_funny_placements(world, verbose=True):
 
 def load_open_problem_kitchen(world, reduce_objects=False, difficulty=1, open_doors_for=[],
                               randomize_joint_positions=True):
+    """
+    difficulty 20:  seasoning on surfaces, knob is already turned on
+    difficulty 0:   all objects in containers, joints all open
+    difficulty 1:   all objects in containers, joints all closed
+    """
     spaces = {
         'counter': {
             'sektion': [],
@@ -566,7 +576,7 @@ def load_open_problem_kitchen(world, reduce_objects=False, difficulty=1, open_do
 
     objects = None
     if reduce_objects:
-        objects = get_objects_for_open_kitchen(world)
+        objects = get_objects_for_open_kitchen(world, difficulty)
 
     if difficulty == 0:
         for door in world.cat_to_objects('door'):
@@ -576,6 +586,13 @@ def load_open_problem_kitchen(world, reduce_objects=False, difficulty=1, open_do
             world.open_joint(door.body, joint=door.joint, extent=extent, verbose=True)
         # world.name_to_object('front_left_stove').place_obj(world.name_to_object('braiserlid'))
         world.name_to_object('indigo_tmp').place_obj(world.name_to_object('braiserlid'))
+
+    ## seasoning on surfaces, knob is already turned on
+    elif difficulty == 20:
+        for obj in world.cat_to_objects('sprinkler'):
+            world.name_to_object('hitman_tmp').place_obj(obj)
+        knob = world.name_to_object('knob_joint_2')
+        world.open_joint(knob.body, joint=knob.joint, extent=1, verbose=True)
 
     return objects, movables
 
