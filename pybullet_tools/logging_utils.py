@@ -11,17 +11,34 @@ import pprint
 TXT_FILE = abspath('txt_file.txt')
 
 
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
+def print_debug(text):
+    print(bcolors.WARNING + text + bcolors.ENDC)
+    print_in_file(text)
+
+
 def parallel_print(text='', *kwargs):
     string = get_string(text, kwargs)
     print_in_file(string, txt_file='txt_file.txt')
 
 
-def myprint(text='', *kwargs, **kwargs2):
+def myprint(text='', *kwargs):  ## , **kwargs2
     string = get_string(text, kwargs)
     print_in_file(string)
 
 
-def get_string(text, kwargs):
+def get_string(text, kwargs, verbose=True):
     string = [str(text)]
     if len(kwargs) > 0:
         print(text, kwargs)
@@ -235,10 +252,12 @@ def print_domain(domain_pddl, stream_pddl, custom_limits):
 def summarize_poses(preimage):
     from pybullet_tools.bullet_utils import nice
     atposes = [f[-1] for f in preimage if f[0].lower() == 'atpose']
-    poses = [f[-1] for f in preimage if f[0].lower() == 'pose' if f[-1] not in atposes]
+    poses = [f[1:] for f in preimage if f[0].lower() == 'pose' if f[-1] not in atposes]
 
     print('\n' + '=' * 25 + ' poses that can be cached to loaders_{domain}.py ' + '=' * 25)
-    for pose in poses:
+    for obj_pose in poses:
+        body, pose = obj_pose
+        print(f'placing {body}')
         print(nice(pose.value, keep_quat=True))
     print('-'*50+'\n')
 

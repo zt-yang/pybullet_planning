@@ -103,7 +103,8 @@ class MoveArmAction(Action):
 
     def transition(self, state):
         set_joint_positions(self.conf.body, self.conf.joints, self.conf.values)
-        if self.__class__.__name__ == 'MoveArmAction':
+        ## onlt during cog_run
+        if hasattr(state, 'movable') and state.movable is not None and self.__class__.__name__ == 'MoveArmAction':
             carrying = [a.child for a in state.attachments.values() if a.parent == state.robot]
             carrying = [o.body if hasattr(o, 'body') else o for o in carrying]
             movables = [o for o in state.movable if o not in [state.robot]+carrying]
@@ -277,9 +278,11 @@ class DetachObjectAction(RevisedAction):
     def transition(self, state):
         body = self.get_body()
         verbose = self.verbose if hasattr(self, 'verbose') else True
-        if verbose: print(f'DetachObjectAction({body})')
+        if verbose:
+            print(f'DetachObjectAction({body}, supporter={self.supporter})')
         updated_attachments = remove_attachment(state, obj=body, verbose=verbose)
         if hasattr(self, 'supporter') and self.supporter is not None:
+            # import ipdb; ipdb.set_trace()
             obj = body
             parent = self.supporter
             parent_link = -1
@@ -380,6 +383,9 @@ class ChangeJointPosition(Action):
         return state.new_state()
 
 
+## ------------------------------------------------------------
+
+
 class ChangeLinkColorEvent(Action):
     def __init__(self, body, color, link=None):
         self.body = body
@@ -387,7 +393,13 @@ class ChangeLinkColorEvent(Action):
         self.link = link
 
     def transition(self, state):
+        # import ipdb; ipdb.set_trace()
         set_color(self.body, self.color, self.link)
+        attached_objs = [v.child for k, v in state.attachments.items() if k.body == self.body and k.link == self.link]
+        if len(attached_objs) > 0:
+            for o in attached_objs:
+                print(f'[actions.ChangeLinkColorEvent]\tcoloring object {o.debug_name} as it is placed on {(self.body, self.link)}')
+                set_color(o.body, self.color, o.link)
         return state.new_state()
 
 
@@ -401,7 +413,7 @@ class CreateCylinderEvent(Action):
 
     def transition(self, state):
         objects = state.objects
-        if self.body == None:
+        if self.body is None:
             self.body = create_cylinder(self.radius, self.height, color=self.color)
             if self.body not in objects: objects.append(self.body)
             set_pose(self.body, self.pose)
@@ -769,6 +781,7 @@ def get_primitive_actions(action, world, teleport=False, verbose=True, debug_rc2
 
         return t
 
+    o = None
     name, args = action
     if name.startswith('pull_handle') or 'pull_articulated_handle' in name:
 
@@ -803,11 +816,6 @@ def get_primitive_actions(action, world, teleport=False, verbose=True, debug_rc2
                                     print('\t'+'\n\t'.join(lines))
 
             new_commands = get_traj(t)
-
-        ## for controlled event
-        events = world.get_events(o)
-        if events is not None:
-            new_commands += world.get_events(o)
 
     elif name == 'grasp_pull_handle':
         """ grasp, pull, ungrasp together (FEG) """
@@ -854,6 +862,11 @@ def get_primitive_actions(action, world, teleport=False, verbose=True, debug_rc2
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
         detach = DetachObjectAction(a, o)
         new_commands += [detach, open_gripper] + at[::-1]
+
+        # ## for controlled event
+        # events = world.get_events(o)
+        # if events is not None:
+        #     new_commands += world.get_events(o)
 
     elif 'move_base' in name or 'pull_' in name:
         if 'move_base' in name:
@@ -1043,6 +1056,12 @@ def get_primitive_actions(action, world, teleport=False, verbose=True, debug_rc2
     else:
         print('\n\n havent implement commands for', name)
         raise NotImplementedError(name)
+
+    if name.endswith('handle') and o is not None:
+        ## for controlled event
+        events = world.get_events(o)
+        if events is not None:
+            new_commands += world.get_events(o)
 
     return new_commands
 

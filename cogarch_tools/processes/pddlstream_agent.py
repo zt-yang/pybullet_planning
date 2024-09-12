@@ -270,11 +270,11 @@ class PDDLStreamAgent(MotionAgent):
         self.plan_step = self.num_steps
         pddlstream_problem = self._heuristic_reduce_pddlstream_problem()
 
-        if not self._check_subgoals_grounding(pddlstream_problem):
+        if hasattr(self, 'goal_sequence') and not self._check_subgoals_grounding(pddlstream_problem):
             print(f'\n[pddlstream_agent.replan] _check_subgoals_grounding failed for {pddlstream_problem.goal}')
             self.plan = None
             self.pddlstream_kwargs.update({'skeleton': None, 'subgoals': None})
-            self._record_skipped_time_log(pddlstream_problem.goal, status=UNGROUNDED)
+            self._record_skipped_time_log(pddlstream_problem.goal[1], status=UNGROUNDED)
             return UNGROUNDED
 
         self.plan, env, knowledge, time_log, preimage = self.solve_pddlstream(
@@ -601,12 +601,16 @@ class PDDLStreamAgent(MotionAgent):
 
         if tuple(goal[1]) in new_init:
             return True
-        pddlstream_problem = PDDLProblem(symbolic_domain_pddl, constant_map, empty_stream_body, {}, new_init, goal)
+        if goal[1][0] not in predicates_to_keep:
+            print(f'\t goal predicate {goal[1][0]} not found in symbolic domain')
+            return False
+
+        pddl_problem = PDDLProblem(symbolic_domain_pddl, constant_map, empty_stream_body, {}, new_init, goal)
 
         kwargs = copy.deepcopy(self.pddlstream_kwargs)
         for k in ['preview', 'collect_dataset', 'visualization', 'skeleton', 'fc']:
             kwargs.pop(k)
-        plan = solve_one(pddlstream_problem, stream_info={}, visualize=False,
+        plan = solve_one(pddl_problem, stream_info={}, visualize=False,
                          verbose_outside=False, world=self.world, **kwargs)[0]
         if plan is not None:
             print(f'{title}\t symbolic plan = {plan}')

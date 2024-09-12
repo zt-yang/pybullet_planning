@@ -33,7 +33,7 @@ from pybullet_tools.pose_utils import ObjAttachment, draw_pose2d_path, draw_pose
     is_placement, is_contained, get_learned_yaw
 from pybullet_tools.camera_utils import get_pose2d, get_camera_image_at_pose, visualize_camera_image, \
     set_camera_target_body, set_camera_target_body
-from pybullet_tools.logging_utils import print_dict, myprint
+from pybullet_tools.logging_utils import print_dict, myprint, print_debug
 
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
     Attach, Detach, Clean, Cook, control_commands, link_from_name, \
@@ -373,11 +373,11 @@ class World(WorldBase):
         objs = [obj for obj in self.objects if not isinstance(obj, tuple)]
         objs += [o for o in self.non_planning_objects if isinstance(o, int) and o not in objs]
         objs = [o for o in objs if o not in self.floors and o not in self.movable]
-        ## remove objects that are attached to a movable planning object
-        def get_attached_body(obj):
-            return obj.body if hasattr(obj, 'body') else obj
-        attached_objects = {get_attached_body(a.child): get_attached_body(a.parent) for a in self.attachments.values()}
-        objs = [o for o in objs if not (o in attached_objects and attached_objects[o] in self.movable)]
+        # ## remove objects that are attached to a movable planning object
+        # def get_attached_body(obj):
+        #     return obj.body if hasattr(obj, 'body') else obj
+        # attached_objects = {get_attached_body(a.child): get_attached_body(a.parent) for a in self.attachments.values()}
+        # objs = [o for o in objs if not (o in attached_objects and attached_objects[o] in self.movable)]
         return sort_body_indices(objs)
 
     @property
@@ -1002,6 +1002,17 @@ class World(WorldBase):
             print('removing from planning', body)
             self.remove_body_from_planning(body)
 
+    def remove_object_categories_by_init(self, init):
+        movables = [f[1] for f in init if f[0].lower() == 'graspable']
+        surfaces = list(set([f[2] for f in init if f[0].lower() == 'stackable']))
+        spaces = list(set([f[2] for f in init if f[0].lower() == 'containable']))
+        cats = [('movable', movables), ('surface', surfaces), ('space', spaces)]
+        for body, obj in self.BODY_TO_OBJECT.items():
+            for cat, lst in cats:
+                if cat in obj.categories and cat not in lst:
+                    obj.categories.remove(cat)
+                    print_debug(f'[world.remove_object_categories_by_init]\tremoving {cat} from object categories of {obj.debug_name}')
+
     def remove_body_attachment(self, body):
         if isinstance(body, Object):
             obj = body
@@ -1283,7 +1294,7 @@ class World(WorldBase):
             obj = None
         return obj
 
-    def put_on_surface(self, obj, surface='hitman_tmp', max_trial=20, OAO=False, **kwargs):
+    def put_on_surface(self, obj, surface='hitman_countertop', max_trial=20, OAO=False, **kwargs):
         obj = self.get_object(obj)
         surface_obj = self.get_object(surface)
         if surface_obj is None or obj is None:
@@ -1298,9 +1309,12 @@ class World(WorldBase):
         point, quat = obj.get_pose()
         x, y, z = point
         if 'faucet_platform' in surface:
-            (a, b, c), quat = world_to_surface
-            obj.set_pose(((a - 0.2, b, z), quat), **kwargs)
-        elif 'hitman_tmp' in surface:
+            # (a, b, c), quat = world_to_surface
+            # obj.set_pose(((a-0.2, b, z), quat), **kwargs)
+            if 'faucet' in obj.categories:
+                quat = quat_from_euler(Euler(PI, PI, 0))
+            obj.set_pose((point, quat), **kwargs)
+        elif 'hitman_tmp' in surface or 'hitman_countertop' in surface:
             quat = (0, 0, 1, 0)  ## facing out
             obj.set_pose(((0.4, 6.4, z), quat), **kwargs)
         elif obj.category in ['microwave', 'toaster']:

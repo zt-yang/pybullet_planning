@@ -28,10 +28,12 @@ def test_pick_place_domain():
 
 
 def test_nvidia_kitchen_domain():
+    """ minimum examples to test basic motion and mechanism """
     kitchen_problem = ['test_kitchen_chicken_soup', 'test_kitchen_braiser',
-                       'test_skill_knob_stove', 'test_kitchen_fridge', 'test_kitchen_drawers'][2]
+                       'test_skill_knob_stove', 'test_kitchen_fridge',
+                       'test_kitchen_drawers', 'test_skill_knob_faucet'][-1]
     # update_kitchen_action_pddl()
-    update_kitchen_pull_pddl()
+    # update_kitchen_pull_pddl()
     run_agent(
         problem=kitchen_problem,
         dual_arm=True, visualization=False, top_grasp_tolerance=0.8,
@@ -42,7 +44,11 @@ def test_nvidia_kitchen_domain():
 
 
 def test_cooking_domain():
-    kitchen_problem = ['test_kitchen_sprinkle', 'test_kitchen_nudge_door'][0]
+    """ testing skill in the full kitchen, with a single arm
+    remember to include world.remove_bodies_from_planning(goals)
+    """
+    kitchen_problem = ['test_kitchen_sprinkle', 'test_kitchen_nudge_door',
+                       'test_kitchen_faucet'][-1]
     run_agent(
         problem=kitchen_problem,
         dual_arm=False, top_grasp_tolerance=None, visualization=False,
@@ -53,5 +59,5 @@ def test_cooking_domain():
 
 if __name__ == '__main__':
     # test_pick_place_domain()
-    test_nvidia_kitchen_domain()
-    # test_cooking_domain()
+    # test_nvidia_kitchen_domain()
+    test_cooking_domain()

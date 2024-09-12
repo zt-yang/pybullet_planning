@@ -37,7 +37,7 @@ from pybullet_tools.utils import get_client, get_joint_limits, \
     remove_body, LockRenderer, WorldSaver, wait_if_gui, SEPARATOR, safe_remove, ensure_dir, \
     get_distance, get_max_limit, BROWN, BLUE, WHITE, TAN, GREY, YELLOW, GREEN, BLACK, RED, CLIENTS, wait_unlocked
 from pybullet_tools.stream_tests import process_debug_goals
-from pybullet_tools.logging_utils import myprint as print
+from pybullet_tools.logging_utils import myprint as print, print_debug
 
 from world_builder.entities import Object
 from world_builder.actions import get_primitive_actions, repair_skeleton, apply_actions, \
@@ -831,6 +831,7 @@ def log_goal_plan_init(goal, plan, preimage):
 
     return {
         'goal': [f'{g[0]}({g[1:]})' for g in goal],
+        'goal_original': goal,
         'plan': [str(a) for a in plan] if plan is not None else 'FAILED',
         'plan_skeleton': [get_plan_skeleton(a) for a in plan] if plan is not None else 'FAILED',
         'plan_len': len(plan) if plan is not None else 0,
@@ -851,28 +852,62 @@ def heuristic_modify_stream(pddlstream_problem, world):
     domain_pddl, constant_map, stream_pddl, stream_map, init, goal = pddlstream_problem
     title = '[pddlstream_agent._heuristic_modify_stream] \t'
 
+    def check_joint_open(joint_body):
+        body, joint = joint_body
+        category, status = check_joint_state(body, joint)
+        return 'OPEN' in status
+
     sample_open = True
+    sample_close = True
+    found_relevant = False
+    reason_not_open = None
+    reason_not_close = None
     for goal_item in goal[1:]:
         goal_pred = goal_item[0].lower()
         if goal_pred in ['openedjoint']:
-            sample_open = True
+            sample_close = False
+            reason_not_close = 'goal is to open joint'
         elif goal_pred in ['closedjoint']:
             sample_open = False
+            reason_not_open = 'goal is to close joint'
         elif goal_pred in ['handlegrasped', 'openedjoint', 'graspedhandle', 'pulled', 'pulledoneaction']:
             if isinstance(goal_item[1], tuple):
-                body, joint = goal_item[1]
-                category, status = check_joint_state(body, joint)
-                if 'OPEN' in status:
+                if check_joint_open(goal_item[1]):
                     sample_open = False
+                    reason_not_open = 'goal is to manipulate a joint that is open'
+                else:
+                    sample_close = False
+                    reason_not_close = 'goal is to manipulate a joint that is closed'
             else:
                 print(f'{title} trying to use a movable as joint in {goal}')
         else:
             continue
+        found_relevant = True
         break
 
-    stream_name = 'get-joint-position-closed' if sample_open else 'get-joint-position-open'
-    print(f'{title}remove_stream_by_name({stream_name})')
-    stream_pddl = remove_stream_by_name(stream_pddl, stream_name)
+    if not found_relevant:
+        joint_is_open = [int(check_joint_open(f[1])) for f in init if f[0] == 'joint']
+        if len(joint_is_open) > 0:
+            if sum(joint_is_open) == len(joint_is_open):
+                sample_open = False
+                reason_not_open = 'all joints are open at the beginning'
+            if sum(joint_is_open) == 0:
+                sample_close = False
+                reason_not_close = 'all joints are closed at the beginning'
+
+    stream_name = 'get-joint-position-open'
+    if not sample_open:
+        print_debug(f'{title}remove_stream_by_name({stream_name}) because {reason_not_open}')
+        stream_pddl = remove_stream_by_name(stream_pddl, stream_name)
+    elif not sample_close:
+        print_debug(f'{title} keeping stream {stream_name} in domain')
+
+    stream_name = 'get-joint-position-closed'
+    if not sample_close:
+        print_debug(f'{title}remove_stream_by_name({stream_name}) because {reason_not_close}')
+        stream_pddl = remove_stream_by_name(stream_pddl, stream_name)
+    elif not sample_open:
+        print_debug(f'{title} keeping stream {stream_name} in domain')
 
     return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
 

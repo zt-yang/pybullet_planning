@@ -758,17 +758,41 @@ def get_learned_poses(movable, surface, body, surface_body, num_samples=10, surf
     return []
 
 
-def adjust_sampled_pose(world, body, surface, body_pose):
+def adjust_sampled_pose(world, body, surface, body_pose, verbose=False):
+    from world_builder.loaders_nvidia_kitchen import braiser_quat
+
+    body_name = world.get_name(body)
+    surface_name = world.get_name(surface)
+
     ## hack to reduce planning time
-    (x, y, z), quat = body_pose
-    if 'braiser_bottom' in world.get_name(surface):
+    (x, y, z), quat = old_pose = body_pose
+    if 'braiserbody' in body_name:
+        quat = braiser_quat
+
+    if 'braiser_bottom' in surface_name:
         cx, cy, _ = get_aabb_center(get_aabb(body))
         dx = x - cx
         dy = y - cy
         x, y, _ = get_aabb_center(get_aabb(surface[0], link=surface[-1]))
         body_pose = (x+dx, y+dy, z+0.01), quat
 
-    if 'braiserlid' in world.get_name(body) and 'braiserbody' in world.get_name(surface):
+    ## only sample on the left half
+    if 'hitman_countertop' in surface_name:
+        ly = get_aabb_extent(get_aabb(body))[1]
+        aabb = get_aabb(surface[0], link=surface[-1])
+
+        y_min = aabb.lower[1] + ly / 2
+        y_max = get_aabb_center(aabb)[1] - ly
+        if y > y_max or y < y_min:
+            y = random.uniform(y_min, y_max)
+
+        old_aabb = AABB(lower=(aabb.lower[0], aabb.lower[1], aabb.upper[2]), upper=(aabb.upper[0], aabb.upper[1], aabb.upper[2] + 0.1))
+        # draw_aabb(old_aabb, color=BLUE)
+        new_aabb = AABB(lower=(aabb.lower[0], y_min, aabb.upper[2]), upper=(aabb.upper[0], y_max, aabb.upper[2] + 0.1))
+        # draw_aabb(new_aabb, color=RED)
+        body_pose = (x, y, z), quat
+
+    if 'braiserlid' in body_name and 'braiserbody' in surface_name:
         from world_builder.loaders_partnet_kitchen import get_lid_pose_on_braiser
         body_pose = get_lid_pose_on_braiser(surface)
 
@@ -781,4 +805,7 @@ def adjust_sampled_pose(world, body, surface, body_pose):
     # learned_quat = get_learned_yaw(lisdf_name, quat)
     # if learned_quat is not None:
     #     body_pose = (x, y, z), quat
+
+    if verbose and old_pose != body_pose:
+        print(f'[pose_utils.adjust_sampled_pose ({body_name}, {surface_name})]')
     return body_pose

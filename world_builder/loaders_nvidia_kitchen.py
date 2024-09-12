@@ -25,7 +25,7 @@ part_names = {
     'indigo_drawer_top': 'top drawer space',
     'indigo_drawer_top_joint': 'top drawer',
     'indigo_tmp': 'counter top on the right',
-    'hitman_tmp': 'counter top on the left',
+    'hitman_countertop': 'counter top on the left',
     'braiserlid': 'pot lid',
     'braiserbody': 'pot body',
     'braiser_bottom': 'pot bottom',
@@ -33,7 +33,9 @@ part_names = {
     'front_right_stove': 'stove on the right',
     'knob_joint_2': 'stove knob on the right',
     'knob_joint_3': 'stove knob on the left',
-    'shelf_top': 'fridge shelf'
+    'shelf_top': 'fridge shelf',
+    'joint_faucet_0': 'faucet handle',
+    'basin_bottom': 'kitchen sink'
 }
 
 ## used by make_camera_image_with_object_labels() in world_builder.world_utils.py
@@ -42,14 +44,19 @@ object_label_locations = {
     'pot body': BELOW,
     'top drawer': BELOW,
     'cabinet right door': BELOW,
+    'counter top on the left': ABOVE,
+    'counter top on the right': ABOVE,
     'stove knob on the left': ABOVE,
     'stove knob on the right': RIGHT,
     'stove on the left': LEFT,
+    'stove on the right': ABOVE,
     'chicken leg': BELOW,
     'fridge shelf': ABOVE,
     'salt shaker': BELOW,
     'pepper shaker': ABOVE,
-    'robot': ABOVE
+    'robot': ABOVE,
+    'faucet handle': ABOVE,
+    'kitchen sink': BELOW
 }
 
 ###############################################################################
@@ -99,6 +106,7 @@ saved_poses = {
     ('salt-shaker', 'sektion'): ((0.771, 7.071, 1.152), (0.0, 0.0, 1.0, 0)),
     ('pepper-shaker', 'sektion'): ((0.764, 7.303, 1.164), (0.0, 0.0, 1.0, 0)),
     ('fork', 'indigo_tmp'): ((0.767, 8.565, 0.842), (0.0, 0.0, 0.543415, 0.8395)),
+    ('braiserbody', 'basin_bottom'): ((0.538, 5.652, 0.876), (0.0, 0.0, 0.993, 0.12)),
 }
 
 saved_base_confs = {
@@ -144,7 +152,12 @@ saved_base_confs = {
     ],
     ('pepper-shaker', 'sektion', 'left'): [
         ((1.619, 7.741, 0.458, -3.348), {0: 1.619, 1: 7.741, 2: -3.348, 17: 0.458, 61: 0.926, 62: 0.187, 63: 1.498, 65: -0.974, 66: 3.51, 68: -0.257, 69: 1.392}),
-    ]
+    ],
+    ('braiserbody', 'basin_bottom', 'left'): [
+        ((1.0, 5.62, 0.796, 1.599), {0: 1.0, 1: 5.62, 2: 1.599, 17: 0.796, 61: 2.117, 62: 0.964, 63: 0.968, 65: -0.752, 66: 2.609, 68: -1.182, 69: -1.651}),
+        ((1.066, 5.78, 0.479, 2.249), {0: 1.066, 1: 5.78, 2: 2.249, 17: 0.479, 61: 1.08, 62: 0.573, 63: -0.321, 65: -0.87, 66: -2.864, 68: -1.835, 69: -1.13}),
+        ((1.24, 5.551, 0.417, 1.287), {0: 1.24, 1: 5.551, 2: 1.287, 17: 0.417, 61: 2.065, 62: 0.084, 63: 1.985, 65: -0.086, 66: 1.165, 68: -1.453, 69: 4.844}),
+    ],
 }
 
 FRONT_CAMERA_POINT = (3.9, 7, 1.3)
@@ -192,7 +205,7 @@ def load_kitchen_floor_plan(world, spaces=None, surfaces=None, **kwargs):
                 # 'shelf_bottom': []  ## 'VeggieCabbage' ## for HPN testing
             },
             'Basin': {
-                'faucet_platform': []  ## 'Faucet'
+                'faucet_platform': ['Faucet']  ##
             }
         }
     return load_floor_plan(world, spaces=spaces, surfaces=surfaces, **kwargs)
@@ -221,6 +234,100 @@ def load_full_kitchen(world, load_cabbage=True, **kwargs):
         cabbage.set_pose(Pose(point=Point(x=0.85, y=y, z=z)))
         return cabbage
     return None
+
+#######################################################
+
+
+def load_pot_lid(world):
+    name_to_body = world.name_to_body
+    name_to_object = world.name_to_object
+
+    ## -- add pot
+    pot = name_to_body('braiserbody')
+    world.put_on_surface(pot, 'front_right_stove', OAO=True)
+
+    ## ------ put in egg without lid
+    world.add_object(Surface(pot, link_from_name(pot, 'braiser_bottom')))
+    bottom = name_to_body('braiser_bottom')
+
+    lid = name_to_body('braiserlid')
+    world.put_on_surface(lid, 'braiserbody')
+    world.add_not_stackable(lid, bottom)
+    world.add_to_cat(lid, 'movable')
+
+    return bottom, lid
+
+
+def load_basin_faucet(world):
+    from .actions import ChangeLinkColorEvent, CreateCylinderEvent
+    cold_blue = RGBA(0.537254902, 0.811764706, 0.941176471, 1.)
+
+    name_to_body = world.name_to_body
+    name_to_object = world.name_to_object
+
+    basin = world.add_surface_by_keyword('basin', 'basin_bottom')
+    set_color(basin.body, GREY, basin.link)
+
+    faucet = name_to_body('faucet')
+    handles = world.add_joints_by_keyword('faucet', 'joint_faucet', 'knob')
+
+    # world.summarize_all_objects()
+
+    ## left knob gives cold water
+    left_knob = name_to_object('joint_faucet_0')
+    events = []
+    h_min = 0.05
+    h_max = 0.4
+    num_steps = 5
+    x, y, z = get_aabb_center(get_aabb(faucet, link=link_from_name(faucet, 'tube_head')))
+    for step in range(num_steps):
+        h = h_min + step / num_steps * (h_max - h_min)
+        event = CreateCylinderEvent(0.005, h, cold_blue, ((x, y, z - h / 2), (0, 0, 0, 1)))
+        # events.extend([event, RemoveBodyEvent(event=event)])
+        events.append(event)
+        # water = create_cylinder(radius=0.005, height=h, color=cold_blue)
+        # set_pose(water, ((x, y, z-h/2), (0, 0, 0, 1)))
+        # remove_body(water)
+    events.append(ChangeLinkColorEvent(basin.body, cold_blue, basin.link))
+    left_knob.add_events(events)
+
+    # ## right knob gives warm water
+    # right_knob = name_to_body('joint_faucet_1')
+
+    left_knob = name_to_body('joint_faucet_0')
+    return faucet, left_knob
+
+
+def load_kitchen_mechanism(world, sink_name='sink'):
+    name_to_body = world.name_to_body
+    name_to_object = world.name_to_object
+
+    bottom, lid = load_pot_lid(world)
+    faucet, left_knob = load_basin_faucet(world)
+
+    world.add_joints_by_keyword('fridge', 'fridge_door')
+    world.add_joints_by_keyword('oven', 'knob_joint_2', 'knob')
+    world.remove_body_from_planning(name_to_body('hitman_tmp'))
+
+    world.add_to_cat(name_to_body(f'{sink_name}_bottom'), 'CleaningSurface')
+    world.add_to_cat(name_to_body('braiser_bottom'), 'HeatingSurface')
+    name_to_object('joint_faucet_0').add_controlled(name_to_body(f'{sink_name}_bottom'))
+    name_to_object('knob_joint_2').add_controlled(name_to_body('braiser_bottom'))
+
+
+def load_kitchen_mechanism_stove(world):
+    name_to_body = world.name_to_body
+    name_to_object = world.name_to_object
+
+    controllers = {
+        'back_right_stove': 'knob_joint_1',
+        'back_left_stove': 'knob_joint_3',
+        'front_left_stove': 'knob_joint_4',
+    }
+    for k, v in controllers.items():
+        world.add_joints_by_keyword('oven', v, 'knob')
+        world.add_to_cat(name_to_body(k), 'HeatingSurface')
+        name_to_object(v).add_controlled(name_to_body(k))
 
 
 def load_feg_kitchen_dishwasher(world):
@@ -417,11 +524,12 @@ def load_braiser_bottom(world):
     world.add_to_cat('braiserbody', 'region')
     world.add_to_cat('braiserbody', 'space')
 
+braiser_quat = quat_from_euler(Euler(yaw=PI/2))
 
 def fix_braiser_orientation(world):
     braiser = world.name_to_object('braiserbody')
     point, quat = braiser.get_pose()
-    braiser.set_pose((point, quat_from_euler(Euler(yaw=PI/2))))
+    braiser.set_pose((point, braiser_quat))
 
 
 def load_stove_knobs(world, knobs=('knob_joint_2', 'knob_joint_3'), color_code_surfaces=True, draw_label=True):
@@ -457,6 +565,7 @@ def load_stove_knobs(world, knobs=('knob_joint_2', 'knob_joint_3'), color_code_s
 
     ## consider removing braiserbody when the knob is blocked
     world.add_to_cat('braiserbody', 'movable')
+    fix_braiser_orientation(world)
 
 
 def define_seasoning(world):
@@ -474,10 +583,11 @@ def load_dishwasher(world):
 def get_objects_for_open_kitchen(world, difficulty):
     object_names = ['chicken-leg', 'fridge', 'fridge_door', 'shelf_top', 'fork',
                     'braiserbody', 'braiserlid', 'braiser_bottom',
-                    'indigo_drawer_top', 'indigo_drawer_top_joint', 'indigo_tmp', 'hitman_tmp',
+                    'indigo_drawer_top', 'indigo_drawer_top_joint', 'indigo_tmp', 'hitman_countertop',
                     'sektion', 'chewie_door_left_joint', 'chewie_door_right_joint',
                     'salt-shaker', 'pepper-shaker',
-                    'front_left_stove', 'front_right_stove', 'knob_joint_2', 'knob_joint_3']
+                    'front_left_stove', 'front_right_stove', 'knob_joint_2', 'knob_joint_3',
+                    'joint_faucet_0', 'basin_bottom']
     if difficulty in [20]:
         for k in ['sektion', 'chewie_door_left_joint', 'chewie_door_right_joint',
                   'indigo_drawer_top', 'indigo_drawer_top_joint',
@@ -512,18 +622,28 @@ def prevent_funny_placements(world, verbose=True):
     braiserbody = world.name_to_body('braiserbody')
     braiserlid = world.name_to_body('braiserlid')
 
+    left_counter = world.name_to_body('hitman_countertop')
     left_stove = world.name_to_body('front_left_stove')
     right_stove = world.name_to_body('front_right_stove')
     braiser_bottom = world.name_to_body('braiser_bottom')
+    basin_bottom = world.name_to_body('basin_bottom')
     shelf_top = world.name_to_body('shelf_top')
 
     for o in movables:
+        ## nothing should be moved there during planning
+        world.add_not_stackable(o, shelf_top)
+        world.add_not_containable(o, cabinet)
+
         if o not in food:  ##  + condiments
             world.add_not_stackable(o, braiser_bottom)
             world.add_not_containable(o, braiserbody)
-            world.add_not_stackable(o, shelf_top)
-        if o not in condiments:
-            world.add_not_containable(o, cabinet)
+
+        if o not in food + [braiserlid]:  ##  + condiments
+            world.add_not_stackable(o, basin_bottom)
+
+        if o not in condiments + [braiserlid]:
+            world.add_not_stackable(o, left_counter)
+
         if o != braiserlid:
             world.add_not_stackable(o, braiserbody)
             world.add_not_stackable(o, left_stove)
@@ -554,10 +674,14 @@ def load_open_problem_kitchen(world, reduce_objects=False, difficulty=1, open_do
     surfaces = {
         'counter': {
             'front_left_stove': [],
-            'front_right_stove': ['BraiserBody'],
-            'hitman_tmp': [],
-            'indigo_tmp': ['BraiserLid'],
+            'front_right_stove': ['BraiserLid'],
+            'hitman_countertop': [],
+            'indigo_tmp': ['BraiserBody'],
         },
+        'Basin': {
+            'faucet_platform': ['Faucet'],
+            'basin_bottom': []
+        }
     }
     custom_supports = {
         'cabbage': 'shelf_bottom',
@@ -567,7 +691,7 @@ def load_open_problem_kitchen(world, reduce_objects=False, difficulty=1, open_do
     movables, movable_to_doors = load_nvidia_kitchen_movables(world, open_doors_for=open_doors_for,
                                                               custom_supports=custom_supports)
     load_cooking_mechanism(world)
-    fix_braiser_orientation(world)
+    load_basin_faucet(world)
     prevent_funny_placements(world)
 
     world.set_learned_pose_list_gen(learned_nvidia_pickled_pose_list_gen)
@@ -584,13 +708,13 @@ def load_open_problem_kitchen(world, reduce_objects=False, difficulty=1, open_do
             if randomize_joint_positions:
                 extent += (random.random() - 0.5) * 0.1
             world.open_joint(door.body, joint=door.joint, extent=extent, verbose=True)
-        # world.name_to_object('front_left_stove').place_obj(world.name_to_object('braiserlid'))
-        world.name_to_object('indigo_tmp').place_obj(world.name_to_object('braiserlid'))
+        world.name_to_object('front_left_stove').place_obj(world.name_to_object('braiserlid'))
+        # world.name_to_object('hitman_countertop').place_obj(world.name_to_object('braiserlid'))
 
     ## seasoning on surfaces, knob is already turned on
     elif difficulty == 20:
         for obj in world.cat_to_objects('sprinkler'):
-            world.name_to_object('hitman_tmp').place_obj(obj)
+            world.name_to_object('hitman_countertop').place_obj(obj)
         knob = world.name_to_object('knob_joint_2')
         world.open_joint(knob.body, joint=knob.joint, extent=1, verbose=True)
 
@@ -686,8 +810,7 @@ def load_nvidia_kitchen_movables(world: World, open_doors_for: list = [], custom
 
     """ add surfaces """
     for body_name, surface_name in [
-        ('fridge', 'shelf_bottom'),
-        ('fridge', 'shelf_top'),
+        ('fridge', 'shelf_bottom'), ('fridge', 'shelf_top'),
     ]:
         body = world.name_to_body(body_name)
         shelf = world.add_object(Surface(
@@ -927,6 +1050,8 @@ def learned_nvidia_pickled_bconf_list_gen(world, inputs, num_samples=30, verbose
     results = []
 
     a, o, p, g = inputs[:4]
+    if isinstance(g, tuple):
+        print(f'learned_nvidia_pickled_bconf_list_gen(g)\t {g}')
     key = (a, str(o), nice(g.value))
 
     if isinstance(p, Position):

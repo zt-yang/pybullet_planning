@@ -423,8 +423,9 @@ def sample_bconf(world, robot, inputs, pose_value, obstacles, heading,
                 continue
             yield ir_outputs + ik_outputs
 
-        reason = 'beyond saved bconfs' if searched else 'because there arent saved bconfs'
-        print(title + reason)
+        if verbose:
+            reason = 'beyond saved bconfs' if searched else 'because there arent saved bconfs'
+            print(title + reason)
 
     ## solve IK for all 13 joints
     if robot.use_torso and has_tracik():

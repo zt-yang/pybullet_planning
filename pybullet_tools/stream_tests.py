@@ -460,7 +460,7 @@ def test_pulling_handle_ik(problem):
         break
 
 
-def test_pose_gen(state, init, args, num_samples=30, visualize=False, debug=False):
+def test_pose_gen(state, init, args, num_samples=30, visualize=True, debug=True):
     if len(args) == 2:
         o, s = args
         just_pick = False

@@ -2,6 +2,7 @@ import random
 
 from pybullet_tools.general_streams import Position
 from pybullet_tools.bullet_utils import is_joint_open
+from pybullet_tools.logging_utils import print_debug
 
 
 def add_joint_status_facts(body, position=None, categories=None, verbose=False, return_description=False):
@@ -151,3 +152,17 @@ def reduce_init_given_skeleton(init, skeleton):
 
     return to_del
 
+
+def remove_unnecessary_movable_given_goal(init, goals, world):
+    """ when the goal involves putting A into B, don't move B """
+    goal = goals[0]
+    if goal[0].lower() in ['on']:
+        surface = goal[-1]
+        if isinstance(surface, tuple):
+            surface = surface[0]
+        if 'movable' in world.body_to_object(surface).categories:
+            found = [f for f in init if (f[0] == 'graspable' and f[1] == surface) \
+                    or (f[0] == 'stackable' and f[1] == surface) ]
+            print_debug(f'[init.remove_unnecessary_movable_given_goal]\tremoving {found} because goal is {goal}')
+            init = [f for f in init if f not in found]
+    return init

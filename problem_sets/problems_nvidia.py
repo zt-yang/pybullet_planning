@@ -348,34 +348,6 @@ def test_opened_space(args):
 #######################################################
 
 
-# def test_skill_knob_faucet(args):
-#     world = create_world(args)
-#     world.set_skip_joints()
-#
-#     floor = load_floor_plan(world, plan_name='basin.svg')
-#     world.remove_object(floor)
-#     robot = create_pr2_robot(world, base_q=(2.5, 6, PI / 2 + PI / 2))
-#
-#     faucet, left_knob = load_basin_faucet(world)
-#     set_camera_target_body(faucet, dx=1.4, dy=1.5, dz=1)
-#     goals = ('test_handle_grasps', left_knob)
-#     goals = [("HandleGrasped", 'left', left_knob)]
-#     goals = [("GraspedHandle", left_knob)]
-#
-#     set_all_static()
-#     state = State(world)
-#     exogenous = []
-#
-#     pddlstream_problem = pddlstream_from_state_goal(state, goals, custom_limits=args.base_limits,
-#                                                     domain_pddl=args.domain_pddl, stream_pddl=args.stream_pddl)
-#
-#     return state, exogenous, goals, pddlstream_problem
-
-#######################################################
-
-#######################################################
-
-
 def test_kitchen_demo(args):
     world = create_world(args)
     world.set_skip_joints()
@@ -548,7 +520,7 @@ def test_kitchen_demo_objects(args):
     set_camera_target_body(name_to_body('fridge'), dx=0.3, dy=0, dz=0.3)
     name_to_object('meatchicken').set_pose(((1.428, 4.347, 0.914), (0, 0, 0, 1)))
     # world.put_on_surface(cabbage, 'indigo_tmp')
-    # world.put_on_surface(lid, 'hitman_tmp')
+    # world.put_on_surface(lid, 'hitman_countertop')
     # goals = [("On", cabbage, name_to_body('braiser_bottom')),
     #          ("On", chicken, name_to_body('braiser_bottom'))]  ## successful
 
@@ -643,7 +615,13 @@ def test_skill_knob_faucet(args, **kwargs):
     def loader_fn(world, **world_builder_args):
         world.set_skip_joints()
 
-        floor = load_floor_plan(world, plan_name='basin.svg')
+        surfaces = {
+            'Basin': {
+                'faucet_platform': ['Faucet'],
+                'basin_bottom': []
+            }
+        }
+        floor = load_kitchen_floor_plan(world, surfaces=surfaces, plan_name='basin.svg')
         world.remove_object(floor)
 
         faucet, left_knob = load_basin_faucet(world)
@@ -652,7 +630,7 @@ def test_skill_knob_faucet(args, **kwargs):
         goals = [("HandleGrasped", 'left', left_knob)]
         goals = [("GraspedHandle", left_knob)]
 
-        return goals, []
+        return {'goals': goals}
 
     return test_nvidia_kitchen_domain(args, loader_fn, **kwargs)
 
@@ -720,21 +698,21 @@ def test_kitchen_drawers(args, **kwargs):
 
             ## --------- ideally, requires closing the drawer in order to put on
             # world.open_joint_by_name('indigo_drawer_top_joint')
-            # world.put_on_surface(cabbage, 'hitman_tmp')
+            # world.put_on_surface(cabbage, 'hitman_countertop')
             # goals = [("On", name_to_body('cabbage'), name_to_body('indigo_tmp'))]
 
             ## --------- test moving objects from drawer to counter
-            # goals = [("On", cabbage, name_to_body('hitman_tmp'))] ## successful
+            # goals = [("On", cabbage, name_to_body('hitman_countertop'))] ## successful
 
             # world.put_in_space(cabbage, 'hitman_drawer_top')
-            # goals = [("On", cabbage, name_to_body('hitman_tmp'))] ## unsuccessful
+            # goals = [("On", cabbage, name_to_body('hitman_countertop'))] ## unsuccessful
 
             # world.open_joint_by_name('hitman_drawer_top_joint')
             # world.put_in_space(cabbage, 'hitman_drawer_top', learned=True)
             # goals = ("test_object_grasps", 'cabbage')
             # goals = ('test_grasp_ik', 'cabbage')
             # goals = [("Holding", "left", cabbage)] ## unsuccessful
-            goals = [("On", cabbage, name_to_body('hitman_tmp'))]  ## unsuccessful
+            goals = [("On", cabbage, name_to_body('hitman_countertop'))]  ## unsuccessful
 
             ## --------- temporary
             # goals = [("HandleGrasped", 'left', name_to_body('hitman_drawer_top_joint'))]
@@ -1267,6 +1245,34 @@ def test_kitchen_sprinkle(args, **kwargs):
         world.remove_bodies_from_planning(goals, exceptions=objects, skeleton=skeleton, subgoals=subgoals)
 
         return {'goals': goals, 'skeleton': skeleton, 'subgoals': subgoals}
+
+    return test_nvidia_kitchen_domain(args, loader_fn, initial_xy=(2, 8), **kwargs)
+
+
+def test_kitchen_faucet(args, **kwargs):
+    def loader_fn(world, **world_builder_args):
+        robot = world.robot
+        objects, movables = load_open_problem_kitchen(world)
+        faucet, left_knob = load_basin_faucet(world)
+        set_camera_target_body(faucet, dx=1.4, dy=1.5, dz=1)
+        goals = ('test_handle_grasps', left_knob)
+        goals = [("HandleGrasped", 'left', left_knob)]
+        goals = [("GraspedHandle", left_knob)]
+
+        world.name_to_object('hitman_countertop').place_obj(world.name_to_object('braiserlid'))
+        braiser = world.name_to_body('braiserbody')
+        basin = world.name_to_body('basin_bottom')
+        goals = [("On", braiser, basin)]
+        goals = [("On", braiser, basin), ("GraspedHandle", left_knob)]
+
+        ## debug the aabb of hitman_tmp
+        left_counter = world.name_to_body('hitman_countertop')
+        set_camera_target_body(left_counter, dx=1.4, dy=-1.5, dz=1)
+        goals = ('test_pose_gen', (braiser, left_counter))
+        goals = [("On", braiser, left_counter)]
+
+        world.remove_bodies_from_planning(goals)
+        return {'goals': goals}
 
     return test_nvidia_kitchen_domain(args, loader_fn, initial_xy=(2, 8), **kwargs)
 

@@ -374,104 +374,12 @@ def load_floor_plan(world, plan_name='studio1.svg', asset_renaming=None, debug=F
 
     world.close_all_doors_drawers()
     for surface in ['faucet_platform', 'shelf_top']:
-        world.remove_body_from_planning(world.name_to_body(surface))
+        obj = world.name_to_object(surface)
+        if obj is not None:
+            obj.categories.remove('surface')
+        # world.remove_body_from_planning(world.name_to_body(surface))
     set_renderer(True)
     return floor
-
-#######################################################
-
-
-def load_pot_lid(world):
-    name_to_body = world.name_to_body
-    name_to_object = world.name_to_object
-
-    ## -- add pot
-    pot = name_to_body('braiserbody')
-    world.put_on_surface(pot, 'front_right_stove', OAO=True)
-
-    ## ------ put in egg without lid
-    world.add_object(Surface(pot, link_from_name(pot, 'braiser_bottom')))
-    bottom = name_to_body('braiser_bottom')
-
-    lid = name_to_body('braiserlid')
-    world.put_on_surface(lid, 'braiserbody')
-    world.add_not_stackable(lid, bottom)
-    world.add_to_cat(lid, 'movable')
-
-    return bottom, lid
-
-
-def load_basin_faucet(world):
-    from .actions import ChangeLinkColorEvent, CreateCylinderEvent
-    cold_blue = RGBA(0.537254902, 0.811764706, 0.941176471, 1.)
-
-    name_to_body = world.name_to_body
-    name_to_object = world.name_to_object
-
-    faucet = name_to_body('faucet')
-    basin = world.add_surface_by_keyword('basin', 'basin_bottom')
-    set_color(basin.body, GREY, basin.link)
-
-    handles = world.add_joints_by_keyword('faucet', 'joint_faucet', 'knob')
-    # set_color(faucet, RED, name_to_object('joint_faucet_0').handle_link)
-
-    world.summarize_all_objects()
-
-    ## left knob gives cold water
-    left_knob = name_to_object('joint_faucet_0')
-    events = []
-    h_min = 0.05
-    h_max = 0.4
-    num_steps = 5
-    x, y, z = get_aabb_center(get_aabb(faucet, link=link_from_name(faucet, 'tube_head')))
-    for step in range(num_steps):
-        h = h_min + step / num_steps * (h_max - h_min)
-        event = CreateCylinderEvent(0.005, h, cold_blue, ((x, y, z - h / 2), (0, 0, 0, 1)))
-        # events.extend([event, RemoveBodyEvent(event=event)])
-        events.append(event)
-        # water = create_cylinder(radius=0.005, height=h, color=cold_blue)
-        # set_pose(water, ((x, y, z-h/2), (0, 0, 0, 1)))
-        # remove_body(water)
-    events.append(ChangeLinkColorEvent(basin.body, cold_blue, basin.link))
-    left_knob.add_events(events)
-
-    # ## right knob gives warm water
-    # right_knob = name_to_body('joint_faucet_1')
-
-    left_knob = name_to_body('joint_faucet_0')
-    return faucet, left_knob
-
-
-def load_kitchen_mechanism(world, sink_name='sink'):
-    name_to_body = world.name_to_body
-    name_to_object = world.name_to_object
-
-    bottom, lid = load_pot_lid(world)
-    faucet, left_knob = load_basin_faucet(world)
-
-    world.add_joints_by_keyword('fridge', 'fridge_door')
-    world.add_joints_by_keyword('oven', 'knob_joint_2', 'knob')
-    world.remove_body_from_planning(name_to_body('hitman_tmp'))
-
-    world.add_to_cat(name_to_body(f'{sink_name}_bottom'), 'CleaningSurface')
-    world.add_to_cat(name_to_body('braiser_bottom'), 'HeatingSurface')
-    name_to_object('joint_faucet_0').add_controlled(name_to_body(f'{sink_name}_bottom'))
-    name_to_object('knob_joint_2').add_controlled(name_to_body('braiser_bottom'))
-
-
-def load_kitchen_mechanism_stove(world):
-    name_to_body = world.name_to_body
-    name_to_object = world.name_to_object
-
-    controllers = {
-        'back_right_stove': 'knob_joint_1',
-        'back_left_stove': 'knob_joint_3',
-        'front_left_stove': 'knob_joint_4',
-    }
-    for k, v in controllers.items():
-        world.add_joints_by_keyword('oven', v, 'knob')
-        world.add_to_cat(name_to_body(k), 'HeatingSurface')
-        name_to_object(v).add_controlled(name_to_body(k))
 
 
 def load_gripper_test_scene(world):
