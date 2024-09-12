@@ -19,6 +19,7 @@ from pybullet_tools.pr2_utils import open_arm, arm_conf, learned_pose_generator
 from pybullet_tools.general_streams import *
 from pybullet_tools.pose_utils import bconf_to_pose, pose_to_bconf, add_pose, sample_new_bconf
 from pybullet_tools.grasp_utils import add_to_rc2oc
+from pybullet_tools.logging_utils import print_debug
 
 
 def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
@@ -211,6 +212,7 @@ def get_ik_pull_gen(problem, max_attempts=80, num_intervals=30, collisions=True,
 
     def gen(a, o, pst1, pst2, g, context=None):
         process_ik_context(context)
+        saver = BodySaver(robot)
 
         """ check if hand pose is in collision """
         pst1.assign()
@@ -230,7 +232,22 @@ def get_ik_pull_gen(problem, max_attempts=80, num_intervals=30, collisions=True,
                                                   visualize=visualize, verbose=verbose)
             if result is not None:
                 bq2, bt = result
-                yield bq1, bq2, aq1, at, bt
+
+                ## the arm traj after ungrasping needs to be collision free
+                collided = False
+                if collisions:
+                    bq2.assign()
+                    pst2.assign()
+                    collision_fn = robot.get_collision_fn(joint_group=f"{a}_arm", obstacles=obstacles, verbose=verbose)
+                    for aconf in at.commands[0].path:
+                        if collision_fn(aconf.values, verbose=verbose):
+                            collided = True
+                            # print_debug(f'{heading}\tcollision_fn(aconf) after ungrasping')
+                            break
+                saver.restore()
+                pst1.assign()
+                if not collided:
+                    yield bq1, bq2, aq1, at, bt
 
     return gen
 
@@ -253,6 +270,7 @@ def get_ik_pull_with_link_gen(problem, max_attempts=80, num_intervals=30, collis
 
     def gen(a, o, pst1, pst2, g, l, pl1, context=None):
         process_ik_context(context)
+        saver = BodySaver(robot)
 
         """ check if hand pose is in collision """
         pst1.assign()
@@ -276,9 +294,22 @@ def get_ik_pull_with_link_gen(problem, max_attempts=80, num_intervals=30, collis
 
                 pst2.assign()
                 pl2 = LinkPose(l, get_link_pose(l[0], l[-1]), joint=pst2.joint, position=pst2.value)
-                pst1.assign()
 
-                yield bq1, bq2, aq1, at, bt, pl2
+                ## the arm traj after ungrasping needs to be collision free
+                collided = False
+                if collisions:
+                    bq2.assign()
+                    pst2.assign()
+                    collision_fn = robot.get_collision_fn(joint_group=f"{a}_arm", obstacles=obstacles, verbose=verbose)
+                    for aconf in at.commands[0].path:
+                        if collision_fn(aconf.values, verbose=verbose):
+                            collided = True
+                            # print_debug(f'{heading}\tcollision_fn(aconf) after ungrasping')
+                            break
+                saver.restore()
+                pst1.assign()
+                if not collided:
+                    yield bq1, bq2, aq1, at, bt, pl2
 
     return gen
 

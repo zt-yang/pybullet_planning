@@ -364,12 +364,15 @@ class RobotAPI(Robot):
     def get_base_joints(self):
         return self.get_group_joints(self.base_group)
 
-    def get_collision_fn(self, obstacles=[], attachments=[], verbose=False):
-        return get_collision_fn(self, self.get_base_joints(), obstacles=obstacles, attachments=attachments,
+    def get_collision_fn(self, joint_group='base-torso', obstacles=[], attachments=[], verbose=False):
+        if joint_group not in self.joint_groups:
+            joint_group = 'base-torso'  ## self.get_base_joints()
+        joints = self.get_group_joints(joint_group)
+        return get_collision_fn(self, joints, obstacles=obstacles, attachments=attachments,
                                 self_collisions=self.self_collisions, custom_limits=self.custom_limits,
                                 verbose=verbose, use_aabb=True)
 
-    def log_collisions(self, body, link=None, source='', robot_body=None, verbose=True):
+    def log_collisions(self, body, link=None, source='', robot_body=None, verbose=False):
         from pybullet_tools.logging_utils import myprint as print
         world = self.world
 
