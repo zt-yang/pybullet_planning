@@ -78,11 +78,11 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
     base_collisions &= c
     pull_collisions &= c
     print('\n------------ STREAM MAP -------------')
-    print('\tMovable collisions:', movable_collisions)
-    print('\tMotion collisions:', motion_collisions)
-    print('\tPull collisions:', pull_collisions)
-    print('\tBase collisions:', base_collisions)
-    print('\tTeleport:', t)
+    print(f'\tMovable collisions: {movable_collisions}')
+    print(f'\tMotion collisions: {motion_collisions}')
+    print(f'\tPull collisions: {pull_collisions}')
+    print(f'\tBase collisions: {base_collisions}')
+    print(f'\tTeleport: {t}')
     print('-------------------------------------')
 
     tc = dict(teleport=t, custom_limits=l)

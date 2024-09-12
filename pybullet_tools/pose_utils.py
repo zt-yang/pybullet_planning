@@ -42,7 +42,7 @@ MIN_DISTANCE = 1e-2
 
 class Attachment(object):
     def __init__(self, parent, parent_link, grasp_pose, child,
-                 child_joint=None, child_link=None, debug_rc2oc=True):
+                 child_joint=None, child_link=None, debug_rc2oc=False):
         """ to debug, go to actions.get_primitive_actions()
             ```elif name.startswith('grasp_pull_ungrasp_handle')```
         """

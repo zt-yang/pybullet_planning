@@ -1250,26 +1250,39 @@ def test_kitchen_sprinkle(args, **kwargs):
 
 
 def test_kitchen_faucet(args, **kwargs):
-    def loader_fn(world, **world_builder_args):
+    def loader_fn(world, case=2, **world_builder_args):
         robot = world.robot
         objects, movables = load_open_problem_kitchen(world)
         faucet, left_knob = load_basin_faucet(world)
         set_camera_target_body(faucet, dx=1.4, dy=1.5, dz=1)
-        goals = ('test_handle_grasps', left_knob)
-        goals = [("HandleGrasped", 'left', left_knob)]
-        goals = [("GraspedHandle", left_knob)]
 
-        world.name_to_object('hitman_countertop').place_obj(world.name_to_object('braiserlid'))
-        braiser = world.name_to_body('braiserbody')
-        basin = world.name_to_body('basin_bottom')
-        goals = [("On", braiser, basin)]
-        goals = [("On", braiser, basin), ("GraspedHandle", left_knob)]
+        if case == 0:
+            goals = ('test_handle_grasps', left_knob)
+            goals = [("HandleGrasped", 'left', left_knob)]
+            goals = [("GraspedHandle", left_knob)]
+
+            world.name_to_object('hitman_countertop').place_obj(world.name_to_object('braiserlid'))
+            braiser = world.name_to_body('braiserbody')
+            basin = world.name_to_body('basin_bottom')
+            goals = [("On", braiser, basin)]
+            goals = [("On", braiser, basin), ("GraspedHandle", left_knob)]
 
         ## debug the aabb of hitman_tmp
-        left_counter = world.name_to_body('hitman_countertop')
-        set_camera_target_body(left_counter, dx=1.4, dy=-1.5, dz=1)
-        goals = ('test_pose_gen', (braiser, left_counter))
-        goals = [("On", braiser, left_counter)]
+        if case == 1:
+            left_counter = world.name_to_body('hitman_countertop')
+            set_camera_target_body(left_counter, dx=1.4, dy=-1.5, dz=1)
+            goals = ('test_pose_gen', (braiser, left_counter))
+            goals = [("On", braiser, left_counter)]
+
+        elif case == 2:
+            fridge_door = world.name_to_body('fridge_door')
+            chicken = world.name_to_body('chicken-leg')
+            world.open_joint(fridge_door)
+            goals = ("test_object_grasps", chicken)
+            goals = [("picked", chicken)]
+
+        else:
+            goals = []
 
         world.remove_bodies_from_planning(goals)
         return {'goals': goals}
