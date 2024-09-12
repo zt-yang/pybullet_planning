@@ -20,8 +20,8 @@ from pybullet_tools.pr2_primitives import Trajectory
 from pybullet_tools.stream_agent import solve_pddlstream, make_init_lower_case, heuristic_modify_stream, \
     solve_one, log_goal_plan_init
 from pybullet_tools.utils import SEPARATOR, wait_if_gui, WorldSaver
-from pybullet_tools.logging_utils import save_commands, TXT_FILE, summarize_state_changes, print_lists
-from pybullet_tools.logging_utils import myprint as print
+from pybullet_tools.logging_utils import save_commands, TXT_FILE, summarize_state_changes, print_lists, \
+    print_debug, myprint as print
 
 from world_builder.actions import get_primitive_actions
 from world_builder.world_utils import get_camera_image
@@ -264,7 +264,7 @@ class PDDLStreamAgent(MotionAgent):
         time_log.update(dict(kwargs))
         self.record_time(time_log)
 
-    def replan(self, observation, **kwargs):
+    def replan(self, observation, debug_just_fail=False, **kwargs):
         """ make new plans given a pddlstream_problem """
 
         self.plan_step = self.num_steps
@@ -277,11 +277,20 @@ class PDDLStreamAgent(MotionAgent):
             self._record_skipped_time_log(pddlstream_problem.goal[1], status=UNGROUNDED)
             return UNGROUNDED
 
-        self.plan, env, knowledge, time_log, preimage = self.solve_pddlstream(
-            pddlstream_problem, observation.state, domain_pddl=self.domain_pddl,
-            domain_modifier=self.domain_modifier, **self.pddlstream_kwargs, **kwargs)  ## observation.objects
+        if debug_just_fail:
+            print_debug('[pddlstream_agent.replan]\tdebug_just_fail')
+            self.plan = None
+            env = None
+            preimage = []
+            time_log = {k: 0 for k in ['planning', 'preimage']}
+            time_log.update(log_goal_plan_init(pddlstream_problem.goal[1:], self.plan, preimage))
+        else:
+            self.plan, env, knowledge, time_log, preimage = self.solve_pddlstream(
+                pddlstream_problem, observation.state, domain_pddl=self.domain_pddl,
+                domain_modifier=self.domain_modifier, **self.pddlstream_kwargs, **kwargs)  ## observation.objects
+            self.evaluations, self.goal_exp, self.domain, _ = knowledge
+
         self.pddlstream_kwargs.update({'skeleton': None, 'subgoals': None})
-        self.evaluations, self.goal_exp, self.domain, _ = knowledge
 
         time_log['objects_by_category'] = summarize_planning_objects(pddlstream_problem.init)
         self.record_time(time_log)

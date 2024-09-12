@@ -649,8 +649,6 @@ class ArticulatedObjectPart(Object):
         ## the only handle, for those carefully engineered names
         links = [l for l in get_links(body) if 'handle' in get_link_name(body, l)]
 
-        # if debug and body == 4:
-        #     print('set debug point')
         if len(links) == 1:
             return links[0]
 

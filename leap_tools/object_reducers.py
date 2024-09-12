@@ -1,7 +1,7 @@
 import numpy as np
 
 from pybullet_tools.utils import get_aabb, get_aabb_center, get_aabb_extent, AABB, aabb_overlap
-from pybullet_tools.logging_utils import myprint as print
+from pybullet_tools.logging_utils import myprint as print, print_debug
 
 from leap_tools.heuristic_utils import *
 
@@ -152,14 +152,25 @@ def reduce_by_object_heuristic_joints(facts, objects=[], goals=[], world=None):
     return reduce_facts_given_objects(facts, objects=objects, goals=goals)
 
 
-def reduce_by_object_all_joints(facts, objects=[], goals=[], world=None):
-    """ add all joints in the problem """
+def reduce_by_object_all_joints(facts, objects=[], goals=[], world=None, verbose=False):
+    """ add all joints in the problem that may affect a space """
+    title = '[object_reducers.reduce_by_object_all_joints]\t'
+    objects_with_regions = set([j[1][0] for j in facts if j[0] in ['surface', 'space'] and isinstance(j[1], tuple)])
+    joints_to_add = []
+    joints_to_skip = []
     for f in facts:
         for elem in f[1:]:
-            if isinstance(elem, tuple) and len(elem) == 2 and elem not in objects:
-                objects.append(elem)
+            if isinstance(elem, tuple) and len(elem) == 2 and elem not in objects + joints_to_add + joints_to_skip:
+                if elem[0] not in objects_with_regions:
+                    joints_to_skip.append(elem)
+                    if verbose:
+                        print_debug(f'{title} skipping {elem} because it is isolated')
+                    continue
+                joints_to_add.append(elem)
+    if verbose:
+        print_debug(f'{title} adding {joints_to_add}')
 
-    return reduce_facts_given_objects(facts, objects=objects, goals=goals)
+    return reduce_facts_given_objects(facts, objects=objects+joints_to_add, goals=goals)
 
 
 def reduce_by_objects_heuristic_movables(facts, objects=[], goals=[], world=None, aabb_expansion=0.5):

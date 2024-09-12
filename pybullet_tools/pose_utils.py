@@ -42,7 +42,10 @@ MIN_DISTANCE = 1e-2
 
 class Attachment(object):
     def __init__(self, parent, parent_link, grasp_pose, child,
-                 child_joint=None, child_link=None, debug_rc2oc=False):
+                 child_joint=None, child_link=None, debug_rc2oc=True):
+        """ to debug, go to actions.get_primitive_actions()
+            ```elif name.startswith('grasp_pull_ungrasp_handle')```
+        """
         self.parent = parent  # TODO: support no parent
         self.parent_link = parent_link
         self.grasp_pose = grasp_pose
@@ -67,9 +70,9 @@ class Attachment(object):
             set_pose(self.child, child_pose)
         else:
             RC2OC = self.parent.ROBOT_CONF_TO_OBJECT_CONF
-            # if self.debug:
-            #     print('\t\tRC2OC', {b: {j: {c: {g: len(gg) for g, gg in cc.items()} for c, cc in jj.items()} for j, jj in bb.items()} for b, bb in RC2OC.items()})
-            # robot_groups = [g for g in ['base-torso', 'base', 'hand', 'left_arm', 'right_arm'] if g in self.parent.joint_groups]
+            if self.debug:
+                print('\t\tRC2OC', {b: {j: {c: {g: len(gg) for g, gg in cc.items()} for c, cc in jj.items()} for j, jj in bb.items()} for b, bb in RC2OC.items()})
+            robot_groups = [g for g in ['base-torso', 'base', 'hand', 'left_arm', 'right_arm'] if g in self.parent.joint_groups]
             if self.child in RC2OC:  ## pull drawer handle
                 if self.child_joint in RC2OC[self.child]:
                     confs = self.parent.get_rc2oc_confs()
