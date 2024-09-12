@@ -369,7 +369,7 @@ class RobotAPI(Robot):
                                 self_collisions=self.self_collisions, custom_limits=self.custom_limits,
                                 verbose=verbose, use_aabb=True)
 
-    def log_collisions(self, body, link=None, source='', robot_body=None, verbose=False):
+    def log_collisions(self, body, link=None, source='', robot_body=None, verbose=True):
         from pybullet_tools.logging_utils import myprint as print
         world = self.world
 

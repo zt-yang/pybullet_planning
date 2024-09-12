@@ -704,7 +704,7 @@ def load_open_problem_kitchen(world, reduce_objects=False, difficulty=1, open_do
 
     if difficulty == 0:
         for door in world.cat_to_objects('door'):
-            extent = 0.5 if 'fridge' in door.name else 0.8
+            extent = 0.6 if 'fridge' in door.name else 0.8
             if randomize_joint_positions:
                 extent += (random.random() - 0.5) * 0.1
             world.open_joint(door.body, joint=door.joint, extent=extent, verbose=True)
