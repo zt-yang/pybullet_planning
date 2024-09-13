@@ -581,13 +581,13 @@ def load_dishwasher(world):
 
 
 def get_objects_for_open_kitchen(world, difficulty):
-    object_names = ['chicken-leg', 'fridge', 'fridge_door', 'shelf_top', 'fork',
+    object_names = ['chicken-leg', 'fridge', 'fridge_door', 'shelf_top',
                     'braiserbody', 'braiserlid', 'braiser_bottom',
                     'indigo_tmp', 'hitman_countertop',
                     'sektion', 'chewie_door_left_joint', 'chewie_door_right_joint',
                     'salt-shaker', 'pepper-shaker',
                     'front_left_stove', 'front_right_stove', 'knob_joint_2', 'knob_joint_3',
-                    'joint_faucet_0', 'basin_bottom']  ## 'indigo_drawer_top', 'indigo_drawer_top_joint',
+                    'joint_faucet_0', 'basin_bottom']  ## 'fork', 'indigo_drawer_top', 'indigo_drawer_top_joint',
     if difficulty in [20]:
         for k in ['sektion', 'chewie_door_left_joint', 'chewie_door_right_joint',
                   'indigo_drawer_top', 'indigo_drawer_top_joint',
@@ -631,8 +631,8 @@ def prevent_funny_placements(world, verbose=True):
 
     for o in movables:
         ## nothing should be moved there during planning
-        world.add_not_stackable(o, shelf_top)
-        world.add_not_containable(o, cabinet)
+        # world.add_not_stackable(o, shelf_top)
+        # world.add_not_containable(o, cabinet)
 
         if o not in food:  ##  + condiments
             world.add_not_stackable(o, braiser_bottom)
