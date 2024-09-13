@@ -14,7 +14,7 @@ from pybullet_tools.utils import invert, ConfSaver, get_name, set_pose, get_link
     get_joint_limits, unit_pose, point_from_pose, draw_point, PI, quat_from_pose, angle_between, \
     tform_point, interpolate_poses, draw_pose, RED, remove_handles, stable_z, wait_unlocked, \
     get_aabb_center, set_renderer, timeout, get_aabb_extent, wait_if_gui, wait_for_duration, \
-    get_joint_type, PoseSaver, draw_aabb, LockRenderer, get_unit_vector, unit_quat
+    get_joint_type, PoseSaver, draw_aabb, LockRenderer, get_unit_vector, unit_quat, get_center_extent
 from pybullet_tools.pr2_primitives import Pose, Grasp, APPROACH_DISTANCE, GRASP_LENGTH
 
 from pybullet_tools.bullet_utils import nice, visualize_point, collided, is_box_entity, \
@@ -326,11 +326,22 @@ def get_stable_gen(problem, collisions=True, num_samples=20, verbose=False, visu
             if isinstance(surface, tuple):  ## (body, link)
                 # body_pose = sample_obj_on_body_link_surface(body, surface[0], surface[-1])
                 body_pose = sample_placement(body, surface[0], bottom_link=surface[-1], **kwargs)
+
+                ## return false when the surface aabb is too small
+                if body_pose is None:
+                    bottom_aabb = get_aabb(surface[0], link=surface[-1])
+                    _, extent = get_center_extent(body)
+                    x, y, _ = get_aabb_center(bottom_aabb)
+                    z = bottom_aabb.upper[2] + extent[2] / 2 + 0.01
+                    body_pose = ((x, y, z), quat_from_euler(Euler(yaw=PI/2)))
+
             elif has_much_larger_aabb(surface, body):
                 body_pose = smarter_sample_placement(body, surface, world, **kwargs)
+
             else:
                 body_pose = sample_placement(body, surface, percent=0, **kwargs)  ## ok if one dimension is smaller
                 body_pose = (body_pose[0], original_pose[1])
+
             if body_pose is None:
                 break
 
@@ -1021,22 +1032,6 @@ def get_cfree_obj_approach_pose_test(robot, collisions=True):
     return test
 
 
-def get_cfree_pose_pose_test(robot, collisions=True, visualize=False, **kwargs):
-    def test(b1, p1, b2, p2, fluents=[]):
-        if not collisions or (b1 == b2) or b2 in ['@world']:
-            return True
-        if fluents:
-            process_motion_fluents(fluents, robot)
-        p1.assign()
-        p2.assign()
-        bb2 = b2[0] if isinstance(b2, tuple) else b2
-        result = not pairwise_collision(b1, bb2, **kwargs)
-        if not result and visualize:
-            wait_unlocked()
-        return result #, max_distance=0.001)
-    return test
-
-
 def get_cfree_approach_pose_test(problem, collisions=True):
     """ PR2 version """
     # TODO: apply this before inverse kinematics as well
@@ -1057,9 +1052,29 @@ def get_cfree_approach_pose_test(problem, collisions=True):
     return test
 
 
-def get_cfree_rel_pose_pose_test(robot, collisions=True, visualize=False, **kwargs):
+def get_cfree_pose_pose_test(problem, collisions=True, visualize=False, **kwargs):
+    robot = problem.robot
+    ignored_pairs = problem.ignored_pairs
+    def test(b1, p1, b2, p2, fluents=[]):
+        if not collisions or (b1 == b2) or b2 in ['@world'] or (b1, b2) in ignored_pairs:
+            return True
+        if fluents:
+            process_motion_fluents(fluents, robot)
+        p1.assign()
+        p2.assign()
+        bb2 = b2[0] if isinstance(b2, tuple) else b2
+        result = not pairwise_collision(b1, bb2, **kwargs)
+        if not result and visualize:
+            wait_unlocked()
+        return result #, max_distance=0.001)
+    return test
+
+
+def get_cfree_rel_pose_pose_test(problem, collisions=True, visualize=False, **kwargs):
+    robot = problem.robot
+    ignored_pairs = problem.ignored_pairs
     def test(b1, rp1, b2, p2, b3, p3, fluents=[]):
-        if not collisions or (b1 == b3) or b3 in ['@world']:
+        if not collisions or (b1 == b3) or b3 in ['@world'] or (b1, b2) in ignored_pairs:
             return True
         if fluents:
             process_motion_fluents(fluents, robot)

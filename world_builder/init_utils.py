@@ -93,7 +93,7 @@ def get_potential_placements(goals, init):
 
 def get_objects_at_grasp(init, goals, world):
     """ too many object and surface makes planning slow """
-    title = '[init_utils.get_objects_at_grasp]'
+    title = '\t[init_utils.get_objects_at_grasp]'
     objs_at_grasp = [(f[1], f[2]) for f in init if f[0].lower() == 'atgrasp']
     if len(objs_at_grasp) > 0:
         ## all arms occupied
@@ -130,7 +130,7 @@ def get_objects_at_grasp(init, goals, world):
 
             objs_at_grasp = [ao[1] for ao in objs_at_grasp]
             from leap_tools.heuristic_utils import add_surfaces_given_obstacles
-            add_surfaces = add_surfaces_given_obstacles(world, objs_at_grasp, title=f'fix_init({objs_at_grasp})\t')
+            add_surfaces = add_surfaces_given_obstacles(world, objs_at_grasp, title=f'fix_init(objs_at_grasp={objs_at_grasp})\t')
             objs_at_grasp += add_surfaces
         else:
             objs_at_grasp = []

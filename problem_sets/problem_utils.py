@@ -5,7 +5,7 @@ from os.path import join, abspath, isfile
 from pybullet_tools.stream_agent import pddlstream_from_state_goal
 from pybullet_tools.pr2_streams import DEFAULT_RESOLUTION
 from pybullet_tools.utils import set_all_static
-from pybullet_tools.logging_utils import print_dict
+from pybullet_tools.logging_utils import print_dict, print_green
 
 from world_builder.world import World, State
 from world_builder.world import World
@@ -103,6 +103,9 @@ def problem_template(args, robot_builder_fn, robot_builder_args, world_loader_fn
     set_all_static()
     state = State(world, objects=world.objects, observation_model=observation_model)
     exogenous = []
+
+    print_green(f'[llamp_agent._update_obstacles_in_stream_map]\t using obstacles {state.fixed}')
+    world.print_ignored_pairs()
 
     ## may change the goal if they are debugging goals
     pddlstream_problem = pddlstream_from_state_goal_args(state, goals, args, problem_dict=problem_dict, **kwargs)

@@ -18,6 +18,9 @@ from pybullet_tools.utils import str_from_object, get_closest_points, INF, creat
 from pybullet_tools.pr2_utils import PR2_TOOL_FRAMES, get_gripper_joints
 from pybullet_tools.pr2_primitives import Trajectory, Command, Conf, Trajectory, Commands
 from pybullet_tools.flying_gripper_utils import set_se3_conf, get_pull_handle_motion_gen
+from pybullet_tools.logging_utils import print_debug
+
+from world_builder.world import World
 
 from robot_builder.robot_utils import close_until_collision
 
@@ -280,7 +283,10 @@ class DetachObjectAction(RevisedAction):
         verbose = self.verbose if hasattr(self, 'verbose') else True
         if verbose:
             print(f'DetachObjectAction({body}, supporter={self.supporter})')
-        updated_attachments = remove_attachment(state, obj=body, verbose=verbose)
+        updated_attachments, removed_attachment = remove_attachment(state, obj=body, verbose=verbose)
+        new_attachments = {}
+
+        ## knowing where the object is left on/in
         if hasattr(self, 'supporter') and self.supporter is not None:
             # import ipdb; ipdb.set_trace()
             obj = body
@@ -288,15 +294,49 @@ class DetachObjectAction(RevisedAction):
             parent_link = -1
             if isinstance(self.supporter, tuple):
                 parent_link = self.supporter[-1]
-            if hasattr(state.world, 'BODY_TO_OBJECT'):
-                parent = state.world.BODY_TO_OBJECT[parent]
-                obj = state.world.BODY_TO_OBJECT[body]
+            if isinstance(state.world, World):  ## hasattr(state.world, 'BODY_TO_OBJECT'):
+                if parent not in state.world.BODY_TO_OBJECT:
+                    parent = None
+                else:
+                    parent = state.world.BODY_TO_OBJECT[parent]
+                    obj = state.world.BODY_TO_OBJECT[body]
             elif isinstance(parent, tuple):
                 parent, _, parent_link = parent
-            new_attachments = add_attachment_in_world(state=state, obj=obj, parent=parent,
-                                                      parent_link=parent_link, verbose=self.verbose, OBJ=True)
-            updated_attachments.update(new_attachments)
+
+            if parent_link is not None:
+                new_attachments = add_attachment_in_world(state=state, obj=obj, parent=parent, OBJ=True,
+                                                          parent_link=parent_link, verbose=self.verbose)
+                updated_attachments.update(new_attachments)
+
+        if isinstance(state.world, World):
+            update_world_with_attachment_changes(state.world, updated_attachments, new_attachments, removed_attachment)
         return state.new_state(attachments=updated_attachments)
+
+
+def update_world_with_attachment_changes(world, updated_attachments, new_attachments, removed_attachment):
+    """ change world.attachments and world.ignore_pairs
+        if attached to a movable objects, update in ignore_pairs
+    """
+    title = '[actions.update_world_with_attachment_changes]\t'
+    world.attachments = updated_attachments
+
+    def parent_is_movable(a):
+        obj = a.parent
+        if obj.link is not None:
+            obj = world.body_to_object(obj.body)
+        return 'movable' in obj.categories
+
+    def get_name(pair):
+        return (world.get_debug_name(pair[0]), world.get_debug_name(pair[1]))
+
+    pairs_to_add = [(a.child.body, a.parent.body) for a in new_attachments.values() if parent_is_movable(a)]
+    pairs_to_del = [(a.child.body, a.parent.body) for a in [removed_attachment] if parent_is_movable(a)]
+    for pair in pairs_to_add:
+        world.add_ignored_pair(pair)
+        print_debug(f'{title} adding {get_name(pair)} to world.ignored_pairs', 'pink')
+    for pair in pairs_to_del:
+        world.del_ignored_pair(pair)
+        print_debug(f'{title} removing {get_name(pair)} from world.ignored_pairs', 'pink')
 
 
 class JustDoAction(Action):

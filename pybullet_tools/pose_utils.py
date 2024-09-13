@@ -203,11 +203,12 @@ def create_attachment(parent, parent_link, child, child_link=None, child_joint=N
 def remove_attachment(state, obj=None, verbose=False):
     if isinstance(obj, tuple): obj = obj[0]
     new_attachments = dict(state.attachments)
+    removed_attachment = None
     if obj in new_attachments:
         if verbose:
             print(f'pose_utils.remove_attachment | {new_attachments[obj]}')
-        new_attachments.pop(obj)
-    return new_attachments
+        removed_attachment = new_attachments.pop(obj)
+    return new_attachments, removed_attachment
 
 
 #######################################################

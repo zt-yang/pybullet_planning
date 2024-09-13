@@ -87,6 +87,8 @@ saved_relposes = {
     ('fork', 'upper_shelf'): ((1.051, 6.288, 0.42), (0.0, 0.0, 0.94, 0.338)),
     ('cabbage', 'upper_shelf'): ((-0.062, 0.182, -0.256), (-0.64, 0.301, 0.301, 0.64)),
     ('cabbage', 'indigo_drawer_top'): ((0.115, -0.172, 0.004), (0.0, 0.0, 0.173, 0.985)),
+    ('braiserbody', 'front_left_stove'): ((0.0, 0.0, 0.0921), (0.0, 0.0, 0.7071, 0.7071)),
+    ('braiserbody', 'front_right_stove'): ((0.0, 0.0, 0.0921), (0.0, 0.0, 0.7071, 0.7071)),
 }
 
 saved_poses = {
@@ -524,7 +526,9 @@ def load_braiser_bottom(world):
     world.add_to_cat('braiserbody', 'region')
     world.add_to_cat('braiserbody', 'space')
 
+
 braiser_quat = quat_from_euler(Euler(yaw=PI/2))
+
 
 def fix_braiser_orientation(world):
     braiser = world.name_to_object('braiserbody')
@@ -653,6 +657,8 @@ def prevent_funny_placements(world, verbose=True):
 
     if verbose:
         world.summarize_forbidden_placements()
+
+    world.add_ignored_pair((braiserbody, braiserlid))
 
 
 def load_open_problem_kitchen(world, reduce_objects=False, difficulty=1, open_doors_for=[],

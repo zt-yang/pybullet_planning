@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import copy
 import os
 import sys
 import time
@@ -61,7 +62,8 @@ from pddlstream.language.external import defer_unique
 from pddlstream.language.conversion import params_from_objects
 from collections import namedtuple
 
-pull_kwargs = dict(collisions=True, ACONF=True, learned=True, verbose=False, visualize=False)
+pull_kwargs = dict(ACONF=True, learned=True, verbose=False, visualize=False)
+ir_kwargs = dict(ir_only=True, max_attempts=60, learned=True)
 
 
 def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
@@ -89,9 +91,13 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
     ptc = dict(teleport=t, custom_limits=l, collisions=pull_collisions)
     pp = dict(collisions=c, num_samples=30, verbose=False)
     gg = dict(collisions=c, max_samples=None)
-    ir = dict(collisions=True, ir_only=True, max_attempts=ir_max_attempts)
     ik = dict(collisions=motion_collisions, ACONF=False, teleport=t, resolution=resolution)
-    pull = pull_kwargs
+
+    ir = copy.deepcopy(ir_kwargs)
+    ir.update(dict(collisions=True, max_attempts=ir_max_attempts, learned=use_learned_ir))
+
+    pull = copy.deepcopy(pull_kwargs)
+    pull.update(dict(collisions=True))
 
     stream_map = {
 
@@ -129,7 +135,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         'compute-pose-kin': from_fn(get_compute_pose_kin()),
         'compute-pose-rel-kin': from_fn(get_compute_pose_rel_kin()),
 
-        'inverse-reachability': from_gen_fn(get_ik_gen_old(p, learned=use_learned_ir, verbose=True, visualize=False, **ir, **tc)),
+        'inverse-reachability': from_gen_fn(get_ik_gen_old(p, verbose=True, visualize=False, **ir_kwargs, **tc)),
         'inverse-kinematics': from_fn(get_ik_fn_old(p, verbose=True, visualize=False, **ik)),
 
         'inverse-reachability-rel': from_gen_fn(get_ik_rel_gen_old(p, learned=use_learned_ir, verbose=False, visualize=False, **tc)),
@@ -171,9 +177,9 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         ##                    tests
         ## ---------------------------------------------------
 
-        'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(p.robot, collisions=c, visualize=False)),
+        'test-cfree-pose-pose': from_test(get_cfree_pose_pose_test(p, collisions=c, visualize=False)),
         'test-cfree-approach-pose': from_test(get_cfree_approach_pose_test(p, collisions=c)),
-        'test-cfree-rel-pose-pose': from_test(get_cfree_rel_pose_pose_test(p.robot, collisions=c)),
+        'test-cfree-rel-pose-pose': from_test(get_cfree_rel_pose_pose_test(p, collisions=c)),
         'test-cfree-approach-rel-pose': from_test(get_cfree_approach_rel_pose_test(p, collisions=c)),
 
         'test-cfree-pose-between': from_test(get_cfree_pose_between_test(p.robot, collisions=c)),
@@ -450,32 +456,52 @@ class Problem(object):
 
 def fix_init_given_goals(goals, init):
     add_init = []
-    if goals[0][0] == 'AtBConf':
-        add_init += [('BConf', goals[0][1])]
-    elif goals[0][0] == 'AtSEConf':
-        add_init += [('SEConf', goals[0][1])]
-    elif goals[0][0] == 'AtPose':
-        add_init += [('Pose', goals[0][1], goals[0][2])]
-    elif goals[0][0] == 'AtPosition':
-        body_joint = goals[0][1]
-        position = goals[0][2]
-        old_position = [f[-1] for f in init if f[0].lower() == 'atposition' and f[1] == body_joint][0]
-        # pred = 'IsOpenedPosition'
-        # if position.value == min([abs(n) for n in get_joint_limits(body_joint[0], body_joint[1])]):
-        #     pred = 'IsClosedPosition'
-        add_init += [('Position', body_joint, position), ('IsSampledPosition', body_joint, old_position, position)]
-    elif goals[0][0] == 'AtGrasp':
-        add_init += [('Grasp', goals[0][2], goals[0][3])]
-    elif goals[0][0] == 'AtHandleGrasp':
-        add_init += [('HandleGrasp', goals[0][2], goals[0][3])]
-    elif goals[0][0] == 'AtMarkerGrasp':
-        add_init += [('MarkerGrasp', goals[0][2], goals[0][3])]
+    for goal in goals:
+        pred = goal[0].lower()
+        if pred == 'AtBConf'.lower():
+            add_init += [('BConf', goal[1])]
+
+        elif pred == 'AtSEConf'.lower():
+            add_init += [('SEConf', goal[1])]
+
+        elif pred == 'AtPose'.lower():
+            add_init += [('Pose', goal[1], goal[2])]
+
+        elif pred == 'AtPosition'.lower():
+            body_joint = goal[1]
+            position = goal[2]
+            old_position = [f[-1] for f in init if f[0].lower() == 'atposition' and f[1] == body_joint][0]
+            # pred = 'IsOpenedPosition'
+            # if position.value == min([abs(n) for n in get_joint_limits(body_joint[0], body_joint[1])]):
+            #     pred = 'IsClosedPosition'
+            add_init += [('Position', body_joint, position), ('IsSampledPosition', body_joint, old_position, position)]
+
+        elif pred == 'AtGrasp'.lower():
+            add_init += [('Grasp', goal[2], goal[3])]
+
+        elif pred == 'AtHandleGrasp'.lower():
+            add_init += [('HandleGrasp', goal[2], goal[3])]
+
+        elif pred == 'AtMarkerGrasp'.lower():
+            add_init += [('MarkerGrasp', goal[2], goal[3])]
+
+        elif pred == 'on':
+            add_init += [('Stackable', goal[1], goal[2]), ('Graspable', goal[1]), ('Surface', goal[2])]
+            find_movable_link = [f for f in init if f[0].lower() == 'movablelink' and f[1] == goal[2]]
+            if len(find_movable_link) == 0:
+                add_init += [('StaticLink', goal[2])]
+
+        elif pred == 'in':
+            add_init += [('Containble', goal[1], goal[2]), ('Graspable', goal[1]), ('Space', goal[2])]
+
+    to_add = [f for f in add_init if f not in init and tuple([f[0].lower()] + list(f[1:])) not in init]
+    if len(to_add) > 0:
+        print(f'[stream_agent.fix_init_given_goals] adding {to_add}')
+        init += to_add
 
     if goals[-1] == ("not", ("AtBConf", "")):
         atbconf = [i for i in init if i[0].lower() == "AtBConf".lower()][0]
         goals[-1] = ("not", atbconf)
-
-    init += [f for f in add_init if f not in init]
     return init
 
 

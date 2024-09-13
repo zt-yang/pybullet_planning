@@ -474,11 +474,14 @@ def test_pose_gen(state, init, args, num_samples=30, visualize=True, debug=True)
     if isinstance(o, Object):
         o = o.body
     results = get_stable_list_gen(state, num_samples=num_samples, visualize=visualize)(o, s)
+
+    p = None
     for (p, ) in results:
         if not debug:
             break
         p.assign()
         time.sleep(0.5)
+
     if visualize and not debug:
         p.assign()
         wait_unlocked()

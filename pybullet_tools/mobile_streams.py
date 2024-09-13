@@ -19,7 +19,7 @@ from pybullet_tools.pr2_utils import open_arm, arm_conf, learned_pose_generator
 from pybullet_tools.general_streams import *
 from pybullet_tools.pose_utils import bconf_to_pose, pose_to_bconf, add_pose, sample_new_bconf
 from pybullet_tools.grasp_utils import add_to_rc2oc
-from pybullet_tools.logging_utils import print_debug
+from pybullet_tools.logging_utils import print_debug, print_blue
 
 
 def get_ir_sampler(problem, custom_limits={}, max_attempts=40, collisions=True,
@@ -608,8 +608,16 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
             world.BODY_TO_OBJECT[body].grasp_parent is not None:
         addons.append(world.BODY_TO_OBJECT[body].grasp_parent)
 
+    ## don't consider objects that will be moving with obj
     approach_obstacles = [oo for oo in obstacles_here if oo != body]
-    ignored_pairs_here.extend([[(body, obst), (obst, body)] for obst in obstacles_here if is_placement(body, obst)])
+    for obst in obstacles_here:
+        if obst == obj: continue
+        if is_placement(body, obst) or is_placement(obst, body) or is_contained(obst, body):
+            if (body, obst) not in ignored_pairs_here:
+                pairs = [(body, obst), (obst, body)]
+                print_blue(f'{title}\t adding ignored pairs {pairs}')
+                ignored_pairs_here.extend(pairs)
+
     # approach_obstacles = problem.world.refine_marker_obstacles(obj, approach_obstacles)  ## for steerables
 
     gripper_pose = robot.get_grasp_pose(pose_value, grasp.value, arm, body=obj)
@@ -727,10 +735,13 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
 
         attachments_arg = list(attachments.values()) if isinstance(obj, int) else []
         initially_attached_to_o = [m.child.body for m in world.attachments.values() if m.parent.body == obj]
-        obstacles_here = [m for m in obstacles_here if m not in initially_attached_to_o]
+        obstacles_here = [m for m in obstacles_here if m not in initially_attached_to_o + [obj]]
+        obstacles_here = [m for m in obstacles_here if (m, obj) not in ignored_pairs_here]
         verbose = f'[{title}.plan_joint_motion]' if debug_mp_obstacles else False
         motion_planning_kwargs.update(attachments=attachments_arg, resolutions=resolutions,
                                       restarts=3, iterations=25, smooth=50, verbose=verbose)
+        # print_debug(f'{title}\t obstacles_here: {obstacles_here}')
+
         set_joint_positions(robot, arm_joints, default_conf)
         approach_path = plan_joint_motion(robot, arm_joints, dest_conf, obstacles=obstacles_here, **motion_planning_kwargs)  # smooth=25
         if approach_path is None:

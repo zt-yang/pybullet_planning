@@ -1249,8 +1249,8 @@ def test_kitchen_sprinkle(args, **kwargs):
     return test_nvidia_kitchen_domain(args, loader_fn, initial_xy=(2, 8), **kwargs)
 
 
-def test_kitchen_faucet(args, **kwargs):
-    def loader_fn(world, case=2, **world_builder_args):
+def test_kitchen_faucet_braiser_and_stove(args, **kwargs):
+    def loader_fn(world, case=4, **world_builder_args):
         robot = world.robot
         objects, movables = load_open_problem_kitchen(world)
         faucet, left_knob = load_basin_faucet(world)
@@ -1274,12 +1274,43 @@ def test_kitchen_faucet(args, **kwargs):
             goals = ('test_pose_gen', (braiser, left_counter))
             goals = [("On", braiser, left_counter)]
 
+        ## debug picking from fridge
         elif case == 2:
             fridge_door = world.name_to_body('fridge_door')
             chicken = world.name_to_body('chicken-leg')
             world.open_joint(fridge_door)
             goals = ("test_object_grasps", chicken)
             goals = [("picked", chicken)]
+
+        ## debug picking lid
+        elif case == 3:
+            world.name_to_object('front_left_stove').place_obj(world.name_to_object('braiserlid'))
+            lid = movable = world.name_to_body('braiserlid')
+            body = movable = world.name_to_body('braiserbody')
+            set_camera_target_body(movable, dx=1.4, dy=1.5, dz=1)
+            goals = ("test_object_grasps", movable)
+            goals = [("picked", lid)]
+            # goals = ('test_pose_gen', (lid, body))
+            goals = [("on", lid, body)]
+
+        ## debug picking lid
+        elif case == 4:
+            ## compute some poses
+            braiser = world.name_to_object('braiserbody')
+            _, quat = braiser.get_pose()
+            world.name_to_object('front_left_stove').place_obj(braiser)
+            body_pose = braiser.get_pose()
+            body_pose = (body_pose[0], quat)
+            surface_pose = world.name_to_object('front_left_stove').get_pose()
+            rel_pose = multiply(invert(surface_pose), body_pose)
+
+            braiser.set_pose(multiply(surface_pose, rel_pose))
+            braiser.set_pose(multiply(world.name_to_object('front_right_stove').get_pose(), rel_pose))
+
+            stove = world.name_to_body('front_left_stove')
+            body = world.name_to_body('braiserbody')
+            goals = ('test_pose_gen', (body, stove))
+            # goals = [("on", body, stove)]
 
         else:
             goals = []

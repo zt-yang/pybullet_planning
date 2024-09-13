@@ -7,25 +7,75 @@ from datetime import datetime
 import csv
 import pprint
 
+from jedi.plugins.django import mapping
 
 TXT_FILE = abspath('txt_file.txt')
 
 
-class bcolors:
+class bcolors(object):
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     OKCYAN = '\033[96m'
     OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
     FAIL = '\033[91m'
-    ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+    WARNING = '\033[93m'
+    ENDC = '\033[0m'
+
+    mapping = {
+        'red': FAIL,
+        'pink': HEADER,
+        'blue': OKBLUE,
+        'cyan': OKCYAN,
+        'green': OKGREEN,
+        'yellow': WARNING,
+
+        'fail': FAIL,
+        'header': HEADER,  ## pink
+        'bold': BOLD,  ## not very visible
+        'warning': WARNING,  ## yellow
+        'underline': UNDERLINE,
+    }
+
+    def __init__(self):
+        for k in list(self.mapping.keys()):
+            if k not in ['bold']:
+                self.mapping[k[0]] = self.mapping[k]
+
+    def get_color(self, style=None):
+        code = bcolors.WARNING
+        if style is not None and style in self.mapping:
+            code = self.mapping[style]
+        return code
+
+    def print(self, text, style=None):
+        code = self.get_color(style)
+        print(code + text + self.ENDC)
 
 
-def print_debug(text):
-    print(bcolors.WARNING + text + bcolors.ENDC)
+def print_debug(text, style=None):
     print_in_file(text)
+    bcolors().print(text, style)
+
+
+def print_pink(text):
+    print_debug(text, 'pink')
+
+
+def print_green(text):
+    print_debug(text, 'green')
+
+
+def print_red(text):
+    print_debug(text, 'red')
+
+
+def print_blue(text):
+    print_debug(text, 'blue')
+
+
+## -----------------------------------------------------------
 
 
 def parallel_print(text='', *kwargs):
@@ -348,3 +398,9 @@ def get_success_rate_string(num_success, num_problems, roundto=2):
     if num_problems == 0:
         return f"0 (0 / 0)"
     return f"{round(num_success / num_problems, roundto)} ({num_success} / {num_problems})"
+
+
+if __name__ == '__main__':
+    text = 'test'
+    for style in bcolors.mapping:
+        bcolors().print(style+': ' + text, style)

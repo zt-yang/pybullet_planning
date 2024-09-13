@@ -1066,7 +1066,8 @@ class PDDLStreamForwardEnv(PDDLStreamEnv):
         obs, reward, done, debug_info = super().step(action)
         facts = [self.from_literal(l) for l in obs.literals]
 
-        facts = fix_facts_due_to_loaded_agent_state(facts)
+        if action.predicate.name in ['place', 'arrange']:
+            facts = fix_facts_due_to_loaded_agent_state(facts)
         added, deled = summarize_state_changes(facts, self._last_literals, title='PDDLStreamForwardEnv')
         self._last_literals = facts
         return added, deled

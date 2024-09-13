@@ -64,7 +64,7 @@ def find_movables_close_to_region(all_movables, region_aabb, title='find_movable
 
 def add_surfaces_given_obstacles(world, obstacles, title='add_surfaces_given_obstacles\t'):
     other_surfaces = world.cat_to_bodies('surface')
-    add_surfaces = find_big_surfaces(other_surfaces, world=world, top_k=1)
+    add_surfaces = find_big_surfaces(other_surfaces, world=world, top_k=1, title=title)
     other_surfaces = [s for s in other_surfaces if s not in add_surfaces]
     for o in obstacles:
         region_aabb = get_surface_aabb(o)

@@ -48,7 +48,7 @@ def test_cooking_domain():
     remember to include world.remove_bodies_from_planning(goals)
     """
     kitchen_problem = ['test_kitchen_sprinkle', 'test_kitchen_nudge_door',
-                       'test_kitchen_faucet'][-1]
+                       'test_kitchen_faucet_braiser_and_stove'][-1]
     run_agent(
         problem=kitchen_problem,
         dual_arm=False, top_grasp_tolerance=None, visualization=False,

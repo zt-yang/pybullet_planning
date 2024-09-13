@@ -204,7 +204,7 @@ class Object(Index):
             results = world.learned_pose_list_gen(world, obj.body, [self.pybullet_name], num_samples=14)
             if results is not None:
                 for body_pose in results:
-                    obj.set_pose(body_pose)
+                    set_pose(obj, body_pose) ## obj.set_pose(body_pose)  ## includes setting attachments
                     coo = collided(obj, obstacles, tag='place_obj_database', world=world, verbose=False)
                     if not coo:
                         done = True
@@ -213,13 +213,11 @@ class Object(Index):
                     #     wait_unlocked()
 
         start_time = time.time()
-        place_fn = sample_obj_in_body_link_space if isinstance(self, Space) \
-            else sample_obj_on_body_link_surface
+        place_fn = sample_obj_in_body_link_space if isinstance(self, Space) else sample_obj_on_body_link_surface
         while not done:
-            x, y, z, yaw = place_fn(obj, self.body, self.link,
-                                    PLACEMENT_ONLY=True, max_trial=max_trial)
+            x, y, z, yaw = place_fn(obj, self.body, self.link, PLACEMENT_ONLY=True, max_trial=max_trial)
             body_pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
-            obj.set_pose(body_pose)
+            set_pose(obj, body_pose)
             coo = collided(obj, obstacles, tag='place_obj', world=world, verbose=False)
             if not coo:
                 done = True

@@ -286,7 +286,7 @@ class PutDownAction(Action):
         state.robot.objects_in_hand[self.gripper] = -1
         print(f'DEBUG1, PutDownAction transition {obj}')
         self.surface.place_obj(obj)
-        new_attachments = remove_attachment(state, obj)
+        new_attachments, removed_attachment = remove_attachment(state, obj)
         return state.new_state(attachments=new_attachments)
 
 

@@ -33,7 +33,7 @@ from pybullet_tools.pose_utils import ObjAttachment, draw_pose2d_path, draw_pose
     is_placement, is_contained, get_learned_yaw
 from pybullet_tools.camera_utils import get_pose2d, get_camera_image_at_pose, visualize_camera_image, \
     set_camera_target_body, set_camera_target_body
-from pybullet_tools.logging_utils import print_dict, myprint, print_debug
+from pybullet_tools.logging_utils import print_dict, myprint, print_debug, print_pink
 
 from pybullet_tools.pr2_primitives import Pose, Conf, get_ik_ir_gen, get_motion_gen, \
     Attach, Detach, Clean, Cook, control_commands, link_from_name, \
@@ -380,6 +380,8 @@ class World(WorldBase):
         # objs = [o for o in objs if not (o in attached_objects and attached_objects[o] in self.movable)]
         return sort_body_indices(objs)
 
+    ## -----------------------------------------------------------------------
+
     @property
     def ignored_pairs(self):
         found = self.c_ignored_pairs
@@ -409,6 +411,26 @@ class World(WorldBase):
     def add_ignored_pair(self, pair):
         a, b = pair
         self.c_ignored_pairs.extend([(a, b), (b, a)])
+
+    def del_ignored_pair(self, pair):
+        a, b = pair
+        for pair in [(a, b), (b, a)]:
+            if pair in self.c_ignored_pairs:
+                self.c_ignored_pairs.remove(pair)
+
+    def print_ignored_pairs(self):
+        print_fn = print_pink
+
+        printed = []
+        print_fn('---------------- IGNORED COLLISION PAIRS ------------- ')
+        for (a, b) in self.c_ignored_pairs:
+            if (b, a) in printed:
+                continue
+            print_fn(f'\t({self.get_debug_name(a)}, {self.get_debug_name(b)})')
+            printed.append((a, b))
+        print_fn('--------------------------------------------------------')
+
+    ## -----------------------------------------------------------------------
 
     def get_planning_objects(self):
         return [o.lisdf_name for o in self.BODY_TO_OBJECT.values()]
@@ -1617,7 +1639,8 @@ class World(WorldBase):
 
                 init += [(k, body, rel_pose, supporter) for k in ['RelPose', 'AtRelPose']]
 
-            else:
+            ## graspable may also be region
+            elif len([f for f in init if f[0].lower() == 'pose' and f[1] == body]) == 0:
                 init += [('Pose', body, pose), ('AtPose', body, pose)]
 
             ## potential places to put on
@@ -1703,7 +1726,9 @@ class World(WorldBase):
 
             for obj in objects:
                 if cat in ['space', 'surface'] and (cat, obj.pybullet_name) not in init:
-                    init += [(cat, obj.pybullet_name), ('Region', obj.pybullet_name)]
+                    init += [(cat, obj.pybullet_name)]
+                    if ('Region', obj.pybullet_name) not in init:
+                        init += [('Region', obj.pybullet_name)]
                 cat2 = f"@{cat}"
                 if cat2 in self.constants:
                     init += [('OfType', obj.pybullet_name, cat2)]
@@ -1765,7 +1790,11 @@ class World(WorldBase):
 
     def save_lisdf(self, output_dir, verbose=False, **kwargs):
         from world_builder.world_generator import to_lisdf
-        to_lisdf(self, join(output_dir, 'scene.lisdf'), verbose=verbose, **kwargs)
+        lisdf_file = join(output_dir, 'scene.lisdf')
+        if isfile(lisdf_file):
+            lisdf_file = lisdf_file.replace('.lisdf', '_new.lisdf')
+            print(f'[world.save_lisdf]\t found existing scene.lisdf thus saving {lisdf_file}')
+        to_lisdf(self, lisdf_file, verbose=verbose, **kwargs)
 
     def save_planning_config(self, output_dir, domain=None, stream=None,
                              pddlstream_kwargs=None):
