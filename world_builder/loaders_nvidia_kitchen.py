@@ -631,7 +631,7 @@ def prevent_funny_placements(world, verbose=True):
 
     for o in movables:
         ## nothing should be moved there during planning
-        # world.add_not_stackable(o, shelf_top)
+        world.add_not_stackable(o, shelf_top)
         # world.add_not_containable(o, cabinet)
 
         if o not in food:  ##  + condiments
