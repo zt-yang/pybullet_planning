@@ -583,11 +583,11 @@ def load_dishwasher(world):
 def get_objects_for_open_kitchen(world, difficulty):
     object_names = ['chicken-leg', 'fridge', 'fridge_door', 'shelf_top', 'fork',
                     'braiserbody', 'braiserlid', 'braiser_bottom',
-                    'indigo_drawer_top', 'indigo_drawer_top_joint', 'indigo_tmp', 'hitman_countertop',
+                    'indigo_tmp', 'hitman_countertop',
                     'sektion', 'chewie_door_left_joint', 'chewie_door_right_joint',
                     'salt-shaker', 'pepper-shaker',
                     'front_left_stove', 'front_right_stove', 'knob_joint_2', 'knob_joint_3',
-                    'joint_faucet_0', 'basin_bottom']
+                    'joint_faucet_0', 'basin_bottom']  ## 'indigo_drawer_top', 'indigo_drawer_top_joint',
     if difficulty in [20]:
         for k in ['sektion', 'chewie_door_left_joint', 'chewie_door_right_joint',
                   'indigo_drawer_top', 'indigo_drawer_top_joint',
