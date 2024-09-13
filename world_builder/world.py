@@ -1470,7 +1470,10 @@ class World(WorldBase):
 
         def get_body_pose(body):
             if obj_poses is not None:
-                pose = obj_poses[body]
+                if body in obj_poses:
+                    pose = obj_poses[body]
+                else:
+                    return None  ## sometimes the world objects have changed during agent state loading
             elif isinstance(body, int):
                 pose = get_pose(body)
             elif isinstance(body, tuple):
@@ -1483,7 +1486,12 @@ class World(WorldBase):
             return pose
 
         def get_body_joint_position(body):
-            position = get_joint_position(body[0], body[1]) if joint_positions is None else joint_positions[body]
+            if joint_positions is None:
+                position = get_joint_position(body[0], body[1])
+            elif body in joint_positions:
+                position = joint_positions[body]
+            else:
+                return None  ## sometimes the world objects have changed during agent state loading
             position = Position(body, position)
             for fact in init_facts:
                 if fact[0] == 'position' and fact[1] == body and equal(fact[2].value, position.value):
@@ -1529,6 +1537,8 @@ class World(WorldBase):
                 continue
             ## initial position
             position = get_body_joint_position(body)
+            if position is None:
+                continue
             init += [('Joint', body), ('UnattachedJoint', body), ('IsJointTo', body, body[0]),
                      ('Position', body, position), ('AtPosition', body, position),
                      # ('IsOpenedPosition' if is_joint_open(body) else 'IsClosedPosition', body, position),
@@ -1573,6 +1583,8 @@ class World(WorldBase):
         for body in graspables:
             init += [('Graspable', body)]
             pose = get_body_pose(body)
+            if pose is None:
+                continue
             supporter_obj = BODY_TO_OBJECT[body].supporting_surface
 
             if body in self.attachments and not isinstance(self.attachments[body], ObjAttachment):
