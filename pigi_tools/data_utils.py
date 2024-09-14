@@ -460,13 +460,51 @@ def get_variables_from_pddl(facts, objs):
     return vs
 
 
+def get_variables_from_actions(actions):
+    vs = []
+    for a in actions:
+        args = a.split('args=(')[1][:-2]
+        for elem in args.split('), '):
+            ## 'left', 13, (3, None, 35
+            if '=' not in elem and '(' in elem:
+                elem = elem[elem.index('('):]
+
+            if '(' in elem and ')' not in elem:
+                elem = elem + ')'
+
+            ## 'pstn2308=0.0, pstn2313=0.748, hg408=(0.0, -0.014, 0.055, -3.142, -0.0, 1.571)'
+            if 'pstn' in elem and len(elem) - len(elem.replace('=', '')) > 1:
+                all_last_value_next_key = elem.split('=')
+                last_key = all_last_value_next_key[0]
+                found = []
+                for last_value_next_key in all_last_value_next_key[1:]:
+                    if '(' not in last_value_next_key:
+                        last_value, next_key = last_value_next_key.split(', ')
+                        found.append(f"{last_key}={last_value}")  ## pstn2313=0.748
+                        last_key = next_key
+                    else:
+                        found.append(f"{last_key}={last_value_next_key}")
+                for f in found:
+                    if '(' in f and f not in vs:
+                        vs.append(f)
+                continue
+
+            if elem not in vs:
+                vs.append(elem)
+    return vs, _get_inv_vs_from_vs(vs)
+
+
 def get_variables(init, objs=None):
     if isinstance(init[0], str):
         vs = get_variables_from_pddl(init, objs)
     else:
         vs = get_variables_from_pddl_objects(init)
 
-    return vs, {vs[i]: f'idx={i}' for i in range(len(vs))}
+    return vs, _get_inv_vs_from_vs(vs)
+
+
+def _get_inv_vs_from_vs(vs):
+    return {vs[i]: f'idx={i}' for i in range(len(vs))}
 
 
 def get_plan_from_strings(actions, indices={}, keep_action_names=True, vs={}, inv_vs={}):
@@ -526,6 +564,7 @@ def get_successful_plan(run_dir, indices={}, skip_multiple_plans=True, maybe_hpn
         if maybe_hpn and len(data) > 2:  ## HPN planning
             data = data[2:]
         plan = []
+        previous_vs = []
         for episode in data:
             if 'plan' not in episode:
                 continue
@@ -534,7 +573,12 @@ def get_successful_plan(run_dir, indices={}, skip_multiple_plans=True, maybe_hpn
                 if len(data) == 2:
                     return None
                 continue
-            vs, inv_vs = get_variables(episode['init'])
+            if 'init' not in episode:
+                vs, inv_vs = get_variables_from_actions(actions)
+            else:
+                vs, inv_vs = get_variables(episode['init'])
+                # new_vs = [v for v in vs if '=' not in v]
+                # previous_vs += [v for v in new_vs if v not in previous_vs]
             plan += get_plan_from_strings(actions, vs=vs, inv_vs=inv_vs, indices=indices, **kwargs)
         plans.append(plan)
 
