@@ -615,7 +615,7 @@ def solve_approach_ik(arm, obj, pose_value, grasp, base_conf,
         if is_placement(body, obst) or is_placement(obst, body) or is_contained(obst, body):
             if (body, obst) not in ignored_pairs_here:
                 pairs = [(body, obst), (obst, body)]
-                print_blue(f'{title}\t adding ignored pairs {pairs}')
+                # print_blue(f'{title}\t adding ignored pairs {pairs}')
                 ignored_pairs_here.extend(pairs)
 
     # approach_obstacles = problem.world.refine_marker_obstacles(obj, approach_obstacles)  ## for steerables
