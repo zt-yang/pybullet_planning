@@ -22,6 +22,7 @@ from pybullet_tools.stream_agent import solve_pddlstream, make_init_lower_case, 
 from pybullet_tools.utils import SEPARATOR, wait_if_gui, WorldSaver
 from pybullet_tools.logging_utils import save_commands, TXT_FILE, summarize_state_changes, print_lists, \
     print_debug, myprint as print
+from vlm_tools.vlm_utils import fix_experiment_path
 
 from world_builder.actions import get_primitive_actions
 from world_builder.world_utils import get_camera_image
@@ -551,6 +552,7 @@ class PDDLStreamAgent(MotionAgent):
         ## roll out world state to the last planning state
         commands_path = agent_state_path.replace('agent_state_', 'commands_')
         self.exp_dir = correct_home_path(self.exp_dir, exp_dir)
+        self.exp_dir = fix_experiment_path(self.exp_dir)
         if isfile(commands_path):
             self.apply_commands(commands_path)
 
