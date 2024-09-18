@@ -1,6 +1,6 @@
 ## ---- data source
 task_name: ''
-given_path: null
+given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/_on_240911/run_kitchen_chicken_soup_v1_subgoals_dual_arm/240911_134723_vlm-tamp'
 given_dir: null
 cases: null
 parallel: false
@@ -11,7 +11,7 @@ check_time: 1674417578
 preview_scene: false
 step_by_step: false
 action_by_action: false
-use_gym: false
+use_gym: true
 auto_play: true
 verbose: false
 time_step: 0.005
@@ -37,6 +37,6 @@ save_jpg: false
 save_composed_jpg: false
 save_gif: false
 save_animation_json: false
-save_mp4: true
+save_mp4: false
 mp4_side_view: false
 mp4_top_view: false

@@ -11,7 +11,7 @@ import numpy as np
 import sys
 
 from pybullet_tools.bullet_utils import query_yes_no, has_srl_stream
-from pybullet_tools.camera_utils import adjust_camera_pose
+from pybullet_tools.camera_utils import adjust_camera_pose, set_camera_target_body
 from pybullet_tools.pose_utils import ObjAttachment, has_getch
 from pybullet_tools.utils import reset_simulation, VideoSaver, wait_unlocked, get_aabb_center, load_yaml, \
     set_camera_pose, get_aabb_extent, set_camera_pose2, invert
@@ -227,6 +227,10 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
     )
     if hasattr(world, 'lisdf') is None or True:
         set_replay_camera_pose(world, run_dir, camera_kwargs, camera_point, target_point)
+
+    # set_camera_target_body(4, dx=0.8, dy=-0.8, dz=1.5)  ## braiser lid
+    # set_camera_target_body(3, dx=1, dy=0.1, dz=1.5)  ## close cabinet door
+    set_camera_target_body(8, dx=-0.2, dy=0.2, dz=1.7)  ## close cabinet door
     if preview_scene:
         wait_unlocked()
 
