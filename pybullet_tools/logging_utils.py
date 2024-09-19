@@ -7,8 +7,6 @@ from datetime import datetime
 import csv
 import pprint
 
-from jedi.plugins.django import mapping
-
 TXT_FILE = abspath('txt_file.txt')
 
 
