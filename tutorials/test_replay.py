@@ -8,6 +8,8 @@ from os import listdir, pardir
 RD = abspath(join(dirname(__file__), pardir, pardir))
 sys.path.extend([join(RD), join(RD, 'pddlstream'), join(RD, 'pybullet_planning'), join(RD, 'lisdf')])
 
+sys.path.append('/home/zhutiany/Documents/playground/srl_stream/src')
+
 
 from pigi_tools.replay_utils import run_replay, load_pigi_data, REPLAY_CONFIG_DEBUG
 
