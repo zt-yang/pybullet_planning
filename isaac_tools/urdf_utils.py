@@ -1,4 +1,4 @@
-from os.path import abspath, join, dirname
+from os.path import abspath, join, dirname, isdir
 import numpy as np
 import trimesh
 import untangle
@@ -11,7 +11,7 @@ def test_is_robot(name, robots=["pr2"]):
     return any(name.startswith(prefix) for prefix in robots)
 
 
-def load_lisdf(lisdf_dir, scene_scale=1., robots=False, skip=[], verbose=False):
+def load_lisdf(lisdf_dir, scene_scale=1., robots=False, skip=[], verbose=True):
     # TODO: apply within load_lisdf_synthesizer
     lisdf_path = join(lisdf_dir, 'scene.lisdf')
     world_xml = untangle.parse(lisdf_path).sdf.world
@@ -22,7 +22,7 @@ def load_lisdf(lisdf_dir, scene_scale=1., robots=False, skip=[], verbose=False):
         model_states = {s['name']: {j['name']: eval(j.angle.cdata) for j in s.joint} for s in model_states}
 
     skip += ['floor1']
-    for obj_xml in world_xml.include + world_xml.model:
+    for obj_xml in world_xml.include + [world_xml.model]:
         name = obj_xml._attributes["name"]
         if (name in skip) or (not robots and test_is_robot(name)): # TODO: generalize
             continue
@@ -38,6 +38,8 @@ def load_lisdf(lisdf_dir, scene_scale=1., robots=False, skip=[], verbose=False):
 
         if hasattr(obj_xml, "uri"):
             path = abspath(join(dirname(lisdf_path), obj_xml.uri.cdata))
+            if isdir(abspath(join(path, '..', '_isaac'))):
+                path = path.replace('mobility.urdf', '_isaac/mobility.urdf')
 
             if verbose:
                 print(f"Name: {name} | Fixed: {is_fixed} | Scale: {scale:.3f} | Path: {path}")

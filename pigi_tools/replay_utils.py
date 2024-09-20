@@ -11,6 +11,7 @@ import numpy as np
 import sys
 
 from pybullet_tools.bullet_utils import query_yes_no, has_srl_stream
+from pybullet_tools.logging_utils import print_pink, print_green, print_blue
 from pybullet_tools.camera_utils import adjust_camera_pose, set_camera_target_body
 from pybullet_tools.pose_utils import ObjAttachment, has_getch
 from pybullet_tools.utils import reset_simulation, VideoSaver, wait_unlocked, get_aabb_center, load_yaml, \
@@ -29,6 +30,7 @@ from pigi_tools.data_utils import get_plan, get_body_map, get_multiple_solutions
     load_planning_config, get_world_aabb, check_unrealistic_placement_z, get_goals
 
 REPLAY_CONFIG_DEBUG = join(PBP_PATH, 'pigi_tools', 'configs', 'replay_debug.yaml')
+GYM_IMAGES_DIR = join(PBP_PATH, '..', 'gym_images')
 
 
 def get_pkl_run(run_dir, verbose=True):
@@ -248,7 +250,7 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
     if use_gym:
         run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_map, width=width, height=height,
                              camera_point=camera_point, target_point=target_point, camera_kwargs=camera_kwargs,
-                             camera_movement=camera_movement, light_conf=light_conf, save_gif=save_gif,
+                             camera_movement=camera_movement, light_conf=light_conf, save_jpg=save_jpg, save_gif=save_gif,
                              save_mp4=save_mp4, mp4_side_view=mp4_side_view, mp4_top_view=mp4_top_view)
 
     elif save_mp4:
@@ -370,7 +372,7 @@ def run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, bo
 
 def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_map, width=1280, height=800,
                          camera_point=(8.5, 2.5, 3), target_point=(0, 2.5, 0), camera_kwargs=None, camera_movement=None,
-                         light_conf=None, save_gif=False, save_mp4=False, mp4_side_view=False, mp4_top_view=False):
+                         light_conf=None, save_jpg=True, save_gif=False, save_mp4=False, mp4_side_view=False, mp4_top_view=False):
     from isaac_tools.gym_utils import load_lisdf_isaacgym, record_actions_in_gym, set_camera_target_body
 
     gym_world = load_lisdf_isaacgym(abspath(exp_dir), camera_width=width, camera_height=height,
@@ -385,7 +387,7 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
     removed = []
     if mp4_side_view or mp4_top_view:
         removed, camera_kwargs = get_gym_actors_to_ignore(
-            gym_world, world, run_dir, mp4_side_view=False, mp4_top_view=False
+            gym_world, world, run_dir, mp4_side_view=mp4_side_view, mp4_top_view=mp4_top_view
         )
 
     if camera_kwargs is not None:
@@ -393,6 +395,7 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
         camera_target = camera_kwargs['camera_target']
         gym_world.set_viewer_target(camera_point, camera_target)
         gym_world.set_camera_target(gym_world.cameras[0], camera_point, camera_target)
+        print_pink(f'setting camera at camera_point = {camera_point}\tcamera_target = {camera_target}')
         if 'sink' in run_dir:
             gym_world.simulator.set_light(
                 direction=np.asarray([0, -1, 0.2]),  ## [0, -1, 0.2]
@@ -418,11 +421,18 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
                                      ignore_actors=removed)
     # gym_world.wait_if_gui()
 
+    if save_jpg:
+        des_path = join(run_dir, 'gym_scene.png')
+        print('moved jpg to {}'.format(des_path))
+        shutil.move(join(exp_dir, 'gym_scene.png'), des_path)
+
     if mp4_side_view:
         save_name = save_name + '_side'
     if mp4_top_view:
         save_name = save_name + '_top'
-    new_file = join('gym_images', save_name + '.gif')
+
+    os.makedirs(GYM_IMAGES_DIR, exist_ok=True)
+    new_file = join(GYM_IMAGES_DIR, save_name + '.gif')
     if save_gif:
         # shutil.copy(join(exp_dir, gif_name), join(run_dir, gif_name))
         print('moved gif to {}'.format(join(run_dir, new_file)))
@@ -638,6 +648,9 @@ def get_gym_actors_to_ignore(gym_world, world, run_dir, mp4_side_view=False, mp4
             if len(count_in) > 0:
                 removed.extend(world.remove_from_gym_world(count_in[0], gym_world, trashcan,
                                                            exceptions=count_out))
+
+    ## camera_point = [5.3, 4.7, 9]	camera_target = [2.3, 4.7, 1]
+    ## at camera_point = [5.3, 4.723, 9]	camera_target = [2.3, 4.723, 1]
     camera_kwargs = dict(camera_point=[x2, y, z2], camera_target=[x, y, 1])
     return removed, camera_kwargs
 

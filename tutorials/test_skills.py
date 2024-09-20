@@ -16,8 +16,10 @@ from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, 
     Pose, get_link_pose, get_joint_limits, WHITE, RGBA, set_all_color, RED, GREEN, set_renderer, add_text, \
     Point, set_random_seed, set_numpy_seed, reset_simulation, joint_from_name, \
     get_joint_name, get_link_name, dump_joint, set_joint_position, ConfSaver, pairwise_link_collision
-from pybullet_tools.bullet_utils import nice, set_camera_target_body, \
-    draw_fitted_box, sample_random_pose, open_joint, take_selected_seg_images, dump_json
+from pybullet_tools.bullet_utils import nice, \
+    draw_fitted_box, open_joint, dump_json
+from pybullet_tools.camera_utils import set_camera_target_body, take_selected_seg_images
+from pybullet_tools.pose_utils import sample_random_pose
 from pybullet_tools.grasp_utils import get_hand_grasps, get_grasp_db_file
 from pybullet_tools.flying_gripper_utils import se3_ik, create_fe_gripper, set_se3_conf
 from pybullet_tools.stream_tests import visualize_grasps
@@ -42,26 +44,6 @@ if seed is None:
 set_random_seed(seed)
 set_numpy_seed(seed)
 print('Seed:', seed)
-
-# ####################################
-
-
-def test_texture(category, id):
-    connect(use_gui=True, shadows=False, width=1980, height=1238)
-    path = join(ASSET_PATH, 'models', category, id) ## , 'mobility.urdf'
-
-    body = load_body(path, 0.2)
-    set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
-    set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
-
-    # import untangle
-    # content = untangle.parse(path).robot
-    #
-    # import xml.etree.ElementTree as gfg
-    # root = gfg.Element("robot")
-    # tree = gfg.ElementTree(content)
-    # with open(path.replace('mobility', 'mobility_2'), "wb") as files:
-    #     tree.write(files)
 
 # ####################################
 
@@ -199,37 +181,6 @@ def test_torso():
     print(robot)
 
 
-def test_vhacd(category, visualize=False):
-    from pybullet_tools.utils import process_urdf
-    TEMP_OBJ_DIR = 'vhacd'
-    instances = get_instances(category)
-    if visualize:
-        world = get_test_world()
-        x, y = 0, 0
-
-    instances = ['100021']
-
-    for idx in instances:
-        urdf_path = f'../../assets/models/{category}/{idx}/mobility.urdf'
-
-        if visualize:
-            body = load_pybullet(urdf_path)
-            set_pose(body, ((x, y, 0), unit_quat()))
-
-        new_urdf_path = process_urdf(urdf_path)
-
-        if visualize:
-            body = load_pybullet(new_urdf_path)
-            set_pose(body, ((x+2, y, 0), unit_quat()))
-
-            set_camera_target_body(body, dx=1, dy=1, dz=1)
-            wait_unlocked()
-            y += 2
-        else:
-            shutil.move(new_urdf_path, new_urdf_path.replace('mobility.urdf', f'{idx}.urdf'))
-            shutil.move(TEMP_OBJ_DIR, urdf_path.replace('mobility.urdf', TEMP_OBJ_DIR))
-
-
 def test_reachability(robot):
     world = get_test_world(robot=robot, semantic_world=True, custom_limits=((-4, -4), (4, 4)))
     robot = world.robot
@@ -242,45 +193,6 @@ def test_reachability(robot):
         print('w', w, result)
 
     wait_unlocked()
-
-
-def get_partnet_aabbs():
-    world = get_test_world()
-    draw_pose(unit_pose(), length=1.5)
-    DATABASE_DIR = abspath(join(__file__, '..', '..', 'databases'))
-    shape_file = join(DATABASE_DIR, 'partnet_shapes.json')
-
-    skips = ['Kettle', 'Toaster', 'TrashCan', 'CabinetAboveOven', 'DeskStorage']
-    categories = list(MODEL_SCALES.keys()) + list(MODEL_HEIGHTS.keys())
-    skip_till = None
-    if skip_till is not None:
-        categories = categories[categories.index(skip_till)+1:]
-    categories = [c for c in categories if c not in skips and c != c.lower()]
-    shapes = {}  ## category: {id: (dlower, dupper)}
-    # if isfile(shape_file):
-    #     shapes = json.load(open(shape_file, 'r'))
-    for category in categories:
-        instances = get_instances(category)
-        if category not in shapes:
-            shapes[category] = {}
-        bodies = []
-        for idx in instances:
-            path = join(ASSET_PATH, 'models', category, idx, 'mobility.urdf')
-            if not isfile(path) or idx in shapes[category]:
-                print('skipping', path)
-                continue
-            path, body, scale = load_model_instance(category, idx)
-            set_pose(body, ([0, 0, 0], quat_from_euler([0, 0, math.pi])))
-
-            aabb = get_aabb(body)
-            shapes[category][idx] = (aabb.lower, aabb.upper)
-            bodies.append(body)
-        #     wait_for_duration(0.25)
-        # wait_unlocked()
-        for body in bodies:
-            remove_body(body)
-    with open(shape_file, 'w') as f:
-        json.dump(shapes, f, indent=2, sort_keys=False)
 
 
 def test_tracik(robot, verbose=False):
@@ -354,22 +266,6 @@ def test_tracik(robot, verbose=False):
 
 if __name__ == '__main__':
 
-    """ ------------------------ object categories -------------------------
-        Kitchen Movable: 'Bottle', 'Food', 'BraiserLid', 'Sink', 'SinkBase', 'Faucet',
-        Kitchen Furniture: 'MiniFridge', 'KitchenCounter', 'MiniFridgeBase',
-                            'OvenCounter', 'OvenTop', 'MicrowaveHanging', 'MiniFridgeBase',
-                            'CabinetLower', 'CabinetTall', 'CabinetUpper', 'DishwasherBox'
-        Kitchen Cooking: 'KitchenFork', 
-        Packing:    'Stapler', 'Camera', 'EyeGlasses', 'Knife', 'Tray',
-    ------------------------------------------------------------------------ """
-
-    """ --- models related --- """
-    # get_data(categories=['Cupboard'])
-    # test_texture(category='CoffeeMachine', id='103127')
-    # test_vhacd(category='BraiserBody')
-    # get_partnet_aabbs()
-
-    """ --- robot related  --- """
     robot = 'rummy'  ## 'spot' | 'feg' | 'pr2'
     # test_gripper_joints()
     # test_gripper_range()

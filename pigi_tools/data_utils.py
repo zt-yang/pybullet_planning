@@ -14,6 +14,7 @@ from pybullet_tools.utils import is_placement, link_from_name, get_joint_name, \
 from pybullet_tools.pr2_primitives import Pose
 from pybullet_tools.general_streams import Position
 from pybullet_tools.bullet_utils import nice, is_box_entity, get_merged_aabb
+from pybullet_tools.logging_utils import print_debug, print_blue
 
 from pigi_tools.text_utils import ACTION_ABV, ACTION_NAMES
 
@@ -766,23 +767,34 @@ def get_lisdf_aabbs(run_dir, keyw=None):
             uri = lines[i + 1]
             static = lines[i + 2]
             pose = lines[i + 4]
-            category, idx = get_category_idx_from_xml(uri)
-            static = get_if_static_from_xml(static)
-            if 'veggie' in name or 'meat' in name or 'bottle' in name or 'medicine' in name:
-                static = 'movable'
             point = get_numbers_from_xml(pose)[:3]
 
-            ## get minimal aabb
-            result = get_partnet_aabb(category, idx)
-            if result is None:
-                continue
-            dlower, dupper = result
-            if static == 'movable':
-                aabbs['movable_d'][name] = (dlower, dupper)
+            print_blue(uri)
+            if 'mobility.urdf' in uri:
+                category, idx = get_category_idx_from_xml(uri)
+                static = get_if_static_from_xml(static)
+                if 'veggie' in name or 'meat' in name or 'bottle' in name or 'medicine' in name:
+                    static = 'movable'
 
-            aabbs[static][name] = AABB(lower=point + dlower, upper=point + dupper)
+                ## get minimal aabb
+                result = get_partnet_aabb(category, idx)
+                if result is None:
+                    continue
+                dlower, dupper = result
+                if static == 'movable':
+                    aabbs['movable_d'][name] = (dlower, dupper)
+
+                aabb = AABB(lower=point + dlower, upper=point + dupper)
+                category_idx = '/'.join([category, idx])
+            else:
+                aabb = AABB(lower=[-0.013, 5.846, -0.0015], upper=[1.184, 9.446, 2.834])
+                category_idx = 'kitchen_counter'
+                static = 'static'
+
+            aabbs[static][name] = aabb
             aabbs['pose'][name] = point
-            aabbs['category'][name] = '/'.join([category, idx])
+            aabbs['category'][name] = category_idx
+            print_debug(f"{name}\t{nice(aabb)}\t{category_idx}")
 
         elif f'state world_name=' in lines[i]:
             break

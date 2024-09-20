@@ -28,8 +28,12 @@ time_step: 0.1
 width: 1440
 height: 1120
 fx: 600
-camera_point: null # [8.5, 2.5, 3]
-target_point: null # [0, 2.5, 0]
+### ---- pigi kitchens
+#camera_point: [8.5, 2.5, 3]
+#target_point: [0, 2.5, 0]
+## ---- nvidia kitchens
+camera_point: [8.5, 6.5, 3]
+target_point: [0, 6.5, 0]
 camera_kwargs: null
 camera_movement: null
 light_conf: null
@@ -41,10 +45,10 @@ visualize_collisions: false
 evaluate_quality: false
 
 ## ---- outputs
-save_jpg: false
+save_jpg: true
 save_composed_jpg: false
-save_gif: false
+save_gif: true
 save_animation_json: false
-save_mp4: false
+save_mp4: true
 mp4_side_view: false
-mp4_top_view: false
+mp4_top_view: true

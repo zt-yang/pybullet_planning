@@ -530,8 +530,8 @@ def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_n
         if verbose:
             print(i, action)
         if 'tachObjectAction' in str(action):
-            if action.object in body_map:
-                action.object = body_map[action.object]
+            if action.body in body_map:
+                action.body = body_map[action.body]
         action = adapt_action(action, problem, plan, verbose=verbose)
         if action is None:
             continue
