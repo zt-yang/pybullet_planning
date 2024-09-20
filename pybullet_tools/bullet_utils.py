@@ -1201,6 +1201,7 @@ def is_tuple(elems):
 
 
 def has_srl_stream():
+    # import ipdb; ipdb.set_trace()
     try:
         import srl_stream
     except ImportError:

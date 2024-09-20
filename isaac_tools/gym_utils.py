@@ -28,9 +28,11 @@ ASSET_PATH = join(dirname(__file__), '..', 'assets')
     a. follow instruction in docs/install.html to install isaacgym 
         `(cd ~/Documents/isaacgym/python; pip install -e .)`
 3. add python path to srl_stream (srl_stream/src)
-4. `pip install setuptools_scm trimesh`
+4a. `pip install setuptools_scm trimesh`
+4b. `export LD_LIBRARY_PATH=/home/yang/miniconda3/envs/fastamp_kitchen/lib`  ## otherwise Python 3.8 failed to load shared libraries "libpython3.8.so.1.0" (F4-210)
+4c. `export PYTHONPATH=~/Documents/nvidia/vlm-tamp:$PYTHONPATH `  ## import pybullet_planning in srl_stream
 5. run from terminal. It will hang if ran in pycharm
-    `cd dev; python test_gym.py`
+    `cd tutorial; python test_gym.py`
 """
 
 

@@ -1,7 +1,14 @@
 ## ---- data source
 task_name: ''
+
+## ----- NVIDIA
 #given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/_on_240911/run_kitchen_chicken_soup_v1_subgoals_dual_arm/240911_134723_vlm-tamp'
-given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/test_kitchen_fridge/240919_203050_original'
+#given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/test_kitchen_fridge/240919_203050_original'
+
+## ----- meraki
+given_path: '/home/yang/Documents/nvidia/vlm-tamp/experiments/run_kitchen_chicken_soup_v1_subgoals/240915_223328_vlm-tamp'
+#given_path: '/home/yang/Documents/kitchen-worlds/outputs/test_full_kitchen/230309_232738_original_4'
+
 given_dir: null
 cases: null
 parallel: false
@@ -12,7 +19,7 @@ check_time: 1674417578
 preview_scene: false
 step_by_step: false
 action_by_action: false
-use_gym: False
+use_gym: true
 auto_play: true
 verbose: false
 time_step: 0.1
