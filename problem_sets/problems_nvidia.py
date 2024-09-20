@@ -11,20 +11,20 @@ from robot_builder.robot_builders import build_robot_from_args
 from problem_sets.problem_utils import create_world, pddlstream_from_state_goal, save_to_kitchen_worlds, \
     problem_template
 from world_builder.actions import pull_actions, pick_place_actions, pull_with_link_actions, \
-    pick_sprinkle_actions
+    pick_sprinkle_actions, pick_place_rel_actions, pick_arrange_actions
 
 
 #######################################################
 
 
 def test_kitchen_fridge(args, **kwargs):
-    def loader_fn(world, difficulty=2, **world_builder_args):
+    def loader_fn(world, difficulty=0, **world_builder_args):
 
         floor = load_kitchen_floor_plan(world, plan_name='kitchen_v2.svg')
+        world.remove_object(floor)
         # cabbage = load_experiment_objects(world)
         # floor = load_floor_plan(world, plan_name='fridge_v2.svg')
         egg = load_experiment_objects(world, CABBAGE_ONLY=True, name='eggblock', color=TAN)
-        world.remove_object(floor)
         set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
         robot = world.robot
 
@@ -35,7 +35,7 @@ def test_kitchen_fridge(args, **kwargs):
             goals = ('test_handle_grasps', door)
             goals = [("HandleGrasped", 'left', door)]
             # goals = [("OpenedJoint", door)]
-            # goals = [("GraspedHandle", door)]
+            goals = [("GraspedHandle", door)]
             #
             # ## -- just pick get the block
             # world.open_joint_by_name('fridge_door')
@@ -636,7 +636,7 @@ def test_skill_knob_faucet(args, **kwargs):
 
 
 def test_kitchen_drawers(args, **kwargs):
-    def loader_fn(world, difficulty=0, **world_builder_args):
+    def loader_fn(world, difficulty=1, **world_builder_args):
         surfaces = {
             'counter': {
                 'front_right_stove': [],
@@ -647,11 +647,13 @@ def test_kitchen_drawers(args, **kwargs):
 
         cabbage = load_full_kitchen(world, surfaces=surfaces)
         skeleton = []
+        objects = []
 
         name_to_body = world.name_to_body
         drawer = 'hitman_drawer'  ## 'baker_joint'  ## 'indigo_door_left_joint'  ##
         drawer = world.add_joints_by_keyword('counter', 'hitman_drawer')[0]
         drawer = world.add_joints_by_keyword('counter', 'indigo_drawer')[0]
+        world.add_to_cat(cabbage, 'graspable')
 
         ## ================================================
         ##  GOALS
@@ -680,19 +682,30 @@ def test_kitchen_drawers(args, **kwargs):
             world.make_transparent('indigo_tmp')
             # world.open_joint_by_name('indigo_drawer_top_joint')
             world.put_in_space(cabbage, 'indigo_drawer_top')
+
+            cabbage = cabbage.pybullet_name
             # goals = [("AtPosition", name_to_body('indigo_drawer_top_joint'),
             #           Position(name_to_body('indigo_drawer_top_joint'), 'max'))]
             # goals = [("OpenedJoint", name_to_body('indigo_drawer_top_joint'))]
+
+            goals = [("Holding", "left", cabbage)] ## unsuccessful
             goals = [("On", name_to_body('cabbage'), name_to_body('indigo_tmp'))]
+
             # goals = [("OpenedJoint", name_to_body('indigo_drawer_top_joint')),
             #          ("On", name_to_body('cabbage'), name_to_body('indigo_tmp'))]
             # goals = ("test_object_grasps", 'cabbage')
             # goals = ('test_grasp_ik', 'cabbage')
 
+            world.robot.add_operator_names_to_remove(['place', 'place_to_supporter'])
+
             arm = 'left'
             drawer = name_to_body('indigo_drawer_top_joint')
-            skeleton += [(k, arm, drawer) for k in pull_actions]
-            skeleton += [(k, arm, cabbage) for k in pick_place_actions]
+            objects += [drawer]
+            skeleton += [(k, arm, drawer) for k in pull_with_link_actions]
+            # skeleton += [(k, arm, cabbage) for k in pick_place_actions]
+            skeleton += [(k, arm, cabbage) for k in pick_place_rel_actions[:1]]
+            skeleton += [(k, 'right', drawer) for k in pull_with_link_actions]
+            skeleton += [(k, arm, cabbage) for k in pick_arrange_actions[1:]]
 
         if difficulty == 2:
 
@@ -717,7 +730,7 @@ def test_kitchen_drawers(args, **kwargs):
             ## --------- temporary
             # goals = [("HandleGrasped", 'left', name_to_body('hitman_drawer_top_joint'))]
 
-        world.remove_bodies_from_planning(goals)
+        world.remove_bodies_from_planning(goals, exceptions=objects)
         return {'goals': goals, 'skeleton': skeleton}
 
     return test_nvidia_kitchen_domain(args, loader_fn, **kwargs)

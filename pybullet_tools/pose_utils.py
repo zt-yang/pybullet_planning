@@ -336,12 +336,12 @@ def bconf_to_pose(bq):
     return Pose(point=Point(x, y, z), euler=Euler(yaw=yaw))
 
 
-def pose_to_bconf(rpose, robot):
+def pose_to_bconf(rpose, robot, **kwargs):
     (x, y, z), quant = rpose
     yaw = euler_from_quat(quant)[-1]
     if robot.use_torso:
-        return Conf(robot, robot.get_group_joints('base-torso'), (x, y, z, yaw))
-    return Conf(robot, robot.get_group_joints('base'), (x, y, yaw))
+        return Conf(robot, robot.get_group_joints('base-torso'), (x, y, z, yaw), **kwargs)
+    return Conf(robot, robot.get_group_joints('base'), (x, y, yaw), **kwargs)
 
 
 def add_pose(p1, p2):

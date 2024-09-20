@@ -22,7 +22,6 @@ from pybullet_tools.stream_agent import solve_pddlstream, make_init_lower_case, 
 from pybullet_tools.utils import SEPARATOR, wait_if_gui, WorldSaver
 from pybullet_tools.logging_utils import save_commands, TXT_FILE, summarize_state_changes, print_lists, \
     print_debug, myprint as print
-from vlm_tools.vlm_utils import fix_experiment_path
 
 from world_builder.actions import get_primitive_actions
 from world_builder.world_utils import get_camera_image
@@ -265,11 +264,11 @@ class PDDLStreamAgent(MotionAgent):
         time_log.update(dict(kwargs))
         self.record_time(time_log)
 
-    def replan(self, observation, debug_just_fail=False, **kwargs):
+    def replan(self, observation, pddlstream_problem=None, debug_just_fail=False, **kwargs):
         """ make new plans given a pddlstream_problem """
-
+        if pddlstream_problem is None:
+            pddlstream_problem = self.pddlstream_problem
         self.plan_step = self.num_steps
-        pddlstream_problem = self._heuristic_reduce_pddlstream_problem()
 
         if hasattr(self, 'goal_sequence') and not self._check_subgoals_grounding(pddlstream_problem):
             print(f'\n[pddlstream_agent.replan] _check_subgoals_grounding failed for {pddlstream_problem.goal}')
@@ -524,6 +523,8 @@ class PDDLStreamAgent(MotionAgent):
 
     def load_agent_state(self, agent_state_path):
         """ resume planning """
+        from vlm_tools.vlm_utils import fix_experiment_path
+
         print('\n\n'+'-'*60+f'\n[load_agent_state] from {agent_state_path}\n')
 
         if self.env_execution is None:

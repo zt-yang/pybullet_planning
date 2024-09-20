@@ -31,7 +31,7 @@ def test_nvidia_kitchen_domain():
     """ minimum examples to test basic motion and mechanism """
     kitchen_problem = ['test_kitchen_chicken_soup', 'test_kitchen_braiser',
                        'test_skill_knob_stove', 'test_kitchen_fridge',
-                       'test_kitchen_drawers', 'test_skill_knob_faucet'][-1]
+                       'test_kitchen_drawers', 'test_skill_knob_faucet'][-2]
     # update_kitchen_action_pddl()
     # update_kitchen_pull_pddl()
     run_agent(
@@ -59,5 +59,5 @@ def test_cooking_domain():
 
 if __name__ == '__main__':
     # test_pick_place_domain()
-    # test_nvidia_kitchen_domain()
-    test_cooking_domain()
+    test_nvidia_kitchen_domain()
+    # test_cooking_domain()

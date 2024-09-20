@@ -116,6 +116,10 @@ class Conf(object):
         return flatten_links(self.body, get_moving_links(self.body, self.joints))
     def assign(self):
         set_joint_positions(self.body, self.joints, self.values)
+        if self.joint_state is not None:
+            joints = self.joint_state.keys()
+            values = self.joint_state.values()
+            set_joint_positions(self.body, joints, values)
     def iterate(self):
         yield self
     def __repr__(self):

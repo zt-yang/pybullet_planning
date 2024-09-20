@@ -230,7 +230,7 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
 
     # set_camera_target_body(4, dx=0.8, dy=-0.8, dz=1.5)  ## braiser lid
     # set_camera_target_body(3, dx=1, dy=0.1, dz=1.5)  ## close cabinet door
-    set_camera_target_body(8, dx=-0.2, dy=0.2, dz=1.7)  ## close cabinet door
+    # set_camera_target_body(8, dx=-0.2, dy=0.2, dz=1.7)  ## sink
     if preview_scene:
         wait_unlocked()
 

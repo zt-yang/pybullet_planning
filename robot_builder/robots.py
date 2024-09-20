@@ -58,6 +58,7 @@ class RobotAPI(Robot):
         self.collision_animations = []
         self.ik_solvers = {arm: None for arm in self.arms}
         self.debug_handles = []
+        self.remove_operators = None
 
         self.collided_body_link = defaultdict(int)
 
@@ -525,10 +526,18 @@ class MobileRobot(RobotAPI):
             stream_map.pop('test-inverse-reachability')
         return stream_map
 
+    def add_operator_names_to_remove(self, names):
+        if self.remove_operators is None:
+            self.remove_operators = []
+        self.remove_operators += [n for n in names if n not in self.remove_operators]
+
     def modify_pddl(self, pddlstream_problem, remove_operators=None):
         from pddlstream.language.constants import PDDLProblem
         domain_pddl, constant_map, stream_pddl, stream_map, init, goal = pddlstream_problem
         title = 'robots.modify_pddl |\t'
+
+        if remove_operators is None and self.remove_operators is not None:
+            remove_operators = self.remove_operators
 
         ## hack to help reduce the base planning problem
         if self.separate_base_planning:

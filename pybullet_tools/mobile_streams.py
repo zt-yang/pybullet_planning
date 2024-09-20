@@ -354,7 +354,7 @@ def get_ik_rel_gen_old(problem, max_attempts=30, collisions=True, learned=True, 
     ## not using this if tracik compiled
     ir_sampler = get_ir_sampler(problem, collisions=collisions, learned=learned,
                                 max_attempts=max_attempts, verbose=verbose, **kwargs)
-    ik_fn = get_ik_fn_old(problem, collisions=collisions, teleport=teleport, verbose=False, ACONF=ACONF, **kwargs)
+    ik_fn = get_ik_rel_fn_old(problem, collisions=collisions, teleport=teleport, verbose=False, ACONF=ACONF, **kwargs)
     robot = problem.robot
     world = problem.world
     obstacles = problem.fixed if collisions else []
@@ -1051,7 +1051,8 @@ def compute_pull_door_arm_motion(inputs, world, robot, obstacles, ignored_pairs,
         else:
             ## try to transform the base the same way as gripper to a cfree pose
             world_from_base = multiply(gripper_after, gripper_from_base)
-            bq_after = pose_to_bconf(world_from_base, robot)
+            # joint_state = dict(zip(aq1.joints, aq1.values))
+            bq_after = pose_to_bconf(world_from_base, robot) ## , joint_state=joint_state
             bq_after.assign()
 
         found_collision = False

@@ -566,9 +566,17 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
 
             for k, v in body_to_name.items():
                 if v not in world.name_to_body:
-                    if verbose:
-                        print(f'load_lisdf_pybullet.planning_config | {k} : {v} not in world.name_to_body')
-                    world.add_body(eval(k), v)
+                    pybullet_id = eval(k)
+                    if isinstance(pybullet_id, tuple) and '::' in v:
+                        body_name = v[:v.index(':')]
+                        body_id = world.name_to_body[body_name]
+                        if len(pybullet_id) == 2:
+                            pybullet_id = (body_id, pybullet_id[-1])
+                        if len(pybullet_id) == 3:
+                            pybullet_id = (body_id, None, pybullet_id[-1])
+                    if verbose or True:
+                        print(f'load_lisdf_pybullet.planning_config | k -> {pybullet_id} : {v} not in world.name_to_body')
+                    world.add_body(pybullet_id, v)
                     ## e.g. k=(15, 1), v=minifridge::joint_0
 
         ## camera
