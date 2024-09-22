@@ -6,10 +6,11 @@ import os
 import pybullet as p
 from world_builder.world import World
 from world_builder.entities import Object, Surface, Movable, Supporter
-from world_builder.loaders import load_floor_plan, load_experiment_objects, load_cabinet_test_scene
+from world_builder.loaders import load_floor_plan, load_experiment_objects
 from world_builder.loaders_partnet_kitchen import load_random_mini_kitchen_counter, \
     load_another_table, load_another_fridge_food, random_set_doors, ensure_robot_cfree, load_kitchen_mini_scene, \
     sample_full_kitchen
+from world_builder.loaders_nvidia_kitchen import load_cabinet_test_scene
 from world_builder.world_utils import get_domain_constants
 
 from robot_builder.robot_builders import get_robot_builder, create_gripper_robot, create_pr2_robot
@@ -228,7 +229,7 @@ def test_feg_pick(world, floorplan='counter.svg', verbose=True):
     ## --- Randomization Strategy 3:
     ## sample a movable and a surface
     body = [oil, vinegar, turkey][random.randint(0, 2)]
-    surface = world.name_to_body('hitman_tmp')
+    surface = world.name_to_body('hitman_countertop')
 
     goal_template = [
         [('Holding', body)],

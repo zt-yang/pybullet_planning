@@ -25,7 +25,7 @@ from pybullet_tools.logging_utils import dump_json
 from lisdf_tools.image_utils import get_seg_foreground_given_obj_keys, get_mask_bb, RAINBOW_COLORS, DARKER_COLORS
 
 from world_builder.asset_constants import DONT_LOAD
-from world_builder.paths import ASSET_PATH
+from world_builder.paths import ASSET_PATH, DATABASES_PATH
 
 
 FURNITURE_WHITE = RGBA(0.85, 0.85, 0.85, 1)
@@ -877,6 +877,7 @@ def _get_text_width(text, fontsize):
     widths = [0.3 if c in narrower else 0.6 for c in text+'  ']
     return sum(widths) * fontsize
 
+
 def make_camera_collage(camera_images, output_path='observation.png', verbose=False):
     import matplotlib.pyplot as plt
     images = [camera_image.rgbPixels for camera_image in camera_images]
@@ -1098,6 +1099,23 @@ def draw_body_label(body, text, link=None, offset=(0, -0.05, 0.05), **kwargs):
     position = ((lower[0] + upper[0]) / 2, (lower[1] + upper[1]) / 2, upper[2])
     position = [position[i]+offset[i] for i in range(len(position))]
     return add_text(text, position=position, **kwargs)  # , lifetime=0 , parent=body
+
+
+## ----------------------------------------------------------------------------------
+
+
+def save_world_aabbs_to_json(world, json_name='world_shapes.json'):
+    """ used by test_replay to make world_aabbs and find camera point """
+    shapes = {}
+    for body, obj in world.BODY_TO_OBJECT.items():
+        if isinstance(body, int):
+            aabb = get_aabb(body)
+            shapes[obj.name] = (aabb.lower, aabb.upper)
+
+    json_path = join(DATABASES_PATH, json_name)
+    print(f'[world.save_world_aabbs_to_json]\t{json_path}')
+    with open(json_path, 'w') as f:
+        json.dump(shapes, f, indent=2, sort_keys=False)
 
 
 if __name__ == "__main__":

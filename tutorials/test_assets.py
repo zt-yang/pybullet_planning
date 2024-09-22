@@ -12,24 +12,10 @@ from os import listdir
 
 from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, load_pybullet, load_model, \
     sample_aabb, AABB, set_pose, quat_from_euler, HideOutput, get_aabb_extent, unit_quat, remove_body, \
-    set_camera_pose, wait_unlocked, disconnect, wait_if_gui, create_box, get_aabb, get_pose, draw_aabb, multiply, \
-    Pose, get_link_pose, get_joint_limits, WHITE, RGBA, set_all_color, RED, GREEN, set_renderer, add_text, \
-    Point, set_random_seed, set_numpy_seed, reset_simulation, joint_from_name, \
-    get_joint_name, get_link_name, dump_joint, set_joint_position, ConfSaver, pairwise_link_collision
-from pybullet_tools.bullet_utils import nice, \
-    draw_fitted_box, open_joint, dump_json
-from pybullet_tools.camera_utils import set_camera_target_body, take_selected_seg_images
-from pybullet_tools.pose_utils import sample_random_pose
-from pybullet_tools.grasp_utils import get_hand_grasps, get_grasp_db_file
-from pybullet_tools.flying_gripper_utils import se3_ik, create_fe_gripper, set_se3_conf
-from pybullet_tools.stream_tests import visualize_grasps
-from pybullet_tools.general_streams import get_grasp_list_gen, get_contain_list_gen, Position, \
-    get_stable_list_gen, get_handle_grasp_gen, sample_joint_position_gen
-
-from world_builder.world import State
-from world_builder.world_utils import draw_body_label
-from world_builder.loaders import create_house_floor, create_table, create_movable
+    set_camera_pose, wait_unlocked, disconnect, wait_if_gui, create_box, get_aabb
+from pybullet_tools.camera_utils import set_camera_target_body
 from world_builder.asset_constants import MODEL_HEIGHTS, MODEL_SCALES
+from world_builder.paths import DATABASES_PATH
 
 from tutorials.test_utils import get_test_world, load_body, get_instances, \
     load_model_instance, get_model_path, get_y_gap, get_data
@@ -55,8 +41,6 @@ def test_texture(category, id):
     # tree = gfg.ElementTree(content)
     # with open(path.replace('mobility', 'mobility_2'), "wb") as files:
     #     tree.write(files)
-
-
 
 
 def test_vhacd(category, visualize=False):
@@ -90,11 +74,12 @@ def test_vhacd(category, visualize=False):
             shutil.move(TEMP_OBJ_DIR, urdf_path.replace('mobility.urdf', TEMP_OBJ_DIR))
 
 
+## ----------------------------------------------------------------------------------------
+
+
 def save_partnet_aabbs():
     world = get_test_world()
     draw_pose(unit_pose(), length=1.5)
-    DATABASE_DIR = abspath(join(__file__, '..', '..', 'databases'))
-    shape_file = join(DATABASE_DIR, 'partnet_shapes.json')
 
     skips = ['Kettle', 'Toaster', 'TrashCan', 'CabinetAboveOven', 'DeskStorage']
     categories = list(MODEL_SCALES.keys()) + list(MODEL_HEIGHTS.keys())
@@ -125,8 +110,12 @@ def save_partnet_aabbs():
         # wait_unlocked()
         for body in bodies:
             remove_body(body)
-    with open(shape_file, 'w') as f:
+
+    with open(join(DATABASES_PATH, 'partnet_shapes.json'), 'w') as f:
         json.dump(shapes, f, indent=2, sort_keys=False)
+
+
+## ----------------------------------------------------------------------------------------
 
 
 if __name__ == '__main__':

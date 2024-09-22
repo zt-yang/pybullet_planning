@@ -1317,6 +1317,8 @@ class World(WorldBase):
         return obj
 
     def put_on_surface(self, obj, surface='hitman_countertop', max_trial=20, OAO=False, **kwargs):
+        """ OAO: one and only (I forgot why I added it here ... it sounds pretty lonely actually) """
+
         obj = self.get_object(obj)
         surface_obj = self.get_object(surface)
         if surface_obj is None or obj is None:
@@ -1377,6 +1379,8 @@ class World(WorldBase):
         surface_obj.attach_obj(obj, **kwargs)
         if OAO: ## one and only
             self.remove_body_from_planning(self.name_to_body(surface))
+
+        return obj
 
     def put_in_space(self, obj, space='hitman_drawer_top', xyzyaw=None, learned=True):
         container = self.name_to_object(space)

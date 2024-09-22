@@ -511,8 +511,8 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
                                init_facts=[], ## avoid duplicates
                                facts=[],  ## completely overwrite
                                objects=None,  ## only some objects included in planning
-                               collisions=True, teleport=False, verbose=True, print_fn=None,
-                               problem_dict=None, **kwargs):
+                               collisions=True, teleport=False, verbose=True,
+                               print_fn=None, problem_dict=None, **kwargs):
     if print_fn is None:
         from pybullet_tools.logging_utils import myprint as print_fn
 
@@ -855,9 +855,11 @@ def log_goal_plan_init(goal, plan, preimage):
         args = tuple([a for a in action.args if isinstance(a, int) or isinstance(a, tuple)])
         return f"{action.name}{args}".replace('),)', '))')
 
+    goal_no_obj = [[elem.pybullet_name if isinstance(elem, Object) else elem for elem in g] for g in goal]
+
     return {
         'goal': [f'{g[0]}({g[1:]})' for g in goal],
-        'goal_original': goal,
+        'goal_original': goal_no_obj,
         'plan': [str(a) for a in plan] if plan is not None else 'FAILED',
         'plan_skeleton': [get_plan_skeleton(a) for a in plan] if plan is not None else 'FAILED',
         'plan_len': len(plan) if plan is not None else 0,

@@ -291,15 +291,15 @@ def sample_full_kitchen_goal_demo(world, counters):
         sink_obj.place_obj(artichoke, world=world)
         y = get_aabb_center(sink_obj.aabb())[1] - 0.1
         x = sink_obj.aabb().lower[0] + 0.13
-        artichoke.adjust_pose(x=x, y=y, theta=-1.7, world=world)
+        artichoke.adjust_pose(x=x, y=y, yaw=-1.7, world=world)
         artichoke = artichoke.body
         world.add_to_cat(artichoke, 'movable')
 
         ## for generating good solutions
         bottle1 = world.name_to_object('bottle#1')
-        bottle1.adjust_pose(x=0.534, y=3.42, z=1.072, theta=2.512, world=world)
+        bottle1.adjust_pose(x=0.534, y=3.42, z=1.072, yaw=2.512, world=world)
         bottle2 = world.name_to_object('bottle#2')
-        bottle2.adjust_pose(x=0.595, y=3.652, z=1.0, theta=1.324, world=world)
+        bottle2.adjust_pose(x=0.595, y=3.652, z=1.0, yaw=1.324, world=world)
         world.add_to_cat(bottle1.body, 'movable')
         skeleton += [(k, arm, bottle1.body) for k in pick_place_actions]
 
@@ -351,7 +351,7 @@ def sample_full_kitchen_goal_pot_to_counter(world):
         braiserbody = world.name_to_object('braiserbody')
         world.add_to_cat(braiserbody.body, 'movable')
         cabinettop_space.place_obj(braiserbody)
-        braiserbody.adjust_pose(theta=PI / 2)
+        braiserbody.adjust_pose(yaw=PI / 2)
         if isinstance(world.robot, PR2Robot):
             dx = cabinettop_space.aabb().upper[0] - braiserbody.aabb().upper[0] - 0.05
             braiserbody.adjust_pose(dx=dx, dz=0.05)
@@ -388,7 +388,7 @@ def sample_full_kitchen_goal_pot_to_counter(world):
         world.add_to_cat(braiserbody.body, 'movable')
         world.add_to_cat(braiserbody.body, 'supporter')
         shelf.place_obj(braiserbody)
-        braiserbody.adjust_pose(theta=PI / 2)
+        braiserbody.adjust_pose(yaw=PI / 2)
 
         skeleton += [(k, arm, braiserbody) for k in pick_place_actions]
         skeleton = [(k, arm, braiserbody) for k in pick_place_actions]

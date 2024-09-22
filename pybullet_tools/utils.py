@@ -2126,6 +2126,8 @@ def set_joint_states(body, joints, positions, velocities):
 def set_joint_positions(body, joints, values):
     for joint, value in safe_zip(joints, values):
         set_joint_position(body, joint, value)
+    # # ## TODO: when recording debugging
+    # time.sleep(1)
 
 # def set_joint_velocities(body, joints, velocities):
 #     assert len(joints) == len(velocities)
@@ -3978,7 +3980,7 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
                     pairwise_link_collision(body, link1, body, link2): #, **kwargs):
                 # print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
                 if verbose:
-                    print(f'check_link_pairs body {body}, link1 {link1} link2 {link2}')
+                    print(f'check_link_pairs body {body}, link {link1} and link {link2}')
                 return True
 
         # #step_simulation()
@@ -4024,9 +4026,8 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
                 if verbose:
                     from pybullet_tools.bullet_utils import nice  ## YANG
                     if not isinstance(body1, int):
-                        body.print_full_body_conf(title='get_collision_fn')
-                    else:
-                        print(f'collision_fn({body1}, {body2})')
+                        body.print_full_body_conf(title='get_collision_fn', debug=True)
+                    print(f'collision_fn({body1}, {body2})')
 
                 ## robot object
                 if not isinstance(body, int):

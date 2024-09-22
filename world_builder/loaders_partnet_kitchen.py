@@ -1091,7 +1091,7 @@ def load_braiser(world, supporter, x_min=None, verbose=False):
     elif world.note in [553]:
         ins = random.choice(['100015'])  ## shallower braisers big enough for zucchini, ,'100693'
     braiser = supporter.place_new_obj('BraiserBody', random_instance=ins, verbose=verbose)
-    braiser.adjust_pose(theta=PI)
+    braiser.adjust_pose(yaw=PI)
     if supporter.mobility_id == '102044':
         aabb = supporter.aabb()
         y = aabb.lower[1] + 2/5 * supporter.ly

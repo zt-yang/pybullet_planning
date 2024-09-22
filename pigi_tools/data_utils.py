@@ -724,8 +724,14 @@ def get_worlds_aabb(run_dirs):
     return get_merged_aabb(aabbs)
 
 
-def get_world_aabb(run_dir):
-    aabbs = get_lisdf_aabbs(run_dir)['static'].values()
+def get_world_aabb(run_dir, shape_json=None):
+    ## load the corresponding assets in this scene
+    if shape_json is None:
+        aabbs = get_lisdf_aabbs(run_dir)['static'].values()
+
+    ## use aabbs saved previously by loaders during scene generation
+    else:
+        aabbs = [AABB(lower, upper) for (lower, upper) in json.load(open(shape_json, 'r')).values()]
     return get_merged_aabb(aabbs)
 
 

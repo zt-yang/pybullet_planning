@@ -90,7 +90,7 @@ def test_kitchen_oven(args, **kwargs):
     goals = [("Holding", "left", cabbage)]
     goals = [("Holding", "left", lid)]
     # goals = [("On", cabbage, bottom)]
-    # goals = [("On", cabbage, world.name_to_body('hitman_tmp'))]
+    # goals = [("On", cabbage, world.name_to_body('hitman_countertop'))]
 
     set_all_static()
     state = State(world)
@@ -216,7 +216,7 @@ def test_braiser_lid(args, domain='pr2_food.pddl', stream='pr2_stream.pddl'):
     goals = [("Holding", 'left', egg)]  ## successful
     goals = [("On", egg, world.name_to_body('front_left_stove'))]  ## successful
 
-    world.remove_body_from_planning(name_to_body('hitman_tmp'))
+    world.remove_body_from_planning(name_to_body('hitman_countertop'))
     set_all_static()
     state = State(world)
     exogenous = []
@@ -278,7 +278,7 @@ def test_egg_movements(args):
     # goals = [('AtBConf', Conf(robot, get_group_joints(robot, 'base'), mp[1]))]
 
     ## ---- test 5 more joints and surfaces
-    world.remove_body_from_planning(name_to_body('hitman_tmp')) ## also added two back stoves
+    world.remove_body_from_planning(name_to_body('hitman_countertop')) ## also added two back stoves
     # world.add_surface_by_keyword('counter', 'back_left_stove')
     # world.add_surface_by_keyword('counter', 'back_right_stove')
     # world.add_joints_by_keyword('counter', 'chewie_door_left_joint')
@@ -295,7 +295,7 @@ def test_egg_movements(args):
     # door = world.add_joints_by_keyword('dishwasher', 'dishwasher_door')[0]
     # world.open_joint_by_name('dishwasher_door')
     # set_camera_target_body(name_to_body('dishwasher'), dx=1, dy=0, dz=1)
-    # world.put_on_surface(name_to_object('microwave'), 'hitman_tmp')
+    # world.put_on_surface(name_to_object('microwave'), 'hitman_countertop')
 
     # set_camera_target_body(name_to_body('microwave'), dx=3, dy=2, dz=1)
 
@@ -323,7 +323,7 @@ def test_opened_space(args):
     door = world.add_joints_by_keyword('fridge', 'fridge_door')[0]
     fridge = name_to_body('fridge')
     world.put_on_surface(egg, 'shelf_bottom')
-    world.remove_body_from_planning(name_to_body('hitman_tmp'))
+    world.remove_body_from_planning(name_to_body('hitman_countertop'))
     world.add_to_cat(fridge, 'space')
 
     ## need to uncomment `('IsJointTo', body, body[0])` in world.py get_facts()
@@ -603,10 +603,10 @@ def test_nvidia_kitchen_domain(args, world_loader_fn, initial_xy=(1.5, 6), **kwa
     set_camera_pose(camera_point=[3, 7, 4], target_point=[0, 7, 1])
     if 'robot_builder_args' not in kwargs:
         kwargs['robot_builder_args'] = args.robot_builder_args
-    kwargs['robot_builder_args'].update({
-        'custom_limits': ((1, 3, 0), (5, 10, 3)),
-        'initial_xy': initial_xy
-    })
+    if 'custom_limits' not in kwargs['robot_builder_args']:
+        kwargs['robot_builder_args']['custom_limits'] = ((1, 3, 0), (5, 10, 3))
+    if 'initial_xy' not in kwargs['robot_builder_args']:
+        kwargs['robot_builder_args']['initial_xy'] = initial_xy
     return problem_template(args, robot_builder_fn=build_robot_from_args,
                             world_loader_fn=world_loader_fn, **kwargs)
 
@@ -636,12 +636,12 @@ def test_skill_knob_faucet(args, **kwargs):
 
 
 def test_kitchen_drawers(args, **kwargs):
-    def loader_fn(world, difficulty=1, **world_builder_args):
+    def loader_fn(world, difficulty=14, **world_builder_args):
         surfaces = {
             'counter': {
                 'front_right_stove': [],
-                'hitman_tmp': [],
-                'indigo_tmp': [],
+                'hitman_countertop': [],
+                'indigo_tmp': ['BraiserBody', 'BraiserLid'],
             },
         }
 
@@ -670,7 +670,7 @@ def test_kitchen_drawers(args, **kwargs):
                       Position(name_to_body('hitman_drawer_bottom_joint'), 'max'))]
             goals = [("OpenedJoint", name_to_body('hitman_drawer_top_joint'))]
 
-        if difficulty == 1:
+        if difficulty in [1, 11, 12, 13, 14, 111]:
             ## --------- use kitchen fridge and cabinet
             # world.put_on_surface(cabbage, 'indigo_tmp')
             # world.open_joint_by_name('hitman_drawer_top_joint')
@@ -680,16 +680,12 @@ def test_kitchen_drawers(args, **kwargs):
             ## --------- grasp and open handle - indigo
             set_camera_pose(camera_point=[1.3, 9, 2], target_point=[1, 9, 0])
             world.make_transparent('indigo_tmp')
-            # world.open_joint_by_name('indigo_drawer_top_joint')
-            world.put_in_space(cabbage, 'indigo_drawer_top')
 
-            cabbage = cabbage.pybullet_name
             # goals = [("AtPosition", name_to_body('indigo_drawer_top_joint'),
             #           Position(name_to_body('indigo_drawer_top_joint'), 'max'))]
             # goals = [("OpenedJoint", name_to_body('indigo_drawer_top_joint'))]
 
-            goals = [("Holding", "left", cabbage)] ## unsuccessful
-            goals = [("On", name_to_body('cabbage'), name_to_body('indigo_tmp'))]
+            # goals = [("On", name_to_body('cabbage'), name_to_body('indigo_tmp'))]
 
             # goals = [("OpenedJoint", name_to_body('indigo_drawer_top_joint')),
             #          ("On", name_to_body('cabbage'), name_to_body('indigo_tmp'))]
@@ -700,12 +696,57 @@ def test_kitchen_drawers(args, **kwargs):
 
             arm = 'left'
             drawer = name_to_body('indigo_drawer_top_joint')
-            objects += [drawer]
-            skeleton += [(k, arm, drawer) for k in pull_with_link_actions]
-            # skeleton += [(k, arm, cabbage) for k in pick_place_actions]
-            skeleton += [(k, arm, cabbage) for k in pick_place_rel_actions[:1]]
-            skeleton += [(k, 'right', drawer) for k in pull_with_link_actions]
-            skeleton += [(k, arm, cabbage) for k in pick_arrange_actions[1:]]
+
+            ## drawer as static link
+            if difficulty == 1:
+                world.open_joint_by_name('indigo_drawer_top_joint')
+                world.put_on_surface(cabbage, 'indigo_tmp')
+                goals = [("Holding", "left", cabbage.pybullet_name)]  ## successful
+
+            ## drawer as movable link, don't open drawer
+            if difficulty in [11, 12, 13, 14]:
+
+                objects += [drawer]
+                world.open_joint_by_name('indigo_drawer_top_joint')
+                world.put_in_space(cabbage, 'indigo_drawer_top')
+
+                if difficulty == 11:
+                    goals = [("Holding", "left", cabbage)]  ## successful
+                    # skeleton += [(k, arm, cabbage) for k in pick_place_rel_actions[:1]]
+
+                elif difficulty == 12:
+                    goals = [("On", cabbage, name_to_body('indigo_tmp'))]  ## successful
+                    skeleton += [(k, arm, cabbage) for k in pick_place_rel_actions[:1]]
+                    skeleton += [(k, arm, cabbage) for k in pick_arrange_actions[1:]]
+
+                elif difficulty in [13, 14]:
+                    ## PR2 is ok when custom_limits is
+                    load_pot_lid(world)
+                    world.put_on_surface(name_to_body('braiserbody'), 'indigo_tmp').adjust_pose(y=8.922, yaw=0)
+                    world.put_on_surface(name_to_body('braiserbody'), 'indigo_tmp').adjust_pose(y=8.922, yaw=0, x=0.585, z=0.923)
+                    world.put_on_surface(name_to_body('braiserlid'), 'indigo_tmp').adjust_pose(x=0.7, y=8.622)
+                    # world.name_to_object('braiserlid').change_pose_interactive()
+                    world.make_transparent('braiserbody')
+
+                    goals = [("On", cabbage, name_to_body('braiser_bottom'))]  ## successful
+
+                    skeleton += [(k, arm, cabbage) for k in pick_place_rel_actions[:1]]
+                    if difficulty == 14:
+                        skeleton += [(k, 'right', drawer) for k in pull_with_link_actions]
+                    skeleton += [(k, arm, cabbage) for k in pick_arrange_actions[1:]]
+
+            ## drawer as movable link
+            if difficulty == 111:
+
+                skeleton += [(k, arm, drawer) for k in pull_with_link_actions]
+                skeleton += [(k, arm, cabbage) for k in pick_place_rel_actions[:1]]
+                # skeleton += [(k, 'right', drawer) for k in pull_with_link_actions]
+                skeleton += [(k, arm, cabbage) for k in pick_arrange_actions[1:]]
+
+                skeleton += [(k, arm, drawer) for k in pull_with_link_actions]
+                skeleton += [(k, arm, cabbage) for k in pick_place_rel_actions[:1]]
+                # skeleton += [(k, 'right', drawer) for k in pull_with_link_actions]
+                skeleton += [(k, arm, cabbage) for k in pick_arrange_actions[1:]]
 
         if difficulty == 2:
 
@@ -757,7 +798,7 @@ def test_kitchen_doors(args, **kwargs):
                 # 'back_left_stove': [],
                 # 'back_right_stove': [],
                 # 'range': [], ##
-                'hitman_tmp': [],  ##  'Microwave'
+                'hitman_countertop': [],  ##  'Microwave'
                 'indigo_tmp': ['BraiserLid'],  ## 'MeatTurkeyLeg', 'Toaster',
             },
             'fridge': {

@@ -21,20 +21,6 @@ from pigi_tools.data_utils import load_planning_config, get_worlds_aabb, \
 
 ASSET_PATH = join(dirname(__file__), '..', 'assets')
 
-"""
-# Note to myself on setting up slr_stream $ IsaacGym
-1. clone git@gitlab.com:nvidia_srl/caelan/srl_stream.git
-2. download isaac gym from https://developer.nvidia.com/isaac-gym/download, 
-    a. follow instruction in docs/install.html to install isaacgym 
-        `(cd ~/Documents/isaacgym/python; pip install -e .)`
-3. add python path to srl_stream (srl_stream/src)
-4a. `pip install setuptools_scm trimesh`
-4b. `export LD_LIBRARY_PATH=/home/yang/miniconda3/envs/fastamp_kitchen/lib`  ## otherwise Python 3.8 failed to load shared libraries "libpython3.8.so.1.0" (F4-210)
-4c. `export PYTHONPATH=~/Documents/nvidia/vlm-tamp:$PYTHONPATH `  ## import pybullet_planning in srl_stream
-5. run from terminal. It will hang if ran in pycharm
-    `cd tutorial; python test_gym.py`
-"""
-
 
 def load_one_world(gym_world, lisdf_dir, offset=None, loading_effect=False,
                    robots=True, world_index=None, assets=None, 

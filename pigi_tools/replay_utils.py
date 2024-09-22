@@ -132,8 +132,16 @@ def load_attachments(run_dir, world, body_map):
         world.attachments[body] = ObjAttachment(parent, parent_link, grasp_pose, body)
 
 
-def load_replay_conf(conf_path, **kwargs):
+def load_replay_config_yaml_file(conf_path):
     c = load_yaml(conf_path)
+    for key in ['pybullet', 'gym']:
+        if key in c:
+            c.update(c.pop(key))
+    return c
+
+
+def load_replay_conf(conf_path, **kwargs):
+    c = load_replay_config_yaml_file(conf_path)
     for k, v in c.items():
         if v == 'none':
             c[k] = None
@@ -222,7 +230,7 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
             time_step=0.02, camera_point=(8.5, 2.5, 3), target_point=(0, 2.5, 0), camera_kwargs=None, camera_movement=None,
             light_conf=None, check_collisions=False, cfree_range=0.1, visualize_collisions=False,
             evaluate_quality=False, save_jpg=False, save_composed_jpg=False, save_gif=False,
-            save_animation_json=False, save_mp4=False, mp4_side_view=False, mp4_top_view=False):
+            save_animation_json=False, save_mp4=False, mp4_side_view=False, mp4_top_view=False, shape_json=None):
 
     world, problem, exp_dir, run_dir, commands, plan, body_map = load_data_fn(
         run_dir_ori, use_gui=not use_gym, width=width, height=height, verbose=verbose
@@ -251,7 +259,8 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
         run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_map, width=width, height=height,
                              camera_point=camera_point, target_point=target_point, camera_kwargs=camera_kwargs,
                              camera_movement=camera_movement, light_conf=light_conf, save_jpg=save_jpg, save_gif=save_gif,
-                             save_mp4=save_mp4, mp4_side_view=mp4_side_view, mp4_top_view=mp4_top_view)
+                             save_mp4=save_mp4, mp4_side_view=mp4_side_view, mp4_top_view=mp4_top_view,
+                             shape_json=shape_json)
 
     elif save_mp4:
         save_mp4_in_pybullet(run_dir, problem, commands, plan, time_step=time_step)
@@ -372,7 +381,8 @@ def run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, bo
 
 def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_map, width=1280, height=800,
                          camera_point=(8.5, 2.5, 3), target_point=(0, 2.5, 0), camera_kwargs=None, camera_movement=None,
-                         light_conf=None, save_jpg=True, save_gif=False, save_mp4=False, mp4_side_view=False, mp4_top_view=False):
+                         light_conf=None, save_jpg=True, save_gif=False, save_mp4=False, mp4_side_view=False,
+                         mp4_top_view=False, shape_json=None):
     from isaac_tools.gym_utils import load_lisdf_isaacgym, record_actions_in_gym, set_camera_target_body
 
     gym_world = load_lisdf_isaacgym(abspath(exp_dir), camera_width=width, camera_height=height,
@@ -387,7 +397,7 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
     removed = []
     if mp4_side_view or mp4_top_view:
         removed, camera_kwargs = get_gym_actors_to_ignore(
-            gym_world, world, run_dir, mp4_side_view=mp4_side_view, mp4_top_view=mp4_top_view
+            gym_world, world, run_dir, mp4_side_view=mp4_side_view, mp4_top_view=mp4_top_view, shape_json=shape_json
         )
 
     if camera_kwargs is not None:
@@ -602,9 +612,9 @@ def case_filter(run_dir_ori, given_path=None, cases=None, check_collisions=False
 ##############################################################################
 
 
-def get_gym_actors_to_ignore(gym_world, world, run_dir, mp4_side_view=False, mp4_top_view=False):
+def get_gym_actors_to_ignore(gym_world, world, run_dir, mp4_side_view=False, mp4_top_view=False, shape_json=None):
     removed = []
-    world_aabb = get_world_aabb(run_dir)
+    world_aabb = get_world_aabb(run_dir, shape_json=shape_json)
     x, y, _ = get_aabb_center(world_aabb)
     if mp4_side_view:
         x2 = 8
@@ -612,6 +622,8 @@ def get_gym_actors_to_ignore(gym_world, world, run_dir, mp4_side_view=False, mp4
     if mp4_top_view:
         x2 = x + 0.1
         z2 = 9
+        x2 = x + 4.5
+        z2 = 7
         trashcan = (np.array([-4, -4, 8]), np.array([0, 0, 0, 1]))
         goals = get_goals(run_dir)
 
@@ -626,7 +638,7 @@ def get_gym_actors_to_ignore(gym_world, world, run_dir, mp4_side_view=False, mp4
             exceptions = [name_one, f"{name_one}_filler"]
             removed.extend(world.remove_from_gym_world('cabinettop', gym_world, trashcan,
                                                        exceptions=exceptions))
-        if 'storedinspace' == goals[-1][0] or True:
+        if 'storedinspace' == goals[-1][0]:
             x2 = x + 3
 
         ## remove the shelf if bottles are not to be moved

@@ -230,7 +230,7 @@ def load_full_kitchen(world, load_cabbage=True, **kwargs):
 
     if load_cabbage:
         cabbage = load_experiment_objects(world, CABBAGE_ONLY=True)
-        counter = world.name_to_object('hitman_tmp')
+        counter = world.name_to_object('hitman_countertop')
         counter.place_obj(cabbage)
         (_, y, z), _ = cabbage.get_pose()
         cabbage.set_pose(Pose(point=Point(x=0.85, y=y, z=z)))
@@ -309,7 +309,7 @@ def load_kitchen_mechanism(world, sink_name='sink'):
 
     world.add_joints_by_keyword('fridge', 'fridge_door')
     world.add_joints_by_keyword('oven', 'knob_joint_2', 'knob')
-    world.remove_body_from_planning(name_to_body('hitman_tmp'))
+    world.remove_body_from_planning(name_to_body('hitman_countertop'))
 
     world.add_to_cat(name_to_body(f'{sink_name}_bottom'), 'CleaningSurface')
     world.add_to_cat(name_to_body('braiser_bottom'), 'HeatingSurface')
@@ -339,7 +339,7 @@ def load_feg_kitchen_dishwasher(world):
             'front_right_stove': ['BraiserBody'],
             # 'back_left_stove': [],
             # 'back_right_stove': [],
-            'hitman_tmp': [],
+            'hitman_countertop': [],
             'indigo_tmp': ['BraiserLid', 'MeatTurkeyLeg', 'VeggieCabbage'],  ##
         },
         'Fridge': {
@@ -427,7 +427,7 @@ def load_feg_kitchen(world):
             'front_right_stove': ['BraiserBody'],
             # 'back_left_stove': [],
             # 'back_right_stove': [],
-            'hitman_tmp': [],
+            'hitman_countertop': [],
             'indigo_tmp': ['BraiserLid', 'MeatTurkeyLeg', 'VeggieCabbage'],  ##
         },
         'Fridge': {
@@ -1092,3 +1092,137 @@ def learned_nvidia_pickled_bconf_list_gen(world, inputs, num_samples=30, verbose
     results = random.sample(results, min(num_samples, len(results)))
     results = [Conf(robot.body, joints, bq) for bq in results]
     return results
+
+
+## ----------------------------------------------------------------------------------------
+## haven't fixed
+## ----------------------------------------------------------------------------------------
+
+
+def load_gripper_test_scene(world):
+    surfaces = {
+        'counter': {
+            'front_left_stove': [],
+            'front_right_stove': ['BraiserBody'],
+            'hitman_countertop': [],
+            'indigo_tmp': ['BraiserLid', 'MeatTurkeyLeg'],  ## , 'VeggieCabbage'
+        }
+    }
+
+    floor = load_floor_plan(world, plan_name='counter.svg', surfaces=surfaces)
+    world.remove_object(floor)
+    pot, lid = load_pot_lid(world)
+    set_camera_target_body(lid, dx=1.5, dy=0, dz=0.7)
+
+    turkey = world.name_to_body('turkey')
+    counter = world.name_to_body('indigo_tmp')
+
+    world.add_to_cat(turkey, 'movable')
+    world.add_to_cat(lid, 'movable')
+
+    camera_pose = ((1.7, 6.1, 1.5), (0.5, 0.5, -0.5, -0.5))
+    world.add_camera(camera_pose)
+
+    return pot, lid, turkey, counter
+
+
+def load_cabinet_test_scene(world, random_instance=False, MORE_MOVABLE=False, verbose=True):
+    surfaces = {
+        'counter': {
+            'front_left_stove': [],
+            'front_right_stove': ['BraiserBody'],
+            'hitman_countertop': [],
+            'indigo_tmp': ['BraiserLid', 'MeatTurkeyLeg'],  ## , 'VeggieCabbage'
+        }
+    }
+    spaces = {
+        'counter': {
+            'sektion': ['Bottle'], ##
+            'dagger': [], ## 'Salter', 'VinegarBottle'
+            'hitman_drawer_top': [],  ## 'Pan'
+            # 'hitman_drawer_bottom': ['Pan'],
+            # 'indigo_drawer_top': ['Fork'],  ## 'Fork', 'Knife'
+            # 'indigo_drawer_bottom': ['Fork', 'Knife'],
+            # 'indigo_tmp': ['Pot']
+        },
+    }
+    if MORE_MOVABLE:
+        surfaces['counter']['hitman_countertop'].append('VeggieCabbage')
+
+    floor = load_floor_plan(world, plan_name='counter.svg', debug=True, verbose=verbose,
+                            surfaces=surfaces, spaces=spaces, random_instance=random_instance)
+    world.remove_object(floor)
+    pot, lid = load_pot_lid(world)
+
+    lid = world.name_to_body('lid')
+    pot = world.name_to_body('braiser_bottom')
+    turkey = world.name_to_body('turkey')
+    counter = world.name_to_body('indigo_tmp')
+    oil = world.name_to_body('bottle')
+    vinegar = world.name_to_body('vinegarbottle')
+
+    world.add_to_cat(oil, 'movable')
+    world.add_to_cat(lid, 'movable')
+    world.add_joints_by_keyword('counter', 'chewie_door')
+    world.add_joints_by_keyword('counter', 'dagger_door')
+
+    ### ------- more objects
+    if MORE_MOVABLE:
+        world.add_to_cat(turkey, 'movable')
+
+        veggie = world.name_to_body('veggiecabbage')
+        world.add_to_cat(veggie, 'movable')
+        world.put_on_surface(veggie, pot)
+
+    camera_pose = ((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5))
+    world.add_camera(camera_pose)
+    world.visualize_image(((3.7, 8, 1.3), (0.5, 0.5, -0.5, -0.5)))
+
+    return pot, lid, turkey, counter, oil, vinegar
+
+
+def load_cabinet_rearrange_scene(world):
+    surfaces = {
+        'counter': {
+            # 'front_left_stove': [],
+            'front_right_stove': ['BraiserBody'],
+            # 'hitman_countertop': [],
+            'indigo_tmp': ['BraiserLid', 'MeatTurkeyLeg', 'VeggieCabbage'],  ##
+        }
+    }
+    spaces = {
+        'counter': {
+            'sektion': [],  ##
+            'dagger': ['VinegarBottle', 'OilBottle'],  ## 'Salter',
+            # 'hitman_drawer_top': [],  ## 'Pan'
+            # 'hitman_drawer_bottom': ['Pan'],
+            # 'indigo_drawer_top': ['Fork'],  ## 'Fork', 'Knife'
+            # 'indigo_drawer_bottom': ['Fork', 'Knife'],
+            # 'indigo_tmp': ['Pot']
+        },
+    }
+
+    floor = load_floor_plan(world, plan_name='counter.svg', surfaces=surfaces, spaces=spaces)
+    world.remove_object(floor)
+    pot, lid = load_pot_lid(world)
+
+    turkey = world.name_to_body('turkey')
+    counter = world.name_to_body('indigo_tmp')
+    oil = world.name_to_body('bottle')
+    vinegar = world.name_to_body('vinegarbottle')
+    veggie = world.name_to_body('veggie')
+
+    world.add_to_cat(oil, 'bottle')
+    world.add_to_cat(vinegar, 'bottle')
+    world.add_to_cat(vinegar, 'movable')
+    world.add_to_cat(oil, 'movable')
+    world.add_to_cat(lid, 'movable')
+    world.add_to_cat(turkey, 'movable')
+    world.add_to_cat(veggie, 'movable')
+    world.add_to_cat(turkey, 'edible')
+    world.add_to_cat(veggie, 'edible')
+
+    world.add_joints_by_keyword('counter', 'chewie_door')
+    world.add_joints_by_keyword('counter', 'dagger_door')
+
+    return pot, lid, turkey, veggie, counter, oil, vinegar

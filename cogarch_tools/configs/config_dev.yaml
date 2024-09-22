@@ -10,10 +10,19 @@ planner:
   use_heuristic_fc: false
   dataset_mode: true
   downward_time: 3
+
+  # --- normal planning ---
   evaluation_time: 60
   stream_planning_timeout: 80
   total_planning_timeout: 60
   max_plans: 20
+
+#  ## --- screen record planning failing (in set_joint_positions(), sleep 1 sec) ---
+#  evaluation_time: 20
+#  stream_planning_timeout: 180
+#  total_planning_timeout: 180
+#  max_plans: 1
+
   max_solutions: 1
   max_complexity: 5
   log_failures: false
@@ -22,8 +31,8 @@ planner:
 problem:
   problem: 'test_kitchen_chicken_soup'
   goal: null
-  domain_pddl: 'pddl_domains/mobile_v4_domain.pddl'
-  stream_pddl: 'pddl_domains/mobile_v4_stream.pddl'
+  domain_pddl: 'pddl_domains/mobile_v5_domain.pddl'
+  stream_pddl: 'pddl_domains/mobile_v5_stream.pddl'
   use_skeleton_constraints: false
   use_subgoal_constraints: false
   use_rel_pose: true
@@ -41,6 +50,10 @@ data:
 
 robot:
   robot_name: 'pr2'
+#  custom_limits: [[1, 3, 0], [5, 10, 0.1]]
+  custom_limits: [[1, 3, 0], [5, 10, 3]]
+
+#  robot_name: 'rummy'
   draw_base_limits: true
   dual_arm: true
   self_collisions: false
@@ -59,12 +72,17 @@ streams:
 
 ## pybullet related
 sim:
+#  ## --- screen record planning failing ---
 #  window_width: 1980
 #  window_height: 1238
+#  lock: false
+
+  ## --- normal planning ---
   window_width: 720
   window_height: 619
-  viewer: true
   lock: true
+
+  viewer: true
   simulate: false
   drive: false
   camera: false

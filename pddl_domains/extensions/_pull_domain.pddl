@@ -19,7 +19,7 @@
   (:action grasp_pull_ungrasp_handle
    :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq1 ?aq2 ?at)
    :precondition (and (Joint ?o) (CanGraspHandle)
-                      (not (PulledOneAction ?o)) ;(not (Pulled ?o))
+                      (not (PulledOneAction ?o)) (not (Pulled ?o))
                       (not (= ?p1 ?p2)) (CanPull ?a) (HandEmpty ?a)
                       (AtBConf ?q1) (AtAConf ?a ?aq1)
                       (AtPosition ?o ?p1) (Position ?o ?p2)
@@ -41,7 +41,7 @@
   (:action grasp_pull_ungrasp_handle_with_link
    :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq1 ?aq2 ?at ?l ?lp1 ?lp2)
    :precondition (and (Joint ?o) (CanGraspHandle)
-                      (not (PulledOneAction ?o)) (not (Pulled ?o))
+                      ; (not (PulledOneAction ?o)) (not (Pulled ?o))  ;; so that drawer can be opened then closed
                       (not (= ?p1 ?p2)) (CanPull ?a) (HandEmpty ?a)
                       (AtBConf ?q1) (AtAConf ?a ?aq1)
                       (AtPosition ?o ?p1) (Position ?o ?p2)

@@ -358,7 +358,8 @@ class RobotAPI(Robot):
         return tuple([round(n, roundto) for n in [x, y, z, theta]])
 
     def get_all_arm_conf(self, roundto=3):
-        return [(arm, self.get_one_arm_conf(arm, roundto=roundto)) for arm in self.arms]
+        """ use [left, right] for now instead of self.arms so that right arm can be loaded during replay """
+        return [(arm, self.get_one_arm_conf(arm, roundto=roundto)) for arm in ['left', 'right']]
 
     ## -------------------------------------------------------------
 

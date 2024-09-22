@@ -835,7 +835,7 @@ def test_placement_counter():
             'back_right_stove': [],
             'front_left_stove': [],
             'front_right_stove': [],
-            'hitman_tmp': [],
+            'hitman_countertop': [],
             'indigo_tmp': [],
         }
     }

@@ -3,10 +3,10 @@ task_name: ''
 
 ## ----- NVIDIA
 #given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/_on_240911/run_kitchen_chicken_soup_v1_subgoals_dual_arm/240911_134723_vlm-tamp'
-#given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/test_kitchen_fridge/240919_203050_original'
+given_path: '/home/zhutiany/Documents/vlm-tamp/experiments/demo_embodiment/240922_001519_pr2_dual_arm'  ## PR2 dual-arm successful
 
 ## ----- meraki
-given_path: '/home/yang/Documents/nvidia/vlm-tamp/experiments/run_kitchen_chicken_soup_v1_subgoals/240915_223328_vlm-tamp'
+#given_path: '/home/yang/Documents/nvidia/vlm-tamp/experiments/run_kitchen_chicken_soup_v1_subgoals/240915_223328_vlm-tamp'
 #given_path: '/home/yang/Documents/kitchen-worlds/outputs/test_full_kitchen/230309_232738_original_4'
 
 given_dir: null
@@ -19,24 +19,29 @@ check_time: 1674417578
 preview_scene: false
 step_by_step: false
 action_by_action: false
-use_gym: true
+use_gym: True
 auto_play: true
 verbose: false
-time_step: 0.1
 
 ## ---- visual
 width: 1440
 height: 1120
-fx: 600
-### ---- pigi kitchens
-#camera_point: [8.5, 2.5, 3]
-#target_point: [0, 2.5, 0]
-## ---- nvidia kitchens
-camera_point: [8.5, 6.5, 3]
-target_point: [0, 6.5, 0]
-camera_kwargs: null
-camera_movement: null
-light_conf: null
+pybullet:
+  time_step: 0.1
+  fx: 600
+  ### ---- pigi kitchens
+  #camera_point: [8.5, 2.5, 3]
+  #target_point: [0, 2.5, 0]
+  ## ---- nvidia kitchens - this is for pybullet
+  camera_point: [8.5, 6.5, 3]
+  target_point: [0, 6.5, 0]
+
+gym:
+#  shape_json: '../databases/partnet_shapes.json'
+  shape_json: '../databases/world_shapes.json'
+  camera_kwargs: null
+  camera_movement: null
+  light_conf: null
 
 ## ---- purposes
 check_collisions: false
@@ -49,6 +54,6 @@ save_jpg: true
 save_composed_jpg: false
 save_gif: true
 save_animation_json: false
-save_mp4: true
+save_mp4: false
 mp4_side_view: false
 mp4_top_view: true

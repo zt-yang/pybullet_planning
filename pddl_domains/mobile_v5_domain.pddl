@@ -216,8 +216,9 @@
     :precondition (and (KinRel ?a ?o1 ?rp1 ?o2 ?p2 ?g ?q ?t) (Graspable ?o1) (MovableLink ?o2) (CanPick)
                        (AtRelPose ?o1 ?rp1 ?o2) (AtPose ?o2 ?p2) (HandEmpty ?a) (AtBConf ?q)
                        (not (UnsafeApproachRel ?o1 ?rp1 ?o2 ?p2 ?g))
+                       (not (Picked ?o1))
                        )
-    :effect (and (AtGrasp ?a ?o1 ?g) (CanMove)
+    :effect (and (AtGrasp ?a ?o1 ?g) (CanMove) (Picked ?o1)
                  (not (AtRelPose ?o1 ?rp1 ?o2)) (not (HandEmpty ?a))
                  (increase (total-cost) 1)
             )
@@ -348,14 +349,12 @@
   (:derived (On ?o ?r)
     (or
         (exists (?p) (and (Supported ?o ?p ?r) (AtPose ?o ?p)))
-        (exists (?p) (and (AtRelPose ?o ?p ?r)))
     )
   )
   
  (:derived (In ?o ?r)
     (or
         (exists (?p) (and (Contained ?o ?p ?r) (AtPose ?o ?p)))
-        (exists (?p) (and (AtRelPose ?o ?p ?r)))
     )
   )
   
@@ -492,7 +491,7 @@
                       (not (UnsafeATrajToPosesAtBConfAtJointPosition ?at ?q2 ?o ?p1))
                       (not (UnsafeATrajToPositionsAtBConfAtJointPosition ?at ?q2 ?o ?p1))
                     )
-    :effect (and (AtPosition ?o ?p2) (not (AtPosition ?o ?p1)) (GraspedHandle ?o)
+    :effect (and (AtPosition ?o ?p2) (not (AtPosition ?o ?p1))
                  (PulledOneAction ?o) (GraspedHandle ?o) (CanMove)
                  (AtBConf ?q2) (not (AtBConf ?q1)) 
             )
@@ -501,7 +500,6 @@
   (:action grasp_pull_ungrasp_handle_with_link
    :parameters (?a ?o ?p1 ?p2 ?g ?q1 ?q2 ?bt ?aq1 ?aq2 ?at ?l ?lp1 ?lp2)
    :precondition (and (Joint ?o) (CanGraspHandle)
-                      (not (PulledOneAction ?o)) (not (Pulled ?o))
                       (not (= ?p1 ?p2)) (CanPull ?a) (HandEmpty ?a)
                       (AtBConf ?q1) (AtAConf ?a ?aq1)
                       (AtPosition ?o ?p1) (Position ?o ?p2)
@@ -513,7 +511,7 @@
                       (not (UnsafeATrajToPosesAtBConfAtJointPositionAtLinkPose ?at ?q2 ?o ?p1 ?l ?lp2))
                       (not (UnsafeATrajToPositionsAtBConfAtJointPositionAtLinkPose ?at ?q2 ?o ?p1 ?l ?lp2))
                     )
-   :effect (and (AtPosition ?o ?p2) (not (AtPosition ?o ?p1)) (GraspedHandle ?o)
+   :effect (and (AtPosition ?o ?p2) (not (AtPosition ?o ?p1))
                 (PulledOneAction ?o) (GraspedHandle ?o) (CanMove)
                 (AtBConf ?q2) (not (AtBConf ?q1)) 
                 (not (AtPose ?l ?lp1)) (AtPose ?l ?lp2)

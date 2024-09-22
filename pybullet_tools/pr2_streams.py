@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import copy
 import time
 
 from pybullet_tools.utils import invert, get_all_links, get_name, set_pose, get_link_pose, is_placement, \
@@ -866,6 +867,7 @@ def get_base_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
     robot = problem.robot
     saver = BodySaver(robot)
     obstacles = problem.fixed if collisions else []
+    ignored_pairs = problem.world.ignored_pairs
 
     def fn(bq1, bq2, fluents=[]):
         obstacles_here = copy.deepcopy(obstacles)
@@ -875,6 +877,17 @@ def get_base_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
         if len(attachments) > 0:
             # print('get_base_motion_gen, attachments', attachments)
             obstacles_here = [o for o in obstacles if o not in attachments]
+
+        ## add the object to be grasped and placement surface in ignored_pairs
+        ignored_pairs_here = copy.deepcopy(ignored_pairs)
+        for a in attachments:
+            if a.parent == robot:
+                surface = robot.world.body_to_object(1).supporting_surface
+                if surface is not None:
+                    pair = (surface.body, a.child)
+                    if pair not in ignored_pairs_here:
+                        ignored_pairs_here.extend([pair, (a.child, surface.body)])
+
         bq1.assign()
         # TODO: did base motion planning fail?
         # TODO: add objects to obstacles
@@ -895,7 +908,9 @@ def get_base_motion_gen(problem, custom_limits={}, collisions=True, teleport=Fal
                                          obstacles=obstacles_here, self_collisions=robot.self_collisions,
                                          custom_limits=custom_limits, resolutions=None, # TODO: base resolutions
                                          use_aabb=True, cache=True,
-                                         restarts=param[0], iterations=param[1], smooth=50) # smooth=50
+                                         restarts=param[0], iterations=param[1], smooth=50,
+                                         ignored_pairs=ignored_pairs_here
+                                         ) # smooth=50
                                          # restarts=4, iterations=50, smooth=50)
             # break
             num_trials -= 1

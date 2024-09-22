@@ -350,7 +350,7 @@ class Object(Index):
         # print('adjust_next_to | other', other.aabb().upper[0], 'self', self.aabb().upper[0])
         return gap
 
-    def adjust_pose(self, x=None, y=None, z=None, dx=None, dy=None, dz=None, theta=None):
+    def adjust_pose(self, x=None, y=None, z=None, dx=None, dy=None, dz=None, yaw=None):
         (cx, cy, cz), r = self.get_pose()
         if dx is not None:
             cx += dx
@@ -364,8 +364,8 @@ class Object(Index):
             cz += dz
         elif z is not None:
             cz = z
-        if theta is not None:
-            r = quat_from_euler(Euler(yaw=theta))
+        if yaw is not None:
+            r = quat_from_euler(Euler(yaw=yaw))
         self.set_pose(((cx, cy, cz), r))
 
     def set_pose(self, conf):

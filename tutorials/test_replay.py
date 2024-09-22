@@ -7,7 +7,7 @@ from os.path import join, abspath, dirname, isdir, isfile
 from os import listdir, pardir
 RD = abspath(join(dirname(__file__), pardir, pardir))
 sys.path.extend([join(RD), join(RD, 'pddlstream'), join(RD, 'pybullet_planning'), join(RD, 'lisdf')])
-# import ipdb; ipdb.set_trace()
+
 import platform
 
 if platform.node() == 'meraki':
@@ -19,5 +19,16 @@ else:
 from pigi_tools.replay_utils import run_replay, load_pigi_data, REPLAY_CONFIG_DEBUG
 
 
-if __name__ == '__main__':
+def replay_pr2():
     run_replay(REPLAY_CONFIG_DEBUG, load_pigi_data)
+
+
+def replay_rummy():
+    from rummy_tools.rummy_utils import DATA_CONFIG_PATH, load_rummy_data
+    replay_config_file = join(DATA_CONFIG_PATH, 'replay_online.yaml')
+    run_replay(replay_config_file, load_rummy_data)
+
+
+if __name__ == '__main__':
+    replay_pr2()
+    # replay_rummy()
