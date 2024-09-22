@@ -4026,7 +4026,7 @@ def get_collision_fn(body, joints, obstacles=[], attachments=[], self_collisions
                 if verbose:
                     from pybullet_tools.bullet_utils import nice  ## YANG
                     if not isinstance(body1, int):
-                        body.print_full_body_conf(title='get_collision_fn', debug=True)
+                        body.print_full_body_conf(title='get_collision_fn', debug=False)
                     print(f'collision_fn({body1}, {body2})')
 
                 ## robot object

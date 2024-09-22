@@ -221,6 +221,21 @@
             )
   )
 
+  (:action pick
+    :parameters (?a ?o ?p ?g ?q ?t)
+    :precondition (and (Kin ?a ?o ?p ?g ?q ?t) (Graspable ?o) (CanPick)
+                       (AtPose ?o ?p) (HandEmpty ?a) (AtBConf ?q)
+                       (not (UnsafeApproach ?o ?p ?g))
+                       ; (not (Picked ?o))
+                       ; (not (UnsafeATraj ?t)) (not (UnsafeOTraj ?o ?g ?t)) (not (CanMove))
+                       )
+    :effect (and (AtGrasp ?a ?o ?g) (CanMove) (Picked ?o)
+                 (not (AtPose ?o ?p)) (not (HandEmpty ?a))
+                 ; (increase (total-cost) (PickCost))
+                 (increase (total-cost) 1)
+            )
+  )
+
   ;; place onto drawer or movable object
   (:action place_to_supporter
     :parameters (?a ?o1 ?rp1 ?o2 ?p2 ?g ?q ?t)
@@ -232,21 +247,6 @@
                        )
     :effect (and (AtRelPose ?o1 ?rp1 ?o2) (HandEmpty ?a) (CanMove)
                  (not (AtGrasp ?a ?o1 ?g))
-                 (increase (total-cost) 1)
-            )
-  )
-
-  (:action pick
-    :parameters (?a ?o ?p ?g ?q ?t)
-    :precondition (and (Kin ?a ?o ?p ?g ?q ?t) (Graspable ?o) (CanPick)
-                       (AtPose ?o ?p) (HandEmpty ?a) (AtBConf ?q)
-                       (not (UnsafeApproach ?o ?p ?g))
-                       (not (Picked ?o))
-                       ; (not (UnsafeATraj ?t)) (not (UnsafeOTraj ?o ?g ?t)) (not (CanMove))
-                       )
-    :effect (and (AtGrasp ?a ?o ?g) (CanMove) (Picked ?o)
-                 (not (AtPose ?o ?p)) (not (HandEmpty ?a))
-                 ; (increase (total-cost) (PickCost))
                  (increase (total-cost) 1)
             )
   )

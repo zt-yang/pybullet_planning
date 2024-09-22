@@ -636,7 +636,7 @@ def test_skill_knob_faucet(args, **kwargs):
 
 
 def test_kitchen_drawers(args, **kwargs):
-    def loader_fn(world, difficulty=14, **world_builder_args):
+    def loader_fn(world, difficulty=15, **world_builder_args):
         surfaces = {
             'counter': {
                 'front_right_stove': [],
@@ -670,7 +670,7 @@ def test_kitchen_drawers(args, **kwargs):
                       Position(name_to_body('hitman_drawer_bottom_joint'), 'max'))]
             goals = [("OpenedJoint", name_to_body('hitman_drawer_top_joint'))]
 
-        if difficulty in [1, 11, 12, 13, 14, 111]:
+        if difficulty in [1, 11, 12, 13, 14, 15, 111]:
             ## --------- use kitchen fridge and cabinet
             # world.put_on_surface(cabbage, 'indigo_tmp')
             # world.open_joint_by_name('hitman_drawer_top_joint')
@@ -692,10 +692,13 @@ def test_kitchen_drawers(args, **kwargs):
             # goals = ("test_object_grasps", 'cabbage')
             # goals = ('test_grasp_ik', 'cabbage')
 
-            world.robot.add_operator_names_to_remove(['place', 'place_to_supporter'])
+            # world.robot.add_operator_names_to_remove(['place', 'place_to_supporter'])
+            world.robot.add_operator_names_to_remove(['place_to_supporter'])
 
             arm = 'left'
             drawer = name_to_body('indigo_drawer_top_joint')
+            counter = name_to_body('indigo_tmp')
+            stovetop = name_to_body('front_right_stove')
 
             ## drawer as static link
             if difficulty == 1:
@@ -704,36 +707,55 @@ def test_kitchen_drawers(args, **kwargs):
                 goals = [("Holding", "left", cabbage.pybullet_name)]  ## successful
 
             ## drawer as movable link, don't open drawer
-            if difficulty in [11, 12, 13, 14]:
+            if difficulty in [11, 12, 13, 14, 15]:
 
                 objects += [drawer]
                 world.open_joint_by_name('indigo_drawer_top_joint')
                 world.put_in_space(cabbage, 'indigo_drawer_top')
+                cabbage = cabbage.body
 
                 if difficulty == 11:
                     goals = [("Holding", "left", cabbage)]  ## successful
                     # skeleton += [(k, arm, cabbage) for k in pick_place_rel_actions[:1]]
 
                 elif difficulty == 12:
-                    goals = [("On", cabbage, name_to_body('indigo_tmp'))]  ## successful
+                    goals = [("On", cabbage, counter)]  ## successful
                     skeleton += [(k, arm, cabbage) for k in pick_place_rel_actions[:1]]
                     skeleton += [(k, arm, cabbage) for k in pick_arrange_actions[1:]]
 
-                elif difficulty in [13, 14]:
+                elif difficulty in [13, 14, 15]:
                     ## PR2 is ok when custom_limits is
                     load_pot_lid(world)
+                    braiser = name_to_body('braiser_bottom')
                     world.put_on_surface(name_to_body('braiserbody'), 'indigo_tmp').adjust_pose(y=8.922, yaw=0)
                     world.put_on_surface(name_to_body('braiserbody'), 'indigo_tmp').adjust_pose(y=8.922, yaw=0, x=0.585, z=0.923)
                     world.put_on_surface(name_to_body('braiserlid'), 'indigo_tmp').adjust_pose(x=0.7, y=8.622)
                     # world.name_to_object('braiserlid').change_pose_interactive()
                     world.make_transparent('braiserbody')
 
-                    goals = [("On", cabbage, name_to_body('braiser_bottom'))]  ## successful
+                    goals = [("On", cabbage, braiser)]  ## successful
 
                     skeleton += [(k, arm, cabbage) for k in pick_place_rel_actions[:1]]
+                    if difficulty == 15:
+                        # world.robot.remove_arm('right')
+                        ## need to remove pick's precondition (not (picked))
+
+                        # goals = [("On", cabbage, stovetop)]  ## successful
+                        # objects.append(stovetop)
+
+                        # goals = [("On", cabbage, counter)]  ## successful
+                        # goals = [("Holding", arm, cabbage)]  ## successful
+
+                        objects += [counter]
+                        # goals += [("HandleGrasped", arm, drawer)]  ## successful
+                        skeleton += [(k, arm, cabbage, counter) for k in pick_arrange_actions[1:]]
+                        # skeleton += [(k, arm, cabbage) for k in pick_place_actions[1:]]
+                        skeleton += [(k, arm, drawer) for k in pull_with_link_actions]
+                        skeleton += [(k, arm, cabbage) for k in pick_arrange_actions[:1]]
+                        # skeleton += [(k, arm, cabbage, counter) for k in pick_arrange_actions[1:]]
                     if difficulty == 14:
                         skeleton += [(k, 'right', drawer) for k in pull_with_link_actions]
-                    skeleton += [(k, arm, cabbage) for k in pick_arrange_actions[1:]]
+                    skeleton += [(k, arm, cabbage, braiser) for k in pick_arrange_actions[1:]]
 
             ## drawer as movable link
             if difficulty == 111:

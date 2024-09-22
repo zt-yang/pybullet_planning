@@ -299,7 +299,7 @@ class DetachObjectAction(RevisedAction):
                     parent = None
                 else:
                     parent = state.world.BODY_TO_OBJECT[parent]
-                    obj = state.world.BODY_TO_OBJECT[body]
+                obj = state.world.BODY_TO_OBJECT[body]
             elif isinstance(parent, tuple):
                 parent, _, parent_link = parent
 

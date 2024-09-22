@@ -14,12 +14,14 @@
                        (not (UnsafePose ?o ?p))
                        (not (UnsafeApproach ?o ?p ?g))
                        (not (CanMove))
-                       (not (Stacked ?o ?r))
+                       (not (Stacked ?o ?r))  ;; allow regrasping
                        ; (not (Placed ?o))  ;; allow regrasping
                        ; (not (UnsafeATraj ?t)) (not (UnsafeOTraj ?o ?g ?t))
                        )
     :effect (and (AtPose ?o ?p) (HandEmpty ?a) (CanPull ?a) (CanMove)
-                 (not (AtGrasp ?a ?o ?g)) (Stacked ?o ?r) (Moved ?o) ; (Placed ?o)
+                 (not (AtGrasp ?a ?o ?g))
+                 (Stacked ?o ?r) (Moved ?o)
+                 (Placed ?o)
                  ; (increase (total-cost) (PlaceCost))
                  (increase (total-cost) 1)
             )

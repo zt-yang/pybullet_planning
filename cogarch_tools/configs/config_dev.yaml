@@ -55,7 +55,7 @@ robot:
 
 #  robot_name: 'rummy'
   draw_base_limits: true
-  dual_arm: true
+  dual_arm: false
   self_collisions: false
   separate_base_planning: false
 

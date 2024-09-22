@@ -449,6 +449,12 @@ class MobileRobot(RobotAPI):
 
     ## -----------------------------------------------------------------------------
 
+    def remove_arm(self, arm):
+        ## TODO: not complete
+        if arm in self.arms:
+            self.arms.remove(arm)
+            self.dual_arm = False
+
     def open_arm(self, arm):
         for arm in self.arms:
             joints = self.get_arm_joints(arm)
