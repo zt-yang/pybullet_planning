@@ -376,7 +376,11 @@ class RobotAPI(Robot):
 
     def log_collisions(self, body, link=None, source='', robot_body=None, verbose=False):
         from pybullet_tools.logging_utils import myprint as print
+        from world_builder.world import World
         world = self.world
+
+        if not isinstance(world, World):
+            return
 
         obj = world.body_to_object(body)
         name = world.get_debug_name(obj)
@@ -448,6 +452,10 @@ class MobileRobot(RobotAPI):
         raise NotImplementedError('should implement this for MobileRobot!')
 
     ## -----------------------------------------------------------------------------
+
+    def change_tool_from_hand(self, tool_from_hand):
+        """ when finding grasp transformations using test_ruby_grasps() """
+        self.tool_from_hand = tool_from_hand
 
     def remove_arm(self, arm):
         ## TODO: not complete

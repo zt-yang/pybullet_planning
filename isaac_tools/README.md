@@ -2,9 +2,10 @@
 
 1. clone git@gitlab.com:nvidia_srl/caelan/srl_stream.git
 2. download isaac gym from https://developer.nvidia.com/isaac-gym/download, 
-    a. follow instruction in docs/install.html to install isaacgym 
-        `(cd ~/Documents/isaacgym/python; pip install -e .)`
-3. add python path to srl_stream (srl_stream/src), then
+3. follow instruction in docs/install.html to install isaacgym 
+    `(cd ~/Documents/isaacgym/python; pip install -e .)`
+4. add python path to `srl_stream`
+    `sys.path.append('/home/yang/Documents/playground/srl_stream/src')`
 
 ```shell
 pip install setuptools_scm trimesh h5py opencv-python

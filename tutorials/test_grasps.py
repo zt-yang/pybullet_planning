@@ -47,8 +47,9 @@ def test_grasp(problem, body, funk, test_attachment=False, test_offset=False, **
 
 def run_test_grasps(robot='feg', categories=[], given_instances=None, skip_grasps=False,
                     visualize=True, retain_all=True, verbose=False, test_attachment=False,
-                    test_rotation_matrix=False, test_translation_matrix=False, skip_grasp_index=None,
-                    top_grasp_tolerance=None, **kwargs):
+                    test_rotation_matrix=False, skip_rotation_index_until=None, rotation_matrices=None,
+                    test_translation_matrix=False, skip_grasp_index_until=None, translation_matrices=None,
+                    default_rotation=None, top_grasp_tolerance=None, **kwargs):
 
     from pybullet_tools.grasp_utils import enumerate_rotational_matrices as emu, enumerate_translation_matrices
 
@@ -56,9 +57,10 @@ def run_test_grasps(robot='feg', categories=[], given_instances=None, skip_grasp
     draw_pose(unit_pose(), length=10)
     robot = world.robot
     problem = State(world, grasp_types=robot.grasp_types)
-    rotation_matrices = [None] if not test_rotation_matrix else emu(return_list=True)
-    translation_matrices = [problem.robot.tool_from_hand[0]] if not test_translation_matrix \
-        else enumerate_translation_matrices()
+    if rotation_matrices is None:
+        rotation_matrices = emu(return_list=True) if test_rotation_matrix else [default_rotation]
+    if translation_matrices is None:
+        translation_matrices = enumerate_translation_matrices() if test_translation_matrix else [(0, 0, -0.13)]
     test_offset = test_rotation_matrix or test_translation_matrix
     color = RED
 
@@ -67,8 +69,9 @@ def run_test_grasps(robot='feg', categories=[], given_instances=None, skip_grasp
             if test_offset:
                 ## found it
                 if r is not None:
-                    if test_rotation_matrix and k1 < 15: continue
-                    problem.robot.tool_from_hand = Pose(point=t, euler=r)
+                    if test_rotation_matrix and skip_rotation_index_until is not None and k1 < skip_rotation_index_until:
+                        continue
+                    problem.robot.change_tool_from_hand(Pose(point=t, euler=r))
                 k = k1 * len(translation_matrices) + k2
                 idx = k % len(colors)
                 color = colors[idx]
@@ -83,7 +86,7 @@ def run_test_grasps(robot='feg', categories=[], given_instances=None, skip_grasp
 
                 funk = get_grasp_list_gen(problem, collisions=True, visualize=visualize, retain_all=retain_all,
                                           verbose=verbose, top_grasp_tolerance=tpt, test_offset=test_offset,
-                                          skip_grasp_index=skip_grasp_index)
+                                          skip_grasp_index_until=skip_grasp_index_until)
 
                 if cat == 'box':
                     body = create_box(0.05, 0.05, 0.05, mass=0.2, color=GREEN)
@@ -106,7 +109,7 @@ def run_test_grasps(robot='feg', categories=[], given_instances=None, skip_grasp
                     instance_name = get_instance_name(abspath(path))
                     obj_name = f'{cat.lower()}#{id}'
                     world.add_body(body, obj_name, instance_name)
-                    set_camera_target_body(body)
+                    # set_camera_target_body(body)
                     text = id.replace('veggie', '').replace('meat', '')
                     draw_body_label(body, text, offset=(0, -0.2, 0.1))
 

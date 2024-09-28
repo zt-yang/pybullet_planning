@@ -554,6 +554,8 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
         if not np.all(camera_pose.pos == 0):
             set_camera_pose2((camera_pose.pos, camera_pose.quat_xyzw))
 
+    if not verbose:
+        print(f'lisdf_loader.load_lisdf_pybullet | if failed, come set verbose = True')
     planning_config = join(lisdf_dir, 'planning_config.json')
     if isfile(planning_config):
         config = json.load(open(planning_config, 'r'))
@@ -574,7 +576,7 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
                             pybullet_id = (body_id, pybullet_id[-1])
                         if len(pybullet_id) == 3:
                             pybullet_id = (body_id, None, pybullet_id[-1])
-                    if verbose or True:
+                    if verbose:
                         print(f'load_lisdf_pybullet.planning_config | k -> {pybullet_id} : {v} not in world.name_to_body')
                     world.add_body(pybullet_id, v)
                     ## e.g. k=(15, 1), v=minifridge::joint_0

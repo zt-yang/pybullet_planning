@@ -256,7 +256,7 @@ def enumerate_translation_matrices(x=0.02, negations=False):
     translations = [(x, 0, 0), (0, x, 0), (0, 0, x)]
     if negations:
         translations += [(-x, 0, 0), (0, -x, 0), (0, 0, -x)]
-    return translations + [(0, 0, 0)]
+    return [(0, 0, 0)] + translations
 
 
 def enumerate_rotational_matrices(return_list=False):
@@ -319,7 +319,7 @@ def make_nudge_grasps_from_handle_grasps(world, found_hand_grasps, body, body_po
 def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
                     handle_filter=False, length_variants=False, use_all_grasps=True,
                     retain_all=False, verbose=True, collisions=False, debug_del=False,
-                    test_offset=False, skip_grasp_index=None, nudge=False, nudge_back=False):
+                    test_offset=False, skip_grasp_index_until=None, nudge=False, nudge_back=False):
     body_name = (body, None, link) if link is not None else body
     title = f'grasp_utils.get_hand_grasps({body_name}) | '
     dist = grasp_length
@@ -453,7 +453,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
 
             ## for debugging different grasps
             index += 1
-            if skip_grasp_index is not None and index <= skip_grasp_index:
+            if skip_grasp_index_until is not None and index <= skip_grasp_index_until:
                 continue
 
             grasps.extend(check_grasp(f, r))

@@ -224,4 +224,5 @@ def build_robot_from_args(world, robot_name, create_robot_fn=None, **kwargs):
 
     if spawn_range is not None:
         robot.set_spawn_range(spawn_range)
+    robot.world = world
     return robot

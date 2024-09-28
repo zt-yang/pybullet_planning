@@ -19,6 +19,7 @@ from pybullet_tools.logging_utils import print_debug, print_blue
 from pigi_tools.text_utils import ACTION_ABV, ACTION_NAMES
 
 from world_builder.world_utils import get_partnet_doors
+from world_builder.paths import DATABASES_PATH
 
 import sys
 sys.path.append('/home/yang/Documents/fastamp')
@@ -731,6 +732,7 @@ def get_world_aabb(run_dir, shape_json=None):
 
     ## use aabbs saved previously by loaders during scene generation
     else:
+        shape_json = join(DATABASES_PATH, shape_json)
         aabbs = [AABB(lower, upper) for (lower, upper) in json.load(open(shape_json, 'r')).values()]
     return get_merged_aabb(aabbs)
 

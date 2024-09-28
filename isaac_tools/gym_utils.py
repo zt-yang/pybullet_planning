@@ -498,19 +498,20 @@ def init_isaac_world():
 def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_name='gym_replay.gif',
                           time_step=0.5, verbose=False, plan=None, return_wconf=False,
                           world_index=None, body_map=None, save_gif=True, save_mp4=False,
-                          camera_movement=None, ignore_actors=None):
+                          camera_movement=None, ignore_actors=None,
+                          frame_gap=3): ## 3 for single world, 5 for longer horizon
     """ act out the whole plan and event in the world without observation/replanning """
     from world_builder.actions import adapt_action, apply_actions
     from world_builder.world import State
     from world_builder.actions import Action, AttachObjectAction
     from pybullet_tools.utils import wait_for_duration
 
+    os.makedirs(img_dir)
     if commands is None:
         return
     state_event = State(problem.world)
     camera = None if gym_world is None else gym_world.cameras[0]
     filenames = []
-    frame_gap = 3  ## 3 ## 3 for single world, 5 for longer horizon
     wconfs = []
     for i, action in enumerate(commands):
         if verbose:
