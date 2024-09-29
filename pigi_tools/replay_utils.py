@@ -480,7 +480,7 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
             all_gif_names.append(gif_name)
         gif_name = all_gif_names
 
-        process_text_for_animation(run_dir, world.body_to_name)
+        process_text_for_animation(run_dir, world.body_to_name, join(exp_dir, 'segmented_commands_info.json'))
     else:
         gif_name = 'gym_replay.gif'
         img_dir = join(exp_dir, 'gym_images')
@@ -525,15 +525,22 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
     del (gym_world.simulator)
 
 
-def process_text_for_animation(run_dir, body_to_name):
+def process_text_for_animation(run_dir, body_to_name, json_path):
+    def translate_literal(goal):
+        return [goal[0] + translate_objects(goal[1:])]
+    def translate_objects(lst):
+        return [body_to_name[e] if e in body_to_name else e for e in lst]
+
     time_log = json.load(open(join(run_dir, 'time.json'), 'r'))
     time_log = [
         {k: log[k] for k in ['planning', 'goal', 'goal_original', 'plan_skeleton']}
         for log in time_log[:-1]
     ]
-    for k in ['goal', 'goal_original']:
-        for g in time_log[k]:
+    time_log['goal'] = translate_literal(time_log['goal'])
+    time_log['goal_original'] = translate_literal(time_log['goal_original'][0])
 
+    with open(json_path, 'r') as f:
+        json.dump(time_log, f, indent=2)
 
 
 #######################################################################################################
