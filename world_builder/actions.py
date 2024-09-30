@@ -565,14 +565,15 @@ def adapt_action(a, problem, plan, verbose=True):
 
     ## find the joint positions to animate
     if get_action_name(a) == 'AttachObjectAction' and isinstance(a.get_body(), tuple):
-        adapt_attach_action(a, problem, plan, verbose=verbose)
+        with ConfSaver(problem.robot):
+            adapt_attach_action(a, problem, plan, verbose=verbose)
 
     return a
 
 
-def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body_map=None,
-                  save_composed_jpg=False, save_gif=False, check_collisions=False,
-                  action_by_action=False, cfree_range=0.1, visualize_collisions=False):
+def apply_commands(problem, actions, time_step=0.5, verbose=True, plan=None, body_map=None,
+                   save_composed_jpg=False, save_gif=False, check_collisions=False,
+                   action_by_action=False, cfree_range=0.1, visualize_collisions=False):
     """ act out the whole plan and event in the world without observation/replanning """
     if actions is None:
         return
@@ -701,7 +702,8 @@ def apply_actions(problem, actions, time_step=0.5, verbose=True, plan=None, body
 
         ###############################################
 
-        action = adapt_action(action, problem, plan, verbose=False)
+        ## adapt before using segmented plans for visualization, TODO: check if works
+        # action = adapt_action(action, problem, plan, verbose=False)
         if action is None:
             continue
         if isinstance(action, Command):
@@ -997,12 +999,14 @@ def get_primitive_actions(action, world, teleport=False, verbose=True, debug_rc2
     elif name in ['place', 'place_half', 'place_to_supporter', 'arrange']:
         if 'to_supporter' in name:
             a, o, rp, o2, p2, g = args[:6]
-        elif name == 'arrange':
-            a, o, r, p = args[:4]
-            o2 = p.support
         else:
-            a, o, p = args[:3]
-            o2 = p.support
+            if name == 'arrange':
+                a, o, r, p = args[:4]
+            else:
+                a, o, p = args[:3]
+            o2 = None
+            if hasattr(p, 'support'):
+                o2 = p.support
         t = get_traj(args[-1])
         open_gripper = GripperAction(a, extent=1, teleport=teleport)
         detach = DetachObjectAction(a, o, supporter=o2, verbose=verbose)

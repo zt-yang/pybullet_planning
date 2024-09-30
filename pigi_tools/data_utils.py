@@ -14,6 +14,7 @@ from pybullet_tools.utils import is_placement, link_from_name, get_joint_name, \
 from pybullet_tools.pr2_primitives import Pose
 from pybullet_tools.general_streams import Position
 from pybullet_tools.bullet_utils import nice, is_box_entity, get_merged_aabb
+from pybullet_tools.stream_agent import FAILED
 from pybullet_tools.logging_utils import print_debug, print_blue
 
 from pigi_tools.text_utils import ACTION_ABV, ACTION_NAMES
@@ -571,7 +572,7 @@ def get_successful_plan(run_dir, indices={}, skip_multiple_plans=True, maybe_hpn
             if 'plan' not in episode:
                 continue
             actions = episode['plan']
-            if actions == 'FAILED' or len(actions) == 0:
+            if actions == FAILED or len(actions) == 0:
                 if len(data) == 2:
                     return None
                 continue

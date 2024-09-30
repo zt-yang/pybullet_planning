@@ -14,6 +14,7 @@ from pybullet_tools.utils import get_bodies, euler_from_quat, get_collision_data
 from pybullet_tools.bullet_utils import LINK_STR, nice, is_box_entity, random
 from pybullet_tools.pose_utils import is_placement
 from pybullet_tools.logging_utils import get_readable_list
+from pybullet_tools.stream_agent import FAILED
 from pybullet_tools.general_streams import Position
 from pybullet_tools.pr2_primitives import Pose
 
@@ -353,7 +354,7 @@ def save_to_outputs_folder(output_path, data_path, data_generation=False, multip
 
     if isfile(join(data_path, 'plan.json')):
         with open(join(data_path, 'plan.json'), 'r') as f:
-            if json.load(f)[0]['plan'] == 'FAILED':
+            if json.load(f)[0]['plan'] == FAILED:
                 shutil.rmtree(data_path)
 
 

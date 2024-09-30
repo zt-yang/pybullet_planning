@@ -14,6 +14,8 @@ from world_builder.world_utils import get_camera_zoom_in
 from pybullet_tools.bullet_utils import nice, equal, get_datetime
 from pybullet_tools.utils import pose_from_tform, get_pose, get_joint_name, get_joint_position, \
     get_movable_joints, Euler, quat_from_euler
+from pybullet_tools.logging_utils import print_pink, print_green, print_debug
+
 from isaac_tools.urdf_utils import load_lisdf, test_is_robot
 from lisdf_tools.image_utils import images_to_mp4, images_to_gif
 from pigi_tools.data_utils import load_planning_config, get_worlds_aabb, \
@@ -495,13 +497,13 @@ def init_isaac_world():
     return gym, sim, viewer
 
 
-def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_name='gym_replay.gif',
+def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_path='gym_replay.gif',
                           time_step=0.5, verbose=False, plan=None, return_wconf=False,
                           world_index=None, body_map=None, save_gif=True, save_mp4=False,
                           camera_movement=None, ignore_actors=None,
                           frame_gap=3): ## 3 for single world, 5 for longer horizon
     """ act out the whole plan and event in the world without observation/replanning """
-    from world_builder.actions import adapt_action, apply_actions
+    from world_builder.actions import adapt_action, apply_commands
     from world_builder.world import State
     from world_builder.actions import Action, AttachObjectAction
     from pybullet_tools.utils import wait_for_duration
@@ -519,7 +521,7 @@ def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_n
         if 'tachObjectAction' in str(action):
             if action.body in body_map:
                 action.body = body_map[action.body]
-        action = adapt_action(action, problem, plan, verbose=verbose)
+        # action = adapt_action(action, problem, plan, verbose=verbose)
         if action is None:
             continue
         state_event = action.transition(state_event.copy())
@@ -537,25 +539,30 @@ def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_n
             """ update gym world """
             update_gym_world_by_pb_world(gym_world, problem.world, ignore_actors=ignore_actors)
             if img_dir is not None and (frame_gap == 0 or i % frame_gap == 0):
-                # img_file = join(img_dir, f'{i}.png')
+                img_file = join(img_dir, f'{i}.npy')
                 # gym_world.get_rgba_image(camera, image_type='rgb', filename=img_file)  ##
-                img_file = gym_world.get_rgba_image(camera)
+                img = gym_world.get_rgba_image(camera)
+                with open(img_file, 'wb') as f:
+                    np.save(f, img)
                 filenames.append(img_file)
 
     if return_wconf:
         return wconfs
-    save_gym_run(img_dir, gif_name, filenames, save_gif=save_gif, save_mp4=save_mp4)
-    return gif_name
+    if len(filenames) > 0:
+        print_debug(f"saved {len(filenames)} images to make mp4")
+        print_green(f'loading {filenames[0]} to {gif_path}')
+        save_gym_run(img_dir, gif_path, filenames, save_gif=save_gif, save_mp4=save_mp4)
+    return gif_path
 
 
-def save_gym_run(img_dir, gif_name, filenames, save_gif=True, save_mp4=True):
+def save_gym_run(img_dir, gif_path, filenames, save_gif=True, save_mp4=True):
     if save_gif:
-        images_to_gif(img_dir, gif_name, filenames)
-        print('created gif {}'.format(join(img_dir, gif_name)))
+        images_to_gif(img_dir, gif_path, filenames)
+        print('created gif {}'.format(gif_path))
     if save_mp4:
-        mp4_name = join(gif_name.replace('.gif', '.mp4'))  ## f'_{get_datetime()}.mp4'
-        images_to_mp4(filenames, mp4_name=mp4_name)
-        print('created mp4 {} with {} frames'.format(mp4_name, len(filenames)))
+        mp4_path = join(gif_path.replace('.gif', '.mp4'))  ## f'_{get_datetime()}.mp4'
+        images_to_mp4(filenames, mp4_path=mp4_path)
+        print_green('created mp4 {} with {} frames\n'.format(mp4_path, len(filenames)))
 
 
 def interpolate_camera_pose(gym_world, i, length, camera_movement):

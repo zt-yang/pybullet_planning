@@ -22,7 +22,7 @@ from lisdf_tools.lisdf_utils import pddlstream_from_dir
 from lisdf_tools.lisdf_loader import load_lisdf_pybullet
 from lisdf_tools.lisdf_planning import pddl_to_init_goal, Problem
 
-from world_builder.actions import apply_actions
+from world_builder.actions import apply_commands
 
 
 """ a scene with two food items, fridge, pot, and basin """
@@ -129,7 +129,7 @@ def main(exp_name, verbose=True):
         control_commands(commands)
     else:
         # apply_commands(State(), commands, time_step=0.01)
-        apply_actions(problem, commands, time_step=0.1)
+        apply_commands(problem, commands, time_step=0.1)
     wait_if_gui('Finish?')
     disconnect()
 

@@ -38,8 +38,17 @@ def load_lisdf(lisdf_dir, scene_scale=1., robots=False, skip=[], verbose=True):
 
         if hasattr(obj_xml, "uri"):
             path = abspath(join(dirname(lisdf_path), obj_xml.uri.cdata))
-            if isdir(abspath(join(path, '..', '_isaac'))):
-                path = path.replace('mobility.urdf', '_isaac/mobility.urdf')
+
+            """
+            in case the .obj file size > 2 MB, can't be loaded, reduce manually using Blender
+                1. import .obj file (.mtl will be loaded together)
+                2. Add Modifier > Decimate > 0.5
+                3. export .obj file 
+                4. fix associated new .mtl file to make sure image texture is applied
+            https://www.youtube.com/watch?v=lcTDBJt9MfE&ab_channel=Pinshape
+            """
+            # if isdir(abspath(join(path, '..', '_isaac'))):
+            #     path = path.replace('mobility.urdf', '_isaac/mobility.urdf')
 
             if verbose:
                 print(f"Name: {name} | Fixed: {is_fixed} | Scale: {scale:.3f} | Path: {path}")

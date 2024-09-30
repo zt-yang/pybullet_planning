@@ -97,7 +97,7 @@ def get_string(text, kwargs, verbose=True):
 
 
 def print_in_file(string, txt_file=TXT_FILE):
-    string = ' '.join(string)+'\n'
+    string = ' '.join(str(string))+'\n'
     string = string.replace('\t', '    ')
     with open(txt_file, 'a+') as f:
         f.writelines(string)

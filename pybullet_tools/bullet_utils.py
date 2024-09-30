@@ -1208,3 +1208,7 @@ def has_srl_stream():
         print('Unfortunately, you cant use the library unless you are part of NVIDIA Seattle Robotics lab')
         return False
     return True
+
+
+def running_in_pycharm():
+    return "PYCHARM_HOSTED" in os.environ

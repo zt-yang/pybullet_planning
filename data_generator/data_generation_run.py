@@ -23,7 +23,7 @@ from pybullet_tools.pr2_primitives import control_commands, apply_commands
 from pybullet_tools.logging_utils import parallel_print, myprint, summarize_facts, print_goal
 
 from world_builder.world import State
-from world_builder.actions import apply_actions
+from world_builder.actions import apply_commands
 from world_builder.builders import sample_world_and_goal, save_world_problem
 
 
@@ -150,7 +150,7 @@ def data_generation_process(config, world_only=False):
         control_commands(commands)
     else:
         set_renderer(True)
-        apply_actions(state, commands, time_step=config.time_step, verbose=False)
+        apply_commands(state, commands, time_step=config.time_step, verbose=False)
     # wait_if_gui('Finish?')
     print(SEPARATOR)
     reset_simulation()

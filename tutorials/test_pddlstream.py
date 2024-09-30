@@ -19,7 +19,7 @@ from lisdf_tools.lisdf_utils import pddlstream_from_dir
 from lisdf_tools.lisdf_loader import load_lisdf_pybullet
 from lisdf_tools.lisdf_planning import Problem
 
-from world_builder.actions import apply_actions
+from world_builder.actions import apply_commands
 
 from examples.test_utils import init_experiment, get_parser, save_csv, read_csv
 
@@ -77,7 +77,7 @@ def main(args, execute=True):
         if args.simulate:  ## real physics
             control_commands(commands)
         else:
-            apply_actions(problem, commands, time_step=0.1)
+            apply_commands(problem, commands, time_step=0.1)
         wait_if_gui('Finish?')
 
     disconnect()

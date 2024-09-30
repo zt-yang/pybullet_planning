@@ -12,18 +12,19 @@ import numpy as np
 import sys
 from collections import namedtuple
 
-from pybullet_tools.bullet_utils import query_yes_no, has_srl_stream
+from pybullet_tools.bullet_utils import query_yes_no, has_srl_stream, running_in_pycharm
 from pybullet_tools.logging_utils import print_pink, print_green, print_blue
 from pybullet_tools.camera_utils import adjust_camera_pose, set_camera_target_body
 from pybullet_tools.pose_utils import ObjAttachment, has_getch
 from pybullet_tools.utils import reset_simulation, VideoSaver, wait_unlocked, get_aabb_center, load_yaml, \
     set_camera_pose, get_aabb_extent, set_camera_pose2, invert
+from pybullet_tools.stream_agent import FAILED
 
 from lisdf_tools.lisdf_loader import load_lisdf_pybullet
 from lisdf_tools.lisdf_planning import Problem
 from lisdf_tools.image_utils import make_composed_image_multiple_episodes, images_to_gif
 
-from world_builder.actions import apply_actions, get_primitive_actions, get_action_name
+from world_builder.actions import apply_commands, get_primitive_actions, get_action_name, adapt_action
 from world_builder.paths import PBP_PATH
 
 from data_generator.run_utils import copy_dir_for_process, process_all_tasks
@@ -150,28 +151,17 @@ def load_replay_conf(conf_path, **kwargs):
         if v == 'none':
             c[k] = None
 
-    for k, v in kwargs.items():
-        c[k] = v
-
-    # from types import SimpleNamespace
-    # conf = SimpleNamespace(**kwargs)
-
-    c['save_jpg'] = c['save_jpg'] or c['save_composed_jpg'] or c['save_gif']
-    c['use_gym'] = c['use_gym'] and has_srl_stream()
-    c['step_by_step'] = c['step_by_step'] and has_getch()
-    # c['cases'] = get_sample_envs_for_rss(task_name=c['task_name'], count=None)
-
     if c['step_by_step']:
         c['save_mp4'] = False
 
     if c['given_path']:
-        c['visualize_collisions'] = True
+        # c['visualize_collisions'] = True
         c['parallel'] = False
-    else:
         if 'rerun' in c['given_path']:
             c['save_jpg'] = False
             c['save_composed_jpg'] = False
             c['gif'] = False
+    else:
         c['parallel'] = c['parallel'] and c['save_jpg'] and not c['preview_scene']
 
     if c['mp4_side_view'] or c['mp4_top_view'] or c['light_conf'] is not None:
@@ -185,10 +175,22 @@ def load_replay_conf(conf_path, **kwargs):
             c['height'] = 1080
             c['light_conf'] = dict(direction=np.asarray([0, -1, 0]), intensity=np.asarray([1, 1, 1]))
 
+    for k, v in kwargs.items():
+        c[k] = v
+
+    c['save_jpg'] = c['save_jpg'] or c['save_composed_jpg'] or c['save_gif']
+    c['use_gym'] = c['use_gym'] and has_srl_stream() and not running_in_pycharm()
+    c['step_by_step'] = c['step_by_step'] and has_getch()
+    # c['cases'] = get_sample_envs_for_rss(task_name=c['task_name'], count=None)
+
     return c
 
 
 def run_replay(config_yaml_file, load_data_fn=load_pigi_data, **kwargs):
+    """
+    when use_gym=True, if ImportError: libpython3.8.so.1.0: cannot open shared object file: No such file or directory
+        export LD_LIBRARY_PATH=/home/zhutiany/miniconda3/envs/cogarch/lib
+    """
     c = load_replay_conf(config_yaml_file, **kwargs)
 
     def process(run_dir_ori):
@@ -228,7 +230,20 @@ def set_replay_camera_pose(world, run_dir, camera_kwargs, camera_point, target_p
     #         set_camera_pose(camera_point, center)
 
 
-def get_segmented_commands(world, commands, plan):
+def get_segmented_commands(world, commands, plan, time_log=None):
+    """
+    if time_log is None, segment commands by actions
+    if time_log is not None, segment commands by subproblems, time_log is a list of dicts: e.g.
+        {
+            "planning": 3.6821,
+            "goal": [["openedjoint([(10, 1)])"]],
+            "goal_original": [["openedjoint","fridge#1::fridge_door"]],
+            "plan_skeleton": [
+              "move_base()",
+              "grasp_pull_ungrasp_handle((10, 1))"
+            ]
+        },
+    """
     segmented_commands = []
     actions, continuous = plan
 
@@ -254,7 +269,26 @@ def get_segmented_commands(world, commands, plan):
             last_command_name = name
         current_commands.append(command)
     segmented_commands.append((current_action_name, current_commands, ([actions[i]], continuous)))
-    # pprint(segmented_commands)
+
+    if time_log is not None:
+        index = 0
+        new_segmented_commands = []
+        for j, log in enumerate(time_log):
+            new_subproblem_name = '-'.join(log["goal"])
+            new_commands = []
+            new_plan = []
+            n = len(log["plan_skeleton"])
+            for i in range(n):
+                if i+index >= len(segmented_commands):
+                    break
+                current_action_name, current_commands, (current_plan, _) = segmented_commands[i+index]
+                new_commands.extend(current_commands)
+                new_plan.extend(current_plan)
+            print(j, new_subproblem_name, len(new_plan), [p[0] for p in new_plan])
+            new_segmented_commands.append((new_subproblem_name, new_commands, (new_plan, continuous)))
+            index += n
+        segmented_commands = new_segmented_commands
+
     return segmented_commands
 
 
@@ -270,6 +304,7 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
     world, problem, exp_dir, run_dir, commands, plan, body_map = load_data_fn(
         run_dir_ori, use_gui=not use_gym, width=width, height=height, verbose=verbose
     )
+    commands = [adapt_action(command, problem, plan, verbose=False) for command in commands]
     if hasattr(world, 'lisdf') is None or True:
         set_replay_camera_pose(world, run_dir, camera_kwargs, camera_point, target_point)
 
@@ -297,22 +332,30 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
                           mp4_side_view=mp4_side_view, mp4_top_view=mp4_top_view, shape_json=shape_json)
         run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_map, **gym_kwargs)
 
-    elif save_mp4:
-        if save_segmented_mp4:
-            segmented_commands = get_segmented_commands(world, commands, plan)
-            for i, (action_name, short_commands, short_plan) in enumerate(segmented_commands):
-                mp4_name = f'replay_{i}_{action_name}.mp4'
-                save_mp4_in_pybullet(run_dir, problem, short_commands, short_plan, mp4_name=mp4_name, time_step=time_step)
-        else:
-            save_mp4_in_pybullet(run_dir, problem, commands, plan, time_step=time_step)
-
+    ## pybullet
     else:
-        run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, body_map, task_name=task_name,
-                            step_by_step=step_by_step, action_by_action=action_by_action, auto_play=auto_play,
-                            check_collisions=check_collisions,
-                            cfree_range=cfree_range, visualize_collisions=visualize_collisions,
-                            evaluate_quality=evaluate_quality, zoomin_kwargs=zoomin_kwargs, time_step=time_step,
-                            save_jpg=save_jpg, save_composed_jpg=save_composed_jpg, save_gif=save_gif, verbose=verbose)
+        if save_mp4:
+            if save_segmented_mp4:
+                time_log = process_text_for_animation(run_dir, world.body_to_name, get_info_path(run_dir))
+                segmented_commands = get_segmented_commands(world, commands, plan, time_log)
+                video_dir = join(run_dir, 'videos')
+                os.makedirs(video_dir, exist_ok=True)
+                for i, (action_name, short_commands, short_plan) in enumerate(segmented_commands):
+                    mp4_name = f'replay_{i}_{action_name}.mp4'
+                    attachments = save_mp4_in_pybullet(run_dir, problem, short_commands, short_plan, mp4_name=mp4_name, time_step=time_step)
+                    problem.world.attachments = attachments
+                    print_green(f"{i}\t{attachments}\n")
+                    shutil.move(join(run_dir, mp4_name), join(video_dir, mp4_name))
+            else:
+                save_mp4_in_pybullet(run_dir, problem, commands, plan, time_step=time_step)
+
+        else:
+            run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, body_map, task_name=task_name,
+                                step_by_step=step_by_step, action_by_action=action_by_action, auto_play=auto_play,
+                                check_collisions=check_collisions,
+                                cfree_range=cfree_range, visualize_collisions=visualize_collisions,
+                                evaluate_quality=evaluate_quality, zoomin_kwargs=zoomin_kwargs, time_step=time_step,
+                                save_jpg=save_jpg, save_composed_jpg=save_composed_jpg, save_gif=save_gif, verbose=verbose)
 
     reset_simulation()
     shutil.rmtree(exp_dir)
@@ -346,8 +389,9 @@ def save_initial_scene_in_pybullet(run_dir_ori, world, zoomin_kwargs, save_compo
 def save_mp4_in_pybullet(run_dir, problem, commands, plan, mp4_name='replay.mp4', time_step=0.025):
     video_path = join(run_dir, mp4_name)
     with VideoSaver(video_path):
-        apply_actions(problem, commands, time_step=time_step, verbose=False, plan=plan)
-    print('saved to', abspath(video_path))
+        attachments = apply_commands(problem, commands, time_step=time_step, verbose=False, plan=plan)
+    print('saved mp4 to', abspath(video_path))
+    return attachments
 
 
 def run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, body_map, task_name=None,
@@ -364,10 +408,10 @@ def run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, bo
     if answer:
         time_step = 2e-5 if save_jpg else time_step
         time_step = None if step_by_step else time_step
-        results = apply_actions(problem, commands, time_step=time_step, verbose=verbose, plan=plan,
-                                body_map=body_map, save_composed_jpg=save_composed_jpg, save_gif=save_gif,
-                                check_collisions=check_collisions, cfree_range=cfree_range,
-                                action_by_action=action_by_action, visualize_collisions=visualize_collisions)
+        results = apply_commands(problem, commands, time_step=time_step, verbose=verbose, plan=plan,
+                                 body_map=body_map, save_composed_jpg=save_composed_jpg, save_gif=save_gif,
+                                 check_collisions=check_collisions, cfree_range=cfree_range,
+                                 action_by_action=action_by_action, visualize_collisions=visualize_collisions)
 
     if check_collisions:
         new_data = {'cfree': results} if results else {'cfree': cfree_range}
@@ -394,8 +438,8 @@ def run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, bo
             episodes = results
             h, w, _ = episodes[0].shape
             crop = (0, h // 3 - h // 30, w, 2 * h // 3 - h // 30)
-            gif_name = 'replay.gif'
-            images_to_gif(world.img_dir, gif_name, episodes, crop=crop)
+            gif_path = join(run_dir_ori, 'replay.gif')
+            images_to_gif(world.img_dir, gif_path, episodes, crop=crop)
 
         # if SAVE_COMPOSED_JPG or SAVE_GIF:
         #     world.camera = world.cameras[0]
@@ -418,6 +462,7 @@ def run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, bo
             print(f"moved {run_dir} to {new_dir}")
 
     # wait_if_gui('replay next run?')
+    return results
 
 
 def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_map, width=1280, height=800,
@@ -426,6 +471,8 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
                          save_mp4=False, save_segmented_mp4=False, mp4_side_view=False, mp4_top_view=False,
                          shape_json=None):
     from isaac_tools.gym_utils import load_lisdf_isaacgym, record_actions_in_gym, set_camera_target_body
+
+    title = 'run_one_in_isaac_gym\t'
 
     gym_world = load_lisdf_isaacgym(abspath(exp_dir), camera_width=width, camera_height=height,
                                     camera_point=camera_point, target_point=target_point)
@@ -467,25 +514,26 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
     gym_kwargs = dict(body_map=body_map, time_step=0, verbose=False, save_gif=save_gif, save_mp4=save_mp4,
                       ignore_actors=removed, camera_movement=camera_movement)
     if save_segmented_mp4:
-        segmented_commands = get_segmented_commands(world, commands, plan)
+        time_log = process_text_for_animation(run_dir, world.body_to_name, get_info_path(run_dir))
+        segmented_commands = get_segmented_commands(world, commands, plan, time_log)
         print('\n'+'-'*50)
         print([(k[0], len(k[1])) for k in segmented_commands])
         print('-'*50+'\n')
-        all_gif_names = []
+        all_gif_path = []
         for i, (action_name, short_commands, short_plan) in enumerate(segmented_commands):
-            gif_name = f'gym_replay__{i}__{action_name}.gif'
+            gif_path = join(run_dir, f'gym_replay__{i}__{action_name}.gif')
             img_dir = join(exp_dir, f'gym_images__{i}__{action_name}')
-            gif_name = record_actions_in_gym(problem, short_commands, gym_world, plan=short_plan, img_dir=img_dir,
-                                             gif_name=gif_name, frame_gap=1, **gym_kwargs)
-            all_gif_names.append(gif_name)
-        gif_name = all_gif_names
+            record_actions_in_gym(problem, short_commands, gym_world, plan=short_plan, img_dir=img_dir,
+                                  gif_path=gif_path, frame_gap=1, **gym_kwargs)
+            if len(short_commands) > 0:
+                all_gif_path.append(gif_path)
+        gif_path = all_gif_path
 
-        process_text_for_animation(run_dir, world.body_to_name, join(exp_dir, 'segmented_commands_info.json'))
     else:
-        gif_name = 'gym_replay.gif'
+        gif_path = join(run_dir, 'gym_replay.gif')
         img_dir = join(exp_dir, 'gym_images')
-        gif_name = record_actions_in_gym(problem, commands, gym_world, plan=plan, img_dir=img_dir,
-                                         gif_name=gif_name, **gym_kwargs)
+        record_actions_in_gym(problem, commands, gym_world, plan=plan, img_dir=img_dir,
+                              gif_path=gif_path, **gym_kwargs)
     # gym_world.wait_if_gui()
 
     #####################################################
@@ -504,21 +552,26 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
     new_file = join(GYM_IMAGES_DIR, save_name+'.gif')
 
     if save_gif:
-        # shutil.copy(join(exp_dir, gif_name), join(run_dir, gif_name))
+        # shutil.copy(gif_path, join(run_dir, basename(gif_path)))
         print('moved gif to {}'.format(join(run_dir, new_file)))
-        shutil.move(join(exp_dir, gif_name), new_file)
+        shutil.move(gif_path, new_file)
 
     if save_mp4:
         if save_segmented_mp4:
             new_dir = join(GYM_IMAGES_DIR, save_name)
             os.makedirs(new_dir, exist_ok=True)
-            for name in gif_name:
-                name = name.replace('.gif', '.mp4')
-                new_mp4_name = join(new_dir, basename(name))
-                shutil.move(name, new_mp4_name)
-                print(f'moved {name} to {new_mp4_name}')
+            for i, path in enumerate(gif_path):
+                path = path.replace('.gif', '.mp4')
+                if isfile(path):
+                    new_mp4_name = join(new_dir, basename(path))
+                    shutil.move(path, new_mp4_name)
+                    print(f'{title} | step {i}: moved {path} to {new_mp4_name}')
+                else:
+                    print(f'{title} | step {i}: skipping {path} because the action has no commands')
+
+            shutil.move(get_info_path(run_dir), get_info_path(new_dir))
         else:
-            mp4_name = gif_name.replace('.gif', '.mp4')
+            mp4_name = gif_path.replace('.gif', '.mp4')
             new_mp4_name = new_file.replace('.gif', '.mp4')
             shutil.move(join(mp4_name), new_mp4_name)
             print(f'moved mp4 to {new_mp4_name}')
@@ -527,20 +580,52 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
 
 def process_text_for_animation(run_dir, body_to_name, json_path):
     def translate_literal(goal):
-        return [goal[0] + translate_objects(goal[1:])]
+        elems, found_objects = translate_objects(goal[1:])
+        return [goal[0]] + elems, found_objects
+
     def translate_objects(lst):
-        return [body_to_name[e] if e in body_to_name else e for e in lst]
+        elems = []
+        found_objects = {}
+        for e in lst:
+            if isinstance(e, list):
+                e = tuple(e)
+            if e in body_to_name:
+                object_name = body_to_name[e].replace('#1', '')
+                if '::' in object_name:
+                    object_name = object_name.split('::')[1]
+                found_objects[e] = object_name
+                e = object_name
+            elems.append(e)
+        return elems, found_objects
+
+    def extract_value(k, log):
+        v = log[k]
+        if k == 'goal':
+            if isinstance(v[0], str) and '([' in v[0]:
+                elems, found_objects = extract_value('goal_original', log)
+                pred, args = v[0][:-2].split('([')  ## 'openedjoint([(10, 1)])'
+                found_objects = dict(sorted(found_objects.items(), key=lambda x: len(x[1]), reverse=True))
+                for index, object_name in found_objects.items():
+                    args = args.replace(str(index), object_name)
+                return [pred] + args.split(', '), found_objects
+            else:
+                return translate_literal(v)
+        elif k == 'goal_original':
+            return translate_literal(log[k][0])
+        else:
+            return log[k], {}
 
     time_log = json.load(open(join(run_dir, 'time.json'), 'r'))
+    print(f'loaded {len(time_log)} subproblems')
     time_log = [
-        {k: log[k] for k in ['planning', 'goal', 'goal_original', 'plan_skeleton']}
-        for log in time_log[:-1]
+        {k: extract_value(k, log)[0] for k in ['planning', 'goal', 'goal_original', 'plan_skeleton']}
+        for log in time_log[:-1] if log['plan'] != FAILED
     ]
-    time_log['goal'] = translate_literal(time_log['goal'])
-    time_log['goal_original'] = translate_literal(time_log['goal_original'][0])
+    print(f'processed {len(time_log)} subproblems')
 
-    with open(json_path, 'r') as f:
+    with open(json_path, 'w') as f:
         json.dump(time_log, f, indent=2)
+    return time_log
 
 
 #######################################################################################################
@@ -753,6 +838,10 @@ def get_gym_actors_to_ignore(gym_world, world, run_dir, mp4_side_view=False, mp4
     ## at camera_point = [5.3, 4.723, 9]	camera_target = [2.3, 4.723, 1]
     camera_kwargs = dict(camera_point=[x2, y, z2], camera_target=[x, y, 1])
     return removed, camera_kwargs
+
+
+def get_info_path(run_dir):
+    return join(run_dir, 'segmented_commands_info.json')
 
 
 ##################################################################################

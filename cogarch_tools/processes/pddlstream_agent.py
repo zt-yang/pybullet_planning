@@ -34,7 +34,7 @@ from problem_sets.problem_utils import update_stream_map
 from leap_tools.domain_modifiers import initialize_domain_modifier
 from leap_tools.object_reducers import initialize_object_reducer
 
-from pigi_tools.replay_utils import apply_actions, load_basic_plan_commands
+from pigi_tools.replay_utils import apply_commands, load_basic_plan_commands
 
 from lisdf_tools.lisdf_planning import Problem
 
@@ -587,7 +587,7 @@ class PDDLStreamAgent(MotionAgent):
             commands = pickle.load(f)
 
         problem, _, plan, body_map = load_basic_plan_commands(self.world, self.exp_dir, self.exp_dir, load_attach=False)
-        attachments = apply_actions(problem, commands, time_step=0.0001, verbose=False, plan=plan)  ## , body_map=body_map
+        attachments = apply_commands(problem, commands, time_step=0.0001, verbose=False, plan=plan)  ## , body_map=body_map
         self.world.attachments = attachments
 
     ## ----------------------------------------------------------------------------------

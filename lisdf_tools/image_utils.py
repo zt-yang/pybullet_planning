@@ -285,12 +285,11 @@ def merge_center_crops_of_images(image_paths, output_path, crop=None, spacing=20
 #################################################################################
 
 
-def images_to_gif(img_dir, gif_name, filenames, crop=None):
+def images_to_gif(img_dir, gif_path, filenames, crop=None):
     import imageio
     start = time.time()
-    gif_file = join(img_dir, '..', gif_name)
     # print(f'saving to {abspath(gif_file)} with {len(filenames)} frames')
-    with imageio.get_writer(gif_file, mode='I') as writer:
+    with imageio.get_writer(gif_path, mode='I') as writer:
         for filename in filenames:
             # image = imageio.imread(filename)
             if crop is not None:
@@ -298,31 +297,43 @@ def images_to_gif(img_dir, gif_name, filenames, crop=None):
                 filename = filename[top:bottom, left:right]
             writer.append_data(filename)
 
-    print(f'saved to {abspath(gif_file)} with {len(filenames)} frames in {round(time.time() - start, 2)} seconds')
-    return gif_file
+    print(f'saved to {abspath(gif_path)} with {len(filenames)} frames in {round(time.time() - start, 2)} seconds')
+    return gif_path
 
 
-def images_to_mp4(images=[], img_dir='images', mp4_name='video.mp4'):
+def images_to_mp4(images=[], img_dir='images', mp4_path='video.mp4'):
     import cv2
     import os
 
+    def np_arr_to_cv2(image):
+        image = image[:, :, :3]
+        return image[..., [2, 1, 0]].copy()  ## RGB to BGR for cv2
+
+    def read_image(img_name):
+        path = join(img_dir, img_name)
+        if isfile(path):
+            if img_name.endswith('.png'):
+                return cv2.imread(path)
+            if img_name.endswith('.npy'):
+                arr = np.load(open(path, 'rb'))
+                return np_arr_to_cv2(arr)
+
     fps = 30
     if isinstance(images[0], str):
-        images = [img for img in os.listdir(img_dir) if img.endswith(".png")]
-        frame = cv2.imread(os.path.join(img_dir, images[0]))
+        images = [img for img in images if img.endswith(".png") or img.endswith(".npy")]  ## os.listdir(img_dir)
+        frame = read_image(images[0])
     else:
         frame = images[0]
     height, width, layers = frame.shape
 
     fourcc = cv2.VideoWriter_fourcc(*'mp4v') ## cv2.VideoWriter_fourcc(*'XVID') ## cv2.VideoWriter_fourcc(*'mp4v')
-    video = cv2.VideoWriter(mp4_name, fourcc, fps, (width, height))
+    video = cv2.VideoWriter(mp4_path, fourcc, fps, (width, height))
 
     for image in images:
         if isinstance(images[0], str):
-            image = cv2.imread(os.path.join(img_dir, image))
+            image = read_image(image)
         elif isinstance(images[0], np.ndarray) and image.shape[-1] == 4:
-            image = image[:, :, :3]
-            image = image[...,[2,1,0]].copy() ## RGB to BGR for cv2
+            image = np_arr_to_cv2(image)
         video.write(image)
 
     cv2.destroyAllWindows()

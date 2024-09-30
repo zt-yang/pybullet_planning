@@ -41,7 +41,7 @@ from pybullet_tools.stream_tests import process_debug_goals
 from pybullet_tools.logging_utils import myprint as print, print_debug
 
 from world_builder.entities import Object
-from world_builder.actions import get_primitive_actions, repair_skeleton, apply_actions, \
+from world_builder.actions import get_primitive_actions, repair_skeleton, apply_commands, \
     PULL_UNTIL, NUDGE_UNTIL
 
 from lisdf_tools.lisdf_planning import Problem as LISDFProblem
@@ -64,6 +64,7 @@ from collections import namedtuple
 
 pull_kwargs = dict(ACONF=True, learned=True, verbose=False, visualize=False)
 ir_kwargs = dict(ir_only=True, max_attempts=60, learned=True)
+FAILED = 'FAILED'
 
 
 def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
@@ -842,7 +843,7 @@ def solve_pddlstream(pddlstream_problem, state, domain_pddl=None, visualization=
 
         state.assign()
         wait_if_gui('Begin?')
-        apply_actions(lisdf_problem, commands, time_step=5e-2)
+        apply_commands(lisdf_problem, commands, time_step=5e-2)
         wait_if_gui('Finish?')
         state.assign()
 
@@ -860,8 +861,8 @@ def log_goal_plan_init(goal, plan, preimage):
     return {
         'goal': [f'{g[0]}({g[1:]})' for g in goal],
         'goal_original': goal_no_obj,
-        'plan': [str(a) for a in plan] if plan is not None else 'FAILED',
-        'plan_skeleton': [get_plan_skeleton(a) for a in plan] if plan is not None else 'FAILED',
+        'plan': [str(a) for a in plan] if plan is not None else FAILED,
+        'plan_skeleton': [get_plan_skeleton(a) for a in plan] if plan is not None else FAILED,
         'plan_len': len(plan) if plan is not None else 0,
         'init': [[str(a) for a in f] for f in preimage]
     }
