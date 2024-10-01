@@ -552,7 +552,7 @@ def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_p
         print_debug(f"saved {len(filenames)} images to make mp4")
         print_green(f'loading {filenames[0]} to {gif_path}')
         save_gym_run(img_dir, gif_path, filenames, save_gif=save_gif, save_mp4=save_mp4)
-    return gif_path
+    return state_event.attachments
 
 
 def save_gym_run(img_dir, gif_path, filenames, save_gif=True, save_mp4=True):

@@ -21,7 +21,7 @@ verbose: false
 width: 1440
 height: 1120
 pybullet:
-  time_step: 0.1
+  time_step: 0.01
   fx: 600
   ### ---- pigi kitchens
   #camera_point: [8.5, 2.5, 3]

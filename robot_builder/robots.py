@@ -457,6 +457,9 @@ class MobileRobot(RobotAPI):
         """ when finding grasp transformations using test_ruby_grasps() """
         self.tool_from_hand = tool_from_hand
 
+    def set_arm_positions(self, side: str, positions: list):
+        self.set_group_positions(f"{side}_arm", positions)
+
     def remove_arm(self, arm):
         ## TODO: not complete
         if arm in self.arms:

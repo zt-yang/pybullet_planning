@@ -12,6 +12,9 @@ from pprint import pprint
 
 import os
 import json
+
+from fontTools.misc.bezierTools import epsilon
+
 from pybullet_tools.logging_utils import dump_json
 
 from pybullet_tools.utils import unit_pose, get_collision_data, get_links, pairwise_collision, get_link_name, \
@@ -33,7 +36,7 @@ from pybullet_tools.utils import unit_pose, get_collision_data, get_links, pairw
     set_pose, wait_for_user
 from pybullet_tools.camera_utils import set_camera_target_body
 from pybullet_tools.bullet_utils import draw_fitted_box, draw_points, nice, nice_tuple, nice_float, \
-    in_list
+    in_list, equal
 from pybullet_tools.pr2_primitives import Conf
 
 
@@ -59,7 +62,7 @@ class Attachment(object):
         return flatten_links(self.child) | flatten_links(self.parent, get_link_subtree(
             self.parent, self.parent_link))
 
-    def assign(self, verbose=True):
+    def assign(self):
         # if self.debug:
         #     print(f'\npose_utils.Attachment.assign({str(self)})')
         # robot_base_pose = self.parent.get_positions(roundto=3)
@@ -79,12 +82,15 @@ class Attachment(object):
                     if self.debug:
                         print(f'\t\t\tRC2OC[{self.child}][{self.child_joint}]', {c: {g: len(gg) for g, gg in cc.items()} for c, cc in RC2OC[self.child][self.child_joint].items()})
                         print('\t\t\tconfs =', [(conf[0], nice(conf[1])) for conf in confs[:2]] + [nice(conf) for conf in confs[2:]])
-                    for conf in confs:
-                        if conf in RC2OC[self.child][self.child_joint]:
-                            ls = RC2OC[self.child][self.child_joint][conf]
-                            for group in ls:
-                                group_ls = ls[group]
-                                key = self.parent.get_positions(joint_group=group, roundto=4)
+                    for fixed_conf in confs:
+                        if fixed_conf in RC2OC[self.child][self.child_joint]:
+                            ls = RC2OC[self.child][self.child_joint][fixed_conf]
+                            for moving_key in ls:
+                                group_ls = ls[moving_key]
+                                # moving_group, moving_conf = moving_key
+                                key = self.parent.get_positions(joint_group=moving_key, roundto=3)
+                                # if not equal(key, moving_conf, epsilon=0.1):
+                                #     continue
                                 positions = list(group_ls.keys())
                                 if self.debug:
                                     print(f'\t\t\t\tls[group] contains {len(positions)} positions from {positions[0]} to {positions[-1]}')
@@ -94,7 +100,8 @@ class Attachment(object):
                                     position = group_ls[result]
                                     set_joint_position(self.child, self.child_joint, position)
                                     if self.debug:
-                                        print(f'pose_utils.Attachment | robot {group} @ {key} -> {(self.child, self.child_joint)} position @ {position}')
+                                        print(f'pose_utils.Attachment | robot {moving_key} @ {key} '
+                                              f'-> {(self.child, self.child_joint)} position @ {position}')
         return child_pose
 
     def apply_mapping(self, mapping):

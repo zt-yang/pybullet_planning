@@ -506,6 +506,7 @@ class MoveInSE3Action(Action):
 
 
 def adapt_attach_action(a, problem, plan, verbose=True):
+
     continuous = {}
     if len(plan) == 2:
         plan, continuous = plan
@@ -529,14 +530,19 @@ def adapt_attach_action(a, problem, plan, verbose=True):
     if ' ' in plan[0][0]:
         act = [aa for aa in plan if aa[0].startswith('pull') and aa[2] == body_to_name[body]][0]
     else:
+        ## LABEL 1 - this condition limits the search to start pull with the current joint position,
+        # but when generating segmented replay videos, the world is still in initial state
         pstn = get_joint_position(body[0], body[1])
 
         act = [aa for aa in plan if aa[0] in attach_joint_actions and \
                aa[2] in [str(body), body_to_name[body]] and \
                equal(continuous[aa[3].split('=')[0]][0], pstn)]
+        title = f'adapt_attach_action({str(body)}|{body_to_name[body]},pstn={pstn})'
         if len(act) == 0:
-            print(f'adapt_attach_action({str(body)}|{body_to_name[body]},pstn={pstn}) not found in len = {len(plan)}')
+            print(f'{title} not found in len = {len(plan)}')
             return
+        elif len(act) > 1:
+            print(f"{title} found {len(act)} matches\n\t"+'\n\t'.join([str(a) for a in act]))
 
         act = act[0]
 
@@ -557,6 +563,10 @@ def adapt_attach_action(a, problem, plan, verbose=True):
     with LockRenderer(True):
         funk(a.arm, body, pstn1, pstn2, a.grasp, bq1, aq1)
     set_renderer(True)
+
+    ## REF 1 - this condition limits the search to start pull with the current joint position,
+    # but when generating segmented replay videos, the world is still in initial state
+    pstn2.assign()
 
 
 def adapt_action(a, problem, plan, verbose=True):
