@@ -745,7 +745,7 @@ def get_world_center(run_dir):
     return cx, cy, lx, ly
 
 
-def get_lisdf_aabbs(run_dir, keyw=None):
+def get_lisdf_aabbs(run_dir, keyw=None, verbose=False):
     """ faster way to return a dict with all objects and their pose, aabb """
     lines = open(join(run_dir, 'scene.lisdf'), 'r').readlines()
     aabbs = {c: {} for c in ['static', 'movable', 'movable_d', 'category', 'pose']}
@@ -778,7 +778,8 @@ def get_lisdf_aabbs(run_dir, keyw=None):
             pose = lines[i + 4]
             point = get_numbers_from_xml(pose)[:3]
 
-            print_blue(uri)
+            if verbose:
+                print_blue(uri)
             if 'mobility.urdf' in uri:
                 category, idx = get_category_idx_from_xml(uri)
                 static = get_if_static_from_xml(static)
@@ -803,7 +804,8 @@ def get_lisdf_aabbs(run_dir, keyw=None):
             aabbs[static][name] = aabb
             aabbs['pose'][name] = point
             aabbs['category'][name] = category_idx
-            print_debug(f"{name}\t{nice(aabb)}\t{category_idx}")
+            if verbose:
+                print_debug(f"{name}\t{nice(aabb)}\t{category_idx}")
 
         elif f'state world_name=' in lines[i]:
             break

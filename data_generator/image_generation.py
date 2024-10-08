@@ -10,8 +10,9 @@ import time
 
 from pybullet_tools.utils import quat_from_euler, reset_simulation, remove_body, get_joint_name, get_link_name, \
     euler_from_quat, set_color, apply_alpha, WHITE, unit_pose
-from pybullet_tools.bullet_utils import get_segmask, get_door_links, adjust_segmask, adjust_camera_pose, \
+from pybullet_tools.camera_utils import get_segmask, adjust_segmask, adjust_camera_pose, \
     get_obj_keys_for_segmentation
+from pybullet_tools.bullet_utils import get_door_links
 
 from lisdf_tools.lisdf_loader import load_lisdf_pybullet, get_depth_images, make_furniture_transparent, get_camera_kwargs
 from lisdf_tools.image_utils import crop_image, save_seg_image_given_obj_keys
@@ -25,18 +26,12 @@ from data_generator.run_utils import copy_dir_for_process, get_data_processing_p
 def get_camera_poses(viz_dir):
     config = json.load(open(join(viz_dir, 'planning_config.json')))
     camera_zoomins = [] if 'camera_zoomins' not in config else config['camera_zoomins']
-    camera_names = ['zoomin_'+c['name'] for c in camera_zoomins]
+    camera_names = []
     camera_poses = []
     camera_kwargs = []
 
-    if "obs_camera_pose" in config:
-        camera_pose = adjust_camera_pose(config["obs_camera_pose"])
-        camera_poses = [camera_pose]
-        camera_names = 'obs_camera_pose'
-        camera_kwargs = [dict()]
-        add_to_planning_config(viz_dir, {'img_camera_pose': camera_pose})
-
-    elif "camera_poses" in config and len(camera_poses) > 0:
+    ## custom written poses
+    if "camera_poses" in config and len(camera_poses) > 0:
         for name, camera_pose in config["camera_poses"].items():
             camera_names.append(name)
             if isinstance(camera_pose, list):
@@ -45,9 +40,10 @@ def get_camera_poses(viz_dir):
             elif 'camera_point' in camera_pose:
                 camera_kwargs.append(camera_pose)
                 camera_poses.append(unit_pose())
-            elif 'name' in camera_pose:
-                camera_zoomins.append(camera_pose)
+            elif 'name' in camera_pose:  ## TODO: not tested
+                camera_zoomins = [camera_pose] + camera_zoomins
 
+    ## automatically generating an array of poses
     else:
         ## put one camera in the center (in y axis) and a few in an array, all facing the world
         cx, cy, lx, ly = get_world_center(viz_dir)
@@ -64,6 +60,15 @@ def get_camera_poses(viz_dir):
         camera_poses = [unit_pose()] * len(camera_kwargs)
         add_to_planning_config(viz_dir, {'camera_kwargs': camera_kwargs})
 
+    # ## poses used during scene generation
+    # if "obs_camera_pose" in config:
+    #     camera_pose = adjust_camera_pose(config["obs_camera_pose"])
+    #     camera_poses.append(camera_pose)
+    #     camera_names.append('obs_camera_pose')
+    #     camera_kwargs.append(dict())
+    #     add_to_planning_config(viz_dir, {'img_camera_pose': camera_pose})
+
+    camera_names += ['zoomin_'+c['name'] for c in camera_zoomins]
     return camera_poses, camera_kwargs, camera_zoomins, camera_names
 
 
@@ -179,7 +184,7 @@ def render_images(test_dir, viz_dir, camera_poses, camera_kwargs, camera_zoomins
         os.makedirs(join(viz_dir, 'images'), exist_ok=True)
 
     for i in range(len(camera_poses)):
-        if done is not None and done[i]:
+        if segment and done is not None and done[i]:
             continue
 
         # ---------- make furniture disappear ---------
@@ -479,18 +484,3 @@ def generate_segmented_images(inputs):
         add_key(viz_dir, args.new_key)
     else:
         print('skipping', viz_dir, name)
-
-
-def generate_color_images(inputs):
-    viz_dir, args = inputs
-    redo = args.redo
-
-    print(viz_dir, '...')
-    test_dir = copy_dir_for_process(viz_dir)
-
-    camera_poses, camera_kwargs, camera_zoomins, camera_names = get_camera_poses(viz_dir)
-    render_rgb_image(test_dir, viz_dir, camera_pose)
-    render_transparent_doors(test_dir, viz_dir, camera_pose)
-
-    reset_simulation()
-    shutil.rmtree(test_dir)

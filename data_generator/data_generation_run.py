@@ -74,11 +74,10 @@ def data_generation_process(config, world_only=False):
     state = State(world)
     pddlstream_problem = pddlstream_from_state_goal(
         state, goal, domain_pddl=domain_path, stream_pddl=stream_path,
-        custom_limits=world.robot.custom_limits, collisions=not config.cfree,
-        teleport=config.teleport, print_fn=print_fn)
+        custom_limits=world.robot.custom_limits, print_fn=print_fn, **config.streams)
     stream_info = world.robot.get_stream_info()
 
-    kwargs = {'visualize': True}
+    kwargs = {'visualize': config.planner.visualize}
     if config.planner.diverse:
         kwargs.update(dict(
             diverse=True,
@@ -87,7 +86,7 @@ def data_generation_process(config, world_only=False):
             max_plans=200,  ## number of skeletons
         ))
     start = time.time()
-    solution, cwd_saver = solve_multiple(pddlstream_problem, stream_info, lock=config.lock,
+    solution, cwd_saver = solve_multiple(pddlstream_problem, stream_info, lock=config.sim.lock,
                                          cwd_saver=cwd_saver, world=world, **kwargs)
 
     print_solution(solution)
@@ -124,7 +123,7 @@ def data_generation_process(config, world_only=False):
     cwd_saver.restore()
 
     """ =============== save commands for replay =============== """
-    with LockRenderer(lock=config.lock):
+    with LockRenderer(lock=config.sim.lock):
         commands = post_process(state, plan)
         state.remove_gripper()
         saver.restore()
@@ -143,16 +142,18 @@ def data_generation_process(config, world_only=False):
         disconnect()
         return
 
-    print(SEPARATOR)
+    print(f'\nSAVED DATA in {abspath(exp_dir)}\n')
+
+    # print(SEPARATOR)
     saver.restore()
     # wait_if_gui('Execute?')
-    if config.simulate:  ## real physics
+    if config.sim.simulate:  ## real physics
         control_commands(commands)
     else:
         set_renderer(True)
-        apply_commands(state, commands, time_step=config.time_step, verbose=False)
+        apply_commands(state, commands, time_step=config.sim.time_step, verbose=False)
     # wait_if_gui('Finish?')
-    print(SEPARATOR)
+    # print(SEPARATOR)
     reset_simulation()
     disconnect()
 

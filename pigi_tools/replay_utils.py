@@ -213,9 +213,9 @@ def set_replay_camera_pose(world, run_dir, camera_kwargs, camera_point, target_p
             set_camera_pose(camera_kwargs['camera_point'], camera_kwargs['target_point'])
         elif 'camera_point_begin' in camera_kwargs:
             set_camera_pose(camera_kwargs['camera_point_begin'], camera_kwargs['target_point_begin'])
-    # else:
-    #     set_camera_pose(camera_point, target_point)
-    #     return
+    else:
+        set_camera_pose(camera_point, target_point)
+        return
     #
     #     planning_config = load_planning_config(run_dir)
     #     if False and 'obs_camera_pose' in planning_config:
@@ -319,8 +319,7 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
     )
     with WorldSaver():
         commands = [adapt_action(command, problem, plan, verbose=False) for command in commands]
-    if hasattr(world, 'lisdf') is None or True:
-        set_replay_camera_pose(world, run_dir, camera_kwargs, camera_point, target_point)
+    set_replay_camera_pose(world, run_dir, camera_kwargs, camera_point, target_point)
 
     # set_camera_target_body(4, dx=0.8, dy=-0.8, dz=1.5)  ## braiser lid
     # set_camera_target_body(3, dx=1, dy=0.1, dz=1.5)  ## close cabinet door

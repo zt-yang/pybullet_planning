@@ -72,6 +72,7 @@ def parse_yaml(path, verbose=True):
         print(pprint.pformat(conf))
         print('------------------------------------\n')
     conf = Namespace(**conf)
+    conf.sim = Namespace(**conf.sim)
     conf.data = Namespace(**conf.data)
     conf.world = Namespace(**conf.world)
     conf.robot = Namespace(**conf.robot)

@@ -193,11 +193,12 @@ class SetJointPositionAction(Action):
 
 
 class GripperAction(Action):
-    def __init__(self, arm, position=None, extent=None, teleport=False):
+    def __init__(self, arm, position=None, extent=None, teleport=False, verbose=False):
         self.arm = arm
         self.position = position
         self.extent = extent  ## 1 means fully open, 0 means fully closed
         self.teleport = teleport
+        self.verbose = verbose
 
     def get_gripper_path(self, state):
         robot = state.robot
@@ -214,7 +215,8 @@ class GripperAction(Action):
             joints = robot.get_gripper_joints(self.arm)
             with ConfSaver(robot.body):
                 self.position = robot.close_until_collision(self.arm, joints, bodies=bodies)
-            print(f"   [GripperAction] !!!! gripper {self.arm} is closed to {round(self.position, 3)} until collision")
+            if hasattr(self, 'verbose') and self.verbose:
+                print(f"   [GripperAction] !!!! gripper {self.arm} is closed to {round(self.position, 3)} until collision")
             # self.position = 0.5  ## cabbage, artichoke
             # self.position = 0.4  ## tomato
             # self.position = 0.2  ## zucchini

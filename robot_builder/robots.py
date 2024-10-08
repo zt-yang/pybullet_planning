@@ -383,6 +383,8 @@ class RobotAPI(Robot):
             return
 
         obj = world.body_to_object(body)
+        if obj is None:
+            return
         name = world.get_debug_name(obj)
         is_planning_object = body in world.BODY_TO_OBJECT
         categories = obj.get_categories()

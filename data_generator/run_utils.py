@@ -120,7 +120,12 @@ def process_all_tasks(process, task_name=None, dataset_root=None, parallel=False
         cases = get_run_dirs(task_name, dataset_root)
 
     if len(cases) > 1:
-        cases = sorted(cases, key=lambda x: eval(x.split('/')[-1]))
+        def get_digit(string):
+            string = string.split('/')[-1]
+            if '_' in string:
+                string = ''.join(string.split('_')[:-1])
+            return eval(string)
+        cases = sorted(cases, key=lambda x: get_digit(x))
 
     if case_filter is not None:
         cases = [c for c in cases if case_filter(c)]
@@ -205,9 +210,9 @@ def copy_dir_for_process(viz_dir, tag=None, verbose=True, print_fn=None):
     if not verbose:
         print_fn(viz_dir)
     else:
-        if tag is None:
-            print_fn(viz_dir, end='\r')
-        elif verbose:
+        # if tag is None:
+        #     print_fn(viz_dir)
+        if verbose:
             print_fn(f'\n\n\n--------------------------\n    {tag} {viz_dir} \n------------------------\n\n\n')
 
     return test_dir

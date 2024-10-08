@@ -542,8 +542,8 @@ def get_joint_position_open_gen(problem):
     return fn
 
 
-def sample_joint_position_list_gen(num_samples=6):
-    funk = sample_joint_position_gen(num_samples=6)
+def sample_joint_position_list_gen(problem, num_samples=6):
+    funk = sample_joint_position_gen(problem, num_samples=6)
 
     def gen(o, psn1):
         pstn_gen = funk(o, psn1)

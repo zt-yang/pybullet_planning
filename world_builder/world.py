@@ -1249,7 +1249,7 @@ class World(WorldBase):
             body, joint = body
         if random_gen:
             from pybullet_tools.general_streams import sample_joint_position_list_gen
-            funk = sample_joint_position_list_gen()
+            funk = sample_joint_position_list_gen(State(self))
             pstns = funk((body, joint), Position((body, joint)))
             if len(pstns) == 0:
                 return
@@ -1795,9 +1795,9 @@ class World(WorldBase):
     def save_lisdf(self, output_dir, verbose=False, **kwargs):
         from world_builder.world_generator import to_lisdf
         lisdf_file = join(output_dir, 'scene.lisdf')
-        if isfile(lisdf_file):
-            lisdf_file = lisdf_file.replace('.lisdf', '_new.lisdf')
-            print(f'[world.save_lisdf]\t found existing scene.lisdf thus saving {lisdf_file}')
+        # if isfile(lisdf_file):
+        #     lisdf_file = lisdf_file.replace('.lisdf', '_new.lisdf')
+        #     print(f'[world.save_lisdf]\t found existing scene.lisdf thus saving {lisdf_file}')
         to_lisdf(self, lisdf_file, verbose=verbose, **kwargs)
 
     def save_planning_config(self, output_dir, domain=None, stream=None,

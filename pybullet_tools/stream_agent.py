@@ -522,6 +522,9 @@ def pddlstream_from_state_goal(state, goals, domain_pddl='pr2_kitchen.pddl',
     problem = state
     if not isinstance(custom_limits, dict):
         custom_limits = get_base_custom_limits(robot, custom_limits)
+    if 'cfree' in kwargs:
+        collisions = not kwargs['cfree']
+        kwargs.pop('cfree')
     print_domain(domain_pddl, stream_pddl, custom_limits)
 
     world.summarize_all_objects(print_fn=print_fn)
