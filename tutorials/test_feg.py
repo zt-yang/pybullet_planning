@@ -7,7 +7,7 @@ sys.path.extend([R] + [join(R, name) for name in ['pybullet_planning', 'lisdf', 
 
 from pybullet_tools.utils import read_pickle, set_renderer, wait_for_user, PI
 
-from tutorials.test_grasps import test_grasps, test_handle_grasps_counter
+from tutorials.test_grasps import run_test_grasps, run_test_handle_grasps_counter
 
 from cogarch_tools.cogarch_run import run_agent
 from cogarch_tools.processes.teleop_agent import TeleOpAgent
@@ -21,13 +21,13 @@ namo_kwargs = dict(domain='pddl_domains/feg_namo_domain.pddl', stream='pddl_doma
 
 
 def test_feg_grasps():
-    kwargs = dict(categories=['VeggieCabbage'], skip_grasps=False, base_q=(0, 0, 0, 0))
+    kwargs = dict(categories=['veggiesweetpotato'], skip_grasps=False, base_q=(0, 0, 0, 0))
     kwargs['categories'] = ['Food']
 
     ## --- step 1: find tool_from_hand transformation
     debug_kwargs = dict(verbose=True, visualize=False, retain_all=False, top_grasp_tolerance=PI/4)
 
-    test_grasps('feg', **debug_kwargs, **kwargs)
+    run_test_grasps('feg', **debug_kwargs, **kwargs)
 
 
 def test_block_domain_feg():
@@ -44,6 +44,6 @@ def test_cart_domain_feg():
 
 
 if __name__ == '__main__':
-    # test_feg_grasps()
+    test_feg_grasps()
     # test_block_domain_feg()
-    test_cart_domain_feg()
+    # test_cart_domain_feg()

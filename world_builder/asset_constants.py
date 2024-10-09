@@ -318,7 +318,8 @@ OBJ_SCALES = {
 OBJ_SCALES = {k.lower(): v * 0.7 for k, v in OBJ_SCALES.items()}
 
 DONT_LOAD = [
-    'MeatTurkeyLeg', 'VeggieCauliflower', 'VeggieGreenPepper', ## unable to load in gym
+    'VeggieCauliflower', 'VeggieGreenPepper', ## unable to load in gym
+    'VeggieSweetPotato',  ## can't find grasp for feg
     '7265', ## microwave door partially open
     '46744', ## cabinet upper
     # '102379',  ## has an extra sink base

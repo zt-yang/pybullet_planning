@@ -127,6 +127,8 @@ def get_instances(category, **kwargs):
             os.mkdir(cat_dir)
             get_data(categories=[category])
         instances = get_instances_helper(category, **kwargs)
+    if category.lower() == 'food' and 'VeggieSweetPotato' in instances:
+        instances.pop('VeggieSweetPotato')
     return instances
 
 
