@@ -947,13 +947,13 @@ def heuristic_modify_stream(pddlstream_problem, world):
 ## -----------------------------------------------------------------------------------
 
 
-def post_process(problem, plan, teleport=False, verbose=False):
+def post_process(problem, plan, simulate=False, teleport=False, verbose=False):
     if plan is None:
         return None
     commands = []
     print('\nstream_agent.post_process ...')
     for i, action in enumerate(plan):
-        new_commands = get_primitive_actions(action, problem.world, teleport)
+        new_commands = get_primitive_actions(action, problem.world, teleport, simulate=simulate)
         commands += new_commands
         if verbose:
             print(i, action)

@@ -124,7 +124,7 @@ def data_generation_process(config, world_only=False):
 
     """ =============== save commands for replay =============== """
     with LockRenderer(lock=config.sim.lock):
-        commands = post_process(state, plan)
+        commands = post_process(state, plan, simulate=config.sim.simulate)
         state.remove_gripper()
         saver.restore()
     with open(join(exp_dir, f"commands.pkl"), 'wb') as f:
@@ -145,12 +145,12 @@ def data_generation_process(config, world_only=False):
     print(f'\nSAVED DATA in {abspath(exp_dir)}\n')
 
     # print(SEPARATOR)
-    saver.restore()
     # wait_if_gui('Execute?')
+    saver.restore()
+    set_renderer(True)
     if config.sim.simulate:  ## real physics
         control_commands(commands)
     else:
-        set_renderer(True)
         apply_commands(state, commands, time_step=config.sim.time_step, verbose=False)
     # wait_if_gui('Finish?')
     # print(SEPARATOR)
