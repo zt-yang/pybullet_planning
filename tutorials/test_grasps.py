@@ -58,9 +58,17 @@ def run_interactive_grasp_gen(robot='feg', categories=[], given_instances=None, 
     draw_pose(unit_pose(), length=10)
     robot = world.robot
     problem = State(world, grasp_types=robot.grasp_types)
+    gripper = robot.get_gripper(arm=robot.arms[0], visual=True)
 
     for i, cat in enumerate(categories):
         instances = filter_instances(cat, given_instances)
+        for id, scale in instances.items():
+            if isinstance(id, tuple):
+                cat, id = id
+            path, body, _ = load_model_instance(cat, id, scale=scale, location=(0, 0))
+            world.add_body(body, f'{cat.lower()}#{id}', get_instance_name(abspath(path)))
+            draw_body_label(body, id, offset=(0, -0.2, 0.1))
+            set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
 
 
 def run_test_grasps(robot='feg', categories=[], given_instances=None, skip_grasps=False,
