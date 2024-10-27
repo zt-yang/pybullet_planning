@@ -14,8 +14,7 @@ from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, 
     sample_aabb, AABB, set_pose, quat_from_euler, HideOutput, get_aabb_extent, unit_quat, remove_body, \
     set_camera_pose, wait_unlocked, disconnect, wait_if_gui, create_box, get_aabb, get_pose, draw_aabb, multiply, \
     Pose, get_link_pose, get_joint_limits, WHITE, RGBA, set_all_color, RED, GREEN, set_renderer, add_text, \
-    Point, set_random_seed, set_numpy_seed, reset_simulation, joint_from_name, \
-    get_joint_name, get_link_name, dump_joint, set_joint_position, ConfSaver, pairwise_link_collision
+    Point, PI, get_link_name, dump_joint, set_joint_position, ConfSaver, pairwise_link_collision
 from pybullet_tools.bullet_utils import nice, colors, color_names, draw_fitted_box
 from pybullet_tools.camera_utils import set_camera_target_body
 from pybullet_tools.grasp_utils import get_grasp_db_file, get_hand_grasps
@@ -24,7 +23,7 @@ from pybullet_tools.general_streams import get_grasp_list_gen, Position, \
     get_stable_list_gen, get_handle_grasp_gen, sample_joint_position_gen
 
 from world_builder.world import State
-from world_builder.loaders_nvidia_kitchen import load_kitchen_floor_plan
+from world_builder.loaders_nvidia_kitchen import load_kitchen_floor_plan, load_stove_knobs
 from world_builder.world_utils import load_asset, get_instance_name, get_partnet_doors, draw_body_label
 
 from tutorials.test_utils import get_test_world, get_instances, \
@@ -49,7 +48,7 @@ def run_test_grasps(robot='feg', categories=[], given_instances=None, skip_grasp
                     visualize=True, retain_all=True, verbose=False, test_attachment=False,
                     test_rotation_matrix=False, skip_rotation_index_until=None, rotation_matrices=None,
                     test_translation_matrix=False, skip_grasp_index_until=None, translation_matrices=None,
-                    default_rotation=None, top_grasp_tolerance=None, **kwargs):
+                    default_rotation=None, top_grasp_tolerance=None, side_grasp_tolerance=None, **kwargs):
 
     from pybullet_tools.grasp_utils import enumerate_rotational_matrices as emu, enumerate_translation_matrices
 
@@ -78,15 +77,13 @@ def run_test_grasps(robot='feg', categories=[], given_instances=None, skip_grasp
                 color_name = color_names[idx]
 
             for i, cat in enumerate(categories):
-
-                if top_grasp_tolerance is None:
-                    tpt = math.pi / 4 if cat in ['Knife'] else None  ## , 'EyeGlasses', 'Plate'
-                else:
-                    tpt = top_grasp_tolerance
-
+                tgt = top_grasp_tolerance
+                sgt = side_grasp_tolerance
+                if top_grasp_tolerance is None and cat in ['Knife']:
+                    tgt = math.pi / 4  ## , 'EyeGlasses', 'Plate'
                 funk = get_grasp_list_gen(problem, collisions=True, visualize=visualize, retain_all=retain_all,
-                                          verbose=verbose, top_grasp_tolerance=tpt, test_offset=test_offset,
-                                          skip_grasp_index_until=skip_grasp_index_until)
+                                          verbose=verbose, top_grasp_tolerance=tgt, side_grasp_tolerance=sgt,
+                                          test_offset=test_offset, skip_grasp_index_until=skip_grasp_index_until)
 
                 if cat == 'box':
                     body = create_box(0.05, 0.05, 0.05, mass=0.2, color=GREEN)
@@ -292,24 +289,28 @@ def run_test_handle_grasps(robot, category, skip_grasps=False):
     disconnect()
 
 
-def run_test_handle_grasps_counter(robot='pr2', visualize=True, **kwargs):
-    from world_builder.loaders import load_floor_plan
-
+def run_test_handle_grasps_counter(robot='pr2', visualize=True, length_variants=True,
+                                   skip_grasp_index_until=None,
+                                   joint_types=('drawer', 'door', 'knob'), **kwargs):
     connect(use_gui=True, shadows=False, width=1980, height=1238)
     draw_pose(unit_pose(), length=2.)
 
-    # lisdf_path = join(ASSET_PATH, 'scenes', f'kitchen_lunch.lisdf')
-    # world = load_lisdf_pybullet(lisdf_path, verbose=True)
-
-    # world = World()
     world = get_test_world(robot, semantic_world=True, draw_base_limits=True, **kwargs)
     robot = world.robot
-    floor = load_kitchen_floor_plan(world, plan_name='counter.svg')
+    floor = load_kitchen_floor_plan(world, surfaces={}, plan_name='counter.svg')
+
+    ## debug: inspect knob positions
+    # set_camera_target_body(5, link=3, dx=0.3, dy=0.3, dz=0.4); set_renderer(True)
+
+    if 'knob' in joint_types:
+        load_stove_knobs(world)
 
     world.summarize_all_objects()
-    # state = State(world, grasp_types=robot.grasp_types)
-    joints = world.cat_to_bodies('drawer')
-    # joints = [(6, 1)]
+
+    joints = []
+    for jp in joint_types:
+        joints += world.cat_to_bodies(jp)
+    # joints = [(4, 40)]
 
     for body_joint in joints:
         obj = world.BODY_TO_OBJECT[body_joint]
@@ -318,8 +319,9 @@ def run_test_handle_grasps_counter(robot='pr2', visualize=True, **kwargs):
         body, joint = body_joint
         set_camera_target_body(body, link=link, dx=0.5, dy=0.5, dz=0.5)
         draw_fitted_box(body, link=link, draw_centroid=True)
-        grasps = get_hand_grasps(world, body, link=link, visualize=visualize, verbose=False,
-                                 retain_all=True, handle_filter=True, length_variants=True)
+        get_hand_grasps(world, body, link=link, visualize=visualize, verbose=False,
+                        retain_all=True, handle_filter=True, length_variants=length_variants,
+                        skip_grasp_index_until=skip_grasp_index_until)
         set_camera_target_body(body, link=link, dx=0.5, dy=0.5, dz=0.5)
 
     wait_if_gui('Finish?')
@@ -338,12 +340,12 @@ if __name__ == '__main__':
     robot = 'feg'  ## 'pr2'
 
     """ --- just load assets --- """
-    run_test_grasps(robot, ['BraiserLid'], skip_grasps=True)  ## 'Salter'
+    # run_test_grasps(robot, ['BraiserLid'], skip_grasps=True)  ## 'Salter'
 
     """ --- grasps related --- """
-    kwargs = dict(skip_grasps=False, test_attachment=False)
-    # run_test_grasps(robot, ['Bottle'], given_instances=['3616'], **kwargs)  ## 'Salter'
-    # run_test_grasps(robot, ['VeggieCabbage'], skip_grasps=False, test_attachment=False)
+    kwargs = dict(skip_grasps=False, test_attachment=False, side_grasp_tolerance=PI/4)
+    run_test_grasps(robot, ['Bottle'], given_instances=['3616'], **kwargs)  ## 'Salter'
+    # run_test_grasps(robot, ['VeggieCabbage'], **kwargs)
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
 

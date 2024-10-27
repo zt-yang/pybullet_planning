@@ -18,7 +18,7 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, is_darwin, RED, sam
     set_camera_pose, TAN, RGBA, get_color, get_min_limit, get_max_limit, set_color, WHITE, get_links, \
     get_link_name, get_link_pose, euler_from_quat, get_collision_data, get_joint_name, get_joint_position, \
     set_renderer, link_from_name, parent_joint_from_link, set_random_seed, set_numpy_seed
-from pybullet_tools.bullet_utils import is_joint_open, get_fine_rainbow_colors, open_joint, toggle_joint
+from pybullet_tools.bullet_utils import dist, get_fine_rainbow_colors, open_joint, toggle_joint
 from pybullet_tools.camera_utils import get_segmask, get_obj_keys_for_segmentation
 from pybullet_tools.logging_utils import dump_json
 
@@ -463,9 +463,9 @@ def get_scale_by_category(file=None, category=None, scale=1):
                 scale = MODEL_SCALES[category][id]
         else:
             parent = get_parent_category(category)
-            if parent is None:
-                print('\tcant find model scale', category, 'using default 1')
-            elif parent in MODEL_SCALES:
+            # if parent is None:
+            #     print('\tcant find model scale', category, 'using default 1')
+            if parent in MODEL_SCALES:
                 scale = MODEL_SCALES[parent][category]
 
     return scale
@@ -1117,6 +1117,12 @@ def save_world_aabbs_to_json(world, json_name='world_shapes.json'):
     print(f'[world.save_world_aabbs_to_json]\t{json_path}')
     with open(json_path, 'w') as f:
         json.dump(shapes, f, indent=2, sort_keys=False)
+
+
+def select_door_closer_to_body(door_links, movable):
+    door_centers = {key: get_aabb_center(get_aabb(body, link=link)) for key, (body, link) in door_links.items()}
+    movable_center = get_aabb_center(get_aabb(movable))
+    return min(door_centers, key=lambda x: np.linalg.norm(np.array(door_centers[x]) - movable_center))
 
 
 if __name__ == "__main__":

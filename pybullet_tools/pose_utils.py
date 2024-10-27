@@ -604,7 +604,7 @@ def get_noisy_pose(pose):
 
 
 def change_pose_interactive(obj):
-    from pynput import keyboard
+    from pynput import keyboard ## pip install pynput  # if you want to interactively adjust object pose in commandline
 
     exit_note = "(Press esc in terminal to exit)"
 

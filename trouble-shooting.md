@@ -29,3 +29,17 @@ solution:
 pip uninstall untangle
 pip install untangle==1.1.1
 ```
+
+### Pybullet error 
+
+```shell
+libGL error: MESA-LOADER: failed to open swrast: /usr/lib/dri/swrast_dri.so: cannot open shared object file: No such file or directory (search paths /usr/lib/x86_64-linux-gnu/dri:\$${ORIGIN}/dri:/usr/lib/dri, suffix _dri)
+libGL error: failed to load driver: swrast
+Failed to create an OpenGL context
+```
+
+solution in [StackOverflow](https://stackoverflow.com/questions/72110384/libgl-error-mesa-loader-failed-to-open-iris): add the following to `~/.bashrc` or `~/.zshrc` (if using zsh).
+
+```shell
+export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
+```

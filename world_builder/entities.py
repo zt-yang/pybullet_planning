@@ -9,8 +9,8 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
     stable_z, get_joint_descendants, get_link_children, get_joint_info, get_links, link_from_name, set_renderer, \
     get_min_limit, get_max_limit, get_link_parent, LockRenderer, HideOutput, pairwise_collisions, get_bodies, \
     remove_debug, child_link_from_joint, unit_point, tform_point, buffer_aabb, get_aabb_center, get_aabb_extent, \
-    quat_from_euler, wait_unlocked, euler_from_quat
-from pybullet_tools.bullet_utils import BASE_LINK, is_box_entity, collided, nice, BASE_RESOLUTIONS
+    quat_from_euler, get_link_subtree
+from pybullet_tools.bullet_utils import BASE_LINK, is_box_entity, collided, nice, BASE_RESOLUTIONS, colorize_link
 from pybullet_tools.pose_utils import sample_obj_in_body_link_space, sample_obj_on_body_link_surface, \
     create_attachment, change_pose_interactive
 from pybullet_tools.camera_utils import get_camera_image_at_pose, set_camera_target_body
@@ -691,6 +691,10 @@ class ArticulatedObjectPart(Object):
     def get_pose(self):
         return self.get_handle_pose()
 
+    def make_links_transparent(self, transparency=0.5):
+        links = get_link_subtree(self.body, self.joint)
+        for link in links:
+            colorize_link(self.body, link=link, transparency=transparency)
 
 class Door(ArticulatedObjectPart):
     def __init__(self, body, joint, **kwargs):

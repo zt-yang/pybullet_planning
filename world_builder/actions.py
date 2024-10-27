@@ -208,8 +208,8 @@ class GripperAction(Action):
 
         ## get width from extent
         if self.extent is not None:
-            gripper_joint = robot.get_gripper_joints(self.arm)[0]
-            self.position = get_max_limit(robot, gripper_joint)
+            self.position = robot.get_gripper_position_at_extent(self.arm, self.extent)
+
         else:  ## if self.position == None:
             bodies = [b for b in state.objects if isinstance(b, int) and b != robot.body]
             joints = robot.get_gripper_joints(self.arm)

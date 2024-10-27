@@ -69,7 +69,7 @@ FAILED = 'FAILED'
 
 def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
                    pull_collisions=True, base_collisions=True, debug=False, verbose=False,
-                   use_all_grasps=False, top_grasp_tolerance=False, ir_max_attempts=60,
+                   use_all_grasps=False, top_grasp_tolerance=None, side_grasp_tolerance=None, ir_max_attempts=60,
                    use_learned_ir=True, resolution=DEFAULT_RESOLUTION, num_grasps=20):
     """ p = problem, c = collisions, l = custom_limits, t = teleport
         add the kwargs to config yaml files in problem_sets.problem_utils.
@@ -91,6 +91,8 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
     tc = dict(teleport=t, custom_limits=l)
     ptc = dict(teleport=t, custom_limits=l, collisions=pull_collisions)
     pp = dict(collisions=c, num_samples=30, verbose=False)
+    go = dict(collisions=True, top_grasp_tolerance=top_grasp_tolerance, side_grasp_tolerance=side_grasp_tolerance,
+              use_all_grasps=use_all_grasps, num_samples=num_grasps, visualize=False, verbose=True, debug=False)
     gg = dict(collisions=c, max_samples=None)
     ik = dict(collisions=motion_collisions, ACONF=False, teleport=t, resolution=resolution)
 
@@ -122,9 +124,7 @@ def get_stream_map(p, c, l, t, movable_collisions=True, motion_collisions=True,
         ## ---------------------------------------------------
         ##                    grasps
         ## ---------------------------------------------------
-        'sample-grasp': from_gen_fn(get_grasp_list_gen(p, collisions=True, visualize=False, verbose=True,
-                                                       top_grasp_tolerance=top_grasp_tolerance, debug=False,
-                                                       use_all_grasps=use_all_grasps, num_samples=num_grasps)),
+        'sample-grasp': from_gen_fn(get_grasp_list_gen(p, **go)),
         'sample-handle-grasp': from_gen_fn(get_handle_grasp_gen(p, **gg)),
         'sample-nudge-grasp': from_gen_fn(get_nudge_grasp_gen(p, **gg)),
         'sample-nudge-back-grasp': from_gen_fn(get_nudge_grasp_gen(p, nudge_back=True, **gg)),
