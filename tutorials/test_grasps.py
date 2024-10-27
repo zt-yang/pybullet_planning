@@ -18,6 +18,7 @@ from pybullet_tools.utils import connect, draw_pose, unit_pose, link_from_name, 
 from pybullet_tools.bullet_utils import nice, colors, color_names, draw_fitted_box
 from pybullet_tools.camera_utils import set_camera_target_body
 from pybullet_tools.grasp_utils import get_grasp_db_file, get_hand_grasps
+from pybullet_tools.pose_utils import change_pose_interactive
 from pybullet_tools.stream_tests import visualize_grasps
 from pybullet_tools.general_streams import get_grasp_list_gen, Position, \
     get_stable_list_gen, get_handle_grasp_gen, sample_joint_position_gen
@@ -26,7 +27,7 @@ from world_builder.world import State
 from world_builder.loaders_nvidia_kitchen import load_kitchen_floor_plan, load_stove_knobs
 from world_builder.world_utils import load_asset, get_instance_name, get_partnet_doors, draw_body_label
 
-from tutorials.test_utils import get_test_world, get_instances, \
+from tutorials.test_utils import get_test_world, get_instances, filter_instances, \
     load_model_instance, get_model_path, get_y_gap
 from tutorials.config import ASSET_PATH
 
@@ -42,33 +43,6 @@ def test_grasp(problem, body, funk, test_attachment=False, test_offset=False, **
                      test_attachment=test_attachment, **kwargs)
     set_renderer(True)
     set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
-
-
-def filter_instances(cat, given_instances):
-    instances = get_instances(cat)
-    if given_instances is not None:
-        instances = {k: v for k, v in instances.items() if k in instances}
-    print('instances', instances)
-    return instances
-
-
-def run_interactive_grasp_gen(robot='feg', categories=[], given_instances=None, **kwargs):
-    """ load an object and generate grasps interactively """
-    world = get_test_world(robot, **kwargs)
-    draw_pose(unit_pose(), length=10)
-    robot = world.robot
-    problem = State(world, grasp_types=robot.grasp_types)
-    gripper = robot.get_gripper(arm=robot.arms[0], visual=True)
-
-    for i, cat in enumerate(categories):
-        instances = filter_instances(cat, given_instances)
-        for id, scale in instances.items():
-            if isinstance(id, tuple):
-                cat, id = id
-            path, body, _ = load_model_instance(cat, id, scale=scale, location=(0, 0))
-            world.add_body(body, f'{cat.lower()}#{id}', get_instance_name(abspath(path)))
-            draw_body_label(body, id, offset=(0, -0.2, 0.1))
-            set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.5)
 
 
 def run_test_grasps(robot='feg', categories=[], given_instances=None, skip_grasps=False,
@@ -368,11 +342,8 @@ if __name__ == '__main__':
 
     """ --- grasps related --- """
     kwargs = dict(skip_grasps=False, test_attachment=False, side_grasp_tolerance=PI/4)
-    # run_test_grasps(robot, ['Bottle'], given_instances=['3616'], **kwargs)  ## 'Salter'
+    run_test_grasps(robot, ['Bottle'], given_instances=['3616'], **kwargs)  ## 'Salter'
     # run_test_grasps(robot, ['VeggieCabbage'], **kwargs)
-
-    kwargs = dict(skip_grasps=False, test_attachment=False, interactive_grasp_gen=True)
-    run_test_grasps(robot, ['DinerChair'], given_instances=['100568'], **kwargs)  ## 'Salter'
 
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()

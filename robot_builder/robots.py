@@ -185,7 +185,7 @@ class RobotAPI(Robot):
             set_all_color(gripper, color)
         return gripper
 
-    def make_grasps(self, g_type, arm, body, grasps_O, collisions=True):
+    def make_grasps(self, g_type, arm, body, grasps_O, collisions=True, default_w=0.0):
         from pybullet_tools.grasp_utils import is_top_grasp
         app = self.get_approach_vector(arm, g_type)
         grasps_R = []
@@ -200,7 +200,7 @@ class RobotAPI(Robot):
         ## filter for grasp width
         filtered_grasps = []
         for grasp in grasps_R:
-            grasp_width = self.compute_grasp_width(arm, grasp, body=body) if collisions else 0.0
+            grasp_width = self.compute_grasp_width(arm, grasp, body=body) if collisions else default_w
             if grasp_width is not None:
                 grasp.grasp_width = grasp_width
                 filtered_grasps.append(grasp)
@@ -249,6 +249,7 @@ class RobotAPI(Robot):
         #     tool_from_root = multiply(((0, 0.025, 0.025), unit_quat()), self.tool_from_hand)  ## self.get_tool_from_root(arm)
         # ## those urdf files made from one .obj file
         # else:
+        ## TODO: problemtic transformation that doen't apply to all grippers
         body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
         tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
         return multiply(body_pose, grasp, tool_from_root)
@@ -1193,6 +1194,9 @@ class FEGripper(RobotAPI):
     #             width = close_until_collision(gripper, gripper_joints, bodies=[body], **kwargs)
     #             # remove_body(gripper)
     #     return width
+
+    def set_gripper_pose(self, body_pose, grasp, body=None, gripper=None, arm='hand', **kwargs):
+        self.visualize_grasp(body_pose, grasp, arm=arm, body=body, **kwargs)
 
     def visualize_grasp(self, body_pose, grasp, arm='hand', color=GREEN, width=1,
                         body=None, verbose=False, new_gripper=False, mod_target=None):

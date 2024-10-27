@@ -139,6 +139,14 @@ def get_instances(category, **kwargs):
     return instances
 
 
+def filter_instances(cat, given_instances):
+    instances = get_instances(cat)
+    if given_instances is not None:
+        instances = {k: v for k, v in instances.items() if k in instances}
+    print('instances', instances)
+    return instances
+
+
 def get_z_on_floor(body):
     return get_aabb_extent(get_aabb(body))[-1]/2
 
@@ -178,7 +186,7 @@ def get_y_gap(category: str) -> float:
 def get_model_path(category, id):
     models_path = join(ASSET_PATH, 'models')
     category = [c for c in listdir(models_path) if c.lower() == category.lower()][0]
-    if not id.isdigit():
+    if isinstance(id, str) and not id.isdigit():
         id = [i for i in listdir(join(models_path, category)) if i.lower() == id.lower()][0]
     path = join(models_path, category, id)
     return path

@@ -252,7 +252,7 @@ class Object(Index):
         obj.support_obj(self)
 
     def change_pose_interactive(self):
-        change_pose_interactive(self)
+        change_pose_interactive(self.body, self.shorter_name, se3=False)
 
     ## ====================================================================
 
