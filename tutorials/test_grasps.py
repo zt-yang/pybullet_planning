@@ -44,6 +44,25 @@ def test_grasp(problem, body, funk, test_attachment=False, test_offset=False, **
     set_camera_target_body(body, dx=0.5, dy=0.5, dz=0.8)
 
 
+def filter_instances(cat, given_instances):
+    instances = get_instances(cat)
+    if given_instances is not None:
+        instances = {k: v for k, v in instances.items() if k in instances}
+    print('instances', instances)
+    return instances
+
+
+def run_interactive_grasp_gen(robot='feg', categories=[], given_instances=None, **kwargs):
+    """ load an object and generate grasps interactively """
+    world = get_test_world(robot, **kwargs)
+    draw_pose(unit_pose(), length=10)
+    robot = world.robot
+    problem = State(world, grasp_types=robot.grasp_types)
+
+    for i, cat in enumerate(categories):
+        instances = filter_instances(cat, given_instances)
+
+
 def run_test_grasps(robot='feg', categories=[], given_instances=None, skip_grasps=False,
                     visualize=True, retain_all=True, verbose=False, test_attachment=False,
                     test_rotation_matrix=False, skip_rotation_index_until=None, rotation_matrices=None,
@@ -91,10 +110,7 @@ def run_test_grasps(robot='feg', categories=[], given_instances=None, skip_grasp
                     test_grasp(problem, body, funk, test_attachment)
                     continue
 
-                instances = get_instances(cat)
-                if given_instances is not None:
-                    instances = {k: v for k, v in instances.items() if k in instances}
-                print('instances', instances)
+                instances = filter_instances(cat, given_instances)
                 n = len(instances)
                 locations = [(i, get_y_gap(cat) * n) for n in range(1, n+1)]
                 j = -1
@@ -344,8 +360,12 @@ if __name__ == '__main__':
 
     """ --- grasps related --- """
     kwargs = dict(skip_grasps=False, test_attachment=False, side_grasp_tolerance=PI/4)
-    run_test_grasps(robot, ['Bottle'], given_instances=['3616'], **kwargs)  ## 'Salter'
+    # run_test_grasps(robot, ['Bottle'], given_instances=['3616'], **kwargs)  ## 'Salter'
     # run_test_grasps(robot, ['VeggieCabbage'], **kwargs)
+
+    kwargs = dict(skip_grasps=False, test_attachment=False, interactive_grasp_gen=True)
+    run_test_grasps(robot, ['DinerChair'], given_instances=['100568'], **kwargs)  ## 'Salter'
+
     # add_scale_to_grasp_file(robot, category='MiniFridge')
     # add_time_to_grasp_file()
 

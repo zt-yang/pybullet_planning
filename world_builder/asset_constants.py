@@ -300,6 +300,14 @@ MODEL_HEIGHTS = {
     'Bin': {
         'height': 0.5,
         'models': ['11361'],
+    },
+    'DinerTable': {
+        'height': 0.7,
+        'models': ['28668'],
+    },
+    'DinerChair': {
+        'height': 1,
+        'models': ['100568'],
     }
 }
 MODEL_HEIGHTS.update({k.lower(): v for k, v in MODEL_HEIGHTS.items()})

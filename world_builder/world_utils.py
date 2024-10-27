@@ -93,17 +93,18 @@ def add_walls_given_rooms_doors(objects):
     for k, v in objects.items():
         if v['category'] == 'room':
             rooms.append(k)
-            index = k[k.index('_') + 1:]
+            index = k.replace('room_', '').replace('_room', '')
             walls = []
-            for direction, offsets in wall_offsets.items():
+            for direction, (ix, iy) in wall_offsets.items():
                 wall_name = f"wall_{index}_{direction}"
-                length = abs(offsets[0] * v['w'] + offsets[1] * v['l'])
-                yaw = 90 if offsets[0] == 0 else 0
-                wall_objects[wall_name] = {'x': v['x'] + offsets[0] * v['w'] / 2, 'y': v['y'] + offsets[1] * v['l'] / 2,
+                length = abs(iy * v['w'] + ix * v['l']) + wall_thickness * 2
+                yaw = 90 if ix == 0 else 0
+                wall_objects[wall_name] = {'x': v['x'] + ix * (v['w']+wall_thickness)/2,
+                                           'y': v['y'] + iy * (v['l']+wall_thickness)/2,
                                            'yaw': yaw, 'w': length, 'l': wall_thickness, 'category': 'wall'}
                 walls.append(wall_name)
 
-            door_name = f"door_{index}"
+            door_name = f"doorframe_{index}"
             if door_name in objects:
                 door_attr = objects[door_name]
                 for wall_name in walls:
@@ -152,10 +153,14 @@ def get_domain_constants(pddl_path):
     return constants
 
 
+ALLOWED_ROBOT_NAMES = ['pr2', 'rummy', 'spot', 'robot']
+
+
 def read_xml(plan_name, asset_path=ASSET_PATH):
     """ load a svg file representing the floor plan in asset path
             treating the initial pose of robot as world origin
         return a dictionary of object name: (category, pose) as well as world dimensions
+        boxes need to be single-stroke, no fill, no rounded corner
     """
     plan_path = abspath(join(asset_path, 'floorplans', plan_name))
 
@@ -175,7 +180,7 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
 
         text = ''.join([t.cdata for t in object.text.tspan]).lower()
 
-        if 'pr2' in text or 'spot' in text:
+        if text in ALLOWED_ROBOT_NAMES:
             SCALING = w / 0.8
             X_OFFSET, Y_OFFSET = x, y
             continue
@@ -197,7 +202,7 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
                 yaw = 180
 
         elif 'floor' in text or 'room' in text:
-            category = 'floor'
+            category = 'floor' if 'floor' in text else 'room'
             yaw = 0
             name = text
             if float(rect['y']) < FLOOR_X_MIN:

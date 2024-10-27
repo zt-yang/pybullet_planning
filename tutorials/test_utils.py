@@ -86,6 +86,11 @@ def get_args(exp_name=None):
 
 
 def get_data(categories):
+    """ to add partnet mobility assets into the asset/models folder
+    1. make sure the whole partnet_mobility dataset is located parallel to the project dir
+        i.e. PARTNET_PATH = abs_join(workspace_path, '..', 'dataset')
+    2. add the category and instances you want into world_builder/asset_constants.py
+    """
     from world_builder.paths import PARTNET_PATH
 
     for category in categories:
@@ -102,6 +107,8 @@ def get_data(categories):
                 if isdir(old_path) and not isdir(new_path):
                     shutil.copytree(old_path, new_path)
                     print(f'copying {old_path} to {new_path}')
+        else:
+            print(f"PARTNET_PATH not found {PARTNET_PATH}")
 
 
 def load_body(path, scale, pose_2d=(0, 0), random_yaw=False):

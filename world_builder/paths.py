@@ -23,7 +23,7 @@ IS_COGARCH = 'cognitive-architectures' in workspace_path
 if IS_COGARCH:
     workspace_path = abs_join(workspace_path, '..')
 KITCHEN_WORLD = abs_join(workspace_path, 'kitchen-worlds')
-PARTNET_PATH = abs_join(workspace_path, '..', 'dataset')
+PARTNET_PATH = abs_join(workspace_path, 'dataset')
 
 ## Caelan
 # if socket.gethostname() == 'cgarrett-dt':

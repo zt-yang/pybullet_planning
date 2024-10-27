@@ -17,19 +17,11 @@ from robot_builder.robot_builders import build_robot_from_args
 from tutorials.test_utils import get_test_world
 
 
-def test_load_spot_in_office():
-    """ have bug now """
-    world = get_test_world(robot='spot', semantic_world=True, width=1980, height=1238)
-    load_floor_plan(world, plan_name='office_1.svg', debug=True, spaces=None, surfaces=None,
-                    random_instance=False, verbose=True)
-    wait_if_gui()
-
-
 def test_load_floating_gripper_in_kitchen(random_instance=True):
     """ a fixed kitchen layout with random instance of objects (e.g. microwave, trashcan) """
     args = get_parser(config='config_dev.yaml', seed=None)
-
     init_pybullet_client(args)
+
     world = create_world(args)
     robot = build_robot_from_args(world, robot_name='feg', initial_q=[1.5, 7, 0.7, 0, -PI / 2, 0])
 
@@ -37,7 +29,7 @@ def test_load_floating_gripper_in_kitchen(random_instance=True):
         'counter': {
             'front_right_stove': ['BraiserBody'],
             'hitman_tmp': ['Microwave'],  ## counter on the left
-            'indigo_tmp': ['BraiserLid'],  ## counter on the right
+            'indigo_tmp': [],  ## counter on the right ## 'BraiserLid'
         }
     }
     floor = load_kitchen_floor_plan(world, plan_name='kitchen_v2.svg', surfaces=surfaces, random_instance=random_instance)
@@ -46,5 +38,14 @@ def test_load_floating_gripper_in_kitchen(random_instance=True):
     wait_if_gui()
 
 
+def test_load_spot_in_office():
+    """ have bug now with loading spot """
+    world = get_test_world(robot='spot', semantic_world=True, width=1980, height=1238)
+    load_floor_plan(world, plan_name='office_1.svg', debug=True, spaces=None, surfaces=None,
+                    random_instance=False, verbose=True)
+    wait_if_gui()
+
+
 if __name__ == '__main__':
     test_load_floating_gripper_in_kitchen()
+    # test_load_spot_in_office()

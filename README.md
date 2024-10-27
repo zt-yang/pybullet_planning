@@ -55,6 +55,28 @@ sudo apt-get install libeigen3-dev liborocos-kdl-dev libkdl-parser-dev liburdfdo
 pip install git+https://github.com/mjd3/tracikpy.git
 ```
 
+Attempting to install tracikpy on MacOS:
+
+```shell
+brew install eigen orocos-kdl nlopt urdfdom
+```
+
+### Issue: `C++`
+
+```shell
+ xcrun: error: invalid active developer path (/Library/Developer/CommandLineTools), missing xcrun at: /Library/Developer/CommandLineTools/usr/bin/xcrun
+```
+solution, takes a while to install
+```shell
+xcode-select --install
+```
+
+## Issue: Eigen path not found
+
+```shell
+/usr/local/include/kdl/jacobian.hpp:26:10: fatal error: 'Eigen/Core' file not found
+```
+
 ---
 <!---
 ## Overview

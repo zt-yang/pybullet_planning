@@ -485,14 +485,13 @@ class Object(Index):
         remove_handles(self.handles)
         self.handles = []
 
-    def add_text(self, text):
+    def add_text(self, text, **kwargs):
         if self.text_handle is not None:
             # p.removeUserDebugItem(self.text_handle)
             remove_debug(self.text_handle)
             self.text += '_'
         self.text += text
-        self.text_handle = add_text(self.text, position=(0, 0.15, 0.15), color=(1, 0, 0),
-                                    lifetime=0, parent=self.body, parent_link=0)
+        self.text_handle = draw_body_label(self.body, self.text, link=self.link, offset=(0, 0.15, 0.15), **kwargs)
 
     def is_active(self):
         return self.body is not None

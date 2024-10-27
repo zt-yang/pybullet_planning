@@ -508,8 +508,8 @@ class World(WorldBase):
 
     ## ---------------------------------------------------------
 
-    def add_box(self, object, pose=None):
-        obj = self.add_object(object, pose=pose)
+    def add_box(self, obj, pose=None):
+        obj = self.add_object(obj, pose=pose)
         obj.is_box = True
         return obj
 
