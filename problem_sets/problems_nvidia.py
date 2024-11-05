@@ -5,6 +5,7 @@ from pybullet_tools.pose_utils import sample_obj_in_body_link_space
 
 from world_builder.loaders_partnet_kitchen import put_lid_on_braiser
 from world_builder.loaders_nvidia_kitchen import *
+from world_builder.world_utils import select_door_closer_to_body
 
 from robot_builder.robot_builders import build_robot_from_args
 
@@ -637,6 +638,21 @@ def test_skill_knob_faucet(args, **kwargs):
 
 def test_kitchen_drawers(args, **kwargs):
     def loader_fn(world, difficulty=15, **world_builder_args):
+        """
+        0:  open the drawer
+        1:  drawer is opened, drawer is a static link
+            pick up the cabbage
+        1x: drawer is opened, drawer is a movable link
+            11: pick up the cabbage
+            12: pick up the cabbage and place it on the counter
+            1y: pick up the cabbage and place it in the pot
+                13: Rummy, PR2 dual-arm with large torso joint limits
+                14: PR2 dual-arm with normal torso joint limits
+                15: PR2 single-arm
+        111: drawer is closed, drawer is a movable link
+            pick up the cabbage and place it on the counter
+        2:  random test cases
+        """
         surfaces = {
             'counter': {
                 'front_right_stove': [],
@@ -725,8 +741,11 @@ def test_kitchen_drawers(args, **kwargs):
                     skeleton += [(k, arm, cabbage) for k in pick_arrange_actions[1:]]
 
                 elif difficulty in [13, 14, 15]:
-                    ## rummy is ok with 13
-                    ## PR2 is ok when custom_limits is larger
+                    """
+                    13: Rummy, PR2 dual-arm with large torso joint limits
+                    14: PR2 dual-arm with normal torso joint limits
+                    15: PR2 single-arm
+                    """
                     load_pot_lid(world)
                     braiser = name_to_body('braiser_bottom')
                     world.put_on_surface(name_to_body('braiserbody'), 'indigo_tmp').adjust_pose(y=8.922, yaw=0)
@@ -764,12 +783,7 @@ def test_kitchen_drawers(args, **kwargs):
 
             ## drawer as movable link
             if difficulty == 111:
-
-                skeleton += [(k, arm, drawer) for k in pull_with_link_actions]
-                skeleton += [(k, arm, cabbage) for k in pick_place_rel_actions[:1]]
-                # skeleton += [(k, 'right', drawer) for k in pull_with_link_actions]
-                skeleton += [(k, arm, cabbage) for k in pick_arrange_actions[1:]]
-
+                goals = [("On", cabbage, counter)]
                 skeleton += [(k, arm, drawer) for k in pull_with_link_actions]
                 skeleton += [(k, arm, cabbage) for k in pick_place_rel_actions[:1]]
                 # skeleton += [(k, 'right', drawer) for k in pull_with_link_actions]
@@ -805,8 +819,15 @@ def test_kitchen_drawers(args, **kwargs):
 
 
 def test_kitchen_doors(args, **kwargs):
-    """ currently broken with problem in place_in_nvidia_kitchen_space() """
-    def loader_fn(world, **world_builder_args):
+    def loader_fn(world, difficulty=2, supporter_name='sektion', arm='left'):
+        """
+        difficulty:
+        0:  open door to the supporter
+        1:  door is open, pick up something from the supporter
+        2:  open the door and pick up from the supporter (with skeleton help)
+        3:  open the door and pick up from the supporter (without skeleton help)
+        """
+        world.set_skip_joints()
         spaces = {
             'counter': {
                 'sektion': ['VinegarBottle'],  ## 'OilBottle',
@@ -820,60 +841,71 @@ def test_kitchen_doors(args, **kwargs):
         }
         surfaces = {
             'counter': {
-                'front_left_stove': [],  ## 'Kettle'
+                # 'front_left_stove': [],  ## 'Kettle'
                 'front_right_stove': ['BraiserBody'],  ## 'PotBody',
                 # 'back_left_stove': [],
                 # 'back_right_stove': [],
                 # 'range': [], ##
-                'hitman_countertop': [],  ##  'Microwave'
-                'indigo_tmp': ['BraiserLid'],  ## 'MeatTurkeyLeg', 'Toaster',
+                # 'hitman_countertop': [],  ##  'Microwave'
+                # 'indigo_tmp': ['BraiserLid'],  ## 'MeatTurkeyLeg', 'Toaster',
             },
             'fridge': {
-                'shelf_top': [],
+                # 'shelf_top': [],
                 'shelf_bottom': [],
             }
         }
         load_full_kitchen(world, surfaces=surfaces, spaces=spaces, load_cabbage=False)
+        bottle = world.name_to_object('vinegarbottle')
+        movable = bottle.body
 
         """ add doors """
         supporter_to_doors = load_nvidia_kitchen_joints(world)
-        supporters = ['sektion', 'shelf_bottom']  ## 'dagger', 'indigo_tmp'
-        bottle = world.name_to_object('vinegarbottle')
-        selected_id = 1  ## random.choice(range(len(counter_doors)))
+        supporters = [supporter_name]  ## 'sektion', 'dagger', 'indigo_tmp', 'shelf_bottom'
+        selected_id = 0  ## random.choice(range(len(counter_doors)))
         selected_door = None
         for supporter_id, supporter_name in enumerate(supporters):
             for door, pstn in supporter_to_doors[supporter_name]:
-                world.open_joint(door, extent=pstn)
+                world.add_joint_object(door[0], door[1], 'door')
+                world.make_transparent((door[0], door[1]))
+                if difficulty == 1:
+                    world.open_joint(door, extent=pstn)
+
             if supporter_id == selected_id:
+                doors = [t[0] for t in supporter_to_doors[supporter_name]]
                 place_in_nvidia_kitchen_space(bottle, supporter_name, interactive=False)
-                selected_door = door
+                handles = {d: (d[0], world.BODY_TO_OBJECT[d].handle_link) for d in doors}
+                selected_door = select_door_closer_to_body(handles, movable)
                 if supporter_name == 'shelf_bottom':
                     set_camera_pose(camera_point=[2.717, 4.514, 2.521], target_point=[1, 5, 1])
 
         """ goals """
-        arm = 'left'
-
         door = selected_door
-        goals = ('test_handle_grasps', door)
-        # goals = [("HandleGrasped", 'left', door)]
-        # goals = [("AtPosition", door, Position(door, 'min'))]
-        # goals = [("OpenedJoint", door)]
-        # goals = [("GraspedHandle", door)]
-
-        movable = bottle.body
-        goals = ("test_object_grasps", movable)
-        # goals = [("Holding", arm, movable)]
-        goals = [("OpenedJoint", door), ("Holding", arm, movable)]
-        # goals = [("OpenedJoint", door)]
-
         skeleton = []
-        skeleton += [(k, arm, door) for k in pull_actions]
-        skeleton += [(k, arm, door) for k in pull_actions]
-        skeleton += [(k, arm, bottle) for k in pick_place_actions[:1]]
+        if difficulty == 0:
+            goals = ("test_object_grasps", movable)
+            goals = ('test_handle_grasps', door)
+            # goals = [("HandleGrasped", 'left', door)]
+            # goals = [("AtPosition", door, Position(door, 'min'))]
+            goals = [("OpenedJoint", door)]
+            # goals = [("GraspedHandle", door)]
 
-        ## --- for recording door open demo
-        # world.open_joint_by_name('chewie_door_left_joint')
+        elif difficulty in [1, 2, 3]:
+            goals = [("Holding", arm, movable)]
 
+            if difficulty == 1:
+                skeleton += [(k, arm, bottle) for k in pick_place_actions[:1]]
+
+            if difficulty == 2:
+                goals = [("OpenedJoint", door), ("Holding", arm, movable)]
+                skeleton += [(k, arm, door) for k in pull_actions]
+                skeleton += [(k, arm, bottle) for k in pick_place_actions[:1]]
+
+        else:
+            return
+            ## --- for recording door open demo
+            # world.open_joint_by_name('chewie_door_left_joint')
+
+        world.remove_bodies_from_planning(goals=goals, skeleton=skeleton)
         return {'goals': goals, 'skeleton': skeleton}
 
     return test_nvidia_kitchen_domain(args, loader_fn, initial_xy=(2, 5), **kwargs)
@@ -949,10 +981,11 @@ def test_kitchen_braiser(args, **kwargs):
 
 def test_skill_knob_stove(args, **kwargs):
     """
-    difficulty == 0: turn the knob to the front stoves
-    difficulty == 1: move the pot to the counter before turning on the stove, (then move the pot to the stove)
-    difficulty == 12: move the lid to the counter before turning on the stove, (then move the pot to the stove)
-    difficulty == 2: turn on the knob of the other stove, (then move the pot there)
+    difficulty ==
+    0:  turn the knob to the right front stove
+    1:  move the pot to the counter before turning on the stove (then move the pot to the stove)
+    12: move the lid to the counter before turning on the stove (then move the pot to the stove)
+    2:  turn on the knob of the other stove, (then move the pot there)
     """
     def loader_fn(world, difficulty=12, **world_builder_args):
         surfaces = {
@@ -962,6 +995,8 @@ def test_skill_knob_stove(args, **kwargs):
                 'indigo_tmp': [],
             }
         }
+        if difficulty in [0]:
+            surfaces['counter']['indigo_tmp'] = ['BraiserBody']
         if difficulty in [1, 12]:
             surfaces['counter']['front_right_stove'] = ['BraiserBody']
             if difficulty in [12]:

@@ -195,10 +195,10 @@ def build_robot_from_args(world, robot_name, create_robot_fn=None, **kwargs):
     if robot_name == 'feg':
         if 'initial_q' not in kwargs and 'initial_xy' in kwargs:
             x, y = kwargs['initial_xy']
-            del kwargs['initial_xy']
             kwargs['initial_q'] = [x, y, 0.7, 0, -PI / 2, 0]
-        if 'base_q' in kwargs:
-            kwargs.pop('base_q')
+        for key in ['base_q', 'initial_xy']:
+            if key in kwargs:
+                kwargs.pop(key)
         robot = create_gripper_robot(world, **kwargs)
 
     else:

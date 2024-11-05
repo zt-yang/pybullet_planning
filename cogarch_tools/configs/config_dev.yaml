@@ -72,7 +72,7 @@ streams:
 
 ## pybullet related
 sim:
-#  ## --- screen record planning failing ---
+#  ## --- screen record ---
 #  window_width: 1980
 #  window_height: 1238
 #  lock: false

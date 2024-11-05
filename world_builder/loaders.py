@@ -304,6 +304,14 @@ def load_floor_plan(world, plan_name='studio1.svg', asset_renaming=None, debug=F
             continue
 
         elif cat == 'wall':
+            if 'north' in name or 'south' in name:
+                w, l = l, w
+            box = create_box(w=w, l=l, h=WALL_HEIGHT, color=GREY, collision=True)
+            pose = Pose(point=Point(x=x, y=y, z=WALL_HEIGHT/2))
+            obj = Object(box, name=name, category='wall')
+            world.add_box(obj, pose)
+            obj.add_text(name)
+
             continue
 
         # elif cat == 'room':
@@ -328,9 +336,10 @@ def load_floor_plan(world, plan_name='studio1.svg', asset_renaming=None, debug=F
             door = world.add_object(Door(body, joint=door_joint, name=f'door_{office_number}'))
 
             room_region = world.name_to_body(f'office_{office_number}')
-            walls = create_room_given_room_door(room_region, body)
-            world.add_object(Object(walls, name=f'wall_{office_number}', category='wall'))
-            set_pose(walls, get_pose(room_region))
+            if room_region is not None:
+                walls = create_room_given_room_door(room_region, body)
+                world.add_object(Object(walls, name=f'wall_{office_number}', category='wall'))
+                set_pose(walls, get_pose(room_region))
 
         elif cat == 'door':
             world.add_box(

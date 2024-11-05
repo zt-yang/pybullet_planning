@@ -280,13 +280,12 @@ def enumerate_rotational_matrices(return_list=False):
 
 def visualize_found_grasps(found, robot, body, link, body_pose, retain_all=False, verbose=True):
     bodies = []
+    bb = body if link is None else None
     for i, g in enumerate(found):
-        bb = body if link is None else None
         color, color_name = get_color_by_index(i)
         print(f'\t{nice(g)}\t{color_name}')
         bodies.append(
-            robot.visualize_grasp(body_pose, g, body=bb, verbose=verbose,
-                                  new_gripper=retain_all, color=color)
+            robot.visualize_grasp(body_pose, g, body=bb, verbose=verbose, new_gripper=retain_all, color=color)
         )
     # set_renderer(True)
     if retain_all:
@@ -336,10 +335,10 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
         r = Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
         body_pose = multiply(body_pose, invert(r))
 
-    ## grasp handle links
-    else:
-        tool_from_hand = robot.get_tool_from_hand(body_name)
-        body_pose = multiply(body_pose, invert(tool_from_hand))
+    # ## grasp handle links
+    # else:
+    #     tool_from_hand = robot.get_tool_from_hand(body_name)
+    #     body_pose = multiply(body_pose, invert(tool_from_hand))
 
     instance_name = world.get_instance_name(body_name)
     name_in_db = None if instance_name is None else world.get_name(body_name, use_default_link_name=True)
@@ -387,7 +386,7 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
         grasps = []
         grasp = multiply(Pose(point=f), Pose(euler=r))
 
-        bb = body if link is None else None
+        bb = body if link is None else (body, link)
         result, aabb, gripper = check_cfree_gripper(grasp, world, body_pose, obstacles, verbose=False, body=bb,
                                                     visualize=visualize, retain_all=retain_all, collisions=collisions,
                                                     test_offset=test_offset)
@@ -453,8 +452,10 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
 
             ## for debugging different grasps
             index += 1
-            if skip_grasp_index_until is not None and index <= skip_grasp_index_until:
-                continue
+            if skip_grasp_index_until is not None:
+                if index - 1 < skip_grasp_index_until:
+                    continue
+                print(f'grasp_index\t{index}')
 
             grasps.extend(check_grasp(f, r))
             if test_offset:
@@ -485,16 +486,16 @@ def get_hand_grasps(world, body, link=None, grasp_length=0.1, visualize=False,
     return grasps  ##[:1]
 
 
-def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, visualize=False, body=None,
+def check_cfree_gripper(grasp, world, body_pose, obstacles, verbose=False, visualize=False, body=None,
                         min_num_pts=40, retain_all=False, collisions=False, test_offset=False, **kwargs):
     robot = world.robot
 
     if verbose:
         print(f'\nbullet.check_cfree_gripper | '
-              f'\trobot.visualize_grasp({nice(object_pose)}, ({nice(grasp)}):'
+              f'\trobot.visualize_grasp({nice(body_pose)}, ({nice(grasp)}):'
               f'\t{nice(robot.tool_from_hand)}\tkwargs = {kwargs}')
 
-    gripper_grasp = robot.visualize_grasp(object_pose, grasp, verbose=verbose, body=body,
+    gripper_grasp = robot.visualize_grasp(body_pose, grasp, verbose=verbose, body=body,
                                           new_gripper=test_offset, **kwargs)
     if test_offset:
         remove_body(gripper_grasp)
@@ -515,7 +516,7 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
         # set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=1)  ## fork inside indigo drawer top
 
     ## criteria 1: when gripper isn't closed, it shouldn't collide
-    firstly = collided(gripper_grasp, obstacles, min_num_pts=min_num_pts,
+    firstly = collided(gripper_grasp, obstacles, min_num_pts=0,
                        world=world, verbose=False, tag='firstly')
     finger_link = robot.cloned_finger_link
 
@@ -523,7 +524,7 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
     secondly = False
     if not firstly or not collisions:
         robot.close_cloned_gripper(gripper_grasp)
-        secondly = collided(gripper_grasp, obstacles, min_num_pts=0, world=world, articulated=True,
+        secondly = collided(gripper_grasp, obstacles, min_num_pts=0, world=world, articulated=False,
                             verbose=False, tag='secondly')
 
         ## boxes don't contain vertices for collision checking
@@ -532,10 +533,8 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
             secondly = secondly or aabb_contains_aabb(get_aabb(gripper_grasp, finger_link), get_aabb(body))
 
     ## criteria 3: the gripper shouldn't be pointing upwards, heuristically
-    ## set_color(gripper_grasp, RED, link=2)  ## important to find out
-
-    aabb = nice(get_aabb(gripper_grasp), round_to=2)
-    upwards = get_aabb_center(get_aabb(gripper_grasp, link=finger_link))[2] - get_aabb_center(aabb)[2] > 0.01
+    aabb = get_aabb(gripper_grasp)
+    upwards = robot.check_if_pointing_upwards(gripper_grasp)
 
     ## combining all criteria
     result = not firstly and secondly and not upwards
@@ -552,9 +551,11 @@ def check_cfree_gripper(grasp, world, object_pose, obstacles, verbose=False, vis
     return result, aabb, gripper_grasp
 
 
-def is_top_grasp(robot, arm, body, grasp, pose=None, top_grasp_tolerance=PI/4):  # None | PI/4 | INF
-    if top_grasp_tolerance is None:
-        return True
+def is_top_grasp(robot, arm, body, grasp, pose=None, top_grasp_tolerance=PI/4,
+                 side_grasp_tolerance=None):  # None | PI/4 | INF
+    result = True
+    if top_grasp_tolerance is None and side_grasp_tolerance is None:
+        return result
     if not isinstance(grasp, tuple):
         grasp = grasp.value
     if pose is None:
@@ -562,8 +563,12 @@ def is_top_grasp(robot, arm, body, grasp, pose=None, top_grasp_tolerance=PI/4): 
     grasp_pose = robot.get_grasp_pose(pose, grasp, arm, body=body)
     grasp_orientation = (Point(), quat_from_pose(grasp_pose))
     grasp_direction = tform_point(grasp_orientation, robot.grasp_direction)
-    return angle_between(grasp_direction, Point(z=-1)) <= top_grasp_tolerance
-
+    if top_grasp_tolerance is not None:
+        result = result and angle_between(grasp_direction, Point(z=-1)) <= top_grasp_tolerance
+    if side_grasp_tolerance is not None:
+        tolerance = max(PI/2 - side_grasp_tolerance, 0)
+        result = result and angle_between(grasp_direction, Point(z=-1)) >= tolerance
+    return result
 
 ## --------------------------------------------------
 
@@ -640,3 +645,7 @@ def add_to_rc2oc(robot, group, a, o, mapping):
     if conf not in robot.ROBOT_CONF_TO_OBJECT_CONF[body][joint]:
         robot.ROBOT_CONF_TO_OBJECT_CONF[body][joint][conf] = {}
     robot.ROBOT_CONF_TO_OBJECT_CONF[body][joint][conf][group] = mapping
+
+
+def needs_special_grasp(body, world):
+    return world.get_category(body) in ['braiserbody']

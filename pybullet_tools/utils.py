@@ -4131,11 +4131,17 @@ def plan_joint_motion(body, joints, end_conf, obstacles=[], attachments=[],
     if not check_initial_end(start_conf, end_conf, collision_fn):
         return None
 
+    old_stdout = sys.stdout  # backup current stdout
+    sys.stdout = open(os.devnull, "w")
+
     if algorithm is None:
         path = birrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
     else:
         path = solve(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, algorithm=algorithm, **kwargs)
         # path = plan_lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn)
+
+    sys.stdout = old_stdout  # reset old stdout
+
     duration = time.time() - start_time
     if duration > 1:
         print(f'\t[utils.plan_joint_motion] in {round(duration, 2)} seconds')

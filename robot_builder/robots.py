@@ -12,7 +12,7 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
     ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles, \
     interpolate_poses, Pose, Euler, quat_from_euler, get_bodies, get_all_links, PI, RED, \
     is_darwin, wait_for_user, YELLOW, euler_from_quat, wait_unlocked, set_renderer, \
-    sub_inverse_kinematics, Point, get_collision_fn
+    sub_inverse_kinematics, Point, get_collision_fn, get_aabb_center, get_max_limit
 
 from pybullet_tools.bullet_utils import equal, nice, is_tuple, get_links_collided, \
     collided, query_yes_no, has_tracik, is_mesh_entity, get_rotation_matrix
@@ -41,6 +41,7 @@ class RobotAPI(Robot):
     tool_from_hand = unit_pose()
     grasp_direction = Point(x=+1)  ## used by is_top_grasp
     joint_groups = dict()
+    cloned_finger_link = None
 
     def __init__(self, body, move_base=True, max_distance=0.0, separate_base_planning=False,
                  self_collisions=SELF_COLLISIONS, **kwargs):
@@ -111,6 +112,12 @@ class RobotAPI(Robot):
         gripper_joints = self.get_gripper_joints(arm)
         return [width] * len(gripper_joints)
 
+    def get_gripper_position_at_extent(self, arm, extent):
+        """ 1 means fully open, 0 means closed, different for different grippers """
+        gripper_joint = self.get_gripper_joints(arm)[0]
+        width = get_max_limit(self.body, gripper_joint)
+        return width * extent
+
     ## ------------------------------------------------------------------
 
     def get_arm_from_gripper(self, gripper):
@@ -178,7 +185,7 @@ class RobotAPI(Robot):
             set_all_color(gripper, color)
         return gripper
 
-    def make_grasps(self, g_type, arm, body, grasps_O, collisions=True):
+    def make_grasps(self, g_type, arm, body, grasps_O, collisions=True, default_w=0.0):
         from pybullet_tools.grasp_utils import is_top_grasp
         app = self.get_approach_vector(arm, g_type)
         grasps_R = []
@@ -193,7 +200,7 @@ class RobotAPI(Robot):
         ## filter for grasp width
         filtered_grasps = []
         for grasp in grasps_R:
-            grasp_width = self.compute_grasp_width(arm, grasp, body=body) if collisions else 0.0
+            grasp_width = self.compute_grasp_width(arm, grasp, body=body) if collisions else default_w
             if grasp_width is not None:
                 grasp.grasp_width = grasp_width
                 filtered_grasps.append(grasp)
@@ -242,6 +249,7 @@ class RobotAPI(Robot):
         #     tool_from_root = multiply(((0, 0.025, 0.025), unit_quat()), self.tool_from_hand)  ## self.get_tool_from_root(arm)
         # ## those urdf files made from one .obj file
         # else:
+        ## TODO: problemtic transformation that doen't apply to all grippers
         body_pose = self.get_body_pose(body_pose, body=body, verbose=verbose)
         tool_from_root = ((0, 0, -0.05), quat_from_euler((math.pi / 2, -math.pi / 2, -math.pi)))
         return multiply(body_pose, grasp, tool_from_root)
@@ -274,16 +282,22 @@ class RobotAPI(Robot):
                 body_pose = get_pose(b)
                 if verbose: print(f'{title} | actually given body, body_pose = get_pose(b) = {nice(body_pose)}')
 
-        tool_from_hand = self.get_tool_from_hand(body)
-        r = get_rotation_matrix(body) if body is not None else tool_from_hand
-        new_body_pose = multiply(body_pose, r)
-        return new_body_pose
+        if body is not None:
+            r = get_rotation_matrix(body)
+            body_pose = multiply(body_pose, r)
+        return body_pose
 
     def set_spawn_range(self, limits):
         self.spawn_range = limits
 
     def get_attachment_link(self, arm):
         return link_from_name(self.body, self.get_tool_link(arm))
+
+    def check_if_pointing_upwards(self, gripper_grasp):
+        ## set_color(gripper_grasp, RED, link=2)  ## important to find out
+        finger_aabb = get_aabb(gripper_grasp, link=self.cloned_finger_link)
+        aabb = nice(get_aabb(gripper_grasp), round_to=2)
+        return get_aabb_center(finger_aabb)[2] - get_aabb_center(aabb)[2] > 0.01
 
     ################################################################################
 
@@ -383,6 +397,8 @@ class RobotAPI(Robot):
             return
 
         obj = world.body_to_object(body)
+        if obj is None:
+            return
         name = world.get_debug_name(obj)
         is_planning_object = body in world.BODY_TO_OBJECT
         categories = obj.get_categories()
@@ -587,7 +603,9 @@ class MobileRobot(RobotAPI):
     ###############################################################################
 
     def create_gripper(self, arm=None, **kwargs):
-        self.grippers[arm] = create_robot_gripper(self.body, self.get_gripper_root(arm), **kwargs)
+        gripper_root = self.get_gripper_root(arm)
+        # print('robot.create_gripper | cloned {} gripper from link {}'.format(arm, gripper_root))
+        self.grippers[arm] = create_robot_gripper(self.body, gripper_root, **kwargs)
         return self.grippers[arm]
 
     def set_gripper_pose(self, body_pose, grasp, body=None, gripper=None, arm='left', **kwargs):
@@ -1176,6 +1194,9 @@ class FEGripper(RobotAPI):
     #             width = close_until_collision(gripper, gripper_joints, bodies=[body], **kwargs)
     #             # remove_body(gripper)
     #     return width
+
+    def set_gripper_pose(self, body_pose, grasp, body=None, gripper=None, arm='hand', **kwargs):
+        self.visualize_grasp(body_pose, grasp, arm=arm, body=body, **kwargs)
 
     def visualize_grasp(self, body_pose, grasp, arm='hand', color=GREEN, width=1,
                         body=None, verbose=False, new_gripper=False, mod_target=None):

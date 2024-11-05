@@ -30,7 +30,7 @@ def get_stream_map(p, c, l, t, **kwargs):
 
         'plan-free-motion-hand': from_fn(get_free_motion_gen(p, collisions=c, teleport=t, custom_limits=l)),
 
-        'get-joint-position-open': from_gen_fn(sample_joint_position_gen(num_samples=6)),
+        'get-joint-position-open': from_gen_fn(sample_joint_position_gen(p, num_samples=6)),
         'sample-handle-grasp': from_gen_fn(get_handle_grasp_gen(p, collisions=c, verbose=False)),
 
         'inverse-kinematics-grasp-handle': from_fn(get_ik_fn(p, collisions=c, teleport=t,

@@ -22,7 +22,8 @@ from pybullet_tools.bullet_utils import nice, visualize_point, collided, is_box_
 from pybullet_tools.pose_utils import sample_obj_in_body_link_space, is_contained, \
     ObjAttachment, sample_obj_on_body_link_surface, has_much_larger_aabb, adjust_sampled_pose
 from pybullet_tools.camera_utils import set_camera_target_body
-from pybullet_tools.grasp_utils import get_hand_grasps, sample_from_pickled_grasps, is_top_grasp
+from pybullet_tools.grasp_utils import get_hand_grasps, sample_from_pickled_grasps, is_top_grasp, \
+    needs_special_grasp
 
 
 class LinkPose(Pose):
@@ -542,8 +543,8 @@ def get_joint_position_open_gen(problem):
     return fn
 
 
-def sample_joint_position_list_gen(num_samples=6):
-    funk = sample_joint_position_gen(num_samples=6)
+def sample_joint_position_list_gen(problem, num_samples=6):
+    funk = sample_joint_position_gen(problem, num_samples=6)
 
     def gen(o, psn1):
         pstn_gen = funk(o, psn1)
@@ -696,8 +697,8 @@ def sample_joint_position_gen(problem, num_samples=14, p_max=PI, to_close=False,
 """
 
 
-def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None,  # None | PI/4 | INF
-                  randomize=True, verbose=True, num_samples=20, debug=False,
+def get_grasp_gen(problem, collisions=True, num_samples=20, randomize=True, verbose=True, debug=False,
+                  top_grasp_tolerance=None, side_grasp_tolerance=None,  # None | PI/4 | INF
                   test_offset=False, loaded_offset=None, **kwargs):
     robot = problem.robot
     world = problem.world
@@ -721,14 +722,18 @@ def get_grasp_gen(problem, collisions=True, top_grasp_tolerance=None,  # None | 
         # grasps = robot.make_grasps(grasp_type, arm, body, grasps_O, collisions=False)
 
         ## ------ filter grasps
-        if top_grasp_tolerance is not None and not test_offset \
-                and world.get_category(body) not in ['braiserbody']:
-            ori = len(grasps)
-            grasps = [grasp for grasp in grasps if is_top_grasp(
-                robot, arm, body, grasp, top_grasp_tolerance=top_grasp_tolerance)]
-            if verbose and True:
-                print(f'   get_grasp_gen(top_grasp_tolerance={top_grasp_tolerance})',
-                      f' selected {len(grasps)} out of {ori} grasps')
+        if not test_offset and not needs_special_grasp(body, world):
+            count_old = len(grasps)
+            if top_grasp_tolerance is not None or side_grasp_tolerance is not None:
+                grasps = [grasp for grasp in grasps if is_top_grasp(
+                    robot, arm, body, grasp, top_grasp_tolerance=top_grasp_tolerance,
+                    side_grasp_tolerance=side_grasp_tolerance
+                )]
+            count_new = len(grasps)
+            print(f'\tget_grasp_gen(top_grasp_tolerance={top_grasp_tolerance},'
+                  f'side_grasp_tolerance={side_grasp_tolerance})',
+                  f' selected {count_new} out of {count_old} grasps')
+
         if randomize_here:
             random.shuffle(grasps)
         # print(f'get_grasp_gen({body}, {world.get_name(body)}) = {len(grasps)} grasps')

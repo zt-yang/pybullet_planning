@@ -86,6 +86,11 @@ def get_args(exp_name=None):
 
 
 def get_data(categories):
+    """ to add partnet mobility assets into the asset/models folder
+    1. make sure the whole partnet_mobility dataset is located parallel to the project dir
+        i.e. PARTNET_PATH = abs_join(workspace_path, '..', 'dataset')
+    2. add the category and instances you want into world_builder/asset_constants.py
+    """
     from world_builder.paths import PARTNET_PATH
 
     for category in categories:
@@ -102,6 +107,8 @@ def get_data(categories):
                 if isdir(old_path) and not isdir(new_path):
                     shutil.copytree(old_path, new_path)
                     print(f'copying {old_path} to {new_path}')
+        else:
+            print(f"PARTNET_PATH not found {PARTNET_PATH}")
 
 
 def load_body(path, scale, pose_2d=(0, 0), random_yaw=False):
@@ -127,6 +134,16 @@ def get_instances(category, **kwargs):
             os.mkdir(cat_dir)
             get_data(categories=[category])
         instances = get_instances_helper(category, **kwargs)
+    if category.lower() == 'food' and 'VeggieSweetPotato' in instances:
+        instances.pop('VeggieSweetPotato')
+    return instances
+
+
+def filter_instances(cat, given_instances):
+    instances = get_instances(cat)
+    if given_instances is not None:
+        instances = {k: v for k, v in instances.items() if k in instances}
+    print('instances', instances)
     return instances
 
 
@@ -169,7 +186,7 @@ def get_y_gap(category: str) -> float:
 def get_model_path(category, id):
     models_path = join(ASSET_PATH, 'models')
     category = [c for c in listdir(models_path) if c.lower() == category.lower()][0]
-    if not id.isdigit():
+    if isinstance(id, str) and not id.isdigit():
         id = [i for i in listdir(join(models_path, category)) if i.lower() == id.lower()][0]
     path = join(models_path, category, id)
     return path

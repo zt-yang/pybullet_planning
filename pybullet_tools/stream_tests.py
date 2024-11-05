@@ -336,6 +336,8 @@ def visualize_grasps(state, outputs, body_pose, retain_all=True, collisions=Fals
 
             gripper_grasp = robot.visualize_grasp(body_pose, grasp.value, body=grasp.body,
                                                   color=gripper_color, width=w, new_gripper=True, **kwargs)
+            if pause_each:
+                wait_if_gui()
             if collisions and collided(gripper_grasp, state.obstacles, verbose=True):
                 remove_body(gripper_grasp)
                 return None
@@ -349,6 +351,8 @@ def visualize_grasps(state, outputs, body_pose, retain_all=True, collisions=Fals
                 set_renderer(True)
                 set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.5)
                 attachment = grasp.get_attachment(robot, robot.arms[0], visualize=True)
+            if pause_each:
+                wait_if_gui()
 
             # set_camera_target_body(gripper_approach, dx=0, dy=-1, dz=0)
             remove_body(gripper_grasp)
@@ -365,13 +369,13 @@ def visualize_grasps(state, outputs, body_pose, retain_all=True, collisions=Fals
     i = 0
     gripper_grasp = None
     for grasp in outputs:
-        output = visualize_grasp(grasp[0], index=i)
+        if isinstance(grasp, tuple):  ## from grasp_gen
+            grasp = grasp[0]
+        output = visualize_grasp(grasp, index=i)
         if output is not None:
             gripper_grasp = output
             all_grippers.append(gripper_grasp)
             i += 1
-        if pause_each:
-            wait_if_gui()
     if i > 0:
         set_camera_target_body(gripper_grasp, dx=0.5, dy=0.5, dz=0.5)
 

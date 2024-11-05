@@ -32,7 +32,7 @@ SAVE_COLLISIONS = False
 
 def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH,
               reset=False, load_initial_state=False, record_plans=False, comparing=False, data_generation=False,
-              create_robot_fn=None, problem=None, exp_subdir=None, world_builder_args=dict(), robot_builder_args=dict(),
+              create_robot_fn=None, world_builder_args=dict(), robot_builder_args=dict(),
               domain_modifier=None, object_reducer=None, serve_page=True, **kwargs):
     """
     problem:    name of the problem builder function to solve
@@ -40,6 +40,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
     exp_name:   for comparison groups of different algorithms, e.g. ['original', 'hpn', 'hpn_goal-related']
     comparing:  put solutions inside exp_dir/exp_name instead of inside exp_dir
     kwargs:     changing the default set in config yaml file
+    save_testcase: skips planning and save scene
     """
 
     from pybullet_tools.logging_utils import myprint
@@ -48,9 +49,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
 
     """ prepare arguments """
 
-    if exp_subdir is None and isinstance(problem, str):
-        exp_subdir = problem
-    args = get_parser(config=config, config_root=config_root, problem=problem, exp_subdir=exp_subdir, **kwargs)
+    args = get_parser(config=config, config_root=config_root, **kwargs)
 
     ## update robot_builder_args
     args.robot_builder_args.update(robot_builder_args)
@@ -116,7 +115,8 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
         state.save_default_observation(output_path=join(agent.llamp_api.obs_dir, 'observation_0.png'))
 
     output_dir = agent.exp_dir
-    save_kwargs = dict(goal=goals, init=init, domain=domain, stream=stream, pddlstream_kwargs=solver_kwargs, problem=problem)
+    save_kwargs = dict(goal=goals, init=init, domain=domain, stream=stream, pddlstream_kwargs=solver_kwargs,
+                       problem=args.problem)
 
     ## for VLM-TAMP project
     if hasattr(agent, 'llamp_api'):

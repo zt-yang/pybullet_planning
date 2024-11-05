@@ -153,8 +153,10 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
 
     ## replace the default values with values provided, when running in IDE
     for k, v in kwargs.items():
-        # if v is not None:
         args.__dict__[k] = v
+
+    if args.exp_subdir is None and isinstance(args.problem, str):
+        args.exp_subdir = args.problem
 
     ## initialize random seed
     seed = args.seed

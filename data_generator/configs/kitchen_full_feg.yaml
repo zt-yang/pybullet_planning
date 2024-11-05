@@ -4,23 +4,23 @@
 seed: None
 verbose: true
 
-## pybullet related
-viewer: true
-lock: true
-simulate: false
-teleport: false
-drive: true
-cfree: false
-time_step: 0.05
-camera: true
-segment: false
-monitoring: false
-
 ## data collection mode
 #parallel: true
 #n_data: 3
 parallel: false
 n_data: 1
+
+
+## pybullet related
+sim:
+  viewer: true
+  lock: true
+  simulate: false
+  drive: true
+  time_step: 0.05
+  camera: true
+  segment: false
+  monitoring: false
 
 
 robot:
@@ -65,9 +65,22 @@ data:
 
 ## configuration for PDDLStream
 planner:
+  visualize: false
   timeout: 300
-  domain_pddl: 'pddl_domains/feg_kitchen.pddl'
-  stream_pddl: 'pddl_domains/feg_stream_kitchen.pddl'
-  diverse: true
+  domain_pddl: 'pddl_domains/feg_domain.pddl'
+  stream_pddl: 'pddl_domains/feg_stream.pddl'
   downward_time: 1
+  diverse: true
   dataset: false
+
+
+## planning stream related
+streams:
+  debug: false
+  cfree: false
+  teleport: false
+  movable_collisions: true
+  base_collisions: true
+  top_grasp_tolerance: 0.8
+  ir_max_attempts: 15
+  use_all_grasps: false

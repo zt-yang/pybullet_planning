@@ -603,29 +603,43 @@ def get_noisy_pose(pose):
 ######################################################################################
 
 
-def change_pose_interactive(obj):
-    from pynput import keyboard
+def change_pose_interactive(body, name, se3=False, set_pose_fn=set_pose, init_pose=None):
+    from pynput import keyboard ## pip install pynput  # if you want to interactively adjust object pose in commandline
 
     exit_note = "(Press esc in terminal to exit)"
 
-    pose = obj.get_pose()
+    pose = get_pose(body) if init_pose is None else init_pose
     xyz, quat = pose
     euler = euler_from_quat(quat)
     pose = np.asarray([xyz, euler])
+    unit = (0, 0, 0)
     adjustments = {
-        # 'w': ((0, 0, 0.01), (0, 0, 0)),
-        's': ((0, 0, -0.01), (0, 0, 0)),
-        keyboard.Key.up: ((0, 0, 0.01), (0, 0, 0)),
-        keyboard.Key.down: ((0, 0, -0.01), (0, 0, 0)),
-        'a': ((0, -0.01, 0), (0, 0, 0)),
-        'd': ((0, 0.01, 0), (0, 0, 0)),
-        keyboard.Key.left: ((0, -0.01, 0), (0, 0, 0)),
-        keyboard.Key.right: ((0, 0.01, 0), (0, 0, 0)),
-        'f': ((0.01, 0, 0), (0, 0, 0)),
-        'r': ((-0.01, 0, 0), (0, 0, 0)),
-        'q': ((0, 0, 0), (0, 0, -0.1)),
-        'e': ((0, 0, 0), (0, 0, 0.1)),
+        # 'w': ((0, 0, 0.01), unit),
+        's': ((0, 0, -0.01), unit),
+        keyboard.Key.up: ((0, 0, 0.01), unit),
+        keyboard.Key.down: ((0, 0, -0.01), unit),
+        'a': ((0, -0.01, 0), unit),
+        'd': ((0, 0.01, 0), unit),
+        keyboard.Key.left: ((0, -0.01, 0), unit),
+        keyboard.Key.right: ((0, 0.01, 0), unit),
+        'f': ((0.01, 0, 0), unit),
+        'r': ((-0.01, 0, 0), unit),
+        'q': (unit, (0, 0, -0.1)),
+        'e': (unit, (0, 0, 0.1)),
     }
+    instructions = "Enter WASDRF for poses and QE for yaw"
+    if se3:
+        instructions = "Enter arrow keys for yz, RF for x; QE for rZ, AD for rX, SZ for rY"
+        ang = PI/8
+        adjustments.update({
+            'q': (unit, (0, 0, -ang)),
+            'e': (unit, (0, 0, ang)),
+            'a': (unit, (-ang, 0, 0)),
+            'd': (unit, (ang, 0, 0)),
+            's': (unit, (0, -ang, 0)),
+            'z': (unit, (0, ang, 0)),
+        })
+
     adjustments = {k: np.asarray(v) for k, v in adjustments.items()}
 
     def on_press(key, pose=pose):
@@ -641,14 +655,14 @@ def change_pose_interactive(obj):
             point = tuple(pose[0])
             euler = tuple(pose[1])
             pose = nice((point, quat_from_euler(euler)), keep_quat=True)
-            print(f'\tnew pose of {obj.shorter_name}\t{pose}')
-            set_pose(obj.body, pose)
+            print(f'\tnew pose of {name}\t{pose}')
+            set_pose_fn(body, pose)
 
     def on_release(key):
         if key == keyboard.Key.esc:
-            return False
+            return pose
 
-    print('-' * 10 + f' Enter WASDRF for poses and QE for yaw {exit_note}' + '-' * 10)
+    print('-' * 10 + f' {instructions} {exit_note}' + '-' * 10)
     with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
         listener.join()
 

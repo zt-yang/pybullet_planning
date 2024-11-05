@@ -130,7 +130,7 @@ if __name__ == '__main__':
     ------------------------------------------------------------------------ """
 
     """ --- models related --- """
-    get_data(categories=['Cupboard'])
-    test_texture(category='CoffeeMachine', id='103127')
-    test_vhacd(category='BraiserBody')
-    save_partnet_aabbs()
+    get_data(categories=['DinerTable', 'DinerChair'])
+    # test_texture(category='CoffeeMachine', id='103127')
+    # test_vhacd(category='BraiserBody')
+    # save_partnet_aabbs()

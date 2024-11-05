@@ -18,7 +18,7 @@ from pybullet_tools.utils import unit_pose, get_aabb_extent, is_darwin, RED, sam
     set_camera_pose, TAN, RGBA, get_color, get_min_limit, get_max_limit, set_color, WHITE, get_links, \
     get_link_name, get_link_pose, euler_from_quat, get_collision_data, get_joint_name, get_joint_position, \
     set_renderer, link_from_name, parent_joint_from_link, set_random_seed, set_numpy_seed
-from pybullet_tools.bullet_utils import is_joint_open, get_fine_rainbow_colors, open_joint, toggle_joint
+from pybullet_tools.bullet_utils import dist, get_fine_rainbow_colors, open_joint, toggle_joint
 from pybullet_tools.camera_utils import get_segmask, get_obj_keys_for_segmentation
 from pybullet_tools.logging_utils import dump_json
 
@@ -72,6 +72,7 @@ def parse_yaml(path, verbose=True):
         print(pprint.pformat(conf))
         print('------------------------------------\n')
     conf = Namespace(**conf)
+    conf.sim = Namespace(**conf.sim)
     conf.data = Namespace(**conf.data)
     conf.world = Namespace(**conf.world)
     conf.robot = Namespace(**conf.robot)
@@ -92,17 +93,18 @@ def add_walls_given_rooms_doors(objects):
     for k, v in objects.items():
         if v['category'] == 'room':
             rooms.append(k)
-            index = k[k.index('_') + 1:]
+            index = k.replace('room_', '').replace('_room', '')
             walls = []
-            for direction, offsets in wall_offsets.items():
+            for direction, (ix, iy) in wall_offsets.items():
                 wall_name = f"wall_{index}_{direction}"
-                length = abs(offsets[0] * v['w'] + offsets[1] * v['l'])
-                yaw = 90 if offsets[0] == 0 else 0
-                wall_objects[wall_name] = {'x': v['x'] + offsets[0] * v['w'] / 2, 'y': v['y'] + offsets[1] * v['l'] / 2,
+                length = abs(iy * v['w'] + ix * v['l']) + wall_thickness * 2
+                yaw = 90 if ix == 0 else 0
+                wall_objects[wall_name] = {'x': v['x'] + ix * (v['w']+wall_thickness)/2,
+                                           'y': v['y'] + iy * (v['l']+wall_thickness)/2,
                                            'yaw': yaw, 'w': length, 'l': wall_thickness, 'category': 'wall'}
                 walls.append(wall_name)
 
-            door_name = f"door_{index}"
+            door_name = f"doorframe_{index}"
             if door_name in objects:
                 door_attr = objects[door_name]
                 for wall_name in walls:
@@ -151,10 +153,14 @@ def get_domain_constants(pddl_path):
     return constants
 
 
+ALLOWED_ROBOT_NAMES = ['pr2', 'rummy', 'spot', 'robot']
+
+
 def read_xml(plan_name, asset_path=ASSET_PATH):
     """ load a svg file representing the floor plan in asset path
             treating the initial pose of robot as world origin
         return a dictionary of object name: (category, pose) as well as world dimensions
+        boxes need to be single-stroke, no fill, no rounded corner
     """
     plan_path = abspath(join(asset_path, 'floorplans', plan_name))
 
@@ -174,7 +180,7 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
 
         text = ''.join([t.cdata for t in object.text.tspan]).lower()
 
-        if 'pr2' in text or 'spot' in text:
+        if text in ALLOWED_ROBOT_NAMES:
             SCALING = w / 0.8
             X_OFFSET, Y_OFFSET = x, y
             continue
@@ -196,7 +202,7 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
                 yaw = 180
 
         elif 'floor' in text or 'room' in text:
-            category = 'floor'
+            category = 'floor' if 'floor' in text else 'room'
             yaw = 0
             name = text
             if float(rect['y']) < FLOOR_X_MIN:
@@ -462,9 +468,9 @@ def get_scale_by_category(file=None, category=None, scale=1):
                 scale = MODEL_SCALES[category][id]
         else:
             parent = get_parent_category(category)
-            if parent is None:
-                print('\tcant find model scale', category, 'using default 1')
-            elif parent in MODEL_SCALES:
+            # if parent is None:
+            #     print('\tcant find model scale', category, 'using default 1')
+            if parent in MODEL_SCALES:
                 scale = MODEL_SCALES[parent][category]
 
     return scale
@@ -1116,6 +1122,12 @@ def save_world_aabbs_to_json(world, json_name='world_shapes.json'):
     print(f'[world.save_world_aabbs_to_json]\t{json_path}')
     with open(json_path, 'w') as f:
         json.dump(shapes, f, indent=2, sort_keys=False)
+
+
+def select_door_closer_to_body(door_links, movable):
+    door_centers = {key: get_aabb_center(get_aabb(body, link=link)) for key, (body, link) in door_links.items()}
+    movable_center = get_aabb_center(get_aabb(movable))
+    return min(door_centers, key=lambda x: np.linalg.norm(np.array(door_centers[x]) - movable_center))
 
 
 if __name__ == "__main__":

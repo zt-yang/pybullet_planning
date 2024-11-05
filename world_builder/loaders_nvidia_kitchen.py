@@ -82,6 +82,17 @@ saved_joints = [
     ('dishwasher', ['dishwasher_door'], 1, 'upper_shelf'),
 ]
 
+
+def in_case_hyphened_names(tuple_to_pose):
+    added = {}
+    for key, value in tuple_to_pose.items():
+        obj = key[0]
+        if '-' in obj:
+            new_key = tuple([obj.replace('-', '')] + list(key[1:]))
+            added[new_key] = value
+    tuple_to_pose.update(added)
+
+
 saved_relposes = {
     ('fork', 'indigo_drawer_top'): ((0.141, -0.012, -0.033), (0.0, 0.0, 0.94, 0.34)),
     ('fork', 'upper_shelf'): ((1.051, 6.288, 0.42), (0.0, 0.0, 0.94, 0.338)),
@@ -90,6 +101,7 @@ saved_relposes = {
     ('braiserbody', 'front_left_stove'): ((0.0, 0.0, 0.0921), (0.0, 0.0, 0.7071, 0.7071)),
     ('braiserbody', 'front_right_stove'): ((0.0, 0.0, 0.0921), (0.0, 0.0, 0.7071, 0.7071)),
 }
+in_case_hyphened_names(saved_relposes)
 
 saved_poses = {
     ('pot', 'indigo_tmp'): ((0.63, 8.88, 0.11), (0.0, 0.0, -0.68, 0.73)),
@@ -97,7 +109,7 @@ saved_poses = {
     ('vinegar-bottle', 'sektion'): ((0.75, 7.41, 1.24), (0.0, 0.0, 0.0, 1.0)), ## ((0.75, 7.3, 1.24), (0, 0, 0, 1)),
     ('vinegar-bottle', 'dagger'): ((0.45, 8.83, 1.54), (0.0, 0.0, 0.0, 1.0)),
     ('vinegar-bottle', 'indigo_tmp'): ((0.59, 8.88, 0.16), (0.0, 0.0, 0.0, 1.0)),
-    ('vinegar-bottle', 'shelf_bottom'): ((0.64, 4.88, 0.89), (0.0, 0.0, 0.0, 1.0)),
+    ('vinegar-bottle', 'shelf_bottom'): ((0.64, 4.88, 0.901), (0.0, 0.0, 0.0, 1.0)),
     # ('chicken-leg', 'indigo_tmp'): ((0.717, 8.714, 0.849), (0.0, -0.0, -0.99987, 0.0163)), ## grasp the meat end
     ('chicken-leg', 'indigo_tmp'): ((0.787, 8.841, 0.849), (0.0, 0.0, 0.239, 0.971)), ## grasp the bone end
     ('chicken-leg', 'shelf_bottom'): ((0.654, 5.062, 0.797), (0.0, 0.0, 0.97, 0.25)),
@@ -110,6 +122,7 @@ saved_poses = {
     ('fork', 'indigo_tmp'): ((0.767, 8.565, 0.842), (0.0, 0.0, 0.543415, 0.8395)),
     ('braiserbody', 'basin_bottom'): ((0.538, 5.652, 0.876), (0.0, 0.0, 0.993, 0.12)),
 }
+in_case_hyphened_names(saved_poses)
 
 saved_base_confs = {
     ('cabbage', 'shelf_bottom', 'left'): [
@@ -161,6 +174,7 @@ saved_base_confs = {
         ((1.24, 5.551, 0.417, 1.287), {0: 1.24, 1: 5.551, 2: 1.287, 17: 0.417, 61: 2.065, 62: 0.084, 63: 1.985, 65: -0.086, 66: 1.165, 68: -1.453, 69: 4.844}),
     ],
 }
+in_case_hyphened_names(saved_base_confs)
 
 FRONT_CAMERA_POINT = (3.9, 7, 1.3)
 DOWNWARD_CAMERA_POINT = (2.9, 7, 3.3)
@@ -568,8 +582,9 @@ def load_stove_knobs(world, knobs=('knob_joint_2', 'knob_joint_3'), color_code_s
         #     # world.add_to_init(('HeatableOnSurfaceWhenTurnedOn', braiser, surface.pybullet_name, corresponding_knob))
 
     ## consider removing braiserbody when the knob is blocked
-    world.add_to_cat('braiserbody', 'movable')
-    fix_braiser_orientation(world)
+    if world.name_to_body('braiserbody') is not None:
+        world.add_to_cat('braiserbody', 'movable')
+        fix_braiser_orientation(world)
 
 
 def define_seasoning(world):
@@ -757,11 +772,11 @@ def get_nvidia_kitchen_hacky_pose(obj, supporter_name):
     """ same spot on the surface to start with """
     for kk, pose in saved_relposes.items():
         if kk[1] in key[1]:
-            return pose, True
-    for kk, pose in saved_poses.items():
-        if kk[1] in key[1]:
             link_pose = get_link_pose(supporter.body, supporter.link)
             return multiply(link_pose, pose), True
+    for kk, pose in saved_poses.items():
+        if kk[1] in key[1]:
+            return pose, True
 
     return None, True
 

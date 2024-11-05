@@ -32,10 +32,10 @@ def set_time_seed():
 
 def initialize_pybullet(config):
     ## for viewing, not the size of depth image
-    connect(use_gui=config.viewer, shadows=False, width=1980, height=1238)
+    connect(use_gui=config.sim.viewer, shadows=False, width=1980, height=1238)
 
     # set_camera_pose(camera_point=[2.5, 0., 3.5], target_point=[1., 0, 1.])
-    if config.camera:
+    if config.sim.camera:
         enable_preview()
         p.configureDebugVisualizer(p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW, False)
     draw_pose(unit_pose(), length=1.)
@@ -60,7 +60,7 @@ def sample_world_and_goal(config, builder=None):
     """ ============== initiate simulator ==================== """
     initialize_pybullet(config)
     constants = get_domain_constants(config.planner.domain_pddl)
-    world = World(time_step=config.time_step, segment=config.segment, constants=constants)
+    world = World(time_step=config.sim.time_step, segment=config.sim.segment, constants=constants)
 
     """ ============== load robot ==================== """
     robot_builder = get_robot_builder(config.robot.builder_name)

@@ -39,20 +39,46 @@ def get_config_file_from_argparse(default_config_name='kitchen_full_feg.yaml', d
                         help='name of config file inside pybullet_planning/data_generator/configs/ directory.')
     parser.add_argument('-p', '--config_path', type=str, default=default_config_path,
                         help='absolute path to config file.')
-    args = parser.parse_args()
 
-    if args.config_path is not None:
-        config_file = args.config_path
+    ## a hackish way to get arbitrary arguments
+    parsed, unknown = parser.parse_known_args()
+
+    for i, arg in enumerate(unknown):
+        next_arg = unknown[i + 1] if i + 1 < len(unknown) else None
+        if arg.startswith(('-', '--')):
+            is_bool = next_arg is None or next_arg.startswith(('-', '--'))
+            print('arg.split()[0]', arg.split('=')[0])
+            arg = arg.split('=')[0]
+            if is_bool:
+                parser.add_argument(arg, action='store_true')
+            else:
+                parser.add_argument(arg, type=str)
+
+    args_parsed = parser.parse_args()
+    parsed_config = dict(args_parsed.__dict__)
+    parsed_config.pop('config_name')
+    parsed_config.pop('config_path')
+
+    if args_parsed.config_path is not None:
+        config_file = args_parsed.config_path
     else:
-        config_file = join(default_config_dir, args.config_name)
-    return config_file
+        config_file = join(default_config_dir, args_parsed.config_name)
+    return config_file, parsed_config
 
 
 def get_config_from_argparse(default_config_name='kitchen_full_feg.yaml', default_config_path=None,
                              default_config_dir=DATA_CONFIG_PATH):
-    config_file = get_config_file_from_argparse(default_config_name, default_config_path,
-                                                default_config_dir)
-    return get_config(config_file)
+    config_file, parsed_config = get_config_file_from_argparse(default_config_name, default_config_path,
+                                                               default_config_dir)
+    config = get_config(config_file)
+    for key, value in config.__dict__.items():
+        if key in parsed_config:
+            setattr(config, key, parsed_config[key])
+        elif isinstance(value, argparse.Namespace):
+            for sub_key, sub_value in value.__dict__.items():
+                if sub_key in parsed_config:
+                    setattr(value, sub_key, parsed_config[sub_key])
+    return config
 
 
 def get_config(config_file):
@@ -120,7 +146,12 @@ def process_all_tasks(process, task_name=None, dataset_root=None, parallel=False
         cases = get_run_dirs(task_name, dataset_root)
 
     if len(cases) > 1:
-        cases = sorted(cases, key=lambda x: eval(x.split('/')[-1]))
+        def get_digit(string):
+            string = string.split('/')[-1]
+            if '_' in string:
+                string = ''.join(string.split('_')[:-1])
+            return eval(string)
+        cases = sorted(cases, key=lambda x: get_digit(x))
 
     if case_filter is not None:
         cases = [c for c in cases if case_filter(c)]
@@ -205,9 +236,9 @@ def copy_dir_for_process(viz_dir, tag=None, verbose=True, print_fn=None):
     if not verbose:
         print_fn(viz_dir)
     else:
-        if tag is None:
-            print_fn(viz_dir, end='\r')
-        elif verbose:
+        # if tag is None:
+        #     print_fn(viz_dir)
+        if verbose:
             print_fn(f'\n\n\n--------------------------\n    {tag} {viz_dir} \n------------------------\n\n\n')
 
     return test_dir

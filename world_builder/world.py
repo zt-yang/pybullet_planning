@@ -11,8 +11,6 @@ import json
 import numpy as np
 from pprint import pformat, pprint
 
-from pddlstream.language.constants import Equal, AND
-from pddlstream.algorithms.downward import set_cost_scale
 
 from pybullet_tools.utils import get_max_velocities, WorldSaver, elapsed_time, get_pose, unit_pose, \
     euler_from_quat, get_link_name, get_joint_position, joint_from_name, add_button, SEPARATOR, \
@@ -319,6 +317,9 @@ class World(WorldBase):
         if isinstance(name, str):
             obj = self.name_to_object(name)
             colorize_link(obj.body, obj.link, transparency=transparency)
+        elif isinstance(name, tuple) and len(name) == 2:
+            obj = self.BODY_TO_OBJECT[name]
+            obj.make_links_transparent(transparency)
         elif isinstance(name, int) or isinstance(name, tuple):
             colorize_link(name, transparency=transparency)
         elif isinstance(name, Object):
@@ -507,8 +508,8 @@ class World(WorldBase):
 
     ## ---------------------------------------------------------
 
-    def add_box(self, object, pose=None):
-        obj = self.add_object(object, pose=pose)
+    def add_box(self, obj, pose=None):
+        obj = self.add_object(obj, pose=pose)
         obj.is_box = True
         return obj
 
@@ -629,12 +630,14 @@ class World(WorldBase):
         self.init_del.append(fact)
 
     def add_to_cat(self, body, cat):
-        object = self.get_object(body)
+        obj = self.get_object(body)
+        if obj is None:
+            return
         if cat not in self.OBJECTS_BY_CATEGORY:
             self.OBJECTS_BY_CATEGORY[cat] = []
-        self.OBJECTS_BY_CATEGORY[cat].append(object)
-        if cat not in object.categories:
-            object.categories.append(cat)
+        self.OBJECTS_BY_CATEGORY[cat].append(obj)
+        if cat not in obj.categories:
+            obj.categories.append(cat)
 
     def add_robot(self, robot, name='robot', max_velocities=None):
         self.robot = robot  # TODO: multi-robot
@@ -1161,7 +1164,7 @@ class World(WorldBase):
             return self.REMOVED_BODY_TO_OBJECT[body]
         elif body in self.ROBOT_TO_OBJECT:
             return self.ROBOT_TO_OBJECT[body]
-        print(f'world.body_to_object | body {body} not found')
+        # print(f'world.body_to_object | body {body} not found')
         return None  ## object doesn't exist
 
     def name_to_object(self, name, **kwargs):
@@ -1249,7 +1252,7 @@ class World(WorldBase):
             body, joint = body
         if random_gen:
             from pybullet_tools.general_streams import sample_joint_position_list_gen
-            funk = sample_joint_position_list_gen()
+            funk = sample_joint_position_list_gen(State(self))
             pstns = funk((body, joint), Position((body, joint)))
             if len(pstns) == 0:
                 return
@@ -1694,6 +1697,9 @@ class World(WorldBase):
 
     def get_facts(self, conf_saver=None, init_facts=[], obj_poses=None, joint_positions=None, objects=None, verbose=False):
 
+        from pddlstream.language.constants import Equal, AND
+        from pddlstream.algorithms.downward import set_cost_scale
+
         def cat_to_bodies(cat):
             ans = self.cat_to_bodies(cat)
             if objects is not None:
@@ -1795,9 +1801,9 @@ class World(WorldBase):
     def save_lisdf(self, output_dir, verbose=False, **kwargs):
         from world_builder.world_generator import to_lisdf
         lisdf_file = join(output_dir, 'scene.lisdf')
-        if isfile(lisdf_file):
-            lisdf_file = lisdf_file.replace('.lisdf', '_new.lisdf')
-            print(f'[world.save_lisdf]\t found existing scene.lisdf thus saving {lisdf_file}')
+        # if isfile(lisdf_file):
+        #     lisdf_file = lisdf_file.replace('.lisdf', '_new.lisdf')
+        #     print(f'[world.save_lisdf]\t found existing scene.lisdf thus saving {lisdf_file}')
         to_lisdf(self, lisdf_file, verbose=verbose, **kwargs)
 
     def save_planning_config(self, output_dir, domain=None, stream=None,
@@ -1909,6 +1915,7 @@ class State(object):
         ## allowing both types causes trouble when the AConf used for generating IK isn't the same as the one during execution
 
     def get_gripper(self, arm=None, visual=True):
+        ## TODO: currently only one cloned gripper from the first arm, no problem so far
         if self.gripper is None:
             self.gripper = self.robot.get_gripper(arm=arm, visual=visual)
         return self.gripper
