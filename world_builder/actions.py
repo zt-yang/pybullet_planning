@@ -110,7 +110,7 @@ class MoveArmAction(Action):
 
     def transition(self, state):
         set_joint_positions(self.conf.body, self.conf.joints, self.conf.values)
-        ## onlt during cog_run
+        ## only during cog_run
         if hasattr(state, 'movable') and state.movable is not None and get_action_name(self) == 'MoveArmAction':
             carrying = [a.child for a in state.attachments.values() if a.parent == state.robot]
             carrying = [o.body if hasattr(o, 'body') else o for o in carrying]
@@ -650,7 +650,7 @@ def apply_commands(problem, actions, time_step=0.5, verbose=True, plan=None, bod
             next_action = actions[i+1]
             next_name = get_action_name(next_action)
             if 'AttachObjectAction' in next_name:
-                last_object = next_action.object
+                last_object = next_action.body
                 # if isinstance(last_object, str):
                 #     last_object = eval(last_object)
                 if last_object in body_map:
@@ -658,9 +658,12 @@ def apply_commands(problem, actions, time_step=0.5, verbose=True, plan=None, bod
                 if isinstance(last_object, tuple):
                     last_object = last_object[0]
                 object_name = world.body_to_name[last_object]
-                for a in plan[0][0]:
+                for a in plan[0]:
                     if 'place' in a[0] and a[2] == object_name:
                         pp = a[3]
+                        expected_pose = eval(pp[pp.index('('):])[:3]
+                    if 'arrange' in a[0] and a[2] == object_name:
+                        pp = a[4]
                         expected_pose = eval(pp[pp.index('('):])[:3]
                 ignored_collisions[robot].append(last_object)
                 ignored_collisions[last_object] = [robot, last_object]
@@ -732,25 +735,24 @@ def apply_commands(problem, actions, time_step=0.5, verbose=True, plan=None, bod
 
             ## gripper colliding with object just placed down
             ## or braiser colliding with lid just picked away
-            if cfree_until is not None and i < cfree_until:
-                continue
+            if cfree_until is None or i >= cfree_until:
 
-            for body, ignored in ignored_collisions.items():
-                obstacles = [o for o in objects if o not in ignored]
+                for body, ignored in ignored_collisions.items():
+                    obstacles = [o for o in objects if o not in ignored]
 
-                ## object colliding with surface just placed on
-                if body != robot:
-                    if expected_pose is not None:
-                        pose = get_pose(body)[0]
-                        dist = np.linalg.norm(np.array(pose) - np.array(expected_pose))
-                        if dist < cfree_range:
-                            continue
+                    ## object colliding with surface just placed on
+                    if body != robot:
+                        if expected_pose is not None:
+                            pose = get_pose(body)[0]
+                            dist = np.linalg.norm(np.array(pose) - np.array(expected_pose))
+                            if dist < cfree_range:
+                                continue
 
-                result = collided(body, obstacles, world=world, verbose=True, min_num_pts=3, log_collisions=False)
-                if result:
-                    if visualize_collisions:
-                        wait_if_gui()
-                    return result
+                    result = collided(body, obstacles, world=world, verbose=True, min_num_pts=3, log_collisions=False)
+                    if result:
+                        if visualize_collisions:
+                            wait_if_gui()
+                        return result
 
         ###############################################
 

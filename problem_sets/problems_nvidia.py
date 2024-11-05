@@ -713,6 +713,7 @@ def test_kitchen_drawers(args, **kwargs):
                 world.open_joint_by_name('indigo_drawer_top_joint')
                 world.put_in_space(cabbage, 'indigo_drawer_top')
                 cabbage = cabbage.body
+                braiserlid = name_to_body('braiserlid')
 
                 if difficulty == 11:
                     goals = [("Holding", "left", cabbage)]  ## successful
@@ -724,18 +725,20 @@ def test_kitchen_drawers(args, **kwargs):
                     skeleton += [(k, arm, cabbage) for k in pick_arrange_actions[1:]]
 
                 elif difficulty in [13, 14, 15]:
-                    ## PR2 is ok when custom_limits is
+                    ## rummy is ok with 13
+                    ## PR2 is ok when custom_limits is larger
                     load_pot_lid(world)
                     braiser = name_to_body('braiser_bottom')
                     world.put_on_surface(name_to_body('braiserbody'), 'indigo_tmp').adjust_pose(y=8.922, yaw=0)
                     world.put_on_surface(name_to_body('braiserbody'), 'indigo_tmp').adjust_pose(y=8.922, yaw=0, x=0.585, z=0.923)
-                    world.put_on_surface(name_to_body('braiserlid'), 'indigo_tmp').adjust_pose(x=0.7, y=8.622)
+                    world.put_on_surface(braiserlid, 'indigo_tmp').adjust_pose(x=0.7, y=8.622)
                     # world.name_to_object('braiserlid').change_pose_interactive()
                     world.make_transparent('braiserbody')
 
                     goals = [("On", cabbage, braiser)]  ## successful
 
                     skeleton += [(k, arm, cabbage) for k in pick_place_rel_actions[:1]]
+
                     if difficulty == 15:
                         # world.robot.remove_arm('right')
                         ## need to remove pick's precondition (not (picked))
@@ -753,8 +756,10 @@ def test_kitchen_drawers(args, **kwargs):
                         skeleton += [(k, arm, drawer) for k in pull_with_link_actions]
                         skeleton += [(k, arm, cabbage) for k in pick_arrange_actions[:1]]
                         # skeleton += [(k, arm, cabbage, counter) for k in pick_arrange_actions[1:]]
+
                     if difficulty == 14:
                         skeleton += [(k, 'right', drawer) for k in pull_with_link_actions]
+
                     skeleton += [(k, arm, cabbage, braiser) for k in pick_arrange_actions[1:]]
 
             ## drawer as movable link

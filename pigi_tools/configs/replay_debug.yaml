@@ -46,7 +46,7 @@ evaluate_quality: false
 ## ---- outputs
 save_jpg: true
 save_composed_jpg: false
-save_gif: true
+save_gif: false
 save_animation_json: false
 save_mp4: true
 save_segmented_mp4: true

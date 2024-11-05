@@ -14,7 +14,7 @@ from world_builder.world_utils import get_camera_zoom_in
 from pybullet_tools.bullet_utils import nice, equal, get_datetime
 from pybullet_tools.utils import pose_from_tform, get_pose, get_joint_name, get_joint_position, \
     get_movable_joints, Euler, quat_from_euler
-from pybullet_tools.logging_utils import print_pink, print_green, print_debug
+from pybullet_tools.logging_utils import print_pink, print_green, print_debug, print_blue
 
 from isaac_tools.urdf_utils import load_lisdf, test_is_robot
 from lisdf_tools.image_utils import images_to_mp4, images_to_gif
@@ -147,6 +147,9 @@ def load_lisdf_isaacgym(lisdf_dir, robots=True, pause=False, loading_effect=Fals
         camera_point = (8, y, 3)
         target_point = (0, y, 1)
 
+    print_pink(f"\ncamera_point = {camera_point},\ttarget_point = {target_point},"
+               f"\tcamera_width = {camera_width},\tcamera_height = {camera_height}\n")
+
     # TODO: Segmentation fault - possibly cylinders & mimic joints
     gym_world = create_single_world(args=default_arguments(use_gpu=False), spacing=5.)
     gym_world.set_viewer_target(camera_point, target=target_point)
@@ -156,6 +159,12 @@ def load_lisdf_isaacgym(lisdf_dir, robots=True, pause=False, loading_effect=Fals
 
     loading = load_one_world(gym_world, lisdf_dir, robots=robots,
                              loading_effect=loading_effect, save_obj_shots=save_obj_shots, **kwargs)
+
+    ## add floor for one world
+    asset = gym_world.simulator.box_asset(30, length=30, height=0.1, fixed_base=True)
+    actor = gym_world.create_actor(asset, name='floor', scale=1)
+    gym_world.set_color(actor, (0.4, 0.4, 0.4, 1))
+    gym_world.set_pose(actor, (np.array([0, 0, -0.04]), np.array([0, 0, 0, 1])))
 
     if save_obj_shots:
         gym_world.set_camera_target(camera, camera_point, target_point)
@@ -178,6 +187,7 @@ def load_lisdf_isaacgym(lisdf_dir, robots=True, pause=False, loading_effect=Fals
             pose = (args['camera_point'], quat_from_euler(Euler(pitch=pitch)))
             actor = gym_world.create_actor(asset, name=f'camera_{i}', scale=0.1)
             gym_world.set_pose(actor, pose)
+
         for j in range(len(config['camera_zoomins'])):
             args = config['camera_zoomins'][j]
             pose = gym_world.get_pose(gym_world.get_actor(args['name']))
@@ -308,7 +318,7 @@ def record_gym_world_loading_objects(gym_world, loading_objects, world_index=Non
 def update_gym_world_by_pb_world(gym_world, pb_world, pause=False, verbose=False, offset=None, ignore_actors=[]):
     for actor in gym_world.get_actors():
         name = gym_world.get_actor_name(actor)
-        if name in ignore_actors:
+        if name in ignore_actors or name not in pb_world.name_to_body:
             continue
         body = pb_world.name_to_body[name]
         pose = get_pose(body)

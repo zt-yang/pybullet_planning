@@ -180,7 +180,7 @@ def load_replay_conf(conf_path, **kwargs):
 
     c['save_jpg'] = c['save_jpg'] or c['save_composed_jpg'] or c['save_gif']
     c['use_gym'] = c['use_gym'] and has_srl_stream() and not running_in_pycharm()
-    c['save_mp4'] = c['save_mp4'] or c['use_gym']
+    # c['save_mp4'] = c['save_mp4'] or c['use_gym']
     c['step_by_step'] = c['step_by_step'] and has_getch()
     # c['cases'] = get_sample_envs_for_rss(task_name=c['task_name'], count=None)
 
@@ -234,8 +234,8 @@ def set_replay_camera_pose(world, run_dir, camera_kwargs, camera_point, target_p
 def clean_list(lst):
     ## for actions like sprinkle, both parts of the trajectory consists of MoveArmAction
     new_lst = []
-    for elem in lst:
-        if elem not in new_lst:
+    for i, elem in enumerate(lst):
+        if not (i > 0 and elem == new_lst[-1]):
             new_lst.append(elem)
     return new_lst
 
@@ -312,7 +312,11 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
             light_conf=None, check_collisions=False, cfree_range=0.1, visualize_collisions=False,
             evaluate_quality=False, save_jpg=False, save_composed_jpg=False, save_gif=False,
             save_animation_json=False, save_mp4=False, save_segmented_mp4=False,
-            mp4_side_view=False, mp4_top_view=False, shape_json=None):
+            frame_gap=3, mp4_side_view=False, mp4_top_view=False, shape_json=None):
+    """ specific to gym replay:
+            mp4_side_view/mp4_top_view: overwrites camera_point and target_point
+            frame_gap: subsample the image frames
+    """
 
     world, problem, exp_dir, run_dir, commands, plan, body_map = load_data_fn(
         run_dir_ori, use_gui=not use_gym, width=width, height=height, verbose=verbose
@@ -343,7 +347,7 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
         gym_kwargs = dict(width=width, height=height, camera_point=camera_point, target_point=target_point,
                           camera_kwargs=camera_kwargs, camera_movement=camera_movement, light_conf=light_conf,
                           save_jpg=save_jpg, save_gif=save_gif, save_mp4=save_mp4, save_segmented_mp4=save_segmented_mp4,
-                          mp4_side_view=mp4_side_view, mp4_top_view=mp4_top_view, shape_json=shape_json)
+                          frame_gap=frame_gap, mp4_side_view=mp4_side_view, mp4_top_view=mp4_top_view, shape_json=shape_json)
         run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_map, **gym_kwargs)
 
     ## pybullet
@@ -486,7 +490,7 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
                          camera_point=(8.5, 2.5, 3), target_point=(0, 2.5, 0), camera_kwargs=None,
                          camera_movement=None, light_conf=None, save_jpg=True, save_gif=False,
                          save_mp4=False, save_segmented_mp4=False, mp4_side_view=False, mp4_top_view=False,
-                         shape_json=None):
+                         shape_json=None, frame_gap=3):
     from isaac_tools.gym_utils import load_lisdf_isaacgym, record_actions_in_gym, set_camera_target_body
 
     title = 'run_one_in_isaac_gym\t'
@@ -499,7 +503,8 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
 
     #####################################################
 
-    ## set better camera view for making gif screenshots
+    ## the aforegiven camera_point and target_point is for
+    # set better camera view for making gif screenshots
     removed = []
     if mp4_side_view or mp4_top_view:
         removed, camera_kwargs = get_gym_actors_to_ignore(
@@ -509,6 +514,7 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
     if camera_kwargs is not None:
         camera_point = camera_kwargs['camera_point']
         camera_target = camera_kwargs['camera_target']
+        print_green(f"\ncamera_point = {camera_point},\ttarget_point = {target_point}\n")
         gym_world.set_viewer_target(camera_point, camera_target)
         gym_world.set_camera_target(gym_world.cameras[0], camera_point, camera_target)
         print_pink(f'setting camera at camera_point = {camera_point}\tcamera_target = {camera_target}')
@@ -526,75 +532,74 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
     if light_conf is not None:
         gym_world.simulator.set_light(**light_conf)
 
-    #####################################################
-
-    gym_kwargs = dict(body_map=body_map, time_step=0, verbose=False, save_gif=save_gif, save_mp4=save_mp4,
-                      ignore_actors=removed, camera_movement=camera_movement)
-    if save_segmented_mp4:
-        time_log = process_text_for_animation(run_dir, world.body_to_name, get_info_path(run_dir))
-        segmented_commands = get_segmented_commands(world, commands, plan, time_log)
-        print('\n'+'-'*50)
-        print([(k[0], len(k[1])) for k in segmented_commands])
-        print('-'*50+'\n')
-        all_gif_path = []
-        for i, (action_name, short_commands, short_plan) in enumerate(segmented_commands):
-            gif_path = join(run_dir, f'gym_replay__{i}__{action_name}.gif')
-            img_dir = join(exp_dir, f'gym_images__{i}__{action_name}')
-            attachments = record_actions_in_gym(problem, short_commands, gym_world, plan=short_plan,
-                                                img_dir=img_dir, gif_path=gif_path, frame_gap=1, **gym_kwargs)
-            problem.world.attachments = attachments
-            print_pink(f"\nafter record_actions_in_gym to {gif_path}, containing {len(short_commands)} commands,"
-                       f"resulting in {len(attachments)} attachments")
-            if len(short_commands) > 0:
-                all_gif_path.append(gif_path)
-        gif_path = all_gif_path
-
-    else:
-        gif_path = join(run_dir, 'gym_replay.gif')
-        img_dir = join(exp_dir, 'gym_images')
-        record_actions_in_gym(problem, commands, gym_world, plan=plan, img_dir=img_dir,
-                              gif_path=gif_path, **gym_kwargs)
-    # gym_world.wait_if_gui()
-
-    #####################################################
-
     if save_jpg:
         des_path = join(run_dir, 'gym_scene.png')
         print('moved jpg to {}'.format(des_path))
         shutil.move(join(exp_dir, 'gym_scene.png'), des_path)
 
-    if mp4_side_view:
-        save_name = save_name + '_side'
-    if mp4_top_view:
-        save_name = save_name + '_top'
+    if save_gif or save_mp4:
 
-    os.makedirs(GYM_IMAGES_DIR, exist_ok=True)
-    new_file = join(GYM_IMAGES_DIR, save_name+'.gif')
-
-    if save_gif:
-        # shutil.copy(gif_path, join(run_dir, basename(gif_path)))
-        print('moved gif to {}'.format(join(run_dir, new_file)))
-        shutil.move(gif_path, new_file)
-
-    if save_mp4:
+        gym_kwargs = dict(body_map=body_map, time_step=0, verbose=False, save_gif=save_gif, save_mp4=save_mp4,
+                          ignore_actors=removed, camera_movement=camera_movement)
         if save_segmented_mp4:
-            new_dir = join(GYM_IMAGES_DIR, save_name)
-            os.makedirs(new_dir, exist_ok=True)
-            for i, path in enumerate(gif_path):
-                path = path.replace('.gif', '.mp4')
-                if isfile(path):
-                    new_mp4_name = join(new_dir, basename(path))
-                    shutil.move(path, new_mp4_name)
-                    print(f'{title} | step {i}: moved {path} to {new_mp4_name}')
-                else:
-                    print(f'{title} | step {i}: skipping {path} because the action has no commands')
+            time_log = process_text_for_animation(run_dir, world.body_to_name, get_info_path(run_dir))
+            segmented_commands = get_segmented_commands(world, commands, plan, time_log)
+            print('\n'+'-'*50)
+            print([(k[0], len(k[1])) for k in segmented_commands])
+            print('-'*50+'\n')
+            all_gif_path = []
+            for i, (action_name, short_commands, short_plan) in enumerate(segmented_commands):
+                gif_path = join(run_dir, f'gym_replay__{i}__{action_name}.gif')
+                img_dir = join(exp_dir, f'gym_images__{i}__{action_name}')
+                attachments = record_actions_in_gym(problem, short_commands, gym_world, plan=short_plan,
+                                                    img_dir=img_dir, gif_path=gif_path, frame_gap=1, **gym_kwargs)
+                problem.world.attachments = attachments
+                print_pink(f"\nafter record_actions_in_gym to {gif_path}, containing {len(short_commands)} commands,"
+                           f"resulting in {len(attachments)} attachments")
+                if len(short_commands) > 0:
+                    all_gif_path.append(gif_path)
+            gif_path = all_gif_path
 
-            shutil.move(get_info_path(run_dir), get_info_path(new_dir))
         else:
-            mp4_name = gif_path.replace('.gif', '.mp4')
-            new_mp4_name = new_file.replace('.gif', '.mp4')
-            shutil.move(join(mp4_name), new_mp4_name)
-            print(f'moved mp4 to {new_mp4_name}')
+            gif_path = join(run_dir, 'gym_replay.gif')
+            img_dir = join(exp_dir, 'gym_images')
+            record_actions_in_gym(problem, commands, gym_world, plan=plan, img_dir=img_dir, frame_gap=frame_gap,
+                                  gif_path=gif_path, **gym_kwargs)
+        # gym_world.wait_if_gui()
+
+        if mp4_side_view:
+            save_name = save_name + '_side'
+        if mp4_top_view:
+            save_name = save_name + '_top'
+
+        os.makedirs(GYM_IMAGES_DIR, exist_ok=True)
+        new_file = join(GYM_IMAGES_DIR, save_name+'.gif')
+
+        if save_gif:
+            # shutil.copy(gif_path, join(run_dir, basename(gif_path)))
+            print('moved gif to {}'.format(join(run_dir, new_file)))
+            shutil.move(gif_path, new_file)
+
+        if save_mp4:
+            if save_segmented_mp4:
+                new_dir = join(GYM_IMAGES_DIR, save_name)
+                os.makedirs(new_dir, exist_ok=True)
+                for i, path in enumerate(gif_path):
+                    path = path.replace('.gif', '.mp4')
+                    if isfile(path):
+                        new_mp4_name = join(new_dir, basename(path))
+                        shutil.move(path, new_mp4_name)
+                        print(f'{title} | step {i}: moved {path} to {new_mp4_name}')
+                    else:
+                        print(f'{title} | step {i}: skipping {path} because the action has no commands')
+
+                shutil.move(get_info_path(run_dir), get_info_path(new_dir))
+            else:
+                mp4_name = gif_path.replace('.gif', '.mp4')
+                new_mp4_name = new_file.replace('.gif', '.mp4')
+                shutil.move(mp4_name, new_mp4_name)
+                print(f'moved mp4 to {new_mp4_name}')
+
     del (gym_world.simulator)
 
 
