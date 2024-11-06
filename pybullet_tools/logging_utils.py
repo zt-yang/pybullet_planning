@@ -10,6 +10,11 @@ import pprint
 TXT_FILE = abspath('txt_file.txt')
 
 
+def clear_cache_text():
+    if isfile(TXT_FILE):
+        os.remove(TXT_FILE)
+
+
 class bcolors(object):
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'

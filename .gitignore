@@ -27,3 +27,5 @@ pybullet_tools/vhacd_utils.py
 mamao_tools/*.pdf
 mamao_tools/*.json
 
+databases/*.pickle
+
