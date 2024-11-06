@@ -730,9 +730,10 @@ def get_grasp_gen(problem, collisions=True, num_samples=20, randomize=True, verb
                     side_grasp_tolerance=side_grasp_tolerance
                 )]
             count_new = len(grasps)
-            print(f'\tget_grasp_gen(top_grasp_tolerance={top_grasp_tolerance},'
-                  f'side_grasp_tolerance={side_grasp_tolerance})',
-                  f' selected {count_new} out of {count_old} grasps')
+            if verbose:
+                print(f'\tget_grasp_gen(top_grasp_tolerance={top_grasp_tolerance},'
+                      f'side_grasp_tolerance={side_grasp_tolerance})',
+                      f' selected {count_new} out of {count_old} grasps')
 
         if randomize_here:
             random.shuffle(grasps)

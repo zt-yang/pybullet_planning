@@ -144,16 +144,19 @@ def data_generation_process(config, world_only=False):
 
     print(f'\nSAVED DATA in {abspath(exp_dir)}\n')
 
-    # print(SEPARATOR)
-    # wait_if_gui('Execute?')
+    print(SEPARATOR)
+    visualize = not new_config.parallel and new_config.n_data == 1
     saver.restore()
     set_renderer(True)
     if config.sim.simulate:  ## real physics
         control_commands(commands)
     else:
+        if visualize:
+            wait_if_gui('Execute?')
         apply_commands(state, commands, time_step=config.sim.time_step, verbose=False)
-    # wait_if_gui('Finish?')
-    # print(SEPARATOR)
+        if visualize:
+            wait_if_gui('Exit?')
+    print(SEPARATOR)
     reset_simulation()
     disconnect()
 

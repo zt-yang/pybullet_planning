@@ -1038,16 +1038,17 @@ class World(WorldBase):
                     obj.categories.remove(cat)
                     print_debug(f'[world.remove_object_categories_by_init]\tremoving {cat} from object categories of {obj.debug_name}')
 
-    def remove_body_attachment(self, body):
+    def remove_body_attachment(self, body, verbose=False):
         if isinstance(body, Object):
             obj = body
         else:
             obj = self.BODY_TO_OBJECT[body]
         if obj in self.attachments:
-            print('world.remove_body_attachment\t', self.attachments[obj])
+            if verbose:
+                print('world.remove_body_attachment\t', self.attachments[obj])
             self.attachments.pop(obj)
 
-    def remove_object(self, object):
+    def remove_object(self, object, **kwargs):
         object = self.get_object(object)
         body = object.body
 
@@ -1063,7 +1064,7 @@ class World(WorldBase):
                 surface = obj.supporting_surface
                 surface.supported_objects.remove(obj)
 
-        self.remove_body_attachment(object)
+        self.remove_body_attachment(object, **kwargs)
         remove_body(body)
 
     def remove_object_from_category(self, cat, obj):
@@ -1303,7 +1304,7 @@ class World(WorldBase):
         body, joint = self.name_to_body(name)
         self.toggle_joint(body, joint)
 
-    def get_object(self, obj):
+    def get_object(self, obj, verbose=False):
         if isinstance(obj, Object):
             return obj
         elif isinstance(obj, str):
@@ -1315,7 +1316,8 @@ class World(WorldBase):
         elif obj in self.ROBOT_TO_OBJECT:
             obj = self.ROBOT_TO_OBJECT[obj]
         else:
-            print('[world.object] cannot find object', obj)
+            if verbose:
+                print('[world.object] cannot find object', obj)
             obj = None
         return obj
 

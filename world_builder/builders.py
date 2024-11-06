@@ -69,7 +69,12 @@ def sample_world_and_goal(config, builder=None):
     """ ============== sample world and goal ==================== """
     if builder is None:
         builder = get_world_builder(config.world.builder_name)
-    goal = builder(world, verbose=config.verbose, **config.world.builder_kwargs)
+
+    verbose = config.verbose
+    if 'verbose' in config.world.builder_kwargs:
+        verbose = verbose and config.world.builder_kwargs['verbose']
+        config.world.builder_kwargs.pop('verbose')
+    goal = builder(world, verbose=verbose, **config.world.builder_kwargs)
 
     ## no gravity once simulation starts
     set_all_static()
@@ -523,19 +528,19 @@ def sample_kitchen_mini_goal(world):
 ##########################################################################################
 
 
-def test_kitchen_full(world, **kwargs):
+def test_kitchen_full(world, verbose=True, **kwargs):
     world.set_skip_joints()
     world.note = 1
 
-    sample_full_kitchen(world, verbose=kwargs['verbose'], pause=False)
+    sample_full_kitchen(world, verbose=verbose, pause=False)
     goal = sample_kitchen_full_goal(world, **kwargs)
     return goal
 
 
-def sample_kitchen_full_goal(world, **kwargs):
+def sample_kitchen_full_goal(world, movable_categories=['edible', 'bottle'],
+                             goal_predicates=None):
     objects = []
 
-    movable_categories = kwargs['movable_categories'] if 'movable_categories' in kwargs else ['edible', 'bottle']
     movable_candidates = []
     for category in movable_categories:
         movable_candidates += world.cat_to_bodies(category)
@@ -557,8 +562,8 @@ def sample_kitchen_full_goal(world, **kwargs):
     goals = []
     while len(goals) == 0:
         goals = random.choice(goals_candidates)
-        if 'goal_predicates' in kwargs:
-            goals = [g for g in goals if g[0].lower() in kwargs['goal_predicates']]
+        if goal_predicates is not None:
+            goals = [g for g in goals if g[0].lower() in goal_predicates]
 
     """ optional: modify the world to work with the goal """
     for goal in goals:

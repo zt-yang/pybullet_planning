@@ -120,7 +120,7 @@ def load_random_mini_kitchen_counter(world, movable_category='food', w=6, l=6, h
     return minifridge_doors
 
 
-def load_storage_mechanism(world, obj, epsilon=0.3):
+def load_storage_mechanism(world, obj, epsilon=0.3, **kwargs):
     space = None
     ## --- ADD EACH DOOR JOINT
     doors = get_partnet_doors(obj.path, obj.body)
@@ -128,7 +128,7 @@ def load_storage_mechanism(world, obj, epsilon=0.3):
         world.add_joint_object(b, j, 'door')
         obj.doors.append((b, j))
         if random.random() < epsilon:
-            world.open_joint(b, j, extent=0.9*random.random())
+            world.open_joint(b, j, extent=0.9*random.random(), **kwargs)
 
     ## --- ADD ONE SPACE TO BE PUT INTO
     spaces = get_partnet_spaces(obj.path, obj.body)
@@ -544,7 +544,7 @@ def load_kitchen_mini_scene(world, **kwargs):
 
 
 def load_counter_movables(world, counters, d_x_min=None, obstacles=[],
-                           verbose=False, reachability_check=True):
+                          verbose=False, reachability_check=True):
     categories = ['food', 'bottle', 'medicine']
     start = time.time()
     robot = world.robot
@@ -639,7 +639,7 @@ def load_counter_movables(world, counters, d_x_min=None, obstacles=[],
             # set_renderer(True)
             # wait_if_gui()
 
-            world.remove_object(obj)
+            world.remove_object(obj, verbose=verbose)
             obj = place_on_counter(obj_name, category, **kwargs)
             check_size_matter(obj)
 
@@ -1337,16 +1337,16 @@ def load_cooking_appliances(world, ordering, counters, x_food_min, oven):
     return microwave, obstacles
 
 
-def load_storage_spaces(world, epsilon=0.0, make_doors_transparent=True):
+def load_storage_spaces(world, epsilon=0.0, make_doors_transparent=True, **kwargs):
     """ epsilon: probability of each door being open """
     if make_doors_transparent:
         world.make_doors_transparent()
-    load_storage_mechanism(world, world.name_to_object('minifridge'), epsilon=epsilon)
+    load_storage_mechanism(world, world.name_to_object('minifridge'), epsilon=epsilon, **kwargs)
     for cabi_type in ['cabinettop', 'cabinetupper']:
         cabi = world.cat_to_objects(cabi_type)
         if len(cabi) > 0:
             cabi = world.name_to_object(cabi_type)
-            load_storage_mechanism(world, cabi, epsilon=epsilon)
+            load_storage_mechanism(world, cabi, epsilon=epsilon, **kwargs)
 
 
 def load_movables(world, counters, shelves, obstacles, x_food_min, reachability_check):
@@ -1432,7 +1432,7 @@ def sample_full_kitchen(world, verbose=True, pause=True, reachability_check=True
     shelves += [microwave]
 
     """ step 7: place electronics and cooking appliances on counters """
-    load_storage_spaces(world, epsilon=open_door_epsilon, make_doors_transparent=make_doors_transparent)
+    load_storage_spaces(world, epsilon=open_door_epsilon, make_doors_transparent=make_doors_transparent, verbose=verbose)
 
     """ step 8: place movables on counters """
     movables = load_movables(world, counters, shelves, obstacles, x_food_min, reachability_check)

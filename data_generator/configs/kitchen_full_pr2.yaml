@@ -2,7 +2,7 @@
 
 ## debug related
 seed: None
-verbose: true
+verbose: false
 
 ## data collection mode
 #parallel: true
@@ -39,6 +39,7 @@ world:
   builder_kwargs:
     movable_categories: ['edible']
     goal_predicates: ['openedjoint', 'holding', 'on', 'in']
+    verbose: false
 
 
 data:

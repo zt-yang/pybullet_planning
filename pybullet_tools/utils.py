@@ -571,12 +571,51 @@ def cache_decorator(function):
 
 #####################################
 
+# class HideOutput(object):
+#     """
+#     A context manager that block stdout and stderr for its scope, usage:
+#
+#     with HideOutput():
+#         os.system('ls -l')
+#     """
+#     DEFAULT_ENABLE = True
+#
+#     def __init__(self, enable=None):
+#         from pybullet_tools.logging_utils import print_red
+#         if enable is None:
+#             enable = self.DEFAULT_ENABLE
+#         self.enable = enable
+#         if not self.enable:
+#             return
+#         self._origstdout = sys.stdout
+#         self._origstderr = sys.stderr
+#         self._devnull = open(os.devnull, 'w')
+#         print_red('open')
+#         self._origstdout_fd = os.dup(1)
+#         self._origstderr_fd = os.dup(2)
+#
+#     def __enter__(self):
+#         if not self.enable:
+#             return
+#         os.dup2(self._devnull.fileno(), 1)
+#         os.dup2(self._devnull.fileno(), 2)
+#
+#     def __exit__(self, exc_type, exc_val, exc_tb):
+#         from pybullet_tools.logging_utils import print_green
+#         if not self.enable:
+#             return
+#         os.dup2(self._origstdout_fd, 1)
+#         os.dup2(self._origstderr_fd, 2)
+#         self._devnull.close()
+#         print_green('\tclose')
+
+
 class HideOutput(object):
     # https://stackoverflow.com/questions/5081657/how-do-i-prevent-a-c-shared-library-to-print-on-stdout-in-python
     # https://stackoverflow.com/questions/4178614/suppressing-output-of-module-calling-outside-library
     # https://stackoverflow.com/questions/4675728/redirect-stdout-to-a-file-in-python/22434262#22434262
     '''
-    A context manager that block stdout for its scope, usage:
+    A context manager that block stdout and stderr for its scope, usage:
 
     with HideOutput():
         os.system('ls -l')
@@ -589,28 +628,37 @@ class HideOutput(object):
         if not self.enable:
             return
         sys.stdout.flush()
+        sys.stderr.flush()
         self._origstdout = sys.stdout
+        self._origstderr = sys.stderr
         self._oldstdout_fno = os.dup(sys.stdout.fileno())
+        self._oldstderr_fno = os.dup(sys.stderr.fileno())
         self._devnull = os.open(os.devnull, os.O_WRONLY)
 
     def __enter__(self):
         if not self.enable:
             return
-        self.fd = 1
-        # self.fd = sys.stdout.fileno()
-        self._newstdout = os.dup(self.fd)
-        os.dup2(self._devnull, self.fd)
+        self.fd_out = 1
+        self.fd_err = 2
+        self._newstdout = os.dup(self.fd_out)
+        self._newstderr = os.dup(self.fd_err)
+        os.dup2(self._devnull, self.fd_out)
+        os.dup2(self._devnull, self.fd_err)
         os.close(self._devnull)
         sys.stdout = os.fdopen(self._newstdout, 'w')
+        sys.stderr = os.fdopen(self._newstderr, 'w')
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if not self.enable:
             return
         sys.stdout.close()
+        sys.stderr.close()
         sys.stdout = self._origstdout
-        # sys.stdout.flush()
-        os.dup2(self._oldstdout_fno, self.fd)
-        os.close(self._oldstdout_fno) # Added
+        sys.stderr = self._origstderr
+        os.dup2(self._oldstdout_fno, self.fd_out)
+        os.dup2(self._oldstderr_fno, self.fd_err)
+        os.close(self._oldstdout_fno)
+        os.close(self._oldstderr_fno)
 
 #####################################
 
@@ -4142,9 +4190,9 @@ def plan_joint_motion(body, joints, end_conf, obstacles=[], attachments=[],
 
     sys.stdout = old_stdout  # reset old stdout
 
-    duration = time.time() - start_time
-    if duration > 1:
-        print(f'\t[utils.plan_joint_motion] in {round(duration, 2)} seconds')
+    # duration = time.time() - start_time
+    # if duration > 1:
+    #     print(f'\t[utils.plan_joint_motion] in {round(duration, 2)} seconds')
     return path
 
 
@@ -5904,6 +5952,7 @@ def create_vhacd(input_path, output_path=None, output_dir=VHACD_DIR, cache=True,
 
 def safe_vhacd(filename, min_length=0.01, min_volume=None, max_time=INF, **kwargs):
     import trimesh
+
     if min_volume is None:
         min_volume = min_length**3
     result = None

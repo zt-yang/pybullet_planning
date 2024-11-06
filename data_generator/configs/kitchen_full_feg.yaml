@@ -39,6 +39,7 @@ world:
   builder_kwargs:
     movable_categories: ['edible']
     goal_predicates: ['holding', 'on', 'in']
+    verbose: false
 
 
 data:
