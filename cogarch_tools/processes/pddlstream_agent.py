@@ -327,7 +327,7 @@ class PDDLStreamAgent(MotionAgent):
 
         return self.plan
 
-    def _init_env_execution(self, pddlstream_problem=None):
+    def _init_env_execution(self, pddlstream_problem=None, **kwargs):
         from leap_tools.hierarchical import PDDLStreamForwardEnv
 
         if self.env_execution is not None:
@@ -339,7 +339,7 @@ class PDDLStreamAgent(MotionAgent):
         domain_pddl = self.domain_pddl
         domain_pddl = join(PDDL_PATH, 'domains', domain_pddl)
         init = self.state_facts
-        self.env_execution = PDDLStreamForwardEnv(domain_pddl, pddlstream_problem, init=init)
+        self.env_execution = PDDLStreamForwardEnv(domain_pddl, pddlstream_problem, init=init, **kwargs)
         self.env_execution.reset()
 
     def _replan_preprocess(self, observation):

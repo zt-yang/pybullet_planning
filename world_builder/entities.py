@@ -170,7 +170,7 @@ class Object(Index):
         self.world.attachments[obj] = create_attachment(self, link, obj, OBJ=True)
         obj.change_supporting_surface(self)
 
-    def place_new_obj(self, obj_name, category=None, name=None, max_trial=8, **kwargs):
+    def place_new_obj(self, obj_name, category=None, name=None, max_trial=8, verbose=False, **kwargs):
 
         if category is None:
             category = obj_name
@@ -178,13 +178,13 @@ class Object(Index):
         obj = self.world.add_object(
             Object(load_asset(obj_name.lower(), **kwargs), category=category, name=name)
         )
-        self.world.put_on_surface(obj, surface=self.name, max_trial=max_trial)
+        self.world.put_on_surface(obj, surface=self.name, max_trial=max_trial, verbose=verbose)
         self.support_obj(obj)
         # set_renderer(True)
         return obj
 
     def place_obj(self, obj, max_trial=8, timeout=1.5, obstacles=None,
-                  visualize=False, interactive=False):
+                  visualize=False, interactive=False, verbose=False):
         """ place object on Surface or in Space """
         from world_builder.loaders_partnet_kitchen import check_kitchen_placement
 
@@ -215,7 +215,7 @@ class Object(Index):
         start_time = time.time()
         place_fn = sample_obj_in_body_link_space if isinstance(self, Space) else sample_obj_on_body_link_surface
         while not done:
-            x, y, z, yaw = place_fn(obj, self.body, self.link, PLACEMENT_ONLY=True, max_trial=max_trial)
+            x, y, z, yaw = place_fn(obj, self.body, self.link, PLACEMENT_ONLY=True, max_trial=max_trial, verbose=verbose)
             body_pose = Pose(point=Point(x=x, y=y, z=z), euler=Euler(yaw=yaw))
             set_pose(obj, body_pose)
             coo = collided(obj, obstacles, tag='place_obj', world=world, verbose=False)

@@ -199,3 +199,13 @@ def fix_facts_due_to_loaded_agent_state(facts):
                 print(f'[hierarchical_utils.fix_facts_due_to_loaded_agent_state] removed {f} because handempty')
                 facts.remove(f)
     return facts
+
+
+def remove_unparsable_lines(original_domain_path, temp_dir):
+    with open(original_domain_path, 'r') as f:
+        lines = f.read()
+    new_domain_path = join(temp_dir, 'domain.pddl')
+    lines = lines.replace('(increase (total-cost) 1)', '')
+    with open(new_domain_path, 'w') as f:
+        f.write(lines)
+    return new_domain_path

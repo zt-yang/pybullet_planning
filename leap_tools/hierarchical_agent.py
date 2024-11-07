@@ -2,7 +2,7 @@ import sys
 from os.path import join, abspath, dirname, isdir, isfile
 from os import listdir, pardir
 RD = abspath(join(dirname(__file__), pardir, pardir))
-sys.path.append(join(RD, pardir, 'cognitive-architectures', 'pddlgym'))
+# sys.path.append(join(RD, pardir, 'cognitive-architectures', 'pddlgym'))
 
 from cogarch_tools.processes.pddlstream_agent import *
 

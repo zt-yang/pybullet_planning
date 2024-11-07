@@ -41,9 +41,9 @@ from pddlstream.algorithms.algorithm import parse_problem
 
 def construct_problem(domain='pr2_kitchen.pddl', problem='test_studio', exp_dir='hierarchical'):
     from pybullet_tools.utils import connect
-    from cogarch_tools.cogarch_utils import get_parser, get_pddlstream_problem
+    from cogarch_tools.cogarch_utils import parse_agent_args, get_pddlstream_problem
 
-    args = get_parser(problem, exp_dir)
+    args = parse_agent_args(problem, exp_dir)
     connect(use_gui=False)
     state, exogenous, goals, pddlstream_problem = get_pddlstream_problem(args, domain)
 

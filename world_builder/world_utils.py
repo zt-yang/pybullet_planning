@@ -156,11 +156,12 @@ def get_domain_constants(pddl_path):
 ALLOWED_ROBOT_NAMES = ['pr2', 'rummy', 'spot', 'robot']
 
 
-def read_xml(plan_name, asset_path=ASSET_PATH):
+def read_xml(plan_name, asset_path=ASSET_PATH, auto_walls=False):
     """ load a svg file representing the floor plan in asset path
             treating the initial pose of robot as world origin
         return a dictionary of object name: (category, pose) as well as world dimensions
-        boxes need to be single-stroke, no fill, no rounded corner
+        plan_name: svg file, boxes need to be single-stroke, no fill, no rounded corner
+        auto_walls: automatically create walls with door space for "office_xxx" or "xxx_room" in the layout
     """
     plan_path = abspath(join(asset_path, 'floorplans', plan_name))
 
@@ -202,7 +203,9 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
                 yaw = 180
 
         elif 'floor' in text or 'room' in text:
-            category = 'floor' if 'floor' in text else 'room'
+            category = 'floor'
+            if 'floor' not in text and auto_walls:
+                category = 'room'
             yaw = 0
             name = text
             if float(rect['y']) < FLOOR_X_MIN:
@@ -232,7 +235,8 @@ def read_xml(plan_name, asset_path=ASSET_PATH):
         objects[name] = {'x': x, 'y': y, 'yaw': yaw, 'w': w, 'l': h, 'category': category}
 
     ## associate rooms with doors for computing walls
-    objects = add_walls_given_rooms_doors(objects)
+    if auto_walls:
+        objects = add_walls_given_rooms_doors(objects)
 
     return objects, X_OFFSET, Y_OFFSET, SCALING, FLOOR_X_MIN, FLOOR_X_MAX, FLOOR_Y_MIN, FLOOR_Y_MAX
 
@@ -512,6 +516,7 @@ def adjust_scale(body, category, file, w, l):
 
 def load_asset(category, x=0, y=0, yaw=0, floor=None, z=None, w=None, l=None, h=None,
                scale=1, verbose=False, random_instance=False, sampling=False, random_scale=1.0):
+    """ returns body, file, and scale used to initiate an entity Object """
 
     """ ============= load body by category ============= """
     file = get_file_by_category(category, random_instance=random_instance, sampling=sampling)

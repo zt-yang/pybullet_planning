@@ -1214,7 +1214,7 @@ class World(WorldBase):
 
     ## ---------------------------------------------------------
 
-    def assign_attachment(self, body, tag=None):
+    def assign_attachment(self, body, tag=None, verbose=False):
         title = f'   world.assign_attachment({body}) | '
         if tag is not None:
             title += f'tag = {tag} | '
@@ -1222,7 +1222,7 @@ class World(WorldBase):
             if attach.parent.body == body:
                 pose = get_pose(child)
                 attach.assign()
-                if pose != get_pose(child):  ## attachment made a difference
+                if verbose and pose != get_pose(child):  ## attachment made a difference
                     print(title, attach, nice(attach.grasp_pose))
 
     def get_scene_joints(self):
@@ -1231,8 +1231,8 @@ class World(WorldBase):
         joints += [bj for bj in self.changed_joints if bj not in joints]
         return joints
 
-    def _change_joint_state(self, body, joint):
-        self.assign_attachment(body)
+    def _change_joint_state(self, body, joint, **kwargs):
+        self.assign_attachment(body, **kwargs)
         if (body, joint) not in self.changed_joints:
             self.changed_joints.append((body, joint))
 
@@ -1242,11 +1242,11 @@ class World(WorldBase):
         toggle_joint(body, joint)
         self._change_joint_state(body, joint)
 
-    def close_joint(self, body, joint=None):
+    def close_joint(self, body, joint=None, **kwargs):
         if joint is None and isinstance(body, tuple):
             body, joint = body
         close_joint(body, joint)
-        self._change_joint_state(body, joint)
+        self._change_joint_state(body, joint, **kwargs)
 
     def open_joint(self, body, joint=None, extent=1, pstn=None, random_gen=False, verbose=True, **kwargs):
         if joint is None and isinstance(body, tuple):
@@ -1280,11 +1280,11 @@ class World(WorldBase):
             if not ADD_JOINT:
                 self.remove_object(j)
 
-    def close_all_doors_drawers(self):
+    def close_all_doors_drawers(self, **kwargs):
         doors = [(o.body, o.joint) for o in self.cat_to_objects('door')]
         drawers = [(o.body, o.joint) for o in self.cat_to_objects('drawer')]
         for body, joint in doors + drawers:
-            self.close_joint(body, joint)
+            self.close_joint(body, joint, **kwargs)
 
     def open_all_doors_drawers(self, extent=1):
         doors = [(o.body, o.joint) for o in self.cat_to_objects('door')]
@@ -1321,7 +1321,7 @@ class World(WorldBase):
             obj = None
         return obj
 
-    def put_on_surface(self, obj, surface='hitman_countertop', max_trial=20, OAO=False, **kwargs):
+    def put_on_surface(self, obj, surface='hitman_countertop', max_trial=20, OAO=False, verbose=False, **kwargs):
         """ OAO: one and only (I forgot why I added it here ... it sounds pretty lonely actually) """
 
         obj = self.get_object(obj)
@@ -1331,7 +1331,7 @@ class World(WorldBase):
             return
         surface = surface_obj.name
 
-        surface_obj.place_obj(obj, max_trial=max_trial, **kwargs)
+        surface_obj.place_obj(obj, max_trial=max_trial, verbose=verbose, **kwargs)
 
         ## ----------- rules of locate specific objects
         world_to_surface = surface_obj.get_pose()

@@ -18,7 +18,7 @@ from world_builder.world_generator import save_to_outputs_folder
 
 from cogarch_tools.processes.pddlstream_agent import PDDLStreamAgent
 from cogarch_tools.processes.teleop_agent import TeleOpAgent
-from cogarch_tools.cogarch_utils import get_parser, init_pybullet_client, get_pddlstream_kwargs, clear_planning_dir, \
+from cogarch_tools.cogarch_utils import parse_agent_args, init_pybullet_client, get_pddlstream_kwargs, clear_planning_dir, \
     get_pddlstream_problem, PROBLEM_CONFIG_PATH, reorg_output_dirs
 
 from leap_tools.hierarchical_agent import HierarchicalAgent
@@ -32,7 +32,8 @@ SAVE_COLLISIONS = False
 
 def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH,
               reset=False, load_initial_state=False, record_plans=False, comparing=False, data_generation=False,
-              create_robot_fn=None, world_builder_args=dict(), robot_builder_args=dict(),
+              create_robot_fn=None, modify_world_builder_args_fn=None,
+              world_builder_args=dict(), robot_builder_args=dict(),
               domain_modifier=None, object_reducer=None, serve_page=True, **kwargs):
     """
     problem:    name of the problem builder function to solve
@@ -49,7 +50,7 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
 
     """ prepare arguments """
 
-    args = get_parser(config=config, config_root=config_root, **kwargs)
+    args = parse_agent_args(config=config, config_root=config_root, **kwargs)
 
     ## update robot_builder_args
     args.robot_builder_args.update(robot_builder_args)
@@ -60,6 +61,8 @@ def run_agent(agent_class=HierarchicalAgent, config='config_dev.yaml', config_ro
     for k in ['goal_variations', 'load_llm_memory', 'load_agent_state']:
         if hasattr(args, k) and getattr(args, k) is not None:
             world_builder_args[k] = getattr(args, k)
+    if modify_world_builder_args_fn is not None:
+        world_builder_args = modify_world_builder_args_fn(args, world_builder_args)
 
     """ load problem """
     domain = args.domain_pddl

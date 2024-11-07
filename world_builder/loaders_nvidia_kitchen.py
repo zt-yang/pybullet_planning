@@ -599,7 +599,7 @@ def load_dishwasher(world):
 # --------------------------------------------------------------------------------
 
 
-def get_objects_for_open_kitchen(world, difficulty):
+def get_objects_for_open_kitchen(world, difficulty, verbose=False):
     object_names = ['chicken-leg', 'fridge', 'fridge_door', 'shelf_top',
                     'braiserbody', 'braiserlid', 'braiser_bottom',
                     'indigo_tmp', 'hitman_countertop',
@@ -617,18 +617,19 @@ def get_objects_for_open_kitchen(world, difficulty):
     world.set_english_names(part_names)
     world.remove_bodies_from_planning([], exceptions=objects)
 
-    print('reduce_objects_for_open_kitchen')
-    print(f"\t{len(objects)} objects provided (A):\t {objects}")
-    world_objects = sort_body_indices(list(world.BODY_TO_OBJECT.keys()))
-    in_a_not_in_b = [o for o in objects if o not in world_objects]
-    in_b_not_in_a = [o for o in world_objects if o not in objects]
-    print(f"\t\t in A not in B ({len(in_a_not_in_b)}):\t {in_a_not_in_b}")
-    print(f"\t{len(world.BODY_TO_OBJECT.keys())} objects in world (B):\t {world_objects}")
-    print(f"\t\t in B not in A ({len(in_b_not_in_a)}):\t {in_b_not_in_a}")
+    if verbose:
+        print('reduce_objects_for_open_kitchen')
+        print(f"\t{len(objects)} objects provided (A):\t {objects}")
+        world_objects = sort_body_indices(list(world.BODY_TO_OBJECT.keys()))
+        in_a_not_in_b = [o for o in objects if o not in world_objects]
+        in_b_not_in_a = [o for o in world_objects if o not in objects]
+        print(f"\t\t in A not in B ({len(in_a_not_in_b)}):\t {in_a_not_in_b}")
+        print(f"\t{len(world.BODY_TO_OBJECT.keys())} objects in world (B):\t {world_objects}")
+        print(f"\t\t in B not in A ({len(in_b_not_in_a)}):\t {in_b_not_in_a}")
     return objects
 
 
-def prevent_funny_placements(world, verbose=True):
+def prevent_funny_placements(world, verbose=False):
     """ need to be automated by LLMs """
 
     movables = world.cat_to_bodies('movable')
@@ -1029,7 +1030,7 @@ def load_database(world, name):
     return pickle.load(open(pickled_path, 'rb'))
 
 
-def learned_nvidia_pickled_position_list_gen(world, joint, p1, num_samples=30, verbose=True):
+def learned_nvidia_pickled_position_list_gen(world, joint, p1, num_samples=30, verbose=False):
     if world.learned_position_database is None:
         world.learned_position_database = load_database(world, name='j_to_p')
 
@@ -1038,12 +1039,12 @@ def learned_nvidia_pickled_position_list_gen(world, joint, p1, num_samples=30, v
     if key in world.learned_position_database:
         positions = world.learned_position_database[key]
         results = random.sample(positions, min(num_samples, len(positions)))
-    else:
+    elif verbose:
         print(f'learned_nvidia_pickled_position_list_gen({key}) not found in database')
     return results
 
 
-def learned_nvidia_pickled_pose_list_gen(world, body, surfaces, num_samples=30, obstacles=[], verbose=True):
+def learned_nvidia_pickled_pose_list_gen(world, body, surfaces, num_samples=30, obstacles=[], verbose=False):
     if world.learned_pose_database is None:
         world.learned_pose_database = load_database(world, name='or_to_p')
     results = None
@@ -1052,12 +1053,12 @@ def learned_nvidia_pickled_pose_list_gen(world, body, surfaces, num_samples=30, 
         poses = world.learned_pose_database[key]
         results = random.sample(poses, min(num_samples, len(poses)))
         results = [(f[:3], quat_from_euler(f[3:])) for f in results]
-    else:
+    elif verbose:
         print(f'learned_nvidia_pickled_pose_list_gen({key}) not found in database')
     return results
 
 
-def learned_nvidia_pickled_bconf_list_gen(world, inputs, num_samples=30, verbose=True):
+def learned_nvidia_pickled_bconf_list_gen(world, inputs, num_samples=30, verbose=False):
     from pybullet_tools.pr2_primitives import Pose
 
     if world.learned_bconf_database is None:
@@ -1082,7 +1083,7 @@ def learned_nvidia_pickled_bconf_list_gen(world, inputs, num_samples=30, verbose
             p_to_q = database[key]
             if p.value in p_to_q:
                 results = p_to_q[p.value]
-            else:
+            elif verbose:
                 print(f'learned_nvidia_pickled_ajg_to_p_to_q({p.value}) not found in database')
 
     if isinstance(p, Pose):
@@ -1101,7 +1102,7 @@ def learned_nvidia_pickled_bconf_list_gen(world, inputs, num_samples=30, verbose
                 if np.max(np.abs(min_diff)) < 0.1:
                     key_found = list(p_to_q.keys())[min_index]
                     results = p_to_q[key_found]
-                else:
+                elif verbose:
                     print(f'learned_nvidia_pickled_aog_to_p_to_q({key2}) not found in database')
 
     results = random.sample(results, min(num_samples, len(results)))

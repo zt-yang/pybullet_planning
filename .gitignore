@@ -3,6 +3,7 @@
 **/*.bazel
 temp
 **/*.so
+**/txt_file.txt
 
 # windows extension build
 *.pyd

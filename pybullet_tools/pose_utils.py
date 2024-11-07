@@ -453,7 +453,7 @@ def sample_pose(obj, aabb, obj_aabb=None, yaws=OBJ_YAWS):
     return x, y, z, yaw
 
 
-def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_trial=3, verbose=True):
+def sample_obj_on_body_link_surface(obj, body, link, PLACEMENT_ONLY=False, max_trial=3, verbose=False):
     aabb = get_aabb(body, link)
     # x, y, z, yaw = sample_pose(obj, aabb)
     # maybe = load_asset(obj, x=round(x, 1), y=round(y, 1), yaw=yaw, floor=(body, link), scale=scales[obj], maybe=True)

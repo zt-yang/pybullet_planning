@@ -8,7 +8,7 @@ sys.path.extend([
     join(ROOT_DIR, '..', 'pddlstream'),
     join(ROOT_DIR, '..', 'bullet', 'pybullet-planning'),
     join(ROOT_DIR, '..', 'bullet', 'pybullet-planning', 'examples'),
-    '/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages',  ## to use imgeio-ffmpeg
+    '/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages',  ## to use imageio-ffmpeg
     # join(ROOT_DIR, '..', 'pddlstream'),
     # join(ROOT_DIR, '..', 'pddlstream', 'examples', 'pybullet', 'utils'),
 ])
@@ -37,7 +37,7 @@ from pybullet_tools.logging_utils import myprint as print, summarize_state_chang
 
 from leap_tools.hierarchical_utils import get_dynamic_literals, get_required_pred, get_effects, \
     DEFAULT_TYPE, get_preconds, find_poses, get_updated_facts, find_on_pose, \
-    fix_facts_due_to_loaded_agent_state
+    fix_facts_due_to_loaded_agent_state, remove_unparsable_lines
 
 
 class PDDLProblemTranslator():
@@ -127,7 +127,7 @@ class PDDLProblemTranslator():
 
 class PDDLStreamEnv(PDDLEnv):
     def __init__(self, domain_file, pddlstream_problem, init=None, objects=[],
-                 domain_modifier=None, separate_base_planning=False):
+                 domain_modifier=None, separate_base_planning=False, temp_dir='temp'):
         self._state = None
         self._state_original = None
         self._problem_dir = None
@@ -141,8 +141,9 @@ class PDDLStreamEnv(PDDLEnv):
         #------------------- construct the PDDLStream Env --------------------------
         self._domain_file = domain_file
         self._pddlstream_problem = pddlstream_problem
-        self.domain = self.load_domain(self._domain_file, self.operators_as_actions, domain_modifier)
-        self.domain_original = self.load_domain(self._domain_file, self.operators_as_actions, None)
+        pddlgym_domain_file = remove_unparsable_lines(domain_file, temp_dir)
+        self.domain = self.load_domain(pddlgym_domain_file, self.operators_as_actions, domain_modifier)
+        self.domain_original = self.load_domain(pddlgym_domain_file, self.operators_as_actions, None)
 
         self.separate_base_planning = separate_base_planning
         self.last_bconf = None
@@ -598,9 +599,8 @@ class PDDLStreamEnv(PDDLEnv):
 
         ## step() would add derived literals that the previous function doesn't detect,
         ## because things like `on` just happens even it's not required for the next step
-        ## but required for a future step, like season()
-
-        obs, reward, done, _ = super().step(action)
+        ## but required for a future step, like `season`
+        obs, reward, done = super().step(action)[:3]  ## pddlgym version changed
 
         ## include the changes and needed facts in debug_info
         info['add'] = list(obs.literals - self.last_obs.literals)

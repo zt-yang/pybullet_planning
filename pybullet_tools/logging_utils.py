@@ -92,18 +92,17 @@ def myprint(text='', *kwargs):  ## , **kwargs2
 
 
 def get_string(text, kwargs, verbose=True):
-    string = [str(text)]
+    string = str(text)
     if len(kwargs) > 0:
         print(text, kwargs)
-        string.extend([str(n) for n in kwargs])
+        string += ' '.join([str(n) for n in kwargs])
     else:
         print(text)
     return string
 
 
 def print_in_file(string, txt_file=TXT_FILE):
-    string = ' '.join(str(string))+'\n'
-    string = string.replace('\t', '    ')
+    string = string.replace('\t', '    ') + '\n'
     with open(txt_file, 'a+') as f:
         f.writelines(string)
 
@@ -346,7 +345,7 @@ def print_list(lst, title):
 
 def print_dict(dic, title, indent=3, width=80):
     from pprint import pformat
-    title = title.replace('_', ' ').upper()
+    title = title.upper()  ## .replace('_', ' ')
     myprint('-' * 25 + f' {title} ' + '-' * 25)
     myprint(pformat(dict(dic), indent=indent, width=width))
     myprint('-' * 60)

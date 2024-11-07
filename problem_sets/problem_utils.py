@@ -106,8 +106,8 @@ def problem_template(args, robot_builder_fn, robot_builder_args, world_loader_fn
     state = State(world, objects=world.objects, observation_model=observation_model)
     exogenous = []
 
-    print_green(f'[llamp_agent._update_obstacles_in_stream_map]\t using obstacles {state.fixed}')
-    world.print_ignored_pairs()
+    # print_green(f'[problem_template]\t using obstacles {state.fixed}')
+    # world.print_ignored_pairs()
 
     ## may change the goal if they are debugging goals
     pddlstream_problem = pddlstream_from_state_goal_args(state, goals, args, problem_dict=problem_dict, **kwargs)

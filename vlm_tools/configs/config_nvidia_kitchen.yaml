@@ -1,0 +1,89 @@
+## ---------- debug related
+seed: null
+verbose: false
+debug: false
+
+## ---------- language planning agent
+agent:
+  api_class_name: 'gpt4'  # 'claude3'
+  llamp_planning_mode: 'sequence'  # 'sequence' | 'actions' | 'sequence-reprompt' | 'actions-reprompt'
+  object_reducer: 'object-related;heuristic-movables;all-joints'
+  debug_step: -1
+  k_plans: 1
+  load_llm_memory: null  # '../vlm_tools/cache/llm_memory.json'
+
+## ---------- specify the TAMP problem with preconfigured scene layout & robot
+problem:
+  problem: 'test_kitchen_chicken_soup'
+  open_goal: 'make chicken soup'
+  domain_pddl: 'pddl_domains/mobile_v5_domain.pddl'
+  stream_pddl: 'pddl_domains/mobile_v5_stream.pddl'
+  use_skeleton_constraints: false
+  use_subgoal_constraints: false
+  use_rel_pose: true
+  preview_plan: false
+  preview_scene: false
+
+## outputs to generate
+data:
+  exp_dir: '../experiments'
+  exp_subdir: 'test_run_vlm_tamp_pr2_chicken_soup'
+  exp_name: 'vlm-tamp'
+  record_problem: true
+  record_mp4: false
+  save_testcase: false
+  save_initial_observation: true
+
+## ---------- robot related
+robot:
+  robot_name: 'pr2'
+  draw_base_limits: true
+  dual_arm: false
+  self_collisions: false
+  separate_base_planning: false
+
+## ---------- configuration for PDDLStream in cogarch_utils.get_pddlstream_kwargs
+planner:
+  visualization: false
+  scene_only: false
+  use_heuristic_fc: false
+  dataset_mode: true
+  downward_time: 10
+  evaluation_time: 30
+  stream_planning_timeout: 60
+  total_planning_timeout: 60
+  max_plans: 12
+  max_solutions: 1
+  max_evaluation_plans: 12
+  max_complexity: 5
+  max_iterations: 4
+  log_failures: false
+  soft_subgoals: false
+
+## planning stream related
+streams:
+  debug: false
+  cfree: false
+  teleport: false
+  disable_movable_collision: false
+  disable_base_collision: false
+  top_grasp_tolerance: null # 0.8
+  use_all_grasps: false
+  num_grasps: 15
+  ir_max_attempts: 10
+
+## pybullet related
+sim:
+  window_width: 720  # 1440
+  window_height: 619  # 1238
+  viewer: true
+  lock: true
+  simulate: false
+  drive: false
+  cfree: false
+  camera: false
+  segment: false
+  monitoring: false
+  show_object_names: true
+  time_step: 0.01
+  resolution_angular: 3

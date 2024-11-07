@@ -53,14 +53,7 @@ def parse_config_for_agent(path):
     return conf
 
 
-def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwargs):
-    """ default values are given at yaml, custom values are provided by commandline flags, overwritten by kwargs """
-
-    from pybullet_tools.logging_utils import myprint as print
-
-    conf = parse_config_for_agent(join(config_root, config))
-
-    np.set_printoptions(precision=3, threshold=3, suppress=True)  #, edgeitems=1) #, linewidth=1000)
+def get_default_agent_parser_given_config(conf):
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--seed', type=int, default=conf.seed, help='')
     if hasattr(conf, 'debug'):
@@ -147,6 +140,19 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     ## -------- real robot related
     parser.add_argument('--execute', action='store_true', default=False,
                         help='Ignore this, just for plumbing purposes')
+    return parser
+
+
+def parse_agent_args(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH,
+                     get_agent_parser_given_config=get_default_agent_parser_given_config,
+                     modify_agent_args_fn=None, **kwargs):
+    """ default values are given at yaml, custom values are provided by commandline flags, overwritten by kwargs """
+
+    from pybullet_tools.logging_utils import myprint as print
+    np.set_printoptions(precision=3, threshold=3, suppress=True)  #, edgeitems=1) #, linewidth=1000)
+
+    conf = parse_config_for_agent(join(config_root, config))
+    parser = get_agent_parser_given_config(conf)
 
     ## seed determines asset instances and object poses initiated for the problem
     args = parser.parse_args()
@@ -154,9 +160,6 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     ## replace the default values with values provided, when running in IDE
     for k, v in kwargs.items():
         args.__dict__[k] = v
-
-    if args.exp_subdir is None and isinstance(args.problem, str):
-        args.exp_subdir = args.problem
 
     ## initialize random seed
     seed = args.seed
@@ -167,6 +170,9 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
     set_random_seed(seed)
     set_numpy_seed(seed)
     args.seed = seed
+
+    if args.exp_subdir is None and isinstance(args.problem, str):
+        args.exp_subdir = args.problem
 
     ## other args, especially those related to problem and planner may be added directly in config files
     args.__dict__['robot_builder_args'] = conf.robot.__dict__
@@ -187,6 +193,9 @@ def get_parser(config='config_dev.yaml', config_root=PROBLEM_CONFIG_PATH, **kwar
 
     ## other processing
     args.exp_dir = abspath(join(PBP_PATH, args.exp_dir))
+
+    if modify_agent_args_fn is not None:
+        args = modify_agent_args_fn(args)
 
     print(f'Seed: {args.seed}')
     print(f'Args: {args}')

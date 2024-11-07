@@ -7,7 +7,7 @@ sys.path.extend([join(RD), join(RD, 'pddlstream'), join(RD, 'pybullet_planning')
 from pybullet_tools.utils import PI, wait_if_gui, set_camera_pose
 
 from problem_sets.problem_utils import create_world
-from cogarch_tools.cogarch_utils import get_parser, init_pybullet_client
+from cogarch_tools.cogarch_utils import parse_agent_args, init_pybullet_client
 
 from world_builder.loaders import load_floor_plan
 from world_builder.loaders_nvidia_kitchen import load_kitchen_floor_plan
@@ -19,7 +19,7 @@ from tutorials.test_utils import get_test_world
 
 def test_load_floating_gripper_in_kitchen(random_instance=True):
     """ a fixed kitchen layout with random instance of objects (e.g. microwave, trashcan) """
-    args = get_parser(config='config_dev.yaml', seed=None)
+    args = parse_agent_args(config='config_dev.yaml', seed=None)
     init_pybullet_client(args)
 
     world = create_world(args)

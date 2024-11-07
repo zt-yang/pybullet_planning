@@ -49,6 +49,6 @@ save_composed_jpg: false
 save_gif: false
 save_animation_json: false
 save_mp4: true
-save_segmented_mp4: true
+save_segmented_mp4: false
 mp4_side_view: false
 mp4_top_view: true
