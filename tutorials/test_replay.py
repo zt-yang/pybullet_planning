@@ -24,8 +24,8 @@ def replay_pr2():
 
 
 def replay_rummy():
-    from rummy_tools.rummy_utils import DATA_CONFIG_PATH, load_rummy_data
-    replay_config_file = join(DATA_CONFIG_PATH, 'replay_online.yaml')
+    from rummy_tools.rummy_utils import RUMMY_CONFIG_PATH, load_rummy_data
+    replay_config_file = join(RUMMY_CONFIG_PATH, 'replay_online.yaml')
     run_replay(replay_config_file, load_rummy_data)
 
 

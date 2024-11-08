@@ -24,6 +24,7 @@ from pybullet_tools.pr2_problems import create_pr2
 from pybullet_tools.pr2_primitives import get_base_custom_limits
 from pybullet_tools.pr2_utils import set_group_conf, get_other_arm, \
     get_carry_conf, set_arm_conf, open_arm, close_arm, arm_conf, REST_LEFT_ARM
+from pybullet_tools.logging_utils import print_red
 
 
 def set_pr2_ready(pr2, arm='left', grasp_type='top', dual_arm=False):
@@ -220,6 +221,7 @@ def build_robot_from_args(world, robot_name, create_robot_fn=None, **kwargs):
         elif robot_name == 'pr2':
             robot = create_pr2_robot(world, **kwargs)
         else:
+            print_red(f'Robot not found = {robot_name}, did you forget to provide create_robot_fn?')
             return None
 
     if spawn_range is not None:

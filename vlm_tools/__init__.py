@@ -21,8 +21,10 @@ from vlm_tools.vlm_utils import EXP_REL_PATH, get_subdir_name, load_prompts, sam
 def modify_agent_args_for_vlm_tamp(args):
     if hasattr(args, 'planning_mode'):
         args.llamp_planning_mode = args.planning_mode
-    if args.load_llm_memory is not None:
+    if hasattr(args, 'load_llm_memory') and args.load_llm_memory is not None:
         args.load_llm_memory = join(EXP_DIR, args.load_llm_memory)
+    else:
+        args.load_llm_memory = None
     args.load_agent_state = None
     # if args.vlm_type is not None:
     #     args.api_class_name = args.vlm_type
