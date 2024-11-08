@@ -918,7 +918,10 @@ def load_pybullet(filename, fixed_base=False, scale=1., **kwargs):
         elif filename.endswith('.sdf'):
             body = p.loadSDF(filename, physicsClientId=CLIENT)
         elif filename.endswith('.xml'):
+            add_data_path(os.path.dirname(filename))
             body = p.loadMJCF(filename, physicsClientId=CLIENT)
+            if isinstance(body, tuple):
+                body = body[0]
         elif filename.endswith('.bullet'):
             body = p.loadBullet(filename, physicsClientId=CLIENT)
         elif filename.endswith('.obj'):
