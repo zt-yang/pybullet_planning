@@ -21,6 +21,7 @@ from lisdf_tools.image_utils import crop_image, save_seg_image_given_obj_keys
 from pigi_tools.data_utils import get_indices, get_init_tuples, \
     get_body_map, get_world_center, add_to_planning_config
 from data_generator.run_utils import copy_dir_for_process, get_data_processing_parser
+from world_builder.paths import OUTPUT_PATH
 
 
 def get_camera_poses(viz_dir):
@@ -158,7 +159,7 @@ def render_images(test_dir, viz_dir, camera_poses, camera_kwargs, camera_zoomins
                   done=None, pairs=None, larger_world=False, crop_px=224):
     ## width = 1960, height = 1470, fx = 800
     world = load_lisdf_pybullet(test_dir, width=width, height=height, verbose=False,
-                                transparent_robot=transparent, larger_world=larger_world)
+                                larger_world=larger_world)
     remove_body(world.robot.body)
     doorless_lisdf = None
     if transparent:
@@ -426,6 +427,9 @@ def rearrange_directories(viz_dir, seg_dirs, accepted_keys, redo):
 def generate_segmented_images(inputs):
     viz_dir, args = inputs
     redo = args.redo
+
+    viz_dir = join(OUTPUT_PATH, viz_dir)
+    print(f"\nviz_dir = {viz_dir}\n")
 
     skip_folder = check_if_skip(viz_dir)
     if skip_folder:

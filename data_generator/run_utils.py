@@ -39,6 +39,8 @@ def get_config_file_from_argparse(default_config_name='kitchen_full_feg.yaml', d
                         help='name of config file inside pybullet_planning/data_generator/configs/ directory.')
     parser.add_argument('-p', '--config_path', type=str, default=default_config_path,
                         help='absolute path to config file.')
+    parser.add_argument('--skip_prompt', action='store_true',
+                        help='if true, the console will prompt the user to press Enter to see the trajectory play out.')
 
     ## a hackish way to get arbitrary arguments
     parsed, unknown = parser.parse_known_args()
@@ -78,6 +80,7 @@ def get_config_from_argparse(default_config_name='kitchen_full_feg.yaml', defaul
             for sub_key, sub_value in value.__dict__.items():
                 if sub_key in parsed_config:
                     setattr(value, sub_key, parsed_config[sub_key])
+                    setattr(config, key, value)
     return config
 
 

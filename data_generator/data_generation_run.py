@@ -145,7 +145,7 @@ def data_generation_process(config, world_only=False):
     print(f'\nSAVED DATA in {abspath(exp_dir)}\n')
 
     print(SEPARATOR)
-    visualize = not new_config.parallel and new_config.n_data == 1
+    visualize = not new_config.parallel and new_config.n_data == 1 and not new_config.sim.skip_prompt
     saver.restore()
     set_renderer(True)
     if config.sim.simulate:  ## real physics

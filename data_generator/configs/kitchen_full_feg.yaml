@@ -21,6 +21,7 @@ sim:
   camera: true
   segment: false
   monitoring: false
+  skip_prompt: false
 
 
 robot:
