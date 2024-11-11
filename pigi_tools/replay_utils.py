@@ -20,6 +20,7 @@ from pybullet_tools.utils import reset_simulation, VideoSaver, wait_unlocked, ge
     set_camera_pose, get_aabb_extent, set_camera_pose2, invert, WorldSaver
 from pybullet_tools.stream_agent import FAILED
 
+from lisdf_tools.lisdf_utils import make_furniture_transparent
 from lisdf_tools.lisdf_loader import load_lisdf_pybullet
 from lisdf_tools.lisdf_planning import Problem
 from lisdf_tools.image_utils import make_composed_image_multiple_episodes, images_to_gif
@@ -308,7 +309,8 @@ def get_segmented_commands(world, commands, plan, time_log=None):
 def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path=None, given_dir=None, cases=None,
             parallel=False, skip_if_processed_recently=False, check_time=None, preview_scene=False, step_by_step=False,
             action_by_action=False, use_gym=False, auto_play=True, verbose=False, width=1280, height=800, fx=600,
-            time_step=0.02, camera_point=(8.5, 2.5, 3), target_point=(0, 2.5, 0), camera_kwargs=None, camera_movement=None,
+            time_step=0.02, make_robot_and_links_transparent=False,
+            camera_point=(8.5, 2.5, 3), target_point=(0, 2.5, 0), camera_kwargs=None, camera_movement=None,
             light_conf=None, check_collisions=False, cfree_range=0.1, visualize_collisions=False,
             evaluate_quality=False, save_jpg=False, save_composed_jpg=False, save_gif=False,
             save_animation_json=False, save_mp4=False, save_segmented_mp4=False,
@@ -321,6 +323,11 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
     world, problem, exp_dir, run_dir, commands, plan, body_map = load_data_fn(
         run_dir_ori, use_gui=not use_gym, width=width, height=height, verbose=verbose
     )
+
+    ## load objects transparent
+    if make_robot_and_links_transparent:
+        make_furniture_transparent(world, exp_dir, lower_tpy=0.5, upper_tpy=0.2)
+
     with WorldSaver():
         commands = [adapt_action(command, problem, plan, verbose=False) for command in commands]
     set_replay_camera_pose(world, run_dir, camera_kwargs, camera_point, target_point)
@@ -359,7 +366,8 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
                 os.makedirs(video_dir, exist_ok=True)
                 for i, (action_name, short_commands, short_plan) in enumerate(segmented_commands):
                     mp4_name = f'replay_{i}_{action_name}.mp4'
-                    attachments = save_mp4_in_pybullet(run_dir, problem, short_commands, short_plan, mp4_name=mp4_name, time_step=time_step)
+                    attachments = save_mp4_in_pybullet(run_dir, problem, short_commands, short_plan, mp4_name=mp4_name,
+                                                       time_step=time_step)
                     problem.world.attachments = attachments
                     print_green(f"{i}\t{attachments}\n")
                     shutil.move(join(run_dir, mp4_name), join(video_dir, mp4_name))

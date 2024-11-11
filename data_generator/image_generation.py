@@ -158,7 +158,7 @@ def render_images(test_dir, viz_dir, camera_poses, camera_kwargs, camera_zoomins
                   done=None, pairs=None, larger_world=False, crop_px=224):
     ## width = 1960, height = 1470, fx = 800
     world = load_lisdf_pybullet(test_dir, width=width, height=height, verbose=False,
-                                transparent=transparent, larger_world=larger_world)
+                                transparent_robot=transparent, larger_world=larger_world)
     remove_body(world.robot.body)
     doorless_lisdf = None
     if transparent:

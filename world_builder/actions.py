@@ -588,7 +588,7 @@ def adapt_attach_action(a, problem, plan, verbose=True):
         funk = get_pull_handle_motion_gen(problem, collisions=False, verbose=verbose)
         aq1 = None
     else:
-        var = act[8] if act[0] == 'nudge_door' else act[10]
+        var = act[8] if act[0] == 'nudge_door' else act[-1]  ## pull_handle
         aq1 = get_value(var)  ## continuous[act[9].split('=')[0]]
         aq1 = Conf(robot.body, robot.get_arm_joints(a.arm), aq1)
         funk = get_pull_door_handle_motion_gen(problem, collisions=False, verbose=verbose)

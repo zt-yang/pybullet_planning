@@ -451,9 +451,8 @@ class World(WorldBase):
         remove_body(body)
 
 
-def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False,
-                        width=1980, height=1238, transparent=True, larger_world=False,
-                        custom_robot_loader={}, robot_builder_args={}, **kwargs):
+def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False, width=1980, height=1238,
+                        larger_world=False, custom_robot_loader={}, robot_builder_args={}, **kwargs):
 
     ## sometimes another lisdf name is given
     if lisdf_path.endswith('.lisdf'):
@@ -542,11 +541,6 @@ def load_lisdf_pybullet(lisdf_path, verbose=False, use_gui=True, jointless=False
             for js in model_states[model.name].joint_states:
                 position = js.axis_states[0].value
                 set_joint_position(body, joint_from_name(body, js.name), position)
-
-    ## load objects transparent
-    name = lisdf_world.name
-    if ('test_full_kitchen' in name or 'None_' in name or 'clean_dish' in name) and transparent:
-        make_furniture_transparent(world, lisdf_dir, lower_tpy=0.5, upper_tpy=0.2)
 
     if lisdf_world.gui is not None:
         camera_pose = lisdf_world.gui.camera.pose
