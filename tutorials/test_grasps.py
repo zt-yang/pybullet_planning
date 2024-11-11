@@ -46,7 +46,7 @@ def test_grasp(problem, body, funk, test_attachment=False, test_offset=False, **
 
 
 def run_test_grasps(robot='feg', categories=[], given_instances=None, skip_grasps=False,
-                    visualize=True, retain_all=True, verbose=False, test_attachment=False,
+                    use_all_grasps=False, visualize=True, retain_all=True, verbose=False, test_attachment=False,
                     test_rotation_matrix=False, skip_rotation_index_until=None, rotation_matrices=None,
                     test_translation_matrix=False, skip_grasp_index_until=None, translation_matrices=None,
                     default_rotation=None, top_grasp_tolerance=None, side_grasp_tolerance=None, **kwargs):
@@ -82,7 +82,8 @@ def run_test_grasps(robot='feg', categories=[], given_instances=None, skip_grasp
                 sgt = side_grasp_tolerance
                 if top_grasp_tolerance is None and cat in ['Knife']:
                     tgt = math.pi / 4  ## , 'EyeGlasses', 'Plate'
-                funk = get_grasp_list_gen(problem, collisions=True, visualize=visualize, retain_all=retain_all,
+                funk = get_grasp_list_gen(problem, use_all_grasps=use_all_grasps, collisions=True,
+                                          visualize=visualize, retain_all=retain_all,
                                           verbose=verbose, top_grasp_tolerance=tgt, side_grasp_tolerance=sgt,
                                           test_offset=test_offset, skip_grasp_index_until=skip_grasp_index_until)
 

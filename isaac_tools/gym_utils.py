@@ -161,7 +161,7 @@ def load_lisdf_isaacgym(lisdf_dir, robots=True, pause=False, loading_effect=Fals
                              loading_effect=loading_effect, save_obj_shots=save_obj_shots, **kwargs)
 
     ## add floor for one world
-    asset = gym_world.simulator.box_asset(30, length=30, height=0.1, fixed_base=True)
+    asset = gym_world.simulator.box_asset(50, length=50, height=0.1, fixed_base=True)
     actor = gym_world.create_actor(asset, name='floor', scale=1)
     gym_world.set_color(actor, (0.4, 0.4, 0.4, 1))
     gym_world.set_pose(actor, (np.array([0, 0, -0.04]), np.array([0, 0, 0, 1])))
@@ -511,7 +511,7 @@ def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_p
                           time_step=0.5, verbose=False, plan=None, return_wconf=False,
                           world_index=None, body_map=None, save_gif=True, save_mp4=False,
                           camera_movement=None, ignore_actors=None,
-                          frame_gap=3): ## 3 for single world, 5 for longer horizon
+                          frame_gap=3, return_frames=False): ## 3 for single world, 5 for longer horizon
     """ act out the whole plan and event in the world without observation/replanning """
     from world_builder.actions import adapt_action, apply_commands
     from world_builder.world import State
@@ -560,6 +560,8 @@ def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_p
         return wconfs
     if len(filenames) > 0:
         print_debug(f"saved {len(filenames)} images to make mp4")
+        if return_frames:
+            return filenames
         print_green(f'loading {filenames[0]} to {gif_path}')
         save_gym_run(img_dir, gif_path, filenames, save_gif=save_gif, save_mp4=save_mp4)
     return state_event.attachments
@@ -573,6 +575,7 @@ def save_gym_run(img_dir, gif_path, filenames, save_gif=True, save_mp4=True):
         mp4_path = join(gif_path.replace('.gif', '.mp4'))  ## f'_{get_datetime()}.mp4'
         images_to_mp4(filenames, mp4_path=mp4_path)
         print_green('created mp4 {} with {} frames\n'.format(mp4_path, len(filenames)))
+        return filenames
 
 
 def interpolate_camera_pose(gym_world, i, length, camera_movement):

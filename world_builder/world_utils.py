@@ -625,19 +625,21 @@ def visualize_point(point, world):
 
 def sort_instances(category, instances, get_all=False):
     keys = list(instances.keys())
-    if not get_all:
-        cat_dir = join(ASSET_PATH, 'models', category)
-        if isdir(cat_dir) and len(listdir(cat_dir)) > 0:
-            keys = [k for k in keys if isdir(join(cat_dir, k))]
+
     if isinstance(keys[0], tuple):
         instances = instances
-    elif not keys[0].isdigit():
-        keys = list(set([k for k in keys]))
-        instances = {k: instances[k] for k in keys}
-        instances = dict(sorted(instances.items()))
     else:
-        instances = {k: instances[k] for k in keys}
-        instances = dict(sorted(instances.items()))
+        if not get_all:
+            cat_dir = join(ASSET_PATH, 'models', category)
+            if isdir(cat_dir) and len(listdir(cat_dir)) > 0:
+                keys = [k for k in keys if isdir(join(cat_dir, k))]
+        if not keys[0].isdigit():
+            keys = list(set([k for k in keys]))
+            instances = {k: instances[k] for k in keys}
+            instances = dict(sorted(instances.items()))
+        else:
+            instances = {k: instances[k] for k in keys}
+            instances = dict(sorted(instances.items()))
     return instances
 
 

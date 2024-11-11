@@ -373,6 +373,8 @@ class Object(Index):
         if 'base' in links:  ## is robot
             set_group_conf(self.body, BASE_GROUP, conf)
         else:
+            if len(conf) == 6:
+                conf = (conf[:3], quat_from_euler(conf[3:]))
             set_pose(self.body, conf)
         if self.supporting_surface is not None:
             self.supporting_surface.attach_obj(self)

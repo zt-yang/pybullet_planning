@@ -323,8 +323,17 @@ class RobotAPI(Robot):
                     print('\t', group, nice(self.get_positions(joint_group=group)))
             print()
 
+    def get_group_positions(self, joint_group: str):
+        joints = self.get_group_joints(joint_group)
+        return get_joint_positions(self.body, joints)
+
     def set_group_positions(self, joint_group: str, positions: list):
         joints = self.get_group_joints(joint_group)
+        assert len(joints) == len(positions)
+        self.set_joint_positions(joints, positions)
+
+    def set_base_conf(self, positions: list):
+        joints = self.get_group_joints(self.base_group)
         assert len(joints) == len(positions)
         self.set_joint_positions(joints, positions)
 

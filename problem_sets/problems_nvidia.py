@@ -2,6 +2,7 @@ import random
 
 from pybullet_tools.utils import set_camera_pose
 from pybullet_tools.pose_utils import sample_obj_in_body_link_space
+from pybullet_tools.bullet_utils import close_joint
 
 from world_builder.loaders_partnet_kitchen import put_lid_on_braiser
 from world_builder.loaders_nvidia_kitchen import *
@@ -19,18 +20,27 @@ from world_builder.actions import pull_actions, pick_place_actions, pull_with_li
 
 
 def test_kitchen_fridge(args, **kwargs):
-    def loader_fn(world, difficulty=0, **world_builder_args):
+    def loader_fn(world, difficulty=0, use_vlmtamp_kitchen=False, **world_builder_args):
+        if use_vlmtamp_kitchen:
+            surfaces = {
+                'Fridge': { 'shelf_top': [], 'shelf_bottom': []},
+                'counter': { 'front_right_stove': ['BraiserBody'] }
+            }
+            load_full_kitchen(world, surfaces=surfaces, spaces={}, load_cabbage=False)
+            load_nvidia_kitchen_movables(world, open_doors_for=['chicken-leg'])
+            body = world.name_to_body('chicken-leg')
+        else:
+            floor = load_kitchen_floor_plan(world, plan_name='kitchen_v2.svg')
+            world.remove_object(floor)
+            # floor = load_floor_plan(world, plan_name='fridge_v2.svg')
+            body = load_experiment_objects(world, CABBAGE_ONLY=True, name='eggblock', color=TAN)
 
-        floor = load_kitchen_floor_plan(world, plan_name='kitchen_v2.svg')
-        world.remove_object(floor)
-        # cabbage = load_experiment_objects(world)
-        # floor = load_floor_plan(world, plan_name='fridge_v2.svg')
-        egg = load_experiment_objects(world, CABBAGE_ONLY=True, name='eggblock', color=TAN)
         set_camera_pose(camera_point=[3, 5, 3], target_point=[0, 6, 1])
         robot = world.robot
 
         door = world.add_joints_by_keyword('fridge', 'fridge_door')[0]
 
+        skeleton = []
         ## -- open the door, requires kitchen_v2 floorplan
         if difficulty == 0:
             goals = ('test_handle_grasps', door)
@@ -41,23 +51,62 @@ def test_kitchen_fridge(args, **kwargs):
             # ## -- just pick get the block
             # world.open_joint_by_name('fridge_door')
             # world.put_on_surface(egg, 'shelf_bottom')
-            # goals = [("Holding", "left", egg)]
-
-        if difficulty == 1:
-            world.close_joint_by_name('fridge_door')
-            goals = [('AtBConf', Conf(robot, get_group_joints(robot, 'base'), (2, 1, -PI)))]
-            goals = ("test_object_grasps", egg)
-            goals = [("Holding", "left", egg)]
+            # goals = [("Holding", "left", body)]
 
         ## --- using three actions or one action
         if difficulty == 2:
             goals = [("Pulled", door)]  ## mobile_v4_domain.pddl
             goals = [("Pulled", door), ("CanUngrasp",)]  ## mobile_v4_domain.pddl
             goals = [("GraspedHandle", door)]  ## mobile_v4_domain.pddl
-
             # goals = [("PulledOneAction", door)]  ## mobile_v5_domain.pddl
 
-        skeleton = []
+        if difficulty in [1, 11]:
+            if difficulty == 1:
+                world.close_joint_by_name('fridge_door')
+            goals = [('AtBConf', Conf(robot, get_group_joints(robot, 'base'), (2, 1, -PI)))]
+            goals = ("test_object_grasps", body)
+            goals = [("Holding", "left", body)]
+
+        if difficulty in [3, 31, 32, 4]:
+            """ rummy needs to change grasps from side to top """
+            shelf_bottom = world.name_to_body('shelf_bottom')
+            # world.BODY_TO_OBJECT[body].change_pose_interactive() find pose for saved_poses
+
+            table = world.add_object(
+                Supporter(load_asset('DinerTable'), name='table'),
+                pose=((0.5, 4.25, 0.59), (0.0, 0.0, 0.0, 1.0)),
+            )  ## .change_pose_interactive()
+            close_joint(table, 1)  ## instance originally has opened drawer
+
+            pot = world.name_to_object('braiserbody')
+            world.add_object(Surface(pot, link_from_name(pot, 'braiser_bottom')))
+            world.put_on_surface(pot, 'table')
+            goal_location = world.name_to_body('braiser_bottom')
+
+            if difficulty == 3:
+                goals = [("Holding", "left", body)]
+                skeleton += [('pick', "left", body), ('arrange', "left", body, shelf_bottom), ('pick', "left", body)]
+
+            elif difficulty == 31:
+                goals = [("On", body, shelf_bottom)]
+                skeleton += [('pick', "left", body), ('arrange', "left", body, shelf_bottom)]
+
+            elif difficulty == 32:
+                ## problem with pddlstream stream plan
+                if world.robot.name == 'rummyrobot':
+                    world.name_to_object('chicken-leg').set_pose((0.654, 4.846, 0.794, 0.0, 0.0, -0.166))
+                    world.robot.set_base_conf((1.732, 4.323, 0.539, 2.034))
+                goals = [("On", body, goal_location)]
+                skeleton += [('pick', "left", body), ('arrange', "left", body, goal_location)]
+
+            elif difficulty == 4:
+                ## problem with pddlstream stream plan
+                goals = [("On", body, goal_location)]
+                if world.robot.name == 'rummyrobot':
+                    skeleton += [('pick', "left", body), ('arrange', "left", body, shelf_bottom)]
+                skeleton += [('pick', "left", body), ('place', "left", body)]
+                # skeleton += [('pick', "left", body), ('arrange', "left", body, goal_location)]
+
         world.remove_bodies_from_planning(goals, skeleton=skeleton)
         return {'goals': goals, 'skeleton': skeleton}
 

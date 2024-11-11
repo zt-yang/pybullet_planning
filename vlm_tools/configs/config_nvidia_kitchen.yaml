@@ -80,7 +80,6 @@ sim:
   lock: true
   simulate: false
   drive: false
-  cfree: false
   camera: false
   segment: false
   monitoring: false

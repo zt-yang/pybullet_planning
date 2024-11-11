@@ -312,7 +312,7 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
             light_conf=None, check_collisions=False, cfree_range=0.1, visualize_collisions=False,
             evaluate_quality=False, save_jpg=False, save_composed_jpg=False, save_gif=False,
             save_animation_json=False, save_mp4=False, save_segmented_mp4=False,
-            frame_gap=3, mp4_side_view=False, mp4_top_view=False, shape_json=None):
+            frame_gap=3, mp4_side_view=False, mp4_top_view=False, shape_json=None, return_frames=False):
     """ specific to gym replay:
             mp4_side_view/mp4_top_view: overwrites camera_point and target_point
             frame_gap: subsample the image frames
@@ -346,8 +346,12 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
         gym_kwargs = dict(width=width, height=height, camera_point=camera_point, target_point=target_point,
                           camera_kwargs=camera_kwargs, camera_movement=camera_movement, light_conf=light_conf,
                           save_jpg=save_jpg, save_gif=save_gif, save_mp4=save_mp4, save_segmented_mp4=save_segmented_mp4,
-                          frame_gap=frame_gap, mp4_side_view=mp4_side_view, mp4_top_view=mp4_top_view, shape_json=shape_json)
-        run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_map, **gym_kwargs)
+                          frame_gap=frame_gap, mp4_side_view=mp4_side_view, mp4_top_view=mp4_top_view,
+                          shape_json=shape_json, return_frames=return_frames)
+        filenames = run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_map, **gym_kwargs)
+        if return_frames:
+            reset_simulation()
+            return exp_dir, filenames
 
     ## pybullet
     else:
@@ -489,7 +493,7 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
                          camera_point=(8.5, 2.5, 3), target_point=(0, 2.5, 0), camera_kwargs=None,
                          camera_movement=None, light_conf=None, save_jpg=True, save_gif=False,
                          save_mp4=False, save_segmented_mp4=False, mp4_side_view=False, mp4_top_view=False,
-                         shape_json=None, frame_gap=3):
+                         shape_json=None, frame_gap=3, return_frames=False):
     from isaac_tools.gym_utils import load_lisdf_isaacgym, record_actions_in_gym, set_camera_target_body
 
     title = 'run_one_in_isaac_gym\t'
@@ -562,8 +566,12 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
         else:
             gif_path = join(run_dir, 'gym_replay.gif')
             img_dir = join(exp_dir, 'gym_images')
-            record_actions_in_gym(problem, commands, gym_world, plan=plan, img_dir=img_dir, frame_gap=frame_gap,
-                                  gif_path=gif_path, **gym_kwargs)
+            filenames = record_actions_in_gym(problem, commands, gym_world, plan=plan, img_dir=img_dir,
+                                              frame_gap=frame_gap, gif_path=gif_path, return_frames=return_frames,
+                                              **gym_kwargs)
+            if return_frames:
+                del (gym_world.simulator)
+                return filenames
         # gym_world.wait_if_gui()
 
         if mp4_side_view:

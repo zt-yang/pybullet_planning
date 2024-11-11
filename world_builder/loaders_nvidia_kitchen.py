@@ -112,7 +112,8 @@ saved_poses = {
     ('vinegar-bottle', 'shelf_bottom'): ((0.64, 4.88, 0.901), (0.0, 0.0, 0.0, 1.0)),
     # ('chicken-leg', 'indigo_tmp'): ((0.717, 8.714, 0.849), (0.0, -0.0, -0.99987, 0.0163)), ## grasp the meat end
     ('chicken-leg', 'indigo_tmp'): ((0.787, 8.841, 0.849), (0.0, 0.0, 0.239, 0.971)), ## grasp the bone end
-    ('chicken-leg', 'shelf_bottom'): ((0.654, 5.062, 0.797), (0.0, 0.0, 0.97, 0.25)),
+    # ('chicken-leg', 'shelf_bottom'): ((0.654, 5.062, 0.797), (0.0, 0.0, 0.97, 0.25)),
+    ('chicken-leg', 'shelf_bottom'): ((0.654, 4.846, 0.794), (0.0, 0.0, -0.083, 0.997)),  ## regrasp side pose
     ('chicken-leg', 'shelf_top'): ((0.654, 4.846, 1.384), (-0.0, 0.0, -0.182, 0.983)),
     ('cabbage', 'shelf_bottom'): ((0.668, 4.862, 0.83), (0, 0, 0.747, 0.665)),
     # ('cabbage', 'upper_shelf'): ((1.006, 6.295, 0.461), (0.0, 0.0, 0.941, 0.338)),

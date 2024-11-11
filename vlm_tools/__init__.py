@@ -53,10 +53,10 @@ def run_vlm_tamp_with_argparse(problem_name='test_kitchen_chicken_soup', world_b
 
 def run_vlm_tamp_agent(problem_name='test_kitchen_chicken_soup', difficulty=0,
                        config='config_nvidia_kitchen.yaml', config_root=VLM_AGENT_CONFIG_ROOT,
-                       serve_page=True, world_builder_args=dict(), **kwargs):
+                       serve_page=True, use_learned_ir=True, world_builder_args=dict(), **kwargs):
     problem = vlm_tamp_problem_fn_from_name(problem_name)
     domain_kwargs = dict(agent_class=LLAMPAgent, config=config, config_root=config_root,
-                         use_learned_ir=True, serve_page=serve_page)
+                         use_learned_ir=use_learned_ir, serve_page=serve_page)
 
     if 'exp_subdir' in kwargs and 'actions' in kwargs['exp_subdir']:
         kwargs.update({k: 4 for k in ['max_plans', 'max_evaluation_plans']})

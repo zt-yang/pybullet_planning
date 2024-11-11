@@ -70,9 +70,12 @@ MODEL_SCALES = {
         'VeggieZucchini': 0.01,
 
         ## able to render but not generate world with
-        'MeatTurkeyLeg': 0.0007,
+        # 'MeatTurkeyLeg': 0.0007,
         'VeggieCauliflower': 0.0056,
         'VeggieGreenPepper': 0.0005,
+    },
+    'MeatTurkeyLeg': {
+        '0001': 0.0007,
     },
     'Salter': {
         '3934': 0.05,
@@ -318,7 +321,7 @@ OBJ_SCALES = {
     'Pan': 0.3, 'Pot': 0.3, 'Bottle': 0.25,
     'Egg': 0.03, 'Veggie': 0.3, 'VeggieLeaf': 0.3, 'VeggieStem': 0.3,
     'MilkBottle': 0.2, 'Bucket': 0.7, 'Cart': 1.1, 'PotBody': 0.3,
-    'PlateFat': 0.8, 'PlateFlat': 0.8,
+    'PlateFat': 0.8, 'PlateFlat': 0.8, 'MeatTurkeyLeg': 0.0007
     # 'VeggieCabbage': 0.005, 'MeatTurkeyLeg': 0.0007, 'VeggieTomato': 0.005,
     # 'VeggieZucchini': 0.01, 'VeggiePotato': 0.015, 'VeggieCauliflower': 0.008,
     # 'VeggieGreenPepper': 0.0003, 'VeggieArtichoke': 0.017, 'MeatChicken': 0.0008,
