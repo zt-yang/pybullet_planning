@@ -18,8 +18,10 @@ auto_play: true
 verbose: false
 
 ## ---- visual
-width: 1440
-height: 1120
+#width: 1440
+#height: 1120
+width: 1280
+height: 720
 pybullet:
   time_step: 0.01
   fx: 600
@@ -50,5 +52,7 @@ save_gif: false
 save_animation_json: false
 save_mp4: true
 save_segmented_mp4: false
+save_observation_mp4: false
+save_observation_pcd: false
 mp4_side_view: false
-mp4_top_view: true
+mp4_top_view: false

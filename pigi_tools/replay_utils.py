@@ -14,17 +14,20 @@ from collections import namedtuple
 
 from pybullet_tools.bullet_utils import query_yes_no, has_srl_stream, running_in_pycharm
 from pybullet_tools.logging_utils import print_pink, print_green, print_blue
-from pybullet_tools.camera_utils import adjust_camera_pose, set_camera_target_body
+from pybullet_tools.camera_utils import adjust_camera_pose, set_camera_target_body, \
+    make_observation_collages
 from pybullet_tools.pose_utils import ObjAttachment, has_getch
 from pybullet_tools.utils import reset_simulation, VideoSaver, wait_unlocked, get_aabb_center, load_yaml, \
     set_camera_pose, get_aabb_extent, set_camera_pose2, invert, WorldSaver
 from pybullet_tools.stream_agent import FAILED
+from pybullet_tools.logging_utils import print_debug
 
 from lisdf_tools.lisdf_utils import make_furniture_transparent
 from lisdf_tools.lisdf_loader import load_lisdf_pybullet
 from lisdf_tools.lisdf_planning import Problem
 from lisdf_tools.image_utils import make_composed_image_multiple_episodes, images_to_gif
 
+from world_builder.entities import add_robot_cameras
 from world_builder.actions import apply_commands, get_primitive_actions, get_action_name, adapt_action
 from world_builder.paths import PBP_PATH
 
@@ -96,6 +99,7 @@ def load_basic_plan_commands(world, exp_dir, run_dir, verbose=False, load_attach
 def load_pigi_data(run_dir, use_gui=True, width=1440, height=1120, verbose=False):
     """ for replaying """
     exp_dir = copy_dir_for_process(run_dir, tag='replaying', verbose=verbose)
+    print_debug(f"load_pigi width = {width} height = {height}")
     world = load_lisdf_pybullet(exp_dir, use_gui=use_gui, width=width, height=height, verbose=False)
     problem, commands, plan, body_map = load_basic_plan_commands(world, exp_dir, run_dir,
                                                                  verbose=verbose, load_attach=False)
@@ -175,6 +179,10 @@ def load_replay_conf(conf_path, **kwargs):
             c['width'] = 1920
             c['height'] = 1080
             c['light_conf'] = dict(direction=np.asarray([0, -1, 0]), intensity=np.asarray([1, 1, 1]))
+
+    if c['save_observation_mp4']:
+        c['save_mp4'] = False
+        c['save_gif'] = True
 
     for k, v in kwargs.items():
         c[k] = v
@@ -314,6 +322,7 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
             light_conf=None, check_collisions=False, cfree_range=0.1, visualize_collisions=False,
             evaluate_quality=False, save_jpg=False, save_composed_jpg=False, save_gif=False,
             save_animation_json=False, save_mp4=False, save_segmented_mp4=False,
+            save_observation_mp4=False, save_observation_pcd=False,
             frame_gap=3, mp4_side_view=False, mp4_top_view=False, shape_json=None, return_frames=False):
     """ specific to gym replay:
             mp4_side_view/mp4_top_view: overwrites camera_point and target_point
@@ -323,6 +332,12 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
     world, problem, exp_dir, run_dir, commands, plan, body_map = load_data_fn(
         run_dir_ori, use_gui=not use_gym, width=width, height=height, verbose=verbose
     )
+
+    ## add observation cameras
+    if save_observation_mp4:
+        from robot_builder.robots import PR2Robot
+        camera_matrix = world.camera.camera_matrix
+        world.robot_cameras = add_robot_cameras(world.robot, PR2Robot.camera_frames, camera_matrix=camera_matrix)
 
     ## load objects transparent
     if make_robot_and_links_transparent:
@@ -352,8 +367,9 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
     if use_gym:
         gym_kwargs = dict(width=width, height=height, camera_point=camera_point, target_point=target_point,
                           camera_kwargs=camera_kwargs, camera_movement=camera_movement, light_conf=light_conf,
-                          save_jpg=save_jpg, save_gif=save_gif, save_mp4=save_mp4, save_segmented_mp4=save_segmented_mp4,
-                          frame_gap=frame_gap, mp4_side_view=mp4_side_view, mp4_top_view=mp4_top_view,
+                          save_jpg=save_jpg, save_gif=save_gif, save_mp4=save_mp4, frame_gap=frame_gap,
+                          save_segmented_mp4=save_segmented_mp4, mp4_side_view=mp4_side_view, mp4_top_view=mp4_top_view,
+                          save_observation_mp4=save_observation_mp4, save_observation_pcd=save_observation_pcd,
                           shape_json=shape_json, return_frames=return_frames)
         filenames = run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_map, **gym_kwargs)
         if return_frames:
@@ -384,10 +400,10 @@ def run_one(run_dir_ori, load_data_fn=load_pigi_data, task_name=None, given_path
                 segmented_commands = get_segmented_commands(world, commands, plan, time_log)
             run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, body_map, task_name=task_name,
                                 step_by_step=step_by_step, action_by_action=action_by_action, auto_play=auto_play,
-                                check_collisions=check_collisions,
-                                cfree_range=cfree_range, visualize_collisions=visualize_collisions,
+                                check_collisions=check_collisions, cfree_range=cfree_range, visualize_collisions=visualize_collisions,
                                 evaluate_quality=evaluate_quality, zoomin_kwargs=zoomin_kwargs, time_step=time_step,
-                                save_jpg=save_jpg, save_composed_jpg=save_composed_jpg, save_gif=save_gif, verbose=verbose)
+                                save_jpg=save_jpg, save_composed_jpg=save_composed_jpg, save_gif=save_gif,
+                                save_observation_mp4=save_observation_mp4, verbose=verbose)
 
     reset_simulation()
     shutil.rmtree(exp_dir)
@@ -428,12 +444,13 @@ def save_mp4_in_pybullet(run_dir, problem, commands, plan, mp4_name='replay.mp4'
 
 def run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, body_map, task_name=None,
                         step_by_step=False, action_by_action=False, auto_play=True, check_collisions=False,
-                        cfree_range=0.1, time_step=0.02,
-                        visualize_collisions=False, evaluate_quality=False, zoomin_kwargs=None,
-                        save_jpg=False, save_composed_jpg=False, save_gif=False, verbose=False):
+                        cfree_range=0.1, time_step=0.02, visualize_collisions=False, evaluate_quality=False,
+                        zoomin_kwargs=None, save_jpg=False, save_composed_jpg=False, save_gif=False,
+                        save_observation_mp4=False, verbose=False):
     run_name = basename(run_dir)
     if not auto_play:
         wait_unlocked()
+
     answer = True
     if not auto_play:
         answer = query_yes_no(f"start replay {run_name}?", default='yes')
@@ -442,6 +459,7 @@ def run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, bo
         time_step = None if step_by_step else time_step
         results = apply_commands(problem, commands, time_step=time_step, verbose=verbose, plan=plan,
                                  body_map=body_map, save_composed_jpg=save_composed_jpg, save_gif=save_gif,
+                                 save_observation_mp4=save_observation_mp4,
                                  check_collisions=check_collisions, cfree_range=cfree_range,
                                  action_by_action=action_by_action, visualize_collisions=visualize_collisions)
 
@@ -465,13 +483,21 @@ def run_one_in_pybullet(run_dir, run_dir_ori, world, problem, commands, plan, bo
             make_composed_image_multiple_episodes(episodes, join(world.img_dir, 'composed.jpg'),
                                                   verbose=verbose, crop=crop)
 
-        """ animation of how objects move """
         if save_gif:
-            episodes = results
-            h, w, _ = episodes[0].shape
-            crop = (0, h // 3 - h // 30, w, 2 * h // 3 - h // 30)
-            gif_path = join(run_dir_ori, 'replay.gif')
-            images_to_gif(world.img_dir, gif_path, episodes, crop=crop)
+
+            """ animation of robot perspective """
+            if save_observation_mp4:
+                collage_images = make_observation_collages(results)
+                gif_path = join(run_dir_ori, f'observations.gif')
+                images_to_gif(world.img_dir, gif_path, collage_images)
+
+            else:
+                """ animation of how objects move """
+                episodes = results['scene']
+                h, w, _ = episodes[0].shape
+                crop = (0, h // 3 - h // 30, w, 2 * h // 3 - h // 30)
+                gif_path = join(run_dir_ori, f'replay.gif')
+                images_to_gif(world.img_dir, gif_path, episodes, crop=crop)
 
         # if SAVE_COMPOSED_JPG or SAVE_GIF:
         #     world.camera = world.cameras[0]
@@ -501,10 +527,13 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
                          camera_point=(8.5, 2.5, 3), target_point=(0, 2.5, 0), camera_kwargs=None,
                          camera_movement=None, light_conf=None, save_jpg=True, save_gif=False,
                          save_mp4=False, save_segmented_mp4=False, mp4_side_view=False, mp4_top_view=False,
+                         save_observation_mp4=True, save_observation_pcd=True,
                          shape_json=None, frame_gap=3, return_frames=False):
     from isaac_tools.gym_utils import load_lisdf_isaacgym, record_actions_in_gym, set_camera_target_body
 
     title = 'run_one_in_isaac_gym\t'
+
+    print_debug(f"world.robot.__class__.__name__ = {world.robot.__class__.__name__}")
 
     gym_world = load_lisdf_isaacgym(abspath(exp_dir), camera_width=width, camera_height=height,
                                     camera_point=camera_point, target_point=target_point)
@@ -577,6 +606,7 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
             filenames = record_actions_in_gym(problem, commands, gym_world, plan=plan, img_dir=img_dir,
                                               frame_gap=frame_gap, gif_path=gif_path, return_frames=return_frames,
                                               **gym_kwargs)
+            print(filenames)
             if return_frames:
                 del (gym_world.simulator)
                 return filenames
@@ -596,6 +626,7 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
             shutil.move(gif_path, new_file)
 
         if save_mp4:
+            move_file_to_demo_folder = False
             if save_segmented_mp4:
                 new_dir = join(GYM_IMAGES_DIR, save_name)
                 os.makedirs(new_dir, exist_ok=True)
@@ -609,9 +640,10 @@ def run_one_in_isaac_gym(exp_dir, run_dir, world, problem, commands, plan, body_
                         print(f'{title} | step {i}: skipping {path} because the action has no commands')
 
                 shutil.move(get_info_path(run_dir), get_info_path(new_dir))
-            else:
-                mp4_name = gif_path.replace('.gif', '.mp4')
-                new_mp4_name = new_file.replace('.gif', '.mp4')
+
+            elif move_file_to_demo_folder:
+                mp4_name = gif_path.replace('.gif', '_scene.mp4')
+                new_mp4_name = new_file.replace('.gif', '_scene.mp4')
                 shutil.move(mp4_name, new_mp4_name)
                 print(f'moved mp4 to {new_mp4_name}')
 
@@ -718,7 +750,7 @@ def replay_all_in_gym(width=1440, height=1120, num_rows=5, num_cols=5, world_siz
     else:
         for i in tqdm(range(num_worlds)):
             exp_dir, run_dir, commands, plan = get_pkl_run(lisdf_dirs[i], verbose=verbose)
-            world = load_lisdf_pybullet(exp_dir, use_gui=not USE_GYM or debug,
+            world = load_lisdf_pybullet(exp_dir, use_gui=debug,
                                         width=width, height=height, verbose=False)
             body_map = get_body_map(run_dir, world, larger=False)
             problem = Problem(world)

@@ -48,8 +48,6 @@ half_limits = 12 * np.ones(2)
 BASE_LIMITS = (-half_limits, +half_limits) ## (zero_limits, +half_limits) ##
 BASE_LIMITS = ((-1, 3), (6, 13))
 
-CAMERA_FRAME = 'high_def_optical_frame'
-EYE_FRAME = 'wide_stereo_gazebo_r_stereo_camera_frame'
 CAMERA_MATRIX = get_camera_matrix(width=640, height=480, fx=525., fy=525.) # 319.5, 239.5 | 772.55, 772.5S
 
 colors = [GREEN, BROWN, BLUE, WHITE, TAN, GREY, YELLOW, BLACK, RED]
@@ -1201,6 +1199,7 @@ def is_tuple(elems):
 
 
 def has_srl_stream():
+    return True
     # import ipdb; ipdb.set_trace()
     try:
         import srl_stream

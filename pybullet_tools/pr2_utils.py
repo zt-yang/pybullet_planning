@@ -23,6 +23,8 @@ from .utils import multiply, get_link_pose, set_joint_position, set_joint_positi
 LEFT_ARM = 'left'
 RIGHT_ARM = 'right'
 ARM_NAMES = (LEFT_ARM, RIGHT_ARM)
+CAMERA_FRAME = 'high_def_optical_frame'
+EYE_FRAME = 'wide_stereo_gazebo_r_stereo_camera_frame'
 
 def side_from_arm(arm):
     side = arm.split('_')[0]

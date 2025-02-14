@@ -10,10 +10,12 @@ from pybullet_tools.utils import get_joint_name, get_joint_position, get_link_na
     get_min_limit, get_max_limit, get_link_parent, LockRenderer, HideOutput, pairwise_collisions, get_bodies, \
     remove_debug, child_link_from_joint, unit_point, tform_point, buffer_aabb, get_aabb_center, get_aabb_extent, \
     quat_from_euler, get_link_subtree
-from pybullet_tools.bullet_utils import BASE_LINK, is_box_entity, collided, nice, BASE_RESOLUTIONS, colorize_link
+from pybullet_tools.bullet_utils import BASE_LINK, is_box_entity, collided, nice, BASE_RESOLUTIONS, \
+    CAMERA_MATRIX, colorize_link
 from pybullet_tools.pose_utils import sample_obj_in_body_link_space, sample_obj_on_body_link_surface, \
     create_attachment, change_pose_interactive
 from pybullet_tools.camera_utils import get_camera_image_at_pose, set_camera_target_body
+from pybullet_tools.logging_utils import print_pink
 
 from world_builder.world_utils import get_mobility_id, get_mobility_category, get_mobility_identifier, \
     get_instance_name, get_lisdf_name, load_asset, draw_body_label
@@ -793,13 +795,15 @@ class Robot(Object):
 
 
 class Camera(object):
-    def __init__(self, body, camera_frame, camera_matrix, max_depth=2., name=None, draw_frame=None, **kwargs):
+    def __init__(self, body, camera_frame, camera_matrix, max_depth=2., name=None,
+                 draw_frame=None, rel_pose=unit_pose(), **kwargs):
         self.body = body if isinstance(body, int) else body.body
         self.camera_link = link_from_name(self.body, camera_frame) # optical_frame
         self.camera_matrix = camera_matrix
         self.max_depth = max_depth
         self.name = camera_frame if name is None else name
         self.draw_link = link_from_name(self.body, draw_frame if draw_frame is None else draw_frame)
+        self.rel_pose = rel_pose
         self.kwargs = dict(kwargs)
         #self.__dict__.update(**kwargs)
         # self.handles = []
@@ -872,7 +876,7 @@ class StaticCamera(object):
         self.max_depth = max_depth
         self.name = 'unknown_camera' if name is None else name
         # self.kwargs = dict(kwargs)
-        #self.__dict__.update(**kwargs)
+        # self.__dict__.update(**kwargs)
         # self.handles = []
         # self.handles = self.draw()
         self.get_boundaries()
@@ -887,7 +891,7 @@ class StaticCamera(object):
         self.pose = pose
 
     def get_image(self, segment=True, segment_links=False, far=8,
-                  camera_point=None, target_point=None, **kwargs):
+                  camera_point=None, target_point=None, camera_pose=None, **kwargs):
         # TODO: apply maximum depth
         self.index += 1
         if self.camera_point is not None and self.target_point is not None:
@@ -898,6 +902,8 @@ class StaticCamera(object):
             self.target_point = target_point
             return get_camera_image_at_pose(camera_point, target_point, self.camera_matrix, far=far,
                                  tiny=False, segment=segment, segment_links=segment_links, **kwargs)
+        if camera_pose is not None:
+            self.set_pose(camera_pose)
         return get_image_at_pose(self.get_pose(), self.camera_matrix, far=far,
                                  tiny=False, segment=segment, segment_links=segment_links, **kwargs)
 
@@ -939,3 +945,17 @@ class StaticCamera(object):
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, self.name)
 
+
+def add_robot_cameras(robot, camera_frames, max_depth=2.5, camera_matrix=CAMERA_MATRIX, draw=False,
+                      verbose=False, **kwargs):
+    """ for both world_builder.world.World class and lisdf_tools.lisdf_loader.World class """
+    cameras = {}
+    for camera_frame, draw_frame, rel_pose, camera_name in camera_frames:
+        if verbose:
+            print_pink(f"adding camera {camera_name} at link{camera_frame}")
+        camera = Camera(robot, camera_frame=camera_frame, camera_matrix=camera_matrix,
+                        max_depth=max_depth, draw_frame=draw_frame, rel_pose=rel_pose, **kwargs)
+        if draw:
+            camera.draw()
+        cameras[camera_name] = camera
+    return cameras

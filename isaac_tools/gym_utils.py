@@ -14,9 +14,13 @@ from world_builder.world_utils import get_camera_zoom_in
 from pybullet_tools.bullet_utils import nice, equal, get_datetime
 from pybullet_tools.utils import pose_from_tform, get_pose, get_joint_name, get_joint_position, \
     get_movable_joints, Euler, quat_from_euler
-from pybullet_tools.logging_utils import print_pink, print_green, print_debug, print_blue
+from pybullet_tools.logging_utils import print_pink, print_green, print_debug, print_blue, \
+    print_cyan, print_red
 
 from isaac_tools.urdf_utils import load_lisdf, test_is_robot
+# from isaac_tools.gym_world import create_single_world
+from isaac_tools.isaac_gym_world import create_single_world
+
 from lisdf_tools.image_utils import images_to_mp4, images_to_gif
 from pigi_tools.data_utils import load_planning_config, get_worlds_aabb, \
     get_instance_info, exist_instance
@@ -26,7 +30,8 @@ ASSET_PATH = join(dirname(__file__), '..', 'assets')
 
 def load_one_world(gym_world, lisdf_dir, offset=None, loading_effect=False,
                    robots=True, world_index=None, assets=None, 
-                   update_viewer=True, test_camera_pose=False, save_obj_shots=False, **kwargs):
+                   update_viewer=True, test_camera_pose=False, save_obj_shots=False,
+                   debug_gym_installation=True, **kwargs):
     movable_keywords = ['bottle', 'medicine', 'veggie', 'meat', 'braiser']
     cabinet_keywards = ['cabinettop', 'cabinettall', 'minifridge', 'dishwasher', 'microwavehanging'] ## , 'ovencounter'
     loading_objects = {}
@@ -40,6 +45,8 @@ def load_one_world(gym_world, lisdf_dir, offset=None, loading_effect=False,
 
     if save_obj_shots:
         load_obj_shots_bg(gym_world)
+
+    print_debug('... started loading objects')
 
     for name, path, scale, is_fixed, pose, positions in load_lisdf(lisdf_dir, robots=robots, **kwargs):
         is_robot = test_is_robot(name)
@@ -79,7 +86,8 @@ def load_one_world(gym_world, lisdf_dir, offset=None, loading_effect=False,
             if assets is None or path not in assets:
                 asset = gym_world.simulator.load_asset(
                     asset_file=path, root=None, fixed_base=is_fixed or is_robot,  # y_up=is_robot,
-                    gravity_comp=is_robot, collapse=False, vhacd=False)
+                    gravity_comp=is_robot, collapse=False, vhacd=False
+                )
                 if assets is not None:
                     assets[path] = asset
             else:
@@ -125,8 +133,14 @@ def load_one_world(gym_world, lisdf_dir, offset=None, loading_effect=False,
 
         gym_world.set_pose(actor, pose)
 
+        # if debug_gym_installation:
+        #     gym_world.simulator.wait_for_duration()
+        #     sys.exit()
+
     if update_viewer:
         gym_world.simulator.update_viewer()
+
+    print_debug('... finished loading objects')
     return assets, (loading_objects, loading_positions)
 
 
@@ -134,8 +148,6 @@ def load_lisdf_isaacgym(lisdf_dir, robots=True, pause=False, loading_effect=Fals
                         camera_point=(8.5, 2.5, 3), target_point=(0, 2.5, 0), return_wconf=False,
                         camera_width=2560, camera_height=1600, load_cameras=False,
                         save_obj_shots=False, **kwargs):
-    sys.path.append('/home/yang/Documents/playground/srl_stream/src')
-    from srl_stream.gym_world import create_single_world, default_arguments
 
     if 'full_kitchen' in lisdf_dir or 'mm_' in lisdf_dir or 'tt_' in lisdf_dir:
         config = load_planning_config(lisdf_dir)
@@ -151,7 +163,7 @@ def load_lisdf_isaacgym(lisdf_dir, robots=True, pause=False, loading_effect=Fals
                f"\tcamera_width = {camera_width},\tcamera_height = {camera_height}\n")
 
     # TODO: Segmentation fault - possibly cylinders & mimic joints
-    gym_world = create_single_world(args=default_arguments(use_gpu=False), spacing=5.)
+    gym_world = create_single_world(use_gpu=False, spacing=5.)
     gym_world.set_viewer_target(camera_point, target=target_point)
 
     camera = gym_world.create_camera(width=camera_width, height=camera_height, fov=60)
@@ -339,7 +351,8 @@ def update_gym_world_by_pb_world(gym_world, pb_world, pause=False, verbose=False
         joints = gym_world.get_joint_names(actor)
         positions = list(map(joint_state.get, joints))
         gym_world.set_joint_positions(actor, positions)
-    if offset is not None:
+
+    if offset is not None or True:
         gym_world.simulator.update_viewer()
     if pause:
         gym_world.wait_if_gui()
@@ -372,11 +385,9 @@ def load_envs_isaacgym(ori_dirs, robots=True, pause=False, num_rows=5, num_cols=
                         # camera_width=2560, camera_height=1600,
                         camera_width=3840, camera_height=2160,
                        loading_effect=False, **kwargs):
-    sys.path.append('/home/yang/Documents/playground/srl_stream/src')
-    from srl_stream.gym_world import create_single_world, default_arguments
     from tqdm import tqdm
 
-    gym_world = create_single_world(args=default_arguments(use_gpu=True), spacing=0)
+    gym_world = create_single_world(use_gpu=True, spacing=0)
     gym_world.set_viewer_target(camera_point, target=target_point)
 
     camera = gym_world.create_camera(width=camera_width, height=camera_height, fov=60)
@@ -469,50 +480,14 @@ def take_obj_shot(gym_world, actor, img_file, pose, direction='horizonal'):
 ##################################################################
 
 
-def init_isaac_world():
-    from isaacgym import gymapi, gymutil
-    args = gymutil.parse_arguments()
-
-    # initialize gym
-    gym = gymapi.acquire_gym()
-
-    # configure sim
-    sim_params = gymapi.SimParams()
-    sim_params.dt = dt = 1.0 / 60.0
-    if args.physics_engine == gymapi.SIM_FLEX:
-        pass
-    elif args.physics_engine == gymapi.SIM_PHYSX:
-        sim_params.physx.solver_type = 1
-        sim_params.physx.num_position_iterations = 6
-        sim_params.physx.num_velocity_iterations = 0
-        sim_params.physx.num_threads = args.num_threads
-        sim_params.physx.use_gpu = args.use_gpu
-
-    sim_params.use_gpu_pipeline = False
-    if args.use_gpu_pipeline:
-        print("WARNING: Forcing CPU pipeline.")
-
-    sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, args.physics_engine, sim_params)
-
-    # add ground plane
-    plane_params = gymapi.PlaneParams()
-    gym.add_ground(sim, plane_params)
-
-    # create viewer
-    viewer = gym.create_viewer(sim, gymapi.CameraProperties())
-    if viewer is None:
-        print("*** Failed to create viewer")
-        quit()
-
-    return gym, sim, viewer
-
-
 def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_path='gym_replay.gif',
                           time_step=0.5, verbose=False, plan=None, return_wconf=False,
                           world_index=None, body_map=None, save_gif=True, save_mp4=False,
                           camera_movement=None, ignore_actors=None,
                           frame_gap=3, return_frames=False): ## 3 for single world, 5 for longer horizon
-    """ act out the whole plan and event in the world without observation/replanning """
+    """ act out the whole plan and event in the world without observation or replaning
+    generate videos from scene camera and robot camera
+    """
     from world_builder.actions import adapt_action, apply_commands
     from world_builder.world import State
     from world_builder.actions import Action, AttachObjectAction
@@ -522,8 +497,12 @@ def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_p
     if commands is None:
         return
     state_event = State(problem.world)
-    camera = None if gym_world is None else gym_world.cameras[0]
-    filenames = []
+
+    num_cameras = len(gym_world.cameras)
+    camera_names = ['scene', 'head', 'wrist']
+    filenames_by_view = {k: [] for k in camera_names}
+    # camera = None if gym_world is None else gym_world.cameras[0]
+
     wconfs = []
     for i, action in enumerate(commands):
         if verbose:
@@ -544,26 +523,38 @@ def record_actions_in_gym(problem, commands, gym_world=None, img_dir=None, gif_p
                 print(action.grasp)
             wait_for_duration(time_step)
 
-            interpolate_camera_pose(gym_world, i, len(commands), camera_movement)
-
             """ update gym world """
             update_gym_world_by_pb_world(gym_world, problem.world, ignore_actors=ignore_actors)
-            if img_dir is not None and (frame_gap == 0 or i % frame_gap == 0):
-                img_file = join(img_dir, f'{i}.npy')
-                # gym_world.get_rgba_image(camera, image_type='rgb', filename=img_file)  ##
-                img = gym_world.get_rgba_image(camera)
-                with open(img_file, 'wb') as f:
-                    np.save(f, img)
-                filenames.append(img_file)
+
+            for j in range(num_cameras):
+                camera = gym_world.cameras[j]
+                camera_name = camera_names[j]
+                if j == 0:
+                    interpolate_camera_pose(gym_world, i, len(commands), camera_movement)
+
+                view_dir = join(img_dir, camera_name)
+                if i == 0:
+                    os.makedirs(view_dir)
+
+                if img_dir is not None and (frame_gap == 0 or i % frame_gap == 0):
+                    img_file = join(view_dir, f'{i}.npy')
+                    # gym_world.get_rgba_image(camera, image_type='rgb', filename=img_file)  ##
+                    img = gym_world.get_rgba_image(camera)
+                    with open(img_file, 'wb') as f:
+                        np.save(f, img)
+                    filenames_by_view[camera_name].append(img_file)
 
     if return_wconf:
         return wconfs
-    if len(filenames) > 0:
-        print_debug(f"saved {len(filenames)} images to make mp4")
-        if return_frames:
-            return filenames
-        print_green(f'loading {filenames[0]} to {gif_path}')
-        save_gym_run(img_dir, gif_path, filenames, save_gif=save_gif, save_mp4=save_mp4)
+
+    for camera_name, filenames in filenames_by_view.items():
+        if len(filenames) > 0:
+            print_debug(f"\ncamera name = {camera_name}\tsaved {len(filenames)} images to make mp4")
+            if return_frames:
+                return filenames
+            this_gif_path = gif_path.replace('.gif', f'_{camera_name}.gif')
+            print_green(f'\tcombining numpy files like {filenames[0]}\n\t to make gif {this_gif_path}')
+            save_gym_run(img_dir, this_gif_path, filenames, save_gif=save_gif, save_mp4=save_mp4)
     return state_event.attachments
 
 
@@ -574,7 +565,7 @@ def save_gym_run(img_dir, gif_path, filenames, save_gif=True, save_mp4=True):
     if save_mp4:
         mp4_path = join(gif_path.replace('.gif', '.mp4'))  ## f'_{get_datetime()}.mp4'
         images_to_mp4(filenames, mp4_path=mp4_path)
-        print_green('created mp4 {} with {} frames\n'.format(mp4_path, len(filenames)))
+        print_green('\tcreated mp4 {} with {} frames\n'.format(mp4_path, len(filenames)))
         return filenames
 
 

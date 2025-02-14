@@ -20,13 +20,11 @@ from pybullet_tools.pr2_primitives import Trajectory, Command, Conf, Trajectory,
 from pybullet_tools.flying_gripper_utils import set_se3_conf, get_pull_handle_motion_gen
 from pybullet_tools.logging_utils import print_debug
 
-from world_builder.world import World
+from world_builder.world import World, State
 
 from robot_builder.robot_utils import close_until_collision
 
 from lisdf_tools.image_utils import RAINBOW_COLORS, save_seg_mask
-
-from world_builder.world import State
 
 PULL_UNTIL = 1.8
 NUDGE_UNTIL = 2.3
@@ -616,7 +614,7 @@ def adapt_action(a, problem, plan, verbose=True):
 
 
 def apply_commands(problem, actions, time_step=0.5, verbose=True, plan=None, body_map=None,
-                   save_composed_jpg=False, save_gif=False, check_collisions=False,
+                   save_composed_jpg=False, save_gif=False, save_observation_mp4=False, check_collisions=False,
                    action_by_action=False, cfree_range=0.1, visualize_collisions=False):
     """ act out the whole plan and event in the world without observation/replanning """
     if actions is None:
@@ -624,7 +622,12 @@ def apply_commands(problem, actions, time_step=0.5, verbose=True, plan=None, bod
     world = problem.world
     state_event = State(world)
     episodes = []
-    seg_images = []
+    camera_names = ['scene']
+    robot_cameras = []
+    if save_observation_mp4:
+        robot_cameras = world.robot_cameras
+        camera_names += list(robot_cameras.keys())
+    seg_images = {k: [] for k in camera_names}
     recording = False
     last_name = None
     last_object = None
@@ -728,8 +731,8 @@ def apply_commands(problem, actions, time_step=0.5, verbose=True, plan=None, bod
                 elif 'Detach' in name:
                     recording = False
                     if save_composed_jpg:
-                        episodes.append((seg_images, isinstance(last_object, int)))
-                        seg_images = []
+                        episodes.append((seg_images['scene'], isinstance(last_object, int)))
+                        seg_images['scene'] = []
         elif 'MoveArm' in name:
             record_img = (i % 5 == 0)
             if i + 1 < len(actions):
@@ -794,13 +797,19 @@ def apply_commands(problem, actions, time_step=0.5, verbose=True, plan=None, bod
             if not record_img:
                 i += 1
                 continue
+
             if save_composed_jpg:
                 imgs = world.camera.get_image(segment=True, segment_links=True)
                 body_name = recording
-                seg_images.append(save_seg_mask(imgs, obj_keys[body_name], verbose=False))
+                seg_images['scene'].append(save_seg_mask(imgs, obj_keys[body_name], verbose=False))
+
             elif save_gif:
+                if save_observation_mp4:
+                    for camera_name, camera in robot_cameras.items():
+                        imgs = camera.get_image()
+                        seg_images[camera_name].append(imgs.rgbPixels[:, :, :3])
                 imgs = world.camera.get_image()
-                seg_images.append(imgs.rgbPixels[:, :, :3])
+                seg_images['scene'].append(imgs.rgbPixels[:, :, :3])
 
         ############# keyboard control (if ran in terminal) ##################
 
@@ -823,7 +832,7 @@ def apply_commands(problem, actions, time_step=0.5, verbose=True, plan=None, bod
         return False
     if save_composed_jpg:
         if recording:
-            episodes.append((seg_images, isinstance(last_object, int)))
+            episodes.append((seg_images['scene'], isinstance(last_object, int)))
         return episodes
     if save_gif:
         return seg_images

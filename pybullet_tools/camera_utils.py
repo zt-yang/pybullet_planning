@@ -220,7 +220,7 @@ def process_depth_pixels(pixels):
     return n.astype('uint8')
 
 
-def visualize_camera_image(image, index=0, img_dir='.', rgb=False, rgbd=False):
+def visualize_camera_image(image, index=0, img_dir='.', rgb=True, rgbd=False):
     import matplotlib.pyplot as plt
 
     if not isdir(img_dir):
@@ -284,3 +284,23 @@ def get_obj_keys_for_segmentation(indices, unique=None):
                 keys = [(k[0], l) for l in get_door_links(k[0], k[1])]
         obj_keys[name] = keys
     return obj_keys
+
+
+def make_observation_collages(images_by_camera, one_col=False, one_row=False):
+    collages = []
+    camera_keys = list(images_by_camera.keys())
+    duration = len(images_by_camera[camera_keys[0]])
+    for t in range(duration):
+        images = [lst[t] for lst in list(images_by_camera.values())]
+        if one_col:
+            collage = np.vstack(images)
+        elif one_row:
+            collage = np.hstack(images)
+        else:
+            obs_11, obs_12, obs_21, obs_22 = images
+            collage = np.vstack([
+                np.hstack([obs_11, obs_12]),
+                np.hstack([obs_21, obs_22])
+            ])
+        collages += [collage]
+    return collages

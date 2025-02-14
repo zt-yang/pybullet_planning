@@ -1,10 +1,8 @@
 import numpy as np
 
 from pybullet_tools.bullet_utils import BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, \
-    draw_base_limits as draw_base_limits_bb, BASE_LIMITS, CAMERA_FRAME, CAMERA_MATRIX, EYE_FRAME
-from pybullet_tools.utils import LockRenderer, HideOutput, PI
-
-from world_builder.entities import Camera
+    draw_base_limits as draw_base_limits_bb, BASE_LIMITS, CAMERA_MATRIX
+from pybullet_tools.utils import LockRenderer, HideOutput, PI, unit_pose
 
 from robot_builder.robots import PR2Robot, FEGripper, SpotRobot
 from robot_builder.robot_utils import create_mobile_robot, BASE_GROUP, BASE_TORSO_GROUP
@@ -72,8 +70,7 @@ def create_pr2_robot(world, base_q=(0, 0, 0), dual_arm=False, use_torso=True,
     # print('initial base conf', get_group_conf(robot, 'base'))
     # set_camera_target_robot(robot, FRONT=True)
 
-    camera = Camera(robot, camera_frame=CAMERA_FRAME, camera_matrix=CAMERA_MATRIX, max_depth=2.5, draw_frame=EYE_FRAME)
-    robot.cameras.append(camera)
+    robot.add_cameras(max_depth=2.5, camera_matrix=CAMERA_MATRIX, verbose=True)
 
     ## don't show depth and segmentation data yet
     # if args.camera: robot.cameras[-1].get_image(segment=args.segment)

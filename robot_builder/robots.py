@@ -2,7 +2,8 @@ import math
 import time
 import copy
 import random
-from os.path import basename, abspath, join
+import os
+from os.path import basename, abspath, join, isdir
 from collections import defaultdict
 import pprint
 
@@ -12,9 +13,9 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
     ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles, \
     interpolate_poses, Pose, Euler, quat_from_euler, get_bodies, get_all_links, PI, RED, \
     is_darwin, wait_for_user, YELLOW, euler_from_quat, wait_unlocked, set_renderer, \
-    sub_inverse_kinematics, Point, get_collision_fn, get_aabb_center, get_max_limit
-
-from pybullet_tools.bullet_utils import equal, nice, is_tuple, get_links_collided, \
+    sub_inverse_kinematics, Point, get_collision_fn, get_aabb_center, get_max_limit, get_camera_matrix
+from pybullet_tools.logging_utils import print_debug, print_pink
+from pybullet_tools.bullet_utils import equal, nice, is_tuple, get_links_collided, CAMERA_MATRIX, \
     collided, query_yes_no, has_tracik, is_mesh_entity, get_rotation_matrix
 from pybullet_tools.camera_utils import set_camera_target_body
 from pybullet_tools.pose_utils import Attachment
@@ -27,7 +28,7 @@ from pybullet_tools.general_streams import get_handle_link, get_grasp_list_gen, 
 from pddl_domains.pddl_utils import remove_stream_by_name, remove_predicate_by_name, \
     remove_all_streams_except_name, remove_operator_by_name
 
-from world_builder.entities import Robot
+from world_builder.entities import Robot, add_robot_cameras
 from world_builder.world_utils import load_asset
 
 from robot_builder.robot_utils import get_robot_group_joints, close_until_collision, \
@@ -42,6 +43,7 @@ class RobotAPI(Robot):
     grasp_direction = Point(x=+1)  ## used by is_top_grasp
     joint_groups = dict()
     cloned_finger_link = None
+    camera_frames = []
 
     def __init__(self, body, move_base=True, max_distance=0.0, separate_base_planning=False,
                  self_collisions=SELF_COLLISIONS, **kwargs):
@@ -453,6 +455,35 @@ class RobotAPI(Robot):
     def get_collisions_log(self):
         return {k: v for k, v in sorted(self.collided_body_link.items(), key=lambda item: item[1], reverse=True)}
 
+    ## ==============================================================================
+
+    # def get_camera_link_pose(self, camera_name):
+    #     camera, link_name, rel_pose = self.cameras[camera_name]
+    #     link = link_from_name(self.body, link_name)
+    #     pose = multiply(get_link_pose(self.body, link), rel_pose)
+    #     return camera, pose
+    #
+    def add_cameras(self, **kwargs):
+        self.cameras = add_robot_cameras(self.body, self.camera_frames, **kwargs)
+
+    def visualize_image_by_name(self, camera_name, index=None, img_dir=None,
+                                segment=False, far=8, segment_links=False, **kwargs):
+        from pybullet_tools.camera_utils import visualize_camera_image
+        # camera, pose = self.get_camera_link_pose(camera_name)
+        # camera.set_pose(pose)
+        camera = self.cameras[camera_name]
+        image = camera.get_image(segment=segment, segment_links=segment_links, far=far)
+        if index is None:
+            index = camera.index
+        if img_dir is None:
+            img_dir = join(self.img_dir, camera_name)
+            if not isdir(img_dir):
+                os.makedirs(img_dir)
+        print_debug(f"img_dir={img_dir}\tindex={index}")
+        visualize_camera_image(image, index, img_dir=img_dir, **kwargs)
+
+    ## ==============================================================================
+
     def get_lisdf_string(self):
         return """
     <include name="{{name}}">
@@ -472,6 +503,8 @@ class MobileRobot(RobotAPI):
         super(MobileRobot, self).__init__(body, **kwargs)
         self.use_torso = use_torso
         self.base_group = BASE_TORSO_GROUP if use_torso else BASE_GROUP
+        self.cameras = {}
+        self.img_dir = join('visualization', 'robot_images')
 
     def get_arm_joints(self, arm):
         raise NotImplementedError('should implement this for MobileRobot!')
@@ -769,7 +802,7 @@ class SpotRobot(MobileRobot):
         return Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
 
 
-from pybullet_tools.pr2_utils import open_arm
+from pybullet_tools.pr2_utils import open_arm, CAMERA_FRAME, EYE_FRAME
 
 
 class PR2Robot(MobileRobot):
@@ -784,6 +817,12 @@ class PR2Robot(MobileRobot):
     torso_lift_joint = 'torso_lift_joint'
     head_pan_joint = 'head_pan_joint'
     head_tilt_joint = 'head_tilt_joint'
+
+    camera_frames = [
+        (CAMERA_FRAME, EYE_FRAME, unit_pose(), 'head'),
+        ('r_wrist_roll_link', 'r_wrist_roll_link', unit_pose(), 'right_wrist'),
+        ('l_wrist_roll_link', 'l_wrist_roll_link', unit_pose(), 'left_wrist'),
+    ]
 
     def __init__(self, body, dual_arm=False, **kwargs):
         super(PR2Robot, self).__init__(body, **kwargs)
@@ -1116,7 +1155,6 @@ class PR2Robot(MobileRobot):
     # def inverse_kinematics(self, arm, gripper_pose, obstacles, attempts=10, verbose=True, visualize=False):
     #     from pybullet_tools.ikfast.pr2.ik import pr2_inverse_kinematics
     #     return pr2_inverse_kinematics(self.body, arm, gripper_pose, custom_limits=self.custom_limits)
-
 
 ## -------------------------------------------------------------------------
 

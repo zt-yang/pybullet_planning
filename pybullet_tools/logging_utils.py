@@ -78,6 +78,10 @@ def print_blue(text):
     print_debug(text, 'blue')
 
 
+def print_cyan(text):
+    print_debug(text, 'cyan')
+
+
 ## -----------------------------------------------------------
 
 

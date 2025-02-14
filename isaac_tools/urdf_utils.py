@@ -11,7 +11,7 @@ def test_is_robot(name, robots=["pr2"]):
     return any(name.startswith(prefix) for prefix in robots)
 
 
-def load_lisdf(lisdf_dir, scene_scale=1., robots=False, skip=[], verbose=True):
+def load_lisdf(lisdf_dir, scene_scale=1., robots=False, skip=[], verbose=False):
     # TODO: apply within load_lisdf_synthesizer
     lisdf_path = join(lisdf_dir, 'scene.lisdf')
     world_xml = untangle.parse(lisdf_path).sdf.world
@@ -22,7 +22,9 @@ def load_lisdf(lisdf_dir, scene_scale=1., robots=False, skip=[], verbose=True):
         model_states = {s['name']: {j['name']: eval(j.angle.cdata) for j in s.joint} for s in model_states}
 
     skip += ['floor1']
-    for obj_xml in world_xml.include + [world_xml.model]:
+    for obj_xml in world_xml.include + world_xml.model:
+        # print()
+        # print(obj_xml)
         name = obj_xml._attributes["name"]
         if (name in skip) or (not robots and test_is_robot(name)): # TODO: generalize
             continue
@@ -165,7 +167,6 @@ def load_urdf_links(world, model, verbose=False):
 
 def load_lisdf_nvisii(lisdf_dir, **kwargs):
     from srl_stream.visii_world import VisiiPyBulletWorld, VisiiWorld, visii_from_pybullet, create_link
-    #from srl_stream.visii_render import VisiiRenderer
     from srl_stream.trimesh_world import TrimeshWorld
     from pybullet_planning.pybullet_tools.utils import Pose, Euler, PI, pose_from_tform, multiply, invert
     import yourdfpy
