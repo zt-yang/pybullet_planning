@@ -1,14 +1,18 @@
+from collections import defaultdict
+
 import numpy as np
 import copy
 
 from pybullet_tools.utils import joint_from_name, get_link_subtree, link_from_name, clone_body, \
     set_all_color, TRANSPARENT, get_max_limit, get_min_limit, get_extend_fn, get_moving_links, \
     set_joint_positions, pairwise_collision, get_link_pose, multiply, set_pose, euler_from_quat, \
-    RED, set_color, get_link_name, get_joints, is_movable, wait_for_user, quat_from_euler, set_renderer
+    RED, set_color, get_link_name, get_joints, is_movable, wait_for_user, quat_from_euler, set_renderer, \
+    get_movable_joints, get_joint_name
 from pybullet_tools.bullet_utils import BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, \
     draw_base_limits as draw_base_limits_bb, BASE_LIMITS, nice
 from pybullet_tools.grasp_utils import enumerate_rotational_matrices, \
     enumerate_translation_matrices, test_transformations_template
+from pybullet_tools.logging_utils import bcolors, print_debug
 
 BASE_GROUP = 'base'
 TORSO_GROUP = 'torso'
@@ -147,7 +151,7 @@ def get_robot_base_custom_limits_dict(robot, base_limits, yaw_limit=None, torso_
 def create_mobile_robot(world, load_robot_urdf_fn, robot_class, base_group, joint_groups,
                         base_q=None, custom_limits=BASE_LIMITS, use_torso=True,
                         draw_base_limits=False, max_velocities=BASE_VELOCITIES, robot=None,
-                        return_body=False, **kwargs):
+                        return_body=False, debug_joint_names=True, **kwargs):
 
     if base_q is None:
         base_q = [0] * 4 if use_torso else [0] * 3
@@ -170,8 +174,36 @@ def create_mobile_robot(world, load_robot_urdf_fn, robot_class, base_group, join
     if return_body:
         return robot.body
 
+    ## print joints by potential joint groups
+    if debug_joint_names:
+        print_potential_joint_groups(robot)
+
     world.add_robot(robot, max_velocities=max_velocities)
 
     for arm in robot.get_all_arms():
         robot.open_arm(arm)
     return robot
+
+
+def print_potential_joint_groups(robot):
+    joints = {get_joint_name(robot, j): j for j in get_movable_joints(robot)}
+    keywords = ['left', 'right', 'head', 'waist', 'torso']
+    joints_by_group = defaultdict(list)
+    for name, joint in joints.items():
+        found = False
+        for k in keywords:
+            if k in name:
+                joints_by_group[k].append(name)
+                found = True
+                break
+        if not found:
+            joints_by_group['unknown'].append(name)
+
+    styles = list(bcolors.mapping)
+    for i, (group, joints) in enumerate(joints_by_group.items()):
+        style = styles[i]
+        print_debug(f"\n{group} ({len(joints)})", style=style)
+        for name in joints:
+            print_debug("\t"+name, style=style)
+
+

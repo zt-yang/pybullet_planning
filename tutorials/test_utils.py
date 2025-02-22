@@ -52,7 +52,9 @@ def get_test_world(robot='feg', semantic_world=False, draw_origin=False,
     else:
         from lisdf_tools.lisdf_loader import World
         world = World()
-    build_skill_domain_robot(world, robot, **kwargs)
+
+    if robot is not None:
+        build_skill_domain_robot(world, robot, **kwargs)
     return world
 
 
