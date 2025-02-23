@@ -79,7 +79,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="meshes/palm.dae" scale="0.1 0.1 0.1" />
+        <mesh filename="meshes/palm_left.dae" scale="0.1 0.1 0.1" />
       </geometry>
       <material name="Grey" />
     </visual>
