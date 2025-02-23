@@ -1,5 +1,5 @@
 import os
-from os.path import join, isdir, isfile
+from os.path import join, isdir, isfile, expanduser, abspath, dirname
 import random
 import numpy as np
 import torch
@@ -12,11 +12,13 @@ import sys
 from trimesh.bounds import oriented_bounds
 from trimesh.transformations import translation_from_matrix, euler_from_matrix, translation_matrix
 
+HOME_DIR = expanduser("~")
+absjoin = lambda *args, **kwargs: abspath(join(*args, **kwargs))
 
-dexgraspnet_path = "/home/zhutianyang/Documents/DexGraspNet/grasp_generation"
+dexgraspnet_path = join(HOME_DIR, "Documents/DexGraspNet/grasp_generation")
 sys.path.append(dexgraspnet_path)
 
-temp_lib_path = "/home/zhutianyang/miniconda3/envs/dexgraspnet/lib/python3.7/site-packages"
+temp_lib_path = join(HOME_DIR, "miniconda3/envs/dexgraspnet/lib/python3.7/site-packages")
 sys.path.append(temp_lib_path)
 import transforms3d
 
@@ -34,13 +36,23 @@ hand_file = "mjcf/shadow_hand_vis.xml" if use_visual_mesh else "mjcf/shadow_hand
 
 USE_TEST_MESHDATA = False
 if USE_TEST_MESHDATA:
-    mesh_path = join(dexgraspnet_path, "../data/meshdata")
-    data_path = join(dexgraspnet_path, "../data/dataset")
+    mesh_path = absjoin(dexgraspnet_path, "../data/meshdata")
+    data_path = absjoin(dexgraspnet_path, "../data/dataset")
 else:
-    mesh_path = join(dexgraspnet_path, "../data/downloaded/meshdata")
-    data_path = join(dexgraspnet_path, "../data/downloaded/dexgraspnet")
+    mesh_path = absjoin(dexgraspnet_path, "../data/downloaded/meshdata")
+    data_path = absjoin(dexgraspnet_path, "../data/downloaded/dexgraspnet")
 filtered_grasp_path = data_path + '_filtered'
-os.makedirs(filtered_grasp_path, exist_ok=True)
+# os.makedirs(filtered_grasp_path, exist_ok=True)
+
+rainbow_colors_rgb = [
+    (255, 0, 0),        # Red
+    (255, 127, 0),      # Orange
+    (255, 255, 0),      # Yellow
+    (0, 255, 0),        # Green
+    (0, 0, 255),        # Blue
+    (75, 0, 130),       # Indigo
+    (148, 0, 211)       # Violet
+]
 
 
 def get_grasp_pose(qpos):
@@ -49,13 +61,11 @@ def get_grasp_pose(qpos):
     return trans, euler
 
 
-def get_hand_pose(qpos, tensorize=False):
+def get_hand_pose(qpos):
     trans, euler = get_grasp_pose(qpos)
     rot = np.array(transforms3d.euler.euler2mat(*euler))
     rot = rot[:, :2].T.ravel().tolist()
     conf = trans + rot + [qpos[name] for name in joint_names]
-    if tensorize:
-        return torch.tensor(conf, dtype=torch.float, device="cpu").unsqueeze(0)
     return conf
 
 
@@ -93,6 +103,7 @@ def load_sem_assets():
 def load_hand_model(hand_file, grasp_datapoint, color=[200, 200, 250, 255]):
     from utils.hand_model_lite import HandModelMJCFLite
     hand_pose = get_hand_pose(grasp_datapoint['qpos'])
+    hand_pose = torch.tensor(hand_pose, dtype=torch.float, device="cpu").unsqueeze(0)
     scale = 1 / grasp_datapoint["scale"]
     hand_model = HandModelMJCFLite(hand_file, "mjcf/meshes")
     hand_model.set_parameters(hand_pose)
@@ -119,28 +130,26 @@ def load_plane(object_mesh, manual_rotation=True, color=[50, 50, 50, 255]):
 
 def load_grasp_data(grasp_object, filtered=False):
     root = data_path + '_filtered' if filtered else data_path
-    return np.load(join(root, grasp_object + ".npy"), allow_pickle=True)
+    grasp_data_path = join(root, grasp_object + ".npy")
+    return np.load(grasp_data_path, allow_pickle=True) if isfile(grasp_data_path) else None
 
 
 def save_grasp_data(grasp_object, filtered_grasp_data):
-    np.save(os.path.join(data_path + '_filtered', grasp_object + ".npy"), filtered_grasp_data, allow_pickle=True)
+    np.save(join(data_path + '_filtered', grasp_object + ".npy"), filtered_grasp_data, allow_pickle=True)
 
 
-def random_sample_object(category='unknown', grasp_object_dict=None):
-    ## randomly choose one object to grasp from
-    if grasp_object_dict is None:
-        grasp_object_dict = load_sem_assets()
-    grasp_object = random.choice(grasp_object_dict[category])
+def load_object(category='unknown', grasp_object: str = None, grasp_object_dict=None, visualize=False):
+    if grasp_object is None:
+        ## randomly choose one object to grasp from
+        if grasp_object_dict is None:
+            grasp_object_dict = load_sem_assets()
+        grasp_object = random.choice(grasp_object_dict[category])
 
     grasp_data = load_grasp_data(grasp_object, filtered=False)
     print(f'choosing object {grasp_object} with {len(grasp_data)} grasps')
-    return grasp_data, grasp_object
 
-
-def random_load_object(category='unknown', grasp_object_dict=None, visualize=False):
-    grasp_data, grasp_object = random_sample_object(category, grasp_object_dict)
-
-    object_mesh_path = os.path.join(mesh_path, grasp_object, "coacd/decomposed.obj")
+    object_mesh_path = join(mesh_path, grasp_object, "coacd/decomposed.obj")
+    print(object_mesh_path)
     object_mesh = trimesh.load(object_mesh_path)
     plane = load_plane(object_mesh)
 
@@ -160,6 +169,9 @@ def grasp_collide_with_plane(cm, hand_mesh, debug=False):
 
 def filter_grasp(grasp_object, grasp_data, plane, object_mesh=None, visualize=False):
     """ among 240 grasps of sem-Bottle-a86d587f38569fdf394a7890920ef7fd, 90 are collision free from table plane """
+    if load_grasp_data(grasp_object, filtered=True) is not None:
+        return
+
     cm = trimesh.collision.CollisionManager()
     cm.add_object('plane', plane)
 
@@ -170,6 +182,55 @@ def filter_grasp(grasp_object, grasp_data, plane, object_mesh=None, visualize=Fa
             filtered_grasp_data.append(grasp_datapoint)
             if len(filtered_grasp_data) == 1 and visualize:
                 trimesh.Scene([object_mesh, plane, hand_mesh]).show()
-    print(f"among {len(grasp_data)} grasps of {grasp_object}, {len(filtered_grasp_data)} are collision free from table plane")
+    print(f"{len(filtered_grasp_data)} out of {len(grasp_data)} grasps of {grasp_object} are collision free from table plane")
 
     save_grasp_data(grasp_object, filtered_grasp_data)
+
+
+def show_k_grasps(grasp_object, plane, object_mesh, k=7, visualize=False):
+    filtered_grasp_data = load_grasp_data(grasp_object, filtered=True)
+    filtered_grasp_data = filtered_grasp_data[:min(k, len(filtered_grasp_data))]
+    meshes = [object_mesh, plane]
+    for i, grasp_datapoint in enumerate(filtered_grasp_data):
+        meshes.append(load_hand_model(hand_file, grasp_datapoint, color=rainbow_colors_rgb[i%7]))
+    if visualize:
+        trimesh.Scene(meshes).show()
+    return meshes
+
+
+## ------------------------------------------------------------------------------------------------
+
+
+def fix_dexgraspnet_urdf(object_mesh_path):
+    """ to be loaded into pybullet `<mass value="10.0"/>` must exist inside `<inertial>` tags. """
+    new_file_name = object_mesh_path.replace('.urdf', '_fixed.urdf')
+    if not isfile(new_file_name):
+        lines = open(object_mesh_path, 'r').readlines()
+        new_lines = []
+        for line in lines:
+            if '<inertia ' in line:
+                new_lines.append(line[:line.index('<inertia ')]+'<mass value="10.0"/>\n')
+            new_lines.append(line)
+
+        with open(new_file_name, 'w') as f:
+            f.write(''.join(new_lines))
+    return new_file_name
+
+
+def load_object_in_pybullet(grasp_object, scale, add_plane=True):
+    from pybullet_tools.utils import HideOutput, load_model, get_aabb, create_box, TAN, Point, set_point, \
+        draw_pose, draw_aabb, unit_pose, get_aabb_extent
+    object_mesh_path = join(mesh_path, grasp_object, "coacd/coacd.urdf")
+    new_file_name = fix_dexgraspnet_urdf(object_mesh_path)
+    print(f'loading (file exists {isfile(object_mesh_path)}) with scale={scale}\t{object_mesh_path}')
+    with HideOutput(True):
+        body = load_model(new_file_name, scale=scale)
+
+    if add_plane:
+        draw_pose(unit_pose())
+        aabb = get_aabb(body)
+        # draw_aabb(aabb)
+        # print(aabb, get_aabb_extent(aabb))
+        floor = create_box(4, 4, 0.001, color=TAN)
+        set_point(floor, Point(z=-0.001 / 2. + aabb.lower[2]))
+    return body

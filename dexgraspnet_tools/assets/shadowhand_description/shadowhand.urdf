@@ -17,6 +17,9 @@
   <material name="White">
     <color rgba="1.0 1.0 1.0 1.0" />
   </material>
+
+  <!--
+
   <link name="forearm">
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0.09" />
@@ -37,10 +40,20 @@
       </geometry>
     </collision>
   </link>
+  <joint name="WRJ2" type="revolute">
+    <parent link="forearm" />
+    <child link="wrist" />
+    <origin rpy="0 0 0" xyz="0 -0.010 0.213" />
+    <axis xyz="0 1 0" />
+    <limit effort="5" lower="-0.52359877559829882" upper="0.17453292519943295" velocity="1.0" />
+    <dynamics damping="100.5" />
+  </joint>
+
+  -->
+
   <link name="wrist">
     <inertial>
-      <origin rpy="0 0 0" xyz="0 0.0 0.0" />
-
+      <origin rpy="0 0 0" xyz="0 0 0.02" /> <!-- z -y x -->
       <mass value="0.1" />
       <inertia ixx="0.120" ixy="0.0" ixz="0.0" iyy="0.148" iyz="0.0" izz="0.0438" />
     </inertial>
@@ -58,18 +71,18 @@
       </geometry>
     </collision>
   </link>
-  <joint name="WRJ2" type="revolute">
-    <parent link="forearm" />
-    <child link="wrist" />
-
-    <origin rpy="0 0 0" xyz="0 -0.010 0.213" />
-    <axis xyz="0 1 0" />
-    <limit effort="5" lower="-0.52359877559829882" upper="0.17453292519943295" velocity="1.0" />
+  <joint name="WRJ1" type="revolute">
+    <parent link="wrist" />
+    <child link="palm" />
+    <origin rpy="0 0 0" xyz="0 0 0.034" />
+    <axis xyz="1 0 0" />
+    <limit effort="5" lower="-0.78539816339744828" upper="0.6108652381980153" velocity="1.0" />
     <dynamics damping="100.5" />
   </joint>
+
   <link name="palm">
     <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0.035" />
+      <origin rpy="0 0 0" xyz="0 0 0" />  <!-- "0 0 0.035" -->
       <mass value="0.3" />
       <inertia ixx="0.5" ixy="0.0" ixz="0.0" iyy="0.5" iyz="0.0" izz="0.3" />
     </inertial>
@@ -81,20 +94,12 @@
       <material name="Grey" />
     </visual>
     <collision>
-      <origin rpy="0 0 0" xyz="0.005 0 0.035" />
+      <origin rpy="0 0 0" xyz="0 0 0" />  <!-- "0.005 0 0.035" -->
       <geometry name="palm_collision_geom">
         <box size="0.05 0.02 0.07" />
       </geometry>
     </collision>
   </link>
-  <joint name="WRJ1" type="revolute">
-    <parent link="wrist" />
-    <child link="palm" />
-    <origin rpy="0 0 0" xyz="0 0 0.034" />
-    <axis xyz="1 0 0" />
-    <limit effort="5" lower="-0.78539816339744828" upper="0.6108652381980153" velocity="1.0" />
-    <dynamics damping="100.5" />
-  </joint>
   <link name="ffknuckle">
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0" />
@@ -647,10 +652,12 @@
       </geometry>
     </collision>
   </link>
+
   <joint name="THJ5" type="revolute">
     <parent link="palm" />
     <child link="thbase" />
-    <origin rpy="0 0.785398163397 0" xyz="0.034 -0.0085 0.029" />
+    <!--origin rpy="0 0.785398163397 0" xyz="0.034 -0.0085 0.029" /-->
+    <origin rpy="0 0.785398163397 0" xyz="0.034 -0.009 0.029" />
     <axis xyz="0 0 -1.0" />
     <limit effort="100" lower="-1.047" upper="1.047" velocity="1.0" />
     <dynamics damping="50.5" />
@@ -677,12 +684,14 @@
       </geometry>
     </collision>
   </link>
+
   <joint name="THJ4" type="revolute">
     <parent link="thbase" />
     <child link="thproximal" />
     <origin rpy="0 0 0" xyz="0 0 0" />
     <axis xyz="1.0 0 0" />
-    <limit effort="100" lower="0" upper="1.309" velocity="1.0" />
+    <!--limit effort="100" lower="0" upper="1.309" velocity="1.0" /-->
+    <limit effort="100" lower="0" upper="1.222" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
   <link name="thhub">
@@ -707,12 +716,14 @@
       </geometry>
     </collision>
   </link>
+
   <joint name="THJ3" type="revolute">
     <parent link="thproximal" />
     <child link="thhub" />
     <origin rpy="0 0 0" xyz="0 0 0.038" />
     <axis xyz="1 0 0" />
-    <limit effort="100" lower="-0.2618" upper="0.2618" velocity="1.0" />
+    <!--limit effort="100" lower="-0.2618" upper="0.2618" velocity="1.0" /-->
+    <limit effort="100" lower="-0.209" upper="0.209" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
   <link name="thmiddle">
@@ -737,6 +748,7 @@
       </geometry>
     </collision>
   </link>
+
   <joint name="THJ2" type="revolute">
     <parent link="thhub" />
     <child link="thmiddle" />
@@ -767,12 +779,14 @@
       </geometry>
     </collision>
   </link>
+
   <joint name="THJ1" type="revolute">
     <parent link="thmiddle" />
     <child link="thdistal" />
     <origin rpy="0 0 -1.570796327" xyz="0 0 0.032" />
     <axis xyz="1 0 0" />
-    <limit effort="100" lower="0" upper="1.571" velocity="1.0" />
+    <!--limit effort="100" lower="0" upper="1.571" velocity="1.0" /-->
+    <limit effort="100" lower="-1.571" upper="0" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
   <link name="thtip">
@@ -786,4 +800,5 @@
     <child link="thtip" />
     <origin rpy="0 0 0" xyz="0 0 0.0275" />
   </joint>
-  </robot>
+
+</robot>

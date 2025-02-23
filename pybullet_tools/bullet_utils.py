@@ -241,6 +241,14 @@ def nice(tuple_of_tuples, round_to=3, one_tuple=True, keep_quat=False):
     return nice_tuple(tuple_of_tuples, round_to)
 
 
+def get_nice_pose(body):
+    return nice(get_pose(body))
+
+
+def get_nice_joint_positions(body, joints):
+    return nice(get_joint_positions(body, joints))
+
+
 def tupify_arr(arr):
     if isinstance(arr, np.ndarray) or isinstance(arr, list):
         arr = tuple(arr)

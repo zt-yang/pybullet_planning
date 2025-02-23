@@ -1,17 +1,59 @@
 # Using Dataset of Shadow Hand Grasps for G1
 
-## Install GraspDexNet
+## Install DexGraspNet
 
-The following are instructions from [GraspDexNet](https://github.com/PKU-EPIC/DexGraspNet/tree/main)
+The following instructions are adapted from [DexGraspNet](https://github.com/PKU-EPIC/DexGraspNet/tree/main)
 
-1. First try installing their env and run with their conda env
+1. First installing their env and run with their conda env
 
 ```shell
-pip install trimesh transforms3d python-fcl
+cd {your_work_space}
+git clone https://github.com/PKU-EPIC/DexGraspNet.git
+cd DexGraspNet
 
-conda install jupyter   
+## the following are from original repo
+conda create -n dexgraspnet python=3.8
+conda activate dexgraspnet
+
+# for quick example, cpu version is OK.
+conda install pytorch cpuonly -c pytorch
+pip install pyyaml lxml trimesh transforms3d python-fcl jupyter tqdm scipy
+pip install "pyglet<2"
+(cd thirdparty/pytorch_kinematics; pip install -e .)
+conda install ipykernel   
 ipython kernel install --user --name=dexgraspnet
+```
 
+2. (Optional) [Download](https://mirrors.pku.edu.cn/dl-release/DexGraspNet-ICRA2023/) more meshes and grasps data to `DexGraspNet/data/downloaded`. 
+
+```shell
+mkdir -p data/downloaded
+cd data/downloaded
+wget "https://mirrors.pku.edu.cn/dl-release/DexGraspNet-ICRA2023/dexgraspnet.tar.gz"
+wget "https://mirrors.pku.edu.cn/dl-release/DexGraspNet-ICRA2023/meshdata.tar.gz"
+tar -xvzf dexgraspnet.tar.gz; rm dexgraspnet.tar.gz
+tar -xvzf meshdata.tar.gz; rm meshdata.tar.gz
+mkdir dexgraspnet_filtered
+```
+
+3. Test loading grasps in notebook in `quick_example.ipynb`
+
+```shell
+## conda activate dexgraspnet
+## cd {your_work_space}/kitchen-worlds
 cd pybullet_planning/dexgraspnet
 jupyter notebook
 ```
+
+#### Troubleshooting
+
+### Issue: Trimesh's scene.show() not showing up
+
+check your GPU status. may need to restart the desktop
+```shell
+(dexgraspnet) ➜  DexGraspNet git:(main) ✗ nvidia-smi
+Failed to initialize NVML: Driver/library version mismatch
+NVML library version: 535.216
+```
+
+## Generate Grasps for New Hand Models

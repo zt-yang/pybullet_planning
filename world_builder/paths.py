@@ -1,10 +1,11 @@
 import socket
 import os
-from os.path import join, abspath, dirname, isdir, isfile
+from os.path import join, abspath, dirname, isdir, isfile, expanduser
 
 abs_join = lambda *args, **kwargs: abspath(join(*args, **kwargs))
 
 """ ------ inside pybullet_planning -------- """
+HOME_DIR = expanduser("~")
 current_dir = abspath(dirname(__file__))
 PBP_PATH = abs_join(current_dir, '..')
 DATA_CONFIG_PATH = abs_join(PBP_PATH, 'data_generator', 'configs')
