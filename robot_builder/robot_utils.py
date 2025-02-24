@@ -2,12 +2,16 @@ from collections import defaultdict
 
 import numpy as np
 import copy
+import math
+import time
 
 from pybullet_tools.utils import joint_from_name, get_link_subtree, link_from_name, clone_body, \
     set_all_color, TRANSPARENT, get_max_limit, get_min_limit, get_extend_fn, get_moving_links, \
     set_joint_positions, pairwise_collision, get_link_pose, multiply, set_pose, euler_from_quat, \
     RED, set_color, get_link_name, get_joints, is_movable, wait_for_user, quat_from_euler, set_renderer, \
-    get_movable_joints, get_joint_name, get_joint_position
+    get_movable_joints, get_joint_name, get_joint_position, get_aabb, get_aabb_center, draw_aabb, YELLOW, \
+    AABB, GREEN, pairwise_link_collision
+from pybullet_tools.pr2_primitives import Conf
 from pybullet_tools.bullet_utils import BASE_LINK, BASE_RESOLUTIONS, BASE_VELOCITIES, BASE_JOINTS, \
     draw_base_limits as draw_base_limits_bb, BASE_LIMITS, nice
 from pybullet_tools.grasp_utils import enumerate_rotational_matrices, \
@@ -22,7 +26,7 @@ ARM_GROUP = 'arm'
 GRIPPER_GROUP = 'gripper'
 
 BASE_JOINTS = ['x', 'y', 'theta']
-BASE_TORSO_JOINTS = ['x', 'y', 'z', 'theta']
+BASE_TORSO_JOINTS = ['x', 'y', 'torso_lift_joint', 'theta']
 
 ROBOTIQ_JOINTS = [
     # Works for 85 and 140
@@ -52,8 +56,12 @@ def get_joints_by_names(robot, names):
 
 
 def get_robot_group_joints(robot, group, joint_groups):
+    """ return joints """
     assert group in joint_groups
-    return get_joints_by_names(robot, joint_groups[group])
+    joint_names = joint_groups[group]
+    if isinstance(joint_names[0], int):
+        return joint_names
+    return get_joints_by_names(robot, joint_names)
 
 
 def set_robot_group_conf(robot, group, joint_groups, positions):
@@ -188,13 +196,21 @@ def create_mobile_robot(world, load_robot_urdf_fn, robot_class, base_group, join
 
 def print_potential_joint_groups(robot, use_joint_groups=False):
     """ for loading a new robot, the joint_groups in the template robot class is likely wrong """
+    joints = {get_joint_name(robot, j): j for j in get_movable_joints(robot)}
+    joints_by_group = defaultdict(list)
 
     if use_joint_groups:
-        joints_by_group = robot.joint_groups
+        joints_by_group.update(robot.joint_groups)
+        for name, joint in joints.items():
+            found = False
+            for k, v in joints_by_group.items():
+                if name in v:
+                    found = True
+                    break
+            if not found:
+                joints_by_group['unknown'].append(name)
     else:
-        joints = {get_joint_name(robot, j): j for j in get_movable_joints(robot)}
         keywords = ['left', 'right', 'head', 'waist', 'torso']
-        joints_by_group = defaultdict(list)
         for name, joint in joints.items():
             found = False
             for k in keywords:
@@ -209,8 +225,103 @@ def print_potential_joint_groups(robot, use_joint_groups=False):
     for i, (group, joints) in enumerate(joints_by_group.items()):
         style = styles[i]
         default_positions = [get_joint_position(robot, joint_from_name(robot, j)) for j in joints]
-        print_debug(f"\n{group} ({len(joints)})\t{default_positions}", style=style)
+        line = f"\n{group} ({len(joints)})\t{default_positions}"
+        print_debug(line, style=style)
         for name in joints:
-            print_debug("\t"+name, style=style)
+            line = "\t"+name
+            if group in ['leg']:
+                line += f'\tchild = {get_link_name(robot, joint_from_name(robot, name))}'
+            print_debug(line, style=style)
 
 
+## -------------------------------------------------------------------------
+
+
+def solve_leg_conf(body, torso_lift_value, zO, lA, lB, joint_groups, leg_group_name='leg',
+                   get_leg_positions_from_hip_knee_angles=lambda x, y: [x, y], return_positions=True, verbose=True):
+    """ return hip_pitch_joint, knee_joint values """
+    from sympy import Symbol, Eq, solve, cos, sin
+
+    aA = Symbol('aA', real=True)
+    # aB = Symbol('aB', real=True)
+    aBB = Symbol('aBB', real=True)  ## pi = (pi/2 - aA) + aBB - aB
+    e1 = Eq(lA * cos(aA) + lB * sin(aBB), zO + torso_lift_value)
+    e2 = Eq(lA * sin(aA), lB * cos(aBB))
+
+    start = time.time()
+    solutions = solve([e1, e2], aA, aBB)  ## , e2, e3, e4, e5
+    if verbose:
+        print(f'solve_leg_conf in : {round(time.time() - start, 2)} sec')
+
+    solutions = [r for r in solutions if r[0] > 0 and r[1] > 0]
+    if len(solutions) == 0:
+        return None
+
+    aA, aBB = solutions[0]
+    aB = - math.pi/2 - aA + aBB
+    joint_values = get_leg_positions_from_hip_knee_angles(aA, aB)
+
+    if return_positions:
+        return joint_values
+
+    joints = get_robot_group_joints(body, leg_group_name, joint_groups)
+    conf = Conf(body, joints, joint_values)
+    return conf
+
+
+def compute_link_lengths(body, hip_link_name, toe_link_name, upper_leg_link_name, lower_leg_link_name):
+    """
+    -- o O -----------  body of robot (zO)
+       |\
+     aA  \ lA
+          o A   ------  knee of robot
+         / \  aB
+     lB / aBB
+    B o -------------  toe of robot
+    """
+
+    hip_link = link_from_name(body, hip_link_name)
+    hip_aabb = get_aabb(body, link=hip_link)
+    draw_aabb(hip_aabb, color=GREEN)
+    zO = get_aabb_center(hip_aabb)[2]
+
+    toe_link = link_from_name(body, toe_link_name)
+    toe_aabb = get_aabb(body, link=toe_link)
+    draw_aabb(toe_aabb, color=GREEN)
+    zB = get_aabb_center(toe_aabb)[2]
+
+    upper_leg_link = link_from_name(body, upper_leg_link_name)
+    upper_leg_aabb = get_aabb(body, link=upper_leg_link)
+    draw_aabb(upper_leg_aabb, color=RED)
+    zA1 = upper_leg_aabb.lower[2]
+
+    lower_leg_link = link_from_name(body, lower_leg_link_name)
+    lower_leg_aabb = get_aabb(body, link=lower_leg_link)
+    draw_aabb(lower_leg_aabb, color=RED)
+    zA2 = lower_leg_aabb.upper[2]
+
+    zA = (zA1 + zA2) / 2
+
+    (x1, y1, _), (x2, y2, _) = lower_leg_aabb
+    found_upper_aabb = AABB(lower=(x1, y1, zA+0.01), upper=(x2, y2, zO))
+    found_lower_aabb = AABB(lower=(x1, y1, zB), upper=(x2, y2, zA-0.01))
+    draw_aabb(found_upper_aabb, color=YELLOW)
+    draw_aabb(found_lower_aabb, color=YELLOW)
+
+    lA = zO - zA
+    lB = zA - zB
+    zO = lA + lB - 0.05
+    print(f"## computed upper and lower leg lengths\n\tzO = {zO}\n\tlA = {lA}\n\tlB = {lB}")
+    return zO, lA, lB
+
+
+def check_arm_body_collisions(body, arm_links=[], body_link_names=[]):
+    collided = False
+    for body_link_name in body_link_names:
+        body_link = link_from_name(body, body_link_name)
+        for i in arm_links:
+            link = link_from_name(body, i)
+            if pairwise_link_collision(body, link, body, body_link):
+                collided = True
+                break
+    return collided

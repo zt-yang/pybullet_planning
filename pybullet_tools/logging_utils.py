@@ -62,6 +62,10 @@ def print_debug(text, style=None):
     bcolors().print(text, style)
 
 
+def print_yellow(text):
+    print_debug(text, 'yellow')
+
+
 def print_pink(text):
     print_debug(text, 'pink')
 

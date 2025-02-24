@@ -181,87 +181,6 @@ def test_torso():
     print(robot)
 
 
-def test_reachability(robot):
-    world = get_test_world(robot=robot, semantic_world=True, custom_limits=((-4, -4), (4, 4)))
-    robot = world.robot
-    state = State(world, grasp_types=robot.grasp_types)
-
-    for w, xy in [(0.3, (0, 0)), (0.5, (2, 2))]:
-        table1 = create_table(world, w=w, xy=xy)
-        movable1 = create_movable(world, table1, xy=xy)
-        result = robot.check_reachability(movable1, state)
-        print('w', w, result)
-
-    wait_unlocked()
-
-
-def test_tracik(robot, verbose=False):
-    from pybullet_tools.tracik import IKSolver
-    from robot_builder.spot_utils import solve_leg_conf
-    world = get_test_world(robot=robot, width=1200, height=1200,
-                           semantic_world=True, draw_origin=True,
-                           custom_limits=((-3, -3), (3, 3)))
-    robot = world.robot
-    set_camera_target_body(robot.body, distance=0.5)
-    set_joint_position(robot.body, joint_from_name(robot.body, 'arm0.f1x'), -1.5)
-    # compute_link_lengths(robot.body)
-
-    box = create_box(0.05, 0.05, 0.075, color=(1, 0, 0, 1))
-    grasp_pose = ((0, 0, 0.2), quat_from_euler((0, math.pi/2, 0)))
-
-    tool_link = robot.get_tool_link()
-    body_solver = IKSolver(robot, tool_link=tool_link, first_joint='torso_lift_joint',
-                           custom_limits=robot.custom_limits)  ## using 13 joints
-
-    while True:
-        box_pose = sample_random_pose(AABB(lower=[-0.3, -0.3, 0.2], upper=[0.3, 0.3, 1.2])) ## ((0, 0, 0.1), (0, 0, 0, 1))
-        gripper_pose = multiply(box_pose, grasp_pose)
-        print('\n', nice(gripper_pose))
-        for conf in body_solver.generate(gripper_pose):
-            joint_state = dict(zip(body_solver.joints, conf))
-            joint_values = {}
-            for i, value in joint_state.items():
-                if i == 0:
-                    continue
-                joint_name = get_joint_name(robot.body, i)
-                joint_values[i] = (joint_name, value)
-
-            collided = False
-            with ConfSaver(robot.body):
-                body_solver.set_conf(conf)
-                body_link = link_from_name(robot.body, 'body_link')
-                for i in ['arm0.link_sh1', 'arm0.link_hr0', 'arm0.link_el0',
-                          'arm0.link_el1', 'arm0.link_wr0', 'arm0.link_wr1']:
-                    link = link_from_name(robot.body, i)
-                    if pairwise_link_collision(robot.body, link, robot.body, body_link):
-                        collided = True
-                        break
-            if collided:
-                if verbose:
-                    print('\n\n self-collision!')
-                break
-
-            leg_conf = solve_leg_conf(robot.body, joint_state[0], verbose=False)
-            if leg_conf is None:
-                if verbose:
-                    print('\n\n failed leg ik!')
-                break
-
-            for i in range(len(leg_conf.values)):
-                index = leg_conf.joints[i]
-                value = leg_conf.values[i]
-                joint_values[index] = (get_joint_name(robot.body, index), value)
-
-            joint_values = dict(sorted(joint_values.items()))
-            for i, (joint_name, value) in joint_values.items():
-                print('\t', i, '\t', joint_name, '\t', round(value, 3))
-
-            set_pose(box, box_pose)
-            body_solver.set_conf(conf)
-            leg_conf.assign()
-            break
-
-
 ############################################################################
 
 if __name__ == '__main__':
@@ -270,5 +189,4 @@ if __name__ == '__main__':
     # test_gripper_joints()
     # test_gripper_range()
     # test_torso()
-    # test_reachability(robot)
-    # test_tracik(robot)
+

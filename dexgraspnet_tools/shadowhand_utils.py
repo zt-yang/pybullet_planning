@@ -33,38 +33,52 @@ def load_shadowhand_urdf(side='right'):
     return robot
 
 
-def set_shadowhand_pose_conf(robot, grasp_sample, verbose=False):
+def convert_shadowhand_pose_conf(grasp_sample, verbose=False):
     from dexgraspnet_tools.dexgraspnet_utils import get_grasp_pose
     qpos = grasp_sample['qpos']
 
     trans, euler = get_grasp_pose(qpos)
     pose = trans, quat_from_euler(euler)
     if verbose: pprint(qpos)
-    if verbose: print(f"before:\t {get_nice_pose(robot)}")
-    set_pose(robot, pose)
-    if verbose: print(f"after:\t {get_nice_pose(robot)}")
 
     # conf = [0, 0] + [qpos[translate_to_xml_joint_name(k)] for k in SHADOWHAND_JOINTS[2:]]
     conf = [qpos[translate_to_xml_joint_name(k)] for k in SHADOWHAND_JOINTS]
-    joints = [joint_from_name(robot, k) for k in SHADOWHAND_JOINTS]
     if verbose: pprint(dict(zip(SHADOWHAND_JOINTS, conf)))
-    if verbose: print(f"before:\t {get_nice_joint_positions(robot, joints)}")
-    set_joint_positions(robot, joints, conf)
-    if verbose: print(f"after:\t {get_nice_joint_positions(robot, joints)}")
+    return pose, conf
+
+
+def test_load_object_grasp(grasp_object='sem-Bottle-af3dda1cfe61d0fc9403b0d0536a04af'):
+    from dexgraspnet_tools.dexgraspnet_utils import load_grasp_data, load_object_in_pybullet
+    grasp_data = load_grasp_data(grasp_object, filtered=True)
+    grasp_sample = grasp_data[1]
+    body = load_object_in_pybullet(grasp_object, float(grasp_sample["scale"]))
+    return body, grasp_sample
+
+
+def load_test_object_and_grasp_pose(grasp_object='sem-Bottle-af3dda1cfe61d0fc9403b0d0536a04af'):
+    body, grasp_sample = test_load_object_grasp(grasp_object=grasp_object)
+    pose, conf = convert_shadowhand_pose_conf(grasp_sample)
+    return body, pose, conf
 
 
 ## --------------------------------------------------------------------------
 
 
+def set_shadowhand_pose_conf(robot, grasp_sample, verbose=False):
+    pose, conf = convert_shadowhand_pose_conf(grasp_sample)
+
+    joints = [joint_from_name(robot, k) for k in SHADOWHAND_JOINTS]
+    print(f"before:\t {get_nice_pose(robot)} {get_nice_joint_positions(robot, joints)}")
+    set_pose(robot, pose)
+    set_joint_positions(robot, joints, conf)
+    print(f"after:\t {get_nice_pose(robot)} {get_nice_joint_positions(robot, joints)}")
+
+
 def test_load_robot_object_grasp(grasp_object='sem-Bottle-af3dda1cfe61d0fc9403b0d0536a04af'):
-    from dexgraspnet_tools.dexgraspnet_utils import load_grasp_data, load_object_in_pybullet
     world = get_test_world(robot=None)
     robot = load_shadowhand_urdf()
 
-    grasp_data = load_grasp_data(grasp_object, filtered=True)
-    grasp_sample = grasp_data[1]
-
-    load_object_in_pybullet(grasp_object, float(grasp_sample["scale"]))
+    body, grasp_sample = test_load_object_grasp(grasp_object=grasp_object)
 
     set_shadowhand_pose_conf(robot, grasp_sample)  ## convert for .urdf file
     wait_unlocked()
@@ -87,5 +101,5 @@ if __name__ == '__main__':
     """
     pip install transforms3d
     """
-    # test_load_robot_object_grasp()
-    test_load_two_hands()
+    test_load_robot_object_grasp()
+    # test_load_two_hands()

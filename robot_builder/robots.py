@@ -13,7 +13,8 @@ from pybullet_tools.utils import get_joint_positions, clone_body, set_all_color,
     ConfSaver, get_unit_vector, unit_quat, get_link_pose, unit_pose, draw_pose, remove_handles, \
     interpolate_poses, Pose, Euler, quat_from_euler, get_bodies, get_all_links, PI, RED, \
     is_darwin, wait_for_user, YELLOW, euler_from_quat, wait_unlocked, set_renderer, \
-    sub_inverse_kinematics, Point, get_collision_fn, get_aabb_center, get_max_limit, get_camera_matrix
+    sub_inverse_kinematics, Point, get_collision_fn, get_aabb_center, get_max_limit, \
+    get_camera_matrix, pairwise_link_collision
 from pybullet_tools.logging_utils import print_debug, print_pink
 from pybullet_tools.bullet_utils import equal, nice, is_tuple, get_links_collided, CAMERA_MATRIX, \
     collided, query_yes_no, has_tracik, is_mesh_entity, get_rotation_matrix
@@ -33,7 +34,7 @@ from world_builder.world_utils import load_asset
 
 from robot_builder.robot_utils import get_robot_group_joints, close_until_collision, \
     create_robot_gripper, BASE_GROUP, BASE_TORSO_GROUP, get_cloned_gripper_joints, \
-    get_joints_by_names, test_tool_from_root_transformations
+    get_joints_by_names, test_tool_from_root_transformations, ARM_GROUP, check_arm_body_collisions
 
 
 class RobotAPI(Robot):
@@ -497,6 +498,8 @@ class MobileRobot(RobotAPI):
 
     arms = None
     grasp_types = ['top', 'side']
+    solve_leg_conf_fn = lambda x: []
+    body_link = 'base_link'
 
     def __init__(self, body, use_torso=True, **kwargs):
         # joints = self.joint_groups[self.base_group]
@@ -507,7 +510,7 @@ class MobileRobot(RobotAPI):
         self.img_dir = join('visualization', 'robot_images')
 
     def get_arm_joints(self, arm):
-        raise NotImplementedError('should implement this for MobileRobot!')
+        return self.get_group_joints(f"{arm}_{ARM_GROUP}")
 
     ## -----------------------------------------------------------------------------
 
@@ -529,6 +532,10 @@ class MobileRobot(RobotAPI):
             joints = self.get_arm_joints(arm)
             conf = self.get_carry_conf(arm, None, None)
             set_joint_positions(self.body, joints, conf)
+
+    def open_arms(self):
+        for arm in ['left', 'right']:
+            self.open_arm(arm)
 
     def get_base_positions(self):
         base_joints = self.get_base_joints()
@@ -745,12 +752,19 @@ class MobileRobot(RobotAPI):
             print(title, f'didnt find cfree ik for arm')
         return None
 
+    ## -----------------------------------------------------
+
+    def solve_leg_conf(self, torso_lift_value, verbose=False):
+        return self.solve_leg_conf_fn(torso_lift_value, return_positions=False, verbose=verbose)
+
+    def check_arm_body_collisions(self):
+        return False
 
 ###############################################################################
 
 
 from robot_builder.spot_utils import SPOT_TOOL_LINK, SPOT_CARRY_ARM_CONF, SPOT_JOINT_GROUPS, \
-    SPOT_GRIPPER_ROOT
+    SPOT_GRIPPER_ROOT, solve_spot_leg_conf
 
 
 class SpotRobot(MobileRobot):
@@ -759,8 +773,10 @@ class SpotRobot(MobileRobot):
     arms = ['hand']
     joint_groups = SPOT_JOINT_GROUPS
     joint_group_names = ['hand', BASE_TORSO_GROUP]
+    body_link = 'body_link'
     tool_link = SPOT_TOOL_LINK
     cloned_finger_link = 1  ## for detecting if a grasp is pointing upwards
+    solve_leg_conf_fn = solve_spot_leg_conf
 
     def __init__(self, body, base_link=BASE_GROUP, **kwargs):
         joints = self.joint_groups[BASE_TORSO_GROUP]
@@ -775,7 +791,7 @@ class SpotRobot(MobileRobot):
     def get_gripper_root(self, arm):
         return SPOT_GRIPPER_ROOT
 
-    def get_tool_link(self, arm):
+    def get_tool_link(self, arm=None):
         return SPOT_TOOL_LINK
 
     def _close_cloned_gripper(self, gripper_cloned, arm):
@@ -800,6 +816,12 @@ class SpotRobot(MobileRobot):
 
     def get_tool_from_root(self, a):
         return Pose(euler=Euler(math.pi / 2, 0, -math.pi / 2))
+
+    def check_arm_body_collisions(self, arm_links=[], body_link_names=[]):
+        arm_links = ['arm0.link_sh1', 'arm0.link_hr0', 'arm0.link_el0',
+                     'arm0.link_el1', 'arm0.link_wr0', 'arm0.link_wr1']
+        body_link_names = ['body_link']
+        return check_arm_body_collisions(self.body, arm_links, body_link_names)
 
 
 from pybullet_tools.pr2_utils import open_arm, CAMERA_FRAME, EYE_FRAME

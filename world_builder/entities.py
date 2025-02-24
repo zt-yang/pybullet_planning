@@ -392,14 +392,14 @@ class Object(Index):
             return get_movable_joints(self.body)  ## get_joints | get_movable_joints
         return tuple(map(self.get_joint, joints))
 
-    def get_joint_position(self, *args, **kwags):
-        return get_joint_positions(self.body, [self.get_joint(*args, **kwags)])[0]
+    def get_joint_position(self, *args, **kwargs):
+        return get_joint_positions(self.body, [self.get_joint(*args, **kwargs)])[0]
 
-    def get_joint_positions(self, *args, **kwags):
-        return get_joint_positions(self.body, self.get_joints(*args, **kwags))
+    def get_joint_positions(self, *args, **kwargs):
+        return get_joint_positions(self.body, self.get_joints(*args, **kwargs))
 
-    def set_joint_position(self, joint, *args, **kwargs):
-        ans = set_joint_position(self.body, self.get_joint(joint), *args, **kwargs)
+    def set_joint_position(self, joint, positions):
+        ans = set_joint_position(self.body, self.get_joint(joint), positions)
 
         ## when joints move, objects on child link are generated again
         BODY_TO_OBJECT = self.world.BODY_TO_OBJECT
@@ -411,8 +411,8 @@ class Object(Index):
                     space.place_obj(obj)
         return ans
 
-    def set_joint_positions(self, joints, *args, **kwargs):
-        return set_joint_positions(self.body, self.get_joints(joints), *args, **kwargs)
+    def set_joint_positions(self, joints, positions):
+        return set_joint_positions(self.body, self.get_joints(joints), positions)
 
     def get_link(self, link): # int | str
         try:
