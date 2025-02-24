@@ -2,7 +2,6 @@ import os
 from os.path import join, isdir, isfile, expanduser, abspath, dirname
 import random
 import numpy as np
-import torch
 import trimesh
 from tqdm import tqdm
 from collections import defaultdict
@@ -101,6 +100,7 @@ def load_sem_assets():
 
 
 def load_hand_model(hand_file, grasp_datapoint, color=[200, 200, 250, 255]):
+    import torch
     from utils.hand_model_lite import HandModelMJCFLite
     hand_pose = get_hand_pose(grasp_datapoint['qpos'])
     hand_pose = torch.tensor(hand_pose, dtype=torch.float, device="cpu").unsqueeze(0)

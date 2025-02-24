@@ -3,18 +3,24 @@ from pprint import pprint
 
 from pybullet_tools.utils import wait_unlocked, get_movable_joints, get_joint_name, quat_from_euler, \
     get_joint_positions, set_joint_positions, set_pose, joint_from_name, get_joint_position, \
-    get_pose, unit_quat
+    get_pose, unit_quat, draw_pose, unit_pose
 from pybullet_tools.bullet_utils import load_robot_urdf, get_nice_pose, get_nice_joint_positions
 
 from tutorials.test_utils import get_test_world
-
-from dexgraspnet_tools.dexgraspnet_utils import load_grasp_data, get_grasp_pose, load_object_in_pybullet
 
 SHADOWHAND_URDF_PATH = join(dirname(__file__), 'assets/shadowhand_description')
 SHADOWHAND_URDFS = {
     'right': join(SHADOWHAND_URDF_PATH, 'shadowhand.urdf'),
     'left': join(SHADOWHAND_URDF_PATH, 'shadowhand_left.urdf'),
 }
+
+# ## XML version has both hands
+# SHADOWHAND_URDF_PATH = join(dirname(__file__), 'assets/shadowhand_xml')
+# SHADOWHAND_URDFS = {
+#     'right': join(SHADOWHAND_URDF_PATH, 'right_hand.xml'),
+#     'left': join(SHADOWHAND_URDF_PATH, 'left_hand.xml'),
+# }
+
 SHADOWHAND_JOINTS = [
     # 'WRJ2', 'WRJ1',  ## skipping for now
     'FFJ4', 'FFJ3', 'FFJ2', 'FFJ1',
@@ -31,7 +37,6 @@ def translate_to_xml_joint_name(k):
 
 
 def test_shadowhand_urdf(left=False):
-    world = get_test_world(robot=None)
     robot = load_robot_urdf(SHADOWHAND_URDFS['left' if left else 'right'])
     ## ['WRJ2', 'WRJ1', 'FFJ4', 'FFJ3', 'FFJ2', 'FFJ1', 'MFJ4', 'MFJ3', 'MFJ2', 'MFJ1', 'RFJ4', 'RFJ3', 'RFJ2', 'RFJ1', 'LFJ5', 'LFJ4', 'LFJ3', 'LFJ2', 'LFJ1', 'THJ5', 'THJ4', 'THJ3', 'THJ2', 'THJ1']
     # print([get_joint_name(robot, j) for j in get_movable_joints(robot)])
@@ -39,6 +44,7 @@ def test_shadowhand_urdf(left=False):
 
 
 def set_shadowhand_pose_conf(robot, grasp_sample, verbose=False):
+    from dexgraspnet_tools.dexgraspnet_utils import get_grasp_pose
     qpos = grasp_sample['qpos']
 
     trans, euler = get_grasp_pose(qpos)
@@ -61,6 +67,8 @@ def set_shadowhand_pose_conf(robot, grasp_sample, verbose=False):
 
 
 def test_load_robot_object_grasp(grasp_object='sem-Bottle-af3dda1cfe61d0fc9403b0d0536a04af'):
+    from dexgraspnet_tools.dexgraspnet_utils import load_grasp_data, load_object_in_pybullet
+    world = get_test_world(robot=None)
     robot = test_shadowhand_urdf()
 
     grasp_data = load_grasp_data(grasp_object, filtered=True)
@@ -73,9 +81,15 @@ def test_load_robot_object_grasp(grasp_object='sem-Bottle-af3dda1cfe61d0fc9403b0
 
 
 def test_load_two_hands():
-    left = test_shadowhand_urdf(left=True)
-    set_pose(left, ((0, 0.5, 0), unit_quat()))
+    world = get_test_world(robot=None)
+    draw_pose(unit_pose())
+
     right = test_shadowhand_urdf(left=False)
+    set_pose(right, ((0, 0.15, 0), unit_quat()))
+
+    left = test_shadowhand_urdf(left=True)
+    set_pose(left, ((0, -0.15, 0), unit_quat()))
+
     wait_unlocked()
 
 
