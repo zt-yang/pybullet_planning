@@ -925,7 +925,7 @@ def load_pybullet(filename, fixed_base=False, scale=1., **kwargs):
         elif filename.endswith('.bullet'):
             body = p.loadBullet(filename, physicsClientId=CLIENT)
         elif filename.endswith('.obj'):
-            # TODO: fixed_base => mass = 0?
+            # TODO: fixed_base => mass = 0?base_link
             body = create_obj(filename, scale=scale, **kwargs)
         else:
             raise ValueError(filename)
@@ -4577,7 +4577,7 @@ class Attachment(object):
         return flatten_links(self.child) | flatten_links(self.parent, get_link_subtree(
             self.parent, self.parent_link))
     def assign(self):
-        print('\n\nDEPRECATED | use bullet_utils.Attachment')
+        # print('\n\nDEPRECATED | use pose_utils.Attachment')
         parent_link_pose = get_link_pose(self.parent, self.parent_link)
         child_pose = body_from_end_effector(parent_link_pose, self.grasp_pose)
         set_pose(self.child, child_pose)
