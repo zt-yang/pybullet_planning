@@ -38,6 +38,8 @@ def test_whole_body_ik(robot, tool_link, box_range_aabb, first_joint='torso_lift
     body_solver = IKSolver(robot.body, tool_link=tool_link, first_joint=first_joint,
                            custom_limits=robot.custom_limits)
 
+    joint_state, leg_conf = None, None
+
     while num_success > 0 and max_tries > 0:
         box_pose = sample_random_pose(box_range_aabb) if given_box_pose is None else given_box_pose
         gripper_pose = multiply(box_pose, grasp_pose)
@@ -61,8 +63,7 @@ def test_whole_body_ik(robot, tool_link, box_range_aabb, first_joint='torso_lift
 
             with ConfSaver(robot.body):
                 body_solver.set_conf(conf)
-
-            collided = robot.check_arm_body_collisions()
+                collided = robot.check_arm_body_collisions()
             if collided:
                 if verbose:
                     print('\n\n self-collision!')
@@ -99,6 +100,7 @@ def test_whole_body_ik(robot, tool_link, box_range_aabb, first_joint='torso_lift
             num_success -= 1
             break
         max_tries -= 1
+    return joint_state, leg_conf
 
 
 # def test_reachability(robot):

@@ -251,7 +251,6 @@
   <joint name="MFJ4" type="revolute">
     <parent link="palm" />
     <child link="mfknuckle" />
-
     <origin rpy="0 0 0" xyz="0.011 0 0.099" />
     <axis xyz="0 -1 0" />
     <limit effort="100" lower="-0.43633231299858238" upper="0.43633231299858238" velocity="1.0" />
@@ -631,6 +630,7 @@
     <child link="lftip" />
     <origin rpy="0 0 0" xyz="0 0 0.026" />
   </joint>
+
   <link name="thbase">
     <inertial>
       <mass value="0.010" />
@@ -653,6 +653,14 @@
       </geometry>
     </collision>
   </link>
+
+  <!-- xml original
+  <body name="robot0:thbase" pos="0.034 -0.009 0.029" quat="0.923956 0 0.382499 0">
+    <joint name="robot0:THJ4" pos="0 0 0" axis="0 0 -1" range="-1.047 1.047" user="1121" />
+
+    ## euler_from_quat([eval(k) for k in "0.923956 0 0.382499 0".split()])
+    ## = (3.141592653589793, -0.7849990259705161, 0.0)
+  -->
 
   <joint name="THJ5" type="revolute">
     <parent link="palm" />
@@ -686,6 +694,11 @@
     </collision>
   </link>
 
+  <!-- xml original
+  <body name="robot0:thproximal" pos="0 0 0">
+    <joint name="robot0:THJ3" pos="0 0 0" axis="1 0 0" range="0 1.222" user="1120" />
+  -->
+
   <joint name="THJ4" type="revolute">
     <parent link="thbase" />
     <child link="thproximal" />
@@ -717,6 +730,11 @@
       </geometry>
     </collision>
   </link>
+
+  <!-- xml original
+  <body name="robot0:thhub" pos="0 0 0.038">
+    <joint name="robot0:THJ2" pos="0 0 0" axis="1 0 0" range="-0.209 0.209" user="1119" />
+  -->
 
   <joint name="THJ3" type="revolute">
     <parent link="thproximal" />
@@ -750,11 +768,16 @@
     </collision>
   </link>
 
+  <!-- xml original
+  <body name="robot0:thmiddle" pos="0 0 0">
+    <joint name="robot0:THJ1" pos="0 0 0" axis="0 1 0" range="-0.524 0.524" user="1118" />
+  -->
+
   <joint name="THJ2" type="revolute">
     <parent link="thhub" />
     <child link="thmiddle" />
     <origin rpy="0 0 0" xyz="0 0 0" />
-    <axis xyz="0 -1 0" />
+    <axis xyz="0 1 0" />
     <limit effort="100" lower="-0.5237" upper="0.5237" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
@@ -781,13 +804,20 @@
     </collision>
   </link>
 
+  <!-- xml original
+  <body name="robot0:thdistal" pos="0 0 0.032">
+    <joint name="robot0:THJ0" pos="0 0 0" axis="0 1 0" range="-1.571 0" user="1117" />
+  -->
+
   <joint name="THJ1" type="revolute">
     <parent link="thmiddle" />
     <child link="thdistal" />
-    <origin rpy="0 0 -1.570796327" xyz="0 0 0.032" />
-    <axis xyz="1 0 0" />
-    <!--limit effort="100" lower="0" upper="1.571" velocity="1.0" /-->
+    <origin rpy="0 0 0" xyz="0 0 0.032" />
+    <axis xyz="0 1 0" />
     <limit effort="100" lower="-1.571" upper="0" velocity="1.0" />
+    <!--origin rpy="0 0 -1.570796327" xyz="0 0 0.032" /-->
+    <!--axis xyz="1 0 0" /-->
+    <!--limit effort="100" lower="0" upper="1.571" velocity="1.0" /-->
     <dynamics damping="50.5" />
   </joint>
   <link name="thtip">

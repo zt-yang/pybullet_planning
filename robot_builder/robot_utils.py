@@ -315,7 +315,7 @@ def compute_link_lengths(body, hip_link_name, toe_link_name, upper_leg_link_name
     return zO, lA, lB
 
 
-def check_arm_body_collisions(body, arm_links=[], body_link_names=[]):
+def check_arm_body_collisions(body, arm_links=[], body_link_names=[], verbose=False):
     collided = False
     for body_link_name in body_link_names:
         body_link = link_from_name(body, body_link_name)
@@ -324,4 +324,5 @@ def check_arm_body_collisions(body, arm_links=[], body_link_names=[]):
             if pairwise_link_collision(body, link, body, body_link):
                 collided = True
                 break
+            if verbose: print(f"cfree {(body_link_name, i)}")
     return collided

@@ -758,7 +758,7 @@ class MobileRobot(RobotAPI):
         return self.solve_leg_conf_fn(torso_lift_value, return_positions=False, verbose=verbose)
 
     def check_arm_body_collisions(self):
-        return False
+        raise NotImplementedError()
 
 ###############################################################################
 
@@ -1465,4 +1465,3 @@ class FEGripper(RobotAPI):
         remove_body(marker)
         q.assign()
         return result
-

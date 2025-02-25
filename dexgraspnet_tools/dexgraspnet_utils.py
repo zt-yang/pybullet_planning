@@ -53,6 +53,9 @@ rainbow_colors_rgb = [
     (148, 0, 211)       # Violet
 ]
 
+DEXGRASPNET_CATEGORIES = ['Bottle', 'Bowl', 'Fruit', 'Pan', 'FoodItem', 'MilkCarton',
+                          'PillBottle', 'SodaCan', 'SoapBottle', 'TissueBox', 'Vase']
+
 
 def get_grasp_pose(qpos):
     trans = [qpos[name] for name in translation_names]
@@ -79,9 +82,7 @@ def load_sem_assets():
         grasp_object_dict = defaultdict(list)
 
         if not USE_TEST_MESHDATA:
-            categories = ['Bottle', 'Bowl', 'Fruit', 'Pan', 'FoodItem', 'MilkCarton',
-                          'PillBottle', 'SodaCan', 'SoapBottle', 'TissueBox', 'Vase']
-            prefix = [f"sem-{name}" for name in categories]
+            prefix = [f"sem-{name}" for name in DEXGRASPNET_CATEGORIES]
 
             for code in os.listdir(data_path):
                 for f in prefix:
@@ -234,3 +235,11 @@ def load_object_in_pybullet(grasp_object, scale, add_plane=True):
         floor = create_box(4, 4, 0.001, color=TAN)
         set_point(floor, Point(z=-0.001 / 2. + aabb.lower[2]))
     return body
+
+
+# ## ------------------------------------------------------------------------------------------------
+#
+#
+# def add_asset_to_world_with_saved_grasps(world, grasp_object):
+#
+#

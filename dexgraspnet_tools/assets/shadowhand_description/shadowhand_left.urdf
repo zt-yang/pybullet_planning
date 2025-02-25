@@ -46,7 +46,7 @@
     <parent link="wrist_left" />
     <child link="palm_left" />
     <origin rpy="0 0 0" xyz="0 0 0.034" />
-    <axis xyz="-1 0 0" />
+    <axis xyz="1 0 0" />
     <limit effort="5" lower="-0.78539816339744828" upper="0.6108652381980153" velocity="1.0" />
     <dynamics damping="100.5" />
   </joint>
@@ -103,7 +103,7 @@
     <parent link="palm_left" />
     <child link="ffknuckle_left" />
     <origin rpy="0 0 3.14159" xyz="0.033 0 0.095" />
-    <axis xyz="0 1 0" />
+    <axis xyz="0 -1 0" />
     <limit effort="100" lower="-0.43633231299858238" upper="0.43633231299858238" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
@@ -132,7 +132,7 @@
     <parent link="ffknuckle_left" />
     <child link="ffproximal_left" />
     <origin rpy="0 0 0" xyz="0 0 0" />
-    <axis xyz="-1 0 0" />
+    <axis xyz="1 0 0" />
     <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
@@ -161,7 +161,7 @@
     <parent link="ffproximal_left" />
     <child link="ffmiddle_left" />
     <origin rpy="0 0 0" xyz="0 0 0.045" />
-    <axis xyz="-1 0 0" />
+    <axis xyz="1 0 0" />
     <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
@@ -190,7 +190,7 @@
     <parent link="ffmiddle_left" />
     <child link="ffdistal_left" />
     <origin rpy="0 0 0" xyz="0 0 0.025" />
-    <axis xyz="-1 0 0" />
+    <axis xyz="1 0 0" />
     <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
@@ -233,7 +233,7 @@
     <parent link="palm_left" />
     <child link="mfknuckle_left" />
     <origin rpy="0 0 3.14159" xyz="0.011 0 0.099" />
-    <axis xyz="0 1 0" />
+    <axis xyz="0 -1 0" />
     <limit effort="100" lower="-0.43633231299858238" upper="0.43633231299858238" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
@@ -262,7 +262,7 @@
     <parent link="mfknuckle_left" />
     <child link="mfproximal_left" />
     <origin rpy="0 0 0" xyz="0 0 0" />
-    <axis xyz="-1 0 0" />
+    <axis xyz="1 0 0" />
     <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
@@ -291,7 +291,7 @@
     <parent link="mfproximal_left" />
     <child link="mfmiddle_left" />
     <origin rpy="0 0 0" xyz="0 0 0.045" />
-    <axis xyz="-1 0 0" />
+    <axis xyz="1 0 0" />
     <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
@@ -320,7 +320,7 @@
     <parent link="mfmiddle_left" />
     <child link="mfdistal_left" />
     <origin rpy="0 0 0" xyz="0 0 0.025" />
-    <axis xyz="-1 0 0" />
+    <axis xyz="1 0 0" />
     <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
@@ -363,7 +363,7 @@
     <parent link="palm_left" />
     <child link="rfknuckle_left" />
     <origin rpy="0 0 3.14159" xyz="-0.011 0 0.095" />
-    <axis xyz="0 -1 0" />
+    <axis xyz="0 1 0" />
     <limit effort="100" lower="-0.43633231299858238" upper="0.43633231299858238" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
@@ -392,7 +392,7 @@
     <parent link="rfknuckle_left" />
     <child link="rfproximal_left" />
     <origin rpy="0 0 0" xyz="0 0 0" />
-    <axis xyz="-1 0 0" />
+    <axis xyz="1 0 0" />
     <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
@@ -421,7 +421,7 @@
     <parent link="rfproximal_left" />
     <child link="rfmiddle_left" />
     <origin rpy="0 0 0" xyz="0 0 0.045" />
-    <axis xyz="-1 0 0" />
+    <axis xyz="1 0 0" />
     <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
@@ -450,7 +450,7 @@
     <parent link="rfmiddle_left" />
     <child link="rfdistal_left" />
     <origin rpy="0 0 0" xyz="0 0 0.025" />
-    <axis xyz="-1 0 0" />
+    <axis xyz="1 0 0" />
     <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
@@ -523,7 +523,7 @@
     <parent link="lfmetacarpal_left" />
     <child link="lfknuckle_left" />
     <origin rpy="0 0 0" xyz="0 0 0.06579" />
-    <axis xyz="0 -1 0" />
+    <axis xyz="0 1 0" />
     <limit effort="100" lower="-0.43633231299858238" upper="0.43633231299858238" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
@@ -552,7 +552,7 @@
     <parent link="lfknuckle_left" />
     <child link="lfproximal_left" />
     <origin rpy="0 0 0" xyz="0 0 0" />
-    <axis xyz="-1 0 0" />
+    <axis xyz="1 0 0" />
     <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
@@ -581,7 +581,7 @@
     <parent link="lfproximal_left" />
     <child link="lfmiddle_left" />
     <origin rpy="0 0 0" xyz="0 0 0.045" />
-    <axis xyz="-1 0 0" />
+    <axis xyz="1 0 0" />
     <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
@@ -610,7 +610,7 @@
     <parent link="lfmiddle_left" />
     <child link="lfdistal_left" />
     <origin rpy="0 0 0" xyz="0 0 0.025" />
-    <axis xyz="-1 0 0" />
+    <axis xyz="1 0 0" />
     <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
@@ -717,7 +717,7 @@
     <parent link="thproximal_left" />
     <child link="thhub_left" />
     <origin rpy="0 0 0" xyz="0 0 0.038" />
-    <axis xyz="-1 0 0" />
+    <axis xyz="1 0 0" />
     <limit effort="100" lower="-0.209" upper="0.209" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
@@ -779,7 +779,7 @@
     <parent link="thmiddle_left" />
     <child link="thdistal_left" />
     <origin rpy="0 0 -1.570796327" xyz="0 0 0.032" />
-    <axis xyz="-1 0 0" />
+    <axis xyz="1 0 0" />
     <limit effort="100" lower="-1.571" upper="0" velocity="1.0" />
     <dynamics damping="50.5" />
   </joint>
