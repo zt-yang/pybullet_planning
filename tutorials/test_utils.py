@@ -39,9 +39,9 @@ def init_experiment(exp_dir):
         os.remove(TXT_FILE)
 
 
-def get_test_world(robot='feg', semantic_world=False, draw_origin=False,
+def get_test_world(robot='feg', semantic_world=False, use_gui=True, draw_origin=False,
                    width=1980, height=1238, **kwargs):
-    connect(use_gui=True, shadows=False, width=width, height=height)  ##  , width=360, height=270
+    connect(use_gui=use_gui, shadows=False, width=width, height=height)  ##  , width=360, height=270
     if draw_origin:
         draw_pose(unit_pose(), length=.5)
         create_floor()

@@ -28,7 +28,7 @@ def test_squatting_down(robot, lower, upper):
     wait_for_user()
 
 
-def test_whole_body_ik(robot, tool_link, box_range_aabb, first_joint='torso_lift_joint',
+def test_whole_body_ik(robot, tool_link, box_range_aabb=None, first_joint='torso_lift_joint',
                        box=None, grasp_pose=None, given_box_pose=None, verbose=False,
                        num_success=INF, max_tries=20):
     if box is None or grasp_pose is None:

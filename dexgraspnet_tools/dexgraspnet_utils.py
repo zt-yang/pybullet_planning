@@ -218,12 +218,13 @@ def fix_dexgraspnet_urdf(object_mesh_path):
     return new_file_name
 
 
-def load_object_in_pybullet(grasp_object, scale, add_plane=True):
+def load_object_in_pybullet(grasp_object, scale, add_plane=True, verbose=True):
     from pybullet_tools.utils import HideOutput, load_model, get_aabb, create_box, TAN, Point, set_point, \
         draw_pose, draw_aabb, unit_pose, get_aabb_extent
     object_mesh_path = join(mesh_path, grasp_object, "coacd/coacd.urdf")
     new_file_name = fix_dexgraspnet_urdf(object_mesh_path)
-    print(f'loading (file exists {isfile(object_mesh_path)}) with scale={scale}\t{object_mesh_path}')
+    if verbose:
+        print(f'loading (file exists {isfile(object_mesh_path)}) with scale={scale}\t{object_mesh_path}')
     with HideOutput(True):
         body = load_model(new_file_name, scale=scale)
 

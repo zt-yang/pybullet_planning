@@ -74,20 +74,20 @@ def convert_shadowhand_pose_conf(grasp_sample, side='right', verbose=False):
     return pose, conf
 
 
-def test_load_object_grasp(grasp_object='sem-Bottle-af3dda1cfe61d0fc9403b0d0536a04af', random_sample=False):
+def test_load_object_grasp(grasp_object='sem-Bottle-af3dda1cfe61d0fc9403b0d0536a04af', random_sample=False, verbose=True):
     from dexgraspnet_tools.dexgraspnet_utils import load_grasp_data, load_object_in_pybullet
     grasp_data = load_grasp_data(grasp_object, filtered=True)
     if random_sample:
         grasp_sample = random.choice(grasp_data)
     else:
         grasp_sample = grasp_data[0]
-    body = load_object_in_pybullet(grasp_object, float(grasp_sample["scale"]))
+    body = load_object_in_pybullet(grasp_object, float(grasp_sample["scale"]), verbose=verbose)
     return body, grasp_sample
 
 
 def load_test_object_and_grasp_pose(grasp_object='sem-Bottle-af3dda1cfe61d0fc9403b0d0536a04af',
-                                    side='right', random_sample=False, transform=None):
-    body, grasp_sample = test_load_object_grasp(grasp_object, random_sample)
+                                    side='right', random_sample=False, transform=None, **kwargs):
+    body, grasp_sample = test_load_object_grasp(grasp_object, random_sample, **kwargs)
     pose, conf = convert_shadowhand_pose_conf(grasp_sample, side=side)
     if transform is not None:
         pose = multiply(pose, transform)

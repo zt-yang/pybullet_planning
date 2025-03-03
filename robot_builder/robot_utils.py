@@ -160,7 +160,7 @@ def get_robot_base_custom_limits_dict(robot, base_limits, yaw_limit=None, torso_
 def create_mobile_robot(world, load_robot_urdf_fn, robot_class, base_group, joint_groups,
                         base_q=None, custom_limits=BASE_LIMITS, use_torso=True,
                         draw_base_limits=False, max_velocities=BASE_VELOCITIES, robot=None,
-                        return_body=False, debug_joint_names=True, **kwargs):
+                        return_body=False, debug_joint_names=False, **kwargs):
 
     if base_q is None:
         base_q = [0] * 4 if use_torso else [0] * 3
