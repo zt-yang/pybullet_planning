@@ -10,6 +10,8 @@ from problem_sets.problem_utils import problem_template
 
 def test_pick(args, robot_builder_args=dict(), **kwargs):
     def loader_fn(world, **world_builder_args):
+        test_object_grasps_fn = world_builder_args['test_grasp_fn'] if 'test_grasp_fn' else "test_object_grasps"
+
         xy = world_builder_args['xy'] if 'xy' in world_builder_args else (2, 2)
         w = world_builder_args['w'] if 'w' in world_builder_args else 0.25
         h = world_builder_args['h'] if 'h' in world_builder_args else 0.9
@@ -23,7 +25,7 @@ def test_pick(args, robot_builder_args=dict(), **kwargs):
         set_camera_target_body(table, dx=1.5, dy=1.5, dz=1.5)
 
         # goals = [('AtBConf', Conf(robot, get_group_joints(robot, 'base'), (2, 7, 0)))]
-        goals = ("test_object_grasps", cabbage)
+        goals = (test_object_grasps_fn, cabbage)
         # goals = [("Holding", arm, cabbage)]
 
         # ## debug
@@ -38,7 +40,8 @@ def test_pick(args, robot_builder_args=dict(), **kwargs):
             robot_builder_args['base_q'][:2] = [2, 1]
             robot_builder_args['base_q'][-1:] = [PI/2]
 
-    return problem_template(args, robot_builder_fn=build_table_domain_robot, robot_builder_args=robot_builder_args,
+    return problem_template(args, robot_builder_fn=build_table_domain_robot,
+                            robot_builder_args=robot_builder_args,
                             world_loader_fn=loader_fn, **kwargs)
 
 

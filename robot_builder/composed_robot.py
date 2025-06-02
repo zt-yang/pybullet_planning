@@ -1,3 +1,4 @@
+from typing import Dict
 import math
 import random
 from os.path import abspath, join
@@ -16,7 +17,7 @@ from leap_tools.hierarchical_agent import HierarchicalAgent
 
 class ComposedRobot(MobileRobot):
 
-    def __init__(self, robot, end_effectors, **kwargs):
+    def __init__(self, robot, end_effectors: Dict, **kwargs):
         self.dual_arm = robot.dual_arm
         self.arms = robot.arms
         super(ComposedRobot, self).__init__(robot.body, base_link=robot.base_link,
@@ -24,13 +25,14 @@ class ComposedRobot(MobileRobot):
 
         self.robot = robot
         self.body = robot.body
+        self.custom_limits = robot.custom_limits
+
         self.self_collisions = robot.self_collisions
-        self.arms = robot.arms
         self.joint_groups = robot.joint_groups
         self.solve_leg_conf_fn = robot.solve_leg_conf_fn
 
         self.end_effectors = end_effectors
-        self.attachments = [o.attachment for o in end_effectors]
+        self.attachments = [o.attachment for o in end_effectors.values()]
 
     def assign_attachments(self):
         for attachment in self.attachments:
@@ -56,6 +58,9 @@ class ComposedRobot(MobileRobot):
 
     def get_carry_conf(self, arm, grasp_type, g):
         return self.robot.get_carry_conf(arm)
+
+    def get_gripper_root(self, arm):
+        return self.end_effectors[arm].get_gripper_root(arm)
 
     # def get_tool_from_hand(self, body):
     #     if self.tool_from_hand is None:

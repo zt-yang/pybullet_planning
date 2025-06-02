@@ -43,7 +43,9 @@ def process_debug_goals(state, goals, init):
     if isinstance(goals, tuple):
         test, args = goals
         ff = []
-        if test == 'test_handle_grasps':
+        if not isinstance(test, str):
+            goals = test(state, args)
+        elif test == 'test_handle_grasps':
             goals = test_handle_grasps(state, args)
         elif test == 'test_object_grasps':
             goals = test_object_grasps(state, args)
